@@ -218,7 +218,12 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
-**Auto-index on changes:** Run `npm run memory:watch` once to start the file-watcher daemon. It re-indexes changed files on save (~50ms per file). Without watcher: re-run `code:index` after major changes.
+**Auto-index on changes:** Two paths, both automatic:
+
+1. **Pseudo-watcher (default, no setup needed)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files into RAG + Graph in ~50–500ms per file. Embeddings skipped to stay fast (BM25 + graph stay perfectly fresh; semantic search may lag for that file until full reindex).
+2. **Watcher daemon (optional)** — `npm run memory:watch` for catching edits made outside the Claude session (VS Code, `git pull`, CI). Long-running, with embeddings, also watches `.claude/memory/`.
+
+Env knobs: `EVOLVE_HOOK_NO_INDEX=1` disables pseudo-watcher; `EVOLVE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without either path: re-run `npm run code:index` after major changes.
 
 **Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
@@ -226,7 +231,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 
 Beyond semantic similarity, Evolve builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
 
-This is automatic — built on first session via SessionStart hook, kept fresh by file-watcher.
+This is automatic — built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on every `Write`/`Edit` without any daemon.
 
 ```bash
 # Status check (built into SessionStart, also runnable manually)

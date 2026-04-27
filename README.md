@@ -170,15 +170,21 @@ npm run evolve:status
 
 Claude автоматически вызовет `evolve:code-search` с graph-mode и покажет каждого caller'а с file:line.
 
-### 4. Запустить watcher для автоматической переиндексации
+### 4. Авто-переиндексация — уже работает, ничего запускать не надо
 
-В отдельном терминале:
+При каждом `Write` или `Edit` в Claude-сессии `PostToolUse` hook автоматически дёргает `codeStore.indexFile()` для отредактированных файлов. RAG-чанки + symbols + edges обновляются за ~50–500ms на файл, embeddings пропускаются для скорости (BM25 + graph всегда актуальны).
+
+Опционально, для случаев когда файлы меняются **вне** Claude-сессии (VS Code, `git pull`, CI и т.п.) — запустить watcher-демон в отдельном терминале:
 
 ```bash
 npm run memory:watch
 ```
 
-Теперь при каждом сохранении файла индекс обновляется автоматически (~50ms на файл).
+Этот режим тяжелее (загружает embedding-модель, держит chokidar постоянно), но покрывает внешние правки и держит embeddings свежими.
+
+Управление через env:
+- `EVOLVE_HOOK_NO_INDEX=1` — выключить pseudo-watcher (если хочется только daemon)
+- `EVOLVE_HOOK_EMBED=1` — включить embeddings в pseudo-watcher (медленнее на каждый Edit)
 
 ---
 

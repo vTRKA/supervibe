@@ -75,7 +75,9 @@ Hybrid **Code RAG** index at `.claude/memory/code.db`:
 - **Semantic**: `Xenova/multilingual-e5-small` (RU+EN+100 langs, ~129 MB bundled offline)
 - **Keyword**: SQLite FTS5 BM25 over function-aware code chunks
 - **Hybrid ranking**: Reciprocal Rank Fusion (k=60) over BM25 + cosine similarity
-- **Incremental**: chokidar file-watcher keeps index fresh
+- **Incremental**: two refresh paths (both wired, no manual intervention by default):
+  - **Pseudo-watcher** (always-on, no daemon): `PostToolUse` hook on `Write|Edit` re-indexes the touched file into RAG + Graph. Skips embeddings to stay fast (~50–500ms per file); BM25 + symbols/edges always fresh. Opt-out: `EVOLVE_HOOK_NO_INDEX=1`. Opt-in to embeddings: `EVOLVE_HOOK_EMBED=1`.
+  - **Watcher daemon** (optional, for external edits): `npm run memory:watch` — chokidar long-running, with embeddings, also watches `.claude/memory/`. Run when editing via VS Code/git pull/etc. while sessions are off.
 - **Languages**: TS, TSX, JS, JSX, Python, PHP, Rust, Go, Java, Ruby, Vue, Svelte (whole-file chunking for last two)
 
 Skill: `evolve:code-search` — invoke **BEFORE** any non-trivial code change.
