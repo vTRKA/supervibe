@@ -64,13 +64,19 @@ async function ensureCodeIndexFresh(projectRoot) {
   // SessionStart hook should be fast — full reindex only if missing.
 
   if (action === 'skip') {
-    // Just open and report stats
+    // DB exists — open, run mtime-scan to catch external edits since last session,
+    // then report stats. mtime-scan is cheap (stat per existing row, no read unless changed).
     try {
       const store = new CodeStore(projectRoot, { useEmbeddings: false });
       await store.init();
+      let scanCounts = null;
+      try {
+        const { scanCodeChanges } = await import('./lib/mtime-scan.mjs');
+        scanCounts = await scanCodeChanges(store, projectRoot);
+      } catch {}
       const stats = store.stats();
       store.close();
-      return { action: 'skip', stats };
+      return { action: 'skip', stats, scanCounts };
     } catch (err) {
       return { action: 'skip', error: err.message };
     }
@@ -97,6 +103,10 @@ async function reportCodeIndexHealth() {
     if (result.action === 'skip') {
       console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (fresh)`);
       console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`);
+      const sc = result.scanCounts;
+      if (sc && (sc.reindexed > 0 || sc.removed > 0)) {
+        console.log(`[evolve] mtime-scan: ${sc.reindexed} file(s) reindexed, ${sc.removed} removed (external edits caught)`);
+      }
     } else {
       console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (rebuilt)`);
       console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`);
@@ -104,6 +114,47 @@ async function reportCodeIndexHealth() {
     }
   } catch (err) {
     console.log(`[evolve] code index: WARN ${err.message}`);
+  }
+}
+
+async function reportVersionBump() {
+  try {
+    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+    if (!pluginRoot) return;
+    const { checkVersionBump, setLastSeenVersion } = await import('./lib/version-tracker.mjs');
+    const r = await checkVersionBump(PROJECT_ROOT, pluginRoot);
+    if (!r.bumped) return;
+    if (r.firstTime) {
+      console.log(`[evolve] welcome — plugin v${r.current} initialized for this project`);
+    } else {
+      console.log(`[evolve] ⬆ plugin upgraded ${r.lastSeen} → ${r.current}. See CHANGELOG.md or run /evolve-changelog for what's new.`);
+    }
+    await setLastSeenVersion(PROJECT_ROOT, r.current);
+  } catch {
+    // Non-fatal
+  }
+}
+
+async function reportUpstreamUpdates() {
+  try {
+    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+    if (!pluginRoot) return;
+    const { readUpgradeCache, isCacheStale, spawnBackgroundCheck } = await import('./lib/upgrade-check.mjs');
+
+    // Show cached result instantly — never blocks SessionStart on git fetch
+    const cache = await readUpgradeCache(pluginRoot);
+    if (cache && !cache.error && cache.behind > 0) {
+      const tag = cache.latestTag ? ` (latest tag: ${cache.latestTag})` : '';
+      console.log(`[evolve] ⬆ upstream has ${cache.behind} new commit(s)${tag} — run \`npm run evolve:upgrade\``);
+    }
+
+    // If cache is stale or missing, spawn a detached background check.
+    // It refreshes the cache for the NEXT session — does not block this one.
+    if (isCacheStale(cache)) {
+      spawnBackgroundCheck(pluginRoot);
+    }
+  } catch {
+    // Non-fatal
   }
 }
 
@@ -123,8 +174,32 @@ async function main() {
     console.log(reminders.join('\n'));
   }
 
+  // Plugin version-bump notice (run before index health so user sees the upgrade FIRST)
+  await reportVersionBump();
+  await reportUpstreamUpdates();
+
   // Phase D: code index health (last so user sees stale-artifact warnings first)
   await reportCodeIndexHealth();
+
+  // Memory mtime-scan: catch external edits to .claude/memory/ between sessions.
+  async function reportMemoryScan() {
+    try {
+      const memDbPath = join(PROJECT_ROOT, '.claude', 'memory', 'memory.db');
+      if (!existsSync(memDbPath)) return;
+      const { MemoryStore } = await import('./lib/memory-store.mjs');
+      const { scanMemoryChanges } = await import('./lib/mtime-scan.mjs');
+      const store = new MemoryStore(PROJECT_ROOT, { useEmbeddings: false });
+      await store.init();
+      const counts = await scanMemoryChanges(store, PROJECT_ROOT);
+      store.close();
+      if (counts.reindexed > 0 || counts.removed > 0) {
+        console.log(`[evolve] memory mtime-scan: ${counts.reindexed} entr(ies) reindexed, ${counts.removed} removed`);
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+  await reportMemoryScan();
 
   // Phase E: prune stale preview-server registry entries
   async function pruneStalePreviewServers() {

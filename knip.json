@@ -17,7 +17,9 @@
     "scripts/preview-server.mjs",
     "scripts/discover-mcps.mjs",
     "scripts/validate-agent-output-contract.mjs",
-    "scripts/hooks/post-tool-use-log.mjs"
+    "scripts/hooks/post-tool-use-log.mjs",
+    "scripts/evolve-upgrade.mjs",
+    "scripts/evolve-upgrade-check.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

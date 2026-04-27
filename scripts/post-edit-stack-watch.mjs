@@ -30,19 +30,24 @@ const USE_EMBED = process.env.EVOLVE_HOOK_EMBED === '1';
 
 const reminders = [];
 const sourceFiles = [];
+const memoryFiles = [];
 
 for (const raw of editedPaths) {
   const path = isAbsolute(raw) ? raw : resolve(PROJECT_ROOT, raw);
   const name = basename(path);
+  const fwdPath = path.replace(/\\/g, '/');
 
   if (MANIFESTS.has(name)) {
     reminders.push(`Discovered: edit to ${name}. If a major dependency was added/upgraded, recommend /evolve-adapt to update agent context.`);
   }
-  if (path.replace(/\\/g, '/').includes('/.claude/rules/') && path.endsWith('.md')) {
+  if (fwdPath.includes('/.claude/rules/') && path.endsWith('.md')) {
     reminders.push(`Discovered: edit to .claude/rules/. Recommend rules-curator review + /evolve-sync-rules if multi-project setup.`);
   }
   if (SUPPORTED_CODE_EXT.test(path) && existsSync(path)) {
     sourceFiles.push(path);
+  }
+  if (fwdPath.includes('/.claude/memory/') && path.endsWith('.md')) {
+    memoryFiles.push(path);
   }
 }
 
@@ -50,14 +55,12 @@ if (reminders.length > 0 && !SILENT) {
   console.log(reminders.join('\n'));
 }
 
-// Pseudo-watcher: re-index source files touched by this tool call.
-// Open store ONCE for the batch (cheap), index sequentially, close.
-async function reindex() {
-  if (NO_INDEX || sourceFiles.length === 0) return;
-
-  // Only attempt if Code RAG/Graph already initialized — no first-time bootstrap here.
+// Pseudo-watcher: re-index source files + memory entries touched by this tool call.
+// Open each store ONCE for the batch (cheap), update sequentially, close.
+async function reindexCode() {
+  if (NO_INDEX || sourceFiles.length === 0) return 0;
   const dbPath = resolve(PROJECT_ROOT, '.claude', 'memory', 'code.db');
-  if (!existsSync(dbPath)) return;
+  if (!existsSync(dbPath)) return 0;
 
   let store;
   try {
@@ -70,17 +73,47 @@ async function reindex() {
       try {
         const r = await store.indexFile(file);
         if (r.indexed || r.skipped === 'unchanged-graph-healed') updated++;
-      } catch {
-        // per-file failure is non-fatal
-      }
+      } catch {}
     }
-    if (updated > 0 && !SILENT && process.env.EVOLVE_VERBOSE === '1') {
-      console.log(`[evolve] auto-reindexed ${updated} file(s)`);
-    }
+    return updated;
   } catch {
-    // store init failure is non-fatal (e.g., DB locked by watcher daemon)
+    return 0;
   } finally {
     try { store?.close(); } catch {}
+  }
+}
+
+async function reindexMemory() {
+  if (NO_INDEX || memoryFiles.length === 0) return 0;
+  const dbPath = resolve(PROJECT_ROOT, '.claude', 'memory', 'memory.db');
+  if (!existsSync(dbPath)) return 0;
+
+  let store;
+  try {
+    const { MemoryStore } = await import('./lib/memory-store.mjs');
+    store = new MemoryStore(PROJECT_ROOT, { useEmbeddings: USE_EMBED });
+    await store.init();
+
+    let updated = 0;
+    for (const file of memoryFiles) {
+      try {
+        const r = await store.incrementalUpdate(file);
+        if (r.indexed) updated++;
+      } catch {}
+    }
+    return updated;
+  } catch {
+    return 0;
+  } finally {
+    try { store?.close(); } catch {}
+  }
+}
+
+async function reindex() {
+  const [code, mem] = await Promise.all([reindexCode(), reindexMemory()]);
+  const total = code + mem;
+  if (total > 0 && !SILENT && process.env.EVOLVE_VERBOSE === '1') {
+    console.log(`[evolve] auto-reindexed ${code} code file(s), ${mem} memory entr(ies)`);
   }
 }
 

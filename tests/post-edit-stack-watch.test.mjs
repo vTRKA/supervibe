@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
+import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 
 const sandbox = join(tmpdir(), `evolve-postedit-${Date.now()}`);
 const fileA = join(sandbox, 'src', 'a.ts');
@@ -81,6 +82,32 @@ test('hook: still emits manifest reminder + skips index when EVOLVE_HOOK_NO_INDE
 test('hook: empty CLAUDE_FILE_PATHS is a no-op', () => {
   const out = runHook({ CLAUDE_FILE_PATHS: '' });
   assert.strictEqual(out.trim(), '');
+});
+
+test('hook: re-indexes memory entry when path under .claude/memory/', async () => {
+  const memDir = join(sandbox, '.claude', 'memory', 'decisions');
+  await mkdir(memDir, { recursive: true });
+  const memEntry = join(memDir, 'auth.md');
+  await writeFile(memEntry, `---\nid: auth-decision\ntype: decision\ndate: 2026-04-28\ntags: [auth]\n---\n\n# Auth decision\n\nUse JWT with refresh-token rotation.\n`);
+
+  // Bootstrap memory.db so the hook actually runs (it skips if no DB)
+  const mem0 = new MemoryStore(sandbox, { useEmbeddings: false });
+  await mem0.init();
+  await mem0.incrementalUpdate(memEntry);
+  mem0.close();
+
+  // Edit the entry — change body
+  await writeFile(memEntry, `---\nid: auth-decision\ntype: decision\ndate: 2026-04-28\ntags: [auth]\n---\n\n# Auth decision\n\nSwitched to OAuth2 with PKCE flow per security audit.\n`);
+
+  runHook({ CLAUDE_FILE_PATHS: memEntry });
+
+  const mem = new MemoryStore(sandbox, { useEmbeddings: false });
+  await mem.init();
+  const rows = mem.db.prepare('SELECT content FROM entries WHERE id = ?').all('auth-decision');
+  mem.close();
+  const body = rows.map(r => r.content).join('\n');
+  assert.match(body, /OAuth2/);
+  assert.doesNotMatch(body, /JWT with refresh/);
 });
 
 test('hook: tolerates missing code.db (no first-time bootstrap)', async () => {

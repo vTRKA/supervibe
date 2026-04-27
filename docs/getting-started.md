@@ -218,12 +218,15 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
-**Auto-index on changes:** Two paths, both automatic:
+**Auto-index on changes:** Three paths, all automatic by default:
 
-1. **Pseudo-watcher (default, no setup needed)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files into RAG + Graph in ~50–500ms per file. Embeddings skipped to stay fast (BM25 + graph stay perfectly fresh; semantic search may lag for that file until full reindex).
-2. **Watcher daemon (optional)** — `npm run memory:watch` for catching edits made outside the Claude session (VS Code, `git pull`, CI). Long-running, with embeddings, also watches `.claude/memory/`.
+1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.claude/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
+2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[evolve] mtime-scan: N reindexed, M removed`.
+3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar long-running with embeddings.
 
-Env knobs: `EVOLVE_HOOK_NO_INDEX=1` disables pseudo-watcher; `EVOLVE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without either path: re-run `npm run code:index` after major changes.
+For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is opt-in.
+
+Env knobs: `EVOLVE_HOOK_NO_INDEX=1` disables pseudo-watcher; `EVOLVE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without any path: re-run `npm run code:index` after major changes.
 
 **Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
