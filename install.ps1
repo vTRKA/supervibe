@@ -1,7 +1,7 @@
 # Evolve universal installer — Windows.
 #
 # Usage (PowerShell):
-#   irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 #
 # Override defaults:
 #   $env:EVOLVE_REF = "v1.7.0"           # tag, branch, or commit
@@ -11,7 +11,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$RepoUrl         = if ($env:EVOLVE_REPO) { $env:EVOLVE_REPO } else { 'https://github.com/vTRKA/evolve.git' }
+$RepoUrl         = if ($env:EVOLVE_REPO) { $env:EVOLVE_REPO } else { 'https://github.com/vTRKA/evolve-agent.git' }
 $Ref             = if ($env:EVOLVE_REF)  { $env:EVOLVE_REF }  else { 'main' }
 $PluginName      = 'evolve'
 $MarketplaceName = 'evolve-marketplace'
@@ -233,10 +233,10 @@ Write-Host '    2. Open any project — you should see [evolve] banner lines on 
 Write-Host '    3. /evolve-genesis (in Claude Code) for first-time project scaffolding'
 Write-Host "    4. npm run evolve:status (from $Target) for index health any time"
 Write-Host ''
-Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex'
+Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex'
 Write-Host "  Manual:      cd '$Target'; npm run evolve:upgrade"
 Write-Host "  Uninstall:   Remove-Item -Recurse '$Target' + remove '$PluginName@$MarketplaceName'"
 Write-Host '               from ~/.claude/plugins/installed_plugins.json'
 Write-Host ''
-Write-Host '  Docs: https://github.com/vTRKA/evolve#readme'
+Write-Host '  Docs: https://github.com/vTRKA/evolve-agent#readme'
 Write-Host ''

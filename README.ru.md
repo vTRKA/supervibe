@@ -12,12 +12,12 @@
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 
 Установщик находит на вашей машине Claude Code, Codex или Gemini. Клонирует плагин в `~/.claude/plugins/marketplaces/evolve-marketplace/`, прогоняет 194 тестаов и регистрирует плагин в каждой найденной CLI.
@@ -111,11 +111,11 @@ SessionStart hook раз в 24 часа в фоне делает upstream fetch.
 Применить:
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
 ```
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 Установщик идемпотентен. Повторный запуск обновляет существующий чекаут.
 
@@ -131,13 +131,13 @@ irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
 
 Через marketplace-команду Claude Code:
 ```
-/plugin marketplace add vTRKA/evolve
+/plugin marketplace add vTRKA/evolve-agent
 /plugin install evolve@evolve-marketplace
 ```
 
 Полностью ручная (для CI):
 ```bash
-git clone https://github.com/vTRKA/evolve ~/.claude/plugins/marketplaces/evolve-marketplace
+git clone https://github.com/vTRKA/evolve-agent ~/.claude/plugins/marketplaces/evolve-marketplace
 cd ~/.claude/plugins/marketplaces/evolve-marketplace
 npm install && npm run check
 ```

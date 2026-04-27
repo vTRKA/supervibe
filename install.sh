@@ -2,7 +2,7 @@
 # Evolve universal installer — macOS + Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
 #
 # Override defaults:
 #   EVOLVE_REF=v1.7.0           # tag, branch, or commit
@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-REPO_URL="${EVOLVE_REPO:-https://github.com/vTRKA/evolve.git}"
+REPO_URL="${EVOLVE_REPO:-https://github.com/vTRKA/evolve-agent.git}"
 REF="${EVOLVE_REF:-main}"
 PLUGIN_NAME="evolve"
 MARKETPLACE_NAME="evolve-marketplace"
@@ -233,10 +233,10 @@ ${C_GREEN}=================================================================${C_R
     3. /evolve-genesis (in Claude Code) for first-time project scaffolding
     4. npm run evolve:status (from $TARGET) for index health any time
 
-  Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+  Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
   Manual:      cd "$TARGET" && npm run evolve:upgrade
   Uninstall:   rm -rf "$TARGET" + remove "$PLUGIN_NAME@$MARKETPLACE_NAME" from
                ~/.claude/plugins/installed_plugins.json
 
-  Docs: https://github.com/vTRKA/evolve#readme
+  Docs: https://github.com/vTRKA/evolve-agent#readme
 EOF

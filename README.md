@@ -12,12 +12,12 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist 
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 
 The installer finds Claude Code, Codex, or Gemini on your machine. It clones the plugin into `~/.claude/plugins/marketplaces/evolve-marketplace/`, runs 194 tests, and registers the plugin with every CLI it finds.
@@ -111,11 +111,11 @@ A SessionStart hook fetches upstream once every 24 hours in the background. If n
 Apply the update:
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
 ```
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 The installer is idempotent. Re-running upgrades the existing checkout.
 
@@ -131,13 +131,13 @@ Or, from the plugin directory: `npm run evolve:upgrade`.
 
 Through Claude Code's marketplace command:
 ```
-/plugin marketplace add vTRKA/evolve
+/plugin marketplace add vTRKA/evolve-agent
 /plugin install evolve@evolve-marketplace
 ```
 
 Manual install (for CI):
 ```bash
-git clone https://github.com/vTRKA/evolve ~/.claude/plugins/marketplaces/evolve-marketplace
+git clone https://github.com/vTRKA/evolve-agent ~/.claude/plugins/marketplaces/evolve-marketplace
 cd ~/.claude/plugins/marketplaces/evolve-marketplace
 npm install && npm run check
 ```

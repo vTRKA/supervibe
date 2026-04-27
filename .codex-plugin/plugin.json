@@ -6,8 +6,8 @@
     "name": "vTRKA",
     "url": "https://github.com/vTRKA"
   },
-  "homepage": "https://github.com/vTRKA/evolve#readme",
-  "repository": "https://github.com/vTRKA/evolve",
+  "homepage": "https://github.com/vTRKA/evolve-agent#readme",
+  "repository": "https://github.com/vTRKA/evolve-agent",
   "license": "MIT",
   "keywords": [
     "codex",
@@ -33,7 +33,7 @@
       "Write",
       "Read"
     ],
-    "websiteURL": "https://github.com/vTRKA/evolve",
+    "websiteURL": "https://github.com/vTRKA/evolve-agent",
     "defaultPrompt": [
       "Run /evolve-genesis to scaffold .claude/ for this project's stack.",
       "Who calls processPayment? — show callers with file:line.",
