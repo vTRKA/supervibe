@@ -1,29 +1,78 @@
 # Getting Started with Evolve
 
-Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + 15-year-persona agents + 10-point confidence engine + autonomous proactivity.
+Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + 15-year-persona agents + 10-point confidence engine + autonomous proactivity + SQLite-backed project memory.
 
-## Install
+## Requirements
 
-### Option A — Claude Code plugin (recommended)
+- **Claude Code** (latest)
+- **Node.js 22+** (for SQLite memory; `node:sqlite` built-in)
+- **Git**
 
-1. Clone or download to `~/.claude/plugins/cache/evolve/<version>/` (or your plugin dir)
-2. Restart Claude Code; plugin auto-loads
-3. Verify: type `/evolve` — should respond with auto-detect dispatcher
+## Install (verified)
 
-### Option B — Local dev
+The plugin uses Claude Code's standard plugin format with `agents:[]` array (verified against voltagent-lang convention). Two install paths:
+
+### Option A — Via marketplace (recommended for users)
+
+If a marketplace publishes Evolve:
 
 ```bash
-git clone <evolve-repo> ~/dev/evolve
+# Add marketplace (URL TBD when published)
+# /plugin marketplace add <evolve-marketplace-url>
+
+# Install plugin
+# /plugin install evolve@evolve-marketplace
+```
+
+### Option B — Local install (current; for early adopters and developers)
+
+```bash
+# 1. Clone or download Evolve
+git clone https://github.com/your-org/evolve ~/dev/evolve   # or download archive
 cd ~/dev/evolve
-nvm use      # uses Node 20 from .nvmrc
+
+# 2. Install Node deps for dev tooling (validates structure, runs tests)
+nvm use     # uses Node 20 from .nvmrc; ensure Node 22+ for SQLite memory features
 npm install
-npm run check    # validates everything works
+npm run check    # 51/51 tests must pass before installing to plugins dir
+
+# 3. Install to Claude Code plugins cache
+# Path pattern: ~/.claude/plugins/cache/<marketplace>/<name>/<version>/
+# For local-dev: marketplace = "local"
+
+# Linux/Mac:
+mkdir -p ~/.claude/plugins/cache/local
+cp -r ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.2.0
+
+# Windows (PowerShell):
+mkdir $HOME\.claude\plugins\cache\local\evolve\1.2.0
+xcopy /E /I "D:\ggsel projects\evolve" "$HOME\.claude\plugins\cache\local\evolve\1.2.0"
+
+# Or symlink (avoids re-copy on updates):
+# Linux/Mac:
+ln -s ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.2.0
+# Windows (admin shell):
+mklink /D "$HOME\.claude\plugins\cache\local\evolve\1.2.0" "D:\ggsel projects\evolve"
+
+# 4. Restart Claude Code session
+# Plugin auto-loads from cache.
+# Verify: type /evolve — should respond with auto-detect dispatcher
 ```
 
-Symlink to your Claude plugins dir:
-```bash
-ln -s ~/dev/evolve ~/.claude/plugins/cache/evolve/0.1.0
+### Verify install
+
+After restart, in a Claude Code session:
+
 ```
+/evolve
+```
+
+Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/evolve-genesis if `.claude/agents/` empty").
+
+If `/evolve` not recognized:
+- Check `~/.claude/plugins/cache/local/evolve/1.2.0/.claude-plugin/plugin.json` exists
+- Verify `agents` field is array (not string) and paths begin with `./agents/`
+- Run `npm run validate:plugin-json` from plugin dir
 
 ## Your First Project (5 minutes)
 
@@ -34,9 +83,9 @@ mkdir my-saas && cd my-saas
 git init
 ```
 
-### 2. Open Claude Code
+### 2. Open Claude Code in this dir
 
-In the new project, Claude Code session starts. The plugin's `evolve-orchestrator` agent will detect the empty `.claude/` and propose:
+The orchestrator detects empty `.claude/` and proposes:
 
 ```
 📊 Discovered: empty project (no .claude/agents/, no CLAUDE.md routing)
@@ -49,45 +98,47 @@ Type `y`.
 
 ### 3. Discovery questionnaire
 
-`evolve:stack-discovery` runs. You'll be asked one question at a time:
+`evolve:stack-discovery` asks one question at a time:
 
-- "What are you building?" → web-app
-- "Backend stack?" → laravel
-- "Frontend stack?" → nextjs
-- "Primary data store?" → postgres
-- "Infrastructure features?" → redis-cache, queue
+- "What are you building?" → `web-app`
+- "Backend stack?" → `laravel`
+- "Frontend stack?" → `nextjs`
+- "Primary data store?" → `postgres`
+- "Infrastructure features?" → `redis-cache`, `queue`
 - ... (architecture, design, testing, deployment)
 
 ### 4. Genesis
 
-`evolve:genesis` composes the matching stack-pack (`laravel-nextjs-postgres-redis`):
+`evolve:genesis` composes the matching pack (`laravel-nextjs-postgres-redis`):
 
-- Copies all attached agents to `.claude/agents/`
-- Copies all attached rules to `.claude/rules/`
-- Generates `.claude/settings.json` with full deny-list
-- Generates `CLAUDE.md` with routing table
+- Copies all 32 attached agents to `.claude/agents/`
+- Copies all 16 attached rules to `.claude/rules/`
+- Generates `.claude/settings.json` with full deny-list (50+ entries)
+- Generates `CLAUDE.md` with routing table for all 32 agents
 - Sets up husky + commitlint + lint-staged
 - Creates skeleton dirs: `backend/`, `frontend/`, `prototypes/`, `docs/`
 
-After ~30 seconds: scaffolded project ready.
+After ~30-60 seconds: scaffolded project ready.
 
 ### 5. First feature
 
-Tell Claude:
-> Add a user-billing module with subscription plans.
+Tell Claude: "Add a user-billing module with subscription plans."
 
-`evolve:_meta:evolve-orchestrator` proposes:
+Orchestrator proposes:
 > ⚡ Recommend: evolve:requirements-intake (complexity ≥4)
 
 Type `y`. The framework chains:
-1. `evolve:requirements-intake` → asks clarifying questions
-2. `evolve:brainstorming` (if complexity ≥7) → spec
-3. `evolve:writing-plans` → phased plan
-4. `evolve:executing-plans` → executes with TDD per task
-5. `evolve:_core:code-reviewer` → review
-6. `evolve:_core:quality-gate-reviewer` → final ≥9 gate
+1. **`evolve:project-memory`** searches prior decisions (empty for first task)
+2. **`evolve:requirements-intake`** asks clarifying questions
+3. **`evolve:brainstorming`** (if complexity ≥7) → spec
+4. **`evolve:explore-alternatives`** for any decision complexity ≥5
+5. **`evolve:writing-plans`** → phased plan
+6. **`evolve:executing-plans`** → executes with TDD per task
+7. **`evolve:_core:code-reviewer`** → review across 8 dimensions
+8. **`evolve:_core:quality-gate-reviewer`** → final ≥9 gate
+9. **`evolve:add-memory`** → records this decision for future
 
-Every artifact is confidence-scored ≥9 before progression. Override with `/evolve-override "<reason>"` if needed.
+Every artifact confidence-scored ≥9 before progression. Override with `/evolve-override "<reason>"` if needed.
 
 ## Command reference
 
@@ -102,43 +153,125 @@ Every artifact is confidence-scored ≥9 before progression. Override with `/evo
 | `/evolve-score <type> [path]` | Score artifact against rubric |
 | `/evolve-override "<reason>"` | Escape-hatch past BLOCK gate (logged) |
 
-## Common workflows
+## MCP integration (optional but recommended)
 
-### New feature
-1. User: "add X"
-2. Orchestrator → requirements-intake → brainstorming/plan → execute → review → quality-gate
+Plugin agents have `recommended-mcps:` frontmatter for capability boost:
 
-### Bug fix
-1. User: "fix Y"
-2. Orchestrator → root-cause-debugger (systematic-debugging) → tdd → code-review
+| MCP | Boosts which agents |
+|-----|---------------------|
+| `context7` | All stack devs (laravel/nextjs/fastapi/react), researchers — current API docs |
+| `figma` | creative-director, ux-ui-designer, prototype-builder — design files |
+| `playwright` | qa-test-engineer, accessibility-reviewer, ui-polish-reviewer — browser automation |
+| `firecrawl` | researchers — scraping/searching authoritative sources |
 
-### Brand reset / new product UI
-1. User: "let's design the brandbook"
-2. Orchestrator → creative-director → brandbook skill → prototype-builder materializes
-3. All subsequent UI work consults `prototypes/_brandbook/`
+`evolve:mcp-discovery` skill detects available MCPs and proactively maps them. Without MCPs, agents fall back to WebFetch (slower, limited).
 
-### Periodic health check (weekly)
-1. User: `/evolve-audit`
-2. Audit reports stale/weak/coverage gaps
-3. User confirms strengthen/adapt actions
+## Memory system (SQLite FTS5)
+
+After completing significant work (decision, fix, pattern), the framework writes to `.claude/memory/`:
+
+```
+.claude/memory/
+├── memory.db               # SQLite FTS5 index (gitignored, auto-rebuild)
+├── decisions/              # Architecture / library / pattern choices
+├── patterns/               # Reusable patterns established
+├── incidents/              # Postmortems
+├── learnings/              # Project insights
+└── solutions/              # How-we-solved-X catalog
+```
+
+Each entry = markdown with frontmatter (id/type/date/tags/related/agent/confidence).
+
+**Search** (BM25-ranked, sub-second):
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs \
+  --query "billing idempotency" \
+  --tags billing,redis \
+  --type decision \
+  --limit 5
+```
+
+**Rebuild index** (idempotent, after manual edits):
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/build-memory-index.mjs
+```
+
+**Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `evolve:add-memory` skill — writes markdown + auto-rebuilds index.
 
 ## Troubleshooting
 
-**Q: `/evolve` doesn't appear**
-- Check plugin is installed: `ls ~/.claude/plugins/cache/`
-- Restart Claude Code
+### `/evolve` not recognized after install
 
-**Q: Agents don't load**
-- Verify `agents/` dir structure matches `agents/<namespace>/<name>.md`
-- Run plugin's `npm run validate:frontmatter` to check shape
+1. Confirm path: `ls ~/.claude/plugins/cache/local/evolve/1.2.0/.claude-plugin/plugin.json`
+2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
+3. Restart Claude Code session (plugins load at startup)
+4. Check `~/.claude/plugins/installed_plugins.json` lists evolve
 
-**Q: Confidence-scoring blocks too often**
-- Check the failed dimension; address gap (preferred)
-- Or `/evolve-override "<reason ≥10 chars>"` (logged for audit)
+### Agents not loading
 
-**Q: I want a stack not in the catalog (e.g., Vue + Django)**
-- Phase 5 atomic packs let `evolve:genesis` compose; fingerprint the stack and try
-- If composition score <9, contribute a new full pack via `CONTRIBUTING.md`
+- Verify `agents:[]` array in `.claude-plugin/plugin.json` lists actual file paths
+- Each path must start with `./agents/` and end `.md`
+- Run `npm run validate:frontmatter` — every agent file must have valid frontmatter
+
+### SQLite memory errors
+
+- Requires Node 22+ (for `node:sqlite`)
+- Check version: `node --version`
+- If <22: upgrade Node OR fall back to v1.1.x (markdown+grep memory)
+
+### Genesis fails partway
+
+- Check `.claude/confidence-log.jsonl` for last successful step
+- Don't manually clean up — re-run `/evolve-genesis`; it skips existing files
+- If broken: `mv .claude .claude.bak` and start fresh
+
+### Windows path issues
+
+- Use forward slashes in scripts (Node normalizes)
+- Avoid spaces in install path if possible (or quote everywhere)
+- Husky hooks may need `git config core.autocrlf input` for cross-platform
+
+### Plugin updates breaking existing scaffolds
+
+- v1.x → v1.x updates: safe; rules/agents may be re-strengthened
+- v1.x → v2.x: breaking changes possible; backup `.claude/` first
+- Generated `.claude/` in target projects is independent — won't break on plugin update
+
+## Uninstall
+
+```bash
+# Remove plugin from cache
+rm -rf ~/.claude/plugins/cache/local/evolve
+
+# Remove from installed_plugins.json (manual edit OR Claude Code UI)
+# /plugin uninstall evolve   # if marketplace install was used
+
+# Per-project cleanup (only if removing Evolve from a specific project):
+rm -rf <project>/.claude/agents
+rm -rf <project>/.claude/rules
+rm -rf <project>/.claude/skills
+# Keep .claude/settings.json + memory + confidence-log if you want
+```
+
+## Upgrade guide
+
+### v1.0 → v1.1
+
+- New: `evolve:project-memory`, `evolve:add-memory`, `evolve:mcp-discovery`, `evolve:explore-alternatives`, `evolve:interaction-design-patterns`, `evolve:tokens-export`
+- New rules: `no-hardcode`, `no-half-finished`
+- Stack agents got `WebFetch` + `recommended-mcps` frontmatter
+- **No action needed** — just update plugin version in install path
+
+### v1.1 → v1.2
+
+- **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
+  - Manifest auto-updated; ensure your install path has v1.2.0
+- **Memory v2: SQLite FTS5** replaces markdown+grep
+  - Old v1 markdown files still work as source of truth
+  - First search auto-builds SQLite index from existing markdown
+  - **Requires Node 22+** for `node:sqlite`
+- New: `scripts/search-memory.mjs` CLI
+- **Action**: re-symlink to v1.2.0 dir, restart Claude Code
 
 ## Where to next
 
@@ -147,3 +280,4 @@ Every artifact is confidence-scored ≥9 before progression. Override with `/evo
 - `docs/agent-authoring.md` — write a new agent
 - `docs/rule-authoring.md` — write a new rule
 - `docs/specs/2026-04-27-evolve-framework-design.md` — full architecture spec
+- GitHub issues for support

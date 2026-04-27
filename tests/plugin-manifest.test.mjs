@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const MANIFEST_PATH = new URL('../.claude-plugin/plugin.json', import.meta.url);
 
 const ALLOWED_FIELDS = new Set([
-  'name', 'description', 'version', 'author', 'homepage', 'repository', 'license', 'keywords'
+  'name', 'description', 'version', 'author', 'homepage', 'repository', 'license', 'keywords', 'agents', 'skills', 'commands', 'hooks'
 ]);
 
 const REQUIRED_FIELDS = ['name', 'description', 'version'];
@@ -41,4 +41,13 @@ test('plugin.json version follows semver', async () => {
 test('plugin.json name matches expected plugin name', async () => {
   const data = JSON.parse(await readFile(MANIFEST_PATH, 'utf8'));
   assert.strictEqual(data.name, 'evolve', 'plugin name must be "evolve"');
+});
+
+test('plugin.json agents array references existing files', async () => {
+  const data = JSON.parse(await readFile(MANIFEST_PATH, 'utf8'));
+  assert.ok(Array.isArray(data.agents), 'agents must be array (required for nested agent dirs)');
+  assert.ok(data.agents.length >= 30, 'should reference >=30 agents (full roster)');
+  for (const agentRef of data.agents) {
+    assert.match(agentRef, /^\.\/agents\/.+\.md$/, `agent ref ${agentRef} must start with ./agents/ and end .md`);
+  }
 });

@@ -8,8 +8,10 @@
     "scripts/session-start-check.mjs",
     "scripts/post-edit-stack-watch.mjs",
     "scripts/effectiveness-tracker.mjs",
-    "scripts/build-memory-index.mjs"
+    "scripts/build-memory-index.mjs",
+    "scripts/search-memory.mjs"
   ],
+  "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],
   "ignore": ["node_modules/**", "**/*.md"],
   "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli", "@commitlint/config-conventional"]

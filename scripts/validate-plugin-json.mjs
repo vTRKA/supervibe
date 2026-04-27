@@ -2,7 +2,7 @@
 import { readFile } from 'node:fs/promises';
 
 const ALLOWED_FIELDS = new Set([
-  'name', 'description', 'version', 'author', 'homepage', 'repository', 'license', 'keywords'
+  'name', 'description', 'version', 'author', 'homepage', 'repository', 'license', 'keywords', 'agents', 'skills', 'commands', 'hooks'
 ]);
 const REQUIRED_FIELDS = ['name', 'description', 'version'];
 
