@@ -5,6 +5,9 @@ node_modules/
 registry.yaml
 .DS_Store
 
+# Local-only Claude Code settings (per-machine permissions etc.)
+.claude/settings.local.json
+
 # Generated SQLite indexes (rebuilt from filesystem source-of-truth)
 .claude/memory/*.db
 .claude/memory/*.db-journal
