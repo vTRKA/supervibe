@@ -1,553 +1,239 @@
-# Evolve Framework for Claude Code
+# Evolve
 
-> Превратите Claude Code в команду из 73 специалистов — со своим графом кода, памятью проекта и дисциплиной гейтов уверенности. Локально, без Docker, без сторонних серверов.
+**English** · [Русский](README.ru.md)
 
-```
-+-----------------------------------------------------------------+
-|  73 агента  ·  45 skills  ·  19 правил  ·  12 рубрик уверенности |
-|                                                                 |
-|  Code Graph (10 языков)  ·  Semantic RAG (RU+EN+100 langs)       |
-|  Project Memory  ·  Auto-reindex  ·  Live preview-server         |
-|                                                                 |
-|  Pure Node 22+. Никаких внешних сервисов. 178/178 тестов ✓        |
-+-----------------------------------------------------------------+
-```
+A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
-**Версия:** v1.7.0 · **Лицензия:** MIT · **Платформы:** Windows / macOS / Linux
+**v1.7.0** · MIT · Windows / macOS / Linux · Claude Code · Codex CLI · Gemini CLI
 
 ---
 
-## TL;DR — поставить за 60 секунд
+## Install
 
+**macOS / Linux:**
 ```bash
-git clone https://github.com/vTRKA/evolve ~/dev/evolve && cd ~/dev/evolve
-npm install && npm run check
-ln -s ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.7.0  # Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
 ```
 
-Перезапустите Claude Code. Дальше для обновлений: `npm run evolve:upgrade` в той же папке. На старте сессии должны появиться 3 строки:
-
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
 ```
+
+The installer finds Claude Code, Codex, or Gemini on your machine. It clones the plugin into `~/.claude/plugins/marketplaces/evolve-marketplace/`, runs 194 tests, and registers the plugin with every CLI it finds.
+
+Restart your CLI. On the next session you should see:
+```
+[evolve] welcome — plugin v1.7.0 initialized for this project
 [evolve] code RAG ✓ N files / M chunks (fresh)
 [evolve] code graph ✓ N symbols / M edges (X% resolved)
-[evolve] MCPs available ✓ K (context7, playwright, ...)
 ```
 
-Готово. Подробная инструкция для Windows и без LFS — [ниже](#установка-подробно).
+**Requirements:** Node.js 22+, Git. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
 
 ---
 
-## Зачем это вам
+## What it does
 
-**Без Evolve** Claude Code — это умный универсал, который местами галлюцинирует, забывает прошлые решения, переименовывает функции не проверив всех вызывающих, и пишет код «в среднем хорошо».
+Four request types, four concrete outcomes:
 
-**С Evolve** каждая задача проходит через специалиста под ваш стек, с явной процедурой, ссылками на ваш проект (file:line) и confidence-score ≥9 на выходе.
-
-Конкретно:
-
-| Запрос пользователя | Что меняется |
-|---------------------|--------------|
-| «Переименуй `processOrder` в `processCheckout`» | Сначала `--callers processOrder` → видим 14 вызывающих → правка в одном PR с проверкой 0 callers после; нет «забыл одно место». |
-| «Добавь endpoint для оплаты» | Поиск памяти → находит прошлое решение по идемпотентности → laravel-developer пишет failing test → реализация → pest+phpstan → confidence 9.2 → запись в `solutions/`. |
-| «Юзеры жалуются что иногда payment висит» | root-cause-debugger по systematic-debugging methodology → reproduce → narrow → root cause → incident memo с file:line. |
-| «Сделай landing в духе Linear» | Скрап Linear через Firecrawl MCP → 3 направления brand → ux-ui-designer spec → live-preview на `localhost:3047` с hot-reload → a11y review. |
-
-Подробные cookbook-сценарии — в разделе [«Cookbook»](#cookbook).
+| You ask | What changes |
+|---------|--------------|
+| Rename `processOrder` to `processCheckout` | The agent runs `--callers processOrder` first, finds 14 call sites, edits them all in one PR, then runs the query again to confirm 0 callers remain. No missed spots. |
+| Add a payment endpoint with idempotency | Memory search finds your prior idempotency decision. The Laravel agent writes a failing test, implements, runs `pest` and `phpstan`, scores 9.2 on the rubric, and saves the solution to `solutions/`. |
+| Users say payment sometimes hangs | The root-cause-debugger reproduces locally, narrows to a Redis lock release path, writes an incident note with file:line and a fix proposal. |
+| Build a landing page like Linear | Firecrawl scrapes Linear. The creative-director proposes three brand directions. The designer writes a state matrix. A live preview opens at `localhost:3047` with hot reload. The accessibility reviewer checks WCAG. |
 
 ---
 
-## Что внутри (ключевое)
+## What's inside
 
-| Возможность | Что это значит на практике |
-|-------------|---------------------------|
-| **73 агента-специалиста** | Каждый ≥250 строк: persona / decision tree / procedure / output contract / anti-patterns / verification. Не «помощник», а исполнитель с фиксированной методологией. |
-| **Code Graph (10 языков)** | tree-sitter symbols + edges в SQLite. Запросы: `--callers X`, `--callees Y`, `--neighbors Z --depth 2`. Реальные ответы, не grep. |
-| **Semantic Code RAG** | multilingual-e5-small (RU+EN+100 языков). «Где у нас обрабатывается аутентификация?» — найдёт по смыслу. Bundled оффлайн ~129 МБ. |
-| **Project Memory** | 5 категорий (decisions / patterns / incidents / learnings / solutions) с FTS5 + per-chunk embeddings. Решения переиспользуются автоматически. |
-| **Confidence Engine** | 12 рубрик с весами. Гейт ≥9 для блокирующего accept, ≥8 с override + логирование. Override-rate >5% триггерит audit. |
-| **19 правил-дисциплин** | `use-codegraph-before-refactor` (severity: critical), `anti-hallucination`, `no-half-finished` и др. Не советы — формальные правила с проверкой. |
-| **Auto-reindex без daemon'ов** | (1) PostToolUse hook на Write/Edit, (2) mtime-scan на SessionStart ловит внешние правки. Daemon `memory:watch` опционально для long-sessions. |
-| **Agent evolution loop** | Каждая Task-задача логируется → underperformer detector → `/evolve-strengthen` с user-gate. Слабые агенты усиливаются с человеком в петле. |
-| **Live preview-server** | `localhost:PORT` с hot-reload через SSE — для дизайна/мокапов. Pure node:http, idle-shutdown, max-limit. |
-| **MCP integration** | Динамический discovery (context7, playwright, figma, firecrawl) с graceful fallback на WebFetch. |
-| **Reference templates** | 6 готовых шаблонов в `docs/templates/` — PRD, ADR, plan, RFC, brainstorm, intake. |
+| Feature | What it means |
+|---------|---------------|
+| 73 specialist agents | Each is at least 250 lines: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
+| Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
+| Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
+| Confidence engine | Twelve rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
+| 20 discipline rules | `use-codegraph-before-refactor`, `anti-hallucination`, `commit-attribution`, `no-half-finished`, and more |
+| Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
+| Agent evolution loop | Telemetry, underperformer detection, and `/evolve-strengthen` with a user gate |
+| Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
+| Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
 ---
 
-## Установка (подробно)
+## Supported stacks
 
-### Требования
+PHP: Laravel · TypeScript / JavaScript: Next.js, Nuxt, Vue, Svelte, React, Express, NestJS · Python: FastAPI, Django (with DRF) · Ruby: Rails · Java / Kotlin: Spring · C#: ASP.NET · Go · Mobile: Flutter, iOS, Android · API: GraphQL · Storage: PostgreSQL, MySQL, MongoDB, Elasticsearch, Redis
 
-| Что | Зачем | Проверка |
-|-----|-------|----------|
-| **Node.js ≥22** | для `node:sqlite` (built-in, без native compile) | `node --version` |
-| **Git** | склонировать | `git --version` |
-| **Git LFS** *(рекомендуется)* | подтянуть embedding-модель + WASM грамматики | `git lfs version` |
-| ~140 МБ диска | модель + грамматики + индексы вашего проекта | — |
-| ОЗУ ≥4 ГБ | для embeddings | — |
+Code graph parsers: TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby. Vue and Svelte use whole-file chunking.
 
-> **Не нужно:** Docker, Python, C-компилятор, Emscripten, никаких external services. Всё локально.
+---
 
-Если нет Git LFS:
-- macOS: `brew install git-lfs && git lfs install`
-- Windows: уже встроен в Git for Windows ≥2.x — `git lfs install`
-- Linux: см. [git-lfs.com](https://git-lfs.com)
+## Commands
 
-Без LFS плагин всё равно работает — модель скачается с HuggingFace при первом использовании (~118 МБ, разово).
+### Slash commands
 
-### Linux / macOS — три способа
+| Command | Purpose |
+|---------|---------|
+| `/evolve` | Auto-router: genesis, audit, strengthen, adapt, evaluate |
+| `/evolve-genesis` | First-time scaffold of `.claude/` for your stack |
+| `/evolve-audit` | Health check across agents, rules, memory |
+| `/evolve-strengthen [agent_id]` | Strengthen a weak agent. Without arguments — auto-trigger from telemetry |
+| `/evolve-adapt` | Pull upstream agent improvements into the project |
+| `/evolve-evaluate` | Score a finished artifact against its rubric |
+| `/evolve-preview` | Manage preview servers |
+| `/evolve-changelog` | What changed since the last version this project saw |
 
-**A. Symlink (для разработки и быстрых обновлений)** — рекомендую:
+### NPM scripts (run inside the plugin directory)
 
+| Command | Purpose |
+|---------|---------|
+| `npm run evolve:status` | Health check across every index |
+| `npm run evolve:upgrade` | git pull, lfs pull, npm install, run tests |
+| `npm run evolve:upgrade-check` | Manually query upstream for new commits |
+| `npm run code:index` | Full reindex |
+| `npm run code:search -- --query "..."` | Semantic search |
+| `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
+| `npm run memory:watch` | Optional watcher daemon |
+| `npm run check` | All 194 tests plus manifest, frontmatter, and footer validation |
+
+---
+
+## Updating
+
+A SessionStart hook fetches upstream once every 24 hours in the background. If new commits exist, the next session shows:
+```
+[evolve] ⬆ upstream has 7 new commit(s) (latest tag: v1.8.0) — run `npm run evolve:upgrade`
+```
+
+Apply the update:
 ```bash
-git clone https://github.com/vTRKA/evolve ~/dev/evolve
-cd ~/dev/evolve
-git lfs pull          # если LFS установлен
-npm install
-npm run check         # должно показать tests 178, pass 178
-
-mkdir -p ~/.claude/plugins/cache/local/evolve
-ln -s ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.7.0
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve/main/install.sh | bash
 ```
-
-**B. Копирование (если symlink-и неудобны):**
-
-```bash
-cp -r ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.7.0
-```
-
-**C. Marketplace** *(планируется после v1.7)*:
-
-```
-/plugin install evolve
-```
-
-### Windows
-
-**PowerShell, от админа** (для symlink):
-
 ```powershell
-git clone https://github.com/vTRKA/evolve D:\dev\evolve
-Set-Location D:\dev\evolve
-git lfs pull
-npm install
-npm run check
-
-New-Item -ItemType Directory -Force "$HOME\.claude\plugins\cache\local\evolve" | Out-Null
-cmd /c mklink /D "$HOME\.claude\plugins\cache\local\evolve\1.7.0" "D:\dev\evolve"
+# Windows
+irm https://raw.githubusercontent.com/vTRKA/evolve/main/install.ps1 | iex
 ```
+The installer is idempotent. Re-running upgrades the existing checkout.
 
-**Без админа** (копирование):
+Or, from the plugin directory: `npm run evolve:upgrade`.
 
-```powershell
-xcopy /E /I "D:\dev\evolve" "$HOME\.claude\plugins\cache\local\evolve\1.7.0"
-```
+**Updated automatically:** global agents, skills, rules, rubrics, grammars, embedding model, `code.db` and `memory.db` schema (via `CREATE TABLE IF NOT EXISTS`), and the `installed_plugins.json` registration.
 
-### Проверка
-
-Перезапустите Claude Code. Откройте любой проект. В начале сессии:
-
-```
-[evolve] code RAG ✓ 35 files / 221 chunks (fresh)
-[evolve] code graph ✓ 81 symbols / 426 edges (21% resolved)
-[evolve] MCPs available ✓ 4 (context7, playwright, mcp-server-figma, mcp-server-firecrawl)
-```
-
-Если строки появились — плагин работает. Если нет — раздел [Troubleshooting](#troubleshooting).
+**Left alone:** your project-level `.claude/agents/`, `.claude/rules/`, and `.claude/memory/`. These hold your customizations and data. To pull upstream agent changes into a project, run `/evolve-adapt`. It shows a diff and asks before writing.
 
 ---
 
-## Первая сессия — 3 минуты
+## Alternative install
 
-### 1. Статус индексов в любой момент
+Through Claude Code's marketplace command:
+```
+/plugin marketplace add vTRKA/evolve
+/plugin install evolve@evolve-marketplace
+```
 
+Manual install (for CI):
 ```bash
-npm run evolve:status
+git clone https://github.com/vTRKA/evolve ~/.claude/plugins/marketplaces/evolve-marketplace
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+npm install && npm run check
 ```
-
-Покажет: code RAG, code graph, memory, watcher heartbeat, preview servers, MCPs, agent telemetry.
-
-### 2. Genesis для нового проекта
-
-В Claude Code:
-
-```
-/evolve-genesis
-```
-
-Определит ваш стек (по `package.json` / `composer.json` / `go.mod` / etc), задаст пару уточняющих вопросов и создаст `.claude/agents/` + `.claude/rules/` + `.claude/memory/` + `CLAUDE.md` под ваш проект.
-
-### 3. Спросите Claude что-то с использованием графа
-
-```
-Кто вызывает функцию processPayment?
-```
-
-Claude сам вызовет `evolve:code-search --callers` и покажет каждого caller'а с file:line.
-
-### 4. Авто-переиндексация — уже работает
-
-Ничего запускать не надо. Покрытие:
-
-| Источник правки | Как ловится |
-|-----------------|-------------|
-| Claude правит файл через Write/Edit | PostToolUse hook → reindex за ~50–500ms |
-| Claude пишет в `.claude/memory/...md` | Тот же hook → memory FTS обновляется |
-| Внешний редактор / `git pull` / CI | mtime-scan на SessionStart → реиндексирует / убирает удалённые |
-| Real-time во время длинной сессии с правками в IDE параллельно | Опционально: `npm run memory:watch` (chokidar daemon) |
-
-Контроль через env:
-- `EVOLVE_HOOK_NO_INDEX=1` — выключить pseudo-watcher
-- `EVOLVE_HOOK_EMBED=1` — включить embeddings в hook (медленнее)
-
----
-
-## Поддерживаемые стеки
-
-**23 стека из коробки** (плюс генерик-агенты для всего остального):
-
-- **PHP**: Laravel
-- **TypeScript/JS**: Next.js, Nuxt, Vue, Svelte, React (Vite), Express, NestJS
-- **Python**: FastAPI, Django (+ DRF)
-- **Ruby**: Rails
-- **Java/Kotlin**: Spring
-- **C#/.NET**: ASP.NET
-- **Go**: standalone services
-- **Mobile**: Flutter, iOS (Swift), Android (Kotlin)
-- **API**: GraphQL schema
-- **Storage**: PostgreSQL, MySQL, MongoDB, Elasticsearch, Redis
-
-Code Graph покрывает **10 языков**: TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby. Vue/Svelte — whole-file chunking (без graph).
-
----
-
-## Чем Evolve отличается от superpowers
-
-(superpowers — главный аналог в экосистеме Claude Code. Сравнение фактическое.)
-
-| Возможность | Evolve | superpowers |
-|-------------|--------|-------------|
-| Code Graph (callers / callees / neighborhood, 10 языков) | ✅ | ❌ |
-| Semantic Code RAG (multilingual e5, оффлайн ~129 МБ) | ✅ | ❌ |
-| Project Memory (5 категорий + per-chunk embeddings) | ✅ | ⚠️ проще |
-| Specialist-агентов | ✅ 73, ≥250 строк, фиксированная структура | ⚠️ меньше, без жёсткой структуры |
-| Stack-aware scaffolding | ✅ 23 стека | ❌ |
-| Confidence engine (рубрики + override-rate tracking) | ✅ 12 рубрик, гейт ≥9 | ⚠️ мягче |
-| Live preview-server (SSE hot-reload) | ✅ pure-Node | ❌ |
-| Auto-reindex без daemon'а | ✅ PostToolUse + mtime-scan | ❌ |
-| Agent evolution loop (telemetry → underperformer detect → strengthen) | ✅ замкнутая петля | ❌ |
-| Bundle size | ~140 МБ (модель + грамматики) | <10 МБ |
-
-**Можно использовать оба одновременно.** Skills из обоих coexist в одном `.claude-plugin/`. Evolve использует префикс `evolve:` — конфликтов имён нет.
-
-**Когда выбирать Evolve:** жёсткие гейты, большой кодбейс с рефакторами, работа на русском или другом неанглийском, live-preview для дизайна, специфичный стек, любите дисциплину.
-
-**Когда superpowers:** меньший bundle, английский текст, минимум инфраструктуры, не нужны рубрики и Code Graph.
-
----
-
-## Cookbook
-
-### 1. Новая фича в Laravel
-
-```
-> Добавь endpoint для создания заказа с idempotency
-
-  /evolve auto-detects stack=laravel
-  → evolve:project-memory   (ищет past idempotency решения)
-  → evolve:code-search      ("idempotency redis" → находит pattern)
-  → laravel-developer       (с pre-task graph check)
-  → failing Pest test → FormRequest + Service + idempotent Job
-  → pest + pint + phpstan
-  → evolve:code-review (8-dim) → confidence 9.2
-  → evolve:add-memory → solutions/idempotent-order.md
-```
-
-### 2. Refactor с blast-radius check
-
-```
-> Переименуй processOrder → processCheckout
-
-  evolve:code-search --callers "processOrder" → 14 callers
-  → rule use-codegraph-before-refactor триггерит escalate (callers > 10)
-  → architect-reviewer строит migration ADR
-  → refactoring-specialist делает renames в одном PR
-  → --callers "processOrder" → 0  (validation)
-  → output: Case A — 14 callers updated
-```
-
-### 3. Дебаг продакшен-инцидента
-
-```
-> Юзеры жалуются что иногда payment висит
-
-  root-cause-debugger (через systematic-debugging methodology)
-  → evolve:project-memory --tags incident,payment
-  → evolve:code-search --query "payment timeout retry"
-  → reproduce locally → narrow → root cause
-  → incident memo с file:line + steps + fix proposal
-  → evolve:add-memory → incidents/
-```
-
-### 4. Brand redesign + landing mockup
-
-```
-> Сделай новый landing в духе Linear
-
-  competitive-design-researcher (Firecrawl MCP) скрапит Linear
-  → creative-director: 3 направления + mood boards
-  → ux-ui-designer: spec со state matrix
-  → evolve:landing-page → HTML/CSS в mockups/
-  → evolve:preview-server → http://localhost:3047 (hot-reload)
-  → (опц.) Playwright MCP screenshot
-  → ui-polish-reviewer (8-dim) → accessibility-reviewer (WCAG)
-```
-
-### 5. Database migration safety
-
-```
-> Добавь колонку email_verified_at
-
-  db-reviewer
-  → evolve:code-search --callers "User"  (find all queries)
-  → 3-deploy column add (NOT VALID + VALIDATE)
-  → postgres-architect: миграцию с CONCURRENTLY
-  → lock estimate < 500ms ✓; replication impact < 2s ✓
-  → plan включает rollback (DROP CONCURRENTLY)
-  → evolve:add-memory → patterns/safe-column-add
-```
-
----
-
-## Команды
-
-### Слэш-команды в Claude Code
-
-| Команда | Назначение |
-|---------|-----------|
-| `/evolve` | Авто-роутер: genesis / audit / strengthen / adapt / evaluate |
-| `/evolve-genesis` | Первичный scaffolding `.claude/` под ваш стек |
-| `/evolve-audit` | Health-check агентов / правил / памяти |
-| `/evolve-strengthen [agent_id]` | Усиление слабых агентов; без аргумента — auto-trigger из telemetry |
-| `/evolve-adapt` | Адаптация под изменения в коде |
-| `/evolve-evaluate` | Прогон confidence на готовом артефакте |
-| `/evolve-score` | Применить рубрику вручную |
-| `/evolve-override` | Залогировать override |
-| `/evolve-preview` | Управление preview-серверами |
-| `/evolve-changelog` | Что изменилось с прошлой версии плагина для этого проекта |
-
-### NPM скрипты (в plugin-dir)
-
-| Команда | Назначение |
-|---------|-----------|
-| `npm run evolve:status` | Полный health-check |
-| `npm run evolve:upgrade` | Обновить плагин (git pull + lfs + install + check) |
-| `npm run evolve:upgrade-check` | Принудительно проверить upstream (обычно работает в фоне) |
-| `npm run code:index` | Полная переиндексация кода |
-| `npm run code:search -- --query "..."` | Семантический поиск |
-| `npm run code:search -- --callers "Symbol"` | Граф: кто вызывает |
-| `npm run memory:watch` | Опциональный watcher daemon |
-| `npm run check` | Все 178 тестов + валидация манифеста / frontmatter / footers |
-| `npm run evolve:preview -- --root <dir>` | Поднять preview-сервер |
+Then upsert the `installed_plugins.json` entry. The exact node script lives in `install.sh`.
 
 ---
 
 ## Troubleshooting
 
-### `/evolve` не распознаётся
-
-1. Путь: `ls ~/.claude/plugins/cache/local/evolve/1.7.0/.claude-plugin/plugin.json`
-2. Манифест: `cd ~/dev/evolve && npm run validate:plugin-json`
-3. **Перезапустите Claude Code** — плагины подгружаются на старте сессии
-4. `~/.claude/plugins/installed_plugins.json` должна содержать запись `evolve`
-
-### Embeddings не работают (Protobuf parsing failed)
-
-Это значит `model_quantized.onnx` оказался 134-байтным LFS pointer'ом. Решение:
-
+**Plugin does not appear after install.** Check the registration:
 ```bash
-cd ~/dev/evolve
-git lfs pull
+cat ~/.claude/plugins/installed_plugins.json | grep "evolve@"
+ls ~/.claude/plugins/marketplaces/evolve-marketplace/.claude-plugin/plugin.json
 ```
+Restart your CLI. Plugins load on session start.
 
-Или: запустите без `--no-embeddings` — плагин автоматически скачает модель с HF (~118 МБ, разово).
+**Does not work in VS Code or Zed extensions.** These extensions share the same Claude Code install as the terminal. If the banner appears in the terminal it appears everywhere. Restart the IDE.
 
-### SQLite ошибки
+**`Protobuf parsing failed`.** The embedding model file is an LFS pointer, not the real binary. Run `git lfs pull` in the plugin directory, or just run a search and the model downloads from HuggingFace (~118 MB).
 
-Нужен Node 22+ (built-in `node:sqlite`). На Node <22 семантическая память не работает; используйте версию плагина ≤1.1.x как fallback.
+**SQLite errors.** Node.js 22+ is required for the built-in `node:sqlite`. Older versions cannot use semantic memory.
 
-### Грязный код-индекс после внешних изменений
+**Stale code index.** The mtime scan on SessionStart catches most external changes. For a full rebuild: `rm .claude/memory/code.db && npm run code:index`.
 
-Обычно ловится mtime-scan на SessionStart автоматически. Если что-то пошло не так — полный rebuild:
+**Large monorepo (more than 10k files).** Index incrementally: `npm run code:index -- --since=HEAD~100`.
 
-```bash
-rm .claude/memory/code.db
-npm run code:index
-```
-
-~30 секунд на 1000-файловом проекте.
-
-### Большой монорепо (>10к файлов)
-
-Lazy mode индексирует только изменённое:
-
-```bash
-npm run code:index -- --since=HEAD~100
-```
-
-### Windows
-
-- Forward slashes в скриптах (Node нормализует) или экранируйте кавычками пути с пробелами
-- Husky хуки могут попросить `git config core.autocrlf input`
-- Для symlink в `.claude/plugins/cache/local/...` нужны admin-права (или используйте копирование)
-
-### Husky пишет «deprecated»
-
-Husky 9+ депрекейтнул две первые строки в hook-файлах. Проверьте `.husky/pre-commit`, `.husky/commit-msg`, `.husky/pre-push` — там должны быть только команды, без shebang.
+**Windows.** If PowerShell rejects the installer with an Execution Policy error, run `Set-ExecutionPolicy -Scope Process Bypass` first. The Codex symlink needs Developer Mode. Without it, the installer copies the directory instead.
 
 ---
 
-## Обновление
-
-### Авто-проверка на старте сессии
-
-При каждом старте Claude Code SessionStart hook читает кэш `.claude-plugin/.upgrade-check.json` и, если плагин отстал от upstream'а, печатает баннер:
-
-```
-[evolve] ⬆ upstream has 7 new commit(s) (latest tag: v1.8.0) — run `npm run evolve:upgrade`
-```
-
-Кэш обновляется в фоне (детач-процесс через `git fetch`) с rate-limit раз в 24 часа — никогда не блокирует старт сессии. Первая сессия после установки баннера не покажет (кэш пуст); следующая сессия покажет результат фонового запроса.
-
-Если хотите принудительно проверить прямо сейчас:
+## Uninstall
 
 ```bash
-npm run evolve:upgrade-check
+# macOS / Linux
+rm -rf ~/.claude/plugins/marketplaces/evolve-marketplace
+rm -f ~/.codex/plugins/evolve
+
+node -e "
+const fs=require('fs'),p=process.env.HOME+'/.claude/plugins/installed_plugins.json';
+if(!fs.existsSync(p))process.exit(0);
+const d=JSON.parse(fs.readFileSync(p,'utf8'));
+delete d.plugins['evolve@evolve-marketplace'];
+fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
+"
+
+sed -i.bak '/<!-- evolve-plugin-include: do-not-edit -->/,/<!-- evolve-plugin-include: do-not-edit -->/d' ~/.gemini/GEMINI.md 2>/dev/null || true
 ```
 
-Если оффлайн / нет remote — баннер не показывается, ошибка тихо пишется в кэш.
-
-### Применить обновление
-
-После выхода новой версии плагина:
-
-### Если установлен через symlink (Способ A)
-
+Optional. Remove project indexes only if you know you do not need them — they hold your data:
 ```bash
-cd ~/dev/evolve            # или D:\dev\evolve на Windows
-npm run evolve:upgrade
-```
-
-Скрипт сделает:
-1. `git fetch + git pull --ff-only` (откажется если есть локальные правки — сначала закоммитьте/застэшите)
-2. `git lfs pull` (модель + грамматики, если LFS установлен)
-3. `npm install` (пин-версии из lockfile)
-4. `npm run check` (172 теста должны остаться зелёными)
-5. Покажет diff `vX.Y.Z → vA.B.C` и попросит перезапустить Claude Code
-
-После рестарта Claude Code в каждом проекте на старте сессии увидите:
-
-```
-[evolve] ⬆ plugin upgraded 1.7.0 → 1.8.0. See CHANGELOG.md or run /evolve-changelog for what's new.
-```
-
-### Если установлен через копирование (Способ B)
-
-Перетащите свежий чекаут поверх старого:
-
-```bash
-git pull               # в папке исходника
-cd ~/dev/evolve && npm install && npm run check
-
-# Linux/macOS
-rm -rf ~/.claude/plugins/cache/local/evolve/1.7.0
-cp -r ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.8.0
-
-# Windows
-Remove-Item -Recurse -Force "$HOME\.claude\plugins\cache\local\evolve\1.7.0"
-xcopy /E /I "D:\dev\evolve" "$HOME\.claude\plugins\cache\local\evolve\1.8.0"
-```
-
-> Папка содержит версию (`1.7.0` / `1.8.0`) — Claude Code загружает плагин по последней папке, поэтому держать одновременно две версии безопасно для миграции.
-
-### Marketplace (когда опубликовано)
-
-```
-/plugin update evolve
-```
-
-### Что обновляется автоматически, а что нет
-
-| Что | Обновляется при upgrade плагина |
-|-----|--------------------------------|
-| Глобальные агенты в `agents/`, skills, rules, рубрики | ✅ да |
-| WASM-грамматики, embedding-модель | ✅ да (через `git lfs pull`) |
-| Схема `code.db` / `memory.db` | ✅ авто-миграция через `CREATE TABLE IF NOT EXISTS` при первой сессии после upgrade. Полностью пере-индексировать не нужно. |
-| Ваши проектные `.claude/agents/`, `.claude/rules/` (если делали `/evolve-genesis`) | ❌ остаются как есть — это ВАШИ кастомизации |
-| `.claude/memory/` записи (decisions / patterns / etc) | ❌ это ваши данные |
-
-Если хотите подтянуть свежие upstream-агенты в проект — используйте `/evolve-adapt` (он сравнит ваши проектные оверрайды с источником и покажет diff с user-gate).
-
-### Что делать если что-то сломалось после upgrade
-
-1. Проверьте changelog: `/evolve-changelog` или `cat ~/dev/evolve/CHANGELOG.md`
-2. Откатиться на предыдущую версию:
-   ```bash
-   cd ~/dev/evolve
-   git checkout v1.7.0   # или нужный тег
-   npm install && npm run check
-   ```
-3. Сообщить о баге: GitHub Issues
-
----
-
-## Удаление
-
-```bash
-# Linux/macOS
-rm -rf ~/.claude/plugins/cache/local/evolve
-
-# Windows PowerShell
-Remove-Item -Recurse -Force "$HOME\.claude\plugins\cache\local\evolve"
-
-# Опционально: индексы в проекте
 rm -rf .claude/memory/code.db .claude/memory/memory.db
 ```
 
 ---
 
-## Документация
+## Documentation
 
-- **[`docs/getting-started.md`](docs/getting-started.md)** — расширенный getting-started
-- **[`CLAUDE.md`](CLAUDE.md)** — system context для агентов; читайте чтобы понять как плагин видит ваш проект
-- **[`CHANGELOG.md`](CHANGELOG.md)** — история версий
-- **`docs/specs/`** — design-документы каждой фазы
-- **`docs/plans/`** — implementation-планы
-- **`docs/templates/`** — 6 готовых шаблонов (PRD / ADR / plan / RFC / brainstorm / intake)
-- **`agents/`** — 73 агента; `agents/_core/code-reviewer.md` — canonical reference
-- **`skills/`** — 45 process skills
-- **`rules/`** — 19 проектных правил
-- **`confidence-rubrics/`** — 12 рубрик
+- [`docs/getting-started.md`](docs/getting-started.md) — extended walk-through
+- [`CLAUDE.md`](CLAUDE.md) — system context loaded at session start
+- [`CHANGELOG.md`](CHANGELOG.md) — version history
+- [`docs/templates/`](docs/templates/) — PRD, ADR, plan, RFC, brainstorm, intake
+- `agents/_core/code-reviewer.md` — canonical agent reference
+- 73 agents · 45 skills · 20 rules · 12 rubrics
+
+---
+
+## Compared with superpowers
+
+| | Evolve | superpowers |
+|--|--------|-------------|
+| Code graph (10 languages) | yes | no |
+| Semantic code search (multilingual) | yes | no |
+| Specialist agents | 73, ≥250 lines, fixed structure | fewer, looser structure |
+| Stack-aware scaffolding | 23 stacks | no |
+| Confidence engine | 12 rubrics, gate ≥9 | softer |
+| Live preview server | yes (pure-Node SSE) | no |
+| Auto-reindex without a daemon | yes | no |
+| Agent evolution loop | yes | no |
+| Multi-CLI (Claude / Codex / Gemini) | yes | Claude Code only |
+| Bundle size | ~140 MB | <10 MB |
+
+Both can be installed at the same time. The `evolve:` namespace prevents name collisions.
 
 ---
 
 ## Contributing
 
-См. `CONTRIBUTING.md`. Самый лёгкий вход:
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). The shortest path:
+1. Read `agents/_core/code-reviewer.md` — the canonical reference
+2. Pick a smaller agent (`agents/_design/copywriter.md`) and find one thing to add
+3. Open a PR. Explain *why* in the commit message. Do not add agent attribution to commits — see the `commit-attribution` rule
 
-1. Откройте `agents/_core/code-reviewer.md` — canonical reference
-2. Найдите более компактного агента (например `agents/_design/copywriter.md`) и подумайте что бы вы добавили
-3. PR с улучшением + объяснением WHY в commit message
+## Credits
 
----
-
-## Благодарности
-
-- **tree-sitter** — парсинг 10 языков через WASM, без native compilation
-- **HuggingFace transformers.js** — multilingual embedding model в pure JS
-- **Aider's repo-map** (Paul Gauthier) — концептуальный донор для code graph
-- **Claude Code team** — за расширяемую plugin-архитектуру
+tree-sitter (WASM parsing for 10 languages). HuggingFace transformers.js (multilingual embeddings). [Aider's repo-map](https://aider.chat) (concept inspiration for the code graph). The Claude Code team (extensible plugin architecture).
 
 ---
 
-**License:** MIT — см. [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).

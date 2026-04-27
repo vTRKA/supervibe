@@ -295,7 +295,7 @@ Total: 40. **Every skill** has `name`, `namespace`, `description`, `allowed-tool
 
 ---
 
-## Rules / discipline (19 rules)
+## Rules / discipline (20 rules)
 
 Files in `rules/`. Each enforced by `evolve:rule-audit` skill and applies-when frontmatter.
 
@@ -308,6 +308,7 @@ Files in `rules/`. Each enforced by `evolve:rule-audit` skill and applies-when f
 | `no-hardcode` | high | Tokens / config / strings via config or env, not literals |
 | `use-codegraph-before-refactor` | critical | --callers MUST run before rename/move/extract/delete |
 | `commit-discipline` | high | Conventional Commits via commitlint |
+| `commit-attribution` | high | AI agents commit as the user — no Co-Authored-By Claude/Codex/Gemini, no `🤖 Generated with` footers |
 | `git-discipline` | high | No force-push to main; no skip hooks |
 | `pre-commit-discipline` | high | Husky pre-commit hooks must pass |
 | `rule-maintenance` | medium | Rules quarterly reviewed; `last-verified` kept fresh |

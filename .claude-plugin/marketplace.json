@@ -1,18 +1,20 @@
 {
   "name": "evolve-marketplace",
-  "description": "Local marketplace for the Evolve self-evolving Claude Code framework plugin",
   "owner": {
     "name": "vTRKA"
+  },
+  "metadata": {
+    "description": "Self-evolving Claude Code framework: 73 specialist agents, 10-language code graph + multilingual semantic RAG, project memory, confidence-engine gates, live preview-server. Pure Node 22+, no Docker, no native deps.",
+    "homepage": "https://github.com/vTRKA/evolve",
+    "version": "1.7.0"
   },
   "plugins": [
     {
       "name": "evolve",
-      "description": "Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine",
-      "version": "1.2.0",
+      "version": "1.7.0",
       "source": "./",
-      "author": {
-        "name": "vTRKA"
-      }
+      "description": "Stack-aware scaffolding · 73 specialist agents · 10-language code graph · multilingual semantic RAG · 12 confidence rubrics · live preview-server · agent evolution loop",
+      "strict": true
     }
   ]
 }

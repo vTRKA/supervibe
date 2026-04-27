@@ -1,0 +1,47 @@
+{
+  "name": "evolve",
+  "version": "1.7.0",
+  "description": "Self-evolving framework for AI coding agents: 73 specialist agents · 10-language code graph + multilingual semantic RAG · project memory · 12 confidence rubrics · live preview-server.",
+  "author": {
+    "name": "vTRKA",
+    "url": "https://github.com/vTRKA"
+  },
+  "homepage": "https://github.com/vTRKA/evolve#readme",
+  "repository": "https://github.com/vTRKA/evolve",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "claude-code",
+    "plugin",
+    "agents",
+    "skills",
+    "code-graph",
+    "semantic-rag",
+    "scaffolding",
+    "confidence-engine",
+    "self-evolving",
+    "framework"
+  ],
+  "interface": {
+    "displayName": "Evolve",
+    "shortDescription": "73 specialist agents + code graph + semantic RAG + project memory + confidence gates.",
+    "longDescription": "Evolve turns any AI coding agent into a team of specialists with fixed methodology. Includes a code graph (10 languages) for refactor blast-radius checks, multilingual semantic RAG over your codebase, persistent project memory (decisions / patterns / incidents / learnings / solutions), confidence-rubric gates that block merges below 9/10, and an auto-evolving agent telemetry loop. Pure Node 22+ — no Docker, no native compilation, no external services.",
+    "developerName": "vTRKA",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write",
+      "Read"
+    ],
+    "websiteURL": "https://github.com/vTRKA/evolve",
+    "defaultPrompt": [
+      "Run /evolve-genesis to scaffold .claude/ for this project's stack.",
+      "Who calls processPayment? — show callers with file:line.",
+      "Find prior decisions on idempotency in this repo's memory."
+    ]
+  },
+  "agents": "./agents",
+  "skills": "./skills",
+  "commands": "./commands",
+  "hooks": "./hooks/hooks.json"
+}
