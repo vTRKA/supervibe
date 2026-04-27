@@ -65,3 +65,21 @@ test('evolve-status: reports watcher state', () => {
     'should report one of three watcher states'
   );
 });
+
+test('evolve-status: reports preview server state', () => {
+  const out = runStatus();
+  assert.ok(
+    /Preview servers: \d+ running/.test(out) || /Preview servers: none/.test(out),
+    'should report preview server state'
+  );
+});
+
+test('evolve-status: reports MCP registry state', () => {
+  const out = runStatus();
+  assert.ok(/MCPs:/.test(out), 'should mention MCPs');
+});
+
+test('evolve-status: reports agent telemetry state', () => {
+  const out = runStatus();
+  assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');
+});

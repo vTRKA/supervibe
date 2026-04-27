@@ -252,6 +252,90 @@ npm run code:index -- --since=HEAD~100   # only files changed in last 100 commit
 
 **Discipline (enforced by `rules/use-codegraph-before-refactor.md`):** before any rename / extract / move / delete of a public symbol, agents MUST run `--callers` first. The 3-case Graph evidence template (Case A: callers found / Case B: zero verified / Case C: N/A) is shown in every agent output that touches public surface.
 
+## Preview Server (live mockup hosting)
+
+Когда design / prototype агенты генерируют HTML/CSS, плагин может запустить локальный сервер `http://localhost:NNNN` с **auto-reload** — пользователь открывает в браузере, агент правит файлы, страница обновляется автоматически.
+
+**Запуск вручную:**
+
+```bash
+# Из проекта где лежат мокапы:
+npm run evolve:preview -- --root mockups/checkout
+
+# Output:
+# [evolve-preview] checkout → http://localhost:3047
+# [evolve-preview] hot-reload: on
+```
+
+**Список запущенных:**
+
+```bash
+npm run evolve:preview -- --list
+```
+
+**Kill:**
+
+```bash
+npm run evolve:preview -- --kill 3047
+# or
+npm run evolve:preview -- --kill-all
+```
+
+**Что под капотом:**
+- Pure `node:http` + Server-Sent Events (SSE) — никаких новых dep
+- chokidar следит за файлами, на change → SSE push → `location.reload()` в браузере
+- Реестр `.claude/memory/preview-servers.json` чтобы статус-команда и другие сессии видели запущенные серверы
+- 127.0.0.1 only — без network access
+- SIGINT cleanup на завершение сессии
+- Idle-shutdown после 30 мин неактивности (--idle-timeout configurable)
+- Max 10 параллельных серверов (--force чтобы превысить)
+
+**Использование агентами:**
+- `prototype-builder` агент автоматически дёргает skill `evolve:preview-server` после генерации мокапа
+- `evolve:landing-page` skill — то же
+- `evolve:interaction-design-patterns` skill — то же
+- Агент печатает URL пользователю в output: "**Preview ready:** http://localhost:3047"
+
+**Опциональная интеграция с Playwright MCP:**
+Если у пользователя есть Playwright MCP, skill после спавна сервера может:
+- Открыть URL в browser
+- Сделать скриншот → `.claude/memory/previews/<label>-<timestamp>.png`
+- Прикрепить в output агента как evidence
+
+## Reference document templates
+
+В `docs/templates/` лежат скелеты для всех типов проектных документов:
+
+| Файл | Скилл | Что внутри |
+|------|-------|------------|
+| `PRD-template.md` | `evolve:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
+| `ADR-template.md` | `evolve:adr` | Architecture decision с alternatives matrix + review trigger |
+| `plan-template.md` | `evolve:writing-plans` | TDD план с critical path + parallelization batches |
+| `RFC-template.md` | RFC для cross-team | Motivation + detailed design + prior art |
+| `brainstorm-output-template.md` | `evolve:brainstorming` | First-principle decomp + decision matrix |
+| `intake-template.md` | `evolve:requirements-intake` | Personas + constraints + success criteria |
+
+Скиллы автоматически заполняют эти шаблоны и проверяют что все обязательные секции присутствуют. Запустить вручную можно скопировав шаблон в `docs/specs/YYYY-MM-DD-<topic>-<type>.md` и наполнив.
+
+## Agent evolution loop
+
+Plugin telemetry watches every subagent dispatch and surfaces degradation automatically:
+
+| Component | Path |
+|-----------|------|
+| Invocation log (JSONL) | `.claude/memory/agent-invocations.jsonl` |
+| Logger | `scripts/lib/agent-invocation-logger.mjs` |
+| `PostToolUse` hook | `scripts/hooks/post-tool-use-log.mjs` (matcher `Task`) |
+| Effectiveness tracker | `scripts/effectiveness-tracker.mjs` (runs on `Stop`) |
+| Underperformer detector | `scripts/lib/underperformer-detector.mjs` |
+| Auto-strengthen trigger | `scripts/lib/auto-strengthen-trigger.mjs` |
+
+**How it closes the loop:** every `Task` call → logged with extracted confidence score → on session stop, frontmatter `effectiveness:` blocks updated per agent → on next SessionStart, agents with `avg-confidence < 8.5` or rising override-rate are shown in the banner → user runs `/evolve-strengthen` (with or without explicit agent_id) → confirms diff per agent → improvements persist.
+
+**Inspect:** `npm run evolve:status` shows current telemetry counts + flagged agents.
+
+**No surprises:** strengthen never modifies agent files without explicit user confirmation. Detector requires ≥10 invocations before flagging.
+
 ## Troubleshooting
 
 ### `/evolve` not recognized after install

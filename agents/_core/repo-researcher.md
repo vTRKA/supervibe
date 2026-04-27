@@ -149,6 +149,13 @@ Returns Markdown report with these mandatory sections (in order):
 **Date**: YYYY-MM-DD
 **Scope**: <module / question / area>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Summary
 <3-5 sentence executive overview: what was mapped, key takeaway, biggest unknown.>

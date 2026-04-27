@@ -16,92 +16,58 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-- AT SESSION START in any project
-- WHEN user mentions: design / Figma / browser / playwright / desktop / Tauri / docs / library / scrape / web data
-- BEFORE invoking agents that have `recommended-mcps:` in their frontmatter
+BEFORE picking a tool for current-docs research / browser automation / design extraction / web crawling. Don't hardcode `mcp__context7__*` in agent procedures — invoke this skill to find the best available tool for the task.
 
-This skill maps available MCPs to agents that benefit from them, so agents don't work blind to platform capabilities.
+## Step 0 — Read source of truth
 
-## Step 0 — Read source of truth (MANDATORY)
+1. Run `node $CLAUDE_PLUGIN_ROOT/scripts/discover-mcps.mjs` (or rely on SessionStart having done it)
+2. Read `.claude/memory/mcp-registry.json`
 
-1. Check user's MCP availability — Claude Code lists MCPs as `mcp__<server>__<tool>` in tool list
-2. Read agent frontmatter `recommended-mcps:` field for each agent likely to be invoked
-3. Read `.claude/mcp-availability.yaml` if it exists (cached from prior discovery)
-
-## MCP catalog → agent mapping (canonical)
-
-| MCP server | Tools | Recommended for agents |
-|------------|-------|------------------------|
-| `context7` | resolve-library-id, query-docs | best-practices-researcher, dependency-researcher, all stack agents (for current API docs) |
-| `firecrawl` | scrape, search, crawl, extract, browser | best-practices-researcher, competitive-design-researcher, security-researcher |
-| `figma` | get_figma_data, download_figma_images | creative-director, ux-ui-designer, prototype-builder |
-| `playwright` | browser_navigate, browser_snapshot, browser_click, etc. | qa-test-engineer, accessibility-reviewer, ui-polish-reviewer |
-| `tauri` | webview_*, ipc_*, manage_window | tauri-engineer (when Tauri stack agent ships in v1.x) |
-| `Gmail/Calendar/Drive` (claude_ai) | authenticate + tools | analytics-implementation, email-lifecycle |
-
-## Decision tree
+## Decision tree — task → MCP preference
 
 ```
-For each available MCP:
-├─ Map to agents that benefit (per catalog above)
-├─ For each beneficiary agent: emit suggestion to use MCP
-└─ Cache mapping to .claude/mcp-availability.yaml
-
-For tools requested via MCP not in catalog:
-└─ Add to catalog (this skill self-extends via /evolve-strengthen on this skill)
+Need current docs / library API?
+  Preference order: context7 > ref > WebFetch
+Need browser automation / screenshots?
+  Preference order: playwright > tauri (desktop) > skip
+Need to extract design from Figma?
+  Preference order: figma → if absent, ask user for screenshots
+Need to crawl a website?
+  Preference order: firecrawl > playwright (one-page) > WebFetch
+Need general web search?
+  Preference order: firecrawl-search > WebSearch
 ```
 
 ## Procedure
 
-1. **Discover** — list available MCP tools (parse from current session's tool list)
-2. **Map** — match against catalog → derived list of agent → MCPs available to it
-3. **Cache** to `.claude/mcp-availability.yaml`:
-   ```yaml
-   discovered-at: <ISO>
-   mcps-available:
-     context7: [resolve-library-id, query-docs]
-     firecrawl: [scrape, search, crawl]
-     figma: [get_figma_data]
-     playwright: [browser_navigate, browser_snapshot, ...]
-   agent-mcp-mapping:
-     evolve:_ops:best-practices-researcher: [context7, firecrawl]
-     evolve:_design:ux-ui-designer: [figma]
-     evolve:_product:qa-test-engineer: [playwright]
-   ```
-4. **Emit recommendations** to main agent / orchestrator:
-   ```
-   📡 MCP availability detected:
-   - context7 → boost best-practices/dependency research
-   - figma → connect ux-ui-designer to design files
-   - playwright → enable qa-test-engineer browser automation
-   ```
-5. **Per-agent invocation** — when an agent is invoked, prepend brief like:
-   "MCP available for you: [list]. Use them when relevant to task."
+1. Identify the task category (current-docs / browser / figma / crawl / search)
+2. Look up preference list for that category
+3. Call `pickMcp(preferenceList)` from `scripts/lib/mcp-registry.mjs` — returns first available, or `null`
+4. If MCP available: use its canonical tools (e.g. `mcp__mcp-server-context7__query-docs`)
+5. If no MCP available: fall back to native tools (WebFetch / WebSearch / Grep / Read)
+6. Document choice in agent output: "Used MCP `<name>`" OR "No suitable MCP, fell back to `<native>`"
 
 ## Output contract
 
 Returns:
-- `.claude/mcp-availability.yaml` written
-- Recommendations list per agent
-- Capability boost summary
+- `{ mcp: '<name>' | null, tools: ['<tool1>', '<tool2>'], fallback: '<reason>' | null }`
+- Cite in agent output
 
-## Guard rails
+## Anti-patterns
 
-- DO NOT: assume MCP is available without verification (Claude Code session lists tools)
-- DO NOT: force MCP use when traditional approach suffices (firecrawl when WebFetch is enough)
-- DO NOT: ignore unavailable MCPs (graceful fallback documented)
-- ALWAYS: cache discovery to avoid re-running every turn
-- ALWAYS: respect agent's allowed-tools — recommended-mcps must be added to allowed-tools to actually work
+- **Hardcoding `tools: [mcp__context7__*]` in agent frontmatter** → breaks when user lacks context7
+- **Calling MCP tool without checking availability** → cryptic error
+- **Not surfacing fallback choice** → user can't tell why agent took longer / had less detail
+- **Falling back silently** → user thinks MCP was used; can't diagnose
 
 ## Verification
 
-- mcp-availability.yaml written
-- Per-agent mapping has ≥1 entry per available MCP
-- Recommendations cited by source MCP catalog row
+- `getRegistry()` returns ≥1 MCP OR explicit fallback documented
+- Output names which MCP was used (or "no MCP, fell back to X")
 
 ## Related
 
-- `agents/_ops/*-researcher` — primary beneficiaries (context7, firecrawl)
-- `agents/_design/*` — beneficiaries (figma)
-- `agents/_product/qa-test-engineer` — beneficiary (playwright)
-- `evolve:_meta:evolve-orchestrator` — invokes this at session start
+- Tool: `scripts/lib/mcp-registry.mjs` — registry helpers
+- Tool: `scripts/discover-mcps.mjs` — refresh registry
+- Status: `npm run evolve:status` shows available MCPs
+- Used by: best-practices-researcher / competitive-design-researcher / dependency-researcher / preview-server (for screenshots)

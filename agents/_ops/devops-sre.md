@@ -135,6 +135,13 @@ Returns a bundle of artifacts:
 **Date**: YYYY-MM-DD
 **Scope**: <service / pipeline / incident response>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Runbook: <alert name or scenario>
 - Trigger: <alert rule / symptom>

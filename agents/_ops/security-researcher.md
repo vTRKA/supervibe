@@ -7,8 +7,8 @@ capabilities: [cve-research, advisory-tracking, pattern-vuln-research, threat-in
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_extract]
-skills: [evolve:confidence-scoring]
+tools: [Read, Grep, Glob, Bash, WebFetch]
+skills: [evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [cve-list-with-cvss, advisory-snapshot, applicability-confirmed, exploit-availability-noted, nvd-record-cited, cvss-vector-parsed, mitigation-actionable]
 anti-patterns: [cve-without-cvss, advisory-without-affected-versions, generic-best-practices-not-stack-specific, ignore-exploit-availability, severity-without-exploitability, outdated-cve-baseline, vendor-blog-as-source, no-context-on-applicability, cherry-pick-favorable-source, advisory-without-mitigation, no-cvss-vector]
 version: 1.1
@@ -117,6 +117,7 @@ Currency gate (apply BEFORE outputting):
 
 ## Procedure (full implementation, Phase 7)
 
+0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`search` (advisory/CVE searches) or `crawl` (NVD/GHSA/vendor pages) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
 1. **Cache check** at `.claude/research-cache/sec-<topic>-*.md` — if present and < 7 days old, reuse; otherwise refresh
 2. **Run audit tool** for stack (`npm/composer/cargo/pip-audit/osv-scanner`); capture findings verbatim
 3. **For each CVE found**:
@@ -172,6 +173,14 @@ Currency gate (apply BEFORE outputting):
 Returns a research note in this shape (Markdown):
 
 ```markdown
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
+
 ## Security Research Note: <scope>
 
 **Researcher**: evolve:_ops:security-researcher

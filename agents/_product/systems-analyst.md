@@ -124,6 +124,13 @@ Returns a single Markdown document:
 **Date**: YYYY-MM-DD
 **Status**: DRAFT | REVIEW | APPROVED
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## 1. Objective
 

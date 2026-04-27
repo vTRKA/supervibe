@@ -134,6 +134,13 @@ Returns:
 **Task ID**: <id>
 **Scope**: <files / module / PR / feature>
 **Verdict**: PASS | CONDITIONAL-PASS | FAIL-WITH-OVERRIDE | HARD-BLOCK
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Rubric Scores
 | Rubric              | Score | Threshold | Status   | Evidence                     |

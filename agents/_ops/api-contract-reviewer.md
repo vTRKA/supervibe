@@ -156,6 +156,13 @@ Returns:
 **Scope**: <files / module / PR>
 **API style(s)**: REST | GraphQL | gRPC
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Diff Tool Output
 - `oasdiff breaking` exit: 0/1 — <summary>

@@ -197,6 +197,13 @@ Returns:
 **Target**: WCAG 2.1 AA (or 2.2 AA / AAA)
 **ATs tested**: NVDA+Firefox, VoiceOver+Safari, JAWS+Chrome
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Automated tooling
 - axe-core: violations: N (CRITICAL: N, SERIOUS: N, MODERATE: N, MINOR: N)

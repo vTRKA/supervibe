@@ -18,9 +18,13 @@ dimensions:
     question: "Does the agent declare specific verification commands for the stack (cargo check, pytest, tsc, etc.)?"
     evidence-required: "Verification section with at least 2 named commands"
   - id: size-and-shape
-    weight: 2
+    weight: 1
     question: "Is the file >=250 lines AND <=25 KB AND has all required frontmatter fields?"
     evidence-required: "wc -l output >=250, ls -la <=25600 bytes, frontmatter contains name/namespace/description/persona-years/version/last-verified"
+  - id: canonical-output-format
+    weight: 1
+    question: "Does the agent's Output contract end with the canonical footer (Confidence: N/10, Override, Rubric) so PostToolUse hook can parse it?"
+    evidence-required: "## Output contract section includes a code block or final paragraph with: Confidence / Override / Rubric. For non-quantifiable agents Confidence: N/A is acceptable. Validator: npm run validate:agent-footers."
 gates:
   block-below: 9
   warn-below: 10

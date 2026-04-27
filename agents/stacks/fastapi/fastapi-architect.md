@@ -127,6 +127,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED-BY <ADR>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Context
 <problem, constraints, scale targets, team size>

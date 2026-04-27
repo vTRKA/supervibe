@@ -169,6 +169,13 @@ Returns:
 **Author**: evolve:stacks/laravel:laravel-architect
 **Date**: YYYY-MM-DD
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Context
 

@@ -145,6 +145,13 @@ Returns:
 **Scope**: <files / module / symbol>
 **Operation(s)**: rename | extract-method | inline | move | split-class | merge-modules | extract-module
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Smell named
 <one sentence stating the trigger; e.g. "processOrder mixed IO + pricing + validation in 180 LOC">

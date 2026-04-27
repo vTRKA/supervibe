@@ -7,9 +7,9 @@ capabilities: [screen-spec, information-architecture, states-matrix, interaction
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Write, Edit, mcp__mcp-server-figma__get_figma_data, mcp__mcp-server-figma__download_figma_images]
+tools: [Read, Grep, Glob, Write, Edit]
 recommended-mcps: [figma]
-skills: [evolve:project-memory, evolve:brandbook, evolve:adapt, evolve:prototype, evolve:confidence-scoring, evolve:interaction-design-patterns]
+skills: [evolve:project-memory, evolve:brandbook, evolve:adapt, evolve:prototype, evolve:confidence-scoring, evolve:interaction-design-patterns, evolve:mcp-discovery]
 verification: [screen-spec-with-all-states, component-inventory, ia-diagram, tokens-audited, wcag-aa-checked, motion-reduced-motion-safe]
 anti-patterns: [happy-path-only, forgot-empty-state, no-loading-state, one-breakpoint, decorative-motion, token-bypass, vague-handoff, modal-heavy-flows, decoration-without-purpose, duplicate-components, jargon-instead-of-microcopy]
 version: 1.1
@@ -96,6 +96,7 @@ IA-RESTRUCTURE (existing flow underperforms):
 
 ## Procedure
 
+0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`figma` (design source extraction) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
 2. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
 3. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
@@ -130,6 +131,13 @@ Returns a screen spec document:
 **Date**: YYYY-MM-DD
 **Scope**: <route / flow / feature>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Jobs-to-be-done
 - JTBD-1: When <context>, I want to <action>, so I can <outcome>

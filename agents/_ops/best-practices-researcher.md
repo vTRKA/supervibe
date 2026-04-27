@@ -7,8 +7,8 @@ capabilities: [research, source-evaluation, applicability-mapping, citation, mcp
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_extract]
-skills: [evolve:confidence-scoring]
+tools: [Read, Grep, Glob, Bash, WebFetch]
+skills: [evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [sources-cited, dates-recent, contradictions-resolved, applicability-stated, cache-written, version-pinned, examples-runnable]
 anti-patterns: [rely-on-training-data, ignore-version, surface-skim, copy-without-context, no-source-cites, ignore-deprecations, single-source, outdated-tutorial, no-applicability-note, contradicting-without-resolving, unscoped-recommendation]
 version: 1.1
@@ -140,10 +140,8 @@ RECENCY filter:
 
 1. **Identify research topic** with version constraint (e.g., "Next.js 15.2 cache patterns" not "Next.js cache patterns")
 2. **Cache check** — Read `.claude/research-cache/<topic-slug>-*.md`; if mtime within TTL → return
-3. **MCP query** (if available):
-   - `context7`: `resolve-library-id` then `query-docs` with version pin
-   - `firecrawl`: search authoritative sources, scrape top 3-5
-4. **WebFetch fallback** (if MCP unavailable): query official docs URL directly at pinned version path
+3. **Pick research tool**: invoke `evolve:mcp-discovery` skill with category=`current-docs` (or `crawl`/`search` for general web sweep) to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
+4. **WebFetch fallback** (if discovery returns nothing usable): query official docs URL directly at pinned version path
 5. **Source authority filter**: drop non-authoritative per decision tree
 6. **Recency filter**: ≥80% of cited sources within 12 months OR explicitly canonical
 7. **Contradiction resolution**: if sources disagree, note explicitly with reasoning for chosen position
@@ -164,6 +162,13 @@ Returns a research note in this exact structure:
 **TTL:** 30 days (re-verify after YYYY-MM-DD)
 **Status:** cache-hit | fresh-fetch
 **Confidence:** N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Query
 <exact question being researched, with version pin and project context>

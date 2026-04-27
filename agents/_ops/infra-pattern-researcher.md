@@ -7,8 +7,8 @@ capabilities: [vendor-doc-research, pattern-comparison, version-specific-guidanc
 stacks: [any]
 requires-stacks: []
 optional-stacks: [redis, postgres, kafka, rabbitmq]
-tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape]
-skills: [evolve:confidence-scoring]
+tools: [Read, Grep, Glob, Bash, WebFetch]
+skills: [evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [vendor-docs-cited, pattern-version-matched, alternatives-compared, tradeoffs-documented, scale-envelope-documented, sources-three-plus]
 anti-patterns: [outdated-vendor-doc, mix-pattern-versions, ignore-deprecation-notices, no-tradeoff-analysis, blog-post-as-source, one-off-experiment-as-pattern, cargo-cult, scale-mismatch, no-cost-context, no-failure-mode]
 version: 1.1
@@ -96,6 +96,7 @@ Trade-off priority (which dimension dominates the decision):
 
 ## Procedure (full implementation, Phase 7)
 
+0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`current-docs` (vendor/version docs) or `crawl`/`search` (case studies, post-mortems) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
 1. **Cache check** at `.claude/research-cache/infra-<topic>-<version>-*.md`
 2. **Identify vendor + version** from project's stack-fingerprint
 3. **Identify scale envelope** from project context (RPS, data volume, region count)
@@ -114,6 +115,14 @@ Trade-off priority (which dimension dominates the decision):
 ## Output contract
 
 ```markdown
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
+
 ## Infra Pattern: <topic>
 
 **Vendor:** <name>

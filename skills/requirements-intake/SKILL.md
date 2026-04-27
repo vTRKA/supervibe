@@ -88,3 +88,170 @@ Returns:
 - `evolve:writing-plans` — invoked when complexity 3-6
 - `evolve:executing-plans` — invoked when complexity ≤2
 - `questionnaires/` (Phase 5) — source of stack-aware questions
+
+## User persona elicitation (mandatory)
+
+Before solution discussion, elicit ≥2 personas:
+
+For each persona ask:
+1. **Role / context**: where are they when using this?
+2. **Top 3 pains** they currently have (concrete, not abstract)
+3. **Top 3 jobs-to-be-done** they're trying to accomplish
+4. **Current workaround**: what they do today without our solution
+5. **Switching cost**: what makes them try a new solution
+
+If user can't articulate personas: that's a finding — flag "no clear user defined" as Risk #1.
+
+## Constraint elicitation (mandatory)
+
+Probe for hard constraints BEFORE designing:
+
+| Constraint type | Question to ask |
+|-----------------|-----------------|
+| Time | When do you need this delivered? Hard deadline or flexible? |
+| Budget | Cost ceiling? Open-source vs. paid OK? |
+| Team capacity | Who builds this? Available hours/week? |
+| Compliance | Regulatory requirements (GDPR / SOC2 / HIPAA)? |
+| Tech stack | Existing system constraints (must use Postgres? Must run on AWS?) |
+| Performance | SLO / latency / throughput targets? |
+| Localization | Languages / regions to support? |
+| Accessibility | WCAG level required? |
+
+Document each as: "Constraint: <name>; Value: <hard limit>; Source: <user / regulation / system>".
+
+If no constraint stated: write "no constraint communicated" — don't assume.
+
+## Success criteria definition (mandatory before solution)
+
+Force user to define "done" before discussing how:
+
+- **Outcome metrics**: what changes for the user when this works?
+- **Adoption signals**: how do we know users use it? (e.g., "30% of MAU within 6 weeks")
+- **Quality bar**: what makes it "good enough" vs. "great"?
+
+If user says "I'll know when I see it": still document this as success criterion = "user satisfaction (subjective)" + risk = "subjective bar invites scope creep".
+
+## Out-of-scope elicitation
+
+Ask explicitly:
+- "What's NOT in scope here?"
+- "What could we add but shouldn't?"
+- "What's the line we won't cross?"
+
+Document. Forces honesty about boundaries.
+
+## Stakeholder identification
+
+Beyond the user requesting:
+- **Decision approvers**: who signs off?
+- **Affected parties**: who else's work changes?
+- **Subject matter experts**: who has knowledge we'll need?
+- **End users** (if different from requester): who actually uses this?
+
+## Open questions register
+
+End every intake with explicit "Open questions" section. Required ≥3. If you can't think of 3: ask user "what am I missing?".
+
+## Output contract template
+
+Save intake notes to `docs/specs/YYYY-MM-DD-<topic>-intake.md`. Use template at `docs/templates/intake-template.md`.
+
+Required sections:
+1. **Request as stated by user** (verbatim quote)
+2. **Restated in our words** (with confirmation)
+3. **Personas** (≥2)
+4. **Constraints** (table)
+5. **Success criteria**
+6. **Out of scope**
+7. **Stakeholders**
+8. **Open questions** (≥3)
+9. **Suggested next step**: brainstorm / PRD / ADR / direct implementation
+
+## Anti-patterns
+
+- **Skip persona elicitation** → designing for nobody specific
+- **Assume constraints** → discover hard limits during execution
+- **Define solution before success criteria** → can't tell when done
+- **No "out of scope"** → invites scope creep
+- **Single-stakeholder thinking** → adjacent teams blindsided
+- **Empty open questions** → didn't probe; you have hidden assumptions
+- **Restatement skipped** → misalignment compounds through downstream phases
+
+## Common workflows
+
+### Workflow: Intake from PM
+
+1. Read user request verbatim
+2. Restate; confirm
+3. Personas (PM usually has these)
+4. Constraints (budget / timeline / tech)
+5. Success criteria (PM usually has metrics)
+6. Out of scope
+7. Open questions for design phase
+8. Suggest next: PRD
+
+### Workflow: Intake from end-user (no PM)
+
+1. Read request; restate
+2. Personas (probe deeper — user might not know how to describe themselves)
+3. Constraints (probe with examples)
+4. Success criteria (probe with "how would you know it works?")
+5. Out of scope
+6. Stakeholders (who else affected?)
+7. Open questions ≥5 (more uncertainty without PM)
+8. Suggest next: brainstorm
+
+### Workflow: Internal tooling intake
+
+1. Skip personas (internal team)
+2. Skip competitive landscape
+3. Heavy on constraints (existing systems, deploy windows)
+4. Success criteria operational (time saved, error rate)
+5. Open questions short (less ambiguity)
+6. Suggest next: ADR or direct plan
+
+## Verification
+
+- Intake saved to `docs/specs/YYYY-MM-DD-<topic>-intake.md`
+- All 9 sections present
+- Personas: ≥2
+- Constraints: ≥1 per category (or explicit "no constraint")
+- Success criteria: ≥3 measurable items
+- Open questions: ≥3
+- Confidence rubric: `requirements`; score ≥ 9
+
+## Related
+
+- `evolve:brainstorming` — successor when intake reveals exploration needed
+- `evolve:prd` — successor when intake is well-defined enough for product spec
+- `evolve:adr` — successor when intake is purely architectural
+- `evolve:_product:product-manager` — collaborator
+- `evolve:_product:systems-analyst` — collaborator on ACs
+- `evolve:explore-alternatives` — for tradeoff matrix when multiple paths exist
+- `evolve:writing-plans` — terminal successor when intake leads directly to plan
+- `evolve:project-memory` — search prior intakes from this project before drafting
+
+## Trap patterns to recognize
+
+User responses that indicate hidden complexity:
+
+- **"Just like X but..."** — they want X with deviations they haven't articulated. Probe each "but".
+- **"Should be simple"** — usually isn't. List 3 reasons why it might not be, ask user to confirm none apply.
+- **"I'll know it when I see it"** — subjective bar. Document explicitly + add to risk register.
+- **"Make it like Stripe / Apple / Linear"** — surface-level analogy, deeper assumptions hidden. Ask: which specific behaviors? Why those products vs others?
+- **"For now we just need..."** — flag the implied "later we'll need". Document as Phase 2 scope.
+
+## Output formatting discipline
+
+Intake notes must be **scannable in 60 seconds** by someone who wasn't in the conversation:
+
+- TL;DR at top (3 bullets max)
+- Personas / constraints / success in tables (not prose)
+- Open questions as numbered list (easier to reply: "1: yes, 2: no, 3: skip")
+- Suggest-next-step is a single decisive sentence — not "perhaps consider one of brainstorm/PRD/ADR"
+
+A reader who skips the body and reads only TL;DR + Suggest-next-step should still get the right action.
+
+## Discipline reminder
+
+Intake is **listening**, not problem-solving. If you start designing a solution mid-intake, you've stopped listening and started defending an answer. Catch yourself, write down the half-formed solution as "Open question: should we use X?" and return to elicitation.

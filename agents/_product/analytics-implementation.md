@@ -127,6 +127,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <feature / funnel / vendor>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Tracking Plan Diff
 ```yaml

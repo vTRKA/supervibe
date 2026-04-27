@@ -174,6 +174,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <new dep | upgrade | quarterly audit | vuln response>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Automated Audit Tools
 - `<audit-tool>` exit: 0/1

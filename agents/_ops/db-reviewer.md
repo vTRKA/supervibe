@@ -174,6 +174,13 @@ Returns:
 **Scope**: <migration file / PR / query>
 **Engine**: <postgres 15.4 | mysql 8.0.34 | ...>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Change classification
 - Type: query-tuning | index-design | migration-safety | replication-impact | partitioning | vacuum-tuning

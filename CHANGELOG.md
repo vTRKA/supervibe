@@ -5,6 +5,87 @@ All notable changes to the Evolve plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-04-27
+
+**Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent evolution loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused comparison vs superpowers.**
+
+### Added — Preview Server (Phase E1)
+
+- `scripts/lib/preview-mime.mjs` — hardcoded MIME map (zero new deps)
+- `scripts/lib/preview-server-manager.mjs` — port alloc 3047-3099 → OS-assigned, JSON registry at `.claude/memory/preview-servers.json`, PID liveness check
+- `scripts/lib/preview-static-server.mjs` — pure `node:http` static + SSE hot-reload injection
+- `scripts/lib/preview-hot-reload.mjs` — chokidar → SSE bridge with 150ms debounce
+- `scripts/preview-server.mjs` CLI: `--root --port --label --list --kill --kill-all --idle-timeout --force`
+- `skills/preview-server/SKILL.md` + `commands/evolve-preview.md`
+- Process hardening: idle-shutdown after 30min, max 10 concurrent (`--force` overrides), 127.0.0.1-only, path-traversal guard, SIGINT/SIGTERM cleanup
+- `evolve:status` reports running previews; SessionStart prunes stale registry entries
+
+### Added — Strengthened Planning Skills (Phase E2)
+
+- `evolve:brainstorming` (87 → 268 lines): first-principle decomp / stakeholder map / kill criteria / decision matrix
+- `evolve:writing-plans` (84 → 250): critical path / parallelization batches / rollback per task / risk register
+- `evolve:prd` (105 → 254): user research / Gherkin ACs / metrics / instrumentation / launch checklist
+- `evolve:adr` (108 → 253): alternatives matrix / NFRs / decision review trigger
+- `evolve:requirements-intake` (90 → 257): persona elicitation / constraint matrix / success criteria before solution
+- `evolve:explore-alternatives` (128 → 256): carbon-copy lookup / weighted matrix / sensitivity analysis
+
+### Added — Reference Templates (Phase E3)
+
+- `docs/templates/{PRD,ADR,plan,RFC,brainstorm-output,intake}-template.md`
+- CLAUDE.md / README.md / docs/getting-started.md surface all new capabilities
+
+### Added — Dynamic MCP Discovery (Phase F1)
+
+- `scripts/lib/mcp-registry.mjs` — discover/persist/query MCPs from user's Claude config; `pickMcp(preferenceList)` for graceful fallback
+- `scripts/discover-mcps.mjs` CLI; SessionStart auto-refreshes registry
+- `evolve:status` shows available MCPs
+
+### Added — 22 New Stack Agents (Phase F2)
+
+- **Vue / Nuxt / Svelte**: vue-implementer, nuxt-architect, nuxt-developer, sveltekit-developer (4)
+- **Django / Rails / Spring / .NET / Go**: django-architect, django-developer, drf-specialist, rails-architect, rails-developer, spring-architect, spring-developer, aspnet-developer, go-service-developer (9)
+- **Node**: express-developer, nestjs-developer (2)
+- **Mobile**: flutter-developer, ios-developer, android-developer (3)
+- **GraphQL / Storage**: graphql-schema-designer, mysql-architect, mongo-architect, elasticsearch-architect (4)
+
+Each ≥250 lines, full canonical structure (Persona / Project Context / Skills / Decision tree / Procedure / Output contract / Anti-patterns / Verification / Common workflows / Out of scope / Related).
+
+### Added — App Excellence (Phase F3 + F4)
+
+- 5 new agents: `api-designer`, `auth-architect`, `observability-architect`, `job-scheduler-architect`, `data-modeler`
+- 4 new skills: `evolve:test-strategy`, `evolve:feature-flag-rollout`, `evolve:error-envelope-design`, `evolve:auth-flow-design`
+
+### Added — README rewrite (Phase F5)
+
+- Removed "15-year-persona" marketing language; comparison table focused on Evolve vs superpowers
+- Cookbook with 5 end-to-end scenarios (Laravel feature / refactor blast-radius / debug incident / brand redesign / DB migration safety)
+
+### Added — Agent Evolution Loop (Phase G + H)
+
+- `scripts/lib/agent-invocation-logger.mjs` — append-only JSONL invocation log; honors `EVOLVE_INVOCATION_LOG` env
+- `scripts/effectiveness-tracker.mjs` (rewritten from stub) writes `effectiveness:` block into agent frontmatter via gray-matter
+- `scripts/lib/underperformer-detector.mjs` — flags `avg-confidence < 8.5` OR rising override-rate trend Δ ≥ 40%
+- `scripts/hooks/post-tool-use-log.mjs` — PostToolUse hook auto-logs every `Task` (subagent) dispatch with confidence-score + override-marker extraction
+- `hooks.json` wired with PostToolUse `Task` matcher → invocation logger
+- `scripts/lib/auto-strengthen-trigger.mjs` + updated `commands/evolve-strengthen.md` — auto-trigger flow with mandatory user gate
+- `evolve:status` and SessionStart surface flagged agents
+- E2E test (`tests/evolution-loop-e2e.test.mjs`) proves loop closes (log → aggregate → detect → suggest)
+- README + CLAUDE.md + getting-started document the evolution loop
+
+### Added — Canonical confidence-output footer (Phase I)
+
+- CLAUDE.md mandates `Confidence: N/10 | Override: true|false | Rubric: <id>` block in every agent's `## Output contract`
+- `confidence-rubrics/agent-quality.yaml` adds `canonical-output-format` dimension (weight 1, total still 10)
+- `scripts/validate-agent-output-contract.mjs` validator integrated into `npm run check` via new `validate:agent-footers` script
+- All 73 existing agents updated with canonical footer (one-time injection)
+- `docs/agent-authoring.md` makes footer mandatory for new agents
+
+### Tests
+
+- 155 tests pass (was 124 in 1.6.0). Adds: preview-server-manager, preview-static-server, preview-hot-reload, mcp-registry (incl. `pickMcp`), agent-invocation-logger, effectiveness-tracker, underperformer-detector, post-tool-use-log, auto-strengthen-trigger, agent-output-contract-validator, evolution-loop-e2e.
+
+---
+
 ## [1.6.0] — 2026-04-27
 
 **Code Graph (Phase D). Tree-sitter-driven structural index alongside semantic Code RAG. Agents now answer "who calls X?" / "what does Y depend on?" with cited graph evidence. Auto-startup on session begin; user sees confirmation banner. 27 tasks, 9 languages.**

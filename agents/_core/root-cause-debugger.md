@@ -147,6 +147,14 @@ Need to know who/what depends on a symbol?
 Returns structured debug report:
 
 ```markdown
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
+
 ## Debug Report: <symptom>
 
 **Symptom**: <one sentence>

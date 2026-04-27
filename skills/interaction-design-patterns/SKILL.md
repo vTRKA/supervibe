@@ -107,6 +107,7 @@ prefers-reduced-motion?
 6. **Test cross-browser** + reduced-motion mode
 7. **ui-polish-reviewer** check: feels right, not gratuitous
 8. **Score** with prototype rubric
+9. **Auto-spawn preview** (mandatory): invoke `evolve:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note. Continue task — user will iterate visually.
 
 ## Output contract
 
@@ -115,6 +116,7 @@ Returns:
 - prefers-reduced-motion fallback
 - WOW moment justification (if applicable)
 - Cross-browser screenshot or recording
+- **Preview URL**: http://localhost:NNNN — auto-spawned after generation, hot-reload on
 
 ## Guard rails
 

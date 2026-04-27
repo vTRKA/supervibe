@@ -180,6 +180,13 @@ Returns Markdown report:
 **Scope:** N files, +X / -Y lines
 **Architecture style (per CLAUDE.md):** <hexagonal | FSD | modular-monolith | ...>
 **Confidence:** N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Boundaries Map (evidence)
 

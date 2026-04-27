@@ -139,6 +139,13 @@ Returns a Redis architecture ADR:
 **Date**: YYYY-MM-DD
 **Status**: Proposed | Accepted | Superseded
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Context
 - Workload: <r/w ratio, QPS peak, dataset size, growth>

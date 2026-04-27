@@ -7,8 +7,8 @@ capabilities: [competitive-research, design-pattern-extraction, market-analysis,
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-firecrawl__firecrawl_scrape, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_browser_create, mcp__mcp-server-firecrawl__firecrawl_browser_execute, mcp__playwright__browser_navigate, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_snapshot]
-skills: [evolve:confidence-scoring, evolve:project-memory]
+tools: [Read, Grep, Glob, Bash, WebFetch]
+skills: [evolve:confidence-scoring, evolve:project-memory, evolve:mcp-discovery]
 verification: [screenshot-evidence, public-design-system-citations, pattern-analysis, differentiation-noted, capture-dates-recorded]
 anti-patterns: [pixel-perfect-copy, copy-without-understanding-why, single-screenshot, ignore-context, outdated-references, no-differentiation-rationale, no-source-cites, scrape-without-consent, single-competitor-bias, no-attribution]
 version: 1.1
@@ -103,18 +103,19 @@ Pattern classification (apply to every observation):
 3. **Identify category + 5-10 competitors** from PRD, brand brief, or user input; confirm with user before capture
 4. **Choose mode** from decision tree (single-competitor-deep / category-survey / pattern-extraction / trend-tracking)
 5. **Read ≥2 public design systems** for pattern conventions baseline
-6. **Capture screenshots** of key flows per chosen mode
-   - Public, logged-out flows: Firecrawl screenshot tool
-   - Authenticated or multi-step flows: Playwright with explicit user-supplied test account (with consent confirmed)
+6. **Pick research tool**: invoke `evolve:mcp-discovery` skill with category=`crawl` for public/logged-out scrape and `browser` for interactive/authenticated flows to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output (manual capture path).
+7. **Capture screenshots** of key flows per chosen mode
+   - Public, logged-out flows: returned `crawl` MCP screenshot tool (or WebFetch + manual capture fallback)
+   - Authenticated or multi-step flows: returned `browser` MCP with explicit user-supplied test account (with consent confirmed)
    - Required attribution per screenshot: company, page URL, capture date (YYYY-MM-DD), flow label, viewport size
    - Store at `.claude/research-cache/screenshots/<competitor>/<flow>-<date>.png`
-7. **Annotate each screenshot** with one-sentence "what this is doing" + one-sentence "why this is doing it" hypothesis
-8. **Classify patterns** (convention / emerging / idiosyncratic / anti-pattern) — count adoption across competitors
-9. **Draft DO/DON'T table** with rationale tied to user need or strategic positioning
-10. **Write differentiation recommendation** — one paragraph naming where our product *deliberately* deviates and why
-11. **Cite all sources** with URL + capture date + license note where applicable
-12. **Cache report** with attribution per screenshot
-13. **Score** with `evolve:confidence-scoring` research-output rubric (≥9 to ship)
+8. **Annotate each screenshot** with one-sentence "what this is doing" + one-sentence "why this is doing it" hypothesis
+9. **Classify patterns** (convention / emerging / idiosyncratic / anti-pattern) — count adoption across competitors
+10. **Draft DO/DON'T table** with rationale tied to user need or strategic positioning
+11. **Write differentiation recommendation** — one paragraph naming where our product *deliberately* deviates and why
+12. **Cite all sources** with URL + capture date + license note where applicable
+13. **Cache report** with attribution per screenshot
+14. **Score** with `evolve:confidence-scoring` research-output rubric (≥9 to ship)
 
 ## Common workflows
 
@@ -165,6 +166,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Mode**: single-competitor-deep | category-survey | pattern-extraction | trend-tracking
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Competitors analyzed
 | Company | URL | Captured (YYYY-MM-DD) | Flows captured | Notes |

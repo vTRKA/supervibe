@@ -138,6 +138,13 @@ Returns a Next.js Architecture ADR:
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Confidence**: N/10
 **Scope**: <routes / module / migration>
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Context
 <problem, constraints, traffic profile, freshness requirements>

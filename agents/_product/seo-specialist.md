@@ -146,6 +146,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <pages / template / locale / migration>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Render-mode inventory
 | Route template | Mode | Initial-HTML signals OK? |

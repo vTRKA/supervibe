@@ -13,7 +13,11 @@
     "scripts/build-code-index.mjs",
     "scripts/search-code.mjs",
     "scripts/watch-memory.mjs",
-    "scripts/evolve-status.mjs"
+    "scripts/evolve-status.mjs",
+    "scripts/preview-server.mjs",
+    "scripts/discover-mcps.mjs",
+    "scripts/validate-agent-output-contract.mjs",
+    "scripts/hooks/post-tool-use-log.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

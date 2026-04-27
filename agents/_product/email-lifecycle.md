@@ -127,6 +127,13 @@ Returns:
 **Domain(s)**: <sending domains audited>
 **ESP**: <provider>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## DNS Authentication Status
 | Record | Domain | Value (truncated) | Status |

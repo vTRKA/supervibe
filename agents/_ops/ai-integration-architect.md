@@ -132,6 +132,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Use case
 <classification | RAG | generation | agent>, expected volume req/day, latency target p95

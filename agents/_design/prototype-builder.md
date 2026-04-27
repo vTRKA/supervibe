@@ -7,9 +7,9 @@ capabilities: [html-css, design-tokens, states-implementation, no-framework-prot
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__mcp-server-figma__get_figma_data, mcp__mcp-server-figma__download_figma_images]
+tools: [Read, Grep, Glob, Bash, Write, Edit]
 recommended-mcps: [figma]
-skills: [evolve:prototype, evolve:brandbook, evolve:tokens-export, evolve:interaction-design-patterns, evolve:tdd, evolve:code-review, evolve:confidence-scoring, evolve:project-memory]
+skills: [evolve:prototype, evolve:brandbook, evolve:tokens-export, evolve:interaction-design-patterns, evolve:tdd, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:mcp-discovery]
 verification: [all-states-rendered, token-discipline-grep, keyboard-interactivity, no-console-errors, ui-polish-reviewer-pass]
 anti-patterns: [hardcoded-values, one-state-only, framework-coupling, decorative-css, inline-styles, no-keyboard, drift-without-flag]
 version: 1.1
@@ -62,6 +62,7 @@ Built-in skepticism: "looks right in Chrome on my machine" is not a deliverable.
 - `evolve:code-review` — self-review prototype CSS for token discipline
 - `evolve:project-memory` — search prior prototype decisions for similar features
 - `evolve:confidence-scoring` — prototype rubric ≥9 before handoff
+- `evolve:preview-server` — spawn http://localhost preview after generating mockup files
 
 ## Decision tree (prototype shape)
 
@@ -98,6 +99,7 @@ data-driven mock:
 
 ## Procedure
 
+0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`figma` (token + asset extraction from design source) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents
 2. **Read brandbook (mandatory)** — load `prototypes/_brandbook/tokens.css`, components, voice; confirm token coverage for this feature
 3. **Read screen spec** from ux-ui-designer — confirm scope, states required, interaction patterns
@@ -114,17 +116,18 @@ data-driven mock:
    - `loading.html` — async in-flight
    - `empty.html` — no data
    - `error.html` — failure case with message
-8. **Add keyboard interactivity** — tab order verified, focus visible, Escape closes modals, Enter activates buttons, arrow keys for menus/lists; document tab order in README
-9. **Responsive breakpoints** — mobile-first; test at 360, 768, 1024, 1440, 1920; use `clamp()` and container queries where appropriate; never fixed px widths for content
-10. **Motion pass** — add transitions/animations using token durations (`var(--motion-fast)`, `var(--motion-base)`); wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only
-11. **Drift-check vs design tokens** — run `grep -E '#[0-9a-fA-F]{3,8}' prototypes/<feature>/styles.css` (must be 0); run `grep -E '\\b[0-9]+px\\b' styles.css` and audit each match (1px borders OK, layout px not OK); output drift report listing any deliberate exception with `/* DRIFT: reason */` flag
-12. **Screenshot baseline** — capture each state at 1440 desktop + 390 mobile; save to `states/.screenshots/`
-13. **Console check** — load each HTML in browser, verify zero console errors/warnings (no missing assets, no CSP violations, no deprecated API warnings)
-14. **Write README.md** — what to view, in what order; tab-order map; known drifts (with rationale); browsers tested
-15. **Invoke ui-polish-reviewer** — token discipline + visual hierarchy
-16. **Invoke accessibility-reviewer** — keyboard, screen-reader, contrast
-17. **Score with confidence-scoring** — prototype rubric ≥9 required for handoff
-18. **Handoff to react-implementer / frontend developer** — link to prototype + drift report + state matrix + screenshots
+8. **Spawn preview**: invoke `evolve:preview-server` skill with `--root mockups/<feature>` to start a local server at http://localhost:NNNN. Hand URL to user with hot-reload note.
+9. **Add keyboard interactivity** — tab order verified, focus visible, Escape closes modals, Enter activates buttons, arrow keys for menus/lists; document tab order in README
+10. **Responsive breakpoints** — mobile-first; test at 360, 768, 1024, 1440, 1920; use `clamp()` and container queries where appropriate; never fixed px widths for content
+11. **Motion pass** — add transitions/animations using token durations (`var(--motion-fast)`, `var(--motion-base)`); wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only
+12. **Drift-check vs design tokens** — run `grep -E '#[0-9a-fA-F]{3,8}' prototypes/<feature>/styles.css` (must be 0); run `grep -E '\\b[0-9]+px\\b' styles.css` and audit each match (1px borders OK, layout px not OK); output drift report listing any deliberate exception with `/* DRIFT: reason */` flag
+13. **Screenshot baseline** — capture each state at 1440 desktop + 390 mobile; save to `states/.screenshots/`
+14. **Console check** — load each HTML in browser, verify zero console errors/warnings (no missing assets, no CSP violations, no deprecated API warnings)
+15. **Write README.md** — what to view, in what order; tab-order map; known drifts (with rationale); browsers tested
+16. **Invoke ui-polish-reviewer** — token discipline + visual hierarchy
+17. **Invoke accessibility-reviewer** — keyboard, screen-reader, contrast
+18. **Score with confidence-scoring** — prototype rubric ≥9 required for handoff
+19. **Handoff to react-implementer / frontend developer** — link to prototype + drift report + state matrix + screenshots
 
 ## Output contract
 
@@ -137,6 +140,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Location**: prototypes/<feature>/
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Deliverables
 - index.html — main view
@@ -184,6 +194,14 @@ Returns:
 ## Verdict
 READY FOR HANDOFF | ITERATE
 ```
+
+## Preview server (when applicable)
+- **URL**: http://localhost:NNNN — handed to user, opens in browser
+- **Label**: <feature-name>
+- **Hot-reload**: on (file edits in `mockups/<feature>/` auto-refresh browser)
+- **Port lifecycle**: cleanup on session end via SIGINT, OR `/evolve-preview --kill <port>` manually
+
+If task is non-visual (e.g., design tokens only): explicitly state "Preview: N/A (no visual mockup generated)".
 
 ## Anti-patterns
 

@@ -126,3 +126,131 @@ Rationale: <2-3 sentences citing project context>
 - `evolve:adr` — to record structural decisions
 - `evolve:brainstorming` — already includes "propose 2-3 approaches"; this skill is for tactical decisions DURING execution where brainstorming is overkill
 - `agents/_core/architect-reviewer` — invokes this skill for architectural decisions
+
+## Carbon-copy lookup (mandatory pre-step)
+
+BEFORE generating original alternatives, ask: has someone else solved this problem?
+
+1. Invoke `evolve:project-memory` with the problem keywords — past decisions in this repo
+2. Invoke `evolve:code-search` semantic — similar code patterns in the codebase
+3. Invoke `evolve:_ops:best-practices-researcher` if applicable — industry references
+4. Invoke `evolve:_ops:competitive-design-researcher` for design problems
+
+If carbon copies exist: list them BEFORE generating new options. Often one of them is the answer.
+
+## Weighted decision matrix (mandatory)
+
+Required format:
+
+```markdown
+| Dimension | Weight | A | B | C |
+|-----------|--------|---|---|---|
+| <name>    | <int>  | 0-10 | 0-10 | 0-10 |
+| ...       | ...    | ... | ... | ... |
+| **Total** | --     | (sum w_i × a_i) | ... | ... |
+```
+
+Rules:
+1. **Weights set BEFORE seeing options** (prevents post-hoc rationalization)
+2. **Negative weights allowed** for "less is better" dimensions (effort, risk)
+3. **At least 4 dimensions** — fewer means lazy thinking
+4. **Show calculation** — make math visible
+
+## Sensitivity analysis
+
+After scoring, perturb the weights:
+
+- "If I doubled the weight on Risk, would the winner change?"
+- "If I halved the weight on Strategic Fit, would the runner-up win?"
+
+If small weight changes flip the result: the matrix is brittle; revisit weights or add more dimensions.
+
+## Adversarial scoring
+
+Force yourself to argue against your preferred option:
+
+- "Steel-man the case for B as if I'm advocating it"
+- "List 3 reasons A might fail that I haven't considered"
+- "Who would prefer C and why?"
+
+Document conclusions. Often surfaces hidden assumptions.
+
+## Time-boxed exploration
+
+Explore-alternatives can spiral. Set a budget:
+
+- "I'll spend ≤30 min generating + scoring options"
+- "If no clear winner emerges, I'll defer to <named heuristic> (e.g., 'pick the reversible option')"
+
+Document the budget at start. If you exceed it: log "exceeded budget by X; outcome was Y" — learn for next time.
+
+## Output contract template
+
+Save exploration to `docs/specs/YYYY-MM-DD-<topic>-alternatives.md` (or as section in brainstorm/ADR/PRD).
+
+Required sections:
+1. **Problem restated** (1 paragraph)
+2. **Carbon-copy lookup** (results from project-memory + code-search + research)
+3. **Options generated** (≥3, each with 1-paragraph description)
+4. **Decision matrix** (weights set first, scores second)
+5. **Sensitivity analysis** (≥2 perturbations)
+6. **Adversarial scoring** (≥1 steel-man for runner-up)
+7. **Recommendation** (with rationale + acknowledged risks)
+8. **Confidence**: high / medium / low
+9. **Decision-reversibility**: reversible (low risk) / hard-to-reverse (high risk)
+
+## Anti-patterns
+
+- **Score-then-weight** → post-hoc rationalization; weights bias toward preferred option
+- **Three options when one is straw-man** → fake alternatives ("do nothing" priced ridiculously)
+- **No sensitivity analysis** → brittle matrix invisible
+- **No adversarial scoring** → confirmation bias unchecked
+- **No carbon-copy lookup** → reinventing wheels; missed prior decisions
+- **Unbounded exploration** → analysis paralysis
+- **Missing "do nothing"** option → can't compare against status quo
+
+## Common workflows
+
+### Workflow: Library / vendor choice
+
+1. Carbon-copy: any prior memory entries?
+2. Generate 3-5 candidates (research via best-practices-researcher)
+3. Dimensions: maturity, license, ecosystem, perf, cost, lock-in
+4. Score; sensitivity; steel-man runner-up
+5. Recommendation with reversibility note
+
+### Workflow: Architectural pattern choice
+
+1. Carbon-copy: prior ADRs in this area?
+2. Generate 3 patterns (event-driven / sync RPC / async queue, etc.)
+3. Dimensions: latency, complexity, ops cost, scaling envelope, blast radius
+4. Score; heavy sensitivity (architecture is hard to reverse)
+5. Steel-man preferred runner-up
+6. Recommendation; flag reversibility = LOW
+
+### Workflow: Quick UX pattern choice (low stakes)
+
+1. Carbon-copy: design system has it?
+2. Generate 2-3 options
+3. Dimensions: clarity, consistency, accessibility, effort
+4. Score; light sensitivity
+5. Recommendation; reversibility = HIGH
+
+## Verification
+
+- Output contains all 9 required sections
+- ≥3 options including "do nothing" / "keep current"
+- ≥4 weighted dimensions
+- Weights documented BEFORE scores
+- Sensitivity analysis present
+- Adversarial scoring present
+- Confidence rubric: `requirements`; score ≥ 9
+
+## Related
+
+- `evolve:brainstorming` — uses this skill as core for option exploration
+- `evolve:adr` — uses this skill for the alternatives matrix
+- `evolve:project-memory` — for carbon-copy lookup
+- `evolve:code-search` — for code-pattern carbon copies
+- `evolve:_ops:best-practices-researcher` — for industry carbon copies
+- `evolve:_ops:competitive-design-researcher` — for design carbon copies

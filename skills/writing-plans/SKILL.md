@@ -82,3 +82,169 @@ Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure se
 - `evolve:brainstorming` — produces input spec
 - `evolve:executing-plans` — consumes this output
 - `evolve:subagent-driven-development` — alternative consumer for parallel tasks
+
+## Critical path identification (mandatory)
+
+After listing all tasks, identify which tasks block which:
+1. Build dependency graph: task A → task B means A must complete before B starts
+2. Find the **critical path**: longest chain of dependencies
+3. Mark tasks on critical path with `[CRITICAL-PATH]` in plan
+4. Off-critical-path tasks are candidates for parallelization
+
+Example output (in plan body):
+```
+Critical path: T1 → T3 → T5 → T8 → T-FINAL (5 tasks, est. 6h sequential)
+Parallelizable: T2 || T4 (off-path); T6 || T7 (after T5)
+```
+
+## Parallelization opportunities (mandatory)
+
+Identify which tasks can run as parallel subagents:
+- Independent file modifications (e.g., 10 agent files = 10 parallel subagents)
+- Independent test suites (no shared sandbox)
+- Independent doc updates (no merge conflicts)
+
+In the Execution Handoff section at the end, list parallel batches:
+```
+Subagent-Driven batches:
+- Batch 1 (foundation, sequential): T1, T2, T3
+- Batch 2 (parallel, 5 subagents): T4, T5, T6, T7, T8
+- Batch 3 (sequential): T9, T-FINAL
+```
+
+This drastically reduces wall-clock execution time.
+
+## Rollback plan per task (mandatory)
+
+Each task gets a one-line "rollback" entry:
+
+```markdown
+### Task N: <name>
+
+**Rollback**: `git revert <commit-sha>` OR `git checkout HEAD~1 -- <files>` — verifies via re-running test from Step 1 of original task.
+```
+
+This forces clarity about whether a task is reversible. Tasks that aren't reversible (e.g., DB schema changes) get explicit "irreversible — extra review" tag.
+
+## Risk register per task
+
+For tasks touching public surface (API, schema, contracts), include:
+
+```markdown
+**Risks:**
+- **R1 (severity: high)**: <what could break>; mitigation: <how to detect / undo>
+- **R2 (severity: medium)**: <secondary risk>; mitigation: <...>
+```
+
+Skip for purely-internal tasks (variable rename inside a function, etc.).
+
+## Honest scope estimation
+
+For each task, write:
+- **Estimated time**: `5min` / `15min` / `1h` / `half-day` (no precise hour estimates — they're always wrong)
+- **Confidence in estimate**: `high` / `medium` / `low`
+- **If estimate doubles, the plan still works** OR `if estimate doubles, escalate`
+
+Tasks marked `low` confidence + `escalate` are flagged for extra brainstorming before execute.
+
+## Review gates between phases
+
+For multi-phase plans (>15 tasks), insert REVIEW GATE markers:
+
+```markdown
+---
+
+### REVIEW GATE 1 (after Phase A)
+
+Before starting Phase B, verify:
+- [ ] All Phase A tasks committed and tests green
+- [ ] No regressions in unrelated tests
+- [ ] User approved Phase A output (if user gate)
+
+If gate fails: STOP and escalate; do not proceed to Phase B.
+
+---
+```
+
+This prevents cascading failures.
+
+## Output contract template
+
+Save plans to `docs/plans/YYYY-MM-DD-<feature-name>.md`. Reference template at `docs/templates/plan-template.md`.
+
+Required header:
+```markdown
+# <Feature> Implementation Plan
+> For agentic workers: REQUIRED SUB-SKILL ...
+**Goal:** <one sentence>
+**Architecture:** <2-3 sentences>
+**Tech Stack:** <key libs>
+**Constraints:** <hard rules>
+```
+
+Required sections per task:
+- Files (Create / Modify with line ranges / Test path)
+- Bite-sized steps (2-5 min each)
+- Failing test FIRST (TDD red)
+- Verification command + expected output
+- Rollback plan
+- Commit step
+
+Required at end:
+- Self-Review (spec coverage / placeholders / type consistency)
+- Execution Handoff (Subagent-Driven batches OR Inline batches)
+
+## Anti-patterns
+
+- **Steps not bite-sized** ("implement the feature" is not a step; "write failing test for X" is)
+- **No failing-test-first** for behavioral tasks (TDD red phase missing)
+- **No verification command** ("should work" is not verification; `npm test` is)
+- **No commit per task** (lumping commits hides regressions)
+- **No critical path** (engineer doesn't know which task to start when)
+- **No rollback plan** (task fails midway → unclear how to recover)
+- **Estimates with false precision** ("3h 17min" lies; "1h ± 2x" is honest)
+- **Empty self-review** (failure to scan own work for placeholders)
+
+## Common workflows
+
+### Workflow: Feature plan (5–15 tasks)
+
+1. Read brainstorm output (`docs/specs/...-brainstorm.md`) if exists
+2. List ALL tasks in dependency order
+3. Mark critical path
+4. Identify parallelization batches for handoff
+5. Per task: failing test, impl, verify, rollback, commit
+6. Self-review: coverage / placeholders / type consistency
+7. Save to `docs/plans/`
+
+### Workflow: Multi-phase plan (>15 tasks, >1 day)
+
+1. Same as feature plan PLUS:
+2. Insert review gates between phases
+3. Each phase has its own subagent batches
+4. Final task is always release-prep (CHANGELOG / version / final tests)
+
+### Workflow: Refactor plan (high regression risk)
+
+1. Each task has explicit rollback (often `git revert`)
+2. Review gate after every 5 tasks
+3. Risk register heavier
+4. Conservative time estimates
+
+## Verification
+
+- Plan saved to `docs/plans/YYYY-MM-DD-<feature>.md`
+- Every task has bite-sized steps + failing test + verify command + commit
+- Critical path documented
+- Parallelization batches in Handoff section
+- Rollback plan per task
+- Self-Review section completed before saving
+
+## Related
+
+- `evolve:brainstorming` — predecessor; provides recommended option as input
+- `evolve:executing-plans` — consumer; this skill writes what that skill executes
+- `evolve:subagent-driven-development` — when handoff says Subagent-Driven
+- `evolve:explore-alternatives` — for risk-register options
+- `evolve:confidence-scoring` — gate before saving plan (≥9 required)
+- `evolve:requirements-intake` — alternative entry point for complexity 3-6 plans

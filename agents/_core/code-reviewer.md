@@ -150,6 +150,13 @@ Returns Markdown report:
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
 **Confidence:** N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Automated Checks (evidence)
 

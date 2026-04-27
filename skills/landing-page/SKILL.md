@@ -51,6 +51,7 @@ Landing page type?
 7. **Analytics** — page view event, CTA click events with consistent naming
 8. **Score** — `evolve:confidence-scoring` artifact-type=agent-output; ≥9 required
 9. **Pre-publish review** — `ui-polish-reviewer` for visual
+10. **Auto-spawn preview** (mandatory): invoke `evolve:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note. Continue task — user will iterate visually.
 
 ## Output contract
 
@@ -60,6 +61,7 @@ Returns:
 - CWV measurement (Lighthouse output)
 - Accessibility report
 - Analytics events declared
+- **Preview URL**: http://localhost:NNNN — auto-spawned after generation, hot-reload on
 
 ## Guard rails
 

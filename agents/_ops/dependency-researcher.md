@@ -7,8 +7,8 @@ capabilities: [registry-research, version-analysis, deprecation-tracking, migrat
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape]
-skills: [evolve:confidence-scoring]
+tools: [Read, Grep, Glob, Bash, WebFetch]
+skills: [evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [registry-snapshot, version-comparison, breaking-changes-list, maintenance-signals, license-documented, size-measured, candidates-audited]
 anti-patterns: [latest-without-stable-check, ignore-deprecation-warnings, miss-breaking-change-list, ignore-maintenance-signals, trust-stars-only, ignore-bundle-size, ignore-maintainer-cadence, license-incompatible-add, vendor-lock-warning-ignored, no-comparison-baseline, no-supply-chain-signal-check]
 version: 1.1
@@ -122,6 +122,7 @@ Snyk advisor → https://snyk.io/advisor/npm-package/<pkg>
 
 ## Procedure
 
+0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`current-docs` (library/registry doc lookups) or `crawl`/`search` (registry pages, advisor sites) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
 1. **Cache check** at `.claude/research-cache/dep-<pkg>-<version>-*.md` — reuse if <30 days old AND no security advisory since
 2. **Registry query** (per stack — see endpoints above) — capture latest stable, all versions, deprecation flags
 3. **Latest stable** vs current version (gap analysis: patch / minor / major / multi-major)
@@ -170,6 +171,14 @@ Snyk advisor → https://snyk.io/advisor/npm-package/<pkg>
 ## Output contract
 
 ```markdown
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
+
 ## Dependency Research: <pkg>
 
 **Researcher:** evolve:_ops:dependency-researcher

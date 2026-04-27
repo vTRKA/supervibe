@@ -145,6 +145,13 @@ Returns:
 **Scope**: <route / component / PR>
 **Viewports tested**: 320 / 768 / 1024 / 1440
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Screenshots
 - baseline-1440.png

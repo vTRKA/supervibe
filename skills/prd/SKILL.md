@@ -103,3 +103,152 @@ Returns: PRD file with all sections filled, success metrics measurable, out-of-s
 - `evolve:brainstorming` — technical design after PRD approved
 - Phase 3 `product-manager` agent — primary author
 - `evolve:adr` — for technical decisions referenced in Solution
+
+## User research grounding
+
+A PRD without user evidence is product-by-vibes. Required input:
+
+- **User personas** (≥2): name, role, top 3 pains, top 3 jobs-to-be-done
+- **User research artifacts**: which interview/survey/data informed this? Cite source
+- **Competitive landscape**: 3 competitors + what users currently do without our solution
+
+If no research exists: explicitly state "No research conducted; PRD is hypothesis-mode" and add user-research as Phase 0 of the implementation plan.
+
+## Acceptance criteria — Gherkin format
+
+Each requirement gets ≥1 acceptance criterion in Given/When/Then form:
+
+```gherkin
+Given a user with verified email
+When they request password reset
+Then they receive an email within 30 seconds with a single-use token
+And the token expires after 15 minutes
+And reusing the token returns 410 Gone
+```
+
+Vague ACs ("should work well") fail rubric scoring.
+
+## Success metrics matrix
+
+PRD must define how we'll know it worked:
+
+| Metric | Baseline | Target | Measurement | Trigger if missed |
+|--------|----------|--------|-------------|-------------------|
+| <name> | <today> | <goal> | <how we measure> | <action> |
+
+≥3 metrics. At least one is a leading indicator (early signal), one is a lagging indicator (business impact).
+
+## Deprecation plan (when applicable)
+
+If the PRD adds a feature that replaces an existing one:
+
+- **Deprecation timeline**: when does old feature go behind a flag? When removed?
+- **Migration path**: how do existing users move?
+- **Communication plan**: in-product banner / email / docs?
+
+If no deprecation: explicitly state "No deprecation — additive feature only".
+
+## Launch checklist
+
+Before launch (Phase N+1 of plan), verify:
+- [ ] Acceptance criteria all met
+- [ ] Success metrics instrumentation deployed
+- [ ] Documentation updated (user-facing + internal)
+- [ ] Support team briefed
+- [ ] Rollback procedure tested in staging
+- [ ] Feature flag (if applicable) configured for staged rollout
+- [ ] Monitoring/alerting wired
+
+## Instrumentation plan
+
+What events do we emit? What dashboards do we add? Required input from `evolve:_product:analytics-implementation`:
+
+- **Tracked events**: <list with properties>
+- **Dashboards**: <which existing dashboards add this; which new ones create>
+- **Alerts**: <thresholds and oncall routing>
+
+If feature is non-instrumented: explicitly state "No instrumentation needed" with reason.
+
+## Risk register
+
+Same format as plans:
+- **R1 (severity: high)**: <description>; mitigation: <how>
+- **R2 (severity: medium)**: ...
+
+≥3 risks. ≥1 must be product/UX risk (not just technical).
+
+## Output contract template
+
+Save PRDs to `docs/specs/YYYY-MM-DD-<feature>-prd.md`. Use template at `docs/templates/PRD-template.md`.
+
+Required sections (in order):
+1. **TL;DR** (3 sentences max)
+2. **Problem** (with user research grounding)
+3. **Users** (personas)
+4. **Competitive landscape**
+5. **Goals** (success metrics)
+6. **Non-goals**
+7. **User stories with acceptance criteria** (Gherkin)
+8. **Solution overview** (high-level; details in design doc)
+9. **Risks**
+10. **Deprecation plan** (if applicable)
+11. **Instrumentation plan**
+12. **Launch checklist**
+13. **Open questions**
+14. **Appendix: data, screenshots, references**
+
+## Anti-patterns
+
+- **No user research grounding** → PRD is hypothesis disguised as fact
+- **Vague acceptance criteria** ("works smoothly") → can't test, can't gate
+- **Success metrics without baseline** → can't tell if we improved
+- **Missing leading indicator** → can't course-correct early
+- **No deprecation plan** for replacement features → tech debt accumulates
+- **Empty risk register** → didn't think hard enough; risks always exist
+- **Non-quantitative non-goals** ("not for advanced users") → scope creep waiting to happen
+- **No instrumentation plan** → can't measure success metrics post-launch
+
+## Common workflows
+
+### Workflow: New feature PRD
+
+1. Pull user research from existing repo or do new (interview 5 users)
+2. Define personas + competitive landscape
+3. Goals + non-goals
+4. User stories with Gherkin ACs
+5. Solution overview (defer details)
+6. Risks + deprecation + instrumentation + launch
+7. Open questions (mandatory non-empty)
+
+### Workflow: Replacement feature PRD
+
+1. Same as new + heavy deprecation plan
+2. Migration path explicit per user segment
+3. Sunset timeline with named milestones
+4. Communication plan with channel mix
+
+### Workflow: Internal tool PRD
+
+1. Skip competitive landscape
+2. Personas are internal (which team / role)
+3. Success metrics are operational (time saved, error rate)
+4. Instrumentation lighter (logs > dashboards)
+
+## Verification
+
+- PRD saved to `docs/specs/YYYY-MM-DD-<feature>-prd.md`
+- All 14 sections present
+- ACs in Gherkin format with ≥1 per user story
+- Success metrics: ≥3, with baseline + target
+- Risk register: ≥3 entries
+- Open questions: non-empty
+- Confidence rubric: `requirements`; score ≥ 9
+
+## Related
+
+- `evolve:requirements-intake` — predecessor (intake → research → PRD)
+- `evolve:writing-plans` — consumer (PRD → implementation plan)
+- `evolve:adr` — design decisions called out separately from PRD
+- `evolve:_product:product-manager` — primary author
+- `evolve:_product:systems-analyst` — collaborator on ACs
+- `evolve:_product:analytics-implementation` — collaborator on instrumentation

@@ -122,6 +122,13 @@ Returns a PRD in the following structure:
 **Date**: YYYY-MM-DD
 **Status**: Draft | In Review | Approved | Shipped | Killed
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Problem
 One paragraph. [Persona] cannot [JTBD] because [obstacle], costing [quantified impact].

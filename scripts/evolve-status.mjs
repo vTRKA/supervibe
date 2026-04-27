@@ -7,6 +7,8 @@ import { MemoryStore } from './lib/memory-store.mjs';
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
+import { getRegistry as getMcpRegistry } from './lib/mcp-registry.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
@@ -104,6 +106,51 @@ async function main() {
     }
   } else {
     console.log(color('○ File watcher: not running. Run `npm run memory:watch` for auto-reindex', 'dim'));
+  }
+
+  // Preview servers
+  const previews = await listPreviewServers();
+  console.log();
+  if (previews.length === 0) {
+    console.log(color('○ Preview servers: none running', 'dim'));
+  } else {
+    console.log(color(`✓ Preview servers: ${previews.length} running`, 'green'));
+    for (const p of previews) {
+      const url = `http://localhost:${p.port}`;
+      const ago = ((Date.now() - new Date(p.startedAt).getTime()) / 1000 / 60).toFixed(1);
+      console.log(color(`  ${url}  ${p.label}  (pid=${p.pid}, ${ago}m ago)`, 'dim'));
+    }
+  }
+
+  // MCP registry
+  console.log();
+  const mcpReg = await getMcpRegistry({ refresh: false });
+  if (mcpReg.mcps.length === 0) {
+    console.log(color('○ MCPs: none registered (run `node scripts/discover-mcps.mjs` to scan)', 'dim'));
+  } else {
+    console.log(color(`✓ MCPs: ${mcpReg.mcps.length} available`, 'green'));
+    for (const m of mcpReg.mcps) {
+      console.log(color(`  ${m.name}  (${m.tools.length} tools)`, 'dim'));
+    }
+  }
+
+  // Agent telemetry
+  console.log();
+  const { readInvocations } = await import('./lib/agent-invocation-logger.mjs');
+  const { detectUnderperformers } = await import('./lib/underperformer-detector.mjs');
+  const allInv = await readInvocations({ limit: 10000 });
+  if (allInv.length < 10) {
+    console.log(color(`○ Agent telemetry: ${allInv.length} invocations logged (need ≥10 for analysis)`, 'dim'));
+  } else {
+    const flagged = detectUnderperformers(allInv);
+    if (flagged.length === 0) {
+      console.log(color(`✓ Agent telemetry: ${allInv.length} invocations, no underperformers`, 'green'));
+    } else {
+      console.log(color(`⚠ Agent telemetry: ${flagged.length} underperformers detected (run /evolve-strengthen)`, 'yellow'));
+      for (const f of flagged) {
+        console.log(color(`  - ${f.agent_id}: ${f.reason} (${f.value})`, 'dim'));
+      }
+    }
   }
 }
 

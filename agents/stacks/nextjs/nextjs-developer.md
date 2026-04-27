@@ -128,6 +128,13 @@ Returns:
 **Implementer**: evolve:stacks/nextjs:nextjs-developer
 **Date**: YYYY-MM-DD
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Scope
 - Routes added/modified: app/<path>

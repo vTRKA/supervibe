@@ -142,6 +142,13 @@ Returns a schema/migration ADR:
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Context
 <what problem, what data, what query patterns, what scale>

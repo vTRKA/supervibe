@@ -120,6 +120,32 @@ Beyond semantic, the same `code.db` has a **code graph** with symbols + edges:
 
 ---
 
+## Preview Server (local mockup hosting)
+
+Design / prototype agents can spawn a local `http://localhost:NNNN` to serve generated HTML/CSS/JS with hot-reload — user opens in browser, edits propagate via SSE within ~200ms.
+
+**When to use:** after `evolve:landing-page`, `evolve:prototype`, `evolve:interaction-design-patterns`, or any agent that produces visual output.
+
+**Skill:** `evolve:preview-server`
+
+**CLI:**
+| Form | Action |
+|------|--------|
+| `node $CLAUDE_PLUGIN_ROOT/scripts/preview-server.mjs --root <dir>` | Start server, print URL |
+| `... --list` | List running servers |
+| `... --kill <port>` | Kill specific server |
+| `... --kill-all` | Kill all |
+
+**Auto-cleanup:** SessionStart prunes stale registry entries (PIDs no longer alive). SIGINT/SIGTERM cleanup on session end. Idle-shutdown after 30min of no activity (--idle-timeout configurable).
+
+**Status:** `npm run evolve:status` shows running previews with URL/PID/age.
+
+**Optional Playwright integration:** when MCP available, skill captures screenshot to `.claude/memory/previews/<label>-<timestamp>.png` as evidence.
+
+**Constraints:** binds to 127.0.0.1 only (no network access); zero new deps (pure node:http + SSE).
+
+---
+
 ## Confidence Engine
 
 Every agent output is scored against an applicable rubric (0–10). Gate threshold: **≥9** for non-blocking acceptance, **≥8** with override allowed once-per-task with logged rationale.
@@ -144,6 +170,48 @@ Every agent output is scored against an applicable rubric (0–10). Gate thresho
 **Override flow:** when a justified result scores 8.x, agent may override with `evolve:_core:quality-gate-reviewer` reviewing the rationale. Override is logged to `.claude/confidence-log.jsonl`. Override rate >5% in a 100-entry window triggers SessionStart warning.
 
 **Skill:** `evolve:confidence-scoring` — applies the rubric and emits structured score + evidence.
+
+---
+
+## Agent Evolution Loop (Phase G + H)
+
+Plugin tracks every agent invocation and detects degradation:
+
+1. **Logger** (`scripts/lib/agent-invocation-logger.mjs`) — append-only JSONL at `.claude/memory/agent-invocations.jsonl`
+2. **Hook** (`scripts/hooks/post-tool-use-log.mjs`) — wired via `PostToolUse` matcher `Task`, logs every subagent dispatch with extracted confidence score + override marker
+3. **Effectiveness tracker** (`scripts/effectiveness-tracker.mjs`) — aggregates log → updates each agent's `frontmatter.effectiveness` block (iterations, last-task, last-outcome, last-applied, avg-confidence, override-rate). Runs on `Stop` hook.
+4. **Underperformer detector** (`scripts/lib/underperformer-detector.mjs`) — flags agents with `avg-confidence < 8.5` OR rising override-rate trend (Δ ≥ 40% across recent window).
+5. **SessionStart surface** — banner shows flagged agents + recommends `/evolve-strengthen`.
+6. **Auto-strengthen trigger** (`scripts/lib/auto-strengthen-trigger.mjs`) — `/evolve-strengthen` (no args) reads suggestions, asks user confirmation, dispatches strengthen sequentially per agent with diff-gate.
+
+**Discipline:**
+- Underperformers reviewed at every SessionStart
+- Manual strengthen always wins — auto-trigger never modifies agent files without explicit user gate per diff
+- Detector requires ≥10 invocations before flagging anything
+
+**Override rate** > 5% in 100-entry window also triggers `/evolve-audit` recommendation (existing behavior).
+
+**E2E:** `tests/evolution-loop-e2e.test.mjs` proves the loop closes (log → aggregate → detect → suggest).
+
+---
+
+## Canonical agent output footer (mandatory)
+
+Every agent's last 3-5 lines MUST contain a canonical footer that the PostToolUse hook can parse:
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: <rubric-id-from-confidence-rubrics-dir>
+```
+
+**Why:** the evolution loop's PostToolUse hook regex-matches `Confidence: N/10` to log a score. Without the canonical format → score=0 → false underperformer flag.
+
+**Where to put it:** as a fenced code block (preferred) or plain text inside the agent's `## Output contract` section. The agent definition file MUST include this in `## Output contract` so authors know to print it.
+
+**For agents that legitimately can't score themselves** (e.g. pure-research read-only agents): output `Confidence: N/A` and `Rubric: read-only-research` — the regex treats `N/A` as null and skips logging.
+
+**Validator:** `npm run validate:agent-footers` — fails build if any agent's `## Output contract` lacks a Confidence line + Rubric line.
 
 ---
 
@@ -396,6 +464,23 @@ Individual scripts:
 5. Search memory: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"` — past decisions
 6. Search code: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` — existing patterns
 7. Read `docs/specs/2026-04-27-evolve-framework-design.md` for full architectural rationale
+
+---
+
+## Reference document templates
+
+Strengthened planning skills reference these templates in `docs/templates/`:
+
+| Template | Used by | Sections required |
+|----------|---------|-------------------|
+| `PRD-template.md` | `evolve:prd` | TL;DR / Problem / Users / Competitive / Goals / Non-goals / Stories / Solution / Risks / Deprecation / Instrumentation / Launch / Open questions |
+| `ADR-template.md` | `evolve:adr` | Status / Context / Decision / Alternatives matrix / NFRs / Consequences / Review trigger / Out of scope / Related |
+| `plan-template.md` | `evolve:writing-plans` | Goal / Architecture / Files / Critical path / Tasks (TDD steps) / Review gates / Self-review / Handoff |
+| `RFC-template.md` | proposals across teams | Summary / Motivation / Design / Drawbacks / Alternatives / Prior art / Unresolved |
+| `brainstorm-output-template.md` | `evolve:brainstorming` | Problem / Decomposition / Competitive / Options / Risks / Kill criteria / Matrix / Recommendation |
+| `intake-template.md` | `evolve:requirements-intake` | Request / Restated / Personas / Constraints / Success / Out of scope / Stakeholders / Open questions |
+
+These are skeletons — copy-paste and fill in. Skills reference them and verify completeness in their Verification step.
 
 ---
 

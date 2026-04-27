@@ -137,6 +137,13 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <endpoint / module / PR>
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## Metric & Budget
 - Primary metric: <p95 latency / throughput / peak RSS / LCP>

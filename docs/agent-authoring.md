@@ -78,15 +78,46 @@ Specific commands the agent runs to prove done.
 ### `## Out of scope`
 What this agent must NOT touch + what it must NOT decide.
 
+### `## Output contract` — Canonical footer (MANDATORY)
+
+Every agent's `## Output contract` section MUST end with this block (verbatim, in a code fence — placeholders OK because this is the contract spec, not the runtime value):
+
+````
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: <rubric-id>
+```
+````
+
+At runtime the agent prints the actual numbers (e.g. `Confidence: 9.2/10`).
+
+Without this footer:
+- `PostToolUse` hook can't parse the score → `confidence_score=0` in invocation log
+- Agent gets falsely flagged as underperformer
+- `npm run validate:agent-footers` fails the build (gate in `npm run check`)
+
+For pure-research read-only agents that can't produce a meaningful confidence:
+````
+```
+Confidence: N/A
+Override: false
+Rubric: read-only-research
+```
+````
+
+The hook treats `N/A` as null and skips logging.
+
 ## Quality bar (agent-quality rubric)
 
-5 dimensions × 2 weight = 10 max:
+6 dimensions = 10 max:
 
-1. **persona-depth** — 15+ years declared, core principle, priorities
-2. **scope-precision** — concrete paths/dirs (not vague)
-3. **anti-patterns** — ≥4 with reasoning
-4. **verification-commands** — ≥2 named commands
-5. **size-and-shape** — ≥250 lines, ≤25 KB, all required frontmatter
+1. **persona-depth** (×2) — 15+ years declared, core principle, priorities
+2. **scope-precision** (×2) — concrete paths/dirs (not vague)
+3. **anti-patterns** (×2) — ≥4 with reasoning
+4. **verification-commands** (×2) — ≥2 named commands
+5. **size-and-shape** (×1) — ≥250 lines, ≤25 KB, all required frontmatter
+6. **canonical-output-format** (×1) — Output contract has Confidence + Override + Rubric footer
 
 Threshold: ≥9 to ship. **Note**: in v0.x, many agents are 60-150 lines (compact form). `evolve:strengthen` pass will expand to ≥250.
 

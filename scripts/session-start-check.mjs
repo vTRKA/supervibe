@@ -125,6 +125,48 @@ async function main() {
 
   // Phase D: code index health (last so user sees stale-artifact warnings first)
   await reportCodeIndexHealth();
+
+  // Phase E: prune stale preview-server registry entries
+  async function pruneStalePreviewServers() {
+    try {
+      const { listServers } = await import('./lib/preview-server-manager.mjs');
+      await listServers();
+    } catch {
+      // Non-fatal
+    }
+  }
+  await pruneStalePreviewServers();
+
+  // Phase F: discover MCPs and populate registry
+  async function refreshMcpRegistry() {
+    try {
+      const { discoverMcps } = await import('./lib/mcp-registry.mjs');
+      const found = await discoverMcps({});
+      if (found.length > 0) {
+        console.log(`[evolve] MCPs available ✓ ${found.length} (${found.map(m => m.name).join(', ')})`);
+      }
+    } catch {
+      // Non-fatal — agents fall back to WebFetch/Grep
+    }
+  }
+  await refreshMcpRegistry();
+
+  // Phase G: surface underperforming agents
+  async function reportUnderperformers() {
+    try {
+      const { readInvocations } = await import('./lib/agent-invocation-logger.mjs');
+      const { detectUnderperformers } = await import('./lib/underperformer-detector.mjs');
+      const all = await readInvocations({ limit: 10000 });
+      if (all.length < 10) return;
+      const flagged = detectUnderperformers(all);
+      if (flagged.length === 0) return;
+      console.log(`[evolve] ⚠ ${flagged.length} agent(s) underperforming — recommend /evolve-strengthen:`);
+      for (const f of flagged) {
+        console.log(`  - ${f.agent_id}: ${f.reason} (${f.value})`);
+      }
+    } catch {}
+  }
+  await reportUnderperformers();
 }
 
 main().catch(err => { console.error('session-start-check error:', err.message); process.exit(0); });

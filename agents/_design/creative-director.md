@@ -132,6 +132,13 @@ Returns a brand direction document at `prototypes/_brandbook/direction.md` (or p
 **Date**: YYYY-MM-DD
 **Engagement type**: new-brand | refresh | extension | sub-brand | co-brand
 **Confidence**: N/10
+**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+
+```
+Confidence: <N>.<dd>/10
+Override: <true|false>
+Rubric: agent-delivery
+```
 
 ## One-line vision
 <single sentence the team can recite>
