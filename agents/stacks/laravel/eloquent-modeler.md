@@ -151,7 +151,6 @@ Returns a model design report:
 **Modeler**: evolve:stacks/laravel:eloquent-modeler
 **Date**: YYYY-MM-DD
 **Scope**: app/Models/<Model>.php (+ migration, factory, observer)
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

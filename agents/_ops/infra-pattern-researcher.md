@@ -120,7 +120,7 @@ Trade-off priority (which dimension dominates the decision):
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: research-output
 ```
 
 ## Infra Pattern: <topic>

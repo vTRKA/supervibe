@@ -136,7 +136,6 @@ Returns:
 **Reviewer**: evolve:_ops:performance-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <endpoint / module / PR>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

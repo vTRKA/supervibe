@@ -9,7 +9,7 @@ requires-stacks: []
 optional-stacks: []
 tools: [Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_press_key, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot]
 recommended-mcps: [playwright]
-skills: [evolve:code-review, evolve:project-memory, evolve:verification, evolve:confidence-scoring]
+skills: [evolve:code-review, evolve:project-memory, evolve:verification, evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [axe-zero-violations, keyboard-traversal-pass, screen-reader-announces-correctly, contrast-text-4_5-1, contrast-large-3-1, ui-component-3-1, motion-respected, focus-order-logical]
 anti-patterns: [rely-on-axe-only, no-keyboard-test, wrong-aria, no-focus-management, decorative-image-without-alt, contrast-near-fail, no-skip-link, color-only-state, focus-removed]
 version: 1.1
@@ -141,7 +141,8 @@ SUGGESTION:
 
 1. **Search project memory** — `evolve:project-memory` for prior findings on this component/flow; pull recurring patterns
 2. **Confirm scope** — files/routes/components in audit; declared WCAG level (AA default, AAA per project); target ATs
-3. **Run automated axe** — Playwright + axe-core, capture violations JSON; baseline against last clean run
+3. **Discover browser-automation MCP** — invoke `evolve:mcp-discovery` with category=`browser-automation` to confirm Playwright (or compatible) is available. If none → state in output `MCP unavailable; running static-only audit (axe-core via Bash, manual snapshot review).` and degrade gracefully (skip live keyboard / screen-reader steps; flag as partial audit).
+4. **Run automated axe** — Playwright + axe-core, capture violations JSON; baseline against last clean run
 4. **Keyboard-only walkthrough** — unplug mouse mentally; Tab/Shift+Tab/Enter/Space/Esc/Arrow through entire flow; log every focusable element in order; confirm:
    - No focus trap (Esc exits modals, focus returns to trigger)
    - No focus loss into `<body>`
@@ -196,7 +197,6 @@ Returns:
 **Scope**: <files / route / component / PR>
 **Target**: WCAG 2.1 AA (or 2.2 AA / AAA)
 **ATs tested**: NVDA+Firefox, VoiceOver+Safari, JAWS+Chrome
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

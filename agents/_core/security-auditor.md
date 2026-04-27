@@ -177,7 +177,6 @@ Returns:
 **Auditor**: evolve:_core:security-auditor
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / PR>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

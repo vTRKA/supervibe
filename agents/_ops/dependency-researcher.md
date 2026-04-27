@@ -176,7 +176,7 @@ Snyk advisor → https://snyk.io/advisor/npm-package/<pkg>
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: research-output
 ```
 
 ## Dependency Research: <pkg>

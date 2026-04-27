@@ -203,7 +203,6 @@ Returns:
 **Modeler**: evolve:_ops:data-modeler
 **Date**: YYYY-MM-DD
 **Scope**: <table set / migration / module>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

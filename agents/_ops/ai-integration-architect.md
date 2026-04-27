@@ -131,7 +131,6 @@ Returns:
 **Architect**: evolve:_ops:ai-integration-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

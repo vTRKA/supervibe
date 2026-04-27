@@ -178,7 +178,7 @@ Returns a research note in this shape (Markdown):
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: research-output
 ```
 
 ## Security Research Note: <scope>

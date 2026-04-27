@@ -161,13 +161,12 @@ Returns a research note in this exact structure:
 **Date:** YYYY-MM-DD
 **TTL:** 30 days (re-verify after YYYY-MM-DD)
 **Status:** cache-hit | fresh-fetch
-**Confidence:** N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: research-output
 ```
 
 ## Query

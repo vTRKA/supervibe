@@ -198,7 +198,6 @@ Returns:
 **Architect**: evolve:_core:auth-architect
 **Date**: YYYY-MM-DD
 **Scope**: <module / PR / endpoint set>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

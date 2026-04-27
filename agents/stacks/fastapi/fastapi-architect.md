@@ -126,7 +126,6 @@ Returns:
 **Architect**: evolve:stacks:fastapi:fastapi-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED-BY <ADR>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

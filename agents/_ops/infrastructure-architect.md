@@ -216,7 +216,6 @@ Returns:
 **Architect**: evolve:_ops:infrastructure-architect
 **Date**: YYYY-MM-DD
 **Scope**: <service / module / system>
-**Confidence**: N/10
 **Status**: PROPOSED | ACCEPTED | DEPRECATED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 

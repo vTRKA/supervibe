@@ -134,7 +134,6 @@ Returns a bundle of artifacts:
 **Author**: evolve:_ops:devops-sre
 **Date**: YYYY-MM-DD
 **Scope**: <service / pipeline / incident response>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

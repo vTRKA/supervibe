@@ -173,7 +173,6 @@ Returns:
 **Reviewer**: evolve:_ops:dependency-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <new dep | upgrade | quarterly audit | vuln response>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

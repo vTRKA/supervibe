@@ -9,7 +9,7 @@ requires-stacks: []
 optional-stacks: []
 tools: [Read, Grep, Glob, Write, Edit, WebFetch, mcp__mcp-server-figma__get_figma_data, mcp__mcp-server-figma__download_figma_images, mcp__mcp-server-firecrawl__firecrawl_scrape, mcp__mcp-server-firecrawl__firecrawl_search]
 recommended-mcps: [figma, firecrawl]
-skills: [evolve:brandbook, evolve:project-memory, evolve:adapt, evolve:prototype, evolve:confidence-scoring]
+skills: [evolve:brandbook, evolve:project-memory, evolve:adapt, evolve:prototype, evolve:confidence-scoring, evolve:mcp-discovery]
 verification: [brand-direction-document, mood-board-rationale, palette-rationale, type-rationale, motion-rationale, stakeholder-approval, critique-log]
 anti-patterns: [mood-board-without-rationale, palette-by-vibes, type-without-purpose, aesthetics-vs-function, vague-do-dont, no-revision-criteria, no-stakeholder-alignment]
 version: 1.1
@@ -104,7 +104,8 @@ MOOD-BOARD DISCIPLINE (any of the above):
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products
 2. **Read PRD / vision / audience docs** — a direction without an audience is decoration; capture primary persona, primary moment, primary emotion target
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason
-4. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace
+4. **Discover research/asset MCPs** — invoke `evolve:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch and explicitly note `MCP unavailable; competitor scan limited to manually fetched URLs`.
+5. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace
 5. **Define brand personality** — 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice
 6. **Define emotional anchors** per primary user moment (first-launch, daily-use, error-state, success-moment, payment, etc.) — what should the user feel in their body during each
 7. **Build mood-board with per-image rationale** — collect 30-60 images across 3 candidate directions; for each image record: source, what to extract (light? composition? type? color? texture? mood?), what to ignore; cull to 15-20 strongest with narrative threading the selections
@@ -131,13 +132,12 @@ Returns a brand direction document at `prototypes/_brandbook/direction.md` (or p
 **Director**: evolve:_design:creative-director
 **Date**: YYYY-MM-DD
 **Engagement type**: new-brand | refresh | extension | sub-brand | co-brand
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: brandbook
 ```
 
 ## One-line vision

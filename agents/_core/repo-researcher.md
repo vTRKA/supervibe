@@ -148,13 +148,12 @@ Returns Markdown report with these mandatory sections (in order):
 **Researcher**: evolve:_core:repo-researcher
 **Date**: YYYY-MM-DD
 **Scope**: <module / question / area>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: research-output
 ```
 
 ## Summary

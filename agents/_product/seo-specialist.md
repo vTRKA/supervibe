@@ -145,7 +145,6 @@ Returns:
 **Auditor**: evolve:_product:seo-specialist
 **Date**: YYYY-MM-DD
 **Scope**: <pages / template / locale / migration>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

@@ -173,7 +173,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <migration file / PR / query>
 **Engine**: <postgres 15.4 | mysql 8.0.34 | ...>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

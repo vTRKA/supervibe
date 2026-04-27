@@ -168,7 +168,6 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: evolve:stacks/laravel:laravel-architect
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

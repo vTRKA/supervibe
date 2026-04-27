@@ -179,7 +179,6 @@ Returns Markdown report:
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
 **Architecture style (per CLAUDE.md):** <hexagonal | FSD | modular-monolith | ...>
-**Confidence:** N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

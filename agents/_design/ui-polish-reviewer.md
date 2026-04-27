@@ -9,7 +9,7 @@ requires-stacks: []
 optional-stacks: []
 tools: [Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_resize, mcp__playwright__browser_evaluate, mcp__playwright__browser_press_key, mcp__playwright__browser_hover, mcp__playwright__browser_click]
 recommended-mcps: [playwright]
-skills: [evolve:code-review, evolve:project-memory, evolve:code-search, evolve:confidence-scoring, evolve:interaction-design-patterns]
+skills: [evolve:code-review, evolve:project-memory, evolve:code-search, evolve:confidence-scoring, evolve:interaction-design-patterns, evolve:mcp-discovery]
 verification: [8-dim-review-output, severity-ranked-findings, contrast-measurements, baseline-screenshots-diffed, keyboard-traversal-trace, responsive-screenshots-4-breakpoints, ds-token-audit-clean]
 anti-patterns: [review-only-mobile, ignore-keyboard, ds-token-bypass-tolerance, no-state-coverage, vague-feedback, cosmetic-only, no-baseline-screenshots]
 version: 1.1
@@ -120,7 +120,8 @@ For each dimension below, classify the dimension's worst finding:
 1. **Search project memory** for prior reviews on this surface and any token-policy decisions
 2. **Read the spec / ticket / Figma reference** to know the intended hierarchy and copy
 3. **Locate the component(s)**: Grep for component name; Read source; identify token usage points
-4. **Open the live UI in browser** via `mcp__playwright__browser_navigate` to the route under review
+4. **Discover browser-automation MCP** — invoke `evolve:mcp-discovery` with category=`browser-automation`. Use returned tool prefix in subsequent steps. If none available → output `MCP unavailable; running static-only review (Read source + Grep tokens, no live screenshots / state captures)` and downgrade to a partial polish review (skip steps that require live DOM).
+5. **Open the live UI in browser** via the discovered navigate tool to the route under review
 5. **Capture baseline screenshot** at 1440px viewport (`browser_take_screenshot`)
 6. **Hierarchy review**: `browser_snapshot` → trace expected scan path; verify primary CTA dominance vs secondary; verify type scale matches information importance
 7. **Spacing rhythm**: `browser_evaluate` `getComputedStyle` on key spacing properties; check every margin/padding/gap is on the token scale (e.g., 4/8/12/16/24/32/48/64); flag magic numbers
@@ -144,7 +145,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <route / component / PR>
 **Viewports tested**: 320 / 768 / 1024 / 1440
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

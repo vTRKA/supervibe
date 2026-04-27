@@ -126,7 +126,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Domain(s)**: <sending domains audited>
 **ESP**: <provider>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

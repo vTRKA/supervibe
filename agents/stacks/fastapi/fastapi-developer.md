@@ -144,7 +144,6 @@ Returns:
 **Developer**: evolve:stacks/fastapi:fastapi-developer
 **Date**: YYYY-MM-DD
 **Scope**: <files / endpoints / module>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

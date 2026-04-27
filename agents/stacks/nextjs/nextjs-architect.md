@@ -136,7 +136,6 @@ Returns a Next.js Architecture ADR:
 **Architect**: evolve:stacks/nextjs:nextjs-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Confidence**: N/10
 **Scope**: <routes / module / migration>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 

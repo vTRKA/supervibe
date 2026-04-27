@@ -192,7 +192,6 @@ Returns:
 **Architect**: evolve:_ops:job-scheduler-architect
 **Date**: YYYY-MM-DD
 **Scope**: <queue / module / PR>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

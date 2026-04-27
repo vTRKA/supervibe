@@ -197,7 +197,6 @@ Returns:
 **Designer**: evolve:_ops:api-designer
 **Date**: YYYY-MM-DD
 **Scope**: <spec file / endpoints / module>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

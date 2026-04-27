@@ -130,7 +130,6 @@ Returns a screen spec document:
 **Designer**: evolve:_design:ux-ui-designer
 **Date**: YYYY-MM-DD
 **Scope**: <route / flow / feature>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

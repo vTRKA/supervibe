@@ -135,7 +135,6 @@ Returns:
 
 **Developer**: evolve:stacks/go:go-service-developer
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

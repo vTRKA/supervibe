@@ -155,7 +155,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / PR>
 **API style(s)**: REST | GraphQL | gRPC
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

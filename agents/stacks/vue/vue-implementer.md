@@ -137,7 +137,6 @@ Returns:
 
 **Implementer**: evolve:stacks/vue:vue-implementer
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

@@ -123,13 +123,12 @@ Returns a single Markdown document:
 **Author**: evolve:_product:systems-analyst
 **Date**: YYYY-MM-DD
 **Status**: DRAFT | REVIEW | APPROVED
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: requirements
 ```
 
 ## 1. Objective

@@ -9,7 +9,7 @@ requires-stacks: []
 optional-stacks: []
 tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_evaluate, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for]
 recommended-mcps: [playwright]
-skills: [evolve:tdd, evolve:verification, evolve:code-search, evolve:project-memory]
+skills: [evolve:tdd, evolve:verification, evolve:code-search, evolve:project-memory, evolve:mcp-discovery]
 verification: [coverage-metrics, test-pyramid-balance, no-flaky-tests, fixtures-not-shared-state, deterministic-runs, ci-gate-green]
 anti-patterns: [test-implementation-detail, shared-mutable-fixtures, sleep-not-wait, over-mocking, flaky-tolerance, test-coupling, coverage-without-meaning]
 version: 1.1
@@ -92,7 +92,8 @@ Rule of thumb ratio target: ~70% unit, ~20% integration, ~10% e2e (by count). Ad
 
 1. **Search project memory** for prior flake reports, coverage decisions, and suite-restructuring postmortems in this area
 2. **Read manifest** to detect test runners (Pest/Vitest/Playwright/pytest/Jest) and current coverage thresholds
-3. **Map existing test pyramid** — count unit/integration/e2e by directory; flag if inverted
+3. **Discover browser-automation MCP for E2E** — when scope includes E2E, invoke `evolve:mcp-discovery` with category=`browser-automation`. Use returned tool prefix for E2E specs. If none → write E2E specs as `*.skip.spec.ts` (or stack equivalent) with a TODO note `MCP unavailable — restore when discovered`, and document partial-coverage in output.
+4. **Map existing test pyramid** — count unit/integration/e2e by directory; flag if inverted
 4. **Identify behavior to test** — read spec, PR description, or feature acceptance criteria; extract observable behaviors (not implementation details)
 5. **Select test type** per decision tree for each behavior
 6. **Design fixtures with isolation** — per-test setup/teardown; immutable shared data only; factory functions over JSON blobs; reset DB between tests (transaction rollback or truncate)
@@ -118,7 +119,6 @@ Returns:
 **Engineer**: evolve:_product:qa-test-engineer
 **Date**: YYYY-MM-DD
 **Scope**: <module / feature / PR>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

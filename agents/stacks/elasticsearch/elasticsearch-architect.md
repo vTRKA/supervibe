@@ -168,7 +168,6 @@ Returns a mapping/analyzer/topology ADR:
 **Date**: YYYY-MM-DD
 **Distribution**: Elasticsearch 8.x | OpenSearch 2.x | AWS OpenSearch Service
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

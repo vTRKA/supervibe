@@ -124,14 +124,13 @@ Returns:
 **Curator**: evolve:_meta:memory-curator
 **Date**: YYYY-MM-DD
 **Scope**: .claude/memory/ (all categories)
-**Confidence**: N/10
 **Backup**: .claude/memory/_backup/<timestamp>/
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
 Confidence: <N>.<dd>/10
 Override: <true|false>
-Rubric: agent-delivery
+Rubric: memory-entry
 ```
 
 ## Baseline (before curation)

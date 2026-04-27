@@ -155,7 +155,6 @@ Returns a schema/index/topology ADR:
 **Architect**: evolve:stacks:mongodb:mongo-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

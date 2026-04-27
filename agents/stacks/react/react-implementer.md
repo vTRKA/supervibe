@@ -148,7 +148,6 @@ Returns:
 **Author**: evolve:stacks/react:react-implementer
 **Date**: YYYY-MM-DD
 **Files**: <list of created / modified paths>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

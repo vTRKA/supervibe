@@ -161,7 +161,6 @@ Returns a schema/migration ADR:
 **Architect**: evolve:stacks:mysql:mysql-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

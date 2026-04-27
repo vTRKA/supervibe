@@ -132,7 +132,6 @@ Returns:
 
 **Developer**: evolve:stacks/android:android-developer
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

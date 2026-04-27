@@ -249,7 +249,6 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: evolve:stacks/graphql:graphql-schema-designer
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

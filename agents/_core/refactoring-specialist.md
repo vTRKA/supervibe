@@ -144,7 +144,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / symbol>
 **Operation(s)**: rename | extract-method | inline | move | split-class | merge-modules | extract-module
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

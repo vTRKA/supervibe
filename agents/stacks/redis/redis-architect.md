@@ -138,7 +138,6 @@ Returns a Redis architecture ADR:
 **Author**: evolve:stacks/redis:redis-architect
 **Date**: YYYY-MM-DD
 **Status**: Proposed | Accepted | Superseded
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

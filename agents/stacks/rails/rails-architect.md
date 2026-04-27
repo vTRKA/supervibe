@@ -136,7 +136,6 @@ Returns:
 
 **Architect**: evolve:stacks/rails:rails-architect
 **Date**: YYYY-MM-DD
-**Confidence**: N/10
 **ADR**: `.claude/memory/decisions/NNNN-<slug>.md`
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 

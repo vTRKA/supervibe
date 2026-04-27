@@ -129,7 +129,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <files / component / flow>
 **Voice ref**: <path to voice-tone doc, version>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

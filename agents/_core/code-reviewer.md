@@ -149,7 +149,6 @@ Returns Markdown report:
 **Reviewer:** evolve:_core:code-reviewer
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
-**Confidence:** N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

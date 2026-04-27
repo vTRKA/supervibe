@@ -126,7 +126,6 @@ Returns:
 **Implementer**: evolve:_product:analytics-implementation
 **Date**: YYYY-MM-DD
 **Scope**: <feature / funnel / vendor>
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```

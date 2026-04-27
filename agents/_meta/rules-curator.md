@@ -131,7 +131,6 @@ Returns:
 **Action**: ADD | MODIFY | RETIRE | SYNC | RESOLVE-CONTRADICTION
 **Rule**: `.claude/rules/<slug>.md`
 **Rule-quality score**: N/10
-**Confidence**: N/10
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
