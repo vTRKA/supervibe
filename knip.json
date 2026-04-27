@@ -12,7 +12,8 @@
     "scripts/search-memory.mjs",
     "scripts/build-code-index.mjs",
     "scripts/search-code.mjs",
-    "scripts/watch-memory.mjs"
+    "scripts/watch-memory.mjs",
+    "scripts/evolve-status.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

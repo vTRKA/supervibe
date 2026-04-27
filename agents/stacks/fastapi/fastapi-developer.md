@@ -103,10 +103,20 @@ Large response (file download, NDJSON export, SSE)?
      - Set media_type explicitly; consider Content-Disposition for downloads
 ```
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions/patterns for this domain (e.g. past auth choices, pagination conventions, error-code registry)
 2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`. Read top 3 hits for context before writing code.
+   - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
+   - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
+   - Skip for greenfield tasks
 3. **Read related artifacts** — existing routers under `app/api/`, sibling schemas in `app/schemas/`, the repository for the entity being touched, and recent test patterns in `tests/api/`
 4. **Confirm contract** — note expected request shape, response shape, status codes, error cases, auth requirements, pagination/filter semantics. If ambiguous, surface for clarification before writing tests
 5. **Write failing pytest test FIRST** (TDD red phase):
@@ -165,6 +175,30 @@ Returns:
 - <e.g. add rate-limit middleware once shared infra lands>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Sync driver in async app** — `psycopg2`, `requests`, `pymongo` (sync), `redis-py` without `asyncio` mode all block the event loop. Use `asyncpg`, `httpx.AsyncClient`, `motor`, `redis.asyncio` instead. Symptom: latency cliffs under concurrency.
@@ -174,6 +208,7 @@ Returns:
 - **No dependency injection** — instantiating DB session / service / config at module import time, or pulling globals. Breaks testability (can't substitute mocks) and request isolation. Always `Depends()`.
 - **Blocking IO in event loop** — `open(path).read()` for large files, `time.sleep`, CPU-heavy regex / JSON parsing on big payloads, sync subprocess calls. Offload via `await run_in_threadpool(fn, *args)` or use async equivalents (`aiofiles`, `asyncio.sleep`).
 - **No pagination** — returning unbounded lists (`SELECT * FROM table`). At small scale it works; at scale it OOMs the server and times out the client. Every list endpoint takes `limit` + `offset` (or cursor) with sane defaults and a hard max.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

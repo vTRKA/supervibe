@@ -239,6 +239,26 @@ For each curation run:
 6. Rebuild index to refresh `code.db` cross-references
 7. Output repair-only report with before/after broken-link count
 
+### Common workflow: graph-pattern hygiene
+
+When `evolve:project-memory` returns ≥3 entries with tag `code-graph`:
+
+1. Group by affected module (parse `Body` for `affected files` references)
+2. Look for contradictions (e.g., 2 patterns prescribing opposite refactors of same area):
+   - Same symbol mentioned with conflicting recommendations
+   - Boundary suggestions that contradict each other
+3. Consolidate into one canonical pattern:
+   - Title: `<Module> coupling — canonical analysis`
+   - Body: merged graph evidence with date-stamped sources
+   - Tags: `coupling`, `<module-name>`, `code-graph`, `canonical`
+4. Mark superseded entries deprecated (set `deprecated-by: <new-id>` in their frontmatter)
+5. Cross-link: superseded entry's frontmatter `replaced-by`, new entry's body lists `superseded-entries`
+
+**Trigger this workflow:**
+- Quarterly hygiene pass
+- After incident postmortems that touched 3+ graph-tagged patterns
+- When `evolve:project-memory` semantic search returns redundant results
+
 ## Out of scope
 
 Do NOT touch: source code outside `.claude/memory/` (curator works only in memory tree + `scripts/build-memory-index.mjs` invocation).

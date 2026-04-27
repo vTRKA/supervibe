@@ -99,6 +99,13 @@ ANY CRITICAL → BLOCKED
 ANY MAJOR → BLOCKED (unless explicit override with reason)
 Only MINOR/SUGGESTION → APPROVED WITH NOTES
 None → APPROVED
+
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
 ```
 
 ## Procedure
@@ -180,6 +187,30 @@ Returns Markdown report:
 - <issue spotted but not addressed>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Rubber-stamp LGTM**: approving without specifics is non-review. Every approval names the dimensions checked.
@@ -189,6 +220,7 @@ Returns Markdown report:
 - **Severity inflation**: every finding ≠ CRITICAL. Reserve CRITICAL for true production-incident risks. Inflated severities cause alert fatigue.
 - **Ignore blast radius**: a typo in a comment ≠ a typo in a security check. Same line count, different severity.
 - **Blame author**: "you forgot X" → "X is missing here". Code-focused, blame-free.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 
@@ -198,6 +230,7 @@ For each review, the reviewer must produce:
 - `git log --oneline -5` to verify intent matches commits
 - Per-dimension finding count
 - Aggregate verdict with reasoning citing severity per finding
+- For diffs that rename/move a symbol: verify all callers updated via `--callers <new-name>` AND `--callers <old-name>` (the latter should return 0 results)
 
 If reviewer cannot produce these, the review itself is BLOCKED — score <9.
 

@@ -35,25 +35,30 @@ This skill replaces blind grep. It surfaces conceptually-related code even when 
 
 ```
 What's the search intent?
-  Concept-level ("auth flow", "error handling pattern")
-    → semantic-heavy: invoke without --lang/--kind, let semantic match
-  Specific symbol/name (e.g., "loginHandler")
-    → use --kind function-or-class --query "loginHandler"
-  Language-specific feature ("Eloquent scope", "React hook")
-    → --lang <language> + --query "<concept>"
-  Just need callers of known symbol
-    → use Grep tool directly (faster for exact-name lookups)
+  "How does X work?" / concept-level                  → SEMANTIC: --query "<topic>"
+  "Where is X defined?"                                → SEMANTIC + Read top hit at file:line
+  "Who calls X?" / "what depends on X?"                → GRAPH: --callers "X"
+  "What does X depend on?"                             → GRAPH: --callees "X"
+  "Show me everything around X"                        → GRAPH: --neighbors "X" --depth 2
+  "What are the most important parts of this code?"    → GRAPH: --top-symbols 20
+  "Find similar patterns to X"                         → SEMANTIC then GRAPH expand
+  Just need exact symbol name (no neighborhood)        → use Grep tool (faster)
 ```
 
 ## Procedure
 
-1. Verify index exists (Step 0)
-2. Run: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>" [--lang <name>] [--limit 10]`
-3. For each top hit (top 3-5):
-   - Read the file at returned line range to get full context
-   - Note kind (function/class/leftover) and name
-4. If hits are stale (file changed since index): re-run `npm run code:index` then re-search
-5. Synthesize for caller: list relevant file:line references + 1-line summary per
+1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/evolve-status.mjs` (or rely on SessionStart banner)
+2. Pick mode from decision tree
+3. **Semantic**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<text>" [--lang <lang>] [--limit 10]`
+4. **Graph — callers/callees**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` (or --callees)
+5. **Graph — neighborhood**: `... --neighbors "<symbol>" --depth <1-3>`
+6. **Graph — top symbols**: `... --top-symbols 20 [--kind class]` for orientation in unfamiliar code
+7. **Hybrid (recommended for refactor / impact analysis)**:
+   - First semantic: find ≥1 candidate symbol
+   - Then graph expand: `--callers "<top-hit-name>"` then `--neighbors "<top-hit-name>" --depth 2`
+   - Read top file:line refs in full for context
+8. **Disambiguation**: if a name has multiple definitions, the CLI prints all candidates. Re-run with full ID `path:kind:name:line` to pin down one
+9. If hits stale (file changed since index): re-run `npm run code:index` (or wait for watcher), then retry
 
 ## Output contract
 

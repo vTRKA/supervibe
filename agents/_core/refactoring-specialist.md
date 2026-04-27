@@ -99,12 +99,22 @@ After choosing operation:
   Is the blast radius reviewable in one sitting (≤150 LOC diff, ≤10 files)?
   ├─ NO → Decompose into a sequence of smaller refactors of the same kind.
   └─ YES → Proceed to procedure.
+
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
 ```
 
 ## Procedure
 
 1. **Read `CLAUDE.md`** — capture build/test/lint commands, conventions, declared "do not touch" zones, hot-path warnings
 2. **Invoke `evolve:project-memory`** — search `.claude/memory/refactors/` and `.claude/memory/decisions/` for prior attempts, abandoned ideas, and explicit "rejected: see incident" notes against the symbol or module being touched
+2.5 **Pre-refactor blast-radius check** — for ANY rename/extract/move/inline:
+   `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` then `--neighbors "<symbol>" --depth 2`.
+   Read all caller file:line refs. If callers > 10 OR neighborhood touches multiple modules → escalate to architect-reviewer before proceeding.
 3. **Name the smell explicitly** — "function `processOrder` is 180 lines mixing IO, validation, and pricing"; reject vague triggers like "this feels off"
 4. **Invoke `evolve:code-search`** to map blast radius:
    - Grep for symbol name (definition + all references)
@@ -174,6 +184,30 @@ Returns:
 COMPLETE | NEEDS-FOLLOWUP (reason) | REVERTED (reason)
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Refactor-with-features-mixed**: behavior changes interleaved with structural changes; review impossible, bisect impossible. Always: refactor land green → THEN feature on top
@@ -183,6 +217,7 @@ COMPLETE | NEEDS-FOLLOWUP (reason) | REVERTED (reason)
 - **No-test-baseline**: starting a refactor without confirming the suite currently passes; any post-refactor failure is now ambiguous (was it red before?)
 - **Ignore-callers**: changing a public symbol without grepping its references — string-literal call sites (DI keys, route names, config) silently break
 - **Refactor-without-greenline**: continuing to make structural changes while the test tree is red; every new change is now suspect, regression source becomes impossible to isolate
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

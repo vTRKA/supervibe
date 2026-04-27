@@ -94,6 +94,13 @@ Trigger: schema/migration/query change submitted for review
         -> require: pg_stat_user_tables evidence, autovacuum config review
 ```
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 ## Procedure
 
 1. **Search project memory** for prior migration incidents, index decisions, and known bloat hotspots in the affected tables (`evolve:project-memory`).
@@ -119,6 +126,8 @@ Trigger: schema/migration/query change submitted for review
    - **Partial index**: `WHERE status = 'active'` when most rows are inactive
    - **Covering index** (`INCLUDE`): when query needs index-only scan with extra columns
    - **Multicolumn order**: most selective + equality first, range last, ORDER BY column last
+6a. **Caller-impact check before destructive schema changes**:
+   - Before column rename/drop: `--callers <model>` (or `--callers <repo-method>`) — every caller must be assessed for breakage
 7. **Migration safety pattern selection**:
    - **Add nullable column**: single deploy, fast (metadata-only on PG 11+, MySQL 8 instant DDL)
    - **Add NOT NULL column with default**: PG 11+ instant for constant default; MySQL 8 instant; older versions require backfill — use 3-deploy
@@ -218,6 +227,30 @@ Returns:
 APPROVED | APPROVED WITH NOTES | BLOCKED
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Locking migration**: `ALTER TABLE ... ADD COLUMN NOT NULL DEFAULT <volatile>` on a hot table without batched backfill; takes `AccessExclusiveLock` for the entire rewrite. Always use the 3-deploy expand-migrate-contract pattern, or instant-DDL paths your engine version supports.
@@ -227,6 +260,7 @@ APPROVED | APPROVED WITH NOTES | BLOCKED
 - **N+1**: ORM lazy-loading inside a loop. Eager-load with `JOIN`, `IN (...)`, or framework-specific (`includes`/`with`/`prefetch_related`).
 - **Sequential scan tolerated**: "it's only 100k rows" today is 10M rows next year, and the query plan won't change until production catches fire. Require justification for any Seq Scan on a growing table.
 - **Drop column in one deploy**: schema and code drift; an in-flight request from the old binary references the dropped column and crashes. Always 3-deploy: stop writes → stop reads → drop.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

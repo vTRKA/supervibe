@@ -37,6 +37,8 @@ export class MemoryStore {
     }
 
     this.db = new DatabaseSync(this.dbPath);
+    // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual rebuild)
+    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entries (
         id TEXT PRIMARY KEY,

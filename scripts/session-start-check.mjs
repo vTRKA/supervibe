@@ -48,6 +48,65 @@ async function checkOverrideRate() {
   return { rate: overrides.length / recent.length, count: recent.length };
 }
 
+// === Phase D: code RAG + graph index health ===
+async function ensureCodeIndexFresh(projectRoot) {
+  const { CodeStore } = await import('./lib/code-store.mjs');
+  const { statSync } = await import('node:fs');
+
+  const dbPath = join(projectRoot, '.claude', 'memory', 'code.db');
+  const indexExists = existsSync(dbPath);
+
+  let action = 'skip';
+  if (!indexExists) {
+    action = 'full';
+  }
+  // For incremental refresh we rely on the file watcher (memory:watch).
+  // SessionStart hook should be fast — full reindex only if missing.
+
+  if (action === 'skip') {
+    // Just open and report stats
+    try {
+      const store = new CodeStore(projectRoot, { useEmbeddings: false });
+      await store.init();
+      const stats = store.stats();
+      store.close();
+      return { action: 'skip', stats };
+    } catch (err) {
+      return { action: 'skip', error: err.message };
+    }
+  }
+
+  const store = new CodeStore(projectRoot, { useEmbeddings: true });
+  await store.init();
+  const counts = await store.indexAll(projectRoot);
+  const stats = store.stats();
+  store.close();
+  return { action, counts, stats };
+}
+
+async function reportCodeIndexHealth() {
+  try {
+    const result = await ensureCodeIndexFresh(PROJECT_ROOT);
+    if (result.error) {
+      console.log(`[evolve] code RAG: WARN ${result.error}`);
+      return;
+    }
+    const { stats } = result;
+    if (!stats) return;
+    const resolutionPct = (stats.edgeResolutionRate * 100).toFixed(0);
+    if (result.action === 'skip') {
+      console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (fresh)`);
+      console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`);
+    } else {
+      console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (rebuilt)`);
+      console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`);
+      console.log('[evolve] full index built — subsequent sessions will be near-instant');
+    }
+  } catch (err) {
+    console.log(`[evolve] code index: WARN ${err.message}`);
+  }
+}
+
 async function main() {
   const stale = await checkStaleArtifacts();
   const overrideStats = await checkOverrideRate();
@@ -63,6 +122,9 @@ async function main() {
   if (reminders.length > 0) {
     console.log(reminders.join('\n'));
   }
+
+  // Phase D: code index health (last so user sees stale-artifact warnings first)
+  await reportCodeIndexHealth();
 }
 
 main().catch(err => { console.error('session-start-check error:', err.message); process.exit(0); });

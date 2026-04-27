@@ -90,6 +90,13 @@ What kind of bug?
     → NEVER accept "flaky" — isolate to find real cause
     → Most "flaky" = race condition OR shared mutable state OR external dep timing
     → Add @retry only as LAST resort with documented incident
+
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
 ```
 
 ## Procedure (full systematic-debugging)
@@ -118,6 +125,7 @@ What kind of bug?
    - Single test, minimal input, single function
    - Often this step alone reveals root cause
 9. **Identify root cause** (which hypothesis confirmed)
+   - After identifying suspect symbol: `--callers <symbol>` to see propagation surface; `--callees <symbol>` to enumerate downstream dependencies that may be affected
 10. **Add regression test** FIRST (red)
     - Test demonstrates the bug
     - Without test, fix can be undone by future refactor
@@ -174,6 +182,30 @@ $ <exact command>
 **Prevention recommendation** (optional): <e.g., add lint rule, type guard, schema validation>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Propose fix before confirming cause**: causes wrong fix that hides root cause; debugger appears to solve but bug returns later
@@ -184,6 +216,7 @@ $ <exact command>
 - **Stop at symptom, not root cause**: fix that addresses "user sees error" not "system writes wrong data" leaves data corrupted
 - **Fix without regression test**: fix can be undone by future refactor with no warning
 - **Skip memory search**: if similar bug happened before, repeating the investigation wastes hours
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

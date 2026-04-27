@@ -90,10 +90,20 @@ Need interactivity (state, effects, event handlers)?
   -> smallest possible "use client" leaf; pass server-fetched data as props
 ```
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions/patterns/ADRs for this domain. Note any constraints from previous tasks.
 2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for context before writing code.
+   - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
+   - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
+   - Skip for greenfield tasks
 3. **Read related route conventions** — adjacent `layout.tsx`, `page.tsx`, `loading.tsx`, `error.tsx` to match style and naming.
 4. **Read shared infrastructure** — `lib/db.ts`, `lib/auth.ts`, schema definitions, existing server actions to reuse rather than duplicate.
 5. **Write Vitest test FIRST (TDD red)** — for a server component, test the rendered HTML; for a client component, RTL queries; for a server action, test the mutation contract; for a route handler, test request/response.
@@ -150,6 +160,30 @@ Returns:
 - <items deferred or recommended for nextjs-architect>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **`"use client"` by default** — every component must be evaluated as Server Component first. Document the reason for each client promotion.
@@ -159,6 +193,7 @@ Returns:
 - **No error boundary** — one thrown promise crashes the entire layout. Add `error.tsx` per route; client component with `reset()` recovery action.
 - **Oversized client bundle** — importing heavy libs (charting, markdown, date pickers) into a client component pulls them into the route bundle. Use dynamic imports with `ssr: false` only when truly needed; prefer server-side rendering for static content.
 - **Blocking server action** — long-running work in a server action holds the form submission and the user's UI. Offload to a queue (BullMQ, Inngest, QStash); have the action enqueue and return; stream status via revalidation or websocket.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

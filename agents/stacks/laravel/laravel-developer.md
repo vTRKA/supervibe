@@ -96,10 +96,20 @@ Is it pure data manipulation tied to a model row?
   NO  → reconsider; you may be inventing a layer Laravel already provides
 ```
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang php --limit 5`. Read top 3 hits for context before writing code
+   - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
+   - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
+   - Skip for greenfield tasks
 3. **For non-trivial library API**: invoke `best-practices-researcher` (uses context7 MCP for current Laravel docs — never trust training-cutoff knowledge for framework specifics)
 4. **Read related files**: models, services, tests, existing Form Requests / Policies for naming + style conventions
 5. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
@@ -153,6 +163,30 @@ Returns:
 - <ADR needed for <design choice>>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Raw SQL without binding** (`DB::select("... WHERE id = $id")`): SQL injection risk + Eloquent benefits lost. Use parameter binding or query builder; if raw SQL is genuinely necessary, use `?` placeholders + bindings array
@@ -162,6 +196,7 @@ Returns:
 - **Callback hell in jobs** (one job that does 10 things in sequence with try/catch trees): split into chained jobs with `Bus::chain([...])` or a job-batch. Each job idempotent and retriable
 - **Eager-load-missing** (N+1 hidden by `$user->posts->each(fn($p) => $p->comments)`): always declare relationships up-front via `with(['posts.comments'])` or use `Model::preventLazyLoading()` in non-prod
 - **Fat controller** (>30 lines, multiple responsibilities, business logic inline): controller orchestrates only — validate, authorize, delegate, return. Move logic to services / models / jobs
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

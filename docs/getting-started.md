@@ -222,6 +222,36 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 
 **Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
+## Code Graph (structural relationships)
+
+Beyond semantic similarity, Evolve builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
+
+This is automatic — built on first session via SessionStart hook, kept fresh by file-watcher.
+
+```bash
+# Status check (built into SessionStart, also runnable manually)
+npm run evolve:status
+
+# Manual graph queries (agents auto-invoke these)
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "loginHandler"
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callees "BillingService"
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --neighbors "AuthMiddleware" --depth 2
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --top-symbols 20
+```
+
+**Storage:** same `.claude/memory/code.db` — extra `code_symbols` + `code_edges` tables.
+
+**Languages:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby. Vue/Svelte deferred to v1.7.
+
+**Coverage realism:** ~80% of cross-file calls are resolved (industry baseline for non-LSP graph extractors). Unresolved targets still appear with `to_name` and `kind=external` — useful for "imports from third-party X".
+
+**Large monorepos:** for 10k+ files, use lazy mode:
+```bash
+npm run code:index -- --since=HEAD~100   # only files changed in last 100 commits
+```
+
+**Discipline (enforced by `rules/use-codegraph-before-refactor.md`):** before any rename / extract / move / delete of a public symbol, agents MUST run `--callers` first. The 3-case Graph evidence template (Case A: callers found / Case B: zero verified / Case C: N/A) is shown in every agent output that touches public surface.
+
 ## Troubleshooting
 
 ### `/evolve` not recognized after install

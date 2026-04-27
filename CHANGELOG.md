@@ -5,6 +5,59 @@ All notable changes to the Evolve plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] — 2026-04-27
+
+**Code Graph (Phase D). Tree-sitter-driven structural index alongside semantic Code RAG. Agents now answer "who calls X?" / "what does Y depend on?" with cited graph evidence. Auto-startup on session begin; user sees confirmation banner. 27 tasks, 9 languages.**
+
+### Added — Codegraph (Phase D)
+
+- **`web-tree-sitter` 0.26 + 9 WASM grammars** bundled (TS, TSX, JS, Python, PHP, Go, Rust, Java, Ruby) — pure JS, no native compilation, no Docker
+- **`scripts/lib/grammar-loader.mjs`** — lazy WASM loader with Parser+Language cache + LFS-pointer detection (graceful per-language fallback if grammar broken)
+- **`scripts/lib/code-graph.mjs`** — tree-sitter symbol + edge extraction via 8 S-expression query files (`grammars/queries/*.scm`)
+- **`scripts/lib/code-graph-queries.mjs`** — `findCallers`, `findCallees`, `neighborhood` (BFS), `topSymbolsByDegree` (centrality), `disambiguate` (same-name resolution)
+- **`code_symbols` + `code_edges` tables** in existing `code.db` (CASCADE-FK, WAL mode for concurrent watcher + manual index)
+- **`search-code.mjs` flags**: `--callers`, `--callees`, `--neighbors --depth N`, `--top-symbols`, full-symbol-ID disambiguation
+- **`build-code-index.mjs --since=<git-rev>`** — lazy mode for huge monorepos (only files changed since rev)
+- **SessionStart hook**: auto-builds index if missing, prints status banner first 3 lines of every session
+- **`npm run evolve:status`** — comprehensive index health (RAG + graph + grammars + watcher + memory)
+- **Watcher heartbeat file** (`.claude/memory/.watcher-heartbeat`) — status command shows running/stale/missing
+
+### Added — Agent integration (closes "capability dark" gap)
+
+- **10 agents updated** with graph queries in Procedure + Decision tree + Output contract + Anti-patterns:
+  `code-reviewer`, `refactoring-specialist`, `repo-researcher`, `architect-reviewer`, `root-cause-debugger`, `db-reviewer`, 4 stack-developers (laravel, nextjs, fastapi, react)
+- **`CLAUDE.md`** — Code Graph capability advertised in system prompt with when-to-use table
+- **`rules/use-codegraph-before-refactor.md`** — critical-severity rule blocking refactor without callers check
+- **`confidence-rubrics/agent-delivery.yaml`** — graph-evidence-when-applicable dimension (weight 1) scoring 3-case output template
+- **`skills/code-review/SKILL.md`** — graph-aware structural-change check in decision tree + procedure
+- **`agents/_meta/memory-curator.md`** — graph-pattern hygiene workflow (consolidate/dedupe code-graph-tagged entries)
+- **`agents/_core/repo-researcher.md`** — auto-persists non-obvious graph findings to `.claude/memory/patterns/`
+- **Output contract 3-case template** (Case A: callers found / Case B: zero callers verified / Case C: N/A with reason) — ensures user sees graph evidence in every agent output
+
+### Added — Operational hardening
+
+- **WAL mode** in both `code.db` and `memory.db` — concurrent watcher + manual reindex without deadlock
+- **LFS-pointer detection** in grammar-loader — falls back per-language if grammar is 130-byte pointer (semantic RAG keeps working for that lang)
+- **Heal-on-skip**: indexFile detects files indexed before code graph existed, runs graph extraction even if hash unchanged
+- **knip allowlist** for new dynamic-loaded grammar files
+
+### Stats (v1.6.0)
+
+- **95/95 tests pass** (added: `code-graph`, `code-graph-queries`, `grammar-loader`, extended `code-store` graph integration tests = +25 tests)
+- Tree-sitter coverage: 9 languages, ~80% cross-file edge resolution baseline
+- Bundle: +~10 МБ via Git LFS (WASM grammars)
+- Agents touched: 12 (10 procedure-level + 2 memory)
+- First full index of 1000-file project: ~30s; subsequent sessions: instant via heal-on-skip
+
+### Trade-offs / Known gaps
+
+- Vue / Svelte multi-language stitching: deferred to v1.7 (needs script + template grammar coordination)
+- Cross-language imports via JSON contracts (TS↔Python): heuristic only, ~60% — fundamental limit without LSP
+- Dynamic dispatch (`obj[methodName]()`, polymorphism): heuristic name-match only — fundamental static-analysis limit
+- PageRank centrality: degree-based v1.6 only; full PageRank deferred
+
+---
+
 ## [1.5.0] — 2026-04-27
 
 **Code RAG + incremental memory + agent strengthen pass. All 46 agents at ≥250 lines with full persona / decision tree / output contract / common workflows. Code is now indexed in SQLite + embeddings; agents auto-search before non-trivial implementation. Memory cleanup is now incremental + watcher-driven.**

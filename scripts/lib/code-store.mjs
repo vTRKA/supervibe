@@ -42,6 +42,8 @@ export class CodeStore {
       await mkdir(this.dbDir, { recursive: true });
     }
     this.db = new DatabaseSync(this.dbPath);
+    // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual code:index)
+    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS code_files (
         path TEXT PRIMARY KEY,
@@ -75,6 +77,38 @@ export class CodeStore {
         name,
         tokenize='unicode61'
       );
+
+      -- Code graph: symbols + edges (Phase D)
+      CREATE TABLE IF NOT EXISTS code_symbols (
+        id TEXT PRIMARY KEY,
+        path TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        parent_id TEXT,
+        signature TEXT,
+        FOREIGN KEY(path) REFERENCES code_files(path) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_sym_path ON code_symbols(path);
+      CREATE INDEX IF NOT EXISTS idx_sym_name ON code_symbols(name);
+      CREATE INDEX IF NOT EXISTS idx_sym_kind ON code_symbols(kind);
+      CREATE INDEX IF NOT EXISTS idx_sym_parent ON code_symbols(parent_id);
+
+      CREATE TABLE IF NOT EXISTS code_edges (
+        from_id TEXT NOT NULL,
+        to_id TEXT,
+        to_name TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        FOREIGN KEY(from_id) REFERENCES code_symbols(id) ON DELETE CASCADE
+      );
+      -- Uniqueness across (from, target-name, kind, optional resolved id):
+      -- expressions in PRIMARY KEY are SQLite-forbidden, but allowed in UNIQUE INDEX.
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_uniq
+        ON code_edges(from_id, to_name, kind, COALESCE(to_id, ''));
+      CREATE INDEX IF NOT EXISTS idx_edge_to_name ON code_edges(to_name);
+      CREATE INDEX IF NOT EXISTS idx_edge_to_id ON code_edges(to_id);
+      CREATE INDEX IF NOT EXISTS idx_edge_kind ON code_edges(kind);
     `);
     return this;
   }
@@ -106,6 +140,16 @@ export class CodeStore {
     const hash = await hashFile(absPath);
     const existing = this.db.prepare('SELECT content_hash FROM code_files WHERE path = ?').get(relPath);
     if (existing && existing.content_hash === hash) {
+      // Hash unchanged, but the file may have been indexed before code graph existed.
+      // Heal-on-skip: if no symbols exist for this file, run graph extraction.
+      const symCount = this.db.prepare('SELECT COUNT(*) AS n FROM code_symbols WHERE path = ?').get(relPath).n;
+      if (symCount === 0) {
+        try {
+          const c = await readFile(absPath, 'utf8');
+          await this.indexGraphFor(absPath, c);
+          return { skipped: 'unchanged-graph-healed' };
+        } catch {}
+      }
       return { skipped: 'unchanged' };
     }
 
@@ -141,7 +185,82 @@ export class CodeStore {
       insertFTS.run(relPath, i, c.text, c.name || '');
     }
 
+    // Phase D: also extract code graph (symbols + edges) for this file.
+    // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
+    try {
+      await this.indexGraphFor(absPath, content);
+    } catch (err) {
+      if (process.env.EVOLVE_VERBOSE === '1') {
+        console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+      }
+    }
+
     return { indexed: true, chunks: chunks.length };
+  }
+
+  /**
+   * Extract symbols + edges via tree-sitter and persist to code_symbols/code_edges.
+   * Idempotent: clears prior rows for this file via FK CASCADE on code_files re-insert.
+   */
+  async indexGraphFor(absPath, content) {
+    const { extractGraph } = await import('./code-graph.mjs');
+    const relPath = this.toRel(absPath);
+
+    // Clear old graph rows for this file (CASCADE handles edges via from_id FK)
+    this.db.prepare('DELETE FROM code_symbols WHERE path = ?').run(relPath);
+
+    const { symbols, edges } = await extractGraph(content, relPath);
+    if (symbols.length === 0 && edges.length === 0) {
+      return { symbolsAdded: 0, edgesAdded: 0 };
+    }
+
+    const insSym = this.db.prepare(`
+      INSERT INTO code_symbols (id, path, kind, name, start_line, end_line, parent_id, signature)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const s of symbols) {
+      try {
+        insSym.run(s.id, s.path, s.kind, s.name, s.startLine, s.endLine, s.parentId || null, s.signature || null);
+      } catch {
+        // Same id collisions (e.g. two arrow funcs at same line) — skip duplicates
+      }
+    }
+
+    const insEdge = this.db.prepare(`
+      INSERT OR IGNORE INTO code_edges (from_id, to_id, to_name, kind)
+      VALUES (?, ?, ?, ?)
+    `);
+    for (const e of edges) {
+      // Skip edges whose fromId isn't a real symbol (avoid FK error)
+      // Synthetic '<module>' fromIds are dropped — top-level imports are still represented
+      // via to_name without a symbol source.
+      const fromExists = this.db.prepare('SELECT 1 FROM code_symbols WHERE id = ?').get(e.fromId);
+      if (!fromExists) continue;
+      try {
+        insEdge.run(e.fromId, e.toId, e.toName, e.kind);
+      } catch {}
+    }
+
+    return { symbolsAdded: symbols.length, edgesAdded: edges.length };
+  }
+
+  /**
+   * Resolve toId for unresolved edges by name lookup across whole project.
+   * Run once at end of indexAll() for consistent picture.
+   * @returns number of edges that became resolved
+   */
+  resolveAllEdges() {
+    const result = this.db.prepare(`
+      UPDATE code_edges
+      SET to_id = (
+        SELECT id FROM code_symbols
+        WHERE name = code_edges.to_name
+        ORDER BY id
+        LIMIT 1
+      )
+      WHERE to_id IS NULL
+    `).run();
+    return result.changes;
   }
 
   /** Walk project directory, index all supported files. */
@@ -175,6 +294,21 @@ export class CodeStore {
         }
       }
     }
+    // Phase D: resolve cross-file edges after full pass
+    counts.edgesResolved = this.resolveAllEdges();
+    return counts;
+  }
+
+  /** Index a specific list of absolute file paths (lazy mode). */
+  async indexFiles(absPaths) {
+    const counts = { indexed: 0, skipped: 0, errors: 0 };
+    for (const absPath of absPaths) {
+      try {
+        const r = await this.indexFile(absPath);
+        if (r.indexed) counts.indexed++; else counts.skipped++;
+      } catch { counts.errors++; }
+    }
+    counts.edgesResolved = this.resolveAllEdges();
     return counts;
   }
 
@@ -187,8 +321,38 @@ export class CodeStore {
   stats() {
     const totalFiles = this.db.prepare('SELECT COUNT(*) AS n FROM code_files').get().n;
     const totalChunks = this.db.prepare('SELECT COUNT(*) AS n FROM code_chunks').get().n;
+    const totalSymbols = this.db.prepare('SELECT COUNT(*) AS n FROM code_symbols').get().n;
+    const totalEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges').get().n;
+    const resolvedEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges WHERE to_id IS NOT NULL').get().n;
     const byLang = this.db.prepare('SELECT language, COUNT(*) AS n FROM code_files GROUP BY language ORDER BY n DESC').all();
-    return { totalFiles, totalChunks, byLang };
+    return {
+      totalFiles, totalChunks, totalSymbols, totalEdges, resolvedEdges,
+      edgeResolutionRate: totalEdges === 0 ? 1 : resolvedEdges / totalEdges,
+      byLang
+    };
+  }
+
+  /**
+   * Per-language health: indexed files vs files with extracted symbols.
+   * Useful for status command — detects broken grammar queries.
+   */
+  getGrammarHealth() {
+    const rows = this.db.prepare(`
+      SELECT cf.language AS lang,
+             COUNT(DISTINCT cf.path) AS files,
+             COUNT(DISTINCT s.path) AS files_with_symbols
+      FROM code_files cf
+      LEFT JOIN code_symbols s ON s.path = cf.path
+      GROUP BY cf.language
+      ORDER BY files DESC
+    `).all();
+    return rows.map(r => ({
+      language: r.lang,
+      files: r.files,
+      filesWithSymbols: r.files_with_symbols,
+      healthy: r.files === 0 || r.files_with_symbols > 0,
+      coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files
+    }));
   }
 
   /** Hybrid search: FTS5 keyword + semantic cosine (max-over-chunks per file) → RRF. */

@@ -3,6 +3,7 @@
 
 import chokidar from 'chokidar';
 import { join } from 'node:path';
+import { writeFile, rm } from 'node:fs/promises';
 import { MemoryStore } from './memory-store.mjs';
 import { CodeStore } from './code-store.mjs';
 
@@ -92,8 +93,18 @@ export async function startWatcher(projectRoot, opts = {}) {
 
   if (verbose) console.log(`[evolve-watcher] watching .claude/memory/ + project source files`);
 
+  // Heartbeat file: status command uses this to confirm watcher is alive.
+  const heartbeatPath = join(projectRoot, '.claude', 'memory', '.watcher-heartbeat');
+  const heartbeatTimer = setInterval(async () => {
+    try { await writeFile(heartbeatPath, String(Date.now())); } catch {}
+  }, 5000);
+  // Write initial heartbeat immediately so status command sees us right after start
+  try { await writeFile(heartbeatPath, String(Date.now())); } catch {}
+
   return {
     stop: async () => {
+      clearInterval(heartbeatTimer);
+      try { await rm(heartbeatPath, { force: true }); } catch {}
       await memWatcher.close();
       await codeWatcher.close();
       memoryStore.close();

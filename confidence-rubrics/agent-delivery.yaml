@@ -10,9 +10,13 @@ dimensions:
     question: "Did the agent run verification commands and show their output before claiming done?"
     evidence-required: "Verification command output (typecheck, tests, lint) included in delivery"
   - id: anti-hallucination
-    weight: 2
+    weight: 1
     question: "Did the agent grep/read before claiming any path, function, or contract exists?"
     evidence-required: "Tool calls show Read/Grep before any Write/Edit referencing existing code"
+  - id: graph-evidence-when-applicable
+    weight: 1
+    question: "Did output explicitly pick one of three Graph evidence cases — A (callers found, listed), B (zero callers verified, decision shown), or C (N/A with reason) — per the agent output contract? Skipping the section entirely on a structural change FAILS this criterion. For pure-additive or non-structural changes, output must explicitly state 'Graph queries: N/A' with a reason."
+    evidence-required: "Delivery contains a Graph-evidence section that names Case A/B/C explicitly: A lists discovered callers, B shows the zero-result query and the decision, or C states 'Graph queries: N/A' with a one-line justification. Absence of this section on any structural change is a fail."
   - id: skill-adherence
     weight: 2
     question: "Did the agent follow its attached skills (TDD when required, debugging method, code-review checklist)?"

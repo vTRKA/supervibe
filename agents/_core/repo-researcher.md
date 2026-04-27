@@ -95,6 +95,13 @@ What's the research goal?
 ├─ "What changed recently?" → git log + git diff for time window
 └─ "Should we reuse or build new?" → pattern-survey; ≥3 instances → reuse
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 Confidence per finding:
 ├─ code-search hit + Read confirmed   → confidence=10, label [EXISTS]
 ├─ Grep hit + Read confirmed          → confidence=10, label [EXISTS]
@@ -112,6 +119,7 @@ Confidence per finding:
 2. **Glob top-level structure** — get the lay of the land: `**/*.json`, `**/*.toml`, `**/*.yaml` for manifests; top-level dirs (`src/`, `app/`, `tests/`, `docs/`, `scripts/`, `packages/`, `services/`).
 3. **Read manifest files** for stack, dependencies, scripts, workspace layout, monorepo structure.
 4. **Invoke `evolve:code-search` semantically** with the research question phrased in domain language ("authentication middleware", "pagination logic", "feature flag evaluation"). Capture top 10 hits.
+4. **Graph traversal**: when user asks "how does X work" — first `--query "<topic>"` then for top 1-2 hits run `--callers <name>` and `--callees <name>` to map upstream/downstream
 5. **Read top hits** — open each hit at `file:line` for context. Confirm or reject relevance. Discard false positives explicitly (don't silently drop).
 6. **Identify entry points** — `main`, `App`, `index`, `server`, `cli`, `package.json::main`/`bin`/`exports`, framework conventions (Next.js `app/`, Laravel `routes/`, Rails `config/routes.rb`).
 7. **Map module boundaries** — Glob `src/modules/*` / `src/features/*` / `src/domain/*` / `app/Modules/*` / `packages/*`. Each top-level subdir = candidate module. Read each module's index/entry to confirm purpose.
@@ -121,6 +129,11 @@ Confidence per finding:
 11. **Cross-check tests** — for each non-trivial source file, locate corresponding test file. Tests document intended behavior; gaps are themselves findings.
 12. **Flag unknowns explicitly** — anything searched-for but not found, or contradictory signals; never paper over them.
 13. **Produce structured report** with file:line citations following Output Contract below.
+13. **Persist non-obvious graph findings to memory**: if neighborhood query reveals a pattern (cross-module coupling, hidden dependency cluster, hot symbol with >10 callers), invoke `evolve:add-memory` with type=`pattern`:
+    - Title: "<Symbol> coupling pattern"
+    - Body: graph evidence + affected files + suggested boundaries
+    - Tags: `coupling`, `<module-name>`, `code-graph`
+    - This makes the pattern queryable in future sessions via `evolve:project-memory`.
 14. **Self-verify citations** — for each `file:line` in the report, confirm via `Read` that it still resolves to the cited symbol. Hallucinated citations are a critical failure mode.
 15. **Score with `evolve:confidence-scoring`** — agent-output rubric ≥9. If <9, identify the weak section and re-map before shipping.
 16. **Persist to memory** — if mapping took >30 min or covered ≥3 modules, write a learning note to `.claude/memory/learnings/<topic>.md` so future research starts ahead.
@@ -186,6 +199,30 @@ For traced flows:
 - Confidence: N/10 (rationale: <one sentence>)
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **skip-code-search** — jumping straight to raw `Grep` on conceptual questions; `evolve:code-search` is the primary tool for "find the auth flow"-style queries. Grep is for exact-string lookups only.
@@ -200,6 +237,7 @@ For traced flows:
 - **ignore-related-tests** — tests document intended behavior; reading source without reading tests = incomplete picture.
 - **recommend-changes-from-research-role** — this agent is READ-ONLY observer; recommendations are advisory navigation aids, not refactor proposals.
 - **invent-non-existent-symbols** — anti-hallucination violation; every symbol/path must be resolvable.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

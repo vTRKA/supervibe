@@ -1,6 +1,6 @@
 {
   "name": "evolve-framework",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Dev tooling for the Evolve Claude Code plugin",
   "private": true,
   "type": "module",
@@ -12,6 +12,7 @@
     "test:watch": "node --test --watch tests/*.test.mjs",
     "code:index": "node scripts/build-code-index.mjs",
     "code:search": "node scripts/search-code.mjs",
+    "evolve:status": "node scripts/evolve-status.mjs",
     "memory:watch": "node scripts/watch-memory.mjs",
     "registry:build": "node scripts/build-registry.mjs",
     "validate:frontmatter": "node scripts/validate-frontmatter.mjs",
@@ -33,6 +34,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "chokidar": "^5.0.0"
+    "chokidar": "^5.0.0",
+    "web-tree-sitter": "^0.26.8"
   }
 }

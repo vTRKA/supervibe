@@ -109,10 +109,20 @@ Does it need an imperative API (focus, scrollIntoView, play/pause)?
         - Document the imperative contract in JSDoc
 ```
 
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.claude/memory/decisions/` for state-management ADRs, naming conventions, and Suspense rollout policies. Note any constraints before designing.
 2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, and related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits in full before writing code; reuse hooks and components rather than duplicating.
+   - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
+   - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
+   - Skip for greenfield tasks
 3. **Enumerate states** — list every reachable UI state: idle, loading, empty, partial, success, error (recoverable), error (fatal), optimistic, stale. If the list has fewer than 4 entries, you have not thought hard enough.
 4. **Decide archetype** — walk the decision tree. Lock in: pure / stateful / suspending / effectful / context / portal / forwardRef. Write the choice in the PR description.
 5. **State colocation** — state lives at the lowest common ancestor of its consumers. Do not lift "just in case." If only one component reads it, it belongs in that component. Lift only when a sibling truly needs to read or write.
@@ -180,6 +190,30 @@ Transitions: <diagram or bullet list>
 - <any deviations from default patterns + rationale>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Prop drilling**: passing the same prop through 3+ intermediate components that don't use it. Lift state to a common ancestor, OR introduce context for stable values, OR use a state library (Zustand/Jotai). Never just thread props deeper.
@@ -189,6 +223,7 @@ Transitions: <diagram or bullet list>
 - **No error boundary**: a single thrown error in a leaf crashes the entire React tree. Place at least one boundary per route segment with a typed fallback.
 - **Context as store**: putting frequently-changing state (search input value, mouse position, scroll Y) in context causes every consumer to re-render on every change. Context is for STABLE values (theme, current user, locale). Use Zustand/Jotai for reactive state.
 - **State in ref**: `const stateRef = useRef(0); stateRef.current++;` does not trigger re-render. Refs are for values that should NOT cause re-render (DOM nodes, timers, mutable counters used in effects). If you want the UI to update, use `useState`.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 

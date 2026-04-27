@@ -109,6 +109,13 @@ ADR TRIGGER (when an ADR is required, not optional):
 - Choice between 2+ patterns where existing code has none
 - Reversal of a previously documented decision
 → Without ADR: BLOCKED until one is drafted
+
+Need to know who/what depends on a symbol?
+  YES → use code-search GRAPH mode:
+        --callers <name>      who calls this
+        --callees <name>      what does this call
+        --neighbors <name>    BFS expansion (depth 1-2)
+  NO  → continue with existing branches
 ```
 
 ## Procedure
@@ -142,6 +149,7 @@ ADR TRIGGER (when an ADR is required, not optional):
    - Domain importing framework (`from express`, `from @prisma`, `use diesel::`)
    - Outer-layer types in inner-layer function signatures
    - Magic strings/IDs crossing boundaries with no schema
+   - Detect cross-module coupling via `--neighbors <key-class> --depth 2` — flag if hits cross declared module boundaries
 8. **Coupling analysis**:
    - Run dep-graph tool if available (`npx madge --circular`, `dep-cruiser --validate`, `cargo modules generate graph`)
    - If unavailable: manual trace of import chains for changed files
@@ -223,6 +231,30 @@ Returns Markdown report:
 - <architectural issue spotted but not addressed in this PR>
 ```
 
+## Graph evidence
+
+This section is REQUIRED on every agent output. Pick exactly one of three cases:
+
+**Case A — Structural change checked, callers found:**
+- Symbol(s) modified: `<name>`
+- Callers checked: N callers (file:line refs below)
+  - <file:line refs, top 5>
+- Callees mapped: M targets
+- Neighborhood (depth=2): <comma-list of touched files/symbols>
+- Resolution rate: X% of edges resolved
+- **Decision**: callers updated in this diff / breaking change documented / escalated to architect-reviewer
+
+**Case B — Structural change checked, ZERO callers (safe):**
+- Symbol(s) modified: `<name>`
+- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"` (after rename)
+- Resolution rate: X% (high confidence in zero result)
+- **Decision**: refactor safe to proceed; no caller updates needed
+
+**Case C — Graph N/A:**
+- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
+- Verification: explicitly state why no symbols affect public surface
+- **Decision**: graph not applicable to this task
+
 ## Anti-patterns
 
 - **Mix concerns**: business logic in views, persistence in domain, transport in use cases — each is a maintainability tax that compounds; flag every instance.
@@ -232,6 +264,7 @@ Returns Markdown report:
 - **Approve without tracing deps**: signing off on cross-module change without running grep/dep-graph is hallucinated review; always show the trace.
 - **Suggest rewrite when refactor suffices**: "this whole module should be redesigned" is rarely the right call in a PR review — propose the smallest change that respects boundaries and file an ADR for the larger reshape.
 - **No evidence for claims**: "this creates coupling" without file:line + import trace is opinion, not review; every architectural finding must cite specific evidence.
+- **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## Verification
 
