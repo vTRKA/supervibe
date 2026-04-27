@@ -145,6 +145,38 @@ npm install && npm run check
 
 ---
 
+## Установка из приватного репозитория
+
+Если репозиторий приватный (например вас добавили коллаборатором в форк), `curl | bash` one-liner не сработает — `raw.githubusercontent.com` для приватных репо требует авторизацию. Используйте один из путей.
+
+**С GitHub CLI** (рекомендуется — `gh` авторизуется один раз и переиспользует креды для git):
+```bash
+gh auth login                                                               # one-time
+gh repo clone vTRKA/evolve-agent ~/.claude/plugins/marketplaces/evolve-marketplace
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+bash install.sh                                                             # или .\install.ps1 на Windows
+```
+Установщик обнаружит существующий клон, пропустит сетевой шаг, прогонит тесты и зарегистрирует во всех найденных CLI.
+
+**Без `gh`, через Personal Access Token** (fine-grained, read-only на этот репо):
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+git clone "https://${GITHUB_TOKEN}@github.com/vTRKA/evolve-agent.git" \
+  ~/.claude/plugins/marketplaces/evolve-marketplace
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+bash install.sh
+unset GITHUB_TOKEN                                                          # не оставляйте в env
+```
+
+**Дать друзьям доступ** (со стороны владельца репо):
+1. Repo Settings → Collaborators → Add people → выдать роль Read
+2. Отправить им снипет выше (gh-flow самый дружелюбный)
+3. Отозвать доступ можно в любой момент в той же странице настроек
+
+Обновления: `npm run evolve:upgrade` из папки установки работает как обычно — у существующего remote'а уже закешированы креды (gh credential helper или PAT в URL).
+
+---
+
 ## Troubleshooting
 
 **Плагин не виден после установки.** Проверьте регистрацию:

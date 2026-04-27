@@ -145,6 +145,38 @@ Then upsert the `installed_plugins.json` entry. The exact node script lives in `
 
 ---
 
+## Install from a private repository
+
+If the repository is private (e.g. you were added as a collaborator on a fork), the `curl | bash` one-liner cannot read `raw.githubusercontent.com` without auth. Use one of these flows.
+
+**With GitHub CLI** (recommended — `gh` handles auth once and reuses it for git):
+```bash
+gh auth login                                                               # one-time
+gh repo clone vTRKA/evolve-agent ~/.claude/plugins/marketplaces/evolve-marketplace
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+bash install.sh                                                             # or .\install.ps1 on Windows
+```
+The installer detects the existing clone, skips the network step, runs tests, and registers in every CLI it finds.
+
+**Without `gh`, using a Personal Access Token** (fine-grained, read-only on the one repo):
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+git clone "https://${GITHUB_TOKEN}@github.com/vTRKA/evolve-agent.git" \
+  ~/.claude/plugins/marketplaces/evolve-marketplace
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+bash install.sh
+unset GITHUB_TOKEN                                                          # do not leave it in env
+```
+
+**Granting friends access** (repo owner side):
+1. Repo Settings → Collaborators → Add people → grant Read role
+2. Send them the install snippet above (gh-flow is friendliest)
+3. Revoke any time from the same settings page
+
+Updates: `npm run evolve:upgrade` from the install dir works as usual — the existing remote keeps its cached auth (gh credential helper or PAT in URL).
+
+---
+
 ## Troubleshooting
 
 **Plugin does not appear after install.** Check the registration:
