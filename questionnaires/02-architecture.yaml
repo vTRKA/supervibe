@@ -1,0 +1,28 @@
+id: architecture
+phase: discovery
+priority: 2
+description: Architecture style and bounded contexts
+questions:
+  - id: architecture-style
+    when: "project-type in [web-app, api-only]"
+    type: single-choice
+    text: "Project architecture?"
+    options:
+      - { id: modular-monolith, label: "Modular monolith (recommended)", attaches-rule: modular-backend, recommends: [_core/architect-reviewer] }
+      - { id: ddd-hexagonal, label: "DDD / Hexagonal", attaches-rule: modular-backend }
+      - { id: standard-mvc, label: "Standard MVC (small project)" }
+      - { id: microservices, label: "Microservices (advanced)", recommends: [_ops/infrastructure-architect] }
+
+  - id: frontend-architecture
+    when: "frontend-stack != null"
+    type: single-choice
+    text: "Frontend architecture?"
+    options:
+      - { id: fsd, label: "Feature-Sliced Design (recommended)", attaches-rule: fsd }
+      - { id: by-feature, label: "By-feature (simple)" }
+      - { id: by-layer, label: "By-layer (legacy)" }
+
+  - id: bounded-contexts
+    when: "architecture-style in [modular-monolith, ddd-hexagonal, microservices]"
+    type: open
+    text: "List initial bounded contexts (e.g., billing, auth, catalog, inventory) — comma-separated"

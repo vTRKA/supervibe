@@ -1,0 +1,56 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch)",
+      "Bash(git branch --list:*)",
+      "Bash(git branch -v:*)",
+      "Bash(git show:*)",
+      "Bash(git tag --list:*)"
+    ],
+    "ask": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git revert:*)"
+    ],
+    "deny": [
+      "Bash(git stash:*)",
+      "Bash(git stash)",
+      "Bash(git stash pop:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git stash clear:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -fx:*)",
+      "Bash(git checkout .)",
+      "Bash(git checkout --:*)",
+      "Bash(git restore .)",
+      "Bash(git branch -D:*)",
+      "Bash(git rebase --onto:*)",
+      "Bash(git rebase -i:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git update-ref -d:*)",
+      "Bash(git reflog expire:*)",
+      "Bash(git gc --prune:*)",
+      "Bash(git tag -d:*)",
+      "Bash(git tag --delete:*)",
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(sudo rm:*)",
+      "Bash(:(){ :|:& };:)"
+    ]
+  }
+}

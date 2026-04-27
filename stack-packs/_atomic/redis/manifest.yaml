@@ -1,0 +1,23 @@
+id: _atomic/redis
+name: "Atomic: Redis cache layer"
+version: 1.0.0
+description: "Adds Redis architect agent + redis-section in CLAUDE.md + Sentinel config notes"
+type: atomic
+
+agents-attach:
+  - evolve:stacks/redis:redis-architect
+
+rules-attach:
+  - infrastructure-patterns
+
+scaffold:
+  claude-md-additions:
+    section: "## Redis"
+    content: |
+      Redis is configured per `infrastructure-patterns` rule. Topology decision:
+      - single (dev only)
+      - Sentinel (HA, recommended for prod)
+      - Cluster (sharding, when >200GB or >500k QPS)
+
+      Key namespace prefix REQUIRED. TTL or eviction policy REQUIRED for every key.
+      See `agents/stacks/redis/redis-architect.md` for design procedures.

@@ -1,0 +1,31 @@
+{
+  "name": "evolve-framework",
+  "version": "1.1.0",
+  "description": "Dev tooling for the Evolve Claude Code plugin",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:watch": "node --test --watch tests/*.test.mjs",
+    "registry:build": "node scripts/build-registry.mjs",
+    "validate:frontmatter": "node scripts/validate-frontmatter.mjs",
+    "lint:descriptions": "node scripts/lint-skill-descriptions.mjs",
+    "validate:plugin-json": "node scripts/validate-plugin-json.mjs",
+    "lint:dead-code": "knip --no-progress",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run lint:dead-code && npm test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "ajv": "^8.17.1",
+    "gray-matter": "^4.0.3",
+    "husky": "^9.1.6",
+    "knip": "^5.30.0",
+    "lint-staged": "^15.2.10",
+    "yaml": "^2.6.0"
+  }
+}

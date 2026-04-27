@@ -1,0 +1,19 @@
+# Universal ignores (all stacks compose on top of this)
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+*.swp
+
+# Evolve runtime
+.claude/research-cache/
+.claude/effectiveness.jsonl
+# .claude/confidence-log.jsonl   # Track this — audit trail

@@ -1,0 +1,26 @@
+artifact: scaffold-bundle
+max-score: 10
+dimensions:
+  - id: pack-completeness
+    weight: 2
+    question: "Does the scaffold include all artifacts required by the chosen stack-pack manifest (claude/, husky/, configs/, structure/)?"
+    evidence-required: "File list comparison: pack manifest sections vs actually-written files"
+  - id: agent-roster
+    weight: 2
+    question: "Are all attached agents present in the target's .claude/agents/ with correct frontmatter?"
+    evidence-required: "ls of .claude/agents/ + frontmatter validation result"
+  - id: rules-applied
+    weight: 2
+    question: "Are all attached rules present in .claude/rules/ AND referenced in CLAUDE.md routing/mandatory sections?"
+    evidence-required: "ls of .claude/rules/ + grep for each rule name in CLAUDE.md"
+  - id: settings-deny-list
+    weight: 2
+    question: "Does .claude/settings.json contain the mandatory deny-list (git stash, force-push, reset --hard, clean -f, dropdb, rm -rf)?"
+    evidence-required: "settings.json deny array containing all 6 mandatory entries"
+  - id: pre-commit-active
+    weight: 2
+    question: "Is the pre-commit pipeline installed and runnable (husky directory exists, hooks executable, commitlint config present)?"
+    evidence-required: ".husky/_/husky.sh exists OR npm run prepare ran successfully; commitlint.config.js readable"
+gates:
+  block-below: 9
+  warn-below: 10

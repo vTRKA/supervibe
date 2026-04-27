@@ -1,0 +1,58 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Validate plugin.json
+        run: npm run validate:plugin-json
+      - name: Validate frontmatter
+        run: npm run validate:frontmatter
+      - name: Lint skill descriptions
+        run: npm run lint:descriptions
+      - name: Lint dead code
+        run: npm run lint:dead-code
+      - name: Build registry
+        run: npm run registry:build
+      - name: Run tests
+        run: npm test
+
+  check-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Build registry (Windows path verification)
+        run: npm run registry:build
+      - name: Verify registry paths use POSIX separators
+        shell: bash
+        run: |
+          if grep -E '(D:\\\\|/D:/|%20)' registry.yaml; then
+            echo "FAIL: registry.yaml contains Windows-specific or URL-encoded paths"
+            exit 1
+          fi
+          echo "OK: registry paths are portable"
+      - name: Run tests
+        run: npm test

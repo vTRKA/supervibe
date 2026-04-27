@@ -1,0 +1,26 @@
+artifact: research-output
+max-score: 10
+dimensions:
+  - id: source-recency
+    weight: 2
+    question: "Are at least 80% of cited sources dated within the last 12 months OR explicitly marked as canonical (RFC, official docs)?"
+    evidence-required: "Citation list with publication dates"
+  - id: source-authority
+    weight: 2
+    question: "Are sources from authoritative origins (official docs, vendor blogs, RFC, well-known engineers) rather than random tutorials?"
+    evidence-required: "URL list with domain authority indicator"
+  - id: claim-support
+    weight: 2
+    question: "Is every non-obvious claim backed by at least one cited source, with the citation showing the supporting passage?"
+    evidence-required: "Each claim followed by source URL and quoted supporting text"
+  - id: contradiction-resolution
+    weight: 2
+    question: "Where sources contradict, did the researcher explicitly note the disagreement and explain the resolution?"
+    evidence-required: "Contradiction-handling section OR explicit '<source X> disagrees, going with <Y> because <reason>'"
+  - id: applicability
+    weight: 2
+    question: "Does the research output explicitly state how findings apply to the current project's stack/version?"
+    evidence-required: "Per-finding applicability note tied to the project's stack-fingerprint"
+gates:
+  block-below: 9
+  warn-below: 10

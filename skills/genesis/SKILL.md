@@ -1,0 +1,84 @@
+---
+name: genesis
+namespace: process
+description: "Use WHEN bootstrapping .claude/ scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9"
+allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+phase: exec
+prerequisites: [requirements-spec]
+emits-artifact: scaffold-bundle
+confidence-rubric: confidence-rubrics/scaffold.yaml
+gate-on-exit: true
+version: 1.0
+last-verified: 2026-04-27
+---
+
+# Genesis
+
+## When to invoke
+
+WHEN target project has no `.claude/agents/` OR no routing table in `CLAUDE.md` AND user wants Evolve scaffolding. Triggered by `/evolve-genesis` command.
+
+## Step 0 — Read source of truth (MANDATORY)
+
+1. Read stack-fingerprint from `evolve:stack-discovery`
+2. Read `stack-packs/` to find matching pack
+3. Read `templates/` for CLAUDE.md / settings.json templates
+4. Read target project's existing files (NEVER overwrite)
+
+## Decision tree
+
+```
+Match exact pack?
+├─ YES (e.g., laravel-nextjs-postgres-redis) → use directly
+└─ NO → composition algorithm:
+    1. Find base pack with max overlap
+    2. Pull atomic packs from stack-packs/_atomic/ for missing slots
+    3. Merge: union(agents-attach), union(rules-attach), merge(scaffold)
+    4. Confidence-score the composed bundle
+    5. If <9 → ask user to confirm or fall back to closest match
+```
+
+## Procedure
+
+1. Resolve stack-pack from fingerprint
+2. Compose if no exact match
+3. For each `agents-attach` → copy agent file to `<target>/.claude/agents/<namespace>/<name>.md`
+4. For each `rules-attach` → copy rule file to `<target>/.claude/rules/<name>.md`
+5. Generate `<target>/.claude/settings.json` from `templates/settings/_base.json` + per-stack additions
+6. Generate `<target>/CLAUDE.md` from `templates/claude-md/<pack>.md.tpl` filled with discovery data
+7. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
+8. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
+9. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
+10. Confidence-score(scaffold-bundle) ≥9
+11. If <9 → list gaps, ask user to confirm or remediate
+
+## Output contract
+
+Returns:
+- Generated `.claude/agents/`, `.claude/rules/`, `.claude/settings.json`, `CLAUDE.md`
+- Husky + commitlint + lint-staged configs
+- Project skeleton dirs
+- Confidence score
+- Path to `evolve:stack-discovery` fingerprint used
+
+## Guard rails
+
+- DO NOT: overwrite existing files (check before each Write; if exists → ask user merge/skip/replace)
+- DO NOT: install deps without user confirm (some packs require massive installs)
+- DO NOT: run migrations or seed data
+- DO NOT: commit on user's behalf
+- ALWAYS: confidence-gate before claiming done
+- ALWAYS: log composition decisions if pack was composed
+
+## Verification
+
+- All files in pack manifest present in target
+- Settings.json has full deny-list
+- CLAUDE.md has routing table
+- Husky configured
+
+## Related
+
+- `evolve:stack-discovery` — produces input
+- `stack-packs/` — pack definitions
+- `templates/` — generators

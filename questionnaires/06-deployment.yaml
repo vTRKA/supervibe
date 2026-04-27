@@ -1,0 +1,48 @@
+id: deployment
+phase: discovery
+priority: 6
+description: Hosting, CI/CD, secrets management
+questions:
+  - id: hosting-target
+    when: "project-type != library"
+    type: single-choice
+    text: "Hosting target?"
+    options:
+      - { id: vercel, label: "Vercel (frontend / Next.js)" }
+      - { id: aws, label: "AWS (full)" }
+      - { id: gcp, label: "GCP" }
+      - { id: cloudflare, label: "Cloudflare (Workers/Pages)" }
+      - { id: hetzner, label: "Hetzner / VPS" }
+      - { id: kubernetes, label: "Kubernetes (own cluster)", recommends: [_ops/devops-sre, _ops/infrastructure-architect] }
+      - { id: render, label: "Render / Fly.io" }
+      - { id: self-hosted, label: "Self-hosted on-prem" }
+
+  - id: ci-cd-platform
+    when: always
+    type: single-choice
+    text: "CI/CD platform?"
+    options:
+      - { id: github-actions, label: "GitHub Actions (recommended)" }
+      - { id: gitlab-ci, label: "GitLab CI" }
+      - { id: jenkins, label: "Jenkins" }
+      - { id: circle-ci, label: "CircleCI" }
+
+  - id: secrets-management
+    when: "project-type != library"
+    type: single-choice
+    text: "Secrets management?"
+    options:
+      - { id: env-vars, label: "Env vars + .env.local (dev) + platform secret store (prod)" }
+      - { id: vault, label: "HashiCorp Vault" }
+      - { id: aws-secrets, label: "AWS Secrets Manager" }
+      - { id: doppler, label: "Doppler / Infisical" }
+      - { id: 1password, label: "1Password Connect" }
+
+  - id: container-strategy
+    when: "project-type != library"
+    type: single-choice
+    text: "Container strategy?"
+    options:
+      - { id: docker, label: "Docker for dev + prod" }
+      - { id: docker-dev-only, label: "Docker for dev only; prod is bare metal / serverless" }
+      - { id: none, label: "No containers" }

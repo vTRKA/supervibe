@@ -1,0 +1,39 @@
+id: testing
+phase: discovery
+priority: 5
+description: Test strategy and pyramid balance
+questions:
+  - id: test-pyramid-emphasis
+    when: always
+    type: single-choice
+    text: "Test pyramid emphasis?"
+    options:
+      - { id: balanced, label: "Balanced (many unit, fewer integration, few e2e — recommended)", recommends: [_product/qa-test-engineer] }
+      - { id: integration-heavy, label: "Integration-heavy (real DB always)" }
+      - { id: e2e-only, label: "E2E only (NOT recommended — flaky)" }
+
+  - id: e2e-framework
+    when: "project-type in [web-app, spa]"
+    type: single-choice
+    text: "E2E framework?"
+    options:
+      - { id: playwright, label: "Playwright (recommended)" }
+      - { id: cypress, label: "Cypress" }
+      - { id: none, label: "None for v1" }
+
+  - id: mock-policy
+    when: always
+    type: single-choice
+    text: "Mock policy?"
+    options:
+      - { id: real-by-default, label: "Real dependencies by default; mock only when external API unavailable" }
+      - { id: mock-by-default, label: "Mock by default; real for explicit integration tests" }
+
+  - id: tdd-discipline
+    when: always
+    type: single-choice
+    text: "TDD discipline?"
+    options:
+      - { id: strict, label: "Strict TDD: no production code without failing test", attaches-rule: confidence-discipline }
+      - { id: relaxed, label: "Relaxed: test after for non-trivial logic" }
+      - { id: spike-then-test, label: "Spike-then-test: quick spike, then add tests before merge" }

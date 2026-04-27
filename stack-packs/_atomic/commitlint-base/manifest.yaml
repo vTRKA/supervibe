@@ -1,0 +1,17 @@
+id: _atomic/commitlint-base
+name: "Atomic: Commitlint base"
+version: 1.0.0
+description: "Conventional Commits enforcement via commitlint"
+type: atomic
+
+agents-attach: []
+rules-attach: [commit-discipline]
+
+scaffold:
+  root-files:
+    - { path: "commitlint.config.js", source: "templates/configs/commitlint.config.js" }
+
+  package-json-additions:
+    devDependencies:
+      "@commitlint/cli": "^19.5.0"
+      "@commitlint/config-conventional": "^19.5.0"

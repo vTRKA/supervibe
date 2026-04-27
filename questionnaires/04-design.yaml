@@ -1,0 +1,31 @@
+id: design
+phase: discovery
+priority: 4
+description: Design workflow and accessibility commitments
+questions:
+  - id: design-workflow
+    when: "project-type in [web-app, spa, desktop, mobile]"
+    type: single-choice
+    text: "How do you approve UI before implementing?"
+    options:
+      - { id: html-prototypes, label: "HTML prototypes 1:1 in /prototypes (recommended)", recommends: [_design/prototype-builder, _design/creative-director, _design/ux-ui-designer] }
+      - { id: figma, label: "Figma → implementation" }
+      - { id: code-first, label: "Code first, iterate" }
+
+  - id: brandbook-source
+    when: "design-workflow in [html-prototypes]"
+    type: single-choice
+    text: "Brandbook source?"
+    options:
+      - { id: build-new, label: "Build new with creative-director", recommends: [_design/creative-director] }
+      - { id: port-existing, label: "Port from existing design system / Figma" }
+      - { id: skip-for-now, label: "Skip — minimal styling for v1, brandbook in v2" }
+
+  - id: accessibility-target
+    when: "project-type in [web-app, spa, mobile]"
+    type: single-choice
+    text: "Accessibility commitment?"
+    options:
+      - { id: wcag-aa, label: "WCAG AA (recommended)", recommends: [_design/accessibility-reviewer] }
+      - { id: wcag-aaa, label: "WCAG AAA (strict)", recommends: [_design/accessibility-reviewer] }
+      - { id: best-effort, label: "Best effort, no formal target" }

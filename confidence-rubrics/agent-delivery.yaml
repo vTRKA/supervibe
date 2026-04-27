@@ -1,0 +1,26 @@
+artifact: agent-output
+max-score: 10
+dimensions:
+  - id: scope-respected
+    weight: 2
+    question: "Did the agent stay strictly within its declared scope (no edits outside its allowed paths)?"
+    evidence-required: "List of changed files matching agent's scope frontmatter; no out-of-scope edits"
+  - id: verification-shown
+    weight: 2
+    question: "Did the agent run verification commands and show their output before claiming done?"
+    evidence-required: "Verification command output (typecheck, tests, lint) included in delivery"
+  - id: anti-hallucination
+    weight: 2
+    question: "Did the agent grep/read before claiming any path, function, or contract exists?"
+    evidence-required: "Tool calls show Read/Grep before any Write/Edit referencing existing code"
+  - id: skill-adherence
+    weight: 2
+    question: "Did the agent follow its attached skills (TDD when required, debugging method, code-review checklist)?"
+    evidence-required: "Tool call sequence matches skill procedures (e.g., test-before-impl for TDD)"
+  - id: regression-clean
+    weight: 2
+    question: "Did existing tests pass after changes?"
+    evidence-required: "Test command output showing 0 regressions"
+gates:
+  block-below: 9
+  warn-below: 10

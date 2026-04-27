@@ -1,0 +1,115 @@
+id: laravel-nextjs-postgres-redis
+name: "Laravel 11 + Next.js 14 + Postgres + Redis"
+version: 1.0.0
+description: "Full-stack reference pack — Laravel API + Next.js frontend + Postgres + Redis cache + Horizon queue"
+
+matches:
+  required:
+    backend: laravel
+    frontend: nextjs
+    db: [postgres]
+  optional:
+    infra: [redis-cache, queue, db-replicas]
+    architecture: [modular-monolith]
+
+agents-attach:
+  # Universal _core
+  - evolve:_core:code-reviewer
+  - evolve:_core:repo-researcher
+  - evolve:_core:security-auditor
+  - evolve:_core:refactoring-specialist
+  - evolve:_core:architect-reviewer
+  - evolve:_core:quality-gate-reviewer
+  - evolve:_core:root-cause-debugger
+  # Meta
+  - evolve:_meta:rules-curator
+  - evolve:_meta:evolve-orchestrator
+  # Product
+  - evolve:_product:product-manager
+  - evolve:_product:systems-analyst
+  - evolve:_product:qa-test-engineer
+  - evolve:_product:analytics-implementation
+  - evolve:_product:seo-specialist
+  - evolve:_product:email-lifecycle
+  # Ops
+  - evolve:_ops:devops-sre
+  - evolve:_ops:performance-reviewer
+  - evolve:_ops:dependency-reviewer
+  - evolve:_ops:db-reviewer
+  - evolve:_ops:api-contract-reviewer
+  - evolve:_ops:infrastructure-architect
+  - evolve:_ops:ai-integration-architect
+  # Design
+  - evolve:_design:creative-director
+  - evolve:_design:ux-ui-designer
+  - evolve:_design:ui-polish-reviewer
+  - evolve:_design:accessibility-reviewer
+  - evolve:_design:copywriter
+  - evolve:_design:prototype-builder
+  # Stack-specific
+  - evolve:stacks/laravel:laravel-architect
+  - evolve:stacks/laravel:laravel-developer
+  - evolve:stacks/laravel:queue-worker-architect
+  - evolve:stacks/laravel:eloquent-modeler
+  - evolve:stacks/nextjs:nextjs-architect
+  - evolve:stacks/nextjs:nextjs-developer
+  - evolve:stacks/nextjs:server-actions-specialist
+  - evolve:stacks/postgres:postgres-architect
+  - evolve:stacks/redis:redis-architect
+
+rules-attach:
+  - best-practices-2026
+  - git-discipline
+  - commit-discipline
+  - no-dead-code
+  - confidence-discipline
+  - anti-hallucination
+  - rule-maintenance
+  - pre-commit-discipline
+  - prototype-to-production
+  - fsd
+  - modular-backend
+  - routing
+  - i18n
+  - observability
+  - privacy-pii
+  - infrastructure-patterns
+
+scaffold:
+  claude:
+    settings.json:
+      template: "stack-packs/laravel-nextjs-postgres-redis/claude/settings.json"
+    CLAUDE.md:
+      template: "stack-packs/laravel-nextjs-postgres-redis/claude/CLAUDE.md.tpl"
+      placeholders: [stack-summary, agent-roster, scope-boundaries, paths]
+
+  root-files:
+    - { path: ".editorconfig", source: "templates/configs/.editorconfig" }
+    - { path: ".gitignore", source: "stack-packs/laravel-nextjs-postgres-redis/configs/.gitignore" }
+    - { path: ".gitattributes", source: "templates/configs/.gitattributes" }
+    - { path: "commitlint.config.js", source: "templates/configs/commitlint.config.js" }
+    - { path: "lint-staged.config.js", source: "stack-packs/laravel-nextjs-postgres-redis/configs/lint-staged.config.js" }
+    - { path: "package.json", source: "stack-packs/laravel-nextjs-postgres-redis/configs/package.json.tpl" }
+
+  husky:
+    pre-commit: "stack-packs/laravel-nextjs-postgres-redis/husky/pre-commit"
+    commit-msg: "templates/husky/commit-msg"
+    pre-push: "stack-packs/laravel-nextjs-postgres-redis/husky/pre-push"
+
+  directories:
+    - { path: "backend/", purpose: "Laravel skeleton (composer create-project laravel/laravel backend)" }
+    - { path: "frontend/", purpose: "Next.js skeleton (npx create-next-app@latest frontend)" }
+    - { path: "prototypes/", purpose: "HTML prototypes; brandbook in _brandbook/" }
+    - { path: "prototypes/_brandbook/", purpose: "Source-of-truth brandbook tokens + components" }
+    - { path: "docs/", purpose: "PRDs, ADRs, specs, plans" }
+    - { path: "docs/adr/", purpose: "Architecture Decision Records" }
+    - { path: "docs/prd/", purpose: "Product Requirements Documents" }
+    - { path: "docs/specs/", purpose: "Technical specs (output of brainstorming)" }
+    - { path: "docs/plans/", purpose: "Implementation plans (output of writing-plans)" }
+    - { path: ".github/workflows/", purpose: "GitHub Actions CI" }
+
+post-genesis-actions:
+  - { run: "composer install --working-dir=backend", when: "backend/composer.json exists" }
+  - { run: "npm install --prefix frontend", when: "frontend/package.json exists" }
+  - { run: "npm install", when: "package.json exists at root" }
+  - { run: "npm run prepare", when: "package.json has prepare script (husky)" }

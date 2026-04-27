@@ -1,0 +1,23 @@
+id: _atomic/queue
+name: "Atomic: Queue workers (Horizon / Sidekiq / Bull)"
+version: 1.0.0
+description: "Adds queue-worker-architect + queue idempotency rules"
+type: atomic
+
+agents-attach:
+  - evolve:stacks/laravel:queue-worker-architect
+
+rules-attach:
+  - infrastructure-patterns
+
+scaffold:
+  claude-md-additions:
+    section: "## Background Jobs"
+    content: |
+      Queue topology defined in `infrastructure-patterns`. Every job MUST be:
+      - Idempotent (safe to retry)
+      - Have explicit `$tries`, `$backoff`, `$timeout`
+      - Have `failed(Throwable $e)` handler writing to dead-letter or alerting
+      - Visible via Horizon dashboard (Laravel) or equivalent
+
+      See `agents/stacks/laravel/queue-worker-architect.md`.

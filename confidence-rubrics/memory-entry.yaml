@@ -1,0 +1,26 @@
+artifact: memory-entry
+max-score: 10
+dimensions:
+  - id: context-clarity
+    weight: 2
+    question: "Does the entry clearly state the situation/context that produced this knowledge?"
+    evidence-required: "Context section with specific scenario, not generic ('we had performance issues' is bad; 'billing API p95 latency was 800ms during checkout flow under 50 concurrent users' is good)"
+  - id: actionability
+    weight: 2
+    question: "Can a future reader apply this knowledge concretely (specific files/commands/patterns), not abstractly?"
+    evidence-required: "How-to-apply section with concrete invocation steps + code/command references"
+  - id: rationale-depth
+    weight: 2
+    question: "Does the entry explain WHY (not just what), with tradeoffs considered?"
+    evidence-required: "Why section with 2+ paragraphs, alternatives considered, tradeoffs"
+  - id: tag-discipline
+    weight: 2
+    question: "Does the entry use 3-7 tags from project vocabulary (not ad-hoc), enabling future tag-search?"
+    evidence-required: "frontmatter tags field with 3-7 entries; cross-checked against existing entries' tags"
+  - id: cross-linking
+    weight: 2
+    question: "Does the entry reference related entries / specs / ADRs / PRs?"
+    evidence-required: "frontmatter related field OR References section with ≥1 link to existing artifact"
+gates:
+  block-below: 9
+  warn-below: 10

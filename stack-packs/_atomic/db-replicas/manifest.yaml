@@ -1,0 +1,24 @@
+id: _atomic/db-replicas
+name: "Atomic: Database read replicas"
+version: 1.0.0
+description: "Adds db-reviewer + infrastructure-architect for replica topology and read-path routing"
+type: atomic
+
+agents-attach:
+  - evolve:_ops:db-reviewer
+  - evolve:_ops:infrastructure-architect
+
+rules-attach:
+  - infrastructure-patterns
+
+scaffold:
+  claude-md-additions:
+    section: "## Database Replication"
+    content: |
+      Replication topology per `infrastructure-patterns`. Read replicas configured for:
+      - Read scaling (analytics queries → replica)
+      - DR (replica in different AZ/region)
+
+      Discipline: long-running migrations cause lag; plan migration windows. Application layer must handle replica lag (eventual consistency for read-after-write).
+
+      See `agents/_ops/infrastructure-architect.md` and `agents/_ops/db-reviewer.md`.

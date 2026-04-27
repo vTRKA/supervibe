@@ -1,0 +1,26 @@
+artifact: framework-self
+max-score: 10
+dimensions:
+  - id: stack-coverage
+    weight: 2
+    question: "How many of the top-20 popular stacks have a complete pack (>=80% coverage acceptable for v1.x)?"
+    evidence-required: "registry.yaml stack-packs entries count + percentage of top-20 list covered"
+  - id: agent-quality-pass
+    weight: 2
+    question: "What percentage of agents pass the agent-quality rubric >=9 (>=95% acceptable)?"
+    evidence-required: "Validation report from validate-frontmatter + manual rubric run on sample"
+  - id: skill-quality-pass
+    weight: 2
+    question: "What percentage of skills pass the skill-quality rubric >=9 (>=95% acceptable)?"
+    evidence-required: "lint-skill-descriptions report + skill-quality scoring sample"
+  - id: artifact-freshness
+    weight: 2
+    question: "What percentage of agents AND rules have last-verified within 90 days (>=90% acceptable for each)?"
+    evidence-required: "Frontmatter scan output with last-verified timestamps for ALL agents AND ALL rules; both groups must independently meet >=90% threshold"
+  - id: discipline
+    weight: 2
+    question: "Is the override rate <5% across the last 100 confidence-log entries (or N/A if <100 entries)?"
+    evidence-required: "Aggregation of confidence-log.jsonl override field counts"
+gates:
+  block-below: 9
+  warn-below: 10

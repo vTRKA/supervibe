@@ -1,0 +1,26 @@
+artifact: agent-quality
+max-score: 10
+dimensions:
+  - id: persona-depth
+    weight: 2
+    question: "Does the agent have a Persona section declaring 15+ years of expertise, core principle, and explicit priorities?"
+    evidence-required: "Persona section present, persona-years frontmatter set, priorities listed"
+  - id: scope-precision
+    weight: 2
+    question: "Is the scope declaration concrete (specific paths/dirs the agent may touch), not vague ('all backend code')?"
+    evidence-required: "Scope section with explicit path patterns or directory list"
+  - id: anti-patterns
+    weight: 2
+    question: "Are at least 4 concrete anti-patterns listed with reasoning, not generic warnings?"
+    evidence-required: "Anti-patterns section with >=4 items, each with one-line reasoning"
+  - id: verification-commands
+    weight: 2
+    question: "Does the agent declare specific verification commands for the stack (cargo check, pytest, tsc, etc.)?"
+    evidence-required: "Verification section with at least 2 named commands"
+  - id: size-and-shape
+    weight: 2
+    question: "Is the file >=250 lines AND <=25 KB AND has all required frontmatter fields?"
+    evidence-required: "wc -l output >=250, ls -la <=25600 bytes, frontmatter contains name/namespace/description/persona-years/version/last-verified"
+gates:
+  block-below: 9
+  warn-below: 10

@@ -1,0 +1,26 @@
+artifact: rule-quality
+max-score: 10
+dimensions:
+  - id: rationale
+    weight: 2
+    question: "Does the rule explain WHY (the reason the rule exists, ideally with a concrete past incident or principle)?"
+    evidence-required: "Why / Rationale / Reasoning section present with at least 2 sentences"
+  - id: examples-good-bad
+    weight: 2
+    question: "Does the rule include concrete good and bad code examples?"
+    evidence-required: "At least 1 good example and 1 bad example with code blocks"
+  - id: how-to-apply
+    weight: 2
+    question: "Does the rule say WHEN it applies (which contexts, which file types, which commands)?"
+    evidence-required: "Applies-to / Scope / When-to-apply section enumerating contexts"
+  - id: cross-links
+    weight: 2
+    question: "Does the rule link to related rules and reference any related skills/agents?"
+    evidence-required: "Related rules / See also section with at least 1 link"
+  - id: size-and-shape
+    weight: 2
+    question: "Is the file >=200 lines AND has frontmatter with applies-to, version, last-verified?"
+    evidence-required: "wc -l >=200, frontmatter contains applies-to/version/last-verified"
+gates:
+  block-below: 9
+  warn-below: 10

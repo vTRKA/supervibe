@@ -1,0 +1,26 @@
+artifact: prototype
+max-score: 10
+dimensions:
+  - id: visual-completeness
+    weight: 2
+    question: "Does the HTML prototype render every screen state (resting, hover, active, focus, disabled, loading, empty, error)?"
+    evidence-required: "List of separate state files in prototypes/{feature}/states/ matching the 8 standard states"
+  - id: token-discipline
+    weight: 2
+    question: "Are all colors/spacing/typography from design tokens, with no arbitrary hex values or inline numeric pixel values?"
+    evidence-required: "grep -E '#[0-9a-fA-F]{3,8}' returns 0 hits in prototype CSS outside the tokens file"
+  - id: copy-quality
+    weight: 2
+    question: "Has copywriter reviewed all visible UI text (no Lorem Ipsum, no placeholder strings, voice consistent)?"
+    evidence-required: "Copywriter approval message in conversation OR prototype README states 'copy approved by <agent>'"
+  - id: accessibility
+    weight: 2
+    question: "Does the prototype meet WCAG AA (contrast >=4.5:1 for body text, keyboard navigation visible, prefers-reduced-motion respected)?"
+    evidence-required: "accessibility-reviewer report attached or contrast check command output"
+  - id: brand-alignment
+    weight: 2
+    question: "Has creative-director approved the visual direction matches the agreed brand language?"
+    evidence-required: "creative-director approval message OR explicit brand-direction document referenced"
+gates:
+  block-below: 9
+  warn-below: 10

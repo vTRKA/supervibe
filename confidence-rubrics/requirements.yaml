@@ -1,0 +1,26 @@
+artifact: requirements-spec
+max-score: 10
+dimensions:
+  - id: clarity
+    weight: 2
+    question: "Is each acceptance criterion testable with a measurable verb (returns, equals, contains, calls, completes within)?"
+    evidence-required: "List of acceptance criteria, each with a measurable verb and concrete expected value"
+  - id: completeness
+    weight: 2
+    question: "Are edge cases enumerated (auth failure, empty state, race condition, network loss, invalid input, permission denied)?"
+    evidence-required: "Edge case list with intended handling for each case"
+  - id: scope-isolation
+    weight: 2
+    question: "Does this spec cover ONE feature with explicit out-of-scope boundary?"
+    evidence-required: "Out-of-scope section listing what is deferred to future specs"
+  - id: stack-alignment
+    weight: 2
+    question: "Does the spec reference concrete project paths, files, and commands (grep-verifiable), not generic terms?"
+    evidence-required: "At least 3 grep-verified file paths and 1 command name from the actual project"
+  - id: stakeholder-alignment
+    weight: 2
+    question: "Has the user explicitly approved the spec text in this exact wording?"
+    evidence-required: "User message quote or approval timestamp in this conversation"
+gates:
+  block-below: 9
+  warn-below: 10

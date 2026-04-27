@@ -1,0 +1,26 @@
+artifact: implementation-plan
+max-score: 10
+dimensions:
+  - id: phase-decomposition
+    weight: 2
+    question: "Is the plan decomposed into phases, each with explicit goal, tasks, and success criteria?"
+    evidence-required: "Phases enumerated with goal sentences and bulleted tasks"
+  - id: task-granularity
+    weight: 2
+    question: "Is every task bite-sized (2-5 minutes), with concrete files-to-touch and code shown?"
+    evidence-required: "Tasks contain Files section (Create/Modify) and code blocks for code steps"
+  - id: verification-evidence
+    weight: 2
+    question: "Does every phase end with a verification command and expected output?"
+    evidence-required: "Verification section per phase with bash command and expected stdout/exit-code"
+  - id: spec-coverage
+    weight: 2
+    question: "Does every requirement in the source spec map to at least one task?"
+    evidence-required: "Coverage matrix or annotation linking spec sections to task numbers"
+  - id: rollback-safety
+    weight: 2
+    question: "Are commits frequent enough that any single task failure can be rolled back without losing other work?"
+    evidence-required: "Commit step at the end of each task or each green test"
+gates:
+  block-below: 9
+  warn-below: 10

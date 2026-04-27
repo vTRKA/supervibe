@@ -1,0 +1,26 @@
+artifact: skill-quality
+max-score: 10
+dimensions:
+  - id: trigger-clarity
+    weight: 2
+    question: "Does the description follow the format 'Use WHEN <trigger> TO <verb-led purpose> GATES <scoring>' so main agent can detect when to invoke?"
+    evidence-required: "description regex match against /Use\\s+(WHEN|BEFORE|AFTER|when|before|after).*?(TO|to)\\s/i"
+  - id: step-zero
+    weight: 2
+    question: "Is there a mandatory Step 0 (read source of truth before any action)?"
+    evidence-required: "SKILL.md contains 'Step 0' OR 'Read source of truth' section before main procedure"
+  - id: decision-tree
+    weight: 2
+    question: "Does the skill contain a decision tree or flowchart for non-trivial branching cases?"
+    evidence-required: "Skill body contains a graph/diagram OR if/then table for at least one decision point"
+  - id: output-contract
+    weight: 2
+    question: "Does the skill declare an explicit output contract (deliverable format)?"
+    evidence-required: "Output contract / Output / Returns section with format spec"
+  - id: gate-on-exit
+    weight: 2
+    question: "Does the skill enforce confidence-scoring before exit (gate-on-exit: true in frontmatter OR explicit step in procedure)?"
+    evidence-required: "Frontmatter gate-on-exit:true OR procedure step calling evolve:confidence-scoring"
+gates:
+  block-below: 9
+  warn-below: 10

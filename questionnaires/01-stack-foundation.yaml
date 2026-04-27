@@ -1,0 +1,66 @@
+id: stack-foundation
+phase: discovery
+priority: 1
+description: Foundational stack questions — project type, backend, frontend, database, infrastructure
+questions:
+  - id: project-type
+    when: always
+    type: single-choice
+    text: "What are you building?"
+    options:
+      - { id: web-app, label: "Web application (frontend + backend)" }
+      - { id: api-only, label: "Backend API only" }
+      - { id: spa, label: "Single-page app (no own backend)" }
+      - { id: desktop, label: "Desktop app" }
+      - { id: mobile, label: "Mobile app" }
+      - { id: library, label: "Library / SDK / CLI" }
+
+  - id: backend-stack
+    when: "project-type in [web-app, api-only]"
+    type: single-choice
+    text: "Backend stack?"
+    options:
+      - { id: laravel, label: "Laravel 11+", recommends: [stacks/laravel/laravel-architect, stacks/laravel/laravel-developer] }
+      - { id: nextjs-fullstack, label: "Next.js (server actions, no separate backend)", recommends: [stacks/nextjs/nextjs-architect, stacks/nextjs/nextjs-developer] }
+      - { id: fastapi, label: "FastAPI (Python)", recommends: [stacks/fastapi/fastapi-architect, stacks/fastapi/fastapi-developer] }
+      - { id: django, label: "Django" }
+      - { id: rails, label: "Rails 8" }
+      - { id: nestjs, label: "NestJS" }
+      - { id: go-gin, label: "Go (Gin/Echo)" }
+      - { id: rust-axum, label: "Rust (Axum)" }
+      - { id: spring-boot, label: "Spring Boot" }
+
+  - id: frontend-stack
+    when: "project-type in [web-app, spa]"
+    type: single-choice
+    text: "Frontend stack?"
+    options:
+      - { id: nextjs, label: "Next.js", recommends: [stacks/nextjs/nextjs-developer] }
+      - { id: react-vite, label: "React + Vite", recommends: [stacks/react/react-implementer] }
+      - { id: vue-nuxt, label: "Nuxt" }
+      - { id: vue-vite, label: "Vue + Vite" }
+      - { id: svelte-kit, label: "SvelteKit" }
+      - { id: solid-start, label: "SolidStart" }
+      - { id: astro, label: "Astro" }
+
+  - id: database
+    when: "project-type != library"
+    type: multi-choice
+    text: "Primary data store?"
+    options:
+      - { id: postgres, label: "PostgreSQL", recommends: [stacks/postgres/postgres-architect] }
+      - { id: mysql, label: "MySQL/MariaDB" }
+      - { id: sqlite, label: "SQLite" }
+      - { id: mongodb, label: "MongoDB" }
+
+  - id: infra-features
+    when: "project-type in [web-app, api-only]"
+    type: multi-choice
+    text: "Infrastructure features needed?"
+    options:
+      - { id: redis-cache, label: "Redis (cache)", recommends: [stacks/redis/redis-architect] }
+      - { id: redis-sentinel, label: "Redis Sentinel (HA)", recommends: [_ops/infrastructure-architect, stacks/redis/redis-architect] }
+      - { id: queue, label: "Background jobs (queue workers)", recommends: [stacks/laravel/queue-worker-architect] }
+      - { id: db-replicas, label: "Read replicas", recommends: [_ops/infrastructure-architect, _ops/db-reviewer] }
+      - { id: object-storage, label: "S3-compatible storage" }
+      - { id: search, label: "Full-text search (Meilisearch/Typesense/Elastic)" }

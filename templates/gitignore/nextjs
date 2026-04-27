@@ -1,0 +1,9 @@
+# Next.js-specific
+.next/
+out/
+build/
+dist/
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/

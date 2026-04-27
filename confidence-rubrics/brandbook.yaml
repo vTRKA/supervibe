@@ -1,0 +1,26 @@
+artifact: brandbook
+max-score: 10
+dimensions:
+  - id: visual-foundation
+    weight: 2
+    question: "Are the visual foundations defined as design tokens (color palette with semantic names, type scale with hierarchy, spacing scale, radii, elevation, motion durations/easings)?"
+    evidence-required: "tokens file (e.g., prototypes/_brandbook/tokens.css or tokens.json) with all 6 token categories present and semantically named (NOT raw hex values floating in component CSS)"
+  - id: component-inventory
+    weight: 2
+    question: "Is there a documented inventory of base components (button, input, card, dialog, etc.) with all states (resting/hover/active/focus/disabled/loading/empty/error) shown?"
+    evidence-required: "prototypes/_brandbook/components/*.html files OR a single index.html showing every component x every state matrix"
+  - id: voice-and-tone
+    weight: 2
+    question: "Is the voice/tone documented with concrete examples (do/don't pairs for headlines, body, CTAs, errors)?"
+    evidence-required: "Voice-and-tone document or section with at least 5 do/don't pairs"
+  - id: accessibility-commitments
+    weight: 2
+    question: "Are accessibility commitments explicit (target WCAG level, contrast minimums, motion preferences honored, keyboard nav patterns)?"
+    evidence-required: "Accessibility commitments section with measurable targets (e.g., 'all body text >=4.5:1 contrast against background', 'prefers-reduced-motion respected for all animations')"
+  - id: stakeholder-approval
+    weight: 2
+    question: "Has a stakeholder (creative-director agent OR human user) explicitly approved the brandbook?"
+    evidence-required: "Approval message or commit by creative-director agent OR explicit user approval quoted"
+gates:
+  block-below: 9
+  warn-below: 10

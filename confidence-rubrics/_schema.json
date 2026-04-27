@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Evolve Confidence Rubric",
+  "type": "object",
+  "required": ["artifact", "max-score", "dimensions", "gates"],
+  "additionalProperties": false,
+  "properties": {
+    "artifact": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier for the artifact type this rubric scores"
+    },
+    "max-score": {
+      "type": "integer",
+      "const": 10,
+      "description": "All rubrics use 10-point scale in v1.0"
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "weight", "question", "evidence-required"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "weight": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "question": { "type": "string", "minLength": 10 },
+          "evidence-required": { "type": "string", "minLength": 10 }
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "required": ["block-below", "warn-below"],
+      "additionalProperties": false,
+      "properties": {
+        "block-below": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "warn-below": { "type": "integer", "minimum": 1, "maximum": 10 }
+      }
+    }
+  }
+}

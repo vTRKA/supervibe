@@ -1,0 +1,53 @@
+id: infra
+phase: discovery
+priority: 3
+description: Infrastructure topology — HA, replication, queueing, caching
+questions:
+  - id: redis-topology
+    when: "infra-features contains redis-cache OR redis-sentinel"
+    type: single-choice
+    text: "Redis topology?"
+    options:
+      - { id: single, label: "Single instance (dev / low-traffic)" }
+      - { id: sentinel, label: "Sentinel (HA, automatic failover)", recommends: [_ops/infrastructure-architect] }
+      - { id: cluster, label: "Cluster (sharding + HA)", recommends: [_ops/infrastructure-architect] }
+
+  - id: postgres-topology
+    when: "database contains postgres"
+    type: single-choice
+    text: "Postgres topology?"
+    options:
+      - { id: single, label: "Single primary" }
+      - { id: streaming-replica, label: "Primary + streaming replica (read scale + DR)" }
+      - { id: logical-replication, label: "Logical replication (multi-region)" }
+      - { id: citus, label: "Citus (sharding)" }
+
+  - id: queue-topology
+    when: "infra-features contains queue"
+    type: single-choice
+    text: "Queue topology?"
+    options:
+      - { id: redis-backed, label: "Redis-backed (Bull/Sidekiq/Horizon)" }
+      - { id: rabbitmq, label: "RabbitMQ" }
+      - { id: kafka, label: "Kafka (high-throughput)" }
+      - { id: in-process, label: "In-process (simplest)" }
+
+  - id: cache-strategy
+    when: "infra-features contains redis-cache"
+    type: multi-choice
+    text: "Cache layers?"
+    options:
+      - { id: app-memory, label: "App-memory (LRU)" }
+      - { id: redis, label: "Redis shared" }
+      - { id: reverse-proxy, label: "Reverse proxy (nginx/varnish)" }
+      - { id: cdn, label: "CDN (Cloudflare/Fastly)" }
+
+  - id: search-engine
+    when: "infra-features contains search"
+    type: single-choice
+    text: "Search engine?"
+    options:
+      - { id: meilisearch, label: "Meilisearch (simplest)" }
+      - { id: typesense, label: "Typesense" }
+      - { id: elasticsearch, label: "Elasticsearch (most features)" }
+      - { id: postgres-fts, label: "Postgres FTS (no extra service)" }

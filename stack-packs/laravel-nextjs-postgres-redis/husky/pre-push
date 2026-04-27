@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Tier 3: full check before push (stack-aware)
+set -e
+
+if [ -d "backend" ]; then
+  echo "▶ Backend (Laravel) checks..."
+  (cd backend && ./vendor/bin/pint --test && ./vendor/bin/phpstan analyse --no-progress && ./vendor/bin/pest --parallel)
+fi
+
+if [ -d "frontend" ]; then
+  echo "▶ Frontend (Next.js) checks..."
+  (cd frontend && npm run typecheck && npm run lint && npm test -- --run)
+fi
+
+echo "▶ Dependency audit..."
+[ -f "composer.lock" ] || (cd backend 2>/dev/null && composer audit --no-dev) || true
+[ -f "package-lock.json" ] && npm audit --audit-level=high || true
+
+echo "✓ Pre-push checks passed"
