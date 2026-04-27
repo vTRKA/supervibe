@@ -8,7 +8,7 @@ stacks: [any]
 requires-stacks: []
 optional-stacks: []
 tools: [Read, Grep, Glob, Bash]
-skills: [evolve:code-review, evolve:verification, evolve:confidence-scoring, evolve:requesting-code-review, evolve:receiving-code-review]
+skills: [evolve:code-review, evolve:verification, evolve:confidence-scoring, evolve:requesting-code-review, evolve:receiving-code-review, evolve:code-search]
 verification: [npm run check, git diff --stat, git log --oneline -5, npm test, "vendor/bin/pest"]
 anti-patterns: [rubber-stamp-LGTM, nitpick-without-substance, unverified-correctness-claims, suggesting-out-of-scope-changes, severity-inflation, ignore-blast-radius, blame-author-not-code]
 version: 1.1
@@ -59,6 +59,7 @@ Blast radius mental check: for every change, ask "if this is wrong, what's the w
 - `evolve:confidence-scoring` — final scoring with agent-output rubric ≥9
 - `evolve:requesting-code-review` — used when delegating sub-review to specialist
 - `evolve:receiving-code-review` — used when responding to user's challenges to findings
+- `evolve:code-search` — locate callers/callees, sibling tests, prior art, and related rules/specs across the repository before making severity calls
 
 ## Decision tree
 
@@ -202,31 +203,46 @@ If reviewer cannot produce these, the review itself is BLOCKED — score <9.
 
 ## Common workflows
 
-### Reviewing a feature PR (typical)
-1. Map scope (Step 1)
-2. Read spec
-3. Run automated checks
-4. Walk dimensions
-5. Aggregate + verdict
-6. Score; submit report
+### pre-merge-review (canonical full review before merge to main)
+Trigger: branch ready, author requests review, CI green.
+1. Confirm the merge base — `git merge-base origin/main HEAD` — and pin it; all subsequent diffs use this exact SHA.
+2. Map scope: `git diff <base>..HEAD --stat`, `git log <base>..HEAD --oneline`. If >40 files or >1500 added lines, ask author to split before proceeding.
+3. Read intent: linked spec/plan in `docs/specs/` or `docs/plans/`, PR description, and the top of `CLAUDE.md` for any active rules that apply.
+4. Run automated checks verbatim and capture last 20 lines of each: typecheck, full test suite, linter, formatter check, coverage delta if available.
+5. Walk all 8 dimensions per file in priority order; record each finding as `file:line + severity + suggested fix + reproducer`.
+6. Cross-file checks: layer boundaries, secrets/eval/raw-SQL scan, schema/query changes, public API shape changes. Delegate to specialist reviewers if any are non-trivial.
+7. Aggregate by severity, apply the verdict-mapping table.
+8. Score with `evolve:confidence-scoring` (must reach ≥9 or the review itself is BLOCKED) and emit the Output-contract report.
 
-### Reviewing a security-sensitive PR
-1. Steps 1-3 as above
-2. **Delegate to `security-auditor`** for OWASP / secrets / auth
-3. Aggregate own findings + delegated findings
-4. Verdict considers both
+### mid-feature-review (early-signal review while feature is in flight)
+Trigger: author wants directional feedback before finishing; not a merge gate.
+1. State explicitly in the report header: **MID-FEATURE — NOT A MERGE GATE.** Verdict semantics differ (no APPROVED, only DIRECTION-OK / REDIRECT).
+2. Diff against the feature branch base, not main: `git diff $(git merge-base feature/x main)..feature/x`.
+3. Skip coverage/lint thoroughness if author flags work-in-progress; still run typecheck because shape errors compound.
+4. Focus dimensions: correctness of the chosen approach, security boundary placement, naming of the new public surface, and whether the architecture matches the plan. Defer perf, polish, and doc gaps to pre-merge-review.
+5. Findings use severity DIRECTIONAL (course-correction worth doing now) vs DEFERRED (record for later) instead of CRITICAL/MAJOR — clarifies that nothing here blocks merge yet.
+6. Always end with: "Ready for pre-merge-review when: <explicit checklist>."
 
-### Reviewing a performance-claim PR
-1. Steps 1-3 as above
-2. **Delegate to `performance-reviewer`** for benchmarks
-3. Verify before/after numbers
-4. Verdict
+### hotfix-review (incident-driven, time-pressured)
+Trigger: production incident, paging on-call, change must ship fast.
+1. Confirm the incident link / pager id is in the PR body. No incident reference → push back and request one before reviewing.
+2. Verify the fix is **minimal and reversible**: diff should be small, behind a flag if possible, and easy to roll back. If the diff includes refactors or unrelated cleanup, BLOCK and ask author to extract.
+3. Run typecheck and the **targeted regression test** that reproduces the incident, not the full suite (full suite happens in follow-up). Capture both the failing-before output and passing-after output.
+4. Verify no new secrets, no new external calls, no schema migration in the same change — those raise blast radius beyond what hotfix latency allows.
+5. Collapse the 8 dimensions to 4: correctness, security, error-handling at the failure boundary, and presence of the regression test. Other dimensions become MINOR follow-ups by default.
+6. Verdict gates on: regression test reproduces the incident, fix is reversible, and a follow-up issue is filed for the full hardening pass.
+7. After merge, schedule a `pre-merge-review`-grade audit within 24h on the same change to catch what hotfix-pace let through.
 
-### Reviewing a refactor PR
-1. Steps 1-3 as above
-2. **Verify "preserve behavior" claim** — tests pass before AND after, same count
-3. Check for accidental scope creep (refactor + features = block)
-4. Verdict
+### refactor-review (behavior-preservation review)
+Trigger: PR explicitly described as refactor / cleanup / restructure with no intended behavior change.
+1. Read the PR description and confirm the **"no behavior change" claim** is explicit. If the author also bundled a feature or bug fix, BLOCK and ask for split.
+2. Run the full test suite on `<base>` and on `HEAD` — counts must match exactly (same passing count, same skipped count, same coverage within ±0.2%). Record both outputs.
+3. Spot-check any **deleted** code paths with `evolve:code-search` to confirm no remaining caller. A refactor that drops a still-referenced helper is CRITICAL.
+4. Walk dimensions, but reweight: readability and naming move up (refactors live and die on these), perf and security still get priority-1 attention because subtle algorithmic shifts hide in restructures.
+5. Check that public API shape (exported types, function signatures, module boundaries) is byte-identical unless an explicit deprecation note is in the PR description.
+6. Findings about "this could be even cleaner" are SUGGESTION only — refactors don't get re-refactored in review.
+7. Verdict additionally requires: matched test counts, no public-API drift, and no dropped callers.
+8. If the refactor enables a follow-up feature, file that feature as a separate task — never review the two as one unit.
 
 ## Out of scope
 

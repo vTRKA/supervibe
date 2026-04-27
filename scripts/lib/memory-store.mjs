@@ -48,6 +48,7 @@ export class MemoryStore {
         file TEXT NOT NULL,
         summary TEXT,
         content TEXT,
+        content_hash TEXT,
         embedding BLOB,
         indexed_at TEXT
       );
@@ -80,6 +81,8 @@ export class MemoryStore {
       );
       CREATE INDEX IF NOT EXISTS idx_chunks_entry ON entry_chunks(entry_id);
     `);
+    // Migration: add content_hash column if missing (idempotent — fails silently on existing DBs)
+    try { this.db.exec("ALTER TABLE entries ADD COLUMN content_hash TEXT"); } catch {}
     return this;
   }
 
@@ -379,6 +382,101 @@ export class MemoryStore {
     const byType = this.db.prepare('SELECT type, COUNT(*) AS n FROM entries GROUP BY type').all();
     const tagCount = this.db.prepare('SELECT COUNT(DISTINCT tag) AS n FROM tags').get().n;
     return { totalEntries: total, byType, uniqueTags: tagCount };
+  }
+
+  /** Index or refresh a single memory entry from filesystem. Hash-based skip if unchanged. */
+  async incrementalUpdate(absPath) {
+    const { hashFile } = await import('./file-hash.mjs');
+
+    let content;
+    try { content = await readFile(absPath, 'utf8'); }
+    catch (err) {
+      if (err.code === 'ENOENT') return await this.removeEntryByPath(absPath) || { skipped: 'file-deleted' };
+      throw err;
+    }
+
+    const parsed = matter(content);
+    const data = parsed.data;
+    const body = parsed.content || '';
+    if (!data.id) return { skipped: 'no-id-in-frontmatter' };
+
+    const hash = await hashFile(absPath);
+    const existing = this.db.prepare('SELECT content_hash FROM entries WHERE id = ?').get(String(data.id));
+    if (existing && existing.content_hash === hash) {
+      return { skipped: 'unchanged' };
+    }
+
+    this.db.prepare('DELETE FROM entry_chunks WHERE entry_id = ?').run(String(data.id));
+    this.db.prepare('DELETE FROM entries_fts WHERE id = ?').run(String(data.id));
+    this.db.prepare('DELETE FROM tags WHERE entry_id = ?').run(String(data.id));
+
+    const tagsArr = Array.isArray(data.tags) ? data.tags : [];
+    const tagsCSV = tagsArr.join(',');
+    const summary = body.split('\n').slice(0, 5).join(' ').slice(0, 500);
+
+    let summaryEmbeddingBuf = null;
+    const chunkEmbeddings = [];
+    if (this.useEmbeddings) {
+      try {
+        const summaryText = `${data.id}\n${tagsCSV}\n${summary}`;
+        summaryEmbeddingBuf = vectorToBuffer(await embed(summaryText, 'passage'));
+        const chunks = await chunkText(body, { targetTokens: 200, overlapTokens: 32 });
+        for (let i = 0; i < chunks.length; i++) {
+          const vec = await embed(chunks[i], 'passage');
+          chunkEmbeddings.push({
+            idx: i,
+            text: chunks[i],
+            tokens: await countTokens(chunks[i]),
+            buf: vectorToBuffer(vec)
+          });
+        }
+      } catch {}
+    }
+
+    const dateStr = data.date instanceof Date
+      ? data.date.toISOString().slice(0, 10)
+      : (data.date ? String(data.date) : null);
+
+    this.db.prepare(`
+      INSERT OR REPLACE INTO entries
+        (id, type, date, tags_csv, agent, confidence, file, summary, content, content_hash, embedding, indexed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(
+      String(data.id),
+      String(data.type || 'decision'),
+      dateStr,
+      String(tagsCSV),
+      String(data.agent || 'unknown'),
+      Number(data.confidence || 0),
+      String(this.toRelativePath(absPath)),
+      String(summary),
+      String(body),
+      hash,
+      summaryEmbeddingBuf
+    );
+
+    if (chunkEmbeddings.length > 0) {
+      const ins = this.db.prepare('INSERT INTO entry_chunks (entry_id, chunk_idx, chunk_text, token_count, embedding) VALUES (?, ?, ?, ?, ?)');
+      for (const c of chunkEmbeddings) ins.run(String(data.id), c.idx, String(c.text), c.tokens, c.buf);
+    }
+
+    this.db.prepare('INSERT INTO entries_fts (id, content, summary, tags_csv) VALUES (?, ?, ?, ?)').run(String(data.id), body, summary, tagsCSV);
+    const insTag = this.db.prepare('INSERT OR IGNORE INTO tags (tag, entry_id) VALUES (?, ?)');
+    for (const tag of tagsArr) insTag.run(tag, String(data.id));
+
+    return { indexed: true };
+  }
+
+  /** Remove entry whose source file matches absPath. */
+  async removeEntryByPath(absPath) {
+    const relPath = this.toRelativePath(absPath);
+    const row = this.db.prepare('SELECT id FROM entries WHERE file = ?').get(relPath);
+    if (!row) return { skipped: 'not-in-index' };
+    this.db.prepare('DELETE FROM entry_chunks WHERE entry_id = ?').run(row.id);
+    this.db.prepare('DELETE FROM entries_fts WHERE id = ?').run(row.id);
+    this.db.prepare('DELETE FROM tags WHERE entry_id = ?').run(row.id);
+    this.db.prepare('DELETE FROM entries WHERE id = ?').run(row.id);
+    return { removed: true, id: row.id };
   }
 }
 

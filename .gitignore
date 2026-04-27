@@ -5,6 +5,12 @@ node_modules/
 registry.yaml
 .DS_Store
 
+# Generated SQLite indexes (rebuilt from filesystem source-of-truth)
+.claude/memory/*.db
+.claude/memory/*.db-journal
+.claude/memory/*.db-wal
+.claude/memory/*.db-shm
+
 # Models: track quantized only, ignore full + tmp downloads
 models/**/onnx/model.onnx
 models/**/onnx/*.tmp.*

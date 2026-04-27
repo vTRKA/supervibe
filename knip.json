@@ -9,7 +9,10 @@
     "scripts/post-edit-stack-watch.mjs",
     "scripts/effectiveness-tracker.mjs",
     "scripts/build-memory-index.mjs",
-    "scripts/search-memory.mjs"
+    "scripts/search-memory.mjs",
+    "scripts/build-code-index.mjs",
+    "scripts/search-code.mjs",
+    "scripts/watch-memory.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

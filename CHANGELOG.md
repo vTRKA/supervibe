@@ -5,6 +5,54 @@ All notable changes to the Evolve plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-04-27
+
+**Code RAG + incremental memory + agent strengthen pass. All 46 agents at ≥250 lines with full persona / decision tree / output contract / common workflows. Code is now indexed in SQLite + embeddings; agents auto-search before non-trivial implementation. Memory cleanup is now incremental + watcher-driven.**
+
+### Added — Code RAG (Phase A)
+
+- **`scripts/lib/file-hash.mjs`** — SHA-256 helper for change detection
+- **`scripts/lib/code-chunker.mjs`** — language-aware chunker for JS/TS/Python/PHP/Rust/Go/Java/Ruby/Vue/Svelte; brace-balanced for C-family, indent-tracked for Python/Ruby
+- **`scripts/lib/code-store.mjs`** — `CodeStore` with FTS5 + per-chunk embeddings + RRF hybrid search; hash-based dedup on re-index
+- **`scripts/build-code-index.mjs`** — full project indexer (`npm run code:index`)
+- **`scripts/search-code.mjs`** — CLI used by skill (`npm run code:search`)
+- **`skills/code-search/SKILL.md`** — `evolve:code-search` (agent-side semantic code lookup)
+- Wired into `laravel-developer`, `nextjs-developer`, `fastapi-developer`, `react-implementer` as a pre-task step
+- Indexes `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`; skips noise (node_modules, dist, .next, etc.)
+
+### Added — Incremental Memory + File Watcher (Phase B)
+
+- **`MemoryStore.incrementalUpdate(absPath)`** — hash-based skip if unchanged; CASCADE refresh on change
+- **`MemoryStore.removeEntryByPath(absPath)`** — handles file-deletion path
+- **`content_hash` column** added to `entries` (idempotent migration)
+- **`scripts/lib/code-watcher.mjs`** — chokidar daemon; watches `.claude/memory/` AND project source files
+- **`scripts/watch-memory.mjs`** — daemon entry (`npm run memory:watch`); SIGINT-graceful
+- **`chokidar`** dependency added; debounce + `awaitWriteFinish` for safe save handling
+
+### Strengthened — All 46 Agents to ≥250 Lines (Phase C)
+
+Every agent now has the full strengthen template:
+- Persona (3-4 paragraphs: 15+ yrs background / principle in quotes / ordered priorities / mental model)
+- Project Context (4-7 bullets of detected paths + tools)
+- Skills (≥3, including `evolve:project-memory` and `evolve:code-search` where relevant)
+- Decision tree (ASCII covering main task variants)
+- Procedure (10+ numbered steps with sub-bullets, including pre-task memory + code search)
+- Output contract (Markdown deliverable template)
+- Anti-patterns (≥5–7 with reasoning)
+- Verification (commands + evidence requirements)
+- Common workflows (≥4 named scenarios with steps)
+- Out of scope + Related (cross-links ≥3)
+
+Agent line counts: range 250–353 (avg ~270). Reference: `_core/security-auditor.md` (267 lines).
+
+### Stats (v1.5.0)
+
+- **70/70 tests pass** (added file-hash, code-chunker, code-store, memory-incremental tests)
+- 46 agents strengthened
+- Code RAG indexes in <10s for plugin's own 25 source files (113 chunks)
+
+---
+
 ## [1.4.1] — 2026-04-27
 
 **CRITICAL FIX: Real chunking. Previous versions truncated memory entries to ~800 chars before embedding (lost everything past first 5 lines). v1.4.1 chunks full body into ~200-token windows with 32-token overlap — every word is reachable by semantic search.**

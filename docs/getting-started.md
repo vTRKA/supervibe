@@ -198,6 +198,26 @@ node $CLAUDE_PLUGIN_ROOT/scripts/build-memory-index.mjs
 
 **Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `evolve:add-memory` skill — writes markdown + auto-rebuilds index.
 
+## Code Search (RAG over your source code)
+
+Beyond markdown memory, Evolve indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
+
+```bash
+# One-time full index (after install or major refactor)
+node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs
+
+# Manual semantic search (optional — agents auto-invoke this)
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication is handled"
+```
+
+**What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `dist/`, `.next/`, `__pycache__/`, etc.
+
+**Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
+
+**Auto-index on changes:** Run `npm run memory:watch` once to start the file-watcher daemon. It re-indexes changed files on save (~50ms per file). Without watcher: re-run `code:index` after major changes.
+
+**Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
+
 ## Troubleshooting
 
 ### `/evolve` not recognized after install

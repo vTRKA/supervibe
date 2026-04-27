@@ -2,7 +2,7 @@
 
 > Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity.
 
-**Status:** Stable v1.4.0. **Multilingual semantic RAG (e5-small, RU+EN+100 languages, ~129MB bundled offline). Real MCP tool wiring. 4 critical _core agents fully strengthened.** Requires Node 22+. 52/52 tests pass. See `docs/getting-started.md` for verified 5-minute install. Per-criterion average: **9.9/10**.
+**Status:** Stable v1.5.0. **Code RAG (semantic + FTS5 over your source code) + incremental memory + chokidar file-watcher. All 46 agents at ≥250 lines with full persona / decision-tree / workflows. Multilingual e5-small (RU+EN+100 langs, ~129MB bundled offline). Real MCP tool wiring.** Requires Node 22+. 70/70 tests pass. See `docs/getting-started.md` for verified 5-minute install.
 
 ## What's in v0.1.0
 
