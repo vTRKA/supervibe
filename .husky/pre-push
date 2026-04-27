@@ -1,1 +1,4 @@
+command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\nGit LFS not found on PATH. Install from https://git-lfs.com/\n\n"; exit 2; }
+git lfs pre-push "$@" || exit $?
+
 npm run check
