@@ -7,6 +7,10 @@ Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + 15-year-
 - **Claude Code** (latest)
 - **Node.js 22+** (for SQLite memory; `node:sqlite` built-in)
 - **Git**
+- **Git LFS** *(recommended)* — the embedding model (`model_quantized.onnx`, 113 MB) is stored via Git LFS. Without LFS, the plugin still works: it auto-downloads the model from HuggingFace on first use (~118 MB, one-time, cached). With LFS, it works fully offline immediately after clone.
+  - Check: `git lfs version` (should print `git-lfs/X.Y.Z ...`)
+  - Install: macOS `brew install git-lfs`; Windows already bundled with Git for Windows ≥2.x; Linux see [git-lfs.com](https://git-lfs.com)
+  - After install (once per machine): `git lfs install`
 
 ## Install (verified)
 
