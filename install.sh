@@ -138,40 +138,87 @@ INSTALLED_VERSION=$(EVOLVE_TARGET="$TARGET" node -e \
 # ---- register with each detected CLI ----
 
 register_claude() {
-  local plugins_json="$CLAUDE_DIR/plugins/installed_plugins.json"
-  mkdir -p "$(dirname "$plugins_json")"
+  # Claude Code requires three coordinated files for a plugin to be loaded
+  # AND enabled on session start. Our installer upserts each idempotently:
+  #   1. ~/.claude/plugins/installed_plugins.json  → "<plugin>@<marketplace>" entry
+  #   2. ~/.claude/plugins/known_marketplaces.json → marketplace metadata
+  #   3. ~/.claude/settings.json                   → enabledPlugins + extraKnownMarketplaces
+  # Missing #2 or #3 is what makes a "successful" install invisible in the IDE.
 
-  if [ ! -f "$plugins_json" ]; then
-    printf '{ "version": 2, "plugins": {} }\n' > "$plugins_json"
-  fi
+  local plugins_dir="$CLAUDE_DIR/plugins"
+  local plugins_json="$plugins_dir/installed_plugins.json"
+  local marketplaces_json="$plugins_dir/known_marketplaces.json"
+  local settings_json="$CLAUDE_DIR/settings.json"
+  mkdir -p "$plugins_dir"
 
-  # Pass everything via env to avoid heredoc quote-injection vulnerabilities
+  [ -f "$plugins_json"      ] || printf '{ "version": 2, "plugins": {} }\n' > "$plugins_json"
+  [ -f "$marketplaces_json" ] || printf '{}\n'                                > "$marketplaces_json"
+  [ -f "$settings_json"     ] || printf '{}\n'                                > "$settings_json"
+
+  local commit_sha
+  commit_sha=$(git -C "$TARGET" rev-parse HEAD 2>/dev/null || echo "")
+
+  # All paths and values pass through env vars — never interpolate into JS source
   EVOLVE_PJ="$plugins_json" \
+  EVOLVE_MJ="$marketplaces_json" \
+  EVOLVE_SJ="$settings_json" \
   EVOLVE_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
+  EVOLVE_MARKETPLACE="$MARKETPLACE_NAME" \
+  EVOLVE_REPO_SLUG="${REPO_URL#https://github.com/}" \
   EVOLVE_INSTALL_PATH="$TARGET" \
   EVOLVE_VERSION="$INSTALLED_VERSION" \
+  EVOLVE_COMMIT_SHA="$commit_sha" \
   node -e '
     const fs = require("fs");
-    const path = process.env.EVOLVE_PJ;
-    const key  = process.env.EVOLVE_KEY;
-    const data = JSON.parse(fs.readFileSync(path, "utf8"));
-    data.version = data.version || 2;
-    data.plugins = data.plugins || {};
-    const entry = {
+    const now = new Date().toISOString();
+    const repoSlug = (process.env.EVOLVE_REPO_SLUG || "").replace(/\.git$/, "");
+
+    // 1. installed_plugins.json
+    const pjPath = process.env.EVOLVE_PJ;
+    const pjKey  = process.env.EVOLVE_KEY;
+    const pj = JSON.parse(fs.readFileSync(pjPath, "utf8"));
+    pj.version = pj.version || 2;
+    pj.plugins = pj.plugins || {};
+    const pjEntry = {
       scope: "user",
       installPath: process.env.EVOLVE_INSTALL_PATH,
       version: process.env.EVOLVE_VERSION,
-      installedAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
+      installedAt: now,
+      lastUpdated: now,
     };
-    const list = data.plugins[key] || [];
-    const idx = list.findIndex(e => e.scope === "user");
-    if (idx >= 0) list[idx] = Object.assign({}, list[idx], entry);
-    else list.push(entry);
-    data.plugins[key] = list;
-    fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+    if (process.env.EVOLVE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.EVOLVE_COMMIT_SHA;
+    const list = pj.plugins[pjKey] || [];
+    const idx  = list.findIndex(e => e.scope === "user");
+    if (idx >= 0) list[idx] = Object.assign({}, list[idx], pjEntry);
+    else list.push(pjEntry);
+    pj.plugins[pjKey] = list;
+    fs.writeFileSync(pjPath, JSON.stringify(pj, null, 2) + "\n");
+
+    // 2. known_marketplaces.json
+    const mpPath = process.env.EVOLVE_MJ;
+    const mpName = process.env.EVOLVE_MARKETPLACE;
+    const mp = JSON.parse(fs.readFileSync(mpPath, "utf8"));
+    mp[mpName] = {
+      source: { source: "github", repo: repoSlug },
+      installLocation: process.env.EVOLVE_INSTALL_PATH,
+      lastUpdated: now,
+      autoUpdate: true,
+    };
+    fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
+
+    // 3. settings.json — enabledPlugins + extraKnownMarketplaces
+    const sjPath = process.env.EVOLVE_SJ;
+    const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
+    sj.enabledPlugins = sj.enabledPlugins || {};
+    sj.enabledPlugins[pjKey] = true;
+    sj.extraKnownMarketplaces = sj.extraKnownMarketplaces || {};
+    sj.extraKnownMarketplaces[mpName] = {
+      source: { source: "github", repo: repoSlug },
+      autoUpdate: true,
+    };
+    fs.writeFileSync(sjPath, JSON.stringify(sj, null, 2) + "\n");
   '
-  ok "registered with Claude Code (key: $PLUGIN_NAME@$MARKETPLACE_NAME)"
+  ok "registered with Claude Code: installed_plugins + known_marketplaces + settings.enabledPlugins"
 }
 
 register_codex() {

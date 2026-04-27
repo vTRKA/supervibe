@@ -36,6 +36,24 @@ test('install.sh has shebang, set -euo pipefail, idempotency markers', () => {
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate into source');
 });
 
+test('install.sh writes all three Claude config files (regression: empty banner bug)', () => {
+  const src = readFileSync(SH, 'utf8');
+  assert.match(src, /installed_plugins\.json/,        'must update installed_plugins.json');
+  assert.match(src, /known_marketplaces\.json/,       'must update known_marketplaces.json');
+  assert.match(src, /settings\.json/,                 'must update settings.json');
+  assert.match(src, /enabledPlugins/,                 'must set enabledPlugins[<key>] = true');
+  assert.match(src, /extraKnownMarketplaces/,         'must mirror marketplace into extraKnownMarketplaces');
+});
+
+test('install.ps1 writes all three Claude config files (regression: empty banner bug)', () => {
+  const src = readFileSync(PS1, 'utf8');
+  assert.match(src, /installed_plugins\.json/,        'must update installed_plugins.json');
+  assert.match(src, /known_marketplaces\.json/,       'must update known_marketplaces.json');
+  assert.match(src, /settings\.json/,                 'must update settings.json');
+  assert.match(src, /enabledPlugins/,                 'must set enabledPlugins[<key>] = true');
+  assert.match(src, /extraKnownMarketplaces/,         'must mirror marketplace into extraKnownMarketplaces');
+});
+
 test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => {
   const src = readFileSync(PS1, 'utf8');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');

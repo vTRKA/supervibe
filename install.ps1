@@ -124,49 +124,96 @@ $InstalledVersion = (Get-Content (Join-Path $Target '.claude-plugin\plugin.json'
 # ---- register with each detected CLI ----
 
 function Register-Claude {
-  $pluginsJson = Join-Path $ClaudeDir 'plugins\installed_plugins.json'
-  New-Item -ItemType Directory -Force -Path (Split-Path $pluginsJson -Parent) | Out-Null
+  # Claude Code needs three JSON files in sync to actually load AND enable a
+  # plugin: installed_plugins.json + known_marketplaces.json + settings.json
+  # (enabledPlugins + extraKnownMarketplaces). Missing any of these makes the
+  # install silently invisible.
 
-  if (-not (Test-Path $pluginsJson)) {
-    Set-Content -Path $pluginsJson -Value '{ "version": 2, "plugins": {} }' -Encoding UTF8
-  }
+  $pluginsDir       = Join-Path $ClaudeDir 'plugins'
+  $pluginsJson      = Join-Path $pluginsDir 'installed_plugins.json'
+  $marketplacesJson = Join-Path $pluginsDir 'known_marketplaces.json'
+  $settingsJson     = Join-Path $ClaudeDir  'settings.json'
+  New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
+
+  if (-not (Test-Path $pluginsJson))      { Set-Content -Path $pluginsJson      -Value '{ "version": 2, "plugins": {} }' -Encoding UTF8 }
+  if (-not (Test-Path $marketplacesJson)) { Set-Content -Path $marketplacesJson -Value '{}'                              -Encoding UTF8 }
+  if (-not (Test-Path $settingsJson))     { Set-Content -Path $settingsJson     -Value '{}'                              -Encoding UTF8 }
 
   $key = "$PluginName@$MarketplaceName"
 
-  # Pass paths via env vars so we never inject them into JS source — handles
-  # paths with quotes, backslashes, spaces, unicode safely.
-  $env:EVOLVE_PJ = $pluginsJson
-  $env:EVOLVE_KEY = $key
-  $env:EVOLVE_INSTALL_PATH = $Target
-  $env:EVOLVE_VERSION = $InstalledVersion
+  $commitSha = (git -C $Target rev-parse HEAD 2>$null) -join ''
+  if ($LASTEXITCODE -ne 0) { $commitSha = '' }
+
+  # Derive owner/repo from the URL we cloned from
+  $repoSlug = $RepoUrl -replace '^https://github\.com/', '' -replace '\.git$', ''
+
+  $env:EVOLVE_PJ            = $pluginsJson
+  $env:EVOLVE_MJ            = $marketplacesJson
+  $env:EVOLVE_SJ            = $settingsJson
+  $env:EVOLVE_KEY           = $key
+  $env:EVOLVE_MARKETPLACE   = $MarketplaceName
+  $env:EVOLVE_REPO_SLUG     = $repoSlug
+  $env:EVOLVE_INSTALL_PATH  = $Target
+  $env:EVOLVE_VERSION       = $InstalledVersion
+  $env:EVOLVE_COMMIT_SHA    = $commitSha
 
   $script = @'
 const fs = require("fs");
-const path = process.env.EVOLVE_PJ;
-const key  = process.env.EVOLVE_KEY;
-const data = JSON.parse(fs.readFileSync(path, "utf8"));
-data.version = data.version || 2;
-data.plugins = data.plugins || {};
-const entry = {
+const now = new Date().toISOString();
+const repoSlug = (process.env.EVOLVE_REPO_SLUG || "").replace(/\.git$/, "");
+
+// 1. installed_plugins.json
+const pjPath = process.env.EVOLVE_PJ;
+const pjKey  = process.env.EVOLVE_KEY;
+const pj = JSON.parse(fs.readFileSync(pjPath, "utf8"));
+pj.version = pj.version || 2;
+pj.plugins = pj.plugins || {};
+const pjEntry = {
   scope: "user",
   installPath: process.env.EVOLVE_INSTALL_PATH,
   version: process.env.EVOLVE_VERSION,
-  installedAt: new Date().toISOString(),
-  lastUpdated: new Date().toISOString(),
+  installedAt: now,
+  lastUpdated: now,
 };
-const list = data.plugins[key] || [];
-const idx = list.findIndex(e => e.scope === "user");
-if (idx >= 0) list[idx] = Object.assign({}, list[idx], entry);
-else list.push(entry);
-data.plugins[key] = list;
-fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+if (process.env.EVOLVE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.EVOLVE_COMMIT_SHA;
+const list = pj.plugins[pjKey] || [];
+const idx  = list.findIndex(e => e.scope === "user");
+if (idx >= 0) list[idx] = Object.assign({}, list[idx], pjEntry);
+else list.push(pjEntry);
+pj.plugins[pjKey] = list;
+fs.writeFileSync(pjPath, JSON.stringify(pj, null, 2) + "\n");
+
+// 2. known_marketplaces.json
+const mpPath = process.env.EVOLVE_MJ;
+const mpName = process.env.EVOLVE_MARKETPLACE;
+const mp = JSON.parse(fs.readFileSync(mpPath, "utf8"));
+mp[mpName] = {
+  source: { source: "github", repo: repoSlug },
+  installLocation: process.env.EVOLVE_INSTALL_PATH,
+  lastUpdated: now,
+  autoUpdate: true,
+};
+fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
+
+// 3. settings.json — enabledPlugins + extraKnownMarketplaces
+const sjPath = process.env.EVOLVE_SJ;
+const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
+sj.enabledPlugins = sj.enabledPlugins || {};
+sj.enabledPlugins[pjKey] = true;
+sj.extraKnownMarketplaces = sj.extraKnownMarketplaces || {};
+sj.extraKnownMarketplaces[mpName] = {
+  source: { source: "github", repo: repoSlug },
+  autoUpdate: true,
+};
+fs.writeFileSync(sjPath, JSON.stringify(sj, null, 2) + "\n");
 '@
 
   $script | & node -
-  if ($LASTEXITCODE -ne 0) { Die 'Failed to register in installed_plugins.json' }
+  if ($LASTEXITCODE -ne 0) { Die 'Failed to register Claude Code config (installed_plugins / known_marketplaces / settings)' }
 
-  Remove-Item Env:EVOLVE_PJ, Env:EVOLVE_KEY, Env:EVOLVE_INSTALL_PATH, Env:EVOLVE_VERSION -ErrorAction SilentlyContinue
-  Ok "registered with Claude Code (key: $key)"
+  Remove-Item Env:EVOLVE_PJ, Env:EVOLVE_MJ, Env:EVOLVE_SJ, Env:EVOLVE_KEY, Env:EVOLVE_MARKETPLACE, Env:EVOLVE_REPO_SLUG, Env:EVOLVE_INSTALL_PATH, Env:EVOLVE_VERSION, Env:EVOLVE_COMMIT_SHA -ErrorAction SilentlyContinue
+
+  Ok 'registered with Claude Code: installed_plugins + known_marketplaces + settings.enabledPlugins'
 }
 
 function Register-Codex {
