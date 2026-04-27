@@ -7,7 +7,7 @@ capabilities: [cve-research, advisory-tracking, pattern-vuln-research, threat-in
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch]
+tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_extract]
 skills: [evolve:confidence-scoring]
 verification: [cve-list-with-cvss, advisory-snapshot, applicability-confirmed, exploit-availability-noted]
 anti-patterns: [cve-without-cvss, advisory-without-affected-versions, generic-best-practices-not-stack-specific, ignore-exploit-availability]

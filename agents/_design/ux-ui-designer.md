@@ -7,7 +7,7 @@ capabilities: [screen-spec, information-architecture, states-matrix, interaction
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Write, Edit]
+tools: [Read, Grep, Glob, Write, Edit, mcp__mcp-server-figma__get_figma_data, mcp__mcp-server-figma__download_figma_images]
 recommended-mcps: [figma]
 skills: [evolve:prototype, evolve:confidence-scoring, evolve:interaction-design-patterns, evolve:project-memory]
 verification: [screen-spec-with-states, component-inventory, ia-diagram]

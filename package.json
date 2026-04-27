@@ -1,6 +1,6 @@
 {
   "name": "evolve-framework",
-  "version": "1.2.0",
+  "version": "1.4.1",
   "description": "Dev tooling for the Evolve Claude Code plugin",
   "private": true,
   "type": "module",
@@ -27,5 +27,8 @@
     "knip": "^5.30.0",
     "lint-staged": "^15.2.10",
     "yaml": "^2.6.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0"
   }
 }

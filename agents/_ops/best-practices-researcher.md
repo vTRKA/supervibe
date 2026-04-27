@@ -7,7 +7,7 @@ capabilities: [research, source-evaluation, applicability-mapping, citation, mcp
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch]
+tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_extract]
 skills: [evolve:confidence-scoring]
 verification: [sources-cited, dates-recent, contradictions-resolved, applicability-stated, cache-written]
 anti-patterns: [single-source, outdated-tutorial, no-applicability-note, contradicting-without-resolving, unscoped-recommendation]

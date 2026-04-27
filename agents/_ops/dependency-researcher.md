@@ -7,7 +7,7 @@ capabilities: [registry-research, version-analysis, deprecation-tracking, migrat
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch]
+tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape]
 skills: [evolve:confidence-scoring]
 verification: [registry-snapshot, version-comparison, breaking-changes-list, maintenance-signals]
 anti-patterns: [latest-without-stable-check, ignore-deprecation-warnings, miss-breaking-change-list, ignore-maintenance-signals]

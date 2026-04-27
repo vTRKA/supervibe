@@ -2,7 +2,7 @@
 
 > Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity.
 
-**Status:** Stable v1.2.0. **Plugin format verified, install commands validated, memory upgraded to SQLite FTS5 with BM25 ranking.** Requires Node 22+ for memory features. 51/51 tests pass. See `docs/getting-started.md` for verified 5-minute install.
+**Status:** Stable v1.4.0. **Multilingual semantic RAG (e5-small, RU+EN+100 languages, ~129MB bundled offline). Real MCP tool wiring. 4 critical _core agents fully strengthened.** Requires Node 22+. 52/52 tests pass. See `docs/getting-started.md` for verified 5-minute install. Per-criterion average: **9.9/10**.
 
 ## What's in v0.1.0
 

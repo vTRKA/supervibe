@@ -7,7 +7,7 @@ capabilities: [competitive-research, design-pattern-extraction, market-analysis,
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, WebFetch]
+tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-firecrawl__firecrawl_scrape, mcp__mcp-server-firecrawl__firecrawl_search, mcp__mcp-server-firecrawl__firecrawl_browser_create, mcp__mcp-server-firecrawl__firecrawl_browser_execute]
 skills: [evolve:confidence-scoring]
 verification: [screenshot-evidence, public-design-system-citations, pattern-analysis, differentiation-noted]
 anti-patterns: [pixel-perfect-copy, ignore-licensing, single-competitor-bias, no-attribution]

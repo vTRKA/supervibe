@@ -7,7 +7,7 @@ capabilities: [nextjs-implementation, server-components, server-actions, route-h
 stacks: [nextjs]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch]
+tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
 recommended-mcps: [context7]
 skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory]
 verification: [tsc-no-errors, vitest-pass, eslint-no-errors, next-build-success]

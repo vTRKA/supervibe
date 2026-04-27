@@ -7,7 +7,7 @@ capabilities: [vendor-doc-research, pattern-comparison, version-specific-guidanc
 stacks: [any]
 requires-stacks: []
 optional-stacks: [redis, postgres, kafka, rabbitmq]
-tools: [Read, Grep, Glob, Bash, WebFetch]
+tools: [Read, Grep, Glob, Bash, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs, mcp__mcp-server-firecrawl__firecrawl_scrape]
 skills: [evolve:confidence-scoring]
 verification: [vendor-docs-cited, pattern-version-matched, alternatives-compared, tradeoffs-documented]
 anti-patterns: [outdated-vendor-doc, mix-pattern-versions, ignore-deprecation-notices, no-tradeoff-analysis]

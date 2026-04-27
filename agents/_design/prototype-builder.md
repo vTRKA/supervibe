@@ -7,7 +7,7 @@ capabilities: [html-css, design-tokens, states-implementation, no-framework-prot
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit]
+tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__mcp-server-figma__get_figma_data, mcp__mcp-server-figma__download_figma_images]
 recommended-mcps: [figma]
 skills: [evolve:prototype, evolve:brandbook, evolve:tokens-export, evolve:interaction-design-patterns, evolve:confidence-scoring, evolve:project-memory]
 verification: [all-states-rendered, token-discipline-grep, ui-polish-reviewer-pass]

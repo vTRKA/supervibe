@@ -7,7 +7,7 @@ capabilities: [a11y-audit, wcag-aa, keyboard-nav, screen-reader, motion-sensitiv
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash]
+tools: [Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_press_key, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot]
 recommended-mcps: [playwright]
 skills: [evolve:confidence-scoring, evolve:project-memory]
 verification: [contrast-ratios-measured, keyboard-traversal, axe-or-lighthouse-output]

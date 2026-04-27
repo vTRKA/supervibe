@@ -7,7 +7,7 @@ capabilities: [fastapi-implementation, pydantic-v2, async-sqlalchemy, pytest-asy
 stacks: [fastapi]
 requires-stacks: [postgres]
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch]
+tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
 recommended-mcps: [context7]
 skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory]
 verification: [pytest-pass, ruff-clean, mypy-strict-no-errors]

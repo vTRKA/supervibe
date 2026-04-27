@@ -4,3 +4,9 @@ node_modules/
 .env.local
 registry.yaml
 .DS_Store
+
+# Models: track quantized only, ignore full + tmp downloads
+models/**/onnx/model.onnx
+models/**/onnx/*.tmp.*
+models/**/onnx/*_fp16.onnx
+models/**/onnx/*_uint8.onnx

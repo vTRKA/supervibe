@@ -7,7 +7,7 @@ capabilities: [test-strategy, test-pyramid, e2e-flows, regression-suites, fixtur
 stacks: [any]
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit]
+tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_evaluate, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_wait_for]
 recommended-mcps: [playwright]
 skills: [evolve:tdd, evolve:verification, evolve:confidence-scoring, evolve:project-memory]
 verification: [coverage-metrics, test-pyramid-balance, no-flaky-tests, fixtures-not-shared-state]
