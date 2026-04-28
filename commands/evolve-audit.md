@@ -1,9 +1,58 @@
 ---
-description: "Health-check the project's agents/skills/rules and CLAUDE.md routing table. STUB in v0.1.0 — full implementation lands in Phase 6."
+description: "Health-check across project's agents, rules, memory entries, indexes, and CLAUDE.md routing — surfaces stale artifacts and inconsistencies."
 ---
 
-# /evolve-audit (stub)
+# /evolve-audit
 
-Phase 6 of the Evolve roadmap. Currently not implemented.
+Run a full plugin + project health check. No writes — only reports.
 
-For now, respond: "Audit is not yet implemented in v0.1.0 (Phase 6 work). Partial functionality available via `node scripts/validate-frontmatter.mjs` and `node scripts/lint-skill-descriptions.mjs`."
+## Procedure
+
+1. **Index health.** Run `npm run evolve:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/evolve-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.
+
+2. **Frontmatter validation.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/validate-frontmatter.mjs`. Flags any agent / skill / rule / rubric with malformed or missing required fields.
+
+3. **Skill triggers.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lint-skill-descriptions.mjs`. Flags skill descriptions that fail trigger-clarity (`Use BEFORE/AFTER/WHEN ... TO ...`).
+
+4. **Agent canonical footers.** Run `npm run validate:agent-footers` to confirm every agent's `## Output contract` ends with the parser-readable confidence trailer.
+
+5. **Stale artifacts.** Walk `agents/`, `rules/`, `skills/` for files whose frontmatter `last-verified` is older than 30 days. List each with its age.
+
+6. **Project-level overrides.** If `.claude/agents/` exists in the current project, diff each file against the upstream version in `$CLAUDE_PLUGIN_ROOT/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
+
+7. **Memory hygiene.** List memory categories under `.claude/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
+
+8. **Override-rate check.** Read `.claude/confidence-log.jsonl`. If override rate over the last 100 entries exceeds 5%, escalate as a finding.
+
+9. **Underperformer scan.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
+
+10. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/evolve-strengthen`, `/evolve-adapt`, or "looks good").
+
+## Output contract
+
+```
+=== Evolve Audit ===
+Indexes:        <status line>
+Frontmatter:    <N OK / M issues>
+Skill triggers: <N OK / M issues>
+Agent footers:  <N OK / M issues>
+Stale (>30d):   <count>  [list]
+Drift overrides:<count>  [list]
+Memory:         <category counts>
+Override-rate:  <X%>      <ok | over-threshold>
+Underperformers:<count>   [list]
+
+Recommended: <single next command>
+Confidence: N/A  Rubric: read-only-research
+```
+
+## When NOT to invoke
+
+- You only want to score one artifact — use `/evolve-score`
+- You want to fix things — `/evolve-strengthen`, `/evolve-adapt`, or `/evolve-genesis`. Audit is read-only
+
+## Related
+
+- `evolve:audit` skill — the underlying methodology document
+- `/evolve-strengthen` — fixes weak agents
+- `/evolve-adapt` — fixes drift between upstream and project copies

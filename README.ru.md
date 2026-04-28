@@ -68,6 +68,9 @@ irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 | `/evolve-evaluate` | Прогон confidence на готовом артефакте |
 | `/evolve-preview` | Управление live preview серверами |
 | `/evolve-changelog` | Что изменилось с прошлой версии в этом проекте |
+| `/evolve-update` | Обновить сам плагин (git pull + lfs + install + тесты). Идемпотентно |
+| `/evolve-score` | Оценить артефакт по рубрике без сохранения |
+| `/evolve-override` | Залогировать override при приёме результата ниже гейта |
 
 Shell-команды (запускать в папке плагина `~/.claude/plugins/marketplaces/evolve-marketplace/`):
 

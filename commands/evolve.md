@@ -1,26 +1,55 @@
 ---
-description: "Auto-detect which evolve phase to run (genesis | audit | strengthen | adapt | evaluate) based on project state. Run with no arguments. Use specific phase commands for explicit control."
+description: "Auto-detect which evolve phase to run (genesis / audit / strengthen / adapt / evaluate / update) based on the current project state."
 ---
 
 # /evolve
 
-Dispatch to the right evolve phase based on current project state.
+Dispatcher. Looks at the project + plugin state and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.
 
-## Auto-detect logic
+## Detection logic
 
-1. **No `.claude/agents/` AND no routing table in `CLAUDE.md`** → propose `/evolve-genesis`
-2. **Stale references found** → propose `/evolve-audit + /evolve-adapt`
-3. **Weak artifacts found** → propose `/evolve-strengthen`
-4. **Coverage gaps** → propose `/evolve-adapt`
-5. **Everything current** → respond "System healthy. No changes needed."
+Run these checks in order, stop at the first match.
 
-## What I do when invoked
+| Check | Signal | Propose |
+|-------|--------|---------|
+| 1. Plugin upgrade pending | `.claude-plugin/.upgrade-check.json` shows `behind > 0` | `/evolve-update` |
+| 2. New plugin version installed but project not adapted | `.claude/memory/.evolve-version` < installed plugin version | `/evolve-adapt` |
+| 3. No project scaffolding | No `.claude/agents/` and no routing table in `CLAUDE.md` | `/evolve-genesis` |
+| 4. Underperformers detected | `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` returns a non-empty list | `/evolve-strengthen` |
+| 5. Stale artifacts (>30 days) | Audit finds ≥3 files with old `last-verified` | `/evolve-audit` (then `/evolve-strengthen`) |
+| 6. Override-rate above threshold | `.claude/confidence-log.jsonl` shows >5% overrides over last 100 entries | `/evolve-audit` |
+| 7. Pending finished work to score | Last invocation in `agent-invocations.jsonl` has no `outcome` field | `/evolve-evaluate` |
+| 8. None of the above | Nothing to do | "System healthy. No action needed." |
 
-1. Run the detection checks above (using build-registry, validate-frontmatter, audit logic when available).
-2. Report findings to user.
-3. Propose the next command to run with rationale.
-4. Wait for user confirmation before running any state-changing phase.
+## Procedure
 
-## Note (Phase 0+1 reality)
+1. **Read state.** Hit each check above, in order.
+2. **Stop at first match.** Print the finding with the evidence (e.g. `5 underperformers found: laravel-developer (avg 7.85), ...`).
+3. **Propose the next command** with one-line rationale.
+4. **Ask for confirmation** before running anything destructive. `/evolve-update` and `/evolve-adapt` modify files and need explicit "yes".
 
-In v0.1.0, only `evolve:confidence-scoring` and `evolve:verification` skills exist. Detection of weak artifacts is partially functional (frontmatter validation works, but full audit logic ships in Phase 6). Until then, this dispatcher is informational and tells the user which phases are not yet implemented.
+## Output contract
+
+```
+=== Evolve State ===
+Plugin version:    <installed>  (upstream: <known>)
+Project version:   <last-seen>
+Underperformers:   <count>
+Stale artifacts:   <count>
+Override-rate:     <X%>
+Pending evals:     <count>
+
+Proposed next:     /<command>     <one-line rationale>
+
+Confidence: N/A    Rubric: read-only-research
+```
+
+## When NOT to invoke
+
+- You already know which phase you want — call it directly. The dispatcher adds a round-trip you can skip.
+- You only want a one-off score — `/evolve-score`.
+
+## Related
+
+- All `/evolve-*` phase commands
+- `evolve:status` (npm run) — overlapping but more index-focused

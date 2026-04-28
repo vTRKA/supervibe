@@ -68,6 +68,9 @@ Slash commands (run inside an AI CLI session):
 | `/evolve-evaluate` | Score a finished artifact against its rubric |
 | `/evolve-preview` | Manage live preview servers |
 | `/evolve-changelog` | What changed since the last version this project saw |
+| `/evolve-update` | Update the plugin itself (git pull + lfs + install + tests). Idempotent |
+| `/evolve-score` | Score one artifact against its rubric without persisting |
+| `/evolve-override` | Record an explicit override when accepting a result below the gate |
 
 Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/evolve-marketplace/`):
 
