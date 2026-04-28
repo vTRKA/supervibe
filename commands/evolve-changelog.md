@@ -1,40 +1,192 @@
 ---
-description: "Show what changed in Evolve since the last version this project saw. Reads CHANGELOG.md and the .evolve-version marker."
+description: >-
+  Show what changed in Evolve since this project's last seen version. Reads
+  CHANGELOG.md without truncation; emits structured breaking-change + migration
+  sections; offers automatic migration plan if applicable. Triggers:
+  'changelog', 'что нового', 'что изменилось', '/evolve-changelog'.
 ---
 
 # /evolve-changelog
 
-Display CHANGELOG entries between the project's last-seen Evolve version and the currently installed plugin version. Use when the SessionStart banner shows `⬆ plugin upgraded X → Y`.
+Display CHANGELOG entries between the project's last-seen Evolve version and the currently installed version. Use when SessionStart shows `⬆ plugin upgraded X → Y`, or whenever the user wants to know what changed.
+
+This command does NOT silently truncate. If the changelog is large, sections are paginated with explicit "see next page" pointers — never lossy summarization.
+
+## Invocation forms
+
+### `/evolve-changelog` — auto-resolve
+
+Reads `.claude/memory/.evolve-version` (last seen) and `plugin.json.version` (current). Shows entries between (last, current], inclusive of current.
+
+### `/evolve-changelog <from> <to>` — explicit version range
+
+Examples:
+- `/evolve-changelog 1.5.0 1.7.0` — show 1.6.0 + 1.7.0
+- `/evolve-changelog 1.6.0 latest` — show everything since 1.6.0
+
+### `/evolve-changelog --since <version>` — open-ended forward
+
+Show every release after `<version>` up to current.
+
+### `/evolve-changelog --breaking-only` — filter to breaking changes
+
+Print ONLY entries containing `BREAKING`, `Removed`, `Migration`, or `Deprecated` markers. Useful before `/evolve-update`.
+
+### `/evolve-changelog --migrate` — produce migration plan
+
+For each breaking change between last-seen and current, generate a concrete migration step list. Output format:
+
+```
+Migration: vX.Y → vA.B
+========================
+
+1. Renamed `agents/foo.md` → `agents/_core/foo.md`
+   Action: `git mv` if you have project-level overrides. Otherwise no action.
+2. Removed `evolve:legacy-skill` skill
+   Action: search for callers: `grep -r 'evolve:legacy-skill' agents/ skills/`
+3. Schema change in confidence-rubrics: gates moved from gate-on to gates.block-below
+   Action: run `node scripts/migrate-rubrics-v2.mjs` (auto-fixes existing files)
+```
+
+If no breaking changes: print "No migration needed".
+
+### `/evolve-changelog --page <N>` — pagination
+
+If output exceeds context comfort (~6,000 chars), the command splits into pages of ~5,000 chars each. Default shows page 1 + "Run /evolve-changelog --page 2 for next 5K chars". User can iterate.
 
 ## Procedure
 
-1. Read `$CLAUDE_PLUGIN_ROOT/.claude-plugin/plugin.json` to get current plugin version.
-2. Read `.claude/memory/.evolve-version` from the project to get last-seen version (created by SessionStart hook).
-3. If equal: respond "Project is on the latest plugin version (vX). No changelog to show."
-4. Otherwise read `$CLAUDE_PLUGIN_ROOT/CHANGELOG.md` and extract every `## [VERSION] — DATE` section between (lastSeen, current], inclusive of current.
-5. Print the extracted sections verbatim, but cap at 4000 chars total. If more, summarize newest-first with "(see CHANGELOG.md for full list)".
-6. Highlight any **breaking changes** (lines containing `BREAKING`, `Removed`, or `Migration`).
+1. **Resolve range:**
+   a. If `<from> <to>` given → use them.
+   b. If `--since <ver>` → from = `<ver>`, to = `current`.
+   c. Otherwise: from = `.claude/memory/.evolve-version` (read), to = `plugin.json.version` (read).
 
-## Output contract
+2. **Validate range:**
+   - If `from == to` → "Project on latest plugin version (vX). No changes to show."
+   - If `from > to` → unusual case (downgrade?) — print a warning + show entries from current to from in REVERSE.
+   - If `.evolve-version` doesn't exist → first session under plugin install; suggest setting baseline via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/version-tracker.mjs --init` and exit.
+
+3. **Read CHANGELOG.md:**
+   - Read `$CLAUDE_PLUGIN_ROOT/CHANGELOG.md` in full.
+   - Parse `## [VERSION] — DATE` headings into a structured array.
+   - Extract entries within the resolved range.
+
+4. **Categorise per entry:**
+   - **Breaking changes**: lines containing `BREAKING`, `Removed`, `Deprecated`, `Migration`
+   - **Features**: `Added`, `feat:`, `New`
+   - **Fixes**: `Fixed`, `fix:`, `Bugfix`
+   - **Other**: everything else
+
+5. **Calculate output size:**
+   - If total chars ≤ 5,000 → print everything.
+   - If > 5,000 → paginate: 5,000 chars per page; print page 1 + footer "Pages: 1/N. Run /evolve-changelog --page 2 for next."
+   - If `--breaking-only` → print only breaking section, regardless of size (breaking is critical, no truncation).
+
+6. **Format output (NEVER truncate silently):**
 
 ```
 === What changed since vX in this project ===
 
-## [v Y.Z.W] — YYYY-MM-DD
-<verbatim changelog body>
-...
+Range: vA.B.C → vD.E.F  (N versions)
 
-[breaking changes called out at top if any]
+⚠ BREAKING CHANGES (always shown in full):
+[verbatim breaking-change blocks from each version]
 
-To upgrade the plugin itself: `npm run evolve:upgrade` in the plugin checkout.
+Features:
+[verbatim Added/feat blocks]
+
+Fixes:
+[verbatim Fixed/fix blocks]
+
+Pages: 1/N (if paginated)
+```
+
+7. **Migration plan generation (if `--migrate`):**
+   - For each breaking line, check `.claude/memory/learnings/upgrade-recipes/<version>-<topic>.md` for known migration recipes.
+   - If recipe exists → quote it verbatim.
+   - If no recipe → emit a placeholder block: "No documented migration. Action: search for `<changed-symbol>` callers via `grep -rE '<symbol>' .` and adjust manually."
+
+8. **Telemetry:**
+   - Log the changelog view to `.claude/memory/changelog-views.jsonl`:
+     ```jsonl
+     {"timestamp":"<ISO>","fromVersion":"X","toVersion":"Y","mode":"normal|breaking|migrate","pages":N}
+     ```
+
+## Error recovery
+
+| Failure | Recovery action |
+|---|---|
+| `.evolve-version` missing | Run `node scripts/lib/version-tracker.mjs --init` to create baseline; exit |
+| `plugin.json` missing | Plugin install corrupted; suggest `/evolve-update` or reinstall |
+| `CHANGELOG.md` missing | Print: "No changelog at expected path. Plugin source may be incomplete." |
+| Range invalid (from > to) | Show in reverse with warning |
+| Output exceeds 5K chars | Auto-paginate with explicit page indicators (NEVER silent truncate) |
+| `--migrate` recipe missing for a breaking change | Emit placeholder + grep suggestion (graceful degrade) |
+
+## Output contract
+
+Default mode:
+
+```
+=== What changed since v1.6.0 in this project ===
+
+Range: v1.6.0 → v1.7.0  (3 versions)
+
+⚠ BREAKING CHANGES:
+## [v1.7.0] — 2026-04-28
+  - Removed deprecated `evolve:legacy-prompt-quality` skill
+  - Schema change: confidence-rubrics top-level field `id:` renamed to `artifact:`
+  - hooks.json structure: `Stop` matcher field is now required
+
+Features:
+[verbatim feat: lines]
+
+Fixes:
+[verbatim fix: lines]
+
+Tip: Run `/evolve-changelog --migrate` for action items.
+```
+
+Breaking-only mode:
+
+```
+=== Breaking changes since v1.6.0 ===
+
+[ALL breaking-change blocks verbatim, even if 20K chars]
+```
+
+Migrate mode:
+
+```
+=== Migration plan: v1.6.0 → v1.7.0 ===
+
+3 breaking changes detected.
+
+[1/3] Removed `evolve:legacy-prompt-quality` skill
+  Action: grep -rn "evolve:legacy-prompt-quality" .
+  Replacement: use `evolve:prompt-quality-engineer` (different signature; see learnings/)
+
+[2/3] Schema change in confidence-rubrics
+  Action: run `node scripts/migrate-rubrics-v2.mjs`
+  Auto-fixable: yes
+  Verify: npm run check
+
+[3/3] hooks.json Stop matcher required
+  Action: edit hooks.json, add "matcher": "*" to existing Stop entry
+  Auto-fixable: no (hand edit per-project)
 ```
 
 ## When NOT to invoke
 
-- During the same session that SessionStart already showed the upgrade banner — Claude already has context.
-- If `.claude/memory/.evolve-version` does not exist — that means no version-bump tracking yet (first session under this plugin install). Respond accordingly.
+- Same session that already showed SessionStart upgrade banner — Claude already has context (the banner IS the changelog summary).
+- After `/evolve-update` reported "no-op (already on latest)" — nothing to show.
+- For changes within your own project's `docs/plans/*.md` history — that's `git log`, not the plugin changelog.
 
 ## Related
 
-- `/evolve-adapt` — propagate plugin changes into project-level `.claude/agents/` overrides
-- `npm run evolve:upgrade` — actually pull a newer plugin version
+- `npm run evolve:upgrade` — actually pulls a newer plugin
+- `/evolve-update` — alias for the upgrade flow with status check
+- `/evolve-adapt` — propagates plugin changes into project-level overrides (run AFTER reading the changelog)
+- `.claude/memory/.evolve-version` — last-seen version marker
+- `scripts/lib/version-tracker.mjs` — version-bump detector that maintains the marker
+- `CHANGELOG.md` (plugin root) — source of truth this command reads

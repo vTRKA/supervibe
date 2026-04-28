@@ -26,8 +26,14 @@
     "validate:design-skills": "node scripts/validate-design-skills.mjs",
     "validate:question-discipline": "node scripts/validate-question-discipline.mjs",
     "migrate:prototype-configs": "node scripts/migrate-prototype-configs.mjs",
+    "memory:preflight": "node scripts/lib/memory-preflight.mjs",
+    "measure:tokens": "node scripts/measure-token-footprint.mjs",
+    "validate:no-deep-refs": "node scripts/validate-no-deep-refs.mjs",
+    "validate:agent-section-order": "node scripts/validate-agent-section-order.mjs",
+    "regression:run": "node scripts/regression-suite.mjs",
+    "regression:diff": "node scripts/lib/regression-scorer.mjs",
     "lint:dead-code": "knip --no-progress",
-    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {

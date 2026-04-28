@@ -1,0 +1,26 @@
+artifact: plan-execution
+max-score: 10
+dimensions:
+  - id: readiness-audit-thoroughness
+    weight: 3
+    question: "Did Stage A (pre-execution) check all 10 readiness dimensions (plan-format, file-structure, bite-sized-tasks, verification-per-step, hard-constraints, risk-mitigation, reversibility, dependencies, self-review, quality-gates) with file:line evidence for each pass/fail and a final readiness score N/10?"
+    evidence-required: "Per-dimension verdict in stdout, file:line citations for each fail, readiness score reported as N/10 before any execution starts"
+  - id: execution-fidelity
+    weight: 3
+    question: "Did execution follow the plan's task ordering, verification commands, and quality gates exactly with no scope creep beyond declared file structure?"
+    evidence-required: "All task checkboxes ticked OR explicit WONT-DO with rationale; each Run-X-expect-Y step shows actual output matching expected; git stat aligns with declared file structure"
+  - id: completion-audit-thoroughness
+    weight: 2
+    question: "Did Stage B (post-execution) verify all 10 completion dimensions (checkboxes, verifications, tests, regressions, memory, files-created, scope, rubric-score, no-half-finished, docs-sync) with concrete evidence and a final completion score N/10?"
+    evidence-required: "Per-dimension verdict, test suite output with pass/fail counts, validator output, file existence checks for every Create entry, completion score reported as N/10"
+  - id: regression-prevention
+    weight: 1
+    question: "If plan had Phase 7 / regression suite, was it run after each phase and diff'd against baseline with any regressions causing revert?"
+    evidence-required: "Regression-suite output for each phase, baseline diff result (clean | regressions found), revert commit if regressions detected"
+  - id: evidence-trail
+    weight: 1
+    question: "Are memory entries (decisions/learnings/patterns) and audit logs in place per plan's intent so future runs can find this execution as prior art?"
+    evidence-required: "List of files added under .claude/memory/, audit log file under docs/audits/ if plan declared one, solution record at .claude/memory/solutions/<plan-slug>-executed-<date>.md"
+gates:
+  block-below: 9
+  warn-below: 10

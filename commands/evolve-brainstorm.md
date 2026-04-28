@@ -1,5 +1,8 @@
 ---
-description: "Explicit entry-point for the brainstorming skill — collaborative dialogue that ends with an approved spec at docs/specs/. Use to remove ambiguity before any creative work. RU: запуск режима брейншторма для проработки идеи до утверждённой спецификации."
+description: >-
+  Explicit entry-point for the brainstorming skill — collaborative dialogue that
+  ends with an approved spec at docs/specs/. Use to remove ambiguity before any
+  creative work.
 ---
 
 # /evolve-brainstorm

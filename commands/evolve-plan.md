@@ -1,5 +1,7 @@
 ---
-description: "Explicit entry-point for the writing-plans skill — turns an approved spec into a phased implementation plan with bite-sized TDD tasks. RU: запуск режима составления плана из утверждённой спецификации."
+description: >-
+  Explicit entry-point for the writing-plans skill — turns an approved spec into
+  a phased implementation plan with bite-sized TDD tasks.
 ---
 
 # /evolve-plan

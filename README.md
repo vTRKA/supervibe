@@ -162,6 +162,11 @@ Slash commands (run inside an AI CLI session):
 | `/evolve` | Auto-router: picks genesis, audit, strengthen, adapt, evaluate, or update |
 | `/evolve-brainstorm <topic>` | Explicit entry to the brainstorming flow — produces an approved spec |
 | `/evolve-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
+| `/evolve-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates: Stage A readiness audit BEFORE + Stage B completion audit AFTER. Supports `--dry-run` (audit only) and `--resume` (continue partially-executed plan) |
+| `/evolve-debug [<invocation-id\|agent-id>]` | Debug a failed invocation: replays task with root-cause analysis, classifies blocker (stale-context\|missing-skill\|wrong-approach\|environment\|prompt-bloat\|ambiguous-task), proposes fix |
+| `/evolve-test [--validators\|--tests\|--watch\|--failing\|--regression]` | Run plugin's full QA suite (258 tests + 8 validators) with structured per-validator output, regression detection vs baseline, re-run only failing items |
+| `/evolve-deploy [<slug>\|--plan\|--rollback]` | Promote approved prototype handoff bundle to production stack via stack-developer. 6-invariant pre-deploy gate + plan generation + rollback procedure |
+| `/evolve-memory-gc [<category>\|--dry-run\|--restore\|--stats]` | Archive (never delete) old/superseded memory entries per retention policy. Reversible via `--restore`. Reads frontmatter `superseded-by:` for explicit replacement chains |
 | `/evolve-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview |
 | `/evolve-genesis` | First-time scaffold of `.claude/` for your stack |
 | `/evolve-audit` | Health check across agents, rules, memory |

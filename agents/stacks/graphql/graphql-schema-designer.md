@@ -5,11 +5,7 @@ description: >-
   Use WHEN designing GraphQL schemas (schema-first vs code-first, federation v2,
   DataLoader, persisted queries, pagination, error handling, subscriptions,
   deprecation lifecycle) — cross-stack across Apollo, Hot Chocolate, Strawberry,
-  gqlgen. RU: Используется КОГДА проектируется GraphQL-схема (schema-first vs
-  code-first, federation v2, DataLoader, persisted queries, пагинация, ошибки,
-  подписки, deprecation) — cross-stack для Apollo, Hot Chocolate, Strawberry,
-  gqlgen. Trigger phrases: 'GraphQL схема', 'federation', 'resolver',
-  'dataloader'.
+  gqlgen. Triggers: 'GraphQL схема', 'federation', 'resolver', 'dataloader'.
 persona-years: 12
 capabilities:
   - graphql-schema-design

@@ -1,5 +1,7 @@
 ---
-description: "Auto-detect which evolve phase to run (genesis / audit / strengthen / adapt / evaluate / update) based on the current project state. RU: авто-роутер плагина — определяет какую фазу evolve запустить из текущего состояния проекта."
+description: >-
+  Auto-detect which evolve phase to run (genesis / audit / strengthen / adapt /
+  evaluate / update) based on the current project state.
 ---
 
 # /evolve

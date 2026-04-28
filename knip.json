@@ -26,7 +26,13 @@
     "scripts/validate-design-skills.mjs",
     "scripts/validate-question-discipline.mjs",
     "scripts/migrate-prototype-configs.mjs",
-    "scripts/apply-question-discipline.mjs"
+    "scripts/apply-question-discipline.mjs",
+    "scripts/lib/memory-preflight.mjs",
+    "scripts/measure-token-footprint.mjs",
+    "scripts/validate-no-deep-refs.mjs",
+    "scripts/validate-agent-section-order.mjs",
+    "scripts/regression-suite.mjs",
+    "scripts/lib/regression-scorer.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

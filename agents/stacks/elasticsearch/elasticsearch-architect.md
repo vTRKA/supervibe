@@ -3,11 +3,8 @@ name: elasticsearch-architect
 namespace: stacks/elasticsearch
 description: >-
   Use WHEN designing Elasticsearch/OpenSearch mappings, analyzers, sharding,
-  ILM, search vs aggregation, fork-aware tradeoffs. RU: Используется КОГДА
-  проектируются маппинги, анализаторы, шардирование, ILM
-  Elasticsearch/OpenSearch, поиск vs агрегации и fork-зависимые компромиссы.
-  Trigger phrases: 'elasticsearch mapping', 'поисковый индекс', 'запросы
-  elastic', 'opensearch'.
+  ILM, search vs aggregation, fork-aware tradeoffs. Triggers: 'elasticsearch
+  mapping', 'поисковый индекс', 'запросы elastic', 'opensearch'.
 persona-years: 15
 capabilities:
   - es-mapping-design

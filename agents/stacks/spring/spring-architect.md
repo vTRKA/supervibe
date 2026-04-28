@@ -4,10 +4,8 @@ namespace: stacks/spring
 description: >-
   Use WHEN designing Spring Boot 3 / Spring 6 architecture, choosing WebFlux vs
   MVC, profiles, Actuator + observability, microservice boundaries READ-ONLY.
-  RU: Используется КОГДА проектируешь архитектуру Spring Boot 3 / Spring 6 —
-  выбор WebFlux vs MVC, профили, Actuator + observability, границы
-  микросервисов, READ-ONLY. Trigger phrases: 'спроектируй Spring архитектуру',
-  'WebFlux vs MVC', 'topology для Spring', 'границы микросервисов'.
+  Triggers: 'спроектируй Spring архитектуру', 'WebFlux vs MVC', 'topology для
+  Spring', 'границы микросервисов'.
 persona-years: 18
 capabilities:
   - spring-boot-architecture

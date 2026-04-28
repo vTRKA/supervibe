@@ -1,0 +1,26 @@
+artifact: agent-quality-ab
+max-score: 10
+dimensions:
+  - id: factual-accuracy
+    weight: 3
+    question: "Does new output cite the same file:line refs as old output (no fabrication, no missing refs)?"
+    evidence-required: "Side-by-side count of file:line citations in old vs new output; both must reference same paths within tolerance"
+  - id: depth
+    weight: 2
+    question: "Does new output explore the same number of decision branches as the old output?"
+    evidence-required: "Count of distinct decision branches (if/else paths, alternatives discussed) in each output; new must be within -1 of old"
+  - id: confidence
+    weight: 2
+    question: "Does new output's self-reported Confidence match or exceed old output's by no more than 5% drop?"
+    evidence-required: "Parsed Confidence N/10 from each output; new must be >= old * 0.95"
+  - id: actionability
+    weight: 2
+    question: "Are new output's recommendations equally specific (no vague hand-waves added vs old's specificity)?"
+    evidence-required: "Spot-check 3 recommendations from each output for specificity (concrete commands, file paths, named functions vs generic guidance)"
+  - id: anti-pattern-coverage
+    weight: 1
+    question: "Are anti-patterns / risks mentioned in old output also mentioned in new output?"
+    evidence-required: "List of anti-patterns / warnings / risks in each output; new must mention >= 80% of old's"
+gates:
+  block-below: 9
+  warn-below: 10

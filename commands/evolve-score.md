@@ -1,29 +1,216 @@
 ---
-description: "Score an artifact against its confidence rubric. Usage: /evolve-score <artifact-type> [path]. Example: /evolve-score requirements-spec docs/specs/2026-04-27-foo.md"
+description: >-
+  Score an artifact against its confidence rubric with explicit gap analysis and
+  remediation actions. Supports auto-detect of artifact type from file
+  path/extension, batch scoring, dry-run, and override flow. Поддерживает
+  auto-detect типа артефакта, batch-режим, dry-run и override. Triggers:
+  'оцени', 'score', 'evaluate confidence', 'gap analysis', '/evolve-score'.
 ---
 
 # /evolve-score
 
-Run the `evolve:confidence-scoring` skill against a specified artifact.
+Score one or more artifacts against their confidence rubrics. Returns structured score + per-dimension verdicts + concrete remediation actions. Inspection-only by default — does NOT modify artifacts.
 
-## Argument parsing
+For inline scoring during agent execution, agents use `evolve:confidence-scoring` skill directly. This command is the user-facing entry point for explicit, on-demand scoring.
 
-- `$1` = artifact-type (requirements-spec | implementation-plan | agent-output | scaffold-bundle | framework-self | prototype | research-output | agent-quality | skill-quality | rule-quality | brandbook)
-- `$2` = optional path to artifact file (if omitted, prompt the user OR infer from the most recently produced artifact in the conversation)
+## Invocation forms
 
-## What I do when invoked
+### `/evolve-score <artifact-type> <path>` — explicit
 
-1. Resolve the artifact-type and path.
-2. Verify the rubric file exists at `$CLAUDE_PLUGIN_ROOT/confidence-rubrics/<artifact-type>.yaml`.
-   - If missing → respond with valid type list.
-3. Load the artifact (Read tool on path).
-4. Invoke skill `evolve:confidence-scoring` with artifact-type and content.
-5. Display the structured score result (status, score, dimensions, gaps, remediation) to the user.
-6. Do NOT take any further action — this is an inspection command, not a remediation command.
+Examples:
+- `/evolve-score requirements docs/specs/2026-04-28-billing-design.md`
+- `/evolve-score plan docs/plans/2026-04-28-token-economy-safe-mode.md`
+- `/evolve-score skill-quality skills/component-library-integration/SKILL.md`
+- `/evolve-score brandbook prototypes/_brandbook/system.md`
 
-## Examples
+### `/evolve-score <path>` — auto-detect type
 
-- `/evolve-score requirements-spec docs/specs/2026-04-27-billing-design.md`
-- `/evolve-score framework-self`
-- `/evolve-score skill-quality skills/confidence-scoring/SKILL.md`
-- `/evolve-score brandbook prototypes/_brandbook/index.html`
+Inferred from path conventions:
+- `docs/specs/*.md` → `requirements`
+- `docs/plans/*.md` → `plan`
+- `agents/**/*.md` → `agent-quality`
+- `skills/**/SKILL.md` → `skill-quality`
+- `rules/*.md` → `rule-quality`
+- `prototypes/<slug>/*.html` → `prototype`
+- `prototypes/_brandbook/*` → `brandbook`
+- `.claude/memory/<category>/*.md` → `memory-entry`
+
+If type cannot be inferred → ask user with the valid types listed.
+
+### `/evolve-score <artifact-type>` — most recent of type
+
+Auto-resolve "most recent" via mtime in the canonical location for that type.
+Useful when user just produced an artifact in this session.
+
+### `/evolve-score --batch <pattern>` — score multiple
+
+Glob pattern matched against artifact-type-aware locations:
+- `/evolve-score --batch agent-quality "agents/_design/**/*.md"` — scores all design agents
+- `/evolve-score --batch plan "docs/plans/*.md"` — scores every plan
+
+Returns: aggregate table + worst-3 detail.
+
+### `/evolve-score --dry-run <artifact-type> <path>` — show rubric only
+
+Print the rubric dimensions + evidence requirements WITHOUT actually scoring. Useful for understanding what scoring will check before running.
+
+## Valid artifact types
+
+Read live from `confidence-rubrics/*.yaml`:
+
+| Type | Rubric file | When to score |
+|---|---|---|
+| `requirements` | `requirements.yaml` | After spec produced via `/evolve-brainstorm` |
+| `plan` | `plan.yaml` | After plan produced via `/evolve-plan` |
+| `agent-output` | `agent-delivery.yaml` | After agent dispatch returns |
+| `agent-quality` | `agent-quality.yaml` | When auditing agent file quality |
+| `skill-quality` | `skill-quality.yaml` | When auditing skill file quality |
+| `rule-quality` | `rule-quality.yaml` | When auditing rule file quality |
+| `scaffold` | `scaffold.yaml` | After `/evolve-genesis` produces scaffold |
+| `framework` | `framework.yaml` | Foundational changes to the plugin itself |
+| `prototype` | `prototype.yaml` | After prototype-builder produces files |
+| `research-output` | `research-output.yaml` | After researcher agents return |
+| `memory-entry` | `memory-entry.yaml` | Before persisting a memory entry |
+| `brandbook` | `brandbook.yaml` | After brandbook skill produces system |
+| `plan-execution` | `execute-plan.yaml` | After `/evolve-execute-plan` finishes |
+
+If user invokes with unknown type → list valid types from disk + suggest the closest match (Levenshtein on the type name).
+
+## Procedure
+
+1. **Resolve artifact-type and path:**
+   a. If both args explicit → use them.
+   b. If single arg looks like a path → infer type from path patterns (table above).
+   c. If single arg is type → resolve "most recent" via `find <canonical-loc> -name '*.md' -printf '%T@ %p\n' | sort -rn | head -1`.
+   d. If unparseable → list types + ask.
+
+2. **Validate rubric exists:**
+   ```
+   test -f $CLAUDE_PLUGIN_ROOT/confidence-rubrics/<type>.yaml
+   ```
+   If missing:
+   - Print: "Rubric `<type>.yaml` not found. Available types: <list>."
+   - Suggest closest match if user typo'd a known type.
+   - Exit gracefully — do not invent a rubric.
+
+3. **Read artifact:**
+   - Use Read tool on path.
+   - If file missing → print path + suggest `find -name '<basename>'` to locate.
+   - If file >2 MB → warn user and ask if they really want to score (skill loads file into context).
+
+4. **Invoke skill `evolve:confidence-scoring`:**
+   - Pass artifact-type + path + content.
+   - Skill returns: per-dimension scores, weighted total, gates verdict (block/warn/pass), per-dimension gaps + remediation suggestions.
+
+5. **Format output:**
+   - Header: artifact path, type, total score, gate verdict.
+   - Per-dimension table: id, weight, score, verdict, evidence-cited, gap-if-any.
+   - Remediation list: 1-3 concrete actions to raise score.
+   - Footer: standard Confidence/Override/Rubric block.
+
+6. **Persistence:**
+   - DO NOT modify the artifact.
+   - DO append the score to `.claude/memory/score-log.jsonl` for telemetry trends:
+     ```jsonl
+     {"id":"<uuid>","timestamp":"<ISO>","path":"<path>","type":"<type>","score":N,"gate":"<verdict>","dimensions":{...}}
+     ```
+
+7. **Offer follow-up actions** based on verdict:
+   - If `block` (score < gate): offer `/evolve-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
+   - If `warn`: print warning + suggest single targeted improvement.
+   - If `pass`: print confirmation + suggest `/schedule` if natural follow-up exists.
+   - If user wants to override the gate → redirect to `/evolve-override` with score context.
+
+## Error recovery
+
+| Failure | Recovery action |
+|---|---|
+| Rubric not found | Auto-suggest closest type via Levenshtein; list all valid types |
+| Artifact path missing | Suggest `find` command to locate; offer `--batch` if user meant glob |
+| Artifact >2 MB | Warn + ask confirmation (loading large file costs tokens) |
+| Skill returns error | Print error + suggest re-running with `--dry-run` to see expected format |
+| Score below threshold | Offer 3 paths: fix inline / `/evolve-strengthen` / `/evolve-override` |
+| Score-log write fails | Score returned to user; log attempt logged separately; user not blocked |
+
+## Output contract
+
+Single-artifact:
+
+```
+=== Evolve Score ===
+Artifact:    docs/plans/2026-04-28-token-economy-safe-mode.md
+Type:        plan (auto-detected from docs/plans/)
+Rubric:      confidence-rubrics/plan.yaml
+Score:       9.2 / 10
+Gate:        pass (block-below: 9, warn-below: 10)
+
+Dimensions (weighted):
+  ✓ task-granularity         3/3   evidence: 142 bite-sized tasks
+  ✓ verification-per-step    2/2   evidence: 89 Run-X-expect-Y blocks
+  ✓ file-paths-explicit      2/2   evidence: every Create:/Modify: cited
+  ⚠ self-review-completed    1/2   gap: spec coverage section partial
+  ✓ rollback-per-phase       1/1   evidence: git revert <sha> noted
+
+Gaps + remediation:
+  • [self-review-completed]: expand spec coverage from 4 to 6 sections; add type-consistency check explicitly
+
+Confidence: 9.2/10
+Override: false
+Rubric: plan
+Score logged: .claude/memory/score-log.jsonl#<uuid>
+
+Next:
+  • Apply remediation (raises to 9.7) → re-score with /evolve-score
+  • Accept current score → ready to /evolve-execute-plan
+```
+
+Batch:
+
+```
+=== Evolve Score — Batch ===
+Type:        agent-quality
+Pattern:     agents/_design/**/*.md
+Files:       10
+
+Aggregate:
+  • Average score: 8.7 / 10
+  • Pass: 7  Warn: 2  Block: 1
+
+Worst 3:
+  ✗ creative-director.md       7.8/10  gap: persona-years vs effectiveness disagreement
+  ⚠ ux-ui-designer.md          8.6/10  gap: missing motion handoff section
+  ⚠ accessibility-reviewer.md  8.9/10  gap: WCAG version not declared
+
+Run `/evolve-score agent-quality <path>` for per-file detail.
+```
+
+Dry-run:
+
+```
+=== Evolve Score — Dry Run ===
+Type:        plan
+Rubric:      confidence-rubrics/plan.yaml
+Max score:   10
+Gate:        block < 9, warn < 10
+
+Dimensions:
+  • task-granularity (weight 3)
+    Q: Are tasks bite-sized (≤5 min) with explicit steps?
+    Evidence required: every task has numbered steps, no "TBD"/placeholders
+  ...
+```
+
+## When NOT to invoke
+
+- During an active agent dispatch — that agent uses `evolve:confidence-scoring` skill internally; no need for the command.
+- For files outside the rubric coverage list (the rubric you'd want doesn't exist).
+- For binary artifacts (images, compiled bundles) — rubrics expect text content.
+
+## Related
+
+- `evolve:confidence-scoring` skill — the underlying methodology
+- `confidence-rubrics/*.yaml` — the 13 rubrics this command scores against
+- `/evolve-evaluate` — closes the evolution loop after scoring (writes outcome to invocation telemetry)
+- `/evolve-strengthen` — if score is `block`, this is the agent-improvement path
+- `/evolve-override` — if score is `block` but user has justification to ship anyway
+- `.claude/memory/score-log.jsonl` — telemetry trail for score trends over time

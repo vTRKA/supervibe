@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "purpose": "Canonical task fixtures for token-economy regression suite. 5 agents x 8 tasks = 40 dispatches per phase. Diff against baseline catches quality regressions.",
+    "frozen-as-of": "2026-04-28",
+    "do-not-modify": "Changing tasks invalidates cross-phase comparisons. Add new tasks; never edit existing.",
+    "see-also": "docs/plans/2026-04-28-token-economy-safe-mode.md Phase 7"
+  },
+  "creative-director": [
+    "Define brand direction for a fintech app aimed at non-technical SMB owners. Adjectives: trustworthy not stiff, modern not trendy.",
+    "Audit existing brand at prototypes/_brandbook for token drift; produce a tagged KEEP/FLEX/RETIRE inventory.",
+    "Propose 3 alternative palette directions for an app rejecting current 'medical blue' direction.",
+    "Specify motion library + easing system for a brand described as 'patient, considered'.",
+    "Rebrand strategy for a 5-year-old SaaS adding consumer mobile; preserve enterprise trust.",
+    "Critique these 3 mood-board images for a coffee-subscription brand; recommend 1.",
+    "Define brand DO/DON'T for a children's-education app; concrete and falsifiable.",
+    "Cross-product brand: how to extend a fintech identity into an adjacent crypto product without alienating existing customers."
+  ],
+  "repo-researcher": [
+    "Where does the project store decision memories and how does indexing work?",
+    "Map the design pipeline files: which agents are dispatched in what order?",
+    "Find the file that implements the WebSocket feedback channel.",
+    "What rules apply to refactoring a public function?",
+    "Inventory hooks that are wired in this plugin.",
+    "Locate every place where 'asking-multiple-questions-at-once' is enforced.",
+    "Show the canonical agent output footer requirement and where it's validated.",
+    "List every confidence rubric and what it gates."
+  ],
+  "refactoring-specialist": [
+    "Outline steps to safely rename `processPayment` to `processOrder`.",
+    "Audit the `--callers` evidence for moving `agents/_design/creative-director.md` to a subdirectory.",
+    "Plan extracting the WebSocket frame-parsing logic from feedback-channel.mjs into its own module.",
+    "Justify deleting the legacy `evolve-detect.mjs` script if zero callers found.",
+    "Migrate `gray-matter` from devDependency to dependency; analyze blast radius.",
+    "Refactor `apply-question-discipline.mjs` into a reusable lib module.",
+    "Inline a single-call helper `derivePrototypeSlug` from `preview-static-server.mjs`.",
+    "Verify safety of removing the legacy v1.4.0 truncation code path."
+  ],
+  "memory-curator": [
+    "Add a decision memory entry: switched from monolithic CLAUDE.md to .claude/docs/ relocation. Rationale + alternatives. Tags: tokens, claude-md.",
+    "Add an incident memory: feedback-channel WebSocket parsed 16-bit length fields incorrectly on payloads >64KB. Postmortem.",
+    "Add a learning: Anthropic prompt cache TTL reduced from 60min to 5min in 2026; adjust caching strategy.",
+    "Add a solution: how we route browser feedback from preview server to active session via UserPromptSubmit hook.",
+    "Add a pattern: bilingual descriptions should keep triggers but drop redundant translations.",
+    "List recent decision entries tagged 'design'.",
+    "Reconcile a conflict between two patterns: one says 'always validate at boundary', another says 'validate at construction'. Which wins?",
+    "Mark a stale learning as superseded; explain why."
+  ],
+  "prototype-builder": [
+    "Build a hero section using approved tokens at 375px and 1440px.",
+    "Add a hover micro-interaction to the primary CTA per the timing tier.",
+    "Create a multi-step form prototype with all states (loading, empty, error, success, partial).",
+    "Implement a dark-mode toggle using design tokens only (no hardcoded values).",
+    "Build a comparison table prototype with 3 columns; mobile-stack at 375px.",
+    "Create a chrome-extension popup prototype at 360x600 respecting MV3 CSP.",
+    "Wire the feedback overlay to a fresh preview; verify config.json gate.",
+    "Build a Tauri main-window prototype noting webview compat constraints."
+  ]
+}

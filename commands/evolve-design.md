@@ -1,5 +1,9 @@
 ---
-description: "End-to-end design pipeline with explicit lifecycle: design-system → spec → native HTML/CSS/JS prototype → live preview → review → feedback loop → approval → ready-for-development handoff. Pure native, two viewports default (375 + 1440), one question at a time. RU: end-to-end дизайн-pipeline с явным lifecycle: дизайн-система → спецификация → нативный HTML/CSS/JS прототип → live preview → review → цикл обратной связи → утверждение → handoff в готовность к разработке."
+description: >-
+  End-to-end design pipeline with explicit lifecycle: design-system → spec →
+  native HTML/CSS/JS prototype → live preview → review → feedback loop →
+  approval → ready-for-development handoff. Pure native, two viewports default
+  (375 + 1440), one question at a time.
 ---
 
 # /evolve-design

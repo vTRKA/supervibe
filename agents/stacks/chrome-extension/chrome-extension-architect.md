@@ -4,15 +4,11 @@ namespace: stacks/chrome-extension
 description: >-
   Use WHEN designing Chrome MV3 extension architecture (manifest design,
   permissions strategy, service worker lifecycle, message-passing topology,
-  content-script isolation, CSP, CWS publishing readiness) READ-ONLY. Trigger
-  phrases: 'chrome extension architecture', 'manifest v3 design', 'permission
-  strategy', 'service worker design', 'mv2 to mv3 migration'. RU: Используй
-  КОГДА проектируешь архитектуру Chrome MV3 расширения (дизайн manifest,
-  стратегия permissions, жизненный цикл service worker, топология
-  message-passing, изоляция content-script, CSP, готовность к CWS publishing)
-  READ-ONLY. Триггеры: 'спроектируй архитектуру расширения', 'manifest v3
-  архитектура', 'chrome extension архитектура', 'permission strategy', 'service
-  worker дизайн'.
+  content-script isolation, CSP, CWS publishing readiness) READ-ONLY. Triggers:
+  'chrome extension architecture', 'manifest v3 design', 'permission strategy',
+  'service worker design', 'mv2 to mv3 migration'. Triggers: 'спроектируй
+  архитектуру расширения', 'manifest v3 архитектура', 'chrome extension
+  архитектура', 'permission strategy', 'service worker дизайн'.
 persona-years: 15
 capabilities:
   - mv3-architecture
