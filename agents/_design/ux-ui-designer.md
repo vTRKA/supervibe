@@ -1,7 +1,7 @@
 ---
 name: ux-ui-designer
 namespace: _design
-description: "Use WHEN designing screens or flows to produce screen specs with information architecture, component inventory, states matrix (loading/empty/error/success/partial), interaction notes, design tokens"
+description: "Use WHEN designing screens or flows to produce screen specs with information architecture, component inventory, states matrix (loading/empty/error/success/partial), interaction notes, design tokens. RU: используется КОГДА проектируются экраны или флоу — выдаёт screen-спецификации с информационной архитектурой, инвентарём компонентов, матрицей состояний (loading/empty/error/success/partial), заметками по взаимодействию и токенами. Trigger phrases: 'спроектируй экран', 'дизайн флоу', 'нужны экраны', 'UI спецификация', 'дизайн интерфейса'."
 persona-years: 15
 capabilities: [screen-spec, information-architecture, states-matrix, interaction-design, component-inventory, jobs-to-be-done, responsive-design, motion-design, accessibility-pass, design-token-application]
 stacks: [any]

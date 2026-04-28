@@ -1,7 +1,7 @@
 ---
 name: brandbook
 namespace: process
-description: "Use WHEN starting new product OR major brand reset BEFORE any prototype to materialize brand as documented prototypes/_brandbook/ with tokens, components, voice, accessibility, motion"
+description: "Use WHEN starting new product OR major brand reset BEFORE any prototype to materialize brand as documented prototypes/_brandbook/ with tokens, components, voice, accessibility, motion. RU: используется КОГДА запускается новый продукт ИЛИ крупный rebrand ДО любого прототипа — материализует бренд в prototypes/_brandbook/ с токенами, компонентами, голосом, accessibility, motion. Trigger phrases: 'нужен бренд', 'разработай бренд', 'фирстиль', 'брендбук', 'rebrand'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

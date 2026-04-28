@@ -1,7 +1,7 @@
 ---
 name: tokens-export
 namespace: process
-description: "Use WHEN brandbook is approved AND frontend implementation needs theme to export brandbook tokens to framework-specific format (Tailwind/MUI/CSS vars/Style Dictionary)"
+description: "Use WHEN brandbook is approved AND frontend implementation needs theme to export brandbook tokens to framework-specific format (Tailwind/MUI/CSS vars/Style Dictionary). RU: используется КОГДА брендбук утверждён И frontend-реализации нужна тема — экспортирует токены брендбука в формат фреймворка (Tailwind/MUI/CSS-переменные/Style Dictionary). Trigger phrases: 'выгрузи токены', 'export tokens', 'tailwind theme', 'нужна тема'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: [brandbook]

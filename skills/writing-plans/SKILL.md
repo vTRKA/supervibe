@@ -1,7 +1,7 @@
 ---
 name: writing-plans
 namespace: process
-description: "Use AFTER an approved requirements-spec exists to produce a phased implementation plan with bite-sized tasks, verification commands, and per-phase confidence gates"
+description: "Use AFTER an approved requirements-spec exists to produce a phased implementation plan with bite-sized tasks, verification commands, and per-phase confidence gates. RU: используется ПОСЛЕ того как есть утверждённая спецификация требований — производит фазированный план реализации с короткими задачами, командами верификации и confidence-гейтами по фазам. Trigger phrases: 'составь план', 'распиши план', 'спланируй реализацию', 'разбей на задачи', 'как мы это будем делать'."
 allowed-tools: [Read, Grep, Glob, Write, Edit]
 phase: plan
 prerequisites: [requirements-spec]
@@ -22,7 +22,7 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 
 ## Step 0 — Read source of truth (MANDATORY)
 
-1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`
+1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `docs/specs/`. Запусти `/evolve-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/evolve-plan <path>`." Do not proceed with planning vapor.
 2. Read `CLAUDE.md` for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts

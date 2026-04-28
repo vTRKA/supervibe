@@ -1,7 +1,7 @@
 ---
 name: creative-director
 namespace: _design
-description: "Use WHEN starting any new product or major visual direction shift to define brand language, mood, palette intent, typographic intent, motion intent, and emotional anchors"
+description: "Use WHEN starting any new product or major visual direction shift to define brand language, mood, palette intent, typographic intent, motion intent, and emotional anchors. RU: используется КОГДА запускается новый продукт или крупная смена визуального направления — определяет язык бренда, настроение, палитру, типографику, motion и эмоциональные якоря. Trigger phrases: 'нужен бренд', 'разработай бренд', 'визуальное направление', 'redesign', 'rebrand', 'фирстиль', 'mood-board', 'дизайн-направление'."
 persona-years: 15
 capabilities: [brand-direction, visual-strategy, mood-boards, palette-strategy, type-strategy, motion-strategy, brand-audit, competitor-scan, stakeholder-alignment, aesthetic-pov]
 stacks: [any]

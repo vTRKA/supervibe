@@ -1,7 +1,7 @@
 ---
 name: prototype
 namespace: process
-description: "Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in framework to produce 1:1 HTML prototype in /prototypes for brand approval and 1:1 transfer"
+description: "Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in framework to produce 1:1 HTML prototype in /prototypes for brand approval and 1:1 transfer. RU: используется КОГДА пользователь просит дизайн/макет/исследование UI ДО реализации во фреймворке — создаёт 1:1 HTML-прототип в /prototypes для утверждения бренда и точного переноса. Trigger phrases: 'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI', 'нужен прототип', 'сделай макет'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

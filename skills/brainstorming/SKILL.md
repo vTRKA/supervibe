@@ -1,7 +1,7 @@
 ---
 name: brainstorming
 namespace: process
-description: "Use BEFORE any creative work (new feature, component, behavior change) to explore user intent, requirements, and design through collaborative dialogue, ending with an approved spec — gates implementation behind explicit design approval"
+description: "Use BEFORE any creative work (new feature, component, behavior change) to explore user intent, requirements, and design through collaborative dialogue, ending with an approved spec — gates implementation behind explicit design approval. RU: используется ПЕРЕД любой творческой работой (новая фича, компонент, изменение поведения) — диалог проясняющий намерение, требования, дизайн до утверждённой спецификации; блокирует реализацию до явного утверждения. Trigger phrases: 'давай добавим', 'давай придумаем', 'хочу сделать', 'как подойти к', 'спроектируй', 'обсудим'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: brainstorm
 prerequisites: []
@@ -63,6 +63,14 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 ## Output contract
 
 Returns: path to approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md` with confidence score ≥9 and explicit user approval recorded in conversation.
+
+After saving the spec, ALWAYS print a one-line hand-off so the user knows the next command:
+
+```
+Spec saved to docs/specs/YYYY-MM-DD-<slug>-design.md
+Next: /evolve-plan docs/specs/YYYY-MM-DD-<slug>-design.md  (for complexity 3+)
+      or implement directly (for complexity 1-2)
+```
 
 ## Guard rails
 

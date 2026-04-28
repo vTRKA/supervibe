@@ -1,7 +1,7 @@
 ---
 name: interaction-design-patterns
 namespace: process
-description: "Use WHEN designing micro-interactions, animations, transitions, loading states to apply timing tiers, easing rules, and WOW-effect patterns from current 2026 design practice"
+description: "Use WHEN designing micro-interactions, animations, transitions, loading states to apply timing tiers, easing rules, and WOW-effect patterns from current 2026 design practice. RU: используется КОГДА проектируются микро-взаимодействия, анимации, переходы, loading-состояния — применяет timing tiers, easing-правила и WOW-паттерны из практики 2026. Trigger phrases: 'добавь анимацию', 'нужны переходы', 'микроинтеракция', 'оживи интерфейс'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

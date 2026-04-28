@@ -1,7 +1,7 @@
 ---
 name: accessibility-reviewer
 namespace: _design
-description: "Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation, screen reader support, contrast measurement, motion sensitivity, and ARIA correctness"
+description: "Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation, screen reader support, contrast measurement, motion sensitivity, and ARIA correctness. RU: используется ПЕРЕД релизом любого UI — проверяет WCAG AA compliance, клавиатурную навигацию, screen reader, контраст, motion sensitivity и ARIA. Trigger phrases: 'проверь доступность', 'a11y review', 'accessibility audit', 'WCAG проверка', 'screen reader test'."
 persona-years: 15
 capabilities: [a11y-audit, wcag-aa, keyboard-nav, screen-reader, motion-sensitivity, contrast-measurement, aria-correctness, focus-management, form-error-labeling]
 stacks: [any]

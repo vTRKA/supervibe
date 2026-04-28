@@ -83,13 +83,75 @@ All three do the same thing: refuse if you have uncommitted edits to the plugin 
 
 ---
 
+## Workflows
+
+Three named flows cover most of the day-to-day use. Each has an explicit slash-command entry point — no need to remember the right phrase to make the AI pick the right skill.
+
+### Brainstorm → Plan → Execute
+
+For any new feature, component, or behavior change.
+
+```
+/evolve-brainstorm payment idempotency
+  ↓ collaborative dialogue, kill criteria, decision matrix
+  ↓ saves docs/specs/2026-04-28-payment-idempotency-design.md
+  ↓ score ≥9 against requirements rubric
+/evolve-plan docs/specs/2026-04-28-payment-idempotency-design.md
+  ↓ phased TDD plan, parallelization batches, risk register
+  ↓ saves docs/plans/2026-04-28-payment-idempotency.md
+  ↓ score ≥9 against plan rubric
+  ↓ choose: subagent-driven OR inline execution
+```
+
+You can skip `/evolve-brainstorm` if you already have an approved spec, or skip `/evolve-plan` for trivial one-line changes.
+
+### Design pipeline → Live preview
+
+For any visual surface — landing pages, in-product flows, full brand work.
+
+```
+/evolve-design landing in the style of Linear, focused on dev-tool buyers
+  ↓ creative-director: brand direction (mood-board, tokens, DO/DON'T)
+  ↓ ux-ui-designer: state matrix, flow, interaction spec
+  ↓ copywriter: every visible string nailed
+  ↓ prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/
+  ↓ AUTO: evolve:preview-server spawns http://localhost:NNNN with hot reload
+  ↓ ui-polish-reviewer + accessibility-reviewer in parallel
+  ↓ score ≥9 against prototype rubric
+```
+
+Manage running servers with `/evolve-preview --list` / `--kill <port>`.
+
+### Refactor with safety
+
+For any rename / move / extract / delete on a public symbol.
+
+```
+ask: who calls processPayment?
+  ↓ AI runs evolve:code-search --callers "processPayment"
+  ↓ shows N callers with file:line
+if N > 10:
+  ↓ rule use-codegraph-before-refactor escalates → architect-reviewer
+  ↓ migration ADR
+refactoring-specialist makes the rename in one PR
+  ↓ verifies --callers "processPayment" returns 0
+  ↓ score ≥9, no missed call sites
+```
+
+This flow has no slash command — you trigger it by asking the question. The graph + the discipline rules handle the rest.
+
+---
+
 ## Commands
 
 Slash commands (run inside an AI CLI session):
 
 | Command | What it does |
 |---------|--------------|
-| `/evolve` | Auto-router: picks genesis, audit, strengthen, adapt, or evaluate |
+| `/evolve` | Auto-router: picks genesis, audit, strengthen, adapt, evaluate, or update |
+| `/evolve-brainstorm <topic>` | Explicit entry to the brainstorming flow — produces an approved spec |
+| `/evolve-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
+| `/evolve-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview |
 | `/evolve-genesis` | First-time scaffold of `.claude/` for your stack |
 | `/evolve-audit` | Health check across agents, rules, memory |
 | `/evolve-strengthen [agent_id]` | Strengthen a weak agent. Without arguments — auto-trigger from telemetry |

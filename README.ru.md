@@ -83,13 +83,75 @@ npm run evolve:upgrade
 
 ---
 
+## Workflows
+
+Три именованных flow покрывают большую часть повседневной работы. У каждого есть явная slash-команда — не нужно подбирать «правильную» фразу чтобы AI вспомнил про skill.
+
+### Брейншторм → План → Реализация
+
+Для любой новой фичи, компонента или изменения поведения.
+
+```
+/evolve-brainstorm платежная идемпотентность
+  ↓ совместный диалог, kill criteria, decision matrix
+  ↓ сохраняет docs/specs/2026-04-28-payment-idempotency-design.md
+  ↓ score ≥9 по requirements rubric
+/evolve-plan docs/specs/2026-04-28-payment-idempotency-design.md
+  ↓ фазированный TDD-план, parallelization batches, risk register
+  ↓ сохраняет docs/plans/2026-04-28-payment-idempotency.md
+  ↓ score ≥9 по plan rubric
+  ↓ выбор: subagent-driven ИЛИ inline-выполнение
+```
+
+`/evolve-brainstorm` можно пропустить если у вас уже есть утверждённый spec, `/evolve-plan` — для тривиальных однострочных правок.
+
+### Дизайн-pipeline → Live preview
+
+Для любой визуальной поверхности — landing-страниц, in-product флоу, полной бренд-работы.
+
+```
+/evolve-design лендинг в стиле Linear для покупателей dev-tools
+  ↓ creative-director: бренд-направление (mood-board, токены, DO/DON'T)
+  ↓ ux-ui-designer: state matrix, флоу, спецификация взаимодействия
+  ↓ copywriter: каждая видимая строка отточена
+  ↓ prototype-builder: 1:1 HTML/CSS в prototypes/<slug>/
+  ↓ AUTO: evolve:preview-server поднимает http://localhost:NNNN с hot reload
+  ↓ ui-polish-reviewer + accessibility-reviewer параллельно
+  ↓ score ≥9 по prototype rubric
+```
+
+Управлять запущенными серверами: `/evolve-preview --list` / `--kill <port>`.
+
+### Refactor with safety
+
+Для любого rename / move / extract / delete на публичный символ.
+
+```
+ask: кто вызывает processPayment?
+  ↓ AI запускает evolve:code-search --callers "processPayment"
+  ↓ показывает N вызывающих с file:line
+если N > 10:
+  ↓ правило use-codegraph-before-refactor эскалирует → architect-reviewer
+  ↓ migration ADR
+refactoring-specialist делает rename в одном PR
+  ↓ verifies --callers "processPayment" возвращает 0
+  ↓ score ≥9, ничего не упущено
+```
+
+У этого flow нет slash-команды — триггер это сам вопрос. Граф + дисциплинарные правила делают всё остальное.
+
+---
+
 ## Команды
 
 Слэш-команды (запускать внутри AI CLI сессии):
 
 | Команда | Что делает |
 |---------|-----------|
-| `/evolve` | Авто-роутер: выбирает genesis, audit, strengthen, adapt или evaluate |
+| `/evolve` | Авто-роутер: выбирает genesis, audit, strengthen, adapt, evaluate или update |
+| `/evolve-brainstorm <topic>` | Явный запуск брейншторма — создаёт утверждённую спецификацию |
+| `/evolve-plan [<spec-path>]` | Превращает утверждённую спецификацию в фазированный TDD-план |
+| `/evolve-design <brief>` | End-to-end дизайн-pipeline: бренд → spec → прототип → live preview |
 | `/evolve-genesis` | Первичный scaffold `.claude/` под ваш стек |
 | `/evolve-audit` | Health-check агентов, правил, памяти |
 | `/evolve-strengthen [agent_id]` | Усиление слабого агента. Без аргумента — auto-trigger из telemetry |

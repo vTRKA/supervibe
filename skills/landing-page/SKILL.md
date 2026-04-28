@@ -1,7 +1,7 @@
 ---
 name: landing-page
 namespace: process
-description: "Use WHEN building a marketing or product landing page to scaffold with SEO, analytics, copy review, and accessibility check from the start"
+description: "Use WHEN building a marketing or product landing page to scaffold with SEO, analytics, copy review, and accessibility check from the start. RU: используется КОГДА строится маркетинговый или продуктовый landing — каркас с SEO, аналитикой, copy review и a11y-проверкой с самого начала. Trigger phrases: 'сделай лендинг', 'нужна landing страница', 'построй landing', 'дизайн посадочной'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

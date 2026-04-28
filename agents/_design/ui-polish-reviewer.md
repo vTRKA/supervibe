@@ -1,7 +1,7 @@
 ---
 name: ui-polish-reviewer
 namespace: _design
-description: "Use BEFORE marking any UI implementation done to review across 8 dimensions (hierarchy/spacing/alignment/states/keyboard/responsive/copy/DS-consistency)"
+description: "Use BEFORE marking any UI implementation done to review across 8 dimensions (hierarchy/spacing/alignment/states/keyboard/responsive/copy/DS-consistency). RU: используется ПЕРЕД тем как пометить UI-реализацию готовой — review по 8 измерениям (иерархия/ритм/выравнивание/состояния/клавиатура/responsive/копирайт/DS-consistency). Trigger phrases: 'отполируй UI', 'review интерфейса', 'проверь дизайн готов ли'."
 persona-years: 15
 capabilities: [ui-review, polish, design-system-consistency, micro-interactions, visual-regression, state-coverage-audit, responsive-audit, copy-precision]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: prototype-builder
 namespace: _design
-description: "Use WHEN materializing design as 1:1 HTML/CSS prototype in prototypes/ for brandbook approval and 1:1 production transfer"
+description: "Use WHEN materializing design as 1:1 HTML/CSS prototype in prototypes/ for brandbook approval and 1:1 production transfer. RU: используется КОГДА дизайн нужно материализовать как 1:1 HTML/CSS прототип в prototypes/ для утверждения по брендбуку и точного переноса в production. Trigger phrases: 'построй прототип', 'свёрстай мокап', 'нужен HTML-прототип', 'кликабельный макет'."
 persona-years: 15
 capabilities: [html-css, design-tokens, states-implementation, no-framework-prototypes, motion-prototyping, drift-checking, keyboard-interactivity]
 stacks: [any]
