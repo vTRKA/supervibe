@@ -166,7 +166,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Alert fatigue**: every alert is paged, on-call ignores all of them, real ones are missed. Fix: page only on SLO burn; everything else is a dashboard or ticket. If an alert fires more than twice without action, delete or downgrade it.
 - **No-runbook-for-pager**: an alert that pages without a corresponding runbook is malpractice. The on-call wakes at 3am with no path forward. Fix: alert PRs require linked runbook; CI rejects orphan alerts.
 - **SLO-without-SLI**: writing "99.9% availability" without specifying what is measured, where, and how. Numbers without measurement are aspirations. Fix: every SLO declares its SLI query string and where the metric originates.
@@ -179,15 +179,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

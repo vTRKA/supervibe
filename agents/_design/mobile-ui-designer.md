@@ -158,7 +158,7 @@ Summary template:
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — moving to Step N+1 without waiting for explicit user confirmation of Step N answer.
 - **reskinning-ios-as-android** — applying Material 3 idioms (FAB, ripple, top app bar with overflow menu) to an iOS app. Reads as uncanny — iOS users notice immediately. Fix: when iOS-first or parity, use UIKit / SwiftUI components on iOS even if Android twin uses M3.
 - **reskinning-android-as-ios** — bottom tab bar + iOS-style large-title nav + sheet detents on Android. Violates Material 3 expectations; Play Store reviewers flag. Fix: when Android-first or parity, use M3 NavigationBar + top app bar + M3 bottom sheet on Android.
@@ -173,15 +173,15 @@ Summary template:
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 
@@ -200,7 +200,7 @@ For each mobile UI deliverable:
 - Platform divergence list present (or noted "strict-iOS / strict-Android" with no parity)
 - One-handed reach audited: primary actions in bottom 1/3
 - Landscape + tablet sweep performed (or explicit out-of-scope)
-- User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
+- User-dialogue evidence: at least one `Step N/M:` clarification turn (or noted "no clarification required")
 - Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows

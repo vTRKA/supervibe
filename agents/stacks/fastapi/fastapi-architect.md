@@ -161,7 +161,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Sync in async**: any `def` route, any `requests.get`/`time.sleep`/blocking-DB-call inside `async def`. Every blocking call inside the event loop reduces effective concurrency to 1. Either make it async or `asyncio.to_thread` it explicitly with documentation
 - **No DI tree**: route handlers that import settings/sessions/repos at module top. Untestable, untraceable, leaks lifecycle. Everything that has a lifecycle goes through `Depends`
 - **Pydantic model reuse for input AND output**: same `User` class accepts a `password` field on input and risks leaking it on output. Always split: `UserCreate` (with password), `UserRead` (without). The compiler — not careful coding — must enforce the boundary
@@ -174,15 +174,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

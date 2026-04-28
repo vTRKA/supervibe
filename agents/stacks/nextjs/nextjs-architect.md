@@ -175,7 +175,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **`'use client'` by default** — top-of-file `'use client'` on layouts/pages, dragging entire subtrees client-side; defeats RSC, balloons bundle, kills TTFB. Fix: push directive to the smallest leaf island, pass server children as `children` / props
 - **Fetch in `useEffect`** — client-side waterfall, no SSR, loading flash, no cache integration. Fix: `await fetch()` in a server component, or server action for mutations
 - **No Suspense boundaries** — single slow query blocks entire route's HTML; user sees spinner from `loading.tsx` for the whole page when only one panel is slow. Fix: `<Suspense>` per independent slow region with focused skeletons
@@ -188,15 +188,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

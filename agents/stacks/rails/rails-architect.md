@@ -124,7 +124,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **SPA-without-Hotwire-rationale** — choosing React/Vue/Svelte for the front-end without an ADR comparing against Hotwire. The default for a Rails app is Hotwire; deviating requires a real reason (interactivity density, team composition, mobile parity). "We're more comfortable in React" is a smell, not a rationale
 - **Sidekiq-without-redis-plan** — picking Sidekiq without owning the Redis operational story (HA, persistence policy, eviction semantics, monitoring). Sidekiq is excellent, but it's a second datastore. Solid Queue removes that dependency on Rails 8+; if Sidekiq is right, the ADR documents Redis ownership
 - **fat-models-with-callbacks** — letting `before_save` / `after_commit` callbacks become a parallel control flow that bypasses controllers and services. Callbacks are appropriate for *invariant maintenance* (touch timestamps, normalize) — never for orchestration (sending emails, enqueueing jobs that depend on context). Architects own the policy line; developers enforce it
@@ -138,15 +138,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

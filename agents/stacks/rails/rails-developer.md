@@ -143,7 +143,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **N+1-tolerated** — list views without `includes` / `preload` / `eager_load`. Bullet should fail the build, not just warn. Choose `includes` for "eager load if filtered, separate query otherwise", `preload` for "always separate query", `eager_load` for "always JOIN". Know which one and why
 - **validations-conflict-with-DB-constraints** — `validates :email, presence: true` with no `null: false` on the column, or `validates_uniqueness_of` with no unique index. ActiveRecord validations are advisory across multiple processes; the DB is the source of truth. Mirror every validation
 - **FAT-callbacks** — `after_save :send_welcome_email`, `after_commit :enqueue_billing_job`, `before_validation :normalize_then_call_external_api`. Callbacks are appropriate for *invariant maintenance* (touch, normalize, denormalize counters) — never for orchestration. Move side effects to Services or Jobs invoked explicitly from the controller
@@ -160,15 +160,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

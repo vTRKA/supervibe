@@ -174,7 +174,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Locking migration**: any `ALTER TABLE` that takes `AccessExclusiveLock` for >500ms on a hot table. Rewrite as online pattern (NOT VALID + VALIDATE, CONCURRENTLY, dual-write) before shipping.
 - **Drop-column-in-one-deploy**: dropping a column while the previous app version still SELECTs it = errors during rollout. Always 3-deploy: stop reading, deploy, stop writing, deploy, DROP.
 - **Index without EXPLAIN**: every index proposal must point at a specific query and an EXPLAIN plan that improves with it. "We might need it" is a write tax with no payoff.
@@ -187,15 +187,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

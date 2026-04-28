@@ -131,7 +131,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **ObservableObject overuse** (one giant `class AppState: ObservableObject` with 30 `@Published` properties): every `@Published` change re-renders every observer of the object, causing massive view rebuilds. Split into focused view models per feature, or use `@Observable` (iOS 17+) which tracks per-property reads. Prefer protocol-defined services that view models depend on, not ambient global state
 - **async without cancellation** (`Task { await loadStuff() }` fire-and-forget in `onAppear`): when the view disappears, the Task keeps running, the network call completes, and either the now-stale view model is updated (memory leak / wrong UI) or a crash occurs. Use `.task { await viewModel.load() }` modifier — SwiftUI cancels it on disappear. For longer-lived tasks, store the `Task` in the view model and cancel it explicitly in `deinit` or on equivalent lifecycle events
 - **MVVM without View / Model isolation** (view directly calls a repository, view model imports SwiftUI types like `Color`): blurs layers, breaks testability, makes view models impossible to test without UIKit/SwiftUI runtime. View talks to view model. View model talks to services/repositories. View models import Foundation only — no SwiftUI types in the view model layer
@@ -147,15 +147,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

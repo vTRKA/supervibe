@@ -137,7 +137,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **retry-without-idempotency**: any handler with side effects (charge, email, external API write) that retries without an idempotency key produces duplicates on the failure paths you wrote retries for.
 - **no-dlq**: failed messages either drop silently or block the queue. Both are bad. Every queue gets a DLQ; every DLQ gets an alert.
 - **cron-overlap**: long-running cron (e.g., midnight nightly) fires again before previous finishes; both run; data races. Use distributed lock or k8s CronJob with concurrencyPolicy=Forbid.
@@ -149,15 +149,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

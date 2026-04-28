@@ -152,7 +152,7 @@ Summary template:
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — presenting Step N+1 without waiting for explicit user confirmation of Step N answer; produces silent assumptions.
 - **popup-taller-than-viewport** — popup designed at 360×900 will scroll inside 360×600 (Chrome max popup height ≈ 600 on most systems; <600 on small laptops). Critical actions below the fold get missed. Fix: design at 360×600 default; if more content needed, switch to side-panel or options page.
 - **options-page-as-website** — options page styled like a marketing landing page (hero, footer, social icons). Users opened it from `chrome://extensions` and expect a settings idiom (sectioned form, save button, no decorative chrome). Fix: model on Chrome's own Settings page or platform-native settings widgets.
@@ -167,15 +167,15 @@ Summary template:
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 
@@ -191,7 +191,7 @@ For each extension UI deliverable:
 - Popup animations ≤200ms (cap)
 - CSP audit shows zero inline handlers / scripts / eval / remote-src
 - Cross-browser parity flagged where relevant
-- User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
+- User-dialogue evidence: at least one `Step N/M:` clarification turn (or noted "no clarification required")
 - Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows

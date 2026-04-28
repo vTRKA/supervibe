@@ -333,19 +333,19 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **WebFlux mixed with blocking I/O**: a `Mono.flatMap` that calls `JdbcTemplate.query`, `restTemplate.getForObject`, `Thread.sleep`, or any synchronous SDK. The reactor's small worker pool serializes on the blocked thread; effective concurrency drops to the worker count (often 4-8). Either go fully reactive (R2DBC + WebClient + reactive Kafka) or pick virtual-thread MVC. Blocking inside reactive is the single most expensive mistake in this stack.
 - **Profile leak of prod config**: `application-prod.yml` checked into the repo with real database URLs and credentials, OR `spring.profiles.active=prod` accidentally landing on a dev box, OR a profile inheriting upward (prod values polluting dev defaults). Profiles are environments; secrets belong in a vault or env vars, not in source. Explicit profile activation only via container env, never as a YAML default.
 - **Beans without stereotype**: classes annotated `@Component` for everything, or worse, `@Configuration` registering beans by hand for things that should be `@Service`/`@Repository`. Stereotypes are not decoration — they participate in transaction proxying (`@Repository` triggers SQLException translation), AOP defaults, component scanning. Wrong stereotype = subtle behavior bugs years later.

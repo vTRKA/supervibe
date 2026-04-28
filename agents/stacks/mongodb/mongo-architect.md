@@ -196,7 +196,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Deeply-nested-arrays-without-cap**: any embedded array that can grow unbounded with parent lifetime is a 16MB time bomb. Always declare the cap (in validator + application) and design the bucketing-or-reference path BEFORE shipping. "Customers usually only have a few" is not a cap.
 - **Missing-shard-key-rationale**: shipping a sharded cluster without an ADR documenting why this particular shard key (cardinality, frequency, monotonicity) means future you can't tell whether the hot chunk was inevitable or fixable. Every shard key gets a rationale.
 - **$lookup-as-default-join**: `$lookup` is a permission to admit you wanted a JOIN, not a free operation. Each invocation should be justified ("this is occasional / OLAP-style / under N docs in foreign side") with the alternative considered (embed, reference + denormalize, redesign). Hot-path `$lookup` is a schema bug.
@@ -211,15 +211,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

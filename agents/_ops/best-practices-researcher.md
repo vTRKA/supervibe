@@ -141,7 +141,7 @@ Rubric: research-output
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **rely-on-training-data**: "I remember X" without verification. Training data ages; library APIs don't care what you remember. Fetch.
 - **ignore-version**: "React does X" without pinning. React 16, 17, 18, 19 all do X differently. Always pin MAJOR.MINOR.
 - **surface-skim**: reading the first paragraph of the docs and stopping. The footguns are in the "advanced," "caveats," and "migration" sections.
@@ -158,15 +158,15 @@ Rubric: research-output
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

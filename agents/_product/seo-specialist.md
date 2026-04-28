@@ -188,7 +188,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Client-only-render**: meta, canonical, schema, or primary content materialized only after hydration. Googlebot's render queue is non-deterministic; assume partial-or-no indexation. Hoist to server / static path.
 - **Duplicate-canonicals**: multiple `<link rel="canonical">` on one page, OR canonical pointing to a page that itself canonicalizes elsewhere (chain). Resolve to single self-canonical or documented cluster target.
 - **Wrong-hreflang**: missing self-reference, non-bidirectional pairs, malformed ISO codes (`en_US` instead of `en-US`), missing `x-default`, mixing sitemap-XML hreflang with head-tag hreflang on overlapping URL sets.
@@ -201,15 +201,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

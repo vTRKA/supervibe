@@ -128,7 +128,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **provider-not-in-module-exports** (provider declared in `providers: [Foo]` but not `exports: [Foo]`, then imported elsewhere): Nest will throw `Nest can't resolve dependencies of …` at boot. Every shared provider MUST be in BOTH `providers` and `exports` of its owning module, and the consuming module MUST `imports: [OwningModule]`. Never re-declare the same provider in two modules — it creates two instances and breaks singletons (cache, in-memory queue, DB connection)
 - **custom-decorator-without-tests** (`createParamDecorator((data, ctx) => ...)` shipped without a `*.spec.ts` exercising it via a fake ExecutionContext): Nest reflection metadata changes between minor versions; an untested decorator is a latent crash. Always test custom decorators with `Test.createTestingModule` + a fixture controller
 - **validation-pipe-skipped** (DTO has `@IsEmail()` decorators but `main.ts` never registers `app.useGlobalPipes(new ValidationPipe(…))`): the decorators are decorative only — invalid payloads pass through. ValidationPipe MUST be global with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`. Per-handler `@UsePipes(ValidationPipe)` is acceptable only when overriding global config; never as a substitute
@@ -143,15 +143,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

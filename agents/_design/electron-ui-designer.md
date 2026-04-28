@@ -150,7 +150,7 @@ Summary template:
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — moving to Step N+1 without waiting for explicit user confirmation of Step N answer; produces silent assumptions.
 - **custom-title-bar-without-drag-region** — frameless window with no `-webkit-app-region: drag` on the chrome area. User cannot move the window. Fix: every custom title-bar mockup explicitly labels drag zones (header background) and no-drag zones (buttons, inputs); call out the CSS attribute in the handoff.
 - **ignoring-platform-menu-conventions** — same in-window menu bar shipped on macOS where users expect the app menu in the system menu bar at the top of the screen. Reads as "not a real Mac app". Fix: per-platform Menu template; macOS gets App menu in system bar; Windows / Linux get in-window menu (or hidden hamburger).
@@ -165,15 +165,15 @@ Summary template:
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 
@@ -191,7 +191,7 @@ For each Electron UI deliverable:
 - HiDPI asset list complete (.icns / .ico / multiple PNG sizes; tray template image macOS)
 - Linux mockup pass present (not just macOS / Windows)
 - Touch-target ≥44pt where touchscreen Windows is in-scope
-- User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
+- User-dialogue evidence: at least one `Step N/M:` clarification turn (or noted "no clarification required")
 - Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows

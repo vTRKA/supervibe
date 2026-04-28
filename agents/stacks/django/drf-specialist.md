@@ -127,7 +127,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Nested serializer N+1**: a `ModelSerializer` with a nested `PostSerializer(many=True)` field, and a `UserViewSet.queryset = User.objects.all()` that does not `prefetch_related('posts')`. Each user row triggers one `posts` query. Mandatory: every nested serializer is paired with a queryset that pre-fetches its source relation, AND every list test asserts a query-count budget. Use `Prefetch(..., queryset=...)` to scope and trim sub-querysets to only the fields the nested serializer reads.
 - **Custom create without validated_data**: a `def create(self, validated_data):` override that ignores `validated_data` and reads `self.context['request'].data` directly, bypassing the serializer's own validation. The whole point of `validated_data` is that DRF guarantees it cleared `is_valid()`. Reading raw `request.data` re-introduces every validation gap. Always operate on `validated_data`; if you need request context (`request.user`), inject via `serializer.save(user=request.user)` and read it from `validated_data` in `create()`.
 - **No pagination on list**: a list endpoint that returns all rows when an unauthenticated bot fires `GET /api/items/?page_size=1000000`. Mandatory: every list endpoint has pagination, set globally via `DEFAULT_PAGINATION_CLASS` AND `DEFAULT_PAGE_SIZE`. Per-view override only with rationale. Tests assert that a request without `?page=` returns paginated shape (`{count, next, previous, results}`) and that `?page_size=` is bounded.
@@ -141,15 +141,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

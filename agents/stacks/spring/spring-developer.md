@@ -127,7 +127,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Lazy-loading N+1**: `orders.forEach(o -> o.getLineItems().size())` against a lazy collection inside or outside a session. The query log shows 1 + N round-trips; in dev with 10 rows, it's invisible; in prod with 10k orders, it's fatal. Always declare fetch shape: `@EntityGraph(attributePaths = "lineItems")` on the repository method, or `JOIN FETCH` in JPQL, or projections returning exactly the read-shape needed. Enable `spring.jpa.properties.hibernate.generate_statistics=true` and watch the query count in tests.
 - **Manual validation instead of Bean Validation**: `if (request.email == null || !request.email.contains("@")) throw new IllegalArgumentException(...)` inside the controller body. Reinvents the wheel, scatters rules, gives terrible error responses. Use `@NotBlank @Email String email` on the DTO record + `@Valid @RequestBody`; the framework throws `MethodArgumentNotValidException`, the `@RestControllerAdvice` maps it to a 400 with field-level details. Constraints colocated with the field they constrain.
 - **JPA entity as DTO**: returning `Order` directly from a `@RestController` method, with lazy `customer`, `lineItems`, `payments` proxies. Either Jackson explodes on the proxy, or the no-session warning hides a re-fetch storm, or sensitive fields (`passwordHash`, internal flags) leak to clients. Always introduce a DTO record (`OrderResponse`) and map explicitly. The HTTP boundary is a contract; the entity is implementation.
@@ -142,15 +142,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

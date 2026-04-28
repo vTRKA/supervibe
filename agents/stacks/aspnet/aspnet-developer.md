@@ -126,7 +126,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Blocking-IO-in-async-pipeline** (`.Result`, `.Wait()`, `.GetAwaiter().GetResult()` on async calls inside an async path): deadlocks under load and starves the threadpool. Always `await`, propagate `async Task<T>`/`async ValueTask<T>` to the boundary, accept and forward `CancellationToken` parameters. If you genuinely need sync (rare — `Main`, some hosted-service teardown), document why
 - **EF-Core-N+1-without-Include** (`var orders = await _db.Orders.ToListAsync(); foreach (var o in orders) Console.WriteLine(o.Customer.Name);`): silent O(N) round-trips. Always project to a DTO via `.Select(...)` for read scenarios, or use `.Include(o => o.Customer)` / `.ThenInclude` when you need the full graph; consider `AsSplitQuery()` for cartesian explosion
 - **DI-scope-mismatch** (singleton consuming scoped, scoped captured by static, `DbContext` injected into a singleton): leads to "A second operation was started on this context" or stale captured services. Audit lifetimes top-down; use `IServiceScopeFactory` when a singleton truly must consume scoped work
@@ -139,15 +139,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

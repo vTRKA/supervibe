@@ -389,19 +389,19 @@ End every delivery with the canonical footer block (see end of this file).
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Request-everything permissions**: shipping with `tabs`, `storage`, `cookies`, `<all_urls>`, `webRequest`, `scripting`, `notifications` "to be safe". Each one is a CWS review flag and a user-trust tax. Start at zero and add with a code-path justification.
 - **MV2 background-page thinking**: assuming the service worker is a daemon. It is not. Module-scope `let cache = ...` is gone after 30 seconds idle. State lives in `chrome.storage.session` (per-session) or `chrome.storage.local` (persistent). Reconstruct on first event.
 - **Persistent state in service worker**: keeping a WebSocket / SSE / polling timer in service-worker module scope. The worker dies; the connection dies. Use offscreen documents for long-lived connections, alarms for periodic work.

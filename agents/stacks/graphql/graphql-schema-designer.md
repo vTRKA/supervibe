@@ -379,19 +379,19 @@ prior supergraph manifest; gateway hot-swaps within 60s">
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **code-first-without-typing**: code-first definitions where resolvers return `any` / `dynamic` / `interface{}`, where the language type is not the source of truth, and the emitted SDL drifts from the actual runtime shape. Code-first is only valid when the language types ARE the contract; without typing, code-first is worse than schema-first because it hides drift behind decorators. Fix: enforce typed resolver signatures (TypeScript strict, Hot Chocolate `[GraphQLType]` with concrete CLR types, Strawberry type-annotated dataclasses, gqlgen models).
 - **no-DataLoader**: list-of-children resolvers that fetch from the data source per parent, producing N+1 queries that scale with the page size. Cannot be hot-fixed once a popular query ships; mitigated only by retrofitting a loader. Fix: every parent-to-children resolver uses a request-scoped DataLoader; code review rejects direct ORM/RPC calls inside collection resolvers.
 - **persisted-queries-bypassed**: production gateway accepts arbitrary ad-hoc queries despite a stated persisted-query policy, via a "bypass" header / query param / internal flag that ends up exposed. Defeats the entire defense — depth attacks, complexity attacks, and scraping all return. Fix: persisted-queries enforced at the gateway with NO bypass path in production; ad-hoc tooling uses a separate auth-gated gateway.

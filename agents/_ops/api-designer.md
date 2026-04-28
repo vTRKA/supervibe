@@ -135,7 +135,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **silent-breaking-change**: removing a field, narrowing a type, renaming, or changing required-ness without a version bump. Even "no client uses it" is wrong — you don't know that.
 - **no-versioning-strategy**: shipping v1 without declared rules for v2. Pick URL/header/content-type up front, document in ADR, apply consistently.
 - **inconsistent-error-envelope**: 400 returns `{message}`, 500 returns `{error}`, validation returns `{errors:[]}`. Pick problem+json, use everywhere, test in CI.
@@ -148,15 +148,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

@@ -129,7 +129,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Signal-driven side effects**: business logic implemented in `post_save` / `pre_save` receivers — invoices created on order save, emails dispatched on user save, cache invalidated in unrelated subsystems. Signals make control flow invisible; they fire on every save (including bulk operations and tests); they swallow exceptions silently if not wired carefully. Use signals only for in-process, non-critical observers (audit logs, in-context cache invalidation). Cross-context side effects belong in explicit service calls or Celery tasks. If a signal must exist, register it in `apps.py:AppConfig.ready()`, write a focused test that asserts the side effect, and document the receiver in `signals.py` with a comment explaining why a signal is the right tool here.
 - **ModelForm without clean method**: a `ModelForm` that declares fields but never overrides `clean()` or `clean_<field>()` to enforce cross-field invariants or normalize input. Validation responsibility leaks into the view (or, worse, into save signals). Mandatory: every ModelForm with non-trivial business rules implements `clean()` for cross-field rules and `clean_<field>()` for per-field normalization, with tests for each branch.
 - **FAT views**: a view function exceeding ~30 lines, holding validation + orchestration + persistence + side-effect dispatch + response rendering inline. Views translate HTTP to action and back; everything else belongs in forms / services / managers / tasks. View >40 lines is a smell; >100 lines is a defect. Refactor: pull rules into a Form, pull orchestration into a service function in `services.py`, pull persistence into a manager method.
@@ -143,15 +143,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

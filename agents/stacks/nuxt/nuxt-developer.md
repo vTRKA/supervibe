@@ -137,7 +137,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **`useFetch` without `key`**: Nuxt auto-generates a key based on the call site, but auto-keys break under code-splitting, layout reuse, and same-endpoint multi-instance pages. Worse, hydration relies on the key matching server → client; an unstable key causes "Hydration text mismatch" warnings and silent double-fetches. Always pass `key: 'resource:'+id` (or similar stable string) to every `useFetch`. Same applies to `useAsyncData`.
 - **`server/api/` without `zod` (or equivalent schema validation)**: `const body = await readBody(event)` returns `any` and ships unvalidated input to your domain logic. One malformed payload corrupts the database. Use `await readValidatedBody(event, schema.parse)` with a `zod` schema (or `valibot` if preferred); reject with 400 + actionable error. Type-narrow the body type via `z.infer<typeof schema>` so the handler body is fully typed.
 - **`useState` without namespace**: `useState('user')` collides with any other `useState('user')` anywhere in the app — same module, different module, deep dependency. Use `useState('<feature>:<key>', initFn)`: `useState('auth:current-user')`, `useState('cart:items')`. Document the namespace scheme in CLAUDE.md.
@@ -150,15 +150,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

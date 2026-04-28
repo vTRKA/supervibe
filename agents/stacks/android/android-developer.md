@@ -130,7 +130,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **LiveData mixed with Flow** (some view models use `LiveData<T>`, others `StateFlow<T>`, the same screen converts back and forth): each layer has subtly different semantics — LiveData is lifecycle-aware on the main thread, StateFlow is plain Kotlin state. Pick one (StateFlow for new code, almost always) and stick with it. If interop is unavoidable (legacy screen consuming a new Flow source), use `asLiveData()` at the seam — never sprinkle conversions throughout
 - **GlobalScope** (`GlobalScope.launch { network.call() }` from anywhere): no cancellation, no lifecycle, leaks across config changes. Always launch from a scoped CoroutineScope — `viewModelScope`, `lifecycleScope`, `WorkManager`-managed scope, or an explicitly defined application-scoped scope (`@ApplicationScoped` `CoroutineScope` provided by Hilt for genuinely app-scoped tasks)
 - **No WorkManager constraints** (`OneTimeWorkRequestBuilder<MyWorker>().build()` with no constraints): the worker may run on cellular over a low battery, draining the user's data plan and battery. Always set `setConstraints(Constraints.Builder().setRequiredNetworkType(...).setRequiresBatteryNotLow(true).build())` appropriate to the work; for periodic, set a sensible flex interval
@@ -146,15 +146,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 3. **Read screen spec** from ux-ui-designer — confirm scope, states required, interaction patterns.
 4. **Viewport question (ONE QUESTION, MARKDOWN)** — if `prototypes/<feature>/config.json` doesn't already have `viewports`, ask:
    ```markdown
-   **Шаг 1/3: Viewports.**
+   **Step 1/3: Viewports.**
    Стандарт — 375px (mobile) + 1440px (desktop). Что нужно?
    - ✅ Стандартные
    - ➕ + 768px (tablet)
@@ -182,7 +182,7 @@ Rubric: prototype
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Hardcoded values**: any raw `#hex`, `rgb()`, raw px for spacing/sizing — every value must trace to a token. If the token doesn't exist, escalate to ux-ui-designer to add it; do not invent values in the prototype.
 - **One-state-only**: shipping `resting.html` and calling it done. The state matrix is non-negotiable; missing states are why production gets shipped without empty/error/loading handling.
 - **Framework coupling**: importing React, Vue, Svelte, Alpine, htmx, or any framework into a prototype. Vanilla HTML/CSS/JS only. The whole point is framework-agnostic transfer.
@@ -195,15 +195,15 @@ Rubric: prototype
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

@@ -130,7 +130,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **setState in large widgets** (a 400-line widget with `setState` mutating 5 fields): the entire subtree rebuilds on every change. Split into smaller widgets, lift state to the right scope (BLoC / Riverpod / Provider), or use `ValueListenableBuilder` / `StatefulBuilder` for narrowly-scoped local state. The rule: if you find yourself calling `setState` in a widget that is more than ~150 lines, you have already lost — refactor first
 - **BLoC without Equatable** (states/events as plain classes): every emit is treated as a new state because identity comparison fails, so `BlocBuilder` rebuilds on every event even when the state did not change. Always extend `Equatable` (or use `freezed` with default equality) on every event and state. Add `bloc_test` `expect: () => [matching states]` and watch it FAIL when Equatable is missing — that is the test that catches this
 - **Provider rebuilds everything** (`Consumer<BigModel>` at the top of the tree): any field change rebuilds every descendant that read the model. Use `Selector<BigModel, FieldType>` to scope rebuilds to the field that matters, or split the model into smaller providers, or move to Riverpod where selector semantics are first-class
@@ -146,15 +146,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

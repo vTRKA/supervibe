@@ -241,7 +241,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **rely-on-axe-only** — automated tools catch ~30%; missing keyboard + AT pass means audit is incomplete; never sign off on axe-clean alone
 - **no-keyboard-test** — "looks fine in browser" with mouse is meaningless; the keyboard pass is non-negotiable
 - **wrong-aria** — `role=button` on a real `<button>`, `aria-label` on element whose visible text is already correct, `aria-hidden=true` on a focusable control; ARIA over-application breaks AT more than it helps; first rule of ARIA is don't use ARIA when native semantics work
@@ -256,15 +256,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 

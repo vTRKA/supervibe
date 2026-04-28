@@ -303,19 +303,19 @@ previous preset, etc.)>
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Client-only mode by default** (`ssr: false` in nuxt.config without rationale): defaults to a SPA shell, loses SEO, sends a blank page until JS hydrates, increases LCP. CSR is a per-route opt-in via `routeRules['/admin/**'] = { ssr: false }`, not an app-wide default. If the app genuinely is auth-only (no public surface), document the decision in ADR; otherwise, this is unintentional cargo-culting from "Nuxt is hard to deploy" tutorials.
 - **Mixing `useFetch` and `$fetch` for the same logical resource**: `useFetch('/api/products')` in `<script setup>` and `$fetch('/api/products')` in a refresh handler creates two different code paths, two different cache entries, and two different error-handling routes. Pick one — `useFetch` for SSR-hydrated page data with `refresh()` as the explicit refetch primitive; `$fetch` only for genuinely client-only events. Document the choice per resource.
 - **No server-engine-choice rationale**: Nitro preset chosen by accident (the deploy worked first try) without considering cold-start, runtime API limits, or cost model. Workers preset disqualifies Node-native deps; edge preset has request-size limits; static preset disqualifies server/api/ entirely. Every preset in production needs an ADR sentence explaining why this preset and not another, signed by an architect.

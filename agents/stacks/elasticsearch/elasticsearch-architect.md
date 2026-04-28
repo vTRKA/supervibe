@@ -294,19 +294,19 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Text-on-keyword-fields**: declaring an identifier or SKU as `text` instead of `keyword` means it's analyzed (tokenized, lowercased, stemmed) and you can't do exact `term` queries. The reverse mistake — declaring user-input search-target prose as `keyword` — means no relevance scoring. Always pin the type to the use case; multi-field when both are needed.
 - **No-analyzer-on-multilingual**: dropping French, German, Russian, CJK, or Thai content into the default `standard` analyzer means broken stemming, broken stopwords, broken tokenization (Thai has no spaces), and broken relevance. Always per-language analyzer or language-detection ingest pipeline.
 - **Over-sharding**: 100 shards on a 5GB index is the most common production smell. Per-shard overhead (heap, file descriptors, cluster state) compounds; the master node's job becomes managing meta. Always size shards by target GB-per-primary rule, not by guessed scale-factor.

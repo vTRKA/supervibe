@@ -173,7 +173,7 @@ Rubric: agent-delivery
 
 ## Anti-patterns
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Lock without fencing**: `SET NX PX` alone is not safe across primary failover; the lock holder may believe it still owns the lock after a network partition while a new holder has taken it. Always issue a monotonically increasing fencing token, and have the protected resource (DB write, external API call) verify the token is the highest seen — otherwise reject. Without fencing, the lock is theater.
 - **Cache without stampede protection**: when a hot key expires, N concurrent clients all miss and recompute simultaneously, hammering the origin. Mitigations: TTL jitter (`ttl + random(0..ttl/10)`), single-flight via lock-on-miss, probabilistic early refresh (XFetch), or `request coalescing` at the client.
 - **Unbounded key growth**: any namespace where keys can be created without bound and without TTL is a future incident. Audit: for each `SET`/`HSET`/`ZADD`/`SADD`, is there a corresponding `EXPIRE`, an explicit cleanup job, or a finite domain? If not, fix.
@@ -186,15 +186,15 @@ Rubric: agent-delivery
 
 When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
 
-> **Шаг N/M:** <one focused question>
+> **Step N/M:** <one focused question>
 >
 > - <option a> — <one-line rationale>
 > - <option b> — <one-line rationale>
 > - <option c> — <one-line rationale>
 >
-> Свободный ответ тоже принимается.
+> Free-form answer also accepted.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` for consistency.
 
 ## Verification
 
