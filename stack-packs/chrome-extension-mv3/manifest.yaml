@@ -1,0 +1,146 @@
+id: chrome-extension-mv3
+name: "Chrome Extension MV3 (vanilla / TS / Vite-CRX / WXT)"
+version: 1.0.0
+description: "Stack-pack for Chrome Manifest V3 browser extensions — popup + options + side panel + content scripts + service worker, with permissions discipline and CWS-publishing readiness baked in."
+
+matches:
+  required:
+    runtime: chrome-extension
+    manifest_version: 3
+  optional:
+    bundler: [vite-crxjs, wxt, plasmo, vanilla]
+    language: [typescript, javascript]
+    ui-framework: [react, vue, svelte, vanilla]
+
+agents-attach:
+  # Universal _core
+  - evolve:_core:code-reviewer
+  - evolve:_core:repo-researcher
+  - evolve:_core:security-auditor
+  - evolve:_core:refactoring-specialist
+  - evolve:_core:architect-reviewer
+  - evolve:_core:quality-gate-reviewer
+  - evolve:_core:root-cause-debugger
+  # Meta
+  - evolve:_meta:rules-curator
+  - evolve:_meta:evolve-orchestrator
+  # Product
+  - evolve:_product:product-manager
+  - evolve:_product:systems-analyst
+  - evolve:_product:qa-test-engineer
+  - evolve:_product:analytics-implementation
+  # Ops
+  - evolve:_ops:devops-sre
+  - evolve:_ops:performance-reviewer
+  - evolve:_ops:dependency-reviewer
+  - evolve:_ops:api-contract-reviewer
+  - evolve:_ops:auth-architect
+  - evolve:_ops:observability-architect
+  # Design — extensions ship UI, treat them as design surfaces
+  - evolve:_design:creative-director
+  - evolve:_design:ux-ui-designer
+  - evolve:_design:ui-polish-reviewer
+  - evolve:_design:accessibility-reviewer
+  - evolve:_design:copywriter
+  - evolve:_design:prototype-builder
+  # Stack-specific
+  - evolve:stacks/chrome-extension:chrome-extension-architect
+  - evolve:stacks/chrome-extension:chrome-extension-developer
+
+rules-attach:
+  - best-practices-2026
+  - git-discipline
+  - commit-discipline
+  - commit-attribution
+  - no-dead-code
+  - confidence-discipline
+  - anti-hallucination
+  - no-half-finished
+  - use-codegraph-before-refactor
+  - rule-maintenance
+  - pre-commit-discipline
+  - privacy-pii   # extensions touch user-page data; PII discipline matters
+  - i18n          # _locales/ via chrome.i18n
+  - observability # service-worker logging discipline
+
+scaffold:
+  claude:
+    settings.json:
+      template: "stack-packs/chrome-extension-mv3/claude/settings.json"
+    CLAUDE.md:
+      template: "stack-packs/chrome-extension-mv3/claude/CLAUDE.md.tpl"
+      placeholders: [stack-summary, agent-roster, scope-boundaries, paths, bundler-choice, target-browsers]
+
+  root-files:
+    - { path: ".editorconfig",  source: "templates/configs/.editorconfig" }
+    - { path: ".gitignore",     source: "stack-packs/chrome-extension-mv3/configs/.gitignore" }
+    - { path: ".gitattributes", source: "templates/configs/.gitattributes" }
+    - { path: "commitlint.config.js", source: "templates/configs/commitlint.config.js" }
+    - { path: "package.json",   source: "stack-packs/chrome-extension-mv3/configs/package.json.tpl" }
+    - { path: "tsconfig.json",  source: "stack-packs/chrome-extension-mv3/configs/tsconfig.json", optional: true }
+    - { path: "vite.config.ts", source: "stack-packs/chrome-extension-mv3/configs/vite.config.ts.tpl", optional: true }
+
+  husky:
+    pre-commit: "stack-packs/chrome-extension-mv3/husky/pre-commit"
+    commit-msg: "templates/husky/commit-msg"
+    pre-push:   "stack-packs/chrome-extension-mv3/husky/pre-push"
+
+  directories:
+    - { path: "extension/src/popup/",           purpose: "Popup UI (action.default_popup target)" }
+    - { path: "extension/src/options/",         purpose: "Options page (options_ui)" }
+    - { path: "extension/src/sidepanel/",       purpose: "Side panel UI (chrome.sidePanel)" }
+    - { path: "extension/src/background/",      purpose: "Service worker entry (background.service_worker)" }
+    - { path: "extension/src/content/",         purpose: "Content scripts (matched per-host)" }
+    - { path: "extension/src/offscreen/",       purpose: "Offscreen documents for DOM/audio APIs unavailable in service worker" }
+    - { path: "extension/src/lib/",             purpose: "Shared messaging types, storage helpers, runtime utilities" }
+    - { path: "extension/public/icons/",        purpose: "16/32/48/128 png icons (action + icons)" }
+    - { path: "extension/public/_locales/",     purpose: "i18n via chrome.i18n — at minimum en/messages.json" }
+    - { path: "extension/manifest.json",        purpose: "MV3 manifest — generated/maintained by chrome-extension-architect" }
+    - { path: ".claude/memory/decisions/",      purpose: "ADRs (especially permission-justification ADR per release)" }
+    - { path: "docs/cws/",                      purpose: "CWS listing draft (description, screenshots, purposes disclosure)" }
+
+  manifest-template:
+    path: "stack-packs/chrome-extension-mv3/scaffold/extension/manifest.json.tpl"
+    placeholders:
+      - extension-name
+      - extension-description
+      - extension-version
+      - permissions-required
+      - host-permissions
+      - content-scripts-matches
+      - web-accessible-resources
+
+  npm-scripts:
+    dev:        "vite build --watch --mode development"
+    build:      "vite build && node scripts/web-ext-lint.mjs dist/"
+    lint:       "eslint . && npx web-ext lint --source-dir=dist"
+    test:       "vitest"
+    package:    "node scripts/package-cws.mjs"
+    typecheck:  "tsc --noEmit"
+
+verification:
+  required-checks:
+    - "manifest.json parses as JSON"
+    - "manifest_version === 3"
+    - "every entry in manifest.permissions is referenced in code"
+    - "every entry in manifest.host_permissions has tightest possible match-pattern"
+    - "no <all_urls> in host_permissions without ADR justifying it"
+    - "no <script src='inline'> in any HTML page (CSP discipline)"
+    - "no eval / new Function / setTimeout(string) anywhere in src"
+    - "service worker handles chrome.runtime.onInstalled + onStartup"
+    - "every chrome.runtime.sendMessage caller checks chrome.runtime.lastError"
+    - "every chrome.runtime.connect Port has .onDisconnect cleanup"
+    - "_locales/en/messages.json present with at least extName + extDescription"
+    - "icons 16/32/48/128 present and valid PNG"
+    - "web-ext lint exits 0"
+    - "npx tsc --noEmit exits 0 (when TS)"
+
+cws-publishing-checklist:
+  - extension-icon-128 present
+  - 1280x800 or 640x400 promotional screenshot
+  - short description ≤132 chars
+  - detailed description with feature list + permissions purposes
+  - privacy policy URL (required if collecting any user data)
+  - per-permission purpose disclosure ready
+  - single purpose statement
+  - support email

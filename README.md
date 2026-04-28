@@ -24,7 +24,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist 
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
-23 stacks supported: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
+24 stacks supported: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
 
 ---
 

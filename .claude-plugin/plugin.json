@@ -58,6 +58,8 @@
     "./agents/_product/systems-analyst.md",
     "./agents/stacks/android/android-developer.md",
     "./agents/stacks/aspnet/aspnet-developer.md",
+    "./agents/stacks/chrome-extension/chrome-extension-architect.md",
+    "./agents/stacks/chrome-extension/chrome-extension-developer.md",
     "./agents/stacks/django/django-architect.md",
     "./agents/stacks/django/django-developer.md",
     "./agents/stacks/django/drf-specialist.md",

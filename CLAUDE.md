@@ -219,7 +219,7 @@ Rubric: <rubric-id-from-confidence-rubrics-dir>
 
 ---
 
-## Agent system (46 agents)
+## Agent system (75 agents)
 
 Routing by `namespace` in frontmatter:
 
@@ -236,6 +236,7 @@ Routing by `namespace` in frontmatter:
 | `stacks/react` | 1 | `react-implementer` | Standalone React/Vite |
 | `stacks/postgres` | 1 | `postgres-architect` | Postgres-heavy projects |
 | `stacks/redis` | 1 | `redis-architect` | Redis-heavy projects |
+| `stacks/chrome-extension` | 2 | `chrome-extension-architect`, `chrome-extension-developer` | Chrome MV3 / Edge / Brave browser extensions (popup, options, side panel, content scripts, service worker) |
 
 **All agents:** ≥250 lines, full Persona / Project Context / Skills / Decision tree / Procedure / Output contract / Anti-patterns / Verification / Common workflows / Out of scope / Related.
 

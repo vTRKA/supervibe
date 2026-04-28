@@ -29,6 +29,11 @@ AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framew
 
 ```
 Manifest detected?
+├─ extension/manifest.json OR src/manifest.json with "manifest_version": 3
+│                                       → runtime: chrome-extension (MV3)
+│                                         pack: chrome-extension-mv3
+├─ extension/manifest.json with "manifest_version": 2
+│                                       → runtime: chrome-extension (MV2 — flag for migration)
 ├─ package.json + react → frontend: react (vite/cra/next - check deps)
 ├─ package.json + next → frontend: nextjs
 ├─ package.json + vue/nuxt → frontend: vue
@@ -39,6 +44,13 @@ Manifest detected?
 ├─ Cargo.toml + tauri → desktop: tauri (+ frontend from package.json)
 ├─ go.mod + gin/echo → backend: go
 └─ ... (use stack-fingerprint registry)
+
+Chrome-extension sub-detection (when manifest_version: 3):
+├─ devDeps include @crxjs/vite-plugin → bundler: vite-crxjs
+├─ devDeps include wxt              → bundler: wxt
+├─ devDeps include plasmo           → bundler: plasmo
+├─ no bundler in devDeps + no src/  → bundler: vanilla (no-bundler)
+└─ devDeps include typescript       → language: typescript
 
 DB inferred from?
 ├─ Migration files (database/migrations/, db/migrate/, alembic/, migrations/)

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.zip          # CWS package outputs
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Vite cache
+.vite/
+
+# web-ext / artifacts
+web-ext-artifacts/
+
+# Evolve indexes (generated)
+.claude/memory/*.db
+.claude/memory/*.db-journal
+.claude/memory/*.db-wal
+.claude/memory/*.db-shm
+.claude/memory/.watcher-heartbeat
+.claude/memory/.evolve-version
+.claude-plugin/.upgrade-check.json
+
+# Local Claude permissions (per-machine)
+.claude/settings.local.json

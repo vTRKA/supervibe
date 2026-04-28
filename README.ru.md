@@ -24,7 +24,7 @@
 | Live preview-server | `localhost:PORT` с SSE hot reload, idle-shutdown, лимитом серверов |
 | Multi-CLI | Один установщик настраивает Claude Code, Codex и Gemini |
 
-Поддерживается 23 стека: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
+Поддерживается 24 стека: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
 
 ---
 
