@@ -1,19 +1,62 @@
 ---
 name: fastapi-developer
 namespace: stacks/fastapi
-description: "Use WHEN implementing FastAPI endpoints, models, services, async DB queries with pytest tests. RU: Используется КОГДА реализуешь endpoints, модели, сервисы и async DB-запросы на FastAPI с pytest-тестами. Trigger phrases: 'реализуй фичу на FastAPI', 'добавь endpoint FastAPI', 'async запрос FastAPI', 'Pydantic модель'."
+description: >-
+  Use WHEN implementing FastAPI endpoints, models, services, async DB queries
+  with pytest tests. RU: Используется КОГДА реализуешь endpoints, модели,
+  сервисы и async DB-запросы на FastAPI с pytest-тестами. Trigger phrases:
+  'реализуй фичу на FastAPI', 'добавь endpoint FastAPI', 'async запрос FastAPI',
+  'Pydantic модель'.
 persona-years: 15
-capabilities: [fastapi-implementation, pydantic-v2, async-sqlalchemy, pytest-asyncio, dependency-injection, error-handler-chain, streaming-responses, background-tasks]
-stacks: [fastapi]
-requires-stacks: [postgres]
+capabilities:
+  - fastapi-implementation
+  - pydantic-v2
+  - async-sqlalchemy
+  - pytest-asyncio
+  - dependency-injection
+  - error-handler-chain
+  - streaming-responses
+  - background-tasks
+stacks:
+  - fastapi
+requires-stacks:
+  - postgres
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search]
-verification: [pytest-pass, ruff-clean, mypy-strict-no-errors, async-correctness-verified, coverage-threshold-met]
-anti-patterns: [sync-driver-in-async-app, missing-pydantic-validation, no-error-handler, sql-string-concat, no-dependency-injection, blocking-io-in-event-loop, no-pagination]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+verification:
+  - pytest-pass
+  - ruff-clean
+  - mypy-strict-no-errors
+  - async-correctness-verified
+  - coverage-threshold-met
+anti-patterns:
+  - sync-driver-in-async-app
+  - missing-pydantic-validation
+  - no-error-handler
+  - sql-string-concat
+  - no-dependency-injection
+  - blocking-io-in-event-loop
+  - no-pagination
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -205,8 +248,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **Sync driver in async app** — `psycopg2`, `requests`, `pymongo` (sync), `redis-py` without `asyncio` mode all block the event loop. Use `asyncpg`, `httpx.AsyncClient`, `motor`, `redis.asyncio` instead. Symptom: latency cliffs under concurrency.
 - **Missing Pydantic validation** — accepting raw dicts, `request.json()` without a model, or using `Any` in route signatures. Every input must be a typed Pydantic model with field constraints. The schema IS the contract.
 - **No error handler** — uncaught domain exceptions leak tracebacks to clients (info disclosure) and produce 500s where 4xx is correct. Every domain exception must have a registered handler returning structured JSON `{detail, code}`.

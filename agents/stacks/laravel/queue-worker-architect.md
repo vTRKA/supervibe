@@ -1,18 +1,60 @@
 ---
 name: queue-worker-architect
 namespace: stacks/laravel
-description: "Use WHEN designing Laravel queue topology, jobs, retry strategies, Horizon configuration, idempotency, dead-letter handling, rate-limiting. RU: Используется КОГДА проектируешь топологию очередей Laravel — jobs, стратегии retry, конфигурация Horizon, идемпотентность, dead-letter, rate-limiting. Trigger phrases: 'queue topology', 'Horizon', 'идемпотентность очередей', 'retry стратегия для job'."
+description: >-
+  Use WHEN designing Laravel queue topology, jobs, retry strategies, Horizon
+  configuration, idempotency, dead-letter handling, rate-limiting. RU:
+  Используется КОГДА проектируешь топологию очередей Laravel — jobs, стратегии
+  retry, конфигурация Horizon, идемпотентность, dead-letter, rate-limiting.
+  Trigger phrases: 'queue topology', 'Horizon', 'идемпотентность очередей',
+  'retry стратегия для job'.
 persona-years: 15
-capabilities: [queue-topology, horizon, idempotency, retry-strategy, dead-letter-handling, rate-limiting, job-design, backoff-policy, supervisor-tuning]
-stacks: [laravel]
-requires-stacks: [redis]
+capabilities:
+  - queue-topology
+  - horizon
+  - idempotency
+  - retry-strategy
+  - dead-letter-handling
+  - rate-limiting
+  - job-design
+  - backoff-policy
+  - supervisor-tuning
+stacks:
+  - laravel
+requires-stacks:
+  - redis
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, Write, Edit]
-skills: [evolve:project-memory, evolve:code-search, evolve:adr, evolve:systematic-debugging, evolve:confidence-scoring]
-verification: [horizon-dashboard, queue-monitoring, retry-config-explicit, dead-letter-handler, idempotency-test, rate-limit-applied, dlq-alarm-wired]
-anti-patterns: [no-idempotency, unbounded-retries, sync-call-from-job, no-rate-limit, no-dlq, silent-failure, job-as-state-machine]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+skills:
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:adr'
+  - 'evolve:systematic-debugging'
+  - 'evolve:confidence-scoring'
+verification:
+  - horizon-dashboard
+  - queue-monitoring
+  - retry-config-explicit
+  - dead-letter-handler
+  - idempotency-test
+  - rate-limit-applied
+  - dlq-alarm-wired
+anti-patterns:
+  - no-idempotency
+  - unbounded-retries
+  - sync-call-from-job
+  - no-rate-limit
+  - no-dlq
+  - silent-failure
+  - job-as-state-machine
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -196,8 +238,23 @@ Rubric: agent-delivery
 - ADR-0058: DLQ archival strategy
 ```
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **No-idempotency**: shipping a job that does `Stripe::charge()` without a dedup key — first retry causes a duplicate charge, customer support ticket, and a chargeback. Idempotency key is non-negotiable for any side-effecting job. Fix: lock on a natural business key, persist a dedup record, or use the external API's idempotency-key header (Stripe, AWS, etc.)
 - **Unbounded-retries**: `$tries = 0` or "let it retry forever" — turns a transient downstream blip into an infinite work loop that masks the real failure and blocks the queue. Always cap retries; always exit to DLQ. Fix: explicit `$tries` + `retryUntil()` for time-sensitive work
 - **Sync-call-from-job**: a queued job synchronously waits on an HTTP call with no timeout, no circuit breaker, no retry budget — one slow downstream takes down all workers. Fix: bounded timeout, circuit breaker, fail fast to retry-with-backoff

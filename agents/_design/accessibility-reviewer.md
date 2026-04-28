@@ -1,19 +1,67 @@
 ---
 name: accessibility-reviewer
 namespace: _design
-description: "Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation, screen reader support, contrast measurement, motion sensitivity, and ARIA correctness. RU: используется ПЕРЕД релизом любого UI — проверяет WCAG AA compliance, клавиатурную навигацию, screen reader, контраст, motion sensitivity и ARIA. Trigger phrases: 'проверь доступность', 'a11y review', 'accessibility audit', 'WCAG проверка', 'screen reader test'."
+description: >-
+  Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation,
+  screen reader support, contrast measurement, motion sensitivity, and ARIA
+  correctness. RU: используется ПЕРЕД релизом любого UI — проверяет WCAG AA
+  compliance, клавиатурную навигацию, screen reader, контраст, motion
+  sensitivity и ARIA. Trigger phrases: 'проверь доступность', 'a11y review',
+  'accessibility audit', 'WCAG проверка', 'screen reader test'.
 persona-years: 15
-capabilities: [a11y-audit, wcag-aa, keyboard-nav, screen-reader, motion-sensitivity, contrast-measurement, aria-correctness, focus-management, form-error-labeling]
-stacks: [any]
+capabilities:
+  - a11y-audit
+  - wcag-aa
+  - keyboard-nav
+  - screen-reader
+  - motion-sensitivity
+  - contrast-measurement
+  - aria-correctness
+  - focus-management
+  - form-error-labeling
+stacks:
+  - any
 requires-stacks: []
 optional-stacks: []
-tools: [Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_press_key, mcp__playwright__browser_evaluate, mcp__playwright__browser_take_screenshot]
-recommended-mcps: [playwright]
-skills: [evolve:code-review, evolve:project-memory, evolve:verification, evolve:confidence-scoring, evolve:mcp-discovery]
-verification: [axe-zero-violations, keyboard-traversal-pass, screen-reader-announces-correctly, contrast-text-4_5-1, contrast-large-3-1, ui-component-3-1, motion-respected, focus-order-logical]
-anti-patterns: [rely-on-axe-only, no-keyboard-test, wrong-aria, no-focus-management, decorative-image-without-alt, contrast-near-fail, no-skip-link, color-only-state, focus-removed]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - mcp__playwright__browser_navigate
+  - mcp__playwright__browser_snapshot
+  - mcp__playwright__browser_press_key
+  - mcp__playwright__browser_evaluate
+  - mcp__playwright__browser_take_screenshot
+recommended-mcps:
+  - playwright
+skills:
+  - 'evolve:code-review'
+  - 'evolve:project-memory'
+  - 'evolve:verification'
+  - 'evolve:confidence-scoring'
+  - 'evolve:mcp-discovery'
+verification:
+  - axe-zero-violations
+  - keyboard-traversal-pass
+  - screen-reader-announces-correctly
+  - contrast-text-4_5-1
+  - contrast-large-3-1
+  - ui-component-3-1
+  - motion-respected
+  - focus-order-logical
+anti-patterns:
+  - rely-on-axe-only
+  - no-keyboard-test
+  - wrong-aria
+  - no-focus-management
+  - decorative-image-without-alt
+  - contrast-near-fail
+  - no-skip-link
+  - color-only-state
+  - focus-removed
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -239,8 +287,23 @@ Rubric: agent-delivery
 APPROVED | APPROVED WITH NOTES | BLOCKED
 ```
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **rely-on-axe-only** — automated tools catch ~30%; missing keyboard + AT pass means audit is incomplete; never sign off on axe-clean alone
 - **no-keyboard-test** — "looks fine in browser" with mouse is meaningless; the keyboard pass is non-negotiable
 - **wrong-aria** — `role=button` on a real `<button>`, `aria-label` on element whose visible text is already correct, `aria-hidden=true` on a focusable control; ARIA over-application breaks AT more than it helps; first rule of ARIA is don't use ARIA when native semantics work

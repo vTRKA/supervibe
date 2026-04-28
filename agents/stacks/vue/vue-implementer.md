@@ -1,19 +1,62 @@
 ---
 name: vue-implementer
 namespace: stacks/vue
-description: "Use WHEN building Vue 3 components with Composition API, <script setup>, Pinia stores, typed props/emits, custom composables, Vitest + Vue Test Utils. RU: Используется КОГДА собираешь компоненты Vue 3 с Composition API, script setup, Pinia, типизированными props/emits, кастомными composables, Vitest + Vue Test Utils. Trigger phrases: 'Vue компонент', 'composable', 'Pinia store', 'добавь component на Vue'."
+description: >-
+  Use WHEN building Vue 3 components with Composition API, <script setup>, Pinia
+  stores, typed props/emits, custom composables, Vitest + Vue Test Utils. RU:
+  Используется КОГДА собираешь компоненты Vue 3 с Composition API, script setup,
+  Pinia, типизированными props/emits, кастомными composables, Vitest + Vue Test
+  Utils. Trigger phrases: 'Vue компонент', 'composable', 'Pinia store', 'добавь
+  component на Vue'.
 persona-years: 15
-capabilities: [vue-implementation, composition-api, script-setup, pinia-state, typed-props-emits, suspense-async-component, custom-composable-extraction, vitest-vue-test-utils]
-stacks: [vue]
+capabilities:
+  - vue-implementation
+  - composition-api
+  - script-setup
+  - pinia-state
+  - typed-props-emits
+  - suspense-async-component
+  - custom-composable-extraction
+  - vitest-vue-test-utils
+stacks:
+  - vue
 requires-stacks: []
-optional-stacks: [pinia, vue-router]
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search, evolve:mcp-discovery]
-verification: [tsc-no-errors, vitest-pass, eslint-no-errors, vue-tsc-pass]
-anti-patterns: [mutating-props, watch-effect-for-derived-state, options-api-mixed-with-composition, no-provide-inject-typing, refs-leak]
-version: 1.0
-last-verified: 2026-04-27
+optional-stacks:
+  - pinia
+  - vue-router
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:mcp-discovery'
+verification:
+  - tsc-no-errors
+  - vitest-pass
+  - eslint-no-errors
+  - vue-tsc-pass
+anti-patterns:
+  - mutating-props
+  - watch-effect-for-derived-state
+  - options-api-mixed-with-composition
+  - no-provide-inject-typing
+  - refs-leak
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -196,8 +239,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **Mutating props** (`props.user.name = 'x'` or `props.items.push(...)`): violates one-way data flow; parent's source of truth becomes ambiguous; Vue dev warning today, refactor pain forever. Emit an event upward (`emit('update:modelValue', next)`) or copy into local state. ESLint rule `vue/no-mutating-props` must be enabled and never disabled.
 - **Watch + ref for derived state**: `const total = ref(0); watch(items, () => { total.value = items.value.reduce(...) })` is wrong. Derived values are `computed(() => items.value.reduce(...))`. Watch is for side effects (network, DOM, subscriptions), not for computing values. The `computed` version is cached, lazy, and reactive without manual wiring.
 - **Options API mixed with Composition API in the same file**: `<script>` exporting `data() / methods` next to a `<script setup>` block. The two reactivity contexts don't share state cleanly, refs are awkward, devtools display is confused, and the next maintainer wastes hours figuring out which API owns what. Pick one — Composition for new code, migrate Options legacy in a dedicated refactor PR.

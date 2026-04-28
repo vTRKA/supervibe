@@ -6,6 +6,8 @@ import { createReadStream, statSync, existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, normalize, sep, resolve } from 'node:path';
 import { mimeFor, isHtml } from './preview-mime.mjs';
+import { createFeedbackChannel } from './feedback-channel.mjs';
+import { injectOverlay } from './feedback-overlay-injector.mjs';
 
 const HOT_RELOAD_SCRIPT = `
 <script>
@@ -30,7 +32,7 @@ const HOT_RELOAD_SCRIPT = `
 /**
  * Start a static server.
  */
-export async function startStaticServer({ root, port = 0, host = '127.0.0.1' }) {
+export async function startStaticServer({ root, port = 0, host = '127.0.0.1', feedback = true, projectRoot = process.cwd() }) {
   const absRoot = resolve(root);
   if (!existsSync(absRoot)) {
     throw new Error(`Preview server root does not exist: ${absRoot}`);
@@ -39,6 +41,15 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1' }) 
   const sseClients = new Set();
   let lastActivityAt = Date.now();
   function touch() { lastActivityAt = Date.now(); }
+
+  const feedbackQueuePath = join(projectRoot, '.claude', 'memory', 'feedback-queue.jsonl');
+  const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath }) : null;
+
+  function derivePrototypeSlug(filePath) {
+    const norm = filePath.split(sep).join('/');
+    const m = norm.match(/\/prototypes\/([^/]+)/);
+    return m ? m[1] : 'unknown';
+  }
 
   const httpServer = createHttpServer(async (req, res) => {
     touch();
@@ -105,9 +116,14 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1' }) 
     if (isHtml(path)) {
       try {
         const content = await readFile(path, 'utf8');
-        const injected = content.includes('</body>')
+        let injected = content.includes('</body>')
           ? content.replace('</body>', `${HOT_RELOAD_SCRIPT}</body>`)
           : content + HOT_RELOAD_SCRIPT;
+        if (feedback) {
+          injected = await injectOverlay(injected, {
+            prototypeSlug: derivePrototypeSlug(path),
+          });
+        }
         const buf = Buffer.from(injected, 'utf8');
         res.writeHead(200, {
           'Content-Type': mime,
@@ -128,6 +144,10 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1' }) 
       'Cache-Control': 'no-store',
     });
     createReadStream(path).pipe(res);
+  }
+
+  if (feedbackChannel) {
+    feedbackChannel.attachUpgrade(httpServer);
   }
 
   await new Promise((resolveListen, rejectListen) => {

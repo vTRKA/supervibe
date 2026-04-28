@@ -32,6 +32,7 @@ const { values } = parseArgs({
     port: { type: 'string', default: '' },
     label: { type: 'string', default: '' },
     'no-watch': { type: 'boolean', default: false },
+    'no-feedback': { type: 'boolean', default: false },
     'idle-timeout': { type: 'string', default: '30' },
     force: { type: 'boolean', default: false },
     list: { type: 'boolean', default: false },
@@ -111,7 +112,12 @@ const portArg = values.port ? parseInt(values.port, 10) : 0;
 const port = portArg || await findFreePort();
 const label = values.label || basename(absRoot);
 
-const server = await startStaticServer({ root: absRoot, port });
+const server = await startStaticServer({
+  root: absRoot,
+  port,
+  feedback: !values['no-feedback'],
+  projectRoot: PROJECT_ROOT,
+});
 let watcher = null;
 if (!values['no-watch']) {
   watcher = await attachHotReload({ root: absRoot, server });
@@ -129,6 +135,7 @@ const url = `http://localhost:${server.port}`;
 console.log(`[evolve-preview] ${label} → ${url}`);
 console.log(`[evolve-preview] root: ${absRoot}`);
 console.log(`[evolve-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
+console.log(`[evolve-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click 💬 in browser)`);
 console.log(`[evolve-preview] PID: ${process.pid}`);
 console.log(`[evolve-preview] press Ctrl+C to stop`);
 

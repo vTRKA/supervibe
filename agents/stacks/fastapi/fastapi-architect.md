@@ -1,18 +1,55 @@
 ---
 name: fastapi-architect
 namespace: stacks/fastapi
-description: "Use WHEN designing FastAPI application architecture, dependency injection, async patterns, OpenAPI auto-gen, Alembic migrations READ-ONLY. RU: Используется КОГДА проектируешь архитектуру FastAPI-приложения — dependency injection, async-паттерны, авто-генерация OpenAPI, миграции Alembic, READ-ONLY. Trigger phrases: 'спроектируй FastAPI архитектуру', 'dependency injection FastAPI', 'topology для FastAPI', 'modular monolith на FastAPI'."
+description: >-
+  Use WHEN designing FastAPI application architecture, dependency injection,
+  async patterns, OpenAPI auto-gen, Alembic migrations READ-ONLY. RU:
+  Используется КОГДА проектируешь архитектуру FastAPI-приложения — dependency
+  injection, async-паттерны, авто-генерация OpenAPI, миграции Alembic,
+  READ-ONLY. Trigger phrases: 'спроектируй FastAPI архитектуру', 'dependency
+  injection FastAPI', 'topology для FastAPI', 'modular monolith на FastAPI'.
 persona-years: 15
-capabilities: [fastapi-architecture, pydantic-v2, dependency-injection, async-patterns, openapi, alembic, settings-management, error-handling-chain]
-stacks: [fastapi]
-requires-stacks: [postgres]
-optional-stacks: [redis, celery]
-tools: [Read, Grep, Glob, Bash]
-skills: [evolve:project-memory, evolve:code-search, evolve:adr]
-verification: [openapi-schema-valid, dependency-graph-acyclic, async-correctness, module-layout-matches-adr, error-handler-chain-complete]
-anti-patterns: [sync-in-async, no-di-tree, pydantic-model-reuse-input-output, no-error-handler, settings-in-globals, alembic-without-review, blocking-startup]
+capabilities:
+  - fastapi-architecture
+  - pydantic-v2
+  - dependency-injection
+  - async-patterns
+  - openapi
+  - alembic
+  - settings-management
+  - error-handling-chain
+stacks:
+  - fastapi
+requires-stacks:
+  - postgres
+optional-stacks:
+  - redis
+  - celery
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+skills:
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:adr'
+verification:
+  - openapi-schema-valid
+  - dependency-graph-acyclic
+  - async-correctness
+  - module-layout-matches-adr
+  - error-handler-chain-complete
+anti-patterns:
+  - sync-in-async
+  - no-di-tree
+  - pydantic-model-reuse-input-output
+  - no-error-handler
+  - settings-in-globals
+  - alembic-without-review
+  - blocking-startup
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -200,8 +237,23 @@ get_settings (lru_cache) ──► get_engine ──► get_session_factory
 - [ ] OpenAPI schema generates without errors
 ```
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **Sync in async**: any `def` route, any `requests.get`/`time.sleep`/blocking-DB-call inside `async def`. Every blocking call inside the event loop reduces effective concurrency to 1. Either make it async or `asyncio.to_thread` it explicitly with documentation
 - **No DI tree**: route handlers that import settings/sessions/repos at module top. Untestable, untraceable, leaks lifecycle. Everything that has a lifecycle goes through `Depends`
 - **Pydantic model reuse for input AND output**: same `User` class accepts a `password` field on input and risks leaking it on output. Always split: `UserCreate` (with password), `UserRead` (without). The compiler — not careful coding — must enforce the boundary

@@ -8,8 +8,8 @@ prerequisites: []
 emits-artifact: design-system
 confidence-rubric: confidence-rubrics/brandbook.yaml
 gate-on-exit: true
-version: 2.0
-last-verified: 2026-04-28
+version: 2.1
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Brandbook
@@ -44,6 +44,21 @@ NOT for:
 2. Read `prototypes/_design-system/` if exists — discover what's already approved vs what needs work.
 3. Read `evolve:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
 4. Read user's brief / requirements doc if pointed at one.
+
+**Step 0a — Determine target baseline.**
+
+Read the active prototype's `prototypes/<slug>/config.json` for `target`. If no active prototype yet, ASK the user one question:
+
+> **Шаг 0/8:** На какую платформу будет brandbook?
+> - `web` — браузер (default)
+> - `chrome-extension` — popup/options/side-panel
+> - `electron` / `tauri` — desktop
+> - `mobile-native` — iOS+Android
+> - `mixed` — фронт + extension одновременно (используем web baseline + extension override)
+
+Read `templates/brandbook-target-baselines/<target>.md` as the starting baseline. Use its density/type-scale/motion budget/component-list as DEFAULTS that the user can override during Sections 3, 4, 5, 6.
+
+For `target: mixed`, load `web.md` as primary and surface-specific deltas from the secondary target's file when relevant.
 
 ## Decision tree — system scope
 
@@ -153,29 +168,40 @@ Brand personality (3-5 adjectives with negative-space pairs), CTA verb voice, er
 - ...
 ```
 
-### Section 6 — Components baseline (minimum viable)
+### Section 6 — Components baseline (minimum viable, OPEN-ended)
 
-Define the 8-12 components every UI needs. ONE component per dialogue round. For each, document:
+Define the components every UI needs. ONE component per dialogue round. For each, document:
 - Anatomy (slots: leading icon, label, trailing icon, etc.)
 - States (idle, hover, active, focus, disabled, loading, error, success)
 - Variants (primary, secondary, ghost, danger; sm/md/lg)
 - Tokens consumed (which palette/spacing/radius)
 - Accessibility requirements (focus indicator, keyboard, ARIA role)
 
-Output to `prototypes/_design-system/components/<name>.md` per component:
-- button
-- input (text)
-- textarea
-- select
-- checkbox + radio
-- toggle
-- card
-- modal
-- toast
-- tabs
-- nav
+Starter set (templates pre-shipped at `templates/design-system/components/<name>.md.tpl`):
+button, input, select, textarea, checkbox, radio, toggle, card, modal, toast, tabs, nav, badge.
 
-Each component file has anatomy + states + variants + token references + accessibility notes.
+This list is a **starting point — open, not closed.** Add or remove components as the project requires (data table, tree, kbd, popover, tooltip, accordion, drawer, command palette, splitter, etc.). If user picks a component library in Section 6.5, the spec list becomes the set of components for which our spec is authoritative; the rest are inherited from the library.
+
+Output: copy each chosen template to `prototypes/_design-system/components/<name>.md` and fill it with the project's specifics.
+
+### Section 6.5 — Component library decision (one question)
+
+**Шаг 6.5/8:** Выбираем подход к компонентам.
+
+- A) **Свои компоненты** — пишем с нуля, максимум контроля, дольше build. Старт = templates/design-system/components/.
+- B) **shadcn/ui** (React) — copy-paste primitives, наши токены, источник истины — наш репозиторий.
+- C) **MUI** (React) — готовая библиотека, мы делаем theme.ts с нашими токенами.
+- D) **Mantine** (React) — как MUI, более современный, гибкий.
+- E) **Radix UI / HeadlessUI** — только логика, визуал полностью наш.
+- F) **Angular Material / PrimeVue / Quasar / другое** — указываем явно.
+
+После выбора — запустим `evolve:component-library-integration` для генерации bridge перед тем как переходить к Section 7. Не пропускаем bridge: без него выбранная библиотека рендерится в её дефолтном визуале и наши токены становятся декорацией.
+
+For target=mobile-native, library options shift:
+- React Native: Tamagui / NativeBase / RN Paper
+- Flutter: Material 3 default / Cupertino / Forui
+- iOS native: SwiftUI defaults + custom
+- Android native: Material 3 + custom
 
 ### Section 7 — Accessibility baseline
 
@@ -258,6 +284,12 @@ Rubric:     brandbook
 - Contrast check on every text-on-bg pair in palette: WCAG AA passing
 - `prefers-reduced-motion` strategy documented
 - ≥1 alternative documented for any rejected primary direction (no silent regen)
+
+## Anti-patterns (skill-level — fail conditions)
+
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
+- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 
 ## Related
 

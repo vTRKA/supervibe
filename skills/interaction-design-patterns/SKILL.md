@@ -671,6 +671,11 @@ Rubric: prototype
 - **Animating during initial page paint** — hurts LCP and INP scores; defer to next frame or after `load`.
 - **Bouncy easing for serious actions** — delete-confirmation should feel weighty; bounce reads as "the app isn't taking this seriously".
 
+### Skill-level fail conditions
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
+- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
+
 ## Verification
 
 - DevTools Performance tab: stable 60fps, no purple "layout" bars or green "paint" bars during animation

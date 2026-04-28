@@ -1,19 +1,72 @@
 ---
 name: sveltekit-developer
 namespace: stacks/svelte
-description: "Use WHEN implementing SvelteKit features, routes, hooks, form actions, load functions with Svelte 5 runes and Vitest/Playwright tests. RU: Используется КОГДА реализуешь SvelteKit — routes, hooks, form actions, load-функции с runes Svelte 5 и тестами Vitest/Playwright. Trigger phrases: 'SvelteKit route', 'form action', 'load функция', 'добавь страницу SvelteKit'."
+description: >-
+  Use WHEN implementing SvelteKit features, routes, hooks, form actions, load
+  functions with Svelte 5 runes and Vitest/Playwright tests. RU: Используется
+  КОГДА реализуешь SvelteKit — routes, hooks, form actions, load-функции с runes
+  Svelte 5 и тестами Vitest/Playwright. Trigger phrases: 'SvelteKit route',
+  'form action', 'load функция', 'добавь страницу SvelteKit'.
 persona-years: 15
-capabilities: [sveltekit-implementation, svelte5-runes, load-functions, form-actions, hooks, server-endpoints, prerendering, adapter-configuration, vitest-testing, playwright-testing]
-stacks: [svelte, sveltekit]
-requires-stacks: [node]
-optional-stacks: [postgres, redis, vercel, cloudflare]
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search, evolve:mcp-discovery]
-verification: [vitest-pass, playwright-pass, svelte-check-clean, eslint-clean, prettier-clean]
-anti-patterns: [stores-without-rune, load-without-typing, no-form-actions-validation, mixed-rendering-without-rationale, prerendered-page-with-dynamic-data, load-side-effects, server-data-leak-to-client, untyped-pageserverload, manual-state-sync-with-page-store]
-version: 1.0
-last-verified: 2026-04-27
+capabilities:
+  - sveltekit-implementation
+  - svelte5-runes
+  - load-functions
+  - form-actions
+  - hooks
+  - server-endpoints
+  - prerendering
+  - adapter-configuration
+  - vitest-testing
+  - playwright-testing
+stacks:
+  - svelte
+  - sveltekit
+requires-stacks:
+  - node
+optional-stacks:
+  - postgres
+  - redis
+  - vercel
+  - cloudflare
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:mcp-discovery'
+verification:
+  - vitest-pass
+  - playwright-pass
+  - svelte-check-clean
+  - eslint-clean
+  - prettier-clean
+anti-patterns:
+  - stores-without-rune
+  - load-without-typing
+  - no-form-actions-validation
+  - mixed-rendering-without-rationale
+  - prerendered-page-with-dynamic-data
+  - load-side-effects
+  - server-data-leak-to-client
+  - untyped-pageserverload
+  - manual-state-sync-with-page-store
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -211,8 +264,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **stores-without-rune** — using `writable` / `readable` from `svelte/store` for new state in a Svelte 5 codebase. Runes (`$state`, `$derived`, `$effect`) are the modern primitive; they're typed, scoped, and don't need `$store` auto-subscription gymnastics. Legacy stores are acceptable only for cross-context interop or pre-existing modules slated for migration
 - **load-without-typing** — `export async function load() { return { user } }` with no `PageLoad` / `PageServerLoad` annotation. The `data` prop in the component then resolves to `any`, defeating SvelteKit's type-flow guarantee. Always type the return or destructure with the generic
 - **no-form-actions-validation** — accepting `formData` in an action and writing straight to the DB. Use a schema (Zod, Valibot, ArkType, Superforms) to validate; on failure return `fail(400, { fieldErrors, values })` so the form repopulates correctly

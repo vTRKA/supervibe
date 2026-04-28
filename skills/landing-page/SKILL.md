@@ -211,6 +211,14 @@ Same as `evolve:prototype`, plus:
 - Lighthouse mobile-slow-4G: LCP <2.5s, CLS <0.1
 - `find . -name '*.html' -path '*/prototypes/landing-*'` opens cleanly in browser without console errors
 
+## Anti-patterns (skill-level — fail conditions)
+
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
+- `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
+- `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
+- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
+
 ## Related
 
 - `evolve:prototype` — sibling for in-product flows (no SEO/analytics concerns)

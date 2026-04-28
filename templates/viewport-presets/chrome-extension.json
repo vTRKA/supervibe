@@ -1,0 +1,20 @@
+{
+  "target": "chrome-extension",
+  "defaults": [
+    { "name": "popup", "width": 360, "height": 600, "surface": "browser_action" },
+    { "name": "options", "width": 1024, "height": 768, "surface": "options_page" },
+    { "name": "side-panel", "width": 400, "height": 800, "surface": "side_panel" }
+  ],
+  "optional": [
+    { "name": "popup-narrow", "width": 320, "height": 480 },
+    { "name": "options-mobile", "width": 768, "height": 1024 }
+  ],
+  "runtime": "browser-extension",
+  "manifest-v": 3,
+  "constraints": [
+    "popup max width 800px enforced by Chrome",
+    "popup heights >600 may scroll on small screens",
+    "no inline event handlers (CSP)",
+    "service worker has no DOM"
+  ]
+}

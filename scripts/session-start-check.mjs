@@ -6,6 +6,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { migratePrototypeConfigs } from './migrate-prototype-configs.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const STALE_DAYS = 30;
@@ -158,9 +159,24 @@ async function reportUpstreamUpdates() {
   }
 }
 
+async function autoMigratePrototypeConfigs() {
+  const protoRoot = join(PROJECT_ROOT, 'prototypes');
+  if (!existsSync(protoRoot)) return null;
+  try {
+    const result = await migratePrototypeConfigs({ projectRoot: PROJECT_ROOT });
+    if (result.created.length > 0) {
+      return `Discovered: ${result.created.length} prototype(s) without config.json — backfilled with default web target [375, 1440]. Review prototypes/${result.created.join(', prototypes/')}/config.json to confirm target + viewports match design intent.`;
+    }
+  } catch {
+    // never block session start on migration failure
+  }
+  return null;
+}
+
 async function main() {
   const stale = await checkStaleArtifacts();
   const overrideStats = await checkOverrideRate();
+  const migrationReminder = await autoMigratePrototypeConfigs();
 
   const reminders = [];
   if (stale.length > 0) {
@@ -168,6 +184,9 @@ async function main() {
   }
   if (overrideStats.rate > OVERRIDE_RATE_THRESHOLD && overrideStats.count > 10) {
     reminders.push(`Discovered: override rate ${(overrideStats.rate * 100).toFixed(1)}% over last ${overrideStats.count} entries (threshold ${OVERRIDE_RATE_THRESHOLD * 100}%). Recommend /evolve-audit to investigate.`);
+  }
+  if (migrationReminder) {
+    reminders.push(migrationReminder);
   }
 
   if (reminders.length > 0) {

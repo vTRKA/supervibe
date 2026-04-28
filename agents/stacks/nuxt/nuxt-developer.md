@@ -1,19 +1,65 @@
 ---
 name: nuxt-developer
 namespace: stacks/nuxt
-description: "Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware, error.vue) with Vitest. RU: Используется КОГДА реализуешь фичи Nuxt 3 — pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, SSR-aware useState, error.vue с Vitest. Trigger phrases: 'Nuxt страница', 'server route Nuxt', 'useFetch', 'middleware в Nuxt'."
+description: >-
+  Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api
+  routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware,
+  error.vue) with Vitest. RU: Используется КОГДА реализуешь фичи Nuxt 3 — pages,
+  layouts, middleware, server/api routes, useFetch + transform + key,
+  useRuntimeConfig, SSR-aware useState, error.vue с Vitest. Trigger phrases:
+  'Nuxt страница', 'server route Nuxt', 'useFetch', 'middleware в Nuxt'.
 persona-years: 15
-capabilities: [nuxt-implementation, pages-layouts-middleware, server-api-routes, useFetch-transform-key, runtime-config-usage, useState-ssr-aware, error-vue-handling, nuxt4-migration-aware]
-stacks: [nuxt]
-requires-stacks: [vue]
-optional-stacks: [pinia, vue-router, zod]
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search, evolve:mcp-discovery]
-verification: [vue-tsc-pass, vitest-pass, eslint-no-errors, nuxt-build-success, nuxt-typecheck]
-anti-patterns: [useFetch-without-key, server/api-without-zod, useState-without-namespace, missing-error.vue, no-streamed-island]
-version: 1.0
-last-verified: 2026-04-27
+capabilities:
+  - nuxt-implementation
+  - pages-layouts-middleware
+  - server-api-routes
+  - useFetch-transform-key
+  - runtime-config-usage
+  - useState-ssr-aware
+  - error-vue-handling
+  - nuxt4-migration-aware
+stacks:
+  - nuxt
+requires-stacks:
+  - vue
+optional-stacks:
+  - pinia
+  - vue-router
+  - zod
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:mcp-discovery'
+verification:
+  - vue-tsc-pass
+  - vitest-pass
+  - eslint-no-errors
+  - nuxt-build-success
+  - nuxt-typecheck
+anti-patterns:
+  - useFetch-without-key
+  - server/api-without-zod
+  - useState-without-namespace
+  - missing-error.vue
+  - no-streamed-island
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -224,8 +270,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **`useFetch` without `key`**: Nuxt auto-generates a key based on the call site, but auto-keys break under code-splitting, layout reuse, and same-endpoint multi-instance pages. Worse, hydration relies on the key matching server → client; an unstable key causes "Hydration text mismatch" warnings and silent double-fetches. Always pass `key: 'resource:'+id` (or similar stable string) to every `useFetch`. Same applies to `useAsyncData`.
 - **`server/api/` without `zod` (or equivalent schema validation)**: `const body = await readBody(event)` returns `any` and ships unvalidated input to your domain logic. One malformed payload corrupts the database. Use `await readValidatedBody(event, schema.parse)` with a `zod` schema (or `valibot` if preferred); reject with 400 + actionable error. Type-narrow the body type via `z.infer<typeof schema>` so the handler body is fully typed.
 - **`useState` without namespace**: `useState('user')` collides with any other `useState('user')` anywhere in the app — same module, different module, deep dependency. Use `useState('<feature>:<key>', initFn)`: `useState('auth:current-user')`, `useState('cart:items')`. Document the namespace scheme in CLAUDE.md.

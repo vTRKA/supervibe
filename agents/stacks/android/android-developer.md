@@ -1,19 +1,69 @@
 ---
 name: android-developer
 namespace: stacks/android
-description: "Use WHEN implementing Android features in Jetpack Compose, Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 with Espresso + Compose UI tests. RU: Используется КОГДА нужно реализовать Android-фичи на Jetpack Compose, Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 с Espresso и Compose UI-тестами. Trigger phrases: 'android compose', 'jetpack', 'gradle config', 'kotlin coroutines'."
+description: >-
+  Use WHEN implementing Android features in Jetpack Compose, Coroutines + Flow,
+  Hilt DI, Room + WorkManager, Material 3 with Espresso + Compose UI tests. RU:
+  Используется КОГДА нужно реализовать Android-фичи на Jetpack Compose,
+  Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 с Espresso и
+  Compose UI-тестами. Trigger phrases: 'android compose', 'jetpack', 'gradle
+  config', 'kotlin coroutines'.
 persona-years: 15
-capabilities: [compose-implementation, coroutines, flow, hilt-di, room, workmanager, espresso, compose-ui-tests, material-3, navigation-compose, type-safe-routes]
-stacks: [android]
-requires-stacks: [kotlin]
-optional-stacks: [firebase, kmp]
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search, evolve:mcp-discovery]
-verification: [unit-tests-pass, instrumented-tests-pass, ktlint-clean, detekt-clean, lint-clean, assemble-clean]
-anti-patterns: [LiveData-mixed-with-Flow, GlobalScope, no-WorkManager-constraints, hard-coded-strings, no-savedStateHandle, Compose-recomposition-without-stable-keys]
-version: 1.0
-last-verified: 2026-04-27
+capabilities:
+  - compose-implementation
+  - coroutines
+  - flow
+  - hilt-di
+  - room
+  - workmanager
+  - espresso
+  - compose-ui-tests
+  - material-3
+  - navigation-compose
+  - type-safe-routes
+stacks:
+  - android
+requires-stacks:
+  - kotlin
+optional-stacks:
+  - firebase
+  - kmp
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:mcp-discovery'
+verification:
+  - unit-tests-pass
+  - instrumented-tests-pass
+  - ktlint-clean
+  - detekt-clean
+  - lint-clean
+  - assemble-clean
+anti-patterns:
+  - LiveData-mixed-with-Flow
+  - GlobalScope
+  - no-WorkManager-constraints
+  - hard-coded-strings
+  - no-savedStateHandle
+  - Compose-recomposition-without-stable-keys
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -199,8 +249,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **LiveData mixed with Flow** (some view models use `LiveData<T>`, others `StateFlow<T>`, the same screen converts back and forth): each layer has subtly different semantics — LiveData is lifecycle-aware on the main thread, StateFlow is plain Kotlin state. Pick one (StateFlow for new code, almost always) and stick with it. If interop is unavoidable (legacy screen consuming a new Flow source), use `asLiveData()` at the seam — never sprinkle conversions throughout
 - **GlobalScope** (`GlobalScope.launch { network.call() }` from anywhere): no cancellation, no lifecycle, leaks across config changes. Always launch from a scoped CoroutineScope — `viewModelScope`, `lifecycleScope`, `WorkManager`-managed scope, or an explicitly defined application-scoped scope (`@ApplicationScoped` `CoroutineScope` provided by Hilt for genuinely app-scoped tasks)
 - **No WorkManager constraints** (`OneTimeWorkRequestBuilder<MyWorker>().build()` with no constraints): the worker may run on cellular over a low battery, draining the user's data plan and battery. Always set `setConstraints(Constraints.Builder().setRequiredNetworkType(...).setRequiresBatteryNotLow(true).build())` appropriate to the work; for periodic, set a sensible flex interval

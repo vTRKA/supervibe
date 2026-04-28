@@ -41,13 +41,24 @@ Use most recent brief from the conversation, or ask one clarifying question.
 
 Each stage is gated on user explicit approval before the next starts. Skip stages that don't apply (e.g. brand direction unnecessary for an in-product flow inside an existing brand).
 
-### Stage 0 — Triage (always)
+### Stage 0 — Target surface + Triage (always)
 
-Read the brief. Determine:
+**Шаг 0a/N: Target surface.** Before anything else, ask the user the target surface (one question, markdown):
+
+- `web` — браузер (default 375 mobile + 1440 desktop)
+- `chrome-extension` — popup / options / side-panel
+- `electron` — Electron desktop
+- `tauri` — Tauri desktop
+- `mobile-native` — iOS+Android (React Native / Flutter / native)
+
+Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as starting viewport list. Save `target`, `viewports`, `runtime`, `constraints` into `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook will block writes until config.json exists.
+
+**Шаг 0b/N: Triage.** Then determine:
 - Is this a marketing landing page → uses `evolve:landing-page` skill
 - Is this an in-product flow → uses `evolve:prototype` skill
 - Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes skip Stage 1
 - Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes skip Stage 2
+- For non-web targets dispatch the corresponding specialist designer (`extension-ui-designer` / `electron-ui-designer` / `tauri-ui-designer` / `mobile-ui-designer`) instead of `ux-ui-designer` for spec/review.
 - Multi-language UI? Reduced-motion sensitive? Touch / pointer device target? Save to brief metadata.
 
 ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prototypes/<slug>/config.json` before stage advance.
@@ -115,7 +126,7 @@ Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `a
 
 ### Stage 6 — Live preview + parallel review
 
-1. Skill auto-spawns `evolve:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user.
+1. Skill auto-spawns `evolve:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user. Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt via UserPromptSubmit hook.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `prototypes/<slug>/_reviews/a11y.md`.
@@ -145,7 +156,7 @@ After delivery, ALWAYS print this exact prompt:
 Wait for explicit choice. Do NOT proceed silently.
 
 - If "Доработать" → ONE clarifying question, then back to Stage 5 with revision scope. Increment `feedbackRounds` in eventual approval marker.
-- If "Альтернатива" → spawn `prototypes/<slug>/alternatives/<variant-name-1>/` and `<variant-name-2>/` with documented tradeoffs ("vs A: warmer palette, narrower hero column"). User compares side-by-side via separate preview-servers.
+- If "Альтернатива" → spawn `prototypes/<slug>/alternatives/<variant-name-1>/` and `<variant-name-2>/` with documented tradeoffs ("vs A: warmer palette, narrower hero column"). User compares side-by-side via separate preview-servers. For each variant copy `templates/alternatives/tradeoff.md.tpl` and fill all sections with "differs because X / gives up Y to gain Z" framing. Never delete a parked variant — convert to `Status: rejected` with a Rejection note instead.
 - If "Углублённый review" → dispatch additional agents to `_reviews/`.
 - If "Стоп" → leave as draft, save state, exit.
 - If "Утвердить" → Stage 8.

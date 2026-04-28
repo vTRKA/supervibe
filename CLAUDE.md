@@ -24,14 +24,14 @@ These six principles override defaults whenever they conflict with general pract
 ```
 evolve/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array (canonical Claude Code location)
-├── agents/                        46 agents organized by namespace
-│   ├── _core/                       6 — code-reviewer, refactoring-specialist, repo-researcher, ...
+├── agents/                        79 agents organized by namespace
+│   ├── _core/                       8 — code-reviewer, refactoring-specialist, repo-researcher, ...
 │   ├── _meta/                       3 — evolve-orchestrator, memory-curator, rules-curator
-│   ├── _design/                     6 — creative-director, ux-ui-designer, ui-polish-reviewer, ...
-│   ├── _ops/                        12 — devops-sre, infrastructure-architect, db-reviewer, ...
+│   ├── _design/                    10 — creative-director, ux-ui-designer, ui-polish-reviewer, electron-ui-designer, extension-ui-designer, mobile-ui-designer, tauri-ui-designer, ...
+│   ├── _ops/                       16 — devops-sre, infrastructure-architect, db-reviewer, ...
 │   ├── _product/                    6 — product-manager, qa-test-engineer, systems-analyst, ...
-│   └── stacks/                      12 across laravel/nextjs/fastapi/react/postgres/redis
-├── skills/                        40 process skills (TDD, debugging, brainstorming, code-search, ...)
+│   └── stacks/                     36 across laravel/nextjs/fastapi/react/postgres/redis/chrome-extension/electron/tauri/...
+├── skills/                        40+ process skills (TDD, debugging, brainstorming, code-search, browser-feedback, component-library-integration, ...)
 ├── commands/                      Slash commands (/evolve, /evolve-genesis, /evolve-score, ...)
 ├── rules/                         19 project rules (anti-hallucination, no-hardcode, ...)
 ├── confidence-rubrics/            12 YAML rubrics (agent-delivery, plan, scaffold, ...)
@@ -219,16 +219,16 @@ Rubric: <rubric-id-from-confidence-rubrics-dir>
 
 ---
 
-## Agent system (75 agents)
+## Agent system (79 agents)
 
 Routing by `namespace` in frontmatter:
 
 | Namespace | Count | Examples | When to invoke |
 |-----------|-------|----------|----------------|
-| `_core` | 6 | `code-reviewer`, `refactoring-specialist`, `repo-researcher`, `architect-reviewer`, `root-cause-debugger`, `security-auditor`, `quality-gate-reviewer` | Cross-cutting reviews and analyses |
+| `_core` | 8 | `code-reviewer`, `refactoring-specialist`, `repo-researcher`, `architect-reviewer`, `root-cause-debugger`, `security-auditor`, `quality-gate-reviewer`, `auth-architect` | Cross-cutting reviews and analyses |
 | `_meta` | 3 | `evolve-orchestrator`, `memory-curator`, `rules-curator` | Maintenance + dispatch |
-| `_design` | 6 | `ux-ui-designer`, `creative-director`, `ui-polish-reviewer`, `accessibility-reviewer`, `copywriter`, `prototype-builder` | Design surface |
-| `_ops` | 12 | `devops-sre`, `infrastructure-architect`, `db-reviewer`, `ai-integration-architect`, plus 5 researchers | Ops + research |
+| `_design` | 10 | `ux-ui-designer`, `creative-director`, `ui-polish-reviewer`, `accessibility-reviewer`, `copywriter`, `prototype-builder`, `extension-ui-designer`, `electron-ui-designer`, `tauri-ui-designer`, `mobile-ui-designer` | Design surface (web + extensions + desktop + mobile) |
+| `_ops` | 16 | `devops-sre`, `infrastructure-architect`, `db-reviewer`, `ai-integration-architect`, plus researchers + reviewers | Ops + research |
 | `_product` | 6 | `product-manager`, `systems-analyst`, `qa-test-engineer`, `analytics-implementation`, `seo-specialist`, `email-lifecycle` | Product surface |
 | `stacks/laravel` | 4 | `laravel-architect`, `laravel-developer`, `eloquent-modeler`, `queue-worker-architect` | Laravel projects |
 | `stacks/nextjs` | 3 | `nextjs-architect`, `nextjs-developer`, `server-actions-specialist` | Next.js projects |
@@ -237,6 +237,35 @@ Routing by `namespace` in frontmatter:
 | `stacks/postgres` | 1 | `postgres-architect` | Postgres-heavy projects |
 | `stacks/redis` | 1 | `redis-architect` | Redis-heavy projects |
 | `stacks/chrome-extension` | 2 | `chrome-extension-architect`, `chrome-extension-developer` | Chrome MV3 / Edge / Brave browser extensions (popup, options, side panel, content scripts, service worker) |
+| `stacks/*` (other) | ~22 | django, rails, spring, vue, svelte, nuxt, ios, android, flutter, go, mongo, mysql, elasticsearch, graphql, nestjs, express, aspnet | Stack-specific architects/developers |
+
+## Browser Feedback Channel
+
+When `preview-server` runs (default), every served HTML page is injected with a feedback overlay. User clicks a 💬 button → selects any element → comments → comment is appended as JSONL to `.claude/memory/feedback-queue.jsonl`.
+
+**Delivery to active Claude session:** the `UserPromptSubmit` hook (`scripts/hooks/user-prompt-submit-feedback.mjs`) drains new entries on EVERY prompt the user sends, advances the per-session cursor at `.claude/memory/feedback-cursor.json`, and emits the entries as `additionalContext` so Claude sees them inline in the prompt context. There is NO separate watcher / sidecar process — claude-code reads only its own input + hook outputs.
+
+The skill `evolve:browser-feedback` then triages each entry → routes to `creative-director` (visual/motion) or `prototype-builder` (layout/a11y/copy) → applies minimal change → writes `prototypes/<slug>/feedback-resolutions/<id>.md`.
+
+Disable: `node scripts/preview-server.mjs --no-feedback ...`.
+
+Constraints: localhost-only, single-client typical, text frames only. WebSocket implemented in-process via `node:net` (no `ws` dep) — see `.claude/memory/decisions/2026-04-28-feedback-websocket.md`.
+
+## Non-web design surfaces
+
+`/evolve-design` Stage 0 asks user the target surface: `web` | `chrome-extension` | `electron` | `tauri` | `mobile-native`. Viewport defaults from `templates/viewport-presets/<target>.json`. Specialist designer:
+
+- web → `ux-ui-designer` + `creative-director`
+- chrome-extension → `extension-ui-designer`
+- electron → `electron-ui-designer`
+- tauri → `tauri-ui-designer`
+- mobile-native → `mobile-ui-designer`
+
+Same brandbook (target-aware via `templates/brandbook-target-baselines/<target>.md`) + same handoff flow with target-specific adapter (`templates/handoff-adapters/<target>.md.tpl`). Prototype runtime adapts (HTML for web/extension/electron/tauri renderers; mobile-native HTML is fidelity sketch — production = React Native / Flutter / native).
+
+## Pre-write prototype guard
+
+`scripts/hooks/pre-write-prototype-guard.mjs` (PreToolUse on Write|Edit) blocks writes to `prototypes/<slug>/` until `config.json` exists (forces viewport question to be asked first) AND blocks writes containing framework imports (`import … from`, `require()`, `<script src=…cdn…>`). Existing prototypes from before plan v2 — run `npm run migrate:prototype-configs` once to backfill default config.json.
 
 **All agents:** ≥250 lines, full Persona / Project Context / Skills / Decision tree / Procedure / Output contract / Anti-patterns / Verification / Common workflows / Out of scope / Related.
 
@@ -417,8 +446,11 @@ This composes:
 1. `validate:plugin-json` — manifest shape + agents:[] paths exist
 2. `validate:frontmatter` — every agent / skill / rule has required fields
 3. `lint:descriptions` — trigger-clarity format on skills
-4. `lint:dead-code` — knip clean
-5. `test` — all 103 tests in `tests/*.test.mjs`
+4. `validate:agent-footers` — every agent's `## Output contract` has Confidence + Rubric lines
+5. `validate:design-skills` — every design skill body has feedback prompt + required anti-patterns
+6. `validate:question-discipline` — every interactive agent has `## User dialogue discipline` + `asking-multiple-questions-at-once` anti-pattern
+7. `lint:dead-code` — knip clean
+8. `test` — 253 tests in `tests/*.test.mjs`
 
 Individual scripts:
 - `npm run code:index` — full code index rebuild
@@ -428,6 +460,7 @@ Individual scripts:
 - `npm run evolve:upgrade-check` — manually query upstream for newer commits (normally runs in background)
 - `npm run memory:watch` — start file-watcher daemon
 - `npm run registry:build` — regenerate `registry.yaml`
+- `npm run migrate:prototype-configs` — backfill `config.json` for legacy prototypes (auto-runs on SessionStart)
 
 ---
 
@@ -435,7 +468,7 @@ Individual scripts:
 
 - **Commits**: Conventional Commits (enforced by commitlint via Husky `commit-msg` hook)
 - **Pre-commit**: Husky + lint-staged run frontmatter / pint / eslint on staged files
-- **Pre-push**: Husky + Git LFS pre-push + `npm run check` (all 103 tests)
+- **Pre-push**: Husky + Git LFS pre-push + `npm run check` (253 tests + 8 validators)
 - **Imports**: ESM only (`type: "module"` in package.json); use `node:sqlite`, `node:crypto`, etc.
 - **File naming**: kebab-case for files; PascalCase for classes inside files
 - **Frontmatter**: every agent / skill / rule / rubric file requires it

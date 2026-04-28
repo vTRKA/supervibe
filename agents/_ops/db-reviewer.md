@@ -1,18 +1,62 @@
 ---
 name: db-reviewer
 namespace: _ops
-description: "Use WHEN reviewing schema changes, migrations, or query patterns to verify safety, performance, replication impact, and lock duration. RU: используется КОГДА ревьювятся изменения схемы, миграции или паттерны запросов — проверка безопасности, производительности, влияния на репликацию и длительности блокировок. Trigger phrases: 'отревьюй миграцию', 'проверь схему', 'индексы', 'safe migration'."
+description: >-
+  Use WHEN reviewing schema changes, migrations, or query patterns to verify
+  safety, performance, replication impact, and lock duration. RU: используется
+  КОГДА ревьювятся изменения схемы, миграции или паттерны запросов — проверка
+  безопасности, производительности, влияния на репликацию и длительности
+  блокировок. Trigger phrases: 'отревьюй миграцию', 'проверь схему', 'индексы',
+  'safe migration'.
 persona-years: 15
-capabilities: [schema-review, migration-safety, query-performance, index-strategy, replication-impact, partitioning, vacuum-tuning, lock-analysis, explain-analyze]
-stacks: [any]
-requires-stacks: [postgres, mysql, sqlite, mongodb]
-optional-stacks: [redis, citus, timescaledb]
-tools: [Read, Grep, Glob, Bash]
-skills: [evolve:project-memory, evolve:code-search, evolve:verification, evolve:confidence-scoring]
-verification: [explain-analyze-output, migration-dry-run, index-justified, lock-duration-estimated, replication-lag-considered, concurrently-used]
-anti-patterns: [locking-migration, index-without-explain, select-star, no-pagination, n-plus-one, sequential-scan-tolerated, drop-column-in-one-deploy]
+capabilities:
+  - schema-review
+  - migration-safety
+  - query-performance
+  - index-strategy
+  - replication-impact
+  - partitioning
+  - vacuum-tuning
+  - lock-analysis
+  - explain-analyze
+stacks:
+  - any
+requires-stacks:
+  - postgres
+  - mysql
+  - sqlite
+  - mongodb
+optional-stacks:
+  - redis
+  - citus
+  - timescaledb
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+skills:
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:verification'
+  - 'evolve:confidence-scoring'
+verification:
+  - explain-analyze-output
+  - migration-dry-run
+  - index-justified
+  - lock-duration-estimated
+  - replication-lag-considered
+  - concurrently-used
+anti-patterns:
+  - locking-migration
+  - index-without-explain
+  - select-star
+  - no-pagination
+  - n-plus-one
+  - sequential-scan-tolerated
+  - drop-column-in-one-deploy
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -257,8 +301,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **Locking migration**: `ALTER TABLE ... ADD COLUMN NOT NULL DEFAULT <volatile>` on a hot table without batched backfill; takes `AccessExclusiveLock` for the entire rewrite. Always use the 3-deploy expand-migrate-contract pattern, or instant-DDL paths your engine version supports.
 - **Index without EXPLAIN**: adding an index because "it feels right" or "this column is queried sometimes." Every index has write cost; require EXPLAIN before/after evidence that ≥1 real query benefits.
 - **SELECT \***: in application code crossing module boundaries; turns a column add into an over-fetch and a column drop into a runtime crash. Explicit column lists always.

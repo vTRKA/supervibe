@@ -1,0 +1,18 @@
+{
+  "target": "electron",
+  "defaults": [
+    { "name": "main-window", "width": 1280, "height": 800 },
+    { "name": "settings", "width": 800, "height": 600 }
+  ],
+  "optional": [
+    { "name": "main-large", "width": 1920, "height": 1080 },
+    { "name": "compact", "width": 1024, "height": 720 }
+  ],
+  "runtime": "electron-renderer",
+  "constraints": [
+    "renderer is Chromium — full web platform",
+    "preload script bridges to main process",
+    "system menu bar adds ~28px (macOS) / 0 (windows hidden)",
+    "platform-specific window chrome"
+  ]
+}

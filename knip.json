@@ -18,9 +18,15 @@
     "scripts/discover-mcps.mjs",
     "scripts/validate-agent-output-contract.mjs",
     "scripts/hooks/post-tool-use-log.mjs",
+    "scripts/hooks/pre-write-prototype-guard.mjs",
+    "scripts/hooks/user-prompt-submit-feedback.mjs",
     "scripts/evolve-upgrade.mjs",
     "scripts/evolve-upgrade-check.mjs",
-    "scripts/evolve-detect.mjs"
+    "scripts/evolve-detect.mjs",
+    "scripts/validate-design-skills.mjs",
+    "scripts/validate-question-discipline.mjs",
+    "scripts/migrate-prototype-configs.mjs",
+    "scripts/apply-question-discipline.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

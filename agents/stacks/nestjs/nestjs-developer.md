@@ -1,19 +1,66 @@
 ---
 name: nestjs-developer
 namespace: stacks/nestjs
-description: "Use WHEN implementing NestJS modules, providers, controllers, guards, pipes, interceptors, repositories, and e2e tests with @nestjs/testing. RU: Используется КОГДА реализуешь NestJS — модули, providers, controllers, guards, pipes, interceptors, репозитории и e2e-тесты с @nestjs/testing. Trigger phrases: 'реализуй на NestJS', 'NestJS module', 'guard в NestJS', 'добавь controller NestJS'."
+description: >-
+  Use WHEN implementing NestJS modules, providers, controllers, guards, pipes,
+  interceptors, repositories, and e2e tests with @nestjs/testing. RU:
+  Используется КОГДА реализуешь NestJS — модули, providers, controllers, guards,
+  pipes, interceptors, репозитории и e2e-тесты с @nestjs/testing. Trigger
+  phrases: 'реализуй на NestJS', 'NestJS module', 'guard в NestJS', 'добавь
+  controller NestJS'.
 persona-years: 12
-capabilities: [nestjs-implementation, dependency-injection, decorators, guards-interceptors-pipes, typeorm-prisma, repository-pattern, e2e-testing, config-module-validation]
-stacks: [nestjs]
-requires-stacks: [postgres, mysql]
-optional-stacks: [redis, mongodb]
-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch, mcp__mcp-server-context7__resolve-library-id, mcp__mcp-server-context7__query-docs]
-recommended-mcps: [context7]
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search]
-verification: [jest-unit-pass, jest-e2e-pass, eslint-clean, tsc-noemit-clean]
-anti-patterns: [provider-not-in-module-exports, custom-decorator-without-tests, validation-pipe-skipped, repository-not-injected, e2e-with-real-DB-instead-of-Testcontainers, controller-business-logic, circular-module-dependency, service-importing-controller]
+capabilities:
+  - nestjs-implementation
+  - dependency-injection
+  - decorators
+  - guards-interceptors-pipes
+  - typeorm-prisma
+  - repository-pattern
+  - e2e-testing
+  - config-module-validation
+stacks:
+  - nestjs
+requires-stacks:
+  - postgres
+  - mysql
+optional-stacks:
+  - redis
+  - mongodb
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
+  - mcp__mcp-server-context7__resolve-library-id
+  - mcp__mcp-server-context7__query-docs
+recommended-mcps:
+  - context7
+skills:
+  - 'evolve:tdd'
+  - 'evolve:verification'
+  - 'evolve:code-review'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+verification:
+  - jest-unit-pass
+  - jest-e2e-pass
+  - eslint-clean
+  - tsc-noemit-clean
+anti-patterns:
+  - provider-not-in-module-exports
+  - custom-decorator-without-tests
+  - validation-pipe-skipped
+  - repository-not-injected
+  - e2e-with-real-DB-instead-of-Testcontainers
+  - controller-business-logic
+  - circular-module-dependency
+  - service-importing-controller
 version: 1.1
-last-verified: 2026-04-27
+last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -197,8 +244,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **provider-not-in-module-exports** (provider declared in `providers: [Foo]` but not `exports: [Foo]`, then imported elsewhere): Nest will throw `Nest can't resolve dependencies of …` at boot. Every shared provider MUST be in BOTH `providers` and `exports` of its owning module, and the consuming module MUST `imports: [OwningModule]`. Never re-declare the same provider in two modules — it creates two instances and breaks singletons (cache, in-memory queue, DB connection)
 - **custom-decorator-without-tests** (`createParamDecorator((data, ctx) => ...)` shipped without a `*.spec.ts` exercising it via a fake ExecutionContext): Nest reflection metadata changes between minor versions; an untested decorator is a latent crash. Always test custom decorators with `Test.createTestingModule` + a fixture controller
 - **validation-pipe-skipped** (DTO has `@IsEmail()` decorators but `main.ts` never registers `app.useGlobalPipes(new ValidationPipe(…))`): the decorators are decorative only — invalid payloads pass through. ValidationPipe MUST be global with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`. Per-handler `@UsePipes(ValidationPipe)` is acceptable only when overriding global config; never as a substitute

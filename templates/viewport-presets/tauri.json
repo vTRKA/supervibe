@@ -1,0 +1,17 @@
+{
+  "target": "tauri",
+  "defaults": [
+    { "name": "main-window", "width": 1280, "height": 800 },
+    { "name": "secondary", "width": 800, "height": 600 }
+  ],
+  "optional": [
+    { "name": "main-large", "width": 1920, "height": 1080 }
+  ],
+  "runtime": "tauri-webview",
+  "constraints": [
+    "Tauri uses platform native webview (WKWebView macOS / WebView2 Windows / WebKitGTK Linux)",
+    "feature parity NOT identical to Chromium — test on all 3",
+    "IPC via invoke() — no Node APIs in webview",
+    "icon and chrome controlled via tauri.conf.json"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "target": "mobile-native",
+  "defaults": [
+    { "name": "iphone-15", "width": 393, "height": 852, "platform": "ios" },
+    { "name": "pixel-8", "width": 412, "height": 915, "platform": "android" }
+  ],
+  "optional": [
+    { "name": "iphone-se", "width": 375, "height": 667, "platform": "ios" },
+    { "name": "ipad-mini", "width": 744, "height": 1133, "platform": "ipados" },
+    { "name": "android-tablet", "width": 800, "height": 1280, "platform": "android" }
+  ],
+  "runtime": "react-native | flutter | swiftui | jetpack-compose",
+  "constraints": [
+    "safe-area insets — must respect notch/home-indicator",
+    "platform-native components preferred (don't reskin iOS to Material)",
+    "platform Human Interface Guidelines + Material Design",
+    "touch targets >=44pt iOS / 48dp Android"
+  ]
+}

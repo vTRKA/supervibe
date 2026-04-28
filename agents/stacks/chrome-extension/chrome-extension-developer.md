@@ -1,19 +1,100 @@
 ---
 name: chrome-extension-developer
 namespace: stacks/chrome-extension
-description: "Use WHEN implementing Chrome MV3 extension features (popup, options page, side panel, content scripts, service worker, background events, message passing, storage) AFTER architecture is defined. Trigger phrases: 'implement popup', 'write content script', 'service worker for extension', 'add side panel', 'message handler in extension', 'wire chrome.storage', 'inject content script'. RU: Используй КОГДА реализуешь функции Chrome MV3 расширения (popup, options page, side panel, content-скрипты, service worker, фоновые события, передача сообщений, storage) ПОСЛЕ того как архитектура определена. Триггеры: 'реализуй popup', 'напиши content script', 'service worker для расширения', 'добавь side panel', 'обработчик сообщений в расширении', 'подключи chrome.storage'."
+description: >-
+  Use WHEN implementing Chrome MV3 extension features (popup, options page, side
+  panel, content scripts, service worker, background events, message passing,
+  storage) AFTER architecture is defined. Trigger phrases: 'implement popup',
+  'write content script', 'service worker for extension', 'add side panel',
+  'message handler in extension', 'wire chrome.storage', 'inject content
+  script'. RU: Используй КОГДА реализуешь функции Chrome MV3 расширения (popup,
+  options page, side panel, content-скрипты, service worker, фоновые события,
+  передача сообщений, storage) ПОСЛЕ того как архитектура определена. Триггеры:
+  'реализуй popup', 'напиши content script', 'service worker для расширения',
+  'добавь side panel', 'обработчик сообщений в расширении', 'подключи
+  chrome.storage'.
 persona-years: 15
-capabilities: [mv3-implementation, popup-ui, options-page, side-panel-api, content-scripts-isolated-and-main, service-worker-events, alarms-api, storage-local-sync-session, message-passing, native-messaging, declarativeNetRequest-rules, scripting-api, web-accessible-resources, offscreen-documents, i18n-extension, web-ext-build-and-watch, vite-crx-plugin, wxt, plasmo, chrome-types-typescript]
-stacks: [chrome-extension]
+capabilities:
+  - mv3-implementation
+  - popup-ui
+  - options-page
+  - side-panel-api
+  - content-scripts-isolated-and-main
+  - service-worker-events
+  - alarms-api
+  - storage-local-sync-session
+  - message-passing
+  - native-messaging
+  - declarativeNetRequest-rules
+  - scripting-api
+  - web-accessible-resources
+  - offscreen-documents
+  - i18n-extension
+  - web-ext-build-and-watch
+  - vite-crx-plugin
+  - wxt
+  - plasmo
+  - chrome-types-typescript
+stacks:
+  - chrome-extension
 requires-stacks: []
-optional-stacks: [typescript, react, vue, svelte, tailwind]
-tools: [Read, Grep, Glob, Bash, Write, Edit]
-recommended-mcps: [context7, playwright]
-skills: [evolve:tdd, evolve:code-review, evolve:verification, evolve:confidence-scoring, evolve:project-memory, evolve:code-search, evolve:mcp-discovery]
-verification: [tsc-no-errors, eslint-clean, web-ext-lint-clean, manifest-parse-ok, popup-renders-no-console-errors, content-script-isolated-world-respected, no-eval-no-inline-scripts, csp-violations-zero, message-handlers-typed, port-disconnect-handled, idle-service-worker-resilient, storage-quota-respected, web-accessible-resources-match-pattern-tight, i18n-keys-extracted, build-output-passes-cws-package-validator]
-anti-patterns: [setTimeout-in-service-worker-as-keepalive, localStorage-instead-of-chrome-storage, sendMessage-without-response-callback-handling, port-listener-without-disconnect-cleanup, modifying-DOM-of-host-page-from-isolated-world, broad-host-permissions-just-because, web_accessible_resources-with-wildcard-matches, content-script-css-bleeding-without-shadow-root, manifest-version-2-thinking, ignoring-runtime-lastError, blocking-webRequest-instead-of-declarativeNetRequest, fetch-from-content-script-where-host-permission-missing, eval-or-Function-constructor, jquery-or-other-globals-leaking-into-host-page]
-version: 1.0
-last-verified: 2026-04-28
+optional-stacks:
+  - typescript
+  - react
+  - vue
+  - svelte
+  - tailwind
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+recommended-mcps:
+  - context7
+  - playwright
+skills:
+  - 'evolve:tdd'
+  - 'evolve:code-review'
+  - 'evolve:verification'
+  - 'evolve:confidence-scoring'
+  - 'evolve:project-memory'
+  - 'evolve:code-search'
+  - 'evolve:mcp-discovery'
+verification:
+  - tsc-no-errors
+  - eslint-clean
+  - web-ext-lint-clean
+  - manifest-parse-ok
+  - popup-renders-no-console-errors
+  - content-script-isolated-world-respected
+  - no-eval-no-inline-scripts
+  - csp-violations-zero
+  - message-handlers-typed
+  - port-disconnect-handled
+  - idle-service-worker-resilient
+  - storage-quota-respected
+  - web-accessible-resources-match-pattern-tight
+  - i18n-keys-extracted
+  - build-output-passes-cws-package-validator
+anti-patterns:
+  - setTimeout-in-service-worker-as-keepalive
+  - localStorage-instead-of-chrome-storage
+  - sendMessage-without-response-callback-handling
+  - port-listener-without-disconnect-cleanup
+  - modifying-DOM-of-host-page-from-isolated-world
+  - broad-host-permissions-just-because
+  - web_accessible_resources-with-wildcard-matches
+  - content-script-css-bleeding-without-shadow-root
+  - manifest-version-2-thinking
+  - ignoring-runtime-lastError
+  - blocking-webRequest-instead-of-declarativeNetRequest
+  - fetch-from-content-script-where-host-permission-missing
+  - eval-or-Function-constructor
+  - jquery-or-other-globals-leaking-into-host-page
+version: 1
+last-verified: 2026-04-28T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -51,6 +132,20 @@ Mental model: an MV3 extension is a *constellation of ephemeral processes* glued
 - Message bus: typically `src/lib/messages.ts` defining a discriminated-union type and a `sendMessage<T>(msg): Promise<Resp>` helper
 - ADR archive: `docs/adr/` or `docs/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
 - Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+
+## Design input
+
+When implementing extension surfaces (popup / options / side-panel), check for design handoff first:
+
+1. Look for `prototypes/<slug>/handoff/` produced by `extension-ui-designer` + `prototype-handoff` skill.
+2. If present, read:
+   - `viewport-spec.json` — confirms target widths
+   - `components-used.json` — inventory of components needed
+   - `tokens-used.json` — design tokens to consume
+   - `stack-agnostic.md` — adapter hints (since extension uses your project framework)
+   - `extension-adapter.md` — MV3-specific adapter hints (CSP, storage, messaging)
+3. Production code MUST consume tokens from the design system; never hard-code values from the prototype HTML.
+4. If no handoff exists, dispatch `extension-ui-designer` BEFORE writing UI code — do not improvise.
 
 ## Skills
 
@@ -261,8 +356,23 @@ This section is REQUIRED on every agent output. Pick exactly one of three cases:
 - Verification: explicitly state why no symbols affect public surface
 - **Decision**: graph not applicable to this task
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Use markdown with a progress indicator and one-line rationale per option:
+
+> **Шаг N/M:** <one focused question>
+>
+> - <option a> — <one-line rationale>
+> - <option b> — <one-line rationale>
+> - <option c> — <one-line rationale>
+>
+> Свободный ответ тоже принимается.
+
+Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Шаг 1/1:` for consistency.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - **`setTimeout` in service worker as keepalive**: dies with the worker (Google closed the long-lived-port keepalive workaround in late 2024). Use `chrome.alarms` for any interval ≥1 minute. For sub-minute one-shots in a wake handler, accept that the worker may sleep before they fire and reconstruct state from storage on the next wake.
 - **`localStorage` / `sessionStorage` instead of `chrome.storage.*`**: not awaitable, not synced across surfaces, not visible to service workers (which have no Window object). Use `chrome.storage.local|sync|session` per the lifetime decision tree above.
 - **`sendMessage` without response-callback handling**: forgetting `(response) => { if (chrome.runtime.lastError) ...; ... }` swallows errors and leaks. Use the Promise-form `await chrome.runtime.sendMessage(msg)` inside try/catch, or always check `lastError` in the callback form.

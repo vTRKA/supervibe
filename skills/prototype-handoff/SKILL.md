@@ -8,8 +8,8 @@ prerequisites: [prototype-approved]
 emits-artifact: handoff-bundle
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-28
+version: 1.1
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Prototype Handoff
@@ -111,9 +111,21 @@ Grep every `var(--*)` reference in `styles/`. Group by token category. Output:
 
 Save to `handoff/tokens-used.json`.
 
-### Stage 5 — Stack-agnostic adapter hints
+### Stage 5 — Adapter hints (target-aware)
 
-Write `handoff/stack-agnostic.md` with framework-neutral guidance for downstream:
+Read `prototypes/<slug>/config.json` for `target`. Branch:
+
+- `target: web` → produce `handoff/stack-agnostic.md` covering React, Vue, Svelte, vanilla — same as v1 (the existing template).
+- `target: chrome-extension` → ALSO copy `templates/handoff-adapters/chrome-extension.md.tpl` to `handoff/extension-adapter.md` and fill prototype-specific notes.
+- `target: electron` → ALSO copy `templates/handoff-adapters/electron.md.tpl` to `handoff/electron-adapter.md`.
+- `target: tauri` → ALSO copy `templates/handoff-adapters/tauri.md.tpl` to `handoff/tauri-adapter.md`.
+- `target: mobile-native` → ASK user one question: "Production stack — React Native, Flutter, или native (Swift/Kotlin)?". Based on answer copy `react-native.md.tpl` or `flutter.md.tpl` to `handoff/<rn-or-flutter>-adapter.md`. For native (Swift/Kotlin): produce a manual hand-off note ("HTML sketches are layout reference; native implementation is greenfield — share with platform-native designer").
+
+For any non-web target, the per-target adapter file goes alongside (not instead of) `stack-agnostic.md` — the latter still covers token+component inventory, the former covers runtime mapping.
+
+Verification: each target's adapter file must exist in `handoff/` before the bundle is considered complete.
+
+For `target: web`, the body of `handoff/stack-agnostic.md` follows this template:
 
 ```markdown
 # Stack-Agnostic Handoff: <slug>

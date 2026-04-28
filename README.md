@@ -2,7 +2,7 @@
 
 **English** · [Русский](README.ru.md)
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 79 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
 **v1.7.0** · MIT · Windows / macOS / Linux
 
@@ -12,16 +12,20 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 73 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| 79 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
 | Confidence engine | Twelve rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
-| 20 discipline rules | `use-codegraph-before-refactor`, `anti-hallucination`, `commit-attribution`, `no-half-finished`, and more |
+| 21 discipline rules | `use-codegraph-before-refactor`, `single-question-discipline`, `anti-hallucination`, `commit-attribution`, `no-half-finished`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/evolve-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[evolve] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
+| Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
+| Design pipeline (5 targets) | web · chrome-extension · electron · tauri · mobile-native — specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
+| Component library bridges | shadcn / MUI / Mantine / Radix / HeadlessUI — token bridge generated from approved design system |
+| Pre-write prototype guard | `PreToolUse` hook blocks writes to `prototypes/<slug>/` until `config.json` exists AND blocks framework imports — prototypes stay native HTML/CSS/JS |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
 24 stacks supported: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
@@ -105,22 +109,29 @@ For any new feature, component, or behavior change.
 
 You can skip `/evolve-brainstorm` if you already have an approved spec, or skip `/evolve-plan` for trivial one-line changes.
 
-### Design pipeline → Live preview
+### Design pipeline → Live preview → Browser feedback
 
-For any visual surface — landing pages, in-product flows, full brand work.
+For any visual surface — web landing, in-product flow, browser extension, Electron / Tauri desktop, or mobile native.
 
 ```
 /evolve-design landing in the style of Linear, focused on dev-tool buyers
-  ↓ creative-director: brand direction (mood-board, tokens, DO/DON'T)
-  ↓ ux-ui-designer: state matrix, flow, interaction spec
+  ↓ Stage 0: target surface (web | chrome-extension | electron | tauri | mobile-native)
+  ↓ creative-director: brand direction (mood-board, tokens, animation library, graphics medium)
+  ↓ brandbook: target-aware baselines + Section 6.5 component library decision
+  ↓ optional: component-library-integration (shadcn / MUI / Mantine / Radix / HeadlessUI bridge)
+  ↓ specialist designer per target (extension-ui-designer / electron / tauri / mobile / ux-ui)
   ↓ copywriter: every visible string nailed
-  ↓ prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/
-  ↓ AUTO: evolve:preview-server spawns http://localhost:NNNN with hot reload
+  ↓ prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/ (native only — pre-write hook enforces)
+  ↓ AUTO: evolve:preview-server spawns http://localhost:NNNN with hot reload + 💬 feedback overlay
   ↓ ui-polish-reviewer + accessibility-reviewer in parallel
+  ↓ feedback loop (✅ / ✎ / 🔀 / 📊 / 🛑) — never silent
+  ↓ on approval: handoff bundle with target-specific adapter (RN / Flutter / Electron / Tauri / MV3)
   ↓ score ≥9 against prototype rubric
 ```
 
-Manage running servers with `/evolve-preview --list` / `--kill <port>`.
+**Browser feedback in real time:** click the 💬 button in the preview, select any region, type a comment. Hits `.claude/memory/feedback-queue.jsonl`; the `UserPromptSubmit` hook injects new entries as `<system-reminder>` on your next prompt — the `evolve:browser-feedback` skill triages and dispatches to the right designer.
+
+Manage running servers with `/evolve-preview --list` / `--kill <port>`. Disable the overlay with `--no-feedback`.
 
 ### Refactor with safety
 
@@ -174,7 +185,8 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/e
 | `npm run code:search -- --query "..."` | Semantic search |
 | `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
 | `npm run memory:watch` | Optional watcher daemon |
-| `npm run check` | All 196 tests plus manifest, frontmatter, and footer validation |
+| `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
+| `npm run check` | All 253 tests plus manifest, frontmatter, design-skill, question-discipline, agent-footer, knip, and trigger-clarity validation |
 
 ---
 

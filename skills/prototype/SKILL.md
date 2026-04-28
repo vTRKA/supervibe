@@ -39,21 +39,44 @@ NOT for:
 2. **Memory check.** `evolve:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
 3. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
 
+## Target surfaces (Шаг 0 — ASK BEFORE viewport)
+
+Prototype skill supports five target runtimes. Ask user FIRST:
+
+**Шаг 0/N:** На какую платформу делаем прототип?
+- `web` — браузерный сайт/SaaS (default 375 mobile + 1440 desktop)
+- `chrome-extension` — расширение браузера (popup + options + side-panel)
+- `electron` — Electron desktop app (main + settings windows)
+- `tauri` — Tauri desktop app (Rust + webview)
+- `mobile-native` — нативное мобильное (iOS/Android — React Native / Flutter / SwiftUI)
+
+После выбора — загружу `templates/viewport-presets/<target>.json` и спрошу про viewport'ы (default/optional/custom).
+
+For `mobile-native`: prototype is HTML simulation of mobile UI within an iframe with the chosen viewport size — note that final implementation will be React Native / Flutter / native; the HTML prototype is a fidelity sketch only.
+
+For `tauri` / `electron`: HTML/CSS/JS still works (renderer is webview-based), but constraints differ (see preset `constraints` field). Do NOT use Node APIs in HTML — IPC bridges only via documented preload exposed APIs.
+
+For `chrome-extension`: HTML/CSS/JS works. Manifest constraints (CSP — no inline handlers) must be respected even at prototype stage.
+
 ## Decision tree — viewport configuration
 
 ```
 What viewports does this prototype need?
-├─ DEFAULT: [375, 1440] — mobile + desktop. Cover 95% of cases.
-├─ User explicitly says "tablet too" or "+ tablet" → add 768
-├─ User explicitly says "wide screen" or "ultrawide" → add 1920
-├─ User explicitly says "mobile only" → just 375
-└─ User explicitly says "desktop only" → just 1440
+├─ Read templates/viewport-presets/<target>.json for defaults + optional
+├─ DEFAULT (web): [375, 1440] — mobile + desktop. Cover 95% of cases.
+├─ DEFAULT (extension): popup 360x600 + options 1024x768 + side-panel 400x800
+├─ DEFAULT (electron/tauri): 1280x800 main + 800x600 settings
+├─ DEFAULT (mobile-native): iPhone 15 393x852 + Pixel 8 412x915
+└─ User can choose any subset of defaults+optional, or custom widths.
 
-ASK: "Использовать стандартные 375px (mobile) + 1440px (desktop)
-       или нужны другие viewport'ы?"
+ASK (one question, after target chosen):
+  "Использовать стандартные viewport'ы для <target>: <list> или нужны другие?"
 
-Wait for explicit answer. Save chosen viewports to
-prototypes/<slug>/config.json before any HTML written.
+Wait for explicit answer. Save chosen viewports + target + runtime + constraints
+to prototypes/<slug>/config.json BEFORE any HTML written.
+
+The pre-write hook (scripts/hooks/pre-write-prototype-guard.mjs) blocks every
+file write to prototypes/<slug>/ until config.json exists.
 ```
 
 ## Decision tree — interaction depth
@@ -77,7 +100,7 @@ What level of fidelity does this prototype need?
 ### Stage 1 — Setup
 
 1. Pick a slug for the prototype: `prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
-2. Read `config.json` if it exists; otherwise ask the **viewports** question (see decision tree). Save answer.
+2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
 3. Confirm interaction depth level (visual-only / click-through / realistic / data-fed). One question, multiple-choice format.
 4. Create directory layout:
    ```
@@ -206,6 +229,14 @@ Rubric:     prototype
 - Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
 - Approval marker written when user says "утвердить" / "approve"
 - `prefers-reduced-motion: reduce` honored — animations disabled or shortened to ≤100ms
+
+## Anti-patterns (skill-level — fail conditions)
+
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
+- `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
+- `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
+- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 
 ## Related
 
