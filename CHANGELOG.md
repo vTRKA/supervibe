@@ -331,7 +331,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Known accepted limitations (v1.3)
 
 - **First memory search downloads ~25MB model** (one-time, cached). Affects first invocation only.
-- **35/46 agents still in compact form** (60-130 lines). Critical 7 are at spec (250+ lines): code-reviewer, evolve-orchestrator, 5 researchers + new strengthen pass on root-cause-debugger / repo-researcher / security-auditor. Periodic `supervibe:strengthen` will expand others on first use.
+- **35/46 agents still in compact form** (60-130 lines). Critical 7 are at spec (250+ lines): code-reviewer, supervibe-orchestrator, 5 researchers + new strengthen pass on root-cause-debugger / repo-researcher / security-auditor. Periodic `supervibe:strengthen` will expand others on first use.
 - **HF_TOKEN may be needed** for some restrictive networks. Most cases all-MiniLM-L6-v2 is open and accessible.
 
 ---
@@ -352,7 +352,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Added — `.claude-plugin/marketplace.json`
 
 - Local marketplace registration matching superpowers convention
-- Enables future `/plugin install evolve@evolve-marketplace` flow when published
+- Enables future `/plugin install supervibe@supervibe-marketplace` flow when published
 
 ### Added — Memory v2: SQLite FTS5 (replaces v1 markdown+grep)
 
@@ -522,7 +522,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Added — Phase 3: Universal Agents + Rules
 
 - `_core/` (7 agents): code-reviewer (strengthened to 244 lines), root-cause-debugger, repo-researcher, security-auditor, refactoring-specialist, architect-reviewer, quality-gate-reviewer
-- `_meta/` (2): rules-curator, **evolve-orchestrator (full decision tree, 161 lines)**
+- `_meta/` (2): rules-curator, **supervibe-orchestrator (full decision tree, 161 lines)**
 - `_product/` (6): **product-manager (with explicit CPO scope)**, systems-analyst, qa-test-engineer, analytics-implementation, seo-specialist, email-lifecycle
 - `_ops/` (12): devops-sre, performance-reviewer, dependency-reviewer, db-reviewer, api-contract-reviewer, infrastructure-architect, **ai-integration-architect**, plus 5 **fully-implemented researcher agents** (best-practices, dependency, security, infra-pattern, competitive-design)
 - `_design/` (6): creative-director, ux-ui-designer, ui-polish-reviewer, accessibility-reviewer, copywriter, prototype-builder
@@ -557,7 +557,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — Phase 7: Orchestration & Research (FULL)
 
-- `evolve-orchestrator` agent — **full decision tree** with 10-branch cascade, weighted inputs, priority tiers, user-confirm enforcement
+- `supervibe-orchestrator` agent — **full decision tree** with 10-branch cascade, weighted inputs, priority tiers, user-confirm enforcement
 - 5 research agents — **all with full procedures** (cache-check → MCP query → fallback WebFetch → source authority filter → recency filter → cache → score):
   - best-practices-researcher
   - dependency-researcher (registry-aware per stack)
@@ -578,7 +578,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Strengthen pass (selective)
 
 - `supervibe:_core:code-reviewer` — expanded to 244 lines (full persona, decision tree, common workflows, output contract template, blast-radius mental check)
-- `supervibe:_meta:evolve-orchestrator` — full decision tree, 161 lines
+- `supervibe:_meta:supervibe-orchestrator` — full decision tree, 161 lines
 - All 5 researcher agents — full procedures with MCP integration paths
 
 ### Stats
@@ -597,7 +597,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Known accepted limitations
 
-- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `evolve-orchestrator` (161). Periodic `supervibe:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-evolution loop.
+- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `supervibe-orchestrator` (161). Periodic `supervibe:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-evolution loop.
 - Hook scripts: `effectiveness-tracker.mjs` is minimal placeholder. Future versions will add transcript analysis.
 - No git commits in this release session per user instruction; the working-tree is the deliverable.
 

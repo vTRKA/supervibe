@@ -46,7 +46,7 @@ These six principles override defaults whenever they conflict with general pract
 ## Repository layout
 
 ```
-evolve/
+supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
 ├── agents/                        79 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        49 process skills
@@ -135,7 +135,7 @@ For consistent quality, agents are encouraged to follow this order:
 5. **Read the relevant rule** from `rules/`
 6. **Search memory**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"` — past decisions
 7. **Search code**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` — existing patterns
-8. **Read full architecture spec**: `docs/specs/2026-04-27-evolve-framework-design.md`
+8. **Read full architecture spec**: `docs/specs/2026-04-27-supervibe-framework-design.md`
 
 ---
 
@@ -144,7 +144,7 @@ For consistent quality, agents are encouraged to follow this order:
 - **`README.md`** — human-facing intro, install instructions, troubleshooting
 - **`docs/getting-started.md`** — extended verified install + per-feature usage
 - **`docs/confidence-gates-spec.md`** — unified gate semantics across commands + skills
-- **`docs/specs/2026-04-27-evolve-framework-design.md`** — full architecture spec
+- **`docs/specs/2026-04-27-supervibe-framework-design.md`** — full architecture spec
 - **`docs/plans/`** — implementation plans (latest: 2026-04-28-token-economy-safe-mode.md)
 - **`docs/agent-authoring.md`** — guide for writing new agents
 - **`docs/skill-authoring.md`** — guide for writing new skills

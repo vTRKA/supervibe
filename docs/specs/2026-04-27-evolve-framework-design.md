@@ -15,10 +15,10 @@ This is the **META-spec**. Each implementation phase (see Section 8) gets its ow
 
 | # | Decision | Reason |
 |---|----------|--------|
-| 1 | **Distribution = Claude Code plugin** in `D:\ggsel projects\evolve\` | "use across many projects as superpowers" |
+| 1 | **Distribution = Claude Code plugin** in `D:\ggsel projects\supervibe\` | "use across many projects as superpowers" |
 | 2 | **Full process toolkit** (own brainstorming/plan/exec/TDD/debug/review) | Maximum-effort own solution |
 | 3 | **Content language = English** | Tech precision, no Russian/English mix in artifacts |
-| 4 | **Confidence policy = HARD BLOCK + escape hatch** | Discipline by default, `/evolve override "<reason>"` for exceptions, full audit trail |
+| 4 | **Confidence policy = HARD BLOCK + escape hatch** | Discipline by default, `/supervibe override "<reason>"` for exceptions, full audit trail |
 | 5 | **Build order = C → A → B → E → orchestrator** | Quality contract first, then catalog, then scaffold, then evolution loop, then orchestration |
 | 6 | **Architecture = Hybrid plugin** (flat skills, namespaced agents, stack-packs) | Approach 3 from brainstorm — best balance of discoverability and scale |
 
@@ -30,7 +30,7 @@ This is the **META-spec**. Each implementation phase (see Section 8) gets its ow
 
 ```
 evolve/
-├── plugin.json              # name, version, namespace=evolve, paths
+├── plugin.json              # name, version, namespace=supervibe, paths
 ├── registry.yaml            # auto-generated capability index
 ├── commands/                # /evolve, /supervibe-genesis, /supervibe-audit, /supervibe-strengthen,
 │                            # /supervibe-adapt, /supervibe-evaluate, /supervibe-score, /supervibe-override
@@ -47,7 +47,7 @@ evolve/
 │   │                        # db-reviewer, api-contract-reviewer, infrastructure-architect,
 │   │                        # research-agents (best-practices, dependency, security, infra-pattern,
 │   │                        # competitive-design)
-│   ├── _meta/               # rules-curator, evolve-orchestrator
+│   ├── _meta/               # rules-curator, supervibe-orchestrator
 │   └── stacks/{stack}/      # stack-specific architects/developers/specialists
 ├── rules/                   # flat, with applies-to in frontmatter
 ├── stack-packs/             # complete bundles per stack combination
@@ -130,7 +130,7 @@ stack-packs:
 | `implementation-plan` | After writing-plans, before exec | `confidence-rubrics/plan.yaml` |
 | `agent-output` | When agent claims "done" | `confidence-rubrics/agent-delivery.yaml` |
 | `scaffold-bundle` | After genesis composes scaffold | `confidence-rubrics/scaffold.yaml` |
-| `framework-self` | On `/evolve audit` of plugin itself | `confidence-rubrics/framework.yaml` |
+| `framework-self` | On `/supervibe audit` of plugin itself | `confidence-rubrics/framework.yaml` |
 
 Plus `prototype.yaml`, `research-output.yaml`, `rule-quality.yaml`, `skill-quality.yaml`, `agent-quality.yaml` for sub-artifacts.
 
@@ -166,7 +166,7 @@ OUTPUT: { score, max, status, gaps: [{dim, missing}] }
 ### HARD BLOCK + escape hatch
 
 - Agent CANNOT claim "done" without scoring ≥9. Enforced by `rules/confidence-discipline.md` (mandatory in every project).
-- `/evolve override "<reason>"` allows ship at <9 with append-only entry to `.claude/confidence-log.jsonl`:
+- `/supervibe override "<reason>"` allows ship at <9 with append-only entry to `.claude/confidence-log.jsonl`:
   ```json
   {"timestamp":"<ISO>","artifact":"<type>","score":7,"max":10,"override":true,"reason":"<text>","gaps":[...],"agent":"<id>","user-confirmed":true}
   ```
@@ -229,7 +229,7 @@ effectiveness:            # filled by supervibe:evaluate
 - `_design/` — creative-director, ux-ui-designer, ui-polish-reviewer, accessibility-reviewer, copywriter, prototype-builder
 - `_product/` — product-manager, systems-analyst, qa-test-engineer, analytics-implementation, seo-specialist, email-lifecycle
 - `_ops/` — devops-sre, performance-reviewer, dependency-reviewer, db-reviewer, api-contract-reviewer, infrastructure-architect, **5 research-agents** (best-practices, dependency, security, infra-pattern, competitive-design)
-- `_meta/` — rules-curator, evolve-orchestrator
+- `_meta/` — rules-curator, supervibe-orchestrator
 - `stacks/{stack}/` — per stack: architect (read-only design), developer (write), specialists as needed
 
 ### Skills — categories
@@ -390,8 +390,8 @@ version: 1.0
 
 | Level | What | Where | Trigger |
 |-------|------|-------|---------|
-| Project | `.claude/agents/`, `.claude/rules/`, `.claude/skills/`, `CLAUDE.md` | target project | evolve-orchestrator + auto-triggers |
-| Plugin | `evolve/` itself | this repo | `/evolve audit` run on plugin root |
+| Project | `.claude/agents/`, `.claude/rules/`, `.claude/skills/`, `CLAUDE.md` | target project | supervibe-orchestrator + auto-triggers |
+| Plugin | `evolve/` itself | this repo | `/supervibe audit` run on plugin root |
 
 Same skill set, parameterized by `target-root`.
 
@@ -443,7 +443,7 @@ Triggers do NOT auto-execute state-changing actions. They emit system-reminders 
 
 1. **Skill descriptions** — main agent reads `description`, self-invokes when trigger matches.
 2. **settings.json hooks** — Claude Code harness runs shell commands on events (SessionStart, PostToolUse, Stop).
-3. **`evolve-orchestrator` agent** — meta-decision-maker reading weighted context.
+3. **`supervibe-orchestrator` agent** — meta-decision-maker reading weighted context.
 
 ### Description template (mandatory format)
 
@@ -469,7 +469,7 @@ USE [WHEN <trigger phrase from user>] [TO <verb-led purpose>] [GATES <scoring/ch
 - `post-edit-stack-watch.mjs` — watches manifests + rule changes
 - `effectiveness-tracker.mjs` — writes `effectiveness.jsonl` from transcript analysis
 
-### `evolve-orchestrator` agent
+### `supervibe-orchestrator` agent
 
 Inputs: system-reminders, effectiveness, confidence log, user message text, stack-fingerprint.
 
@@ -510,7 +510,7 @@ commands/supervibe-strengthen.md
 commands/supervibe-adapt.md
 commands/supervibe-evaluate.md
 commands/supervibe-score.md     # /evolve score <artifact-path>
-commands/supervibe-override.md  # /evolve override "<reason>"
+commands/supervibe-override.md  # /supervibe override "<reason>"
 ```
 
 Thin wrappers; logic in skills.
@@ -524,13 +524,13 @@ Thin wrappers; logic in skills.
 | Phase | Subsystem | Contents |
 |-------|-----------|----------|
 | 0 — Plugin scaffold | foundation | plugin.json, README, scripts/build-registry.mjs, agent/skill/rule templates, commands/ wrappers, internal smoke tests |
-| 1 — Confidence Core | C/D foundation | 9 confidence-rubrics, supervibe:confidence-scoring, supervibe:verification, .claude/confidence-log.jsonl format, /evolve score, /evolve override |
+| 1 — Confidence Core | C/D foundation | 9 confidence-rubrics, supervibe:confidence-scoring, supervibe:verification, .claude/confidence-log.jsonl format, /evolve score, /supervibe override |
 | 2 — Process & Workflow Skills | C | 15 process skills (brainstorming, writing-plans, executing-plans, tdd, systematic-debugging, code-review, verification, requirements-intake, requesting-code-review, receiving-code-review, dispatching-parallel-agents, subagent-driven-development, using-git-worktrees, finishing-a-development-branch, pre-pr-check) + 6 workflow capability skills (adr, prd, new-feature, landing-page, incident-response, experiment) |
 | 3 — Universal Agents + Rules | A core | _core (7), _meta (2), _product (6), _ops (6 + 5 research), _design (6) — total ~32 agents. Universal rules: best-practices-2026, git-discipline, commit-discipline, no-dead-code, confidence-discipline, anti-hallucination, rule-maintenance, pre-commit-discipline, prototype-to-production |
 | 4 — Reference stack | A stacks | stacks/laravel (4 agents), stacks/nextjs (3), stacks/postgres (1), stacks/redis (1). Stack rules: fsd, modular-backend, routing, i18n, observability, privacy-pii (port + adapt), infrastructure-patterns |
 | 5 — Discovery & Scaffolding | B | supervibe:stack-discovery, supervibe:genesis (with composition), supervibe:prototype, 6 questionnaires, stack-packs/laravel-nextjs-postgres-redis + atomic packs (redis, queue, db-replicas, husky-base, commitlint-base), templates/ |
 | 6 — Agent Evolution | E | supervibe:audit, supervibe:strengthen, supervibe:adapt, supervibe:evaluate, supervibe:sync-rules, supervibe:rule-audit, effectiveness.jsonl, 3 hook scripts |
-| 7 — Orchestration & Research | F | evolve-orchestrator agent procedure, 5 research-agents implementation, supervibe:seo-audit (uses research-agents), research-cache, MCP integration, end-to-end smoke |
+| 7 — Orchestration & Research | F | supervibe-orchestrator agent procedure, 5 research-agents implementation, supervibe:seo-audit (uses research-agents), research-cache, MCP integration, end-to-end smoke |
 | 8 — Polish | release | end-to-end test on empty repo, docs (getting-started, skill/agent/rule authoring), confidence-scoring(framework-self) ≥9 |
 
 ### v1.0 ship criteria

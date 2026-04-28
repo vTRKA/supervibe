@@ -2478,7 +2478,7 @@ Replace the v1.6.0 section drafted in D10 with:
 
 ### Stats (v1.6.0)
 
-- 90+/90+ tests pass (added: code-graph, code-graph-queries, evolve-status, rule fires for refactor)
+- 90+/90+ tests pass (added: code-graph, code-graph-queries, supervibe-status, rule fires for refactor)
 - Tree-sitter coverage: 9 languages, ~80% cross-file edge resolution
 - Bundle: +~10 МБ via LFS (WASM grammars)
 - Agents touched: 12 (10 procedure-level + 2 memory)

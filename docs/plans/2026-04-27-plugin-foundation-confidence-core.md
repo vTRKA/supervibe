@@ -2072,12 +2072,12 @@ main().catch(err => { console.error(err); process.exit(1); });
 ```
 
 **Why this script uses `fileURLToPath` + `path.relative` instead of `URL.pathname`:**
-On Windows, `URL.pathname` for a file URL produces `/D:/ggsel%20projects/evolve/...` — leading slash and URL-encoded spaces — which breaks string-replace operations and yields broken paths in `registry.yaml`. Using `fileURLToPath` to get a real filesystem path, `path.join`/`path.relative` for navigation, and `.split(sep).join('/')` to normalize separators in the output produces stable, portable repo-relative paths on all platforms (verified in Task 8 Step 5 below).
+On Windows, `URL.pathname` for a file URL produces `/D:/ggsel%20projects/supervibe/...` — leading slash and URL-encoded spaces — which breaks string-replace operations and yields broken paths in `registry.yaml`. Using `fileURLToPath` to get a real filesystem path, `path.join`/`path.relative` for navigation, and `.split(sep).join('/')` to normalize separators in the output produces stable, portable repo-relative paths on all platforms (verified in Task 8 Step 5 below).
 
 - [ ] **Step 5: Run the script and verify Windows-safe path output**
 
 Run: `node scripts/build-registry.mjs`
-Expected: stdout "Registry written to D:\ggsel projects\evolve\registry.yaml" (or platform equivalent) and a counts JSON showing 10 confidence-rubrics, 0 of agents/skills/rules/stack-packs.
+Expected: stdout "Registry written to D:\ggsel projects\supervibe\registry.yaml" (or platform equivalent) and a counts JSON showing 10 confidence-rubrics, 0 of agents/skills/rules/stack-packs.
 
 Then verify path encoding inside the generated registry:
 Run: `head -25 registry.yaml`
@@ -2471,7 +2471,7 @@ Allow continuing past a confidence-scoring BLOCK status by recording the overrid
 `.claude/confidence-log.jsonl` is resolved **relative to the current working directory** (the project root where Claude Code is running), NOT relative to the plugin install path.
 
 - When developer is using the Supervibe plugin in their target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
-- When the Supervibe plugin author is testing the plugin inside its own dev repo (`D:\ggsel projects\evolve\`), the log lands at `D:\ggsel projects\evolve\.claude\confidence-log.jsonl`. This is correct dev behaviour — the plugin repo IS a project from Claude's perspective.
+- When the Supervibe plugin author is testing the plugin inside its own dev repo (`D:\ggsel projects\supervibe\`), the log lands at `D:\ggsel projects\supervibe\.claude\confidence-log.jsonl`. This is correct dev behaviour — the plugin repo IS a project from Claude's perspective.
 
 This means: every project using Supervibe gets its own override journal, isolated from other projects. There is no cross-project sync (deferred to v2.0+).
 

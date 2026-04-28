@@ -49,14 +49,14 @@ mkdir -p ~/.claude/plugins/cache/local
 cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/1.2.0
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\evolve\1.2.0
-xcopy /E /I "D:\ggsel projects\evolve" "$HOME\.claude\plugins\cache\local\evolve\1.2.0"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\1.2.0
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\1.2.0"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
 ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/1.2.0
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\evolve\1.2.0" "D:\ggsel projects\evolve"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\1.2.0" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.

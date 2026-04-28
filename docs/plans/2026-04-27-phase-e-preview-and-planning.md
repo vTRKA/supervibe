@@ -190,7 +190,7 @@ import {
   isPidAlive, killServer, REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/preview-server-manager.mjs';
 
-const sandbox = join(tmpdir(), `evolve-preview-mgr-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-preview-mgr-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
@@ -255,7 +255,7 @@ Create `scripts/lib/preview-server-manager.mjs`:
 ```javascript
 // Preview Server Manager — port allocation, process tracking, registry persistence.
 // Registry is a JSON file in .claude/memory/preview-servers.json so multiple
-// evolve sessions and the status command can see/manage each other's servers.
+// supervibe sessions and the status command can see/manage each other's servers.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -428,7 +428,7 @@ import { tmpdir } from 'node:os';
 import { request } from 'node:http';
 import { startStaticServer } from '../scripts/lib/preview-static-server.mjs';
 
-const sandbox = join(tmpdir(), `evolve-preview-srv-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-preview-srv-${Date.now()}`);
 let server;
 let port;
 
@@ -558,14 +558,14 @@ const HOT_RELOAD_SCRIPT = `
   window.__evolve_preview_initialized = true;
   const es = new EventSource('/__evolve_preview/sse');
   es.addEventListener('reload', () => {
-    console.log('[evolve-preview] reload triggered');
+    console.log('[supervibe-preview] reload triggered');
     window.location.reload();
   });
   es.addEventListener('connected', () => {
-    console.log('[evolve-preview] connected');
+    console.log('[supervibe-preview] connected');
   });
   es.onerror = () => {
-    console.warn('[evolve-preview] SSE connection error — retry in 2s');
+    console.warn('[supervibe-preview] SSE connection error — retry in 2s');
   };
 })();
 </script>
@@ -743,7 +743,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { attachHotReload } from '../scripts/lib/preview-hot-reload.mjs';
 
-const sandbox = join(tmpdir(), `evolve-hot-reload-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-hot-reload-${Date.now()}`);
 
 before(async () => {
   await mkdir(sandbox, { recursive: true });
@@ -1018,15 +1018,15 @@ await registerServer({
 });
 
 const url = `http://localhost:${server.port}`;
-console.log(`[evolve-preview] ${label} → ${url}`);
-console.log(`[evolve-preview] root: ${absRoot}`);
-console.log(`[evolve-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
-console.log(`[evolve-preview] PID: ${process.pid}`);
-console.log(`[evolve-preview] press Ctrl+C to stop`);
+console.log(`[supervibe-preview] ${label} → ${url}`);
+console.log(`[supervibe-preview] root: ${absRoot}`);
+console.log(`[supervibe-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
+console.log(`[supervibe-preview] PID: ${process.pid}`);
+console.log(`[supervibe-preview] press Ctrl+C to stop`);
 
 // Graceful shutdown
 async function shutdown(sig) {
-  console.log(`\n[evolve-preview] received ${sig}, shutting down...`);
+  console.log(`\n[supervibe-preview] received ${sig}, shutting down...`);
   if (watcher) await watcher.close();
   await server.stop();
   await unregisterServer(server.port);
@@ -1153,7 +1153,7 @@ Should I capture a screenshot for the agent output?
    ```bash
    node $CLAUDE_PLUGIN_ROOT/scripts/preview-server.mjs --root <dir> --label "<feature>"
    ```
-4. Capture stdout — first line `[evolve-preview] <label> → http://localhost:NNNN`
+4. Capture stdout — first line `[supervibe-preview] <label> → http://localhost:NNNN`
 5. Hand URL to user in a clearly-formatted line:
    > **Preview ready:** http://localhost:NNNN — auto-reloads on file edits
 6. If Playwright MCP is available (check via `supervibe:mcp-discovery`):
@@ -1409,7 +1409,7 @@ if (previews.length === 0) {
 In `tests/supervibe-status.test.mjs`, append a new test:
 
 ```javascript
-test('evolve-status: reports preview server state', () => {
+test('supervibe-status: reports preview server state', () => {
   const out = runStatus();
   assert.ok(
     /Preview servers: \d+ running/.test(out) || /Preview servers: none/.test(out),
@@ -1530,7 +1530,7 @@ if (idleTimeoutMin > 0) {
     const idleMin = idleMs / 1000 / 60;
     const hasClients = server.hasActiveSseClients();
     if (idleMin > idleTimeoutMin && !hasClients) {
-      console.log(`[evolve-preview] idle for ${idleMin.toFixed(1)}m and no SSE clients — auto-shutdown`);
+      console.log(`[supervibe-preview] idle for ${idleMin.toFixed(1)}m and no SSE clients — auto-shutdown`);
       shutdown('IDLE-TIMEOUT');
     }
   }, 60_000); // check every minute
@@ -1538,7 +1538,7 @@ if (idleTimeoutMin > 0) {
 
 // Update shutdown to clear idleCheckTimer
 async function shutdown(sig) {
-  console.log(`\n[evolve-preview] received ${sig}, shutting down...`);
+  console.log(`\n[supervibe-preview] received ${sig}, shutting down...`);
   if (idleCheckTimer) clearInterval(idleCheckTimer);
   if (watcher) await watcher.close();
   await server.stop();
@@ -1618,7 +1618,7 @@ In CLI start mode (after parsing args, before `findFreePort`):
 const force = values.force ?? false;
 const existingServers = await listServers();
 if (existingServers.length >= MAX_SERVERS_DEFAULT && !force) {
-  console.error(`[evolve-preview] max ${MAX_SERVERS_DEFAULT} preview servers already running. Use --force to override or kill some with --kill-all.`);
+  console.error(`[supervibe-preview] max ${MAX_SERVERS_DEFAULT} preview servers already running. Use --force to override or kill some with --kill-all.`);
   for (const s of existingServers) {
     console.error(`  http://localhost:${s.port}  ${s.label}  (pid=${s.pid})`);
   }
@@ -1658,7 +1658,7 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 sleep 2
 node scripts/preview-server.mjs --root /tmp --port 3061
-# Expected: "[evolve-preview] max 10 preview servers already running..."
+# Expected: "[supervibe-preview] max 10 preview servers already running..."
 node scripts/preview-server.mjs --kill-all
 ```
 
@@ -3537,8 +3537,8 @@ In `docs/getting-started.md`, add new section after "Code Graph":
 npm run supervibe:preview -- --root mockups/checkout
 
 # Output:
-# [evolve-preview] checkout → http://localhost:3047
-# [evolve-preview] hot-reload: on
+# [supervibe-preview] checkout → http://localhost:3047
+# [supervibe-preview] hot-reload: on
 ```
 
 **Список запущенных:**
@@ -3825,7 +3825,7 @@ Create `scripts/discover-mcps.mjs`:
 import { discoverMcps, getRegistry } from './lib/mcp-registry.mjs';
 
 const found = await discoverMcps({});
-console.log(`[evolve/mcp] discovered ${found.length} MCP(s):`);
+console.log(`[supervibe/mcp] discovered ${found.length} MCP(s):`);
 for (const mcp of found) {
   console.log(`  - ${mcp.name}  (tools: ${mcp.tools.length})`);
 }
@@ -4066,7 +4066,7 @@ if (mcpReg.mcps.length === 0) {
 In `tests/supervibe-status.test.mjs`:
 
 ```javascript
-test('evolve-status: reports MCP registry state', () => {
+test('supervibe-status: reports MCP registry state', () => {
   const out = runStatus();
   assert.ok(/MCPs:/.test(out), 'should mention MCPs');
 });
@@ -4776,7 +4776,7 @@ async function main() {
       console.warn(`Failed to update ${file}: ${err.message}`);
     }
   }
-  console.log(`[evolve/effectiveness] updated ${updated} agent files from ${allInvocations.length} invocations`);
+  console.log(`[supervibe/effectiveness] updated ${updated} agent files from ${allInvocations.length} invocations`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -5018,7 +5018,7 @@ if (allInv.length < 10) {
 In `tests/supervibe-status.test.mjs`:
 
 ```javascript
-test('evolve-status: reports agent telemetry state', () => {
+test('supervibe-status: reports agent telemetry state', () => {
   const out = runStatus();
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');
 });
@@ -5967,7 +5967,7 @@ In `CHANGELOG.md`, prepend before v1.6.0 section:
 - `commands/supervibe-preview.md` — slash command
 - Process hardening: idle-shutdown after 30min, max 10 concurrent (`--force` override)
 - Auto-wiring: `prototype-builder` agent + `landing-page` skill + `interaction-design-patterns` skill auto-spawn previews
-- `evolve-status` reports running previews with URL/PID/age
+- `supervibe-status` reports running previews with URL/PID/age
 - SessionStart prunes stale registry entries
 
 ### Added — Strengthened Planning Skills (Phase E2, 6 skills)
