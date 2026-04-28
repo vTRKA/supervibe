@@ -1,6 +1,6 @@
 ---
 description: >-
-  Show what changed in Evolve since this project's last seen version. Reads
+  Show what changed in Supervibe since this project's last seen version. Reads
   CHANGELOG.md without truncation; emits structured breaking-change + migration
   sections; offers automatic migration plan if applicable. Triggers:
   'changelog', 'что нового', 'что изменилось', '/supervibe-changelog'.
@@ -8,7 +8,7 @@ description: >-
 
 # /supervibe-changelog
 
-Display CHANGELOG entries between the project's last-seen Evolve version and the currently installed version. Use when SessionStart shows `⬆ plugin upgraded X → Y`, or whenever the user wants to know what changed.
+Display CHANGELOG entries between the project's last-seen Supervibe version and the currently installed version. Use when SessionStart shows `⬆ plugin upgraded X → Y`, or whenever the user wants to know what changed.
 
 This command does NOT silently truncate. If the changelog is large, sections are paginated with explicit "see next page" pointers — never lossy summarization.
 

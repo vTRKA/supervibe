@@ -23,7 +23,7 @@ agents-attach:
   - supervibe:_core:root-cause-debugger
   # Meta
   - supervibe:_meta:rules-curator
-  - supervibe:_meta:evolve-orchestrator
+  - supervibe:_meta:supervibe-orchestrator
   # Product
   - supervibe:_product:product-manager
   - supervibe:_product:systems-analyst

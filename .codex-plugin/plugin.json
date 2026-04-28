@@ -30,7 +30,7 @@
     "capabilities": ["Interactive", "Write", "Read"],
     "websiteURL": "https://github.com/vTRKA/supervibe",
     "defaultPrompt": [
-      "Run /evolve-genesis to scaffold .claude/ for this project's stack.",
+      "Run /supervibe-genesis to scaffold .claude/ for this project's stack.",
       "Who calls processPayment? — show callers with file:line.",
       "Find prior decisions on idempotency in this repo's memory."
     ]

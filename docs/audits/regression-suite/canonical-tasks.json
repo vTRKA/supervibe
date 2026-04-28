@@ -29,7 +29,7 @@
     "Outline steps to safely rename `processPayment` to `processOrder`.",
     "Audit the `--callers` evidence for moving `agents/_design/creative-director.md` to a subdirectory.",
     "Plan extracting the WebSocket frame-parsing logic from feedback-channel.mjs into its own module.",
-    "Justify deleting the legacy `evolve-detect.mjs` script if zero callers found.",
+    "Justify deleting the legacy `supervibe-detect.mjs` script if zero callers found.",
     "Migrate `gray-matter` from devDependency to dependency; analyze blast radius.",
     "Refactor `apply-question-discipline.mjs` into a reusable lib module.",
     "Inline a single-call helper `derivePrototypeSlug` from `preview-static-server.mjs`.",

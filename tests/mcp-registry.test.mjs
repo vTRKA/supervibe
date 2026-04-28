@@ -8,7 +8,7 @@ import {
   REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/mcp-registry.mjs';
 
-const sandbox = join(tmpdir(), `evolve-mcp-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-mcp-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });

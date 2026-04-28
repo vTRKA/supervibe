@@ -1,11 +1,11 @@
 // Deterministic state detector for the /supervibe auto-router.
 //
-// Runs the 8 detection checks documented in commands/evolve.md as actual
+// Runs the 8 detection checks documented in commands/supervibe.md as actual
 // code instead of relying on the AI to interpret a procedure. Returns the
 // recommended next phase command + structured evidence for each signal.
 //
 // Used by:
-//   - scripts/supervibe-detect.mjs  (CLI wrapper, called from /evolve)
+//   - scripts/supervibe-detect.mjs  (CLI wrapper, called from /supervibe)
 //   - tests/supervibe-state-detector.test.mjs
 //
 // Every check is independent and failure-tolerant: a check that throws

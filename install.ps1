@@ -5,7 +5,7 @@
 #
 # Override defaults:
 #   $env:SUPERVIBE_REF = "v1.7.0"           # tag, branch, or commit
-#   $env:SUPERVIBE_REPO = "git@github.com:my-fork/evolve.git"
+#   $env:SUPERVIBE_REPO = "git@github.com:my-fork/supervibe.git"
 #
 # Idempotent — safe to re-run for upgrades.
 
@@ -16,14 +16,14 @@ $Ref             = if ($env:SUPERVIBE_REF)  { $env:SUPERVIBE_REF }  else { 'main
 $PluginName      = 'supervibe'
 $MarketplaceName = 'supervibe-marketplace'
 
-$LogDir = Join-Path $env:TEMP "evolve-install.$PID"
+$LogDir = Join-Path $env:TEMP "supervibe-install.$PID"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 trap { Remove-Item -Recurse -Force $LogDir -ErrorAction SilentlyContinue; break }
 
-function Say  { param($m) Write-Host "[evolve-install] $m" -ForegroundColor Cyan }
-function Ok   { param($m) Write-Host "[evolve-install] $m" -ForegroundColor Green }
-function Warn { param($m) Write-Host "[evolve-install] $m" -ForegroundColor Yellow }
-function Die  { param($m) Write-Host "[evolve-install] $m" -ForegroundColor Red; exit 1 }
+function Say  { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Cyan }
+function Ok   { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Green }
+function Warn { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Yellow }
+function Die  { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Red; exit 1 }
 
 # ---- preflight ----
 
@@ -270,7 +270,7 @@ Remove-Item -Recurse -Force $LogDir -ErrorAction SilentlyContinue
 
 Write-Host ''
 Write-Host '=================================================================' -ForegroundColor Green
-Write-Host "  Evolve v$InstalledVersion installed" -ForegroundColor Green
+Write-Host "  Supervibe v$InstalledVersion installed" -ForegroundColor Green
 Write-Host '=================================================================' -ForegroundColor Green
 Write-Host ''
 Write-Host "  Location:    $Target"
@@ -278,8 +278,8 @@ Write-Host "  CLIs wired:  $($ClisFound -join ', ')"
 Write-Host ''
 Write-Host '  Next steps:'
 Write-Host '    1. Restart your AI CLI so it picks up the plugin'
-Write-Host '    2. Open any project — you should see [evolve] banner lines on session start'
-Write-Host '    3. /evolve-genesis (in Claude Code) for first-time project scaffolding'
+Write-Host '    2. Open any project — you should see [supervibe] banner lines on session start'
+Write-Host '    3. /supervibe-genesis (in Claude Code) for first-time project scaffolding'
 Write-Host "    4. npm run supervibe:status (from $Target) for index health any time"
 Write-Host ''
 Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'

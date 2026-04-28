@@ -6,7 +6,7 @@
 #
 # Override defaults:
 #   SUPERVIBE_REF=v1.7.0           # tag, branch, or commit
-#   SUPERVIBE_REPO=git@github.com:my-fork/evolve.git
+#   SUPERVIBE_REPO=git@github.com:my-fork/supervibe.git
 #
 # What it does (idempotent — safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
@@ -14,7 +14,7 @@
 #   3. Runs npm install + npm run check
 #   4. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
-#        - Codex:   ~/.codex/plugins/evolve  (symlink to shared checkout)
+#        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
 #        - Gemini:  ~/.gemini/GEMINI.md      (idempotent include via marker)
 #   5. Prints next steps
 
@@ -36,10 +36,10 @@ else
   C_BLUE=''; C_GREEN=''; C_YELLOW=''; C_RED=''; C_RESET=''
 fi
 
-say() { printf '%b[evolve-install]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
-ok()  { printf '%b[evolve-install]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
-warn(){ printf '%b[evolve-install]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
-die() { printf '%b[evolve-install]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
+say() { printf '%b[supervibe-install]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
+ok()  { printf '%b[supervibe-install]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
+warn(){ printf '%b[supervibe-install]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
+die() { printf '%b[supervibe-install]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 
 # ---- preflight ----
 
@@ -278,8 +278,8 @@ ${C_GREEN}=================================================================${C_R
 
   Next steps:
     1. Restart your AI CLI so it picks up the plugin
-    2. Open any project — you should see [evolve] banner lines on session start
-    3. /evolve-genesis (in Claude Code) for first-time project scaffolding
+    2. Open any project — you should see [supervibe] banner lines on session start
+    3. /supervibe-genesis (in Claude Code) for first-time project scaffolding
     4. npm run supervibe:status (from $TARGET) for index health any time
 
   Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash

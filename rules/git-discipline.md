@@ -18,7 +18,7 @@ Concrete consequence of NOT following: lost commits (irrecoverable without reflo
 
 ## When this rule applies
 
-- ALL repos managed via `.claude/` Evolve workflow
+- ALL repos managed via `.claude/` Supervibe workflow
 - Any branch (main and feature alike — the rule prevents both push --force and stash)
 - Both interactive (developer) and automated (CI) contexts
 
