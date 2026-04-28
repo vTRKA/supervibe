@@ -20,6 +20,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 73 specialist 
 | 20 discipline rules | `use-codegraph-before-refactor`, `anti-hallucination`, `commit-attribution`, `no-half-finished`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/evolve-strengthen` with a user gate |
+| Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[evolve] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 

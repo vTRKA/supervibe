@@ -20,6 +20,7 @@
 | 20 правил-дисциплин | `use-codegraph-before-refactor`, `anti-hallucination`, `commit-attribution`, `no-half-finished` и другие |
 | Авто-переиндексация | PostToolUse hook плюс mtime-scan на старте сессии. Daemon `memory:watch` опционален |
 | Agent evolution loop | Telemetry, детекция underperformer'ов, `/evolve-strengthen` с user-gate |
+| Re-dispatch suggester | Когда Task завершается с confidence < 8.0, хук смотрит прошлые high-confidence runs на похожих задачах и печатает `[evolve] dispatch-hint:` с до 3 альтернативных агентов — никогда не запускает автоматически |
 | Live preview-server | `localhost:PORT` с SSE hot reload, idle-shutdown, лимитом серверов |
 | Multi-CLI | Один установщик настраивает Claude Code, Codex и Gemini |
 

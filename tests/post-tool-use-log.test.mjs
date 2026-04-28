@@ -5,9 +5,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
+import { AgentTaskStore } from '../scripts/lib/agent-task-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-hook-${Date.now()}`);
-const logPath = join(sandbox, '.claude', 'memory', 'agent-invocations.jsonl');
+const sandbox    = join(tmpdir(), `evolve-hook-${Date.now()}`);
+const logPath    = join(sandbox, '.claude', 'memory', 'agent-invocations.jsonl');
+const taskDbPath = join(sandbox, 'agent-tasks.db');
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
@@ -21,7 +23,11 @@ function runHook(input) {
     cwd: process.cwd(),
     input: JSON.stringify(input),
     encoding: 'utf8',
-    env: { ...process.env, EVOLVE_INVOCATION_LOG: logPath },
+    env: {
+      ...process.env,
+      EVOLVE_INVOCATION_LOG: logPath,
+      EVOLVE_AGENT_TASK_DB: taskDbPath,
+    },
   });
 }
 
@@ -94,4 +100,70 @@ test('hook: extracts override marker', () => {
   const entries = readEntries();
   const last = entries[entries.length - 1];
   assert.strictEqual(last.override, true);
+});
+
+test('hook: also writes Task to agent-tasks.db (SQLite mirror)', async () => {
+  runHook({
+    tool_name: 'Task',
+    tool_input: { subagent_type: 'mirror-agent', description: 'unique-marker-mirror task content' },
+    tool_response: { content: 'Done. Confidence: 9.0/10' },
+  });
+  const store = new AgentTaskStore(sandbox, { dbPath: taskDbPath });
+  await store.init();
+  const hits = store.findSimilar('unique-marker-mirror', { minConfidence: 8.0 });
+  store.close();
+  assert.ok(hits.some(h => h.agent_id === 'mirror-agent'),
+    `expected SQLite mirror to contain mirror-agent; got: ${JSON.stringify(hits)}`);
+});
+
+test('hook: emits dispatch-hint when confidence < 8.0 and history supports it', async () => {
+  // Pre-seed the SQLite mirror with strong-agent's track record on similar tasks
+  const seedStore = new AgentTaskStore(sandbox, { dbPath: taskDbPath });
+  await seedStore.init();
+  for (let i = 0; i < 4; i++) {
+    seedStore.addTask({
+      agent_id: 'strong-agent',
+      task_summary: `kafka rebalance unique-marker-redispatch fix ${i}`,
+      confidence_score: 9.4,
+    });
+  }
+  seedStore.close();
+
+  // Now run a hook with low confidence on the SAME task topic
+  const out = runHook({
+    tool_name: 'Task',
+    tool_input: { subagent_type: 'failing-agent', description: 'kafka rebalance unique-marker-redispatch issue' },
+    tool_response: { content: 'Done. Confidence: 7.2/10' },
+  });
+
+  assert.match(out, /\[evolve\] dispatch-hint:/);
+  assert.match(out, /strong-agent/);
+  assert.match(out, /consider re-running via Task subagent_type=strong-agent/);
+});
+
+test('hook: does NOT emit dispatch-hint on high confidence', () => {
+  const out = runHook({
+    tool_name: 'Task',
+    tool_input: { subagent_type: 'happy-agent', description: 'happy path no hint expected' },
+    tool_response: { content: 'Done. Confidence: 9.5/10' },
+  });
+  assert.doesNotMatch(out, /dispatch-hint/);
+});
+
+test('hook: does NOT emit dispatch-hint when override=true even on low score', () => {
+  const out = runHook({
+    tool_name: 'Task',
+    tool_input: { subagent_type: 'override-low', description: 'low score but override applied' },
+    tool_response: { content: 'Done. Confidence: 7.5/10. override: true' },
+  });
+  assert.doesNotMatch(out, /dispatch-hint/);
+});
+
+test('hook: silent on low score when there is no historical match', () => {
+  const out = runHook({
+    tool_name: 'Task',
+    tool_input: { subagent_type: 'cold-start', description: 'completely-novel-topic-that-has-no-history' },
+    tool_response: { content: 'Done. Confidence: 7.0/10' },
+  });
+  assert.doesNotMatch(out, /dispatch-hint/);
 });

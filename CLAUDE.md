@@ -186,6 +186,7 @@ Plugin tracks every agent invocation and detects degradation:
 4. **Underperformer detector** (`scripts/lib/underperformer-detector.mjs`) — flags agents with `avg-confidence < 8.5` OR rising override-rate trend (Δ ≥ 40% across recent window).
 5. **SessionStart surface** — banner shows flagged agents + recommends `/evolve-strengthen`.
 6. **Auto-strengthen trigger** (`scripts/lib/auto-strengthen-trigger.mjs`) — `/evolve-strengthen` (no args) reads suggestions, asks user confirmation, dispatches strengthen sequentially per agent with diff-gate.
+7. **Re-dispatch suggester** (`scripts/lib/agent-task-store.mjs` + `scripts/lib/dispatch-suggester.mjs`) — every Task call mirrors into `.claude/memory/agent-tasks.db` (SQLite + FTS5). When a Task finishes with `confidence < 8.0` and no override, the hook queries the mirror for similar past tasks where another agent scored ≥8.5 and prints a `[evolve] dispatch-hint:` system-reminder with up to 3 alternative agents (avg score + sample task). Requires ≥3 historical samples — silent on cold-start. Threshold + sample floor configurable via the suggester's options object.
 
 **Discipline:**
 - Underperformers reviewed at every SessionStart
