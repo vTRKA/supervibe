@@ -38,7 +38,7 @@ Explicitly out of scope (deferred):
 ### Created
 
 ```
-evolve/
+supervibe/
 ├── grammars/                                  # NEW — bundled WASM grammars (LFS for big ones)
 │   ├── tree-sitter-typescript.wasm
 │   ├── tree-sitter-tsx.wasm
@@ -67,13 +67,13 @@ evolve/
 │   │   └── grammar-loader.mjs                 # NEW — lazy WASM grammar loading + cache
 │   ├── build-code-index.mjs                   # MODIFIED — add graph extraction phase
 │   ├── search-code.mjs                        # MODIFIED — add --callers/--callees/--neighbors
-│   ├── evolve-status.mjs                      # NEW — `/supervibe-status` CLI for user
+│   ├── supervibe-status.mjs                      # NEW — `/supervibe-status` CLI for user
 │   └── session-start-check.mjs                # MODIFIED — auto-refresh code index + graph
 │
 ├── tests/
 │   ├── code-graph.test.mjs                    # NEW — symbol + edge extraction across 4 langs
 │   ├── code-graph-queries.test.mjs            # NEW — callers/callees/BFS correctness
-│   └── evolve-status.test.mjs                 # NEW — status output format
+│   └── supervibe-status.test.mjs                 # NEW — status output format
 │
 └── (existing)
 ```
@@ -1026,7 +1026,7 @@ import { tmpdir } from 'node:os';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
 import { findCallers, findCallees, neighborhood } from '../scripts/lib/code-graph-queries.mjs';
 
-const sandbox = join(tmpdir(), `evolve-graph-q-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-graph-q-${Date.now()}`);
 let store;
 
 before(async () => {
@@ -1469,7 +1469,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { execSync } from 'node:child_process';
 
-test('evolve-status: prints index health summary', () => {
+test('supervibe-status: prints index health summary', () => {
   const out = execSync('node scripts/supervibe-status.mjs --no-color', {
     cwd: process.cwd(), encoding: 'utf8'
   });
@@ -1485,7 +1485,7 @@ Create `scripts/supervibe-status.mjs`:
 
 ```javascript
 #!/usr/bin/env node
-// Prints comprehensive status of evolve indexes (code RAG + graph + memory).
+// Prints comprehensive status of supervibe indexes (code RAG + graph + memory).
 // Used by /supervibe-status command and for user confidence checks.
 
 import { CodeStore } from './lib/code-store.mjs';
@@ -1559,7 +1559,7 @@ async function main() {
   console.log(color('○ File watcher: run `npm run memory:watch` for auto-reindex', 'dim'));
 }
 
-main().catch(err => { console.error('evolve-status error:', err); process.exit(1); });
+main().catch(err => { console.error('supervibe-status error:', err); process.exit(1); });
 ```
 
 - [ ] **Step 3: Add npm script**
@@ -2368,7 +2368,7 @@ getGrammarHealth() {
 }
 ```
 
-- [ ] **Step 2: Surface in `evolve-status.mjs`**
+- [ ] **Step 2: Surface in `supervibe-status.mjs`**
 
 After existing graph stats output, append:
 
@@ -2401,7 +2401,7 @@ const heartbeatTimer = setInterval(async () => {
 // Clean up in stop(): clearInterval(heartbeatTimer); rm(HEARTBEAT_FILE)
 ```
 
-In `evolve-status.mjs`:
+In `supervibe-status.mjs`:
 
 ```javascript
 const heartbeatPath = join(PROJECT_ROOT, '.claude', 'memory', '.watcher-heartbeat');
@@ -2670,7 +2670,7 @@ export async function getParser(lang) {
       if (check.reason === 'pointer-or-truncated') _pointerLangs.add(lang);
       const verbose = process.env.EVOLVE_VERBOSE === '1';
       if (verbose) {
-        console.warn(`[evolve/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Run 'git lfs pull'.`);
+        console.warn(`[supervibe/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Run 'git lfs pull'.`);
       }
       throw new Error(`Grammar file unusable for ${lang}: ${check.reason} at ${wasmPath}`);
     }
@@ -2747,7 +2747,7 @@ test('grammar-loader: getBrokenLanguages reports state', async () => {
 });
 ```
 
-- [ ] **Step 4: Wire into `evolve-status.mjs` (D19 already added grammar health, augment it)**
+- [ ] **Step 4: Wire into `supervibe-status.mjs` (D19 already added grammar health, augment it)**
 
 In `scripts/supervibe-status.mjs`, after the `getGrammarHealth()` reporting block, add:
 

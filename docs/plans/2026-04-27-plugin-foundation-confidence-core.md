@@ -22,7 +22,7 @@
 ### Created (new files)
 
 ```
-evolve/
+supervibe/
 ├── .claude-plugin/
 │   └── plugin.json                          # canonical plugin manifest (NOT at repo root)
 ├── .nvmrc                                   # node version pin
@@ -61,7 +61,7 @@ evolve/
 │   └── verification/SKILL.md
 │
 ├── commands/                                # filename = command name (no spaces)
-│   ├── evolve.md                            # /evolve (auto-detect)
+│   ├── supervibe.md                            # /supervibe (auto-detect)
 │   ├── evolve-genesis.md                    # STUB (Phase 5)
 │   ├── evolve-audit.md                      # STUB (Phase 6)
 │   ├── evolve-strengthen.md                 # STUB (Phase 6)
@@ -114,7 +114,7 @@ evolve/
 
 ### Untouched (existing artifact, kept for reference)
 
-- `.claude/skills/evolve/SKILL.md` — original v1.0 evolve skill, used while we build v2.0; deprecated and removed in Phase 8
+- `.claude/skills/supervibe/SKILL.md` — original v1.0 evolve skill, used while we build v2.0; deprecated and removed in Phase 8
 - The repo's own `.claude/` directory acts as both (a) project-level Claude config when developing the plugin and (b) where `confidence-log.jsonl` lands when overrides are exercised during dev
 
 ---
@@ -130,7 +130,7 @@ evolve/
 | **5: Discovery & Scaffolding** | Stack-discovery, genesis, prototype workflow, brandbook workflow, 3 full stack-packs | 23 (20 + 103.5 + 115b + 115c) | **4 skills (added supervibe:brandbook)**, 6 questionnaires, 3 full stack-packs + 5 atomic packs, templates dir with explicit per-stack deny-list enumeration (laravel/nextjs/postgres/redis/fastapi/django/rails) | 5-6 weeks | Phase 4 |
 | **6: Self-Evolution** | audit/strengthen/adapt/evaluate/sync-rules + hooks | 12 | 6 evolution skills, 3 hook scripts, hooks.json, effectiveness journal, wired stub commands | 3-4 weeks | Phase 5 |
 | **7: Orchestration & Research** | evolve-orchestrator agent + 5 research agents + research-cache + MCP integration | 10 | orchestrator procedure, 5 researcher implementations, research-cache, MCP wiring, seo-audit skill | 2-3 weeks | Phase 6 |
-| **8: Polish & v1.0 Release** | End-to-end smoke on empty repo, demo feature, docs, deprecate old evolve skill, framework-self ≥9 | 8 | docs (getting-started, skill/agent/rule authoring), CHANGELOG v1.0, removal of `.claude/skills/evolve/`, GitHub release | 1-2 weeks | Phase 7 |
+| **8: Polish & v1.0 Release** | End-to-end smoke on empty repo, demo feature, docs, deprecate old supervibe skill, framework-self ≥9 | 8 | docs (getting-started, skill/agent/rule authoring), CHANGELOG v1.0, removal of `.claude/skills/supervibe/`, GitHub release | 1-2 weeks | Phase 7 |
 | **TOTAL** | All 22 original requirements covered, **all 10 audit-identified gaps closed across 3 audit rounds** | **161** (150 base + 11 amendments: round-1: 17.5, 17.6; round-2: 51-update, 67.5, 89.5, 92.5a, 92.5b, 115b, 115c; round-3: 4.5, 103.5, 117-extension, 122-extension) | Full plugin v1.0 | **25-33 weeks (~6-8 months)** | — |
 
 ### Per-phase confidence-gate
@@ -2557,7 +2557,7 @@ git commit -m "feat(commands): add /supervibe-override escape hatch with audit l
 ## Task 13: Write stub commands for genesis/audit/strengthen/adapt/evaluate
 
 **Files:**
-- Create: `commands/evolve.md`
+- Create: `commands/supervibe.md`
 - Create: `commands/supervibe-genesis.md`
 - Create: `commands/supervibe-audit.md`
 - Create: `commands/supervibe-strengthen.md`
@@ -2566,7 +2566,7 @@ git commit -m "feat(commands): add /supervibe-override escape hatch with audit l
 
 - [ ] **Step 1: Create the auto-detect dispatcher /evolve**
 
-Create `commands/evolve.md`:
+Create `commands/supervibe.md`:
 
 ```markdown
 ---
@@ -2703,8 +2703,8 @@ Expected: 8 lines starting with "OK" (evolve, evolve-genesis, evolve-audit, evol
 - [ ] **Step 8: Commit**
 
 ```bash
-git add commands/evolve.md commands/supervibe-genesis.md commands/supervibe-audit.md commands/supervibe-strengthen.md commands/supervibe-adapt.md commands/supervibe-evaluate.md
-git commit -m "feat(commands): add /evolve dispatcher and stubs for genesis/audit/strengthen/adapt/evaluate"
+git add commands/supervibe.md commands/supervibe-genesis.md commands/supervibe-audit.md commands/supervibe-strengthen.md commands/supervibe-adapt.md commands/supervibe-evaluate.md
+git commit -m "feat(commands): add /supervibe dispatcher and stubs for genesis/audit/strengthen/adapt/evaluate"
 ```
 
 ---
@@ -2724,7 +2724,7 @@ Create `README.md`:
 
 > Claude Code plugin: specialist agents, confidence engine, stack-aware scaffolding.
 
-**Status:** Alpha (v0.1.0). Phase 0+1 only — plugin foundation and confidence engine. See `docs/specs/2026-04-27-evolve-framework-design.md` for the full roadmap.
+**Status:** Alpha (v0.1.0). Phase 0+1 only — plugin foundation and confidence engine. See `docs/specs/2026-04-27-supervibe-framework-design.md` for the full roadmap.
 
 ## What's in v0.1.0
 
@@ -2759,7 +2759,7 @@ Individual scripts:
 
 ## Repository structure
 
-See `docs/specs/2026-04-27-evolve-framework-design.md` Section 1 for the full directory layout.
+See `docs/specs/2026-04-27-supervibe-framework-design.md` Section 1 for the full directory layout.
 
 ## Contributing
 
@@ -2934,7 +2934,7 @@ Expected score: ≥9/10. If <9, identify the failed dimension and amend the plan
 
 - [ ] **Step 6: Self-score the META spec**
 
-Invoke `/supervibe-score requirements-spec docs/specs/2026-04-27-evolve-framework-design.md`
+Invoke `/supervibe-score requirements-spec docs/specs/2026-04-27-supervibe-framework-design.md`
 Expected score: ≥9/10. If <9, amend the spec before tagging.
 
 - [ ] **Step 7: Final commit and v0.1.0 tag**
@@ -3020,7 +3020,7 @@ git tag --force v0.1.0   # move tag to include CHANGELOG (if already tagged)
 
 ```bash
 mkdir -p agents rules stack-packs questionnaires references
-echo "# Reserved for v1.x — agents land here in Phase 3-4 (see docs/specs/2026-04-27-evolve-framework-design.md)" > agents/.gitkeep
+echo "# Reserved for v1.x — agents land here in Phase 3-4 (see docs/specs/2026-04-27-supervibe-framework-design.md)" > agents/.gitkeep
 echo "# Reserved for v1.x — rules land here in Phase 3 (see spec)" > rules/.gitkeep
 echo "# Reserved for v1.x — stack packs land here in Phase 5 (see spec)" > stack-packs/.gitkeep
 echo "# Reserved for v1.x — discovery questionnaires land here in Phase 5 (see spec)" > questionnaires/.gitkeep
@@ -3908,7 +3908,7 @@ Each: ≥9 on agent-quality, lint+validate pass, commit `feat(agents): add super
 ### Tasks 49-50: _meta agents (2)
 
 - **Task 49: rules-curator** → `agents/_meta/rules-curator.md` — Maintains `.claude/rules/*` of target project. Source: port + adapt `product-framework/agents/rules-curator.md` (13 KB reference, well-developed).
-- **Task 50: evolve-orchestrator** → `agents/_meta/supervibe-orchestrator.md` — File created with placeholder Procedure (full implementation in Phase 7). Frontmatter complete; Procedure section says "Implementation lands in Phase 7 — see docs/specs/2026-04-27-evolve-framework-design.md Section 7".
+- **Task 50: evolve-orchestrator** → `agents/_meta/supervibe-orchestrator.md` — File created with placeholder Procedure (full implementation in Phase 7). Frontmatter complete; Procedure section says "Implementation lands in Phase 7 — see docs/specs/2026-04-27-supervibe-framework-design.md Section 7".
 
 Each: ≥9 (orchestrator gets ≥7 acceptable for Phase 3, raised to ≥9 in Phase 7).
 
@@ -4255,7 +4255,7 @@ Each script: unit-tested, ≥9 quality.
 ### Task 131: Wire stub commands to real skills
 
 - **Files:** Modify `commands/supervibe-genesis.md`, `evolve-audit.md`, `evolve-strengthen.md`, `evolve-adapt.md`, `evolve-evaluate.md`
-- **What:** Replace each stub message with real procedure invoking the corresponding skill. Update `commands/evolve.md` (auto-detect dispatcher) to actually run the detection logic now that all backing skills exist.
+- **What:** Replace each stub message with real procedure invoking the corresponding skill. Update `commands/supervibe.md` (auto-detect dispatcher) to actually run the detection logic now that all backing skills exist.
 - **Verification:** All 5 commands no longer say "STUB"; manual test invokes real flow.
 - **Commit:** `feat(commands): wire genesis/audit/strengthen/adapt/evaluate to real skills (no more stubs)`
 
@@ -4325,7 +4325,7 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 
 # Phase 8: Polish & v1.0 Release (Tasks 143-150)
 
-**Phase goal:** End-to-end v1.0 acceptance test, documentation, deprecation of old `.claude/skills/evolve/`, official release.
+**Phase goal:** End-to-end v1.0 acceptance test, documentation, deprecation of old `.claude/skills/supervibe/`, official release.
 
 **Phase confidence target:** framework-self ≥9 across ALL dimensions. v1.0 ship criteria all met.
 
@@ -4365,12 +4365,12 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 - **What:** How to write a new rule (Why/When/What/Examples/Enforcement/Related), scoring against rule-quality, applies-to scoping, mandatory vs advisory.
 - **Commit:** `docs: add rule-authoring guide`
 
-### Task 148: Deprecate and remove old `.claude/skills/evolve/`
+### Task 148: Deprecate and remove old `.claude/skills/supervibe/`
 
-- **Files:** Delete `.claude/skills/evolve/SKILL.md`. Document in CHANGELOG.
+- **Files:** Delete `.claude/skills/supervibe/SKILL.md`. Document in CHANGELOG.
 - **What:** Old v1.0 skill no longer needed — full replacement is the plugin. Keep one git commit for archaeology, then remove.
 - **Verification:** `npm run check` still passes after removal
-- **Commit:** `chore(deprecate): remove legacy .claude/skills/evolve/ — replaced by plugin`
+- **Commit:** `chore(deprecate): remove legacy .claude/skills/supervibe/ — replaced by plugin`
 
 ### Task 149: Final framework-self scoring
 
@@ -4432,7 +4432,7 @@ Each v1.x release follows the same pattern: write stack-specific agents (Phase 4
 | Section 1 — `.claude-plugin/plugin.json` (correct location and shape) | Task 1 (rewritten after superpowers verification) |
 | Section 1 — LICENSE file | Task 1 |
 | Section 1 — registry.yaml format and Windows-safe paths | Task 8 (with fileURLToPath fix) |
-| Section 1 — commands map (`/supervibe-X` not `/evolve X`) | Tasks 11, 12, 13 (hyphenated) |
+| Section 1 — commands map (`/supervibe-X` not `/supervibe X`) | Tasks 11, 12, 13 (hyphenated) |
 | Section 1 — empty placeholder dirs (agents/rules/stack-packs/questionnaires/references) | Task 16 |
 | Section 2 — 10 rubrics | Tasks 2, 3, 4 |
 | Section 2 — confidence-scoring skill | Task 10 |

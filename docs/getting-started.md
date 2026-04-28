@@ -25,7 +25,7 @@ If a marketplace publishes Supervibe:
 # /plugin marketplace add <supervibe-marketplace-url>
 
 # Install plugin
-# /plugin install evolve@supervibe-marketplace
+# /plugin install supervibe@supervibe-marketplace
 ```
 
 ### Option B — Local install (current; for early adopters and developers)
@@ -271,8 +271,8 @@ npm run code:index -- --since=HEAD~100   # only files changed in last 100 commit
 npm run supervibe:preview -- --root mockups/checkout
 
 # Output:
-# [evolve-preview] checkout → http://localhost:3047
-# [evolve-preview] hot-reload: on
+# [supervibe-preview] checkout → http://localhost:3047
+# [supervibe-preview] hot-reload: on
 ```
 
 **Список запущенных:**
@@ -351,7 +351,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/1.2.0/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
-4. Check `~/.claude/plugins/installed_plugins.json` lists evolve
+4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
 
 ### Agents not loading
 
@@ -390,7 +390,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 rm -rf ~/.claude/plugins/cache/local/supervibe
 
 # Remove from installed_plugins.json (manual edit OR Claude Code UI)
-# /plugin uninstall evolve   # if marketplace install was used
+# /plugin uninstall supervibe   # if marketplace install was used
 
 # Per-project cleanup (only if removing Supervibe from a specific project):
 rm -rf <project>/.claude/agents
@@ -425,5 +425,5 @@ rm -rf <project>/.claude/skills
 - `docs/skill-authoring.md` — write a new skill
 - `docs/agent-authoring.md` — write a new agent
 - `docs/rule-authoring.md` — write a new rule
-- `docs/specs/2026-04-27-evolve-framework-design.md` — full architecture spec
+- `docs/specs/2026-04-27-supervibe-framework-design.md` — full architecture spec
 - GitHub issues for support

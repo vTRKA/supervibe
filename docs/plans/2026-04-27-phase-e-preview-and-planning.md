@@ -24,7 +24,7 @@
 ### Phase E1 — Preview Server (NEW)
 
 ```
-evolve/
+supervibe/
 ├── scripts/
 │   ├── lib/
 │   │   ├── preview-server-manager.mjs   # NEW — port alloc, process tracking, registry
@@ -38,7 +38,7 @@ evolve/
 │       └── SKILL.md                     # NEW — methodology agents invoke
 │
 ├── commands/
-│   └── evolve-preview.md                # NEW — slash command for users
+│   └── supervibe-preview.md                # NEW — slash command for users
 │
 └── tests/
     ├── preview-server-manager.test.mjs  # NEW — port alloc, registry
@@ -49,7 +49,7 @@ evolve/
 ### Phase E2 — Strengthen Planning Skills (MODIFY existing)
 
 ```
-evolve/
+supervibe/
 ├── skills/
 │   ├── brainstorming/SKILL.md           # MODIFY — strengthen
 │   ├── writing-plans/SKILL.md           # MODIFY
@@ -70,7 +70,7 @@ evolve/
 ### Phase E3 — Integration
 
 ```
-evolve/
+supervibe/
 ├── agents/
 │   ├── _design/prototype-builder.md     # MODIFY — wire preview-server invocation
 │   └── _design/ux-ui-designer.md        # MODIFY — wire preview hand-off
@@ -148,7 +148,7 @@ export function isHtml(filePath) {
 - [ ] **Step 2: Smoke test**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings -e "
+cd "D:/ggsel projects/supervibe" && node --no-warnings -e "
 import('./scripts/lib/preview-mime.mjs').then(m => {
   console.log(m.mimeFor('foo.html'));   // text/html; charset=utf-8
   console.log(m.mimeFor('foo.css'));    // text/css; charset=utf-8
@@ -243,7 +243,7 @@ test('killServer: returns false for non-existent port', async () => {
 - [ ] **Step 2: Run failing tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-server-manager.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-server-manager.test.mjs 2>&1 | tail -10
 ```
 
 Expected: FAIL — module not found.
@@ -395,7 +395,7 @@ export async function killAllServers() {
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-server-manager.test.mjs 2>&1 | tail -15
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-server-manager.test.mjs 2>&1 | tail -15
 ```
 
 Expected: 6 tests pass.
@@ -532,7 +532,7 @@ test('server.broadcastReload pushes data to SSE clients', async () => {
 - [ ] **Step 2: Run failing tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -10
 ```
 
 Expected: FAIL — module not found.
@@ -711,7 +711,7 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1' }) 
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -15
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -15
 ```
 
 Expected: 8 tests pass.
@@ -807,7 +807,7 @@ test('attachHotReload: returns watcher with watching list', async () => {
 - [ ] **Step 2: Run failing tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-hot-reload.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-hot-reload.test.mjs 2>&1 | tail -10
 ```
 
 Expected: FAIL — module not found.
@@ -874,7 +874,7 @@ export async function attachHotReload({ root, server, debounceMs = DEFAULT_DEBOU
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-hot-reload.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-hot-reload.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 3 tests pass.
@@ -1057,7 +1057,7 @@ Edit `knip.json` `entry` array, add: `"scripts/preview-server.mjs"`.
 - [ ] **Step 4: Manual smoke test**
 
 ```bash
-cd "D:/ggsel projects/evolve" && mkdir -p /tmp/test-mockup && echo '<html><body><h1>Hello Preview</h1></body></html>' > /tmp/test-mockup/index.html
+cd "D:/ggsel projects/supervibe" && mkdir -p /tmp/test-mockup && echo '<html><body><h1>Hello Preview</h1></body></html>' > /tmp/test-mockup/index.html
 
 # Start in background
 node scripts/preview-server.mjs --root /tmp/test-mockup --port 3047 &
@@ -1208,7 +1208,7 @@ Should I capture a screenshot for the agent output?
 - [ ] **Step 2: Validate**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run lint:descriptions 2>&1 | grep preview-server
+cd "D:/ggsel projects/supervibe" && npm run lint:descriptions 2>&1 | grep preview-server
 npm run validate:frontmatter 2>&1 | grep preview-server
 ```
 
@@ -1269,7 +1269,7 @@ User-facing command to manage preview servers.
 - [ ] **Step 2: Validate command frontmatter**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run check 2>&1 | tail -5
+cd "D:/ggsel projects/supervibe" && npm run check 2>&1 | tail -5
 ```
 
 Expected: 95+/95+ tests pass (no regression).
@@ -1319,7 +1319,7 @@ If task is non-visual (e.g., design tokens only): explicitly state "Preview: N/A
 - [ ] **Step 2: Verify line count + frontmatter**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l agents/_design/prototype-builder.md
+cd "D:/ggsel projects/supervibe" && wc -l agents/_design/prototype-builder.md
 npm run validate:frontmatter | grep prototype-builder
 ```
 
@@ -1361,7 +1361,7 @@ In `skills/interaction-design-patterns/SKILL.md` `## Procedure`, append same ste
 - [ ] **Step 3: Validate**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run lint:descriptions; npm run validate:frontmatter | grep -E "landing-page|interaction-design"
+cd "D:/ggsel projects/supervibe" && npm run lint:descriptions; npm run validate:frontmatter | grep -E "landing-page|interaction-design"
 ```
 
 - [ ] **Step 4: Commit**
@@ -1373,7 +1373,7 @@ git commit -m "feat(skills): landing-page + interaction-design-patterns auto-spa
 
 ---
 
-### Task E1.10: `evolve-status.mjs` surfaces running preview servers
+### Task E1.10: `supervibe-status.mjs` surfaces running preview servers
 
 **Files:**
 - Modify: `scripts/supervibe-status.mjs`
@@ -1421,7 +1421,7 @@ test('evolve-status: reports preview server state', () => {
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 7 tests pass (was 6, added 1).
@@ -1429,7 +1429,7 @@ Expected: 7 tests pass (was 6, added 1).
 - [ ] **Step 4: Manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run supervibe:status | tail -5
+cd "D:/ggsel projects/supervibe" && npm run supervibe:status | tail -5
 ```
 
 Expected: line "Preview servers: none running" (since no servers active during status call).
@@ -1469,7 +1469,7 @@ await pruneStalePreviewServers();
 - [ ] **Step 2: Manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node scripts/session-start-check.mjs 2>&1 | tail -5
+cd "D:/ggsel projects/supervibe" && node scripts/session-start-check.mjs 2>&1 | tail -5
 ```
 
 Expected: no errors; existing banner still appears.
@@ -1580,7 +1580,7 @@ test('server reports active SSE clients count', async () => {
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/preview-static-server.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 10 tests pass (was 8, added 2).
@@ -1651,7 +1651,7 @@ test('listServers handles many entries without performance issues', async () => 
 - [ ] **Step 4: Manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve"
+cd "D:/ggsel projects/supervibe"
 # Start 10 servers, then try 11th — should be rejected
 for i in 1 2 3 4 5 6 7 8 9 10; do
   node scripts/preview-server.mjs --root /tmp --port $((3050+i)) &
@@ -1843,7 +1843,7 @@ Required sections (in order):
 - [ ] **Step 2: Verify size and frontmatter**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/brainstorming/SKILL.md
+cd "D:/ggsel projects/supervibe" && wc -l skills/brainstorming/SKILL.md
 npm run lint:descriptions | grep brainstorming
 npm run validate:frontmatter | grep brainstorming
 ```
@@ -2039,7 +2039,7 @@ Required at end:
 - [ ] **Step 2: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/writing-plans/SKILL.md
+cd "D:/ggsel projects/supervibe" && wc -l skills/writing-plans/SKILL.md
 npm run validate:frontmatter | grep writing-plans
 ```
 
@@ -2219,7 +2219,7 @@ Required sections (in order):
 - [ ] **Step 2: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/prd/SKILL.md && npm run validate:frontmatter | grep prd
+cd "D:/ggsel projects/supervibe" && wc -l skills/prd/SKILL.md && npm run validate:frontmatter | grep prd
 ```
 
 - [ ] **Step 3: Commit**
@@ -2379,7 +2379,7 @@ Required sections:
 - [ ] **Step 2: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/adr/SKILL.md && npm run validate:frontmatter | grep adr
+cd "D:/ggsel projects/supervibe" && wc -l skills/adr/SKILL.md && npm run validate:frontmatter | grep adr
 ```
 
 - [ ] **Step 3: Commit**
@@ -2546,7 +2546,7 @@ Required sections:
 - [ ] **Step 2: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/requirements-intake/SKILL.md && npm run validate:frontmatter | grep requirements-intake
+cd "D:/ggsel projects/supervibe" && wc -l skills/requirements-intake/SKILL.md && npm run validate:frontmatter | grep requirements-intake
 ```
 
 - [ ] **Step 3: Commit**
@@ -2702,7 +2702,7 @@ Required sections:
 - [ ] **Step 2: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l skills/explore-alternatives/SKILL.md && npm run validate:frontmatter | grep explore-alternatives
+cd "D:/ggsel projects/supervibe" && wc -l skills/explore-alternatives/SKILL.md && npm run validate:frontmatter | grep explore-alternatives
 ```
 
 - [ ] **Step 3: Commit**
@@ -3403,7 +3403,7 @@ Create `docs/templates/intake-template.md`:
 - [ ] **Step 7: Verify all 6 templates exist**
 
 ```bash
-cd "D:/ggsel projects/evolve" && ls docs/templates/
+cd "D:/ggsel projects/supervibe" && ls docs/templates/
 ```
 
 Expected: 6 files.
@@ -3480,7 +3480,7 @@ These are skeletons — copy-paste and fill in. Skills reference them and verify
 - [ ] **Step 3: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l CLAUDE.md
+cd "D:/ggsel projects/supervibe" && wc -l CLAUDE.md
 node -e "console.log('OK')" 2>&1
 ```
 
@@ -3599,7 +3599,7 @@ After Preview section:
 - [ ] **Step 4: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l README.md docs/getting-started.md
+cd "D:/ggsel projects/supervibe" && wc -l README.md docs/getting-started.md
 ```
 
 - [ ] **Step 5: Commit**
@@ -3698,7 +3698,7 @@ test('discoverMcps: no config file → empty registry, no error', async () => {
 - [ ] **Step 2: Run failing tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/mcp-registry.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/mcp-registry.test.mjs 2>&1 | tail -10
 ```
 
 Expected: FAIL — module not found.
@@ -3837,7 +3837,7 @@ console.log(`Registry: ${reg.mcps.length} MCPs, updated ${reg.updatedAt || 'neve
 - [ ] **Step 5: Add to knip + run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/mcp-registry.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/mcp-registry.test.mjs 2>&1 | tail -10
 ```
 
 Edit `knip.json` `entry` array, add: `"scripts/discover-mcps.mjs"`.
@@ -3881,7 +3881,7 @@ await refreshMcpRegistry();
 - [ ] **Step 2: Manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node scripts/session-start-check.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node scripts/session-start-check.mjs 2>&1 | tail -10
 ```
 
 Expected: line about MCPs detected (count + names).
@@ -3969,7 +3969,7 @@ Returns:
 - [ ] **Step 2: Validate**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run lint:descriptions | grep mcp-discovery
+cd "D:/ggsel projects/supervibe" && npm run lint:descriptions | grep mcp-discovery
 npm run validate:frontmatter | grep mcp-discovery
 ```
 
@@ -4023,7 +4023,7 @@ N. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=
 - [ ] **Step 3: Validate**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run validate:frontmatter | grep -E "best-practices-researcher|competitive-design-researcher|dependency-researcher|security-researcher|infra-pattern-researcher|ux-ui-designer|prototype-builder"
+cd "D:/ggsel projects/supervibe" && npm run validate:frontmatter | grep -E "best-practices-researcher|competitive-design-researcher|dependency-researcher|security-researcher|infra-pattern-researcher|ux-ui-designer|prototype-builder"
 ```
 
 All must show OK.
@@ -4075,7 +4075,7 @@ test('evolve-status: reports MCP registry state', () => {
 - [ ] **Step 3: Run tests + manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
 npm run supervibe:status | tail -10
 ```
 
@@ -4427,7 +4427,7 @@ After Troubleshooting section, add:
 Пользователь: "Добавь endpoint для создания заказа с idempotency"
 
 # Под капотом происходит:
-1. /evolve auto-detects stack=laravel
+1. /supervibe auto-detects stack=laravel
 2. Invokes supervibe:project-memory — ищет past idempotency решения
 3. Invokes supervibe:code-search --query "idempotency redis" — находит pattern
 4. Invokes laravel-developer agent с pre-task graph check
@@ -4504,7 +4504,7 @@ After Troubleshooting section, add:
 - [ ] **Step 4: Verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l README.md
+cd "D:/ggsel projects/supervibe" && wc -l README.md
 ```
 
 - [ ] **Step 5: Commit**
@@ -4645,7 +4645,7 @@ export async function readInvocations({ agent_id = null, since = null, limit = 1
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/agent-invocation-logger.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/agent-invocation-logger.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 3 tests pass.
@@ -4670,7 +4670,7 @@ git commit -m "feat(evolution): structured agent-invocation JSONL log + helpers"
 - [ ] **Step 1: Inspect existing script**
 
 ```bash
-cd "D:/ggsel projects/evolve" && wc -l scripts/effectiveness-tracker.mjs
+cd "D:/ggsel projects/supervibe" && wc -l scripts/effectiveness-tracker.mjs
 cat scripts/effectiveness-tracker.mjs | head -30
 ```
 
@@ -4816,7 +4816,7 @@ test('aggregateForAgent: returns null for empty list', () => {
 - [ ] **Step 4: Run tests + manual run**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/effectiveness-tracker.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/effectiveness-tracker.test.mjs 2>&1 | tail -10
 node scripts/effectiveness-tracker.mjs
 ```
 
@@ -4944,7 +4944,7 @@ export function detectUnderperformers(allInvocations, opts = {}) {
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/underperformer-detector.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/underperformer-detector.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 3 tests pass.
@@ -4988,7 +4988,7 @@ async function reportUnderperformers() {
 await reportUnderperformers();
 ```
 
-- [ ] **Step 2: Add to evolve-status.mjs**
+- [ ] **Step 2: Add to supervibe-status.mjs**
 
 In `scripts/supervibe-status.mjs`, after MCP section, add:
 
@@ -5027,7 +5027,7 @@ test('evolve-status: reports agent telemetry state', () => {
 - [ ] **Step 4: Run + manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run supervibe:status | tail -10
+cd "D:/ggsel projects/supervibe" && npm run supervibe:status | tail -10
 ```
 
 - [ ] **Step 5: Commit**
@@ -5260,7 +5260,7 @@ main().catch(() => {/* silent */});
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/post-tool-use-log.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/post-tool-use-log.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 4 tests pass.
@@ -5282,7 +5282,7 @@ git commit -m "feat(evolution): PostToolUse hook logs Task tool dispatches with 
 - [ ] **Step 1: Read current hooks.json**
 
 ```bash
-cat "D:/ggsel projects/evolve/hooks.json"
+cat "D:/ggsel projects/supervibe/hooks.json"
 ```
 
 Note existing hook entries (SessionStart, PostToolUse, Stop).
@@ -5310,7 +5310,7 @@ The full PostToolUse section should look like:
 - [ ] **Step 3: Verify hook config still parses**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node -e "console.log(JSON.parse(require('fs').readFileSync('hooks.json','utf8')))"
+cd "D:/ggsel projects/supervibe" && node -e "console.log(JSON.parse(require('fs').readFileSync('hooks.json','utf8')))"
 ```
 
 Should print parsed config without error.
@@ -5318,7 +5318,7 @@ Should print parsed config without error.
 - [ ] **Step 4: Verify the existing hook test still passes**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm test 2>&1 | grep "hooks.json wires"
+cd "D:/ggsel projects/supervibe" && npm test 2>&1 | grep "hooks.json wires"
 ```
 
 Expected: `hooks.json wires SessionStart, PostToolUse, Stop` test passes.
@@ -5440,7 +5440,7 @@ When invoked with explicit `<agent_id>`: directly strengthen that agent (skip de
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/auto-strengthen-trigger.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/auto-strengthen-trigger.test.mjs 2>&1 | tail -10
 ```
 
 - [ ] **Step 5: Commit**
@@ -5521,7 +5521,7 @@ test('E2E: invocations → log → aggregate → detect → suggest', async () =
 - [ ] **Step 2: Run E2E**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/evolution-loop-e2e.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && node --no-warnings --test tests/evolution-loop-e2e.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 1 test pass.
@@ -5833,7 +5833,7 @@ main().catch(err => { console.error(err); process.exit(1); });
 
 Run it once:
 ```bash
-cd "D:/ggsel projects/evolve" && node scripts/inject-canonical-footer.mjs
+cd "D:/ggsel projects/supervibe" && node scripts/inject-canonical-footer.mjs
 ```
 
 After all agents updated, run validator:
@@ -5901,7 +5901,7 @@ PostToolUse hook treats `N/A` as null and skips logging.
 - [ ] **Step 2: Verify validator passes**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run validate:agent-footers
+cd "D:/ggsel projects/supervibe" && npm run validate:agent-footers
 ```
 
 Expected: pass.
@@ -5909,7 +5909,7 @@ Expected: pass.
 - [ ] **Step 3: Run full check**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run check
+cd "D:/ggsel projects/supervibe" && npm run check
 ```
 
 Expected: 150+ tests pass (Phase H 143 + ~10 from I).
@@ -5935,7 +5935,7 @@ git commit -m "docs(evolution): canonical-footer requirement in agent-authoring 
 - [ ] **Step 1: Run full check**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run check 2>&1 | tail -10
+cd "D:/ggsel projects/supervibe" && npm run check 2>&1 | tail -10
 ```
 
 Expected: all tests pass (103 baseline + ~35 new across E/F/G/H/I = ~138).
@@ -6086,7 +6086,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - [ ] **Step 4: Run check one more time**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run check 2>&1 | tail -5
+cd "D:/ggsel projects/supervibe" && npm run check 2>&1 | tail -5
 ```
 
 - [ ] **Step 5: Commit release**

@@ -18,7 +18,7 @@
 ### Created (new files)
 
 ```
-evolve/
+supervibe/
 ├── scripts/
 │   ├── lib/
 │   │   ├── code-store.mjs              # NEW — SQLite + hybrid search for code (mirror of memory-store)
@@ -82,7 +82,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { hashFile, hashContent } from '../scripts/lib/file-hash.mjs';
 
-const sandbox = join(tmpdir(), `evolve-hash-test-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-hash-test-${Date.now()}`);
 
 test('hashContent: deterministic for same input', () => {
   const a = hashContent('hello world');
@@ -492,7 +492,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-code-store-test-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-code-store-test-${Date.now()}`);
 let store;
 
 before(async () => {
@@ -1255,7 +1255,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-memory-incr-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-memory-incr-${Date.now()}`);
 let store;
 
 before(async () => {
@@ -1511,7 +1511,7 @@ export async function startWatcher(projectRoot, opts = {}) {
   const codeStore = new CodeStore(projectRoot, { useEmbeddings });
   await codeStore.init();
 
-  if (verbose) console.log(`[evolve-watcher] starting; root=${projectRoot}`);
+  if (verbose) console.log(`[supervibe-watcher] starting; root=${projectRoot}`);
 
   // Memory watcher
   const memWatcher = chokidar.watch(join(projectRoot, '.claude', 'memory'), {
@@ -1526,21 +1526,21 @@ export async function startWatcher(projectRoot, opts = {}) {
       if (!path.endsWith('.md')) return;
       try {
         const r = await memoryStore.incrementalUpdate(path);
-        if (verbose) console.log(`[evolve-watcher] memory +${r.indexed ? 'INDEXED' : r.skipped}: ${path}`);
-      } catch (err) { console.error(`[evolve-watcher] memory err: ${err.message}`); }
+        if (verbose) console.log(`[supervibe-watcher] memory +${r.indexed ? 'INDEXED' : r.skipped}: ${path}`);
+      } catch (err) { console.error(`[supervibe-watcher] memory err: ${err.message}`); }
     })
     .on('change', async (path) => {
       if (!path.endsWith('.md')) return;
       try {
         const r = await memoryStore.incrementalUpdate(path);
-        if (verbose) console.log(`[evolve-watcher] memory ~${r.indexed ? 'REINDEXED' : r.skipped}: ${path}`);
-      } catch (err) { console.error(`[evolve-watcher] memory err: ${err.message}`); }
+        if (verbose) console.log(`[supervibe-watcher] memory ~${r.indexed ? 'REINDEXED' : r.skipped}: ${path}`);
+      } catch (err) { console.error(`[supervibe-watcher] memory err: ${err.message}`); }
     })
     .on('unlink', async (path) => {
       try {
         const r = await memoryStore.removeEntryByPath(path);
-        if (verbose) console.log(`[evolve-watcher] memory -REMOVED: ${path} (${JSON.stringify(r)})`);
-      } catch (err) { console.error(`[evolve-watcher] memory err: ${err.message}`); }
+        if (verbose) console.log(`[supervibe-watcher] memory -REMOVED: ${path} (${JSON.stringify(r)})`);
+      } catch (err) { console.error(`[supervibe-watcher] memory err: ${err.message}`); }
     });
 
   // Code watcher (project-wide, language-filtered)
@@ -1573,12 +1573,12 @@ export async function startWatcher(projectRoot, opts = {}) {
     try {
       if (event === 'unlink') {
         await codeStore.removeFile(path);
-        if (verbose) console.log(`[evolve-watcher] code -REMOVED: ${path}`);
+        if (verbose) console.log(`[supervibe-watcher] code -REMOVED: ${path}`);
       } else {
         const r = await codeStore.indexFile(path);
-        if (verbose && r.indexed) console.log(`[evolve-watcher] code ~${event.toUpperCase()}: ${path} (${r.chunks} chunks)`);
+        if (verbose && r.indexed) console.log(`[supervibe-watcher] code ~${event.toUpperCase()}: ${path} (${r.chunks} chunks)`);
       }
-    } catch (err) { console.error(`[evolve-watcher] code err: ${err.message}`); }
+    } catch (err) { console.error(`[supervibe-watcher] code err: ${err.message}`); }
   };
 
   codeWatcher
@@ -1586,7 +1586,7 @@ export async function startWatcher(projectRoot, opts = {}) {
     .on('change', (p) => handleCode('change', p))
     .on('unlink', (p) => handleCode('unlink', p));
 
-  if (verbose) console.log(`[evolve-watcher] watching .claude/memory/ + project source files`);
+  if (verbose) console.log(`[supervibe-watcher] watching .claude/memory/ + project source files`);
 
   return {
     stop: async () => {
@@ -1594,7 +1594,7 @@ export async function startWatcher(projectRoot, opts = {}) {
       await codeWatcher.close();
       memoryStore.close();
       codeStore.close();
-      if (verbose) console.log('[evolve-watcher] stopped');
+      if (verbose) console.log('[supervibe-watcher] stopped');
     },
     memoryStore,
     codeStore
@@ -1639,7 +1639,7 @@ async function main() {
   const args = process.argv.slice(2);
   const noEmbeddings = args.includes('--no-embeddings');
 
-  console.log(`Starting evolve memory + code watcher in ${PROJECT_ROOT}`);
+  console.log(`Starting supervibe memory + code watcher in ${PROJECT_ROOT}`);
   if (noEmbeddings) console.log('  (embeddings disabled — BM25 only)');
 
   const handle = await startWatcher(PROJECT_ROOT, {
@@ -1649,7 +1649,7 @@ async function main() {
 
   // Graceful shutdown
   const shutdown = async (sig) => {
-    console.log(`\n[evolve-watcher] received ${sig}, shutting down...`);
+    console.log(`\n[supervibe-watcher] received ${sig}, shutting down...`);
     await handle.stop();
     process.exit(0);
   };
@@ -1667,7 +1667,7 @@ main().catch(err => { console.error('watch-memory error:', err); process.exit(1)
 - [ ] **Step 2: Verify it boots and shuts down**
 
 Run (for 3 seconds, then SIGTERM): `timeout 3 node scripts/watch-memory.mjs --no-embeddings || true`
-Expected: stdout shows "Starting evolve memory + code watcher", "Watcher running"; clean exit (no stack trace).
+Expected: stdout shows "Starting supervibe memory + code watcher", "Watcher running"; clean exit (no stack trace).
 
 - [ ] **Step 3: Commit**
 

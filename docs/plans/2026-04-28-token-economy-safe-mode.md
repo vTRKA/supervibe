@@ -333,7 +333,7 @@ See `.claude/docs/plugin-development.md` for individual validator descriptions.
 2. Read the specific `.claude/docs/<topic>.md` — they encode the discipline.
 3. Search memory: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"`
 4. Search code: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`
-5. Read `docs/specs/2026-04-27-evolve-framework-design.md` for full architecture.
+5. Read `docs/specs/2026-04-27-supervibe-framework-design.md` for full architecture.
 ```
 
 Target: <200 lines / <5,000 chars / <1,250 tokens.
