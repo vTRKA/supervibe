@@ -1,102 +1,239 @@
 ---
-description: "Single entry-point for the design pipeline: brand direction → spec → HTML/CSS prototype → live preview at localhost:PORT → a11y + polish review. RU: запуск дизайн-режима — от бренд-направления до живого превью с hot-reload."
+description: "End-to-end design pipeline with explicit lifecycle: design-system → spec → native HTML/CSS/JS prototype → live preview → review → feedback loop → approval → ready-for-development handoff. Pure native, two viewports default (375 + 1440), one question at a time. RU: end-to-end дизайн-pipeline с явным lifecycle: дизайн-система → спецификация → нативный HTML/CSS/JS прототип → live preview → review → цикл обратной связи → утверждение → handoff в готовность к разработке."
 ---
 
 # /evolve-design
 
-End-to-end design flow. Orchestrates 6 design agents and 5 design skills into one pipeline that ends with a live preview URL the user can click around in.
+Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 design skills through 8 explicit stages, ending with an **approved, ready-for-development** prototype that any stack-developer agent can pick up.
+
+## Hard rules (the user feedback that drives this command)
+
+1. **Native HTML/CSS/JS only** for prototypes. No React, Vue, Svelte, Next.js, Nuxt. Pure web platform. Frameworks come AFTER approval, in the handoff-to-stack step.
+2. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user upfront if they want different, but never silently expand.
+3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
+4. **Design system is source of truth.** Approved FIRST, before any prototype. Every visual decision references it.
+5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks state in `.approval.json` artifacts; it knows when something is ready for backend/frontend integration.
+6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
+7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
+8. **Approved → handoff** automatically copies prototype to `prototypes/<slug>/handoff/` ready to be promoted into chosen stack later.
 
 ## Invocation forms
 
 ### `/evolve-design <brief>`
 
-Examples:
-- `/evolve-design landing in the style of Linear, focused on dev-tool buyers`
-- `/evolve-design checkout flow for one-time purchases, mobile-first`
-- `/evolve-design lендинг для финтех-продукта, brutalist стиль`  *(Russian briefs work)*
+```
+/evolve-design landing in the style of Linear, focused on dev-tool buyers
+/evolve-design checkout flow for one-time purchases, mobile-first
+/evolve-design лендинг для финтех-продукта, brutalist стиль
+```
 
 ### `/evolve-design <existing-spec-path>`
 
-Skip the brand discovery if a brand direction or design spec already exists in the project. Example: `/evolve-design docs/specs/2026-04-28-checkout-design.md`.
+```
+/evolve-design docs/specs/2026-04-28-checkout-design.md
+```
 
 ### `/evolve-design` (no args)
 
-Use the most recent brief from the conversation, or ask one clarifying question.
+Use most recent brief from the conversation, or ask one clarifying question.
 
-## Pipeline
+## Pipeline (8 stages)
 
-This command runs **up to 7 stages**, each gated on user approval before moving forward. Skip stages that don't apply (e.g. brand direction is unnecessary for an in-product flow inside an existing brand).
+Each stage is gated on user explicit approval before the next starts. Skip stages that don't apply (e.g. brand direction unnecessary for an in-product flow inside an existing brand).
 
-### Stage 1 — Discovery (skip if brand exists in `prototypes/_brandbook/`)
+### Stage 0 — Triage (always)
 
-1. Run `evolve:project-memory --query brand` to surface any prior brand direction, mood-board, or token decisions.
-2. If user mentioned a reference (Linear, Stripe, etc.), invoke `evolve:mcp-discovery` with category `web-crawl` to get Firecrawl. Use it to scrape the reference. Fallback: WebFetch of one canonical URL.
-3. Dispatch `creative-director` agent with `mcp-discovery` skill loaded.
-4. Output: brand direction document at `prototypes/_brandbook/direction.md` with mood-board + token intent + DO/DON'T. Score against `brandbook.yaml` ≥9.
+Read the brief. Determine:
+- Is this a marketing landing page → uses `evolve:landing-page` skill
+- Is this an in-product flow → uses `evolve:prototype` skill
+- Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes skip Stage 1
+- Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes skip Stage 2
+- Multi-language UI? Reduced-motion sensitive? Touch / pointer device target? Save to brief metadata.
 
-### Stage 2 — UX spec
+ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prototypes/<slug>/config.json` before stage advance.
 
-1. Dispatch `ux-ui-designer` agent with the brief + brand direction.
-2. Output: state matrix + user flow + interaction spec.
+### Stage 1 — Brand direction (conditional)
 
-### Stage 3 — Copy pass
+If brand direction missing OR brief asks for "new brand / rebrand":
 
-1. Dispatch `copywriter` agent over the spec.
-2. Output: every visible string nailed (no Lorem Ipsum, CTA verbs match action, error messages actionable).
+1. Invoke `evolve:project-memory --query brand` to surface prior brand decisions.
+2. If brief named a competitor reference, invoke `evolve:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
+3. Dispatch `creative-director` agent.
+4. Output: `prototypes/_brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords. Score against `brandbook` rubric ≥9.
+5. **Feedback gate** — present direction to user. Options:
+   - ✅ approve direction → continue Stage 2
+   - 🔀 alternative → creative-director generates 2 alternatives with documented tradeoffs (not random regen)
+   - ✎ refine — user describes one specific change
+   - 🛑 stop
 
-### Stage 4 — Prototype
+### Stage 2 — Design system (conditional)
 
-1. Invoke `evolve:landing-page` skill OR `evolve:prototype` skill (skill picks itself based on the brief — landing page vs in-product flow).
-2. Both delegate to `prototype-builder` agent which writes HTML/CSS/JS to `prototypes/<slug>/`.
-3. Discipline: every color, spacing, type token must come through CSS custom properties pointing at the brandbook. **No raw hex values.**
+If design system missing OR Stage 1 just produced a new direction:
 
-### Stage 5 — Live preview (auto-spawn)
+1. Invoke `evolve:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
+2. Each sub-section is a separate dialogue (one question at a time, markdown with "Шаг N/8" progress).
+3. Each sub-section gets explicit approval before next; per-section approvals saved to `prototypes/_design-system/.approvals/<section>.json`.
+4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with `manifest.json.status === 'approved'`.
 
-1. The `evolve:landing-page` / `evolve:prototype` skill ends by invoking `evolve:preview-server` with the prototype root.
-2. Preview server spawns on `127.0.0.1:NNNN` (port allocated 3047-3099 → OS-assigned fallback), SSE hot-reload wired, idle-shutdown 30 min.
-3. Print the URL to the user. They open it in any browser. Edits in the prototype source propagate within ~200ms.
+After completion: design system is the **source of truth** for all downstream stages. No prototype invents tokens.
 
-### Stage 6 — Polish review (parallel)
+### Stage 3 — UX spec
 
-Dispatch in parallel:
-- `ui-polish-reviewer` agent — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive, copy precision, token compliance)
-- `accessibility-reviewer` agent — WCAG AA check via Playwright + axe-core if available; static review otherwise
+Dispatch `ux-ui-designer` agent with the brief + brand direction + design system.
 
-Both write to `prototypes/<slug>/_reviews/` with per-issue file:line refs.
+Output: `prototypes/<slug>/spec.md` with:
+- User flow (boxes-and-arrows or sequence)
+- Information architecture
+- Component inventory (every component referenced from `prototypes/_design-system/components/`)
+- States matrix per screen (loading / empty / error / success / partial)
+- Interaction notes (which animations from `motion.css`, which microcopy from `voice.md`)
 
-### Stage 7 — Score + handoff
+**Feedback gate:** approve spec / refine / try alternative / stop.
 
-1. Score the bundle against `prototype.yaml` rubric. Gate ≥9.
-2. Print summary + preview URL + review locations + recommended next step.
+### Stage 4 — Copy pass
+
+Dispatch `copywriter` agent over the spec.
+
+Output: `prototypes/<slug>/content/copy.md` — every visible string nailed. No Lorem Ipsum. CTA verbs match action. Error messages actionable. Voice matches `prototypes/_design-system/voice.md`.
+
+**Feedback gate:** approve copy / refine / stop.
+
+### Stage 5 — Prototype build (native HTML/CSS/JS)
+
+Dispatch `prototype-builder` agent. Decide which skill it dispatches:
+- Marketing landing → `evolve:landing-page`
+- In-product flow → `evolve:prototype`
+
+Both skills enforce:
+- Pure native (no frameworks, no npm)
+- Default viewports `[375, 1440]` — agent asks once if user wants different
+- All visuals through `prototypes/_design-system/tokens.css` (no raw hex / magic px)
+- All animations from `prototypes/_design-system/motion.css` (no inline cubic-beziers)
+- One question at a time when clarification needed
+
+Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `approval: 'draft'`.
+
+### Stage 6 — Live preview + parallel review
+
+1. Skill auto-spawns `evolve:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user.
+2. Dispatch in parallel:
+   - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `prototypes/<slug>/_reviews/polish.md`.
+   - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `prototypes/<slug>/_reviews/a11y.md`.
+3. If user requested SEO scaffolding (landing flow), also dispatch `seo-specialist` → `prototypes/<slug>/_reviews/seo.md`.
+
+### Stage 7 — Feedback loop (MANDATORY — DO NOT SKIP)
+
+After delivery, ALWAYS print this exact prompt:
+
+```markdown
+**Прототип готов**
+- URL: http://localhost:NNNN
+- Viewports: 375px (mobile), 1440px (desktop)
+- Файлы: prototypes/<slug>/
+- Reviews: prototypes/<slug>/_reviews/{polish,a11y}.md
+- Состояние: **draft**
+
+Что делаем дальше?
+
+- ✅ **Утвердить** — фиксирую approval, копирую в `prototypes/<slug>/handoff/` (готов к интеграции)
+- ✎ **Доработать** — расскажи что поменять (одной мыслью), итерирую один заход
+- 🔀 **Альтернатива** — построю 2 другие визуальные/композиционные направления параллельно
+- 📊 **Углублённый review** — позову ещё агентов (например seo-specialist, qa-test-engineer)
+- 🛑 **Стоп** — оставить как draft, вернёмся позже
+```
+
+Wait for explicit choice. Do NOT proceed silently.
+
+- If "Доработать" → ONE clarifying question, then back to Stage 5 with revision scope. Increment `feedbackRounds` in eventual approval marker.
+- If "Альтернатива" → spawn `prototypes/<slug>/alternatives/<variant-name-1>/` and `<variant-name-2>/` with documented tradeoffs ("vs A: warmer palette, narrower hero column"). User compares side-by-side via separate preview-servers.
+- If "Углублённый review" → dispatch additional agents to `_reviews/`.
+- If "Стоп" → leave as draft, save state, exit.
+- If "Утвердить" → Stage 8.
+
+### Stage 8 — Approval + handoff to development-ready
+
+When user explicitly says "утвердить" / "approve" / "✅":
+
+1. **Write approval marker** at `prototypes/<slug>/.approval.json`:
+   ```json
+   {
+     "status": "approved",
+     "approvedAt": "<ISO>",
+     "approvedBy": "<user from git config user.name>",
+     "viewports": [375, 1440],
+     "designSystemVersion": "<commit-sha of _design-system/>",
+     "previewUrl": "http://localhost:NNNN",
+     "feedbackRounds": <count>,
+     "approvalScope": "full | viewport-mobile | layout-only"
+   }
+   ```
+
+2. **Update `config.json`** → `"approval": "approved"`.
+
+3. **Build handoff bundle** at `prototypes/<slug>/handoff/`:
+   ```
+   prototypes/<slug>/handoff/
+   ├── README.md                  ← what this is, when approved, by whom, viewport list
+   ├── index.html                 ← the approved native prototype, copied verbatim
+   ├── styles/                    ← copied from <slug>/styles/
+   ├── scripts/                   ← copied from <slug>/scripts/
+   ├── content/copy.md            ← approved copy
+   ├── components-used.json       ← inventory: which design-system components, with file:line refs
+   ├── tokens-used.json           ← inventory: which design tokens (color/space/radius/motion) consumed
+   ├── viewport-spec.json         ← exact breakpoints + container queries used
+   └── stack-agnostic.md          ← per-stack adapter hints (React component skeleton, Vue SFC skeleton, Next.js page skeleton — all derivable from this prototype)
+   ```
+
+4. **Print handoff summary**:
+   ```
+   ✅ Утверждено: prototypes/<slug>/
+   Готово к интеграции: prototypes/<slug>/handoff/
+   Состояние: approved
+   Дальше: запусти <stack>-developer (laravel-developer / nextjs-developer / vue-implementer / ...)
+           передай путь handoff/, он промоутит в production.
+   ```
+
+5. **Score** the bundle against `prototype.yaml` rubric ≥9.
 
 ## Output contract
 
 ```
 === Evolve Design ===
 Brief:        <one-line>
-Brand:        prototypes/_brandbook/direction.md  (score: X.X/10)
+Brand:        prototypes/_brandbook/direction.md     (score: X.X/10)
+System:       prototypes/_design-system/manifest.json (approved)
 Spec:         prototypes/<slug>/spec.md
+Copy:         prototypes/<slug>/content/copy.md
 Prototype:    prototypes/<slug>/index.html
-Preview URL:  http://localhost:NNNN  (PID: ...; idle-shutdown in 30m)
-Polish:      <issue count>  prototypes/<slug>/_reviews/polish.md
-A11y:        <violation count>  prototypes/<slug>/_reviews/a11y.md
-Score:       <N>/10  Rubric: prototype
+Viewports:    [375, 1440]
+Preview URL:  http://localhost:NNNN  (PID: ...; idle-shutdown 30 min)
+Reviews:      polish (N issues) + a11y (M violations) [+ seo if landing]
+Feedback rounds: <count>
+Approval:     <draft | approved>     ← prototypes/<slug>/.approval.json
+Handoff:      <pending | prototypes/<slug>/handoff/>
 
-Next:
-  - Open the URL, edit prototypes/<slug>/ files — changes hot-reload
-  - Manage server: /evolve-preview --list, /evolve-preview --kill <port>
-  - Promote to production: hand off to <stack>-developer with the prototype URL
+Confidence: <N>.<dd>/10
+Override:   <true|false>
+Rubric:     prototype
 ```
 
 ## When NOT to invoke
 
 - Pure feature spec without visual surface — `/evolve-brainstorm` then `/evolve-plan`
-- Already have a final design and just want to implement — skip to stack-developer agent directly
+- Already have an approved prototype, want to ship it — call the chosen stack-developer agent directly with the `prototypes/<slug>/handoff/` path
 - Just want to manage already-running preview servers — `/evolve-preview`
+- Want to update design system tokens only (no prototype) — invoke `evolve:brandbook` skill in narrow-section mode
 
 ## Related
 
-- `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer` — the agent cast
-- `evolve:landing-page`, `evolve:prototype`, `evolve:brandbook`, `evolve:tokens-export`, `evolve:interaction-design-patterns`, `evolve:preview-server` — the skill chain
-- `/evolve-preview` — manage the running preview servers
+- `creative-director` — Stage 1 brand direction
+- `evolve:brandbook` — Stage 2 design system materialization
+- `ux-ui-designer` — Stage 3 spec
+- `copywriter` — Stage 4 copy
+- `prototype-builder` + `evolve:prototype` / `evolve:landing-page` — Stage 5 native build
+- `evolve:preview-server` — Stage 6 live URL
+- `ui-polish-reviewer` + `accessibility-reviewer` + `seo-specialist` — Stage 6 reviews
+- `evolve:tokens-export` — when downstream stack picked, exports tokens to its format
+- `<stack>-developer` agents (laravel / nextjs / vue / etc.) — pick up `handoff/` after Stage 8
+- `evolve:interaction-design-patterns` — animation recipes referenced from `motion.css`
 - `mcp-server-figma`, `mcp-server-firecrawl`, `mcp-playwright` — optional MCPs that improve specific stages

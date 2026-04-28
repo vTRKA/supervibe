@@ -10,10 +10,10 @@ optional-stacks: []
 tools: [Read, Grep, Glob, Bash, Write, Edit]
 recommended-mcps: [figma]
 skills: [evolve:prototype, evolve:brandbook, evolve:tokens-export, evolve:interaction-design-patterns, evolve:tdd, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:mcp-discovery]
-verification: [all-states-rendered, token-discipline-grep, keyboard-interactivity, no-console-errors, ui-polish-reviewer-pass]
-anti-patterns: [hardcoded-values, one-state-only, framework-coupling, decorative-css, inline-styles, no-keyboard, drift-without-flag]
-version: 1.1
-last-verified: 2026-04-27
+verification: [design-system-approved-before-build, all-states-rendered, token-discipline-grep, keyboard-interactivity, no-console-errors, ui-polish-reviewer-pass, viewports-match-config, no-framework-imports, feedback-loop-prompted, approval-marker-on-approve, handoff-bundle-on-approve]
+anti-patterns: [hardcoded-values, one-state-only, framework-coupling, decorative-css, inline-styles, no-keyboard, drift-without-flag, npm-import-in-prototype, silent-extra-viewport, building-before-system-approved, asking-multiple-questions-at-once, advancing-without-feedback-prompt, marking-approved-without-marker, inline-cubic-bezier]
+version: 2.0
+last-verified: 2026-04-28
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -99,35 +99,55 @@ data-driven mock:
 
 ## Procedure
 
-0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`figma` (token + asset extraction from design source) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
-1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents
-2. **Read brandbook (mandatory)** — load `prototypes/_brandbook/tokens.css`, components, voice; confirm token coverage for this feature
-3. **Read screen spec** from ux-ui-designer — confirm scope, states required, interaction patterns
-4. **Scaffold directory**: create `prototypes/<feature>/` with `index.html`, `styles.css`, `states/`, `README.md`
-5. **Scaffold HTML** — semantic markup first (`<header>`, `<main>`, `<button>`, `<form>`, proper headings); zero presentational classes yet
-6. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`; no raw hex, no raw px for layout, no magic numbers
-7. **Render full state matrix** in `states/` — one file per state:
-   - `resting.html` — default
-   - `hover.html` — pointer over (use `:hover` in main, snapshot for static view)
-   - `active.html` — pressed / clicked
-   - `focus.html` — `:focus`
-   - `focus-visible.html` — `:focus-visible` (keyboard-only focus ring)
-   - `disabled.html` — `[disabled]`
-   - `loading.html` — async in-flight
-   - `empty.html` — no data
-   - `error.html` — failure case with message
-8. **Spawn preview**: invoke `evolve:preview-server` skill with `--root mockups/<feature>` to start a local server at http://localhost:NNNN. Hand URL to user with hot-reload note.
-9. **Add keyboard interactivity** — tab order verified, focus visible, Escape closes modals, Enter activates buttons, arrow keys for menus/lists; document tab order in README
-10. **Responsive breakpoints** — mobile-first; test at 360, 768, 1024, 1440, 1920; use `clamp()` and container queries where appropriate; never fixed px widths for content
-11. **Motion pass** — add transitions/animations using token durations (`var(--motion-fast)`, `var(--motion-base)`); wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only
-12. **Drift-check vs design tokens** — run `grep -E '#[0-9a-fA-F]{3,8}' prototypes/<feature>/styles.css` (must be 0); run `grep -E '\\b[0-9]+px\\b' styles.css` and audit each match (1px borders OK, layout px not OK); output drift report listing any deliberate exception with `/* DRIFT: reason */` flag
-13. **Screenshot baseline** — capture each state at 1440 desktop + 390 mobile; save to `states/.screenshots/`
-14. **Console check** — load each HTML in browser, verify zero console errors/warnings (no missing assets, no CSP violations, no deprecated API warnings)
-15. **Write README.md** — what to view, in what order; tab-order map; known drifts (with rationale); browsers tested
-16. **Invoke ui-polish-reviewer** — token discipline + visual hierarchy
-17. **Invoke accessibility-reviewer** — keyboard, screen-reader, contrast
-18. **Score with confidence-scoring** — prototype rubric ≥9 required for handoff
-19. **Handoff to react-implementer / frontend developer** — link to prototype + drift report + state matrix + screenshots
+0. **MCP discovery**: invoke `evolve:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
+1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
+2. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status !== "approved"` → STOP and tell user: "Дизайн-система не утверждена. Запусти `/evolve-design <бриф>` с Stage 2 или `evolve:brandbook` напрямую — без утверждённой системы прототип нельзя строить, токены неоткуда брать." Do not proceed.
+3. **Read screen spec** from ux-ui-designer — confirm scope, states required, interaction patterns.
+4. **Viewport question (ONE QUESTION, MARKDOWN)** — if `prototypes/<feature>/config.json` doesn't already have `viewports`, ask:
+   ```markdown
+   **Шаг 1/3: Viewports.**
+   Стандарт — 375px (mobile) + 1440px (desktop). Что нужно?
+   - ✅ Стандартные
+   - ➕ + 768px (tablet)
+   - ➕ + 1920px (wide)
+   - ✏️ Свои размеры
+   ```
+   Wait for explicit answer. Save to `config.json` BEFORE writing any HTML.
+5. **Scaffold directory**: create `prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
+6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
+7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
+8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
+9. **Spawn preview** — invoke `evolve:preview-server --root prototypes/<feature>/` for live URL with hot-reload. Hand URL to user.
+10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
+11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
+12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
+13. **Token-discipline grep (CI gate)**:
+    - `grep -rE '#[0-9a-fA-F]{3,8}|rgb\(|rgba\(' prototypes/<feature>/styles/pages.css` → 0 hits
+    - `grep -rE '\\b[0-9]+px\\b' prototypes/<feature>/styles/pages.css` → audit each (1px borders OK, layout px NOT OK)
+    - `grep -rE 'cubic-bezier\(' prototypes/<feature>/` → 0 hits in pages.css (all easings via `var(--ease-*)`)
+    - Drift report lists deliberate exceptions with inline `/* DRIFT: reason */` flag.
+14. **Screenshot baseline** — capture each state at every declared viewport; save to `pages/states/.screenshots/`.
+15. **Console check** — load each HTML in browser, verify zero console errors/warnings.
+16. **Write README.md** — what to view, in what order; viewport list; tab-order map; known drifts (with rationale); browsers tested.
+17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `prototypes/<feature>/_reviews/`.
+18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the prompt:
+    ```markdown
+    **Прототип готов:** http://localhost:NNNN
+    **Viewports:** <list>
+    **Состояние:** draft
+
+    Что делаем дальше?
+
+    - ✅ **Утвердить** — фиксирую approval, готовлю handoff/
+    - ✎ **Доработать** — расскажи что поменять (одной мыслью)
+    - 🔀 **Альтернатива** — предложу 2 другие визуальные направления
+    - 📊 **Углублённый review** — позову ещё агентов
+    - 🛑 **Стоп** — оставить как draft
+    ```
+    Wait for explicit choice. Do NOT advance silently to handoff.
+19. **Approval marker** (only on explicit "✅"): write `prototypes/<feature>/.approval.json` per the schema in `evolve:prototype` skill (status, approvedAt, approvedBy, viewports, designSystemVersion, feedbackRounds).
+20. **Score** with `evolve:confidence-scoring` against `prototype.yaml` rubric ≥9.
+21. **Handoff bundle** (only after approval): copy approved files to `prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
 
 ## Output contract
 
