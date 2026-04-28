@@ -53,6 +53,36 @@ Restart your AI CLI. On the next session you should see:
 
 ---
 
+## Commands
+
+Slash commands (run inside an AI CLI session):
+
+| Command | What it does |
+|---------|--------------|
+| `/evolve` | Auto-router: picks genesis, audit, strengthen, adapt, or evaluate |
+| `/evolve-genesis` | First-time scaffold of `.claude/` for your stack |
+| `/evolve-audit` | Health check across agents, rules, memory |
+| `/evolve-strengthen [agent_id]` | Strengthen a weak agent. Without arguments — auto-trigger from telemetry |
+| `/evolve-adapt` | Pull upstream agent improvements into the project |
+| `/evolve-evaluate` | Score a finished artifact against its rubric |
+| `/evolve-preview` | Manage live preview servers |
+| `/evolve-changelog` | What changed since the last version this project saw |
+
+Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/evolve-marketplace/`):
+
+| Command | What it does |
+|---------|--------------|
+| `npm run evolve:status` | Health check across every index |
+| `npm run evolve:upgrade` | git pull, lfs pull, npm install, run all tests |
+| `npm run evolve:upgrade-check` | Manually query upstream for new commits |
+| `npm run code:index` | Full reindex |
+| `npm run code:search -- --query "..."` | Semantic search |
+| `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
+| `npm run memory:watch` | Optional watcher daemon |
+| `npm run check` | All 196 tests plus manifest, frontmatter, and footer validation |
+
+---
+
 ## Troubleshooting
 
 **No banner after install.** Re-run the installer — it is idempotent and refreshes the three Claude config files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).

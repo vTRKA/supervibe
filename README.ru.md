@@ -53,6 +53,36 @@ irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 
 ---
 
+## Команды
+
+Слэш-команды (запускать внутри AI CLI сессии):
+
+| Команда | Что делает |
+|---------|-----------|
+| `/evolve` | Авто-роутер: выбирает genesis, audit, strengthen, adapt или evaluate |
+| `/evolve-genesis` | Первичный scaffold `.claude/` под ваш стек |
+| `/evolve-audit` | Health-check агентов, правил, памяти |
+| `/evolve-strengthen [agent_id]` | Усиление слабого агента. Без аргумента — auto-trigger из telemetry |
+| `/evolve-adapt` | Подтянуть upstream-улучшения в проект |
+| `/evolve-evaluate` | Прогон confidence на готовом артефакте |
+| `/evolve-preview` | Управление live preview серверами |
+| `/evolve-changelog` | Что изменилось с прошлой версии в этом проекте |
+
+Shell-команды (запускать в папке плагина `~/.claude/plugins/marketplaces/evolve-marketplace/`):
+
+| Команда | Что делает |
+|---------|-----------|
+| `npm run evolve:status` | Health-check всех индексов |
+| `npm run evolve:upgrade` | git pull, lfs pull, npm install, прогон всех тестов |
+| `npm run evolve:upgrade-check` | Вручную проверить upstream |
+| `npm run code:index` | Полная переиндексация |
+| `npm run code:search -- --query "..."` | Семантический поиск |
+| `npm run code:search -- --callers "Symbol"` | Граф: кто вызывает символ |
+| `npm run memory:watch` | Опциональный watcher-демон |
+| `npm run check` | Все 196 тестов плюс валидация манифеста, frontmatter, footer'ов |
+
+---
+
 ## Troubleshooting
 
 **Баннера нет после установки.** Перезапустите установщик — он идемпотентен и обновит все три Claude config файла. Затем полностью перезапустите AI CLI (закройте десктоп-приложение, не просто откройте новый чат).
