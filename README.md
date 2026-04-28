@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh 
 irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 
-The installer detects every supported AI CLI on your machine, clones the plugin into `~/.claude/plugins/marketplaces/evolve-marketplace/`, runs 194 tests, and registers the plugin with each CLI. Re-run the same command later to upgrade.
+The installer detects every supported AI CLI on your machine, clones the plugin into `~/.claude/plugins/marketplaces/evolve-marketplace/`, runs 220 tests, and registers the plugin with each CLI. Re-run the same command later to upgrade.
 
 Restart your AI CLI. On the next session you should see:
 
@@ -51,6 +51,35 @@ Restart your AI CLI. On the next session you should see:
 ```
 
 **Requirements:** Node.js 22+ and Git. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
+
+### Update
+
+Three ways, pick whichever fits your context:
+
+**One-liner (matches the install style):**
+
+macOS / Linux:
+```bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.sh | bash
+```
+
+Windows (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.ps1 | iex
+```
+
+**From the AI CLI session:**
+```
+/evolve-update
+```
+
+**Manually from the plugin checkout:**
+```bash
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+npm run evolve:upgrade
+```
+
+All three do the same thing: refuse if you have uncommitted edits to the plugin checkout, then `git pull --ff-only` + LFS pull + `npm install` + run all tests + refresh the upstream-check cache. Restart the AI CLI afterwards.
 
 ---
 

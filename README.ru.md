@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh 
 irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 
-Установщик находит все поддерживаемые AI CLI на машине, клонирует плагин в `~/.claude/plugins/marketplaces/evolve-marketplace/`, прогоняет 194 теста и регистрирует плагин в каждой CLI. Повторный запуск той же команды обновляет до свежей версии.
+Установщик находит все поддерживаемые AI CLI на машине, клонирует плагин в `~/.claude/plugins/marketplaces/evolve-marketplace/`, прогоняет 220 тестов и регистрирует плагин в каждой CLI. Повторный запуск той же команды обновляет до свежей версии.
 
 Перезапустите AI CLI. На следующей сессии увидите:
 
@@ -51,6 +51,35 @@ irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
 ```
 
 **Требования:** Node.js 22+ и Git. Git LFS опционален — модель эмбеддингов скачивается с HuggingFace при первом использовании. Без Docker, Python и нативной компиляции.
+
+### Обновление
+
+Три способа — выбирайте удобный:
+
+**One-liner (тот же стиль что установка):**
+
+macOS / Linux:
+```bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.sh | bash
+```
+
+Windows (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.ps1 | iex
+```
+
+**Из сессии AI CLI:**
+```
+/evolve-update
+```
+
+**Вручную из папки плагина:**
+```bash
+cd ~/.claude/plugins/marketplaces/evolve-marketplace
+npm run evolve:upgrade
+```
+
+Все три делают одно и то же: отказываются при незакомиченных правках в чекауте плагина, затем `git pull --ff-only` + LFS pull + `npm install` + прогон всех тестов + обновление upstream-check кэша. После — перезапустите AI CLI.
 
 ---
 

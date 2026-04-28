@@ -7,6 +7,8 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const SH = join(ROOT, 'install.sh');
 const PS1 = join(ROOT, 'install.ps1');
+const UPD_SH = join(ROOT, 'update.sh');
+const UPD_PS1 = join(ROOT, 'update.ps1');
 
 test('install.sh exists and is non-empty', () => {
   assert.ok(existsSync(SH));
@@ -90,4 +92,52 @@ test('plugin name in installers matches plugin.json file', () => {
   const shName = sh.match(/PLUGIN_NAME="([^"]+)"/)?.[1];
   const pj = JSON.parse(readFileSync(join(ROOT, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.strictEqual(pj.name, shName, 'plugin.json name must match installer constant');
+});
+
+// --- standalone update scripts ---
+
+test('update.sh and update.ps1 exist and are non-empty', () => {
+  assert.ok(existsSync(UPD_SH));
+  assert.ok(existsSync(UPD_PS1));
+  assert.ok(statSync(UPD_SH).size > 500);
+  assert.ok(statSync(UPD_PS1).size > 500);
+});
+
+test('update.sh is syntactically valid bash', () => {
+  try {
+    execSync(`bash -n "${UPD_SH}"`, { stdio: 'pipe' });
+  } catch (err) {
+    assert.fail(`update.sh syntax error:\n${err.stderr?.toString() || err.message}`);
+  }
+});
+
+test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
+  const src = readFileSync(UPD_SH, 'utf8');
+  assert.match(src, /^#!\/usr\/bin\/env bash/, 'must start with bash shebang');
+  assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
+  assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
+  assert.match(src, /git -C .* status --porcelain/, 'must check for uncommitted changes before updating');
+  assert.match(src, /npm run evolve:upgrade/, 'must delegate to the canonical upgrade script');
+});
+
+test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
+  const src = readFileSync(UPD_PS1, 'utf8');
+  assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
+  assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
+  assert.match(src, /status --porcelain/, 'must check for uncommitted changes before updating');
+  assert.match(src, /npm run evolve:upgrade/, 'must delegate to the canonical upgrade script');
+});
+
+test('update scripts use the same plugin-marketplace path layout as install scripts', () => {
+  const sh = readFileSync(UPD_SH, 'utf8');
+  const ps1 = readFileSync(UPD_PS1, 'utf8');
+  assert.match(sh, /\.claude\/plugins\/marketplaces\/evolve-marketplace/);
+  assert.match(ps1, /\.claude\\plugins\\marketplaces\\evolve-marketplace/);
+});
+
+test('update scripts honor EVOLVE_PLUGIN_ROOT env override', () => {
+  const sh = readFileSync(UPD_SH, 'utf8');
+  const ps1 = readFileSync(UPD_PS1, 'utf8');
+  assert.match(sh,  /EVOLVE_PLUGIN_ROOT/);
+  assert.match(ps1, /EVOLVE_PLUGIN_ROOT/);
 });
