@@ -24,7 +24,7 @@ Set up Evolve for a fresh project (or one without `.claude/agents/`).
    - `.claude/agents/` — copies of stack-relevant agents
    - `.claude/rules/` — project-applicable rules
    - `.claude/memory/` — empty category dirs (`decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/`)
-   - `CLAUDE.md` — generated from `templates/CLAUDE.md.tmpl` filled with the fingerprint
+   - `CLAUDE.md` — generated from `templates/claude-md/_base.md.tpl` filled with the fingerprint
    - `.claude/settings.json` — permissions + enabledPlugins entry mirroring the global one
    Wait for user "yes" before writing.
 
