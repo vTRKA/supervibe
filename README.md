@@ -192,7 +192,7 @@ Slash commands (run inside an AI CLI session):
 
 | Command | What it does |
 |---------|--------------|
-| `/evolve` | Auto-router: picks genesis, audit, strengthen, adapt, evaluate, or update |
+| `/supervibe` | Auto-router: picks genesis, audit, strengthen, adapt, evaluate, or update |
 | `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow — produces an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates: Stage A readiness audit BEFORE + Stage B completion audit AFTER. Supports `--dry-run` (audit only) and `--resume` (continue partially-executed plan) |
