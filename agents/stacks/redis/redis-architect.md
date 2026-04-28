@@ -1,7 +1,7 @@
 ---
 name: redis-architect
 namespace: stacks/redis
-description: "Use WHEN designing Redis topology (single/Sentinel/Cluster), key schema, expiration policy, eviction, persistence, pub/sub vs streams, distributed locks"
+description: "Use WHEN designing Redis topology (single/Sentinel/Cluster), key schema, expiration policy, eviction, persistence, pub/sub vs streams, distributed locks. RU: Используется КОГДА проектируются топология Redis (single/Sentinel/Cluster), схема ключей, TTL, eviction, persistence, pub/sub vs streams и распределённые локи. Trigger phrases: 'redis topology', 'sentinel vs cluster', 'cache strategy', 'redis ключи'."
 persona-years: 15
 capabilities: [redis-topology, sentinel, cluster, key-schema, expiration, eviction, persistence-rdb-aof, pubsub, streams, lua-scripts, distributed-locks]
 stacks: [redis]

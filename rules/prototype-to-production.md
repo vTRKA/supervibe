@@ -1,6 +1,6 @@
 ---
 name: prototype-to-production
-description: "HTML prototypes in prototypes/ are 1:1 source of truth for visual implementation; drift between prototype and production >5% blocks merge"
+description: "HTML prototypes in prototypes/ are 1:1 source of truth for visual implementation; drift between prototype and production >5% blocks merge. RU: Hardening checklist перед промоутом; HTML прототипы — source of truth, дрифт >5% блокирует merge. Trigger phrases: 'prototype to prod', 'промоут прототипа', 'hardening'."
 applies-to: [any]
 mandatory: false
 version: 1.0

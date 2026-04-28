@@ -1,7 +1,7 @@
 ---
 name: nestjs-developer
 namespace: stacks/nestjs
-description: "Use WHEN implementing NestJS modules, providers, controllers, guards, pipes, interceptors, repositories, and e2e tests with @nestjs/testing"
+description: "Use WHEN implementing NestJS modules, providers, controllers, guards, pipes, interceptors, repositories, and e2e tests with @nestjs/testing. RU: Используется КОГДА реализуешь NestJS — модули, providers, controllers, guards, pipes, interceptors, репозитории и e2e-тесты с @nestjs/testing. Trigger phrases: 'реализуй на NestJS', 'NestJS module', 'guard в NestJS', 'добавь controller NestJS'."
 persona-years: 12
 capabilities: [nestjs-implementation, dependency-injection, decorators, guards-interceptors-pipes, typeorm-prisma, repository-pattern, e2e-testing, config-module-validation]
 stacks: [nestjs]

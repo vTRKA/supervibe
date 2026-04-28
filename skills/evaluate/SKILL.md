@@ -1,7 +1,7 @@
 ---
 name: evaluate
 namespace: process
-description: "Use AFTER each agent task completion to track effectiveness (outcome, iterations, blockers, confidence-score, user-corrections) into effectiveness.jsonl"
+description: "Use AFTER each agent task completion to track effectiveness (outcome, iterations, blockers, confidence-score, user-corrections) into effectiveness.jsonl. RU: Используется ПОСЛЕ завершения задачи агента — фиксирует эффективность (исход, итерации, блокеры, confidence, правки пользователя) в effectiveness.jsonl. Trigger phrases: 'оцени артефакт', 'log outcome', 'запиши результат', 'evaluate'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: review
 prerequisites: []

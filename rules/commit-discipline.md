@@ -1,6 +1,6 @@
 ---
 name: commit-discipline
-description: "Enforces Conventional Commits format (type(scope): subject) via commitlint, with type-enum, subject-case, and length rules"
+description: "Enforces Conventional Commits format (type(scope): subject) via commitlint, with type-enum, subject-case, and length rules. RU: Требует Conventional Commits формат через commitlint. Trigger phrases: 'коммит', 'commit message', 'conventional commits'."
 applies-to: [any]
 mandatory: true
 version: 1.0

@@ -1,7 +1,7 @@
 ---
 name: db-reviewer
 namespace: _ops
-description: "Use WHEN reviewing schema changes, migrations, or query patterns to verify safety, performance, replication impact, and lock duration"
+description: "Use WHEN reviewing schema changes, migrations, or query patterns to verify safety, performance, replication impact, and lock duration. RU: используется КОГДА ревьювятся изменения схемы, миграции или паттерны запросов — проверка безопасности, производительности, влияния на репликацию и длительности блокировок. Trigger phrases: 'отревьюй миграцию', 'проверь схему', 'индексы', 'safe migration'."
 persona-years: 15
 capabilities: [schema-review, migration-safety, query-performance, index-strategy, replication-impact, partitioning, vacuum-tuning, lock-analysis, explain-analyze]
 stacks: [any]

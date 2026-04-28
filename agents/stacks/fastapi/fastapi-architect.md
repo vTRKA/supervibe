@@ -1,7 +1,7 @@
 ---
 name: fastapi-architect
 namespace: stacks/fastapi
-description: "Use WHEN designing FastAPI application architecture, dependency injection, async patterns, OpenAPI auto-gen, Alembic migrations READ-ONLY"
+description: "Use WHEN designing FastAPI application architecture, dependency injection, async patterns, OpenAPI auto-gen, Alembic migrations READ-ONLY. RU: Используется КОГДА проектируешь архитектуру FastAPI-приложения — dependency injection, async-паттерны, авто-генерация OpenAPI, миграции Alembic, READ-ONLY. Trigger phrases: 'спроектируй FastAPI архитектуру', 'dependency injection FastAPI', 'topology для FastAPI', 'modular monolith на FastAPI'."
 persona-years: 15
 capabilities: [fastapi-architecture, pydantic-v2, dependency-injection, async-patterns, openapi, alembic, settings-management, error-handling-chain]
 stacks: [fastapi]

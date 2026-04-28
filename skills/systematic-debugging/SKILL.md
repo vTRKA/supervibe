@@ -1,7 +1,7 @@
 ---
 name: systematic-debugging
 namespace: process
-description: "Use WHEN encountering any bug, test failure, or unexpected behavior BEFORE proposing fixes to enforce hypothesis-evidence-isolation methodology"
+description: "Use WHEN encountering any bug, test failure, or unexpected behavior BEFORE proposing fixes to enforce hypothesis-evidence-isolation methodology. RU: Используется КОГДА встречен баг, упавший тест или неожиданное поведение ПЕРЕД предложением фиксов — навязывает методологию hypothesis → evidence → isolation. Trigger phrases: 'дебаг', 'почему сломалось', 'найди корень', 'разбери баг'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: exec
 prerequisites: []

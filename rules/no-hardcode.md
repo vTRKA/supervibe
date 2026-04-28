@@ -1,6 +1,6 @@
 ---
 name: no-hardcode
-description: "Bans magic numbers, hardcoded strings, inline configs, hardcoded URLs/paths/IDs in production code; require named constants, env vars, or config files"
+description: "Bans magic numbers, hardcoded strings, inline configs, hardcoded URLs/paths/IDs in production code; require named constants, env vars, or config files. RU: Tokens / config / strings через config или env, не литералы; запрещает magic numbers и hardcoded URLs. Trigger phrases: 'хардкод', 'magic value', 'hardcoded'."
 applies-to: [any]
 mandatory: true
 version: 1.0

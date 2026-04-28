@@ -1,7 +1,7 @@
 ---
 name: fastapi-developer
 namespace: stacks/fastapi
-description: "Use WHEN implementing FastAPI endpoints, models, services, async DB queries with pytest tests"
+description: "Use WHEN implementing FastAPI endpoints, models, services, async DB queries with pytest tests. RU: Используется КОГДА реализуешь endpoints, модели, сервисы и async DB-запросы на FastAPI с pytest-тестами. Trigger phrases: 'реализуй фичу на FastAPI', 'добавь endpoint FastAPI', 'async запрос FastAPI', 'Pydantic модель'."
 persona-years: 15
 capabilities: [fastapi-implementation, pydantic-v2, async-sqlalchemy, pytest-asyncio, dependency-injection, error-handler-chain, streaming-responses, background-tasks]
 stacks: [fastapi]

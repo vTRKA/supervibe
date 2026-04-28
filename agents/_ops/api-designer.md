@@ -1,7 +1,7 @@
 ---
 name: api-designer
 namespace: _ops
-description: "Use BEFORE finalizing API contracts (REST/GraphQL/gRPC) to design versioning, error envelopes, idempotency, pagination, and deprecation strategy"
+description: "Use BEFORE finalizing API contracts (REST/GraphQL/gRPC) to design versioning, error envelopes, idempotency, pagination, and deprecation strategy. RU: используется ПЕРЕД финализацией API-контрактов (REST/GraphQL/gRPC) — дизайн версионирования, error envelopes, идемпотентности, пагинации и стратегии deprecation. Trigger phrases: 'спроектируй API', 'REST/GraphQL дизайн', 'эндпоинты', 'дизайн контракта'."
 persona-years: 15
 capabilities: [api-design, openapi-3.1-authoring, json-schema-2020-12, graphql-sdl, protobuf-design, contract-first-workflow, versioning-strategy, error-envelope-design, idempotency-design, pagination-conventions, webhook-design, hateoas-evaluation, deprecation-policy]
 stacks: [any]

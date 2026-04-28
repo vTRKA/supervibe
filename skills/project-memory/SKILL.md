@@ -1,7 +1,7 @@
 ---
 name: project-memory
 namespace: process
-description: "Use BEFORE starting any non-trivial task to search project memory for prior decisions, patterns, incidents, learnings, solutions matching current context"
+description: "Use BEFORE starting any non-trivial task to search project memory for prior decisions, patterns, incidents, learnings, solutions matching current context. RU: Используется ПЕРЕД любой нетривиальной задачей — ищет в проектной памяти прошлые решения, паттерны, инциденты, learnings и solutions под текущий контекст. Trigger phrases: 'поищи в памяти', 'past decisions', 'как мы делали раньше', 'project memory'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: brainstorm
 prerequisites: []

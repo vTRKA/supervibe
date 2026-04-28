@@ -1,7 +1,7 @@
 ---
 name: rails-developer
 namespace: stacks/rails
-description: "Use WHEN implementing Rails features — controllers, models, jobs, channels, Hotwire views with RSpec/Minitest and FormObject patterns"
+description: "Use WHEN implementing Rails features — controllers, models, jobs, channels, Hotwire views with RSpec/Minitest and FormObject patterns. RU: Используется КОГДА нужно реализовать фичи Rails — контроллеры, модели, jobs, channels, Hotwire-вьюхи с RSpec/Minitest и паттернами FormObject. Trigger phrases: 'rails контроллер', 'AR модель', 'миграция', 'sidekiq job'."
 persona-years: 15
 capabilities: [rails-implementation, active-record, hotwire-views, turbo-streams, stimulus-controllers, action-cable-channels, active-job, form-objects, rspec-testing, minitest-testing, factory-bot]
 stacks: [rails, ruby]

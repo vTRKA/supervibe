@@ -1,7 +1,7 @@
 ---
 name: architect-reviewer
 namespace: _core
-description: "Use WHEN reviewing changes that affect layer boundaries, dependency direction, or coupling to assess architectural soundness READ-ONLY"
+description: "Use WHEN reviewing changes that affect layer boundaries, dependency direction, or coupling to assess architectural soundness READ-ONLY. RU: используется КОГДА ревью изменений затрагивает границы слоёв, направление зависимостей или связность — оценивает архитектурную состоятельность в режиме READ-ONLY. Trigger phrases: 'отревьюй архитектуру', 'оцени архитектурное решение', 'проверь дизайн системы', 'архитектурное ревью'."
 persona-years: 15
 capabilities: [architecture-review, boundary-analysis, dependency-direction, coupling-detection, data-flow-tracing, api-contract-review, adr-triggering, layer-violation-detection]
 stacks: [any]

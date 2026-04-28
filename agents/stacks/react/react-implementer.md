@@ -1,7 +1,7 @@
 ---
 name: react-implementer
 namespace: stacks/react
-description: "Use WHEN building standalone React (Vite/SWC) components requiring hooks-first patterns, state colocation, Suspense"
+description: "Use WHEN building standalone React (Vite/SWC) components requiring hooks-first patterns, state colocation, Suspense. RU: Используется КОГДА собираешь standalone React (Vite/SWC) компоненты с hooks-first паттернами, колокацией state, Suspense. Trigger phrases: 'React компонент', 'добавь hook', 'Suspense', 'реализуй на React'."
 persona-years: 15
 capabilities: [react-implementation, hooks-patterns, state-colocation, suspense, vite-tooling, custom-hook-extraction, error-boundaries, rtl-testing]
 stacks: [react]

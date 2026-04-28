@@ -1,7 +1,7 @@
 ---
 name: requirements-intake
 namespace: process
-description: "Use BEFORE any new feature, bug fix, or refactor request to capture requirements with stack-aware questions and decide complexity routing (brainstorm vs plan vs exec)"
+description: "Use BEFORE any new feature, bug fix, or refactor request to capture requirements with stack-aware questions and decide complexity routing (brainstorm vs plan vs exec). RU: Используется ПЕРЕД любым запросом на новую фичу/фикс/рефактор — собирает требования через stack-aware вопросы и определяет маршрут по сложности (brainstorm vs plan vs exec). Trigger phrases: 'requirements', 'intake', 'формализуй задачу', 'собери требования'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: brainstorm
 prerequisites: []

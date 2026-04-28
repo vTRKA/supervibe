@@ -1,7 +1,7 @@
 ---
 name: code-review
 namespace: process
-description: "Use BEFORE merging any change to systematically review code across 8 dimensions (correctness/security/readability/performance/coverage/error-handling/naming/docs) with severity ranking"
+description: "Use BEFORE merging any change to systematically review code across 8 dimensions (correctness/security/readability/performance/coverage/error-handling/naming/docs) with severity ranking. RU: Используется ПЕРЕД мержем любого изменения — системный обзор по 8 измерениям (корректность/безопасность/читаемость/перформанс/покрытие/обработка ошибок/именование/доки) с ранжированием по severity. Trigger phrases: 'отревьюй код', 'code review', 'проверь PR', 'обзор кода'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

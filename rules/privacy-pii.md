@@ -1,6 +1,6 @@
 ---
 name: privacy-pii
-description: "PII classification (direct/quasi/sensitive), retention policies, GDPR/CCPA compliance, data minimization principle"
+description: "PII classification (direct/quasi/sensitive), retention policies, GDPR/CCPA compliance, data minimization principle. RU: Нет PII в логах, masked outputs, GDPR/CCPA retention, принцип минимизации данных. Trigger phrases: 'PII', 'GDPR', 'персональные данные'."
 applies-to: [any]
 mandatory: false
 version: 1.0

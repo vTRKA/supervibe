@@ -1,7 +1,7 @@
 ---
 name: confidence-scoring
 namespace: process
-description: "Use BEFORE exiting any process skill that emits an artifact (requirements-spec, plan, agent-output, scaffold, prototype, research-output) to score it against its rubric and gate progression"
+description: "Use BEFORE exiting any process skill that emits an artifact (requirements-spec, plan, agent-output, scaffold, prototype, research-output) to score it against its rubric and gate progression. RU: Используется ПЕРЕД выходом из любого process-скилла, выдающего артефакт (requirements/plan/output/scaffold/prototype/research) — оценивает по рубрике и гейтит дальнейшие шаги. Trigger phrases: 'оцени по рубрике', 'confidence score', 'оцени уверенность', 'rubric check'."
 allowed-tools: [Read, Bash]
 phase: review
 prerequisites: []

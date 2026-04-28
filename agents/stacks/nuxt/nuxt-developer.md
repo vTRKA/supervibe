@@ -1,7 +1,7 @@
 ---
 name: nuxt-developer
 namespace: stacks/nuxt
-description: "Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware, error.vue) with Vitest"
+description: "Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware, error.vue) with Vitest. RU: Используется КОГДА реализуешь фичи Nuxt 3 — pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, SSR-aware useState, error.vue с Vitest. Trigger phrases: 'Nuxt страница', 'server route Nuxt', 'useFetch', 'middleware в Nuxt'."
 persona-years: 15
 capabilities: [nuxt-implementation, pages-layouts-middleware, server-api-routes, useFetch-transform-key, runtime-config-usage, useState-ssr-aware, error-vue-handling, nuxt4-migration-aware]
 stacks: [nuxt]

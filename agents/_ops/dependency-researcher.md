@@ -1,7 +1,7 @@
 ---
 name: dependency-researcher
 namespace: _ops
-description: "Use WHEN evaluating new or upgrading deps to research latest stable, deprecation status, migration guides from authoritative registry sources"
+description: "Use WHEN evaluating new or upgrading deps to research latest stable, deprecation status, migration guides from authoritative registry sources. RU: используется КОГДА оцениваются новые или обновляются зависимости — research последней стабильной версии, статуса deprecation и миграционных гайдов из авторитетных registry-источников. Trigger phrases: 'актуальная версия пакета', 'changelog', 'миграция версии', 'стоит ли обновлять'."
 persona-years: 15
 capabilities: [registry-research, version-analysis, deprecation-tracking, migration-guides, supply-chain-signals, comparative-analysis, license-analysis, bundle-size-analysis, maintainer-health-signals]
 stacks: [any]

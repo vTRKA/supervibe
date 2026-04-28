@@ -15,6 +15,7 @@
     "evolve:status": "node scripts/evolve-status.mjs",
     "evolve:upgrade": "node scripts/evolve-upgrade.mjs",
     "evolve:upgrade-check": "node scripts/evolve-upgrade-check.mjs",
+    "evolve:detect": "node scripts/evolve-detect.mjs",
     "evolve:preview": "node scripts/preview-server.mjs",
     "memory:watch": "node scripts/watch-memory.mjs",
     "registry:build": "node scripts/build-registry.mjs",

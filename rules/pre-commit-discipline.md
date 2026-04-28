@@ -1,6 +1,6 @@
 ---
 name: pre-commit-discipline
-description: "Every project must have husky+lint-staged+commitlint pre-commit pipeline; pre-push runs full check; CI mirrors pre-push for backstop"
+description: "Every project must have husky+lint-staged+commitlint pre-commit pipeline; pre-push runs full check; CI mirrors pre-push for backstop. RU: Husky pre-commit hooks обязательны к прохождению; pre-push запускает полный check. Trigger phrases: 'pre-commit', 'hook', 'husky'."
 applies-to: [any]
 mandatory: true
 version: 1.0

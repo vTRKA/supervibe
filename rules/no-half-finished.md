@@ -1,6 +1,6 @@
 ---
 name: no-half-finished
-description: "Bans placeholder functions, NotImplementedError stubs, TODO/FIXME comments in production paths, mock returns shipped as real, half-wired UI"
+description: "Bans placeholder functions, NotImplementedError stubs, TODO/FIXME comments in production paths, mock returns shipped as real, half-wired UI. RU: Запрещает закомиченный код, orphan TODOs, half-applied refactors, placeholder функции. Trigger phrases: 'TODO', 'commented out', 'заглушка'."
 applies-to: [any]
 mandatory: true
 version: 1.0

@@ -1,7 +1,7 @@
 ---
 name: infra-pattern-researcher
 namespace: _ops
-description: "Use WHEN designing HA/replication/cache/queue topology to research current vendor-recommended patterns for project's specific versions"
+description: "Use WHEN designing HA/replication/cache/queue topology to research current vendor-recommended patterns for project's specific versions. RU: используется КОГДА проектируется топология HA/репликации/кэша/очередей — research актуальных vendor-рекомендованных паттернов под конкретные версии проекта. Trigger phrases: 'инфра паттерны', 'topology research', 'как Redis рекомендует', 'vendor docs'."
 persona-years: 15
 capabilities: [vendor-doc-research, pattern-comparison, version-specific-guidance, topology-tradeoffs, scale-envelope-mapping, cost-envelope-estimation, failure-mode-cataloguing]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: best-practices-researcher
 namespace: _ops
-description: "Use WHEN needing current 2026 best practices for a stack/library to research authoritative sources, cite, and apply to project context"
+description: "Use WHEN needing current 2026 best practices for a stack/library to research authoritative sources, cite, and apply to project context. RU: используется КОГДА нужны актуальные best practices 2026 года для стека/библиотеки — research авторитетных источников, цитирование и применение к контексту проекта. Trigger phrases: 'актуальные best practices', 'docs research', '2026 практики', 'как сейчас принято'."
 persona-years: 15
 capabilities: [research, source-evaluation, applicability-mapping, citation, mcp-integration, cache-management, version-tracking, deprecation-monitoring]
 stacks: [any]

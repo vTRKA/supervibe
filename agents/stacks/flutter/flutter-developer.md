@@ -1,7 +1,7 @@
 ---
 name: flutter-developer
 namespace: stacks/flutter
-description: "Use WHEN implementing Flutter features, screens, BLoC/Riverpod state, platform channels, Dio API clients, with flutter_test + integration_test discipline"
+description: "Use WHEN implementing Flutter features, screens, BLoC/Riverpod state, platform channels, Dio API clients, with flutter_test + integration_test discipline. RU: Используется КОГДА нужно реализовать Flutter-фичи, экраны, состояние BLoC/Riverpod, platform channels, Dio API-клиенты с дисциплиной flutter_test + integration_test. Trigger phrases: 'flutter widget', 'state management', 'platform channel', 'riverpod'."
 persona-years: 15
 capabilities: [flutter-implementation, bloc, riverpod, provider, slivers, platform-channels, dio-retrofit, flutter-test, integration-test, build-flavors, null-safety]
 stacks: [flutter]

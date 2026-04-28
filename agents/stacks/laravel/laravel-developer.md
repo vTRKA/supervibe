@@ -1,7 +1,7 @@
 ---
 name: laravel-developer
 namespace: stacks/laravel
-description: "Use WHEN implementing Laravel features, controllers, models, jobs, services with Pest tests and modern patterns"
+description: "Use WHEN implementing Laravel features, controllers, models, jobs, services with Pest tests and modern patterns. RU: Используется КОГДА реализуешь фичи Laravel — controllers, модели, jobs, сервисы с Pest-тестами и современными паттернами. Trigger phrases: 'реализуй фичу на Laravel', 'Eloquent', 'Artisan команда', 'middleware для Laravel'."
 persona-years: 15
 capabilities: [laravel-implementation, eloquent, pest-testing, queue-jobs, form-requests, policies, broadcasting, service-classes]
 stacks: [laravel]

@@ -1,7 +1,7 @@
 ---
 name: explore-alternatives
 namespace: process
-description: "Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate ≥2 alternatives with tradeoffs and explicit chosen-rationale"
+description: "Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate ≥2 alternatives with tradeoffs and explicit chosen-rationale. RU: Используется ПЕРЕД фиксацией нетривиального решения (сложность ≥5) — перечисляет ≥2 альтернативы с компромиссами и явное обоснование выбора. Trigger phrases: 'варианты', 'decision matrix', 'alternatives', 'сравни подходы'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: plan
 prerequisites: []

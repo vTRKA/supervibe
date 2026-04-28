@@ -1,7 +1,7 @@
 ---
 name: rule-audit
 namespace: process
-description: "Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across .claude/rules/* OR after sync-rules"
+description: "Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across .claude/rules/* OR after sync-rules. RU: Используется КОГДА rules-curator должен найти противоречия/избыточность/пробелы среди .claude/rules/* ИЛИ после sync-rules. Trigger phrases: 'аудит правил', 'rules check', 'проверь правила', 'rule audit'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

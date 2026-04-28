@@ -1,7 +1,7 @@
 ---
 name: memory-curator
 namespace: _meta
-description: "Use WHEN auditing project memory hygiene OR after sync-rules to deduplicate, retire stale entries, normalize tags, regenerate index, and audit cross-link integrity"
+description: "Use WHEN auditing project memory hygiene OR after sync-rules to deduplicate, retire stale entries, normalize tags, regenerate index, and audit cross-link integrity. RU: используется КОГДА проводится аудит гигиены памяти проекта ИЛИ после sync-rules — дедупликация, ретайр устаревших записей, нормализация тегов, перестроение индекса и проверка целостности кросс-ссылок. Trigger phrases: 'добавь в память', 'сохрани решение', 'memory entry', 'почисти память', 'аудит памяти'."
 persona-years: 15
 capabilities: [memory-curation, deduplication, tag-normalization, staleness-detection, cross-linking, confidence-audit, index-rebuild, taxonomy-rationalization, archive-management]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: strengthen
 namespace: process
-description: "Use WHEN audit flagged weak/stale artifacts to deepen them from project context AND fresh research (consults research-agents for stale best-practices/dependency/security/infra/design)"
+description: "Use WHEN audit flagged weak/stale artifacts to deepen them from project context AND fresh research (consults research-agents for stale best-practices/dependency/security/infra/design). RU: Используется КОГДА audit пометил артефакты слабыми/устаревшими — углубляет их из контекста проекта И свежего ресёрча (best-practices/dependency/security/infra/design). Trigger phrases: 'усиль агента', 'strengthen <agent>', 'докрути артефакт', 'усилить'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

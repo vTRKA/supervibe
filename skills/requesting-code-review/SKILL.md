@@ -1,7 +1,7 @@
 ---
 name: requesting-code-review
 namespace: process
-description: "Use BEFORE invoking code-reviewer agent or opening a PR to prepare the review package with PR description, evidence, and changed-file scope"
+description: "Use BEFORE invoking code-reviewer agent or opening a PR to prepare the review package with PR description, evidence, and changed-file scope. RU: Используется ПЕРЕД вызовом code-reviewer или открытием PR — готовит пакет на ревью: описание PR, evidence и scope изменённых файлов. Trigger phrases: 'pre-PR review', 'request review', 'запроси ревью', 'готов к ревью'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: review
 prerequisites: [agent-output]

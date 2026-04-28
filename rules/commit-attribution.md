@@ -1,6 +1,6 @@
 ---
 name: commit-attribution
-description: "AI agents must commit as the user — never add Co-Authored-By Claude / Codex / Gemini footers, never write Generated-by signatures, never sign commits as themselves"
+description: "AI agents must commit as the user — never add Co-Authored-By Claude / Codex / Gemini footers, never write Generated-by signatures, never sign commits as themselves. RU: AI агенты коммитят от имени пользователя — без Co-Authored-By Claude/Codex/Gemini и без Generated with footer. Trigger phrases: 'коммит', 'commit', 'commit message'."
 applies-to: [any]
 mandatory: true
 severity: high

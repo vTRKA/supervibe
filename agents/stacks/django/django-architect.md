@@ -1,7 +1,7 @@
 ---
 name: django-architect
 namespace: stacks/django
-description: "Use WHEN designing Django application architecture (app boundaries, model graph, settings split, Celery + Channels topology, middleware ordering) READ-ONLY"
+description: "Use WHEN designing Django application architecture (app boundaries, model graph, settings split, Celery + Channels topology, middleware ordering) READ-ONLY. RU: Используется КОГДА проектируешь архитектуру Django-приложения — границы apps, модель графа, разделение settings, топология Celery + Channels, порядок middleware, READ-ONLY. Trigger phrases: 'спроектируй Django архитектуру', 'границы приложений Django', 'topology для Celery', 'modular monolith на Django'."
 persona-years: 15
 capabilities: [django-architecture, app-boundary-design, model-graph-design, orm-query-discipline, celery-topology, channels-topology, settings-split, middleware-ordering, adr-authoring]
 stacks: [django]

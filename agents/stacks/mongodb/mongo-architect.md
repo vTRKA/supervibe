@@ -1,7 +1,7 @@
 ---
 name: mongo-architect
 namespace: stacks/mongodb
-description: "Use WHEN designing MongoDB schema, indexes, sharding, aggregation pipelines, transactions, replica-set topology"
+description: "Use WHEN designing MongoDB schema, indexes, sharding, aggregation pipelines, transactions, replica-set topology. RU: Используется КОГДА проектируются схема MongoDB, индексы, шардирование, агрегационные пайплайны, транзакции и топология replica-set. Trigger phrases: 'mongo schema', 'агрегации', 'sharding', 'mongodb индексы'."
 persona-years: 15
 capabilities: [mongo-schema, embed-vs-reference, index-strategy, aggregation-design, sharding-strategy, replica-set-topology, transactions, ttl-lifecycle, change-streams, atlas-vs-self-hosted]
 stacks: [mongodb]

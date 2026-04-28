@@ -1,7 +1,7 @@
 ---
 name: quality-gate-reviewer
 namespace: _core
-description: "Use AS LAST gate before claiming any work done to verify all evidence present and confidence ≥9 across applicable rubrics"
+description: "Use AS LAST gate before claiming any work done to verify all evidence present and confidence ≥9 across applicable rubrics. RU: используется КАК ФИНАЛЬНЫЙ гейт перед объявлением задачи завершённой — проверяет, что все доказательства собраны и confidence ≥9 по применимым рубрикам. Trigger phrases: 'override review', 'обоснуй gate', 'финальная проверка', 'quality gate'."
 persona-years: 15
 capabilities: [quality-gate, evidence-aggregation, final-verdict, override-audit, rubric-aggregation, gate-decision-tree, confidence-log-integration]
 stacks: [any]

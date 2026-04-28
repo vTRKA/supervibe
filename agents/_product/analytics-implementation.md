@@ -1,7 +1,7 @@
 ---
 name: analytics-implementation
 namespace: _product
-description: "Use WHEN adding tracking/analytics to features to ensure event taxonomy, naming consistency, GDPR compliance, consent gating, and tracking plan documentation"
+description: "Use WHEN adding tracking/analytics to features to ensure event taxonomy, naming consistency, GDPR compliance, consent gating, and tracking plan documentation. RU: используется КОГДА к фичам добавляется трекинг/аналитика — обеспечивает таксономию событий, единообразие именования, соответствие GDPR, гейтинг по консенту и документацию tracking plan. Trigger phrases: 'добавь аналитику', 'трекинг событий', 'GA4', 'настрой события', 'analytics'."
 persona-years: 15
 capabilities: [event-taxonomy, tracking-plan, gdpr-compliant, consent-management, gtm, mixpanel, amplitude, posthog, segment, datalayer-schema, vendor-instrumentation]
 stacks: [any]

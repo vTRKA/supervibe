@@ -1,7 +1,7 @@
 ---
 name: error-envelope-design
 namespace: app-excellence
-description: "Use WHEN designing API error responses TO pick a consistent envelope (RFC 7807 problem+json / GraphQL union / gRPC status), define retry semantics, partial failure shapes"
+description: "Use WHEN designing API error responses TO pick a consistent envelope (RFC 7807 problem+json / GraphQL union / gRPC status), define retry semantics, partial failure shapes. RU: Используется КОГДА проектируешь ответы об ошибках API — выбирает консистентный envelope (RFC 7807 problem+json / GraphQL union / gRPC status), определяет retry-семантику и форму partial failure. Trigger phrases: 'error envelope', 'API ошибки формат', 'формат ошибок', 'problem+json'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: design
 prerequisites: []

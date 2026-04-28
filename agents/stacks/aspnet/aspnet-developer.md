@@ -1,7 +1,7 @@
 ---
 name: aspnet-developer
 namespace: stacks/aspnet
-description: "Use WHEN implementing ASP.NET Core features, controllers, minimal APIs, EF Core models, services, with xUnit tests and modern .NET patterns"
+description: "Use WHEN implementing ASP.NET Core features, controllers, minimal APIs, EF Core models, services, with xUnit tests and modern .NET patterns. RU: Используется КОГДА реализуешь фичи на ASP.NET Core — контроллеры, minimal APIs, EF Core модели, сервисы с xUnit тестами и современными .NET паттернами. Trigger phrases: 'реализуй на ASP.NET', 'minimal API', 'EF Core модель', 'добавь controller .NET'."
 persona-years: 15
 capabilities: [aspnet-implementation, ef-core, xunit-testing, minimal-api, controllers, dependency-injection, identity-jwt, openapi-swashbuckle, serilog-logging]
 stacks: [aspnet]

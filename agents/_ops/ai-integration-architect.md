@@ -1,7 +1,7 @@
 ---
 name: ai-integration-architect
 namespace: _ops
-description: "Use WHEN designing LLM/AI integration into product code (prompts, RAG, vector DB, embeddings, model routing, evaluation harnesses, prompt-injection defenses)"
+description: "Use WHEN designing LLM/AI integration into product code (prompts, RAG, vector DB, embeddings, model routing, evaluation harnesses, prompt-injection defenses). RU: используется КОГДА проектируется интеграция LLM/AI в продукт — промпты, RAG, векторные БД, эмбеддинги, маршрутизация моделей, eval-харнессы и защита от prompt-injection. Trigger phrases: 'интегрируй LLM', 'AI feature', 'prompt design', 'RAG', 'векторная база'."
 persona-years: 15
 capabilities: [prompt-architecture, rag-design, vector-db-choice, embedding-strategy, model-routing, eval-harness, prompt-injection-defense, cost-controls, pii-redaction]
 stacks: [any]

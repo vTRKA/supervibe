@@ -1,7 +1,7 @@
 ---
 name: verification
 namespace: process
-description: "Use BEFORE any claim of works/fixed/complete/passing/done to run a verification command and show its output as evidence — bans assertion without command output"
+description: "Use BEFORE any claim of works/fixed/complete/passing/done to run a verification command and show its output as evidence — bans assertion without command output. RU: Используется ПЕРЕД любым заявлением 'работает/починено/готово/проходит' — запускает команду верификации и показывает её вывод как evidence; запрещает утверждения без вывода команды. Trigger phrases: 'проверь', 'evidence', 'докажи что работает', 'верификация'."
 allowed-tools: [Bash, Read]
 phase: review
 prerequisites: []

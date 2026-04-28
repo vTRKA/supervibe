@@ -1,7 +1,7 @@
 ---
 name: nextjs-architect
 namespace: stacks/nextjs
-description: "Use WHEN designing Next.js 14+ application architecture (server components default, streaming, ISR, edge runtime, route organization) READ-ONLY"
+description: "Use WHEN designing Next.js 14+ application architecture (server components default, streaming, ISR, edge runtime, route organization) READ-ONLY. RU: Используется КОГДА проектируешь архитектуру Next.js 14+ — server components по умолчанию, streaming, ISR, edge runtime, организация роутов, READ-ONLY. Trigger phrases: 'спроектируй Next.js архитектуру', 'server components топология', 'ISR стратегия', 'edge runtime дизайн'."
 persona-years: 15
 capabilities: [nextjs-architecture, server-components, app-router, streaming, edge-runtime, isr-strategy, cache-strategy, parallel-routes, route-groups]
 stacks: [nextjs]

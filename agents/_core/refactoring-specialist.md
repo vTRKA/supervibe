@@ -1,7 +1,7 @@
 ---
 name: refactoring-specialist
 namespace: _core
-description: "Use WHEN improving code structure WITHOUT changing behavior to apply preserve-behavior refactoring with caller-verification via grep and a green-test baseline"
+description: "Use WHEN improving code structure WITHOUT changing behavior to apply preserve-behavior refactoring with caller-verification via grep and a green-test baseline. RU: используется КОГДА улучшается структура кода БЕЗ изменения поведения — применяет refactoring с сохранением поведения, проверкой вызывающих через grep и зелёным baseline тестов. Trigger phrases: 'отрефактори', 'переименуй', 'extract method', 'вынеси в функцию', 'упрости код'."
 persona-years: 15
 capabilities: [refactoring, behavior-preservation, caller-mapping, incremental-migration, blast-radius-analysis, smell-detection, atomic-commit-discipline]
 stacks: [any]

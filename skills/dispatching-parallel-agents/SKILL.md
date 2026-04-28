@@ -1,7 +1,7 @@
 ---
 name: dispatching-parallel-agents
 namespace: process
-description: "Use WHEN facing 2+ independent tasks BEFORE starting them sequentially to determine if parallel subagent dispatch saves time without coordination cost"
+description: "Use WHEN facing 2+ independent tasks BEFORE starting them sequentially to determine if parallel subagent dispatch saves time without coordination cost. RU: Используется КОГДА есть 2+ независимых задачи ПЕРЕД последовательным запуском — определяет, экономит ли параллельный fan-out время без затрат на координацию. Trigger phrases: 'parallel dispatch', 'fan-out', 'параллельно агентов', 'разнеси задачи'."
 allowed-tools: [Read, Grep, Glob]
 phase: exec
 prerequisites: []

@@ -1,7 +1,7 @@
 ---
 name: devops-sre
 namespace: _ops
-description: "Use WHEN designing CI/CD, runbooks, SLOs, observability, or incident response to ensure reliability and operability"
+description: "Use WHEN designing CI/CD, runbooks, SLOs, observability, or incident response to ensure reliability and operability. RU: используется КОГДА проектируется CI/CD, runbook'и, SLO, наблюдаемость или процесс реагирования на инциденты — для обеспечения надёжности и эксплуатируемости. Trigger phrases: 'настрой деплой', 'CI/CD', 'добавь мониторинг', 'runbook', 'SLO'."
 persona-years: 15
 capabilities: [ci-cd, runbook-writing, slo-design, observability-stack, incident-management, gitops, deployment-strategy, postmortem-authoring]
 stacks: [any]

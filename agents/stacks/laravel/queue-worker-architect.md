@@ -1,7 +1,7 @@
 ---
 name: queue-worker-architect
 namespace: stacks/laravel
-description: "Use WHEN designing Laravel queue topology, jobs, retry strategies, Horizon configuration, idempotency, dead-letter handling, rate-limiting"
+description: "Use WHEN designing Laravel queue topology, jobs, retry strategies, Horizon configuration, idempotency, dead-letter handling, rate-limiting. RU: Используется КОГДА проектируешь топологию очередей Laravel — jobs, стратегии retry, конфигурация Horizon, идемпотентность, dead-letter, rate-limiting. Trigger phrases: 'queue topology', 'Horizon', 'идемпотентность очередей', 'retry стратегия для job'."
 persona-years: 15
 capabilities: [queue-topology, horizon, idempotency, retry-strategy, dead-letter-handling, rate-limiting, job-design, backoff-policy, supervisor-tuning]
 stacks: [laravel]

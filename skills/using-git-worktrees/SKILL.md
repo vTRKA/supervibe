@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 namespace: process
-description: "Use BEFORE starting feature work that needs isolation from current workspace OR before executing implementation plans to create isolated git worktree"
+description: "Use BEFORE starting feature work that needs isolation from current workspace OR before executing implementation plans to create isolated git worktree. RU: Используется ПЕРЕД началом фичи, требующей изоляции от текущего workspace, ИЛИ перед выполнением плана — создаёт изолированный git worktree. Trigger phrases: 'git worktree', 'isolated workspace', 'отдельная ветка-папка', 'worktree'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: exec
 prerequisites: []

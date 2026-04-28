@@ -1,7 +1,7 @@
 ---
 name: sveltekit-developer
 namespace: stacks/svelte
-description: "Use WHEN implementing SvelteKit features, routes, hooks, form actions, load functions with Svelte 5 runes and Vitest/Playwright tests"
+description: "Use WHEN implementing SvelteKit features, routes, hooks, form actions, load functions with Svelte 5 runes and Vitest/Playwright tests. RU: Используется КОГДА реализуешь SvelteKit — routes, hooks, form actions, load-функции с runes Svelte 5 и тестами Vitest/Playwright. Trigger phrases: 'SvelteKit route', 'form action', 'load функция', 'добавь страницу SvelteKit'."
 persona-years: 15
 capabilities: [sveltekit-implementation, svelte5-runes, load-functions, form-actions, hooks, server-endpoints, prerendering, adapter-configuration, vitest-testing, playwright-testing]
 stacks: [svelte, sveltekit]

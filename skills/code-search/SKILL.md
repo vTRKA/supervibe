@@ -1,7 +1,7 @@
 ---
 name: code-search
 namespace: process
-description: "Use BEFORE making non-trivial changes to source code to find relevant existing code, similar patterns, and callers via hybrid keyword+semantic search"
+description: "Use BEFORE making non-trivial changes to source code to find relevant existing code, similar patterns, and callers via hybrid keyword+semantic search. RU: Используется ПЕРЕД нетривиальными изменениями кода — находит релевантный код, схожие паттерны и вызовы через гибридный поиск (keyword + semantic + graph). Trigger phrases: 'найди код', 'кто вызывает', 'callers <symbol>', 'где используется'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: brainstorm
 prerequisites: []

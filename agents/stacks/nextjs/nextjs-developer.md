@@ -1,7 +1,7 @@
 ---
 name: nextjs-developer
 namespace: stacks/nextjs
-description: "Use WHEN implementing Next.js 14+ pages, layouts, server actions, route handlers, mutations with TypeScript strict"
+description: "Use WHEN implementing Next.js 14+ pages, layouts, server actions, route handlers, mutations with TypeScript strict. RU: Используется КОГДА реализуешь Next.js 14+ — pages, layouts, server actions, route handlers, мутации с TypeScript strict. Trigger phrases: 'next.js страница', 'server action', 'API route', 'добавь layout Next.js'."
 persona-years: 15
 capabilities: [nextjs-implementation, server-components, server-actions, route-handlers, mutations, suspense]
 stacks: [nextjs]

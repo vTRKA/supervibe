@@ -1,7 +1,7 @@
 ---
 name: rails-architect
 namespace: stacks/rails
-description: "Use WHEN deciding Rails architecture — Hotwire vs SPA, queue backend, ActionCable namespacing, engine boundaries, ADR-worthy choices"
+description: "Use WHEN deciding Rails architecture — Hotwire vs SPA, queue backend, ActionCable namespacing, engine boundaries, ADR-worthy choices. RU: Используется КОГДА принимаются архитектурные решения по Rails — Hotwire vs SPA, бэкенд очередей, namespacing ActionCable, границы engine, ADR-уровень. Trigger phrases: 'rails архитектура', 'engine', 'concern', 'hotwire vs spa'."
 persona-years: 15
 capabilities: [rails-architecture, hotwire-decisions, queue-backend-selection, action-cable-design, engine-decomposition, adr-authoring, solid-stack-evaluation, bounded-context-mapping]
 stacks: [rails, ruby]

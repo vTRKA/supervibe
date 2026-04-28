@@ -1,7 +1,7 @@
 ---
 name: seo-audit
 namespace: process
-description: "Use WHEN auditing or building public pages for SEO to verify technical SEO + content SEO using best-practices-researcher for current 2026 patterns"
+description: "Use WHEN auditing or building public pages for SEO to verify technical SEO + content SEO using best-practices-researcher for current 2026 patterns. RU: Используется КОГДА проверяешь или собираешь публичные страницы под SEO — валидирует technical SEO + content SEO с актуальными паттернами 2026 через best-practices-researcher. Trigger phrases: 'SEO audit', 'мета-теги', 'проверь SEO', 'seo чеклист'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

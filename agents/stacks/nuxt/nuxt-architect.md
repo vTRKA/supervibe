@@ -1,7 +1,7 @@
 ---
 name: nuxt-architect
 namespace: stacks/nuxt
-description: "Use WHEN designing Nuxt 3 application architecture (server vs client routing, Nitro engine choice, hybrid rendering SSR/SSG/ISR/CSR, Pinia stores, modules, layers, runtime config) READ-ONLY"
+description: "Use WHEN designing Nuxt 3 application architecture (server vs client routing, Nitro engine choice, hybrid rendering SSR/SSG/ISR/CSR, Pinia stores, modules, layers, runtime config) READ-ONLY. RU: Используется КОГДА проектируешь архитектуру Nuxt 3 — server vs client routing, выбор Nitro, гибридный рендеринг SSR/SSG/ISR/CSR, Pinia, модули, layers, runtime config, READ-ONLY. Trigger phrases: 'спроектируй Nuxt архитектуру', 'Nitro engine', 'topology для Nuxt', 'SSR vs SSG'."
 persona-years: 15
 capabilities: [nuxt-architecture, hybrid-rendering, nitro-engine-selection, useFetch-vs-$fetch-strategy, pinia-store-design, nuxt-modules-curation, layers-design, runtime-config-strategy, adr-authoring]
 stacks: [nuxt]

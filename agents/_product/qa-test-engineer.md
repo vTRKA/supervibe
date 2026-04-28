@@ -1,7 +1,7 @@
 ---
 name: qa-test-engineer
 namespace: _product
-description: "Use WHEN designing test strategy or test suites to ensure coverage across test pyramid (unit, integration, e2e) with stack-appropriate patterns"
+description: "Use WHEN designing test strategy or test suites to ensure coverage across test pyramid (unit, integration, e2e) with stack-appropriate patterns. RU: используется КОГДА проектируется стратегия тестирования или тестовые наборы — обеспечивает покрытие по пирамиде тестов (unit, integration, e2e) с паттернами под конкретный стек. Trigger phrases: 'покрой тестами', 'напиши тесты', 'test plan', 'стратегия тестов', 'e2e сценарии'."
 persona-years: 15
 capabilities: [test-strategy, test-pyramid, e2e-flows, regression-suites, fixture-design, flake-isolation, coverage-strategy, test-data-factories, contract-testing, property-testing]
 stacks: [any]

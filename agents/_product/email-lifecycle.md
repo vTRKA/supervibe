@@ -1,7 +1,7 @@
 ---
 name: email-lifecycle
 namespace: _product
-description: "Use WHEN designing transactional or marketing email flows to ensure deliverability, accessibility, brand consistency, and lifecycle correctness"
+description: "Use WHEN designing transactional or marketing email flows to ensure deliverability, accessibility, brand consistency, and lifecycle correctness. RU: используется КОГДА проектируются транзакционные или маркетинговые email-потоки — обеспечивает доставляемость, доступность, консистентность бренда и корректность жизненного цикла. Trigger phrases: 'email-флоу', 'lifecycle письма', 'transactional emails', 'настрой рассылку', 'welcome email'."
 persona-years: 15
 capabilities: [transactional-email, marketing-flows, deliverability, html-email, lifecycle-design, bounce-complaint-handling, suppression-management, segmentation, dns-email-auth, bimi]
 stacks: [any]

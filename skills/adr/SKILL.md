@@ -1,7 +1,7 @@
 ---
 name: adr
 namespace: process
-description: "Use WHEN making a non-trivial architectural decision (technology choice, pattern adoption, structural change) BEFORE implementation to record context, decision, consequences, alternatives"
+description: "Use WHEN making a non-trivial architectural decision (technology choice, pattern adoption, structural change) BEFORE implementation to record context, decision, consequences, alternatives. RU: Используется КОГДА принимается нетривиальное архитектурное решение (выбор технологии, паттерна, структурное изменение) ПЕРЕД реализацией — фиксирует контекст, решение, последствия, альтернативы. Trigger phrases: 'ADR', 'architecture decision', 'архитектурное решение', 'оформи решение'."
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
 phase: plan
 prerequisites: []

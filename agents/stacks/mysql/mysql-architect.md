@@ -1,7 +1,7 @@
 ---
 name: mysql-architect
 namespace: stacks/mysql
-description: "Use WHEN designing MySQL/InnoDB schema, indexes, partitioning, replication, online DDL at scale"
+description: "Use WHEN designing MySQL/InnoDB schema, indexes, partitioning, replication, online DDL at scale. RU: Используется КОГДА проектируются схема MySQL/InnoDB, индексы, партицирование, репликация и online DDL под нагрузкой. Trigger phrases: 'mysql схема', 'innodb настройка', 'индексы mysql', 'репликация mysql'."
 persona-years: 15
 capabilities: [mysql-schema, innodb-tuning, index-strategy, partitioning, replication-topology, online-ddl, deadlock-diagnosis, explain-analyze, group-replication, gh-ost-orchestration]
 stacks: [mysql, mariadb]

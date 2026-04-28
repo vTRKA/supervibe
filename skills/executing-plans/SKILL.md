@@ -1,7 +1,7 @@
 ---
 name: executing-plans
 namespace: process
-description: "Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase"
+description: "Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase. RU: Используется КОГДА существует утверждённый implementation-plan — выполняет его пофазно с обязательной верификацией каждой задачи и confidence-gate на каждой фазе. Trigger phrases: 'выполни план', 'execute plan', 'запусти план', 'погнали по плану'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: [implementation-plan]

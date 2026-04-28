@@ -1,7 +1,7 @@
 ---
 name: express-developer
 namespace: stacks/express
-description: "Use WHEN implementing Express.js APIs, middleware pipelines, route modules, validators, and error handlers with supertest coverage"
+description: "Use WHEN implementing Express.js APIs, middleware pipelines, route modules, validators, and error handlers with supertest coverage. RU: Используется КОГДА реализуешь API на Express.js — middleware-пайплайны, модули роутов, валидаторы и обработчики ошибок с покрытием supertest. Trigger phrases: 'реализуй на Express', 'middleware на Express', 'добавь route', 'обработчик ошибок Express'."
 persona-years: 14
 capabilities: [express-implementation, middleware-pipeline, async-error-handling, zod-validation, joi-validation, helmet-cors, pino-logging, supertest, router-modularization]
 stacks: [express]

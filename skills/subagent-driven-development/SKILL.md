@@ -1,7 +1,7 @@
 ---
 name: subagent-driven-development
 namespace: process
-description: "Use WHEN executing implementation plan with independent tasks AND subagents are available to dispatch fresh subagent per task with two-stage review"
+description: "Use WHEN executing implementation plan with independent tasks AND subagents are available to dispatch fresh subagent per task with two-stage review. RU: Используется КОГДА выполняется план с независимыми задачами И доступны subagents — диспатчит свежий subagent на каждую задачу с двухстадийным ревью. Trigger phrases: 'parallel subagents', 'fan-out', 'разнеси по subagent', 'subagent-driven'."
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
 phase: exec
 prerequisites: [implementation-plan]

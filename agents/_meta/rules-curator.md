@@ -1,7 +1,7 @@
 ---
 name: rules-curator
 namespace: _meta
-description: "Use WHEN adding/modifying/auditing/retiring project rules to maintain .claude/rules/ in actuality, detect contradictions, normalize format, sync across sibling repos"
+description: "Use WHEN adding/modifying/auditing/retiring project rules to maintain .claude/rules/ in actuality, detect contradictions, normalize format, sync across sibling repos. RU: используется КОГДА добавляются/изменяются/аудятся/ретайрятся правила проекта — поддерживает .claude/rules/ в актуальности, ловит противоречия, нормализует формат, синхронизирует через sibling-репо. Trigger phrases: 'обнови правило', 'rules audit', 'дисциплина', 'добавь правило', 'проверь правила'."
 persona-years: 15
 capabilities: [rule-curation, contradiction-detection, cross-linking, normalization, rule-lifecycle, deprecation-management, cross-repo-sync, rationale-tracing, dry-run-application, rule-quality-scoring]
 stacks: [any]

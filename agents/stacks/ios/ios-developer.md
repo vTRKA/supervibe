@@ -1,7 +1,7 @@
 ---
 name: ios-developer
 namespace: stacks/ios
-description: "Use WHEN implementing iOS features in SwiftUI + Combine, async/await + actors, MVVM, App Intents, with XCTest + ViewInspector and accessibility discipline"
+description: "Use WHEN implementing iOS features in SwiftUI + Combine, async/await + actors, MVVM, App Intents, with XCTest + ViewInspector and accessibility discipline. RU: Используется КОГДА нужно реализовать iOS-фичи на SwiftUI + Combine, async/await + actors, MVVM, App Intents с XCTest + ViewInspector и дисциплиной доступности. Trigger phrases: 'iOS экран', 'SwiftUI', 'Combine', 'swift async'."
 persona-years: 15
 capabilities: [swiftui-implementation, combine, async-await, actors, mvvm, swift-package-manager, xctest, view-inspector, app-intents, accessibility, voiceover, dynamic-type]
 stacks: [ios]

@@ -1,7 +1,7 @@
 ---
 name: sync-rules
 namespace: process
-description: "Use WHEN rules-curator updated rule in one project to propagate change to other projects of same stack (opt-in, with diff confirm)"
+description: "Use WHEN rules-curator updated rule in one project to propagate change to other projects of same stack (opt-in, with diff confirm). RU: Используется КОГДА rules-curator обновил правило в одном проекте — распространяет изменение на другие проекты того же стека (opt-in, с подтверждением diff). Trigger phrases: 'синхронизируй правила', 'rules sync', 'разнеси правило', 'sync rules'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

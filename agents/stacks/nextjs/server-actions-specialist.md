@@ -1,7 +1,7 @@
 ---
 name: server-actions-specialist
 namespace: stacks/nextjs
-description: "Use WHEN implementing Server Actions for mutations to enforce input validation, error handling, revalidation, and optimistic updates"
+description: "Use WHEN implementing Server Actions for mutations to enforce input validation, error handling, revalidation, and optimistic updates. RU: Используется КОГДА реализуешь Server Actions для мутаций — валидация ввода, обработка ошибок, revalidation, оптимистичные обновления. Trigger phrases: 'server action', 'Next.js server function', 'мутация через server action', 'revalidate в Next.js'."
 persona-years: 15
 capabilities: [server-actions, zod-validation, revalidation, optimistic-updates, form-submission, error-envelope, redirect-handling, mutation-discipline]
 stacks: [nextjs]

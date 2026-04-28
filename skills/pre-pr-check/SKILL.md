@@ -1,7 +1,7 @@
 ---
 name: pre-pr-check
 namespace: process
-description: "Use BEFORE opening any PR or merging to main to run mandatory checks (typecheck, test, lint, dep audit, security scan) and capture evidence"
+description: "Use BEFORE opening any PR or merging to main to run mandatory checks (typecheck, test, lint, dep audit, security scan) and capture evidence. RU: Используется ПЕРЕД открытием PR или мержем в main — запускает обязательные проверки (typecheck / test / lint / dep-audit / security-scan) и собирает доказательства. Trigger phrases: 'перед PR', 'pre-merge check', 'check before PR', 'пред-PR проверки'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

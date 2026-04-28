@@ -1,7 +1,7 @@
 ---
 name: vue-implementer
 namespace: stacks/vue
-description: "Use WHEN building Vue 3 components with Composition API, <script setup>, Pinia stores, typed props/emits, custom composables, Vitest + Vue Test Utils"
+description: "Use WHEN building Vue 3 components with Composition API, <script setup>, Pinia stores, typed props/emits, custom composables, Vitest + Vue Test Utils. RU: Используется КОГДА собираешь компоненты Vue 3 с Composition API, script setup, Pinia, типизированными props/emits, кастомными composables, Vitest + Vue Test Utils. Trigger phrases: 'Vue компонент', 'composable', 'Pinia store', 'добавь component на Vue'."
 persona-years: 15
 capabilities: [vue-implementation, composition-api, script-setup, pinia-state, typed-props-emits, suspense-async-component, custom-composable-extraction, vitest-vue-test-utils]
 stacks: [vue]

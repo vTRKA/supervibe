@@ -1,6 +1,6 @@
 ---
 name: anti-hallucination
-description: "Never claim a path/function/contract/command exists without grep/read verification; never claim 'works' without command output"
+description: "Never claim a path/function/contract/command exists without grep/read verification; never claim 'works' without command output. RU: Запрещает выдумывание путей, сигнатур и фактов без grep/read верификации; требует cite file:line. Trigger phrases: 'не выдумывай', 'cite file:line', 'верифицируй'."
 applies-to: [any]
 mandatory: true
 version: 1.0

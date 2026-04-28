@@ -1,7 +1,7 @@
 ---
 name: eloquent-modeler
 namespace: stacks/laravel
-description: "Use WHEN designing or refining Eloquent models, relationships, scopes, casts to optimize queries and prevent N+1"
+description: "Use WHEN designing or refining Eloquent models, relationships, scopes, casts to optimize queries and prevent N+1. RU: Используется КОГДА проектируешь или дорабатываешь Eloquent модели, отношения, scopes, casts — оптимизируешь запросы и предотвращаешь N+1. Trigger phrases: 'Eloquent модель', 'отношения Eloquent', 'migration', 'scope для модели'."
 persona-years: 15
 capabilities: [eloquent-relationships, query-optimization, n-plus-one-prevention, polymorphic-design, eager-loading, scope-design, cast-design, observer-design, factory-design]
 stacks: [laravel]

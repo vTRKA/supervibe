@@ -1,7 +1,7 @@
 ---
 name: auth-architect
 namespace: _core
-description: "Use BEFORE designing or modifying authentication/authorization (login, sessions, tokens, MFA, SSO) to choose protocols and prevent common auth flaws"
+description: "Use BEFORE designing or modifying authentication/authorization (login, sessions, tokens, MFA, SSO) to choose protocols and prevent common auth flaws. RU: используется ПЕРЕД проектированием или изменением аутентификации/авторизации (логин, сессии, токены, MFA, SSO) — выбирает протоколы и предотвращает типичные уязвимости auth. Trigger phrases: 'дизайн авторизации', 'auth flow', 'OAuth схема', 'настрой логин', 'JWT/сессии'."
 persona-years: 15
 capabilities: [auth-architecture, oauth-2.1-design, oidc-integration, saml-2-integration, session-design, jwt-vs-paseto-tradeoffs, refresh-token-rotation, mfa-design, webauthn-passkeys, idp-migration, social-login-integration, csrf-defense, sso-just-in-time-provisioning]
 stacks: [any]

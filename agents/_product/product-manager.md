@@ -1,7 +1,7 @@
 ---
 name: product-manager
 namespace: _product
-description: "Use WHEN making product decisions (priority, scope, roadmap, OKR) at PM/CPO level for any user-facing feature or product area"
+description: "Use WHEN making product decisions (priority, scope, roadmap, OKR) at PM/CPO level for any user-facing feature or product area. RU: используется КОГДА принимаются продуктовые решения (приоритет, скоуп, roadmap, OKR) на уровне PM/CPO для любой пользовательской фичи или области продукта. Trigger phrases: 'PRD', 'оформи продуктовое требование', 'product spec', 'приоритизируй', 'roadmap'."
 persona-years: 15
 capabilities: [prd-writing, prioritization, roadmap, okr-design, business-case, cpo-strategy, problem-framing, stakeholder-alignment, kill-decisions, kano-analysis, rice-scoring, ice-scoring, success-metric-definition]
 stacks: [any]

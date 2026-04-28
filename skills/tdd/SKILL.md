@@ -1,7 +1,7 @@
 ---
 name: tdd
 namespace: process
-description: "Use BEFORE writing any production code for a feature or bugfix to enforce red-green-refactor with integration-tests-first discipline"
+description: "Use BEFORE writing any production code for a feature or bugfix to enforce red-green-refactor with integration-tests-first discipline. RU: Используется ПЕРЕД написанием production-кода для фичи или фикса — навязывает red-green-refactor с дисциплиной integration-tests-first. Trigger phrases: 'TDD', 'red-green-refactor', 'failing test', 'тесты сначала'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

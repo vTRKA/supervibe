@@ -1,7 +1,7 @@
 ---
 name: root-cause-debugger
 namespace: _core
-description: "Use WHEN encountering any bug, test failure, or unexpected behavior to find root cause via hypothesis-evidence-isolation method, never symptom suppression"
+description: "Use WHEN encountering any bug, test failure, or unexpected behavior to find root cause via hypothesis-evidence-isolation method, never symptom suppression. RU: используется КОГДА встречается баг, падение теста или неожиданное поведение — находит корневую причину методом гипотеза-доказательство-изоляция, а не подавляет симптом. Trigger phrases: 'почему ломается', 'найди причину', 'дебаг', 'почему не работает', 'тест падает'."
 persona-years: 15
 capabilities: [debugging, root-cause-analysis, evidence-gathering, postmortem-writing, hypothesis-testing, blast-radius-analysis, regression-prevention]
 stacks: [any]

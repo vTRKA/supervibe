@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 namespace: _core
-description: "Use BEFORE merging any change to systematically review code across 8 dimensions with severity-ranked findings"
+description: "Use BEFORE merging any change to systematically review code across 8 dimensions with severity-ranked findings. RU: используется ПЕРЕД мержем любых изменений — системно ревьюит код по 8 измерениям с ранжированием находок по критичности. Trigger phrases: 'проверь код', 'код-ревью', 'отревьюй PR', 'review этот код'."
 persona-years: 15
 capabilities: [code-review, security-review, anti-hallucination, evidence-based-feedback, severity-ranking, blast-radius-analysis]
 stacks: [any]

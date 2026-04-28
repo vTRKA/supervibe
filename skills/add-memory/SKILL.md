@@ -1,7 +1,7 @@
 ---
 name: add-memory
 namespace: process
-description: "Use AFTER completing significant work (feature shipped, bug fixed, decision made, incident resolved) to add a memory entry capturing the learning for future agents"
+description: "Use AFTER completing significant work (feature shipped, bug fixed, decision made, incident resolved) to add a memory entry capturing the learning for future agents. RU: Используется ПОСЛЕ завершения значимой работы (релиз фичи, фикс бага, принятое решение, разбор инцидента) — сохраняет запись в память для будущих агентов. Trigger phrases: 'добавь в память', 'save decision', 'сохрани решение', 'запиши learning'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: review
 prerequisites: []

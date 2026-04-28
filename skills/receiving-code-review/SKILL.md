@@ -1,7 +1,7 @@
 ---
 name: receiving-code-review
 namespace: process
-description: "Use WHEN receiving code review feedback BEFORE implementing suggestions to evaluate each finding with technical rigor instead of performative agreement"
+description: "Use WHEN receiving code review feedback BEFORE implementing suggestions to evaluate each finding with technical rigor instead of performative agreement. RU: Используется КОГДА получен фидбэк code review ПЕРЕД внедрением правок — оценивает каждое замечание с технической строгостью, без показного согласия. Trigger phrases: 'обработай review', 'feedback', 'комменты с PR', 'разбери ревью'."
 allowed-tools: [Read, Grep, Glob, Bash, Edit]
 phase: review
 prerequisites: []

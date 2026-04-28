@@ -1,6 +1,6 @@
 ---
 name: routing
-description: "URL conventions: REST resource patterns, RPC for actions, versioning via URL or header, no breaking changes without deprecation window"
+description: "URL conventions: REST resource patterns, RPC for actions, versioning via URL or header, no breaking changes without deprecation window. RU: REST / GraphQL / Server Actions конвенции, версионирование, deprecation window для breaking changes. Trigger phrases: 'routing', 'endpoint', 'API'."
 applies-to: [any]
 mandatory: false
 version: 1.0

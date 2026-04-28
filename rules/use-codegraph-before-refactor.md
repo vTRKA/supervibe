@@ -2,7 +2,7 @@
 name: use-codegraph-before-refactor
 id: use-codegraph-before-refactor
 title: Use code graph to assess blast radius before refactor
-description: "Before any refactor / rename / extract / move / inline / delete that touches a public symbol, run evolve:code-search graph queries to enumerate the blast radius and cite caller evidence."
+description: "Before any refactor / rename / extract / move / inline / delete that touches a public symbol, run evolve:code-search graph queries to enumerate the blast radius and cite caller evidence. RU: BEFORE rename / move / extract / delete на public symbol — обязателен --callers первым для оценки blast radius. Trigger phrases: 'переименуй', 'rename', 'refactor'."
 applies-to: [refactor, rename, extract-method, move-file, inline, delete-public-symbol, rename-symbol]
 applies-when: ["refactor", "rename", "extract-method", "move-file", "inline", "delete-public-symbol", "rename-symbol"]
 mandatory: true

@@ -1,7 +1,7 @@
 ---
 name: django-developer
 namespace: stacks/django
-description: "Use WHEN implementing Django features (views/CBVs/DRF, ModelForms, signals, fixtures/factories, pytest-django) with disciplined ORM access"
+description: "Use WHEN implementing Django features (views/CBVs/DRF, ModelForms, signals, fixtures/factories, pytest-django) with disciplined ORM access. RU: Используется КОГДА реализуешь фичи Django — views/CBV/DRF, ModelForms, сигналы, fixtures/factories, pytest-django с дисциплинированным доступом к ORM. Trigger phrases: 'реализуй фичу на Django', 'добавь view', 'напиши CBV', 'ModelForm для Django'."
 persona-years: 15
 capabilities: [django-implementation, fbv-vs-cbv-vs-viewset, modelform-discipline, signal-design, factory-boy-fixtures, pytest-django, queryset-optimization, admin-config]
 stacks: [django]

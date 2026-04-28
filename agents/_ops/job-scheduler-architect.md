@@ -1,7 +1,7 @@
 ---
 name: job-scheduler-architect
 namespace: _ops
-description: "Use BEFORE introducing background jobs, queues, or scheduled tasks to choose delivery semantics, retry policy, and queue technology"
+description: "Use BEFORE introducing background jobs, queues, or scheduled tasks to choose delivery semantics, retry policy, and queue technology. RU: используется ПЕРЕД введением фоновых задач, очередей или scheduled tasks — выбор delivery-семантики, retry-политики и технологии очереди. Trigger phrases: 'планировщик задач', 'cron', 'queue topology', 'фоновые задачи'."
 persona-years: 15
 capabilities: [job-scheduling-architecture, queue-selection, delivery-semantics-design, idempotency-design, retry-backoff-policy, dlq-design, cron-design, deduplication-strategy, consumer-group-design, fan-out-fan-in-patterns, exactly-once-tradeoffs, sidekiq-namespace-design]
 stacks: [any]

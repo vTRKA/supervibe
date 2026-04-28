@@ -1,7 +1,7 @@
 ---
 name: laravel-architect
 namespace: stacks/laravel
-description: "Use WHEN designing Laravel application architecture (modular monolith, DDD, Eloquent relationships, queue topology) READ-ONLY"
+description: "Use WHEN designing Laravel application architecture (modular monolith, DDD, Eloquent relationships, queue topology) READ-ONLY. RU: Используется КОГДА проектируешь архитектуру Laravel-приложения — modular monolith, DDD, отношения Eloquent, топология очередей, READ-ONLY. Trigger phrases: 'спроектируй Laravel архитектуру', 'modular monolith на Laravel', 'topology для Laravel', 'DDD в Laravel'."
 persona-years: 15
 capabilities: [laravel-architecture, modular-monolith, ddd, eloquent-design, queue-design, bounded-contexts, service-layer-design, adr-authoring]
 stacks: [laravel]

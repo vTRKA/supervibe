@@ -1,7 +1,7 @@
 ---
 name: genesis
 namespace: process
-description: "Use WHEN bootstrapping .claude/ scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9"
+description: "Use WHEN bootstrapping .claude/ scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9. RU: Используется КОГДА разворачиваешь .claude/ scaffold для нового или существующего проекта — собирает stack-pack в таргет с confidence-gate ≥9. Trigger phrases: 'scaffolding', 'первичный setup', 'init проекта', 'genesis'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: [requirements-spec]

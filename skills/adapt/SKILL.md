@@ -1,7 +1,7 @@
 ---
 name: adapt
 namespace: process
-description: "Use WHEN stack changed (new modules, renamed files, removed files, new major dependencies) to sync agents/skills with new state"
+description: "Use WHEN stack changed (new modules, renamed files, removed files, new major dependencies) to sync agents/skills with new state. RU: Используется КОГДА стек изменился (новые модули, переименования, удаления, новые зависимости) — синхронизирует агентов/скиллы с новым состоянием. Trigger phrases: 'sync проектные агенты', 'подтяни upstream', 'обнови агентов под новый стек', 'adapt'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

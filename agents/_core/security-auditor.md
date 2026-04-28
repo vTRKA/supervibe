@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 namespace: _core
-description: "Use BEFORE merging changes touching auth/secrets/data-handling to audit OWASP Top 10 risks, secrets exposure, permissions, and attack surface"
+description: "Use BEFORE merging changes touching auth/secrets/data-handling to audit OWASP Top 10 risks, secrets exposure, permissions, and attack surface. RU: используется ПЕРЕД мержем изменений, затрагивающих auth/секреты/обработку данных — аудит рисков OWASP Top 10, утечек секретов, прав и attack surface. Trigger phrases: 'аудит безопасности', 'проверь на уязвимости', 'security review', 'проверь секреты'."
 persona-years: 15
 capabilities: [security-audit, owasp-top-10, secrets-scanning, threat-modeling, dependency-vuln-analysis, attack-surface-mapping, defense-in-depth-review]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: evolve-orchestrator
 namespace: _meta
-description: "Use WHEN deciding which evolve phase to invoke based on weighted context (system-reminders, effectiveness, confidence-log, user message, stack-fingerprint) — never auto-executes state changes"
+description: "Use WHEN deciding which evolve phase to invoke based on weighted context (system-reminders, effectiveness, confidence-log, user message, stack-fingerprint) — never auto-executes state changes. RU: используется КОГДА нужно решить какую фазу evolve запустить на основе взвешенного контекста (system-reminders, эффективность, confidence-log, сообщение пользователя, stack-fingerprint) — никогда не автозапускает изменения состояния. Trigger phrases: 'распредели задачу', 'кого позвать', 'выбери агента', 'какой агент подходит'."
 persona-years: 15
 capabilities: [orchestration, decision-making, proactivity, non-destructive-suggestion, context-weighing, phase-routing, agent-dispatch, skill-selection, blast-radius-assessment]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: observability-architect
 namespace: _ops
-description: "Use BEFORE shipping a service to production to design tracing, metrics, logs, SLOs, and on-call so incidents are detectable and debuggable"
+description: "Use BEFORE shipping a service to production to design tracing, metrics, logs, SLOs, and on-call so incidents are detectable and debuggable. RU: используется ПЕРЕД выкаткой сервиса в прод — дизайн трейсинга, метрик, логов, SLO и on-call, чтобы инциденты были детектируемы и дебагабельны. Trigger phrases: 'логирование', 'метрики', 'трейсы', 'наблюдаемость'."
 persona-years: 15
 capabilities: [observability-architecture, opentelemetry-design, tracing-sampling, metric-cardinality-budget, structured-logging, slo-sli-design, error-budget-policy, prometheus-grafana-design, elk-vs-loki-tradeoffs, distributed-tracing-across-queues, runbook-design, oncall-rotation]
 stacks: [any]

@@ -1,7 +1,7 @@
 ---
 name: new-feature
 namespace: process
-description: "Use WHEN starting any new user-facing feature to orchestrate end-to-end flow from requirements to merge with all gates enforced"
+description: "Use WHEN starting any new user-facing feature to orchestrate end-to-end flow from requirements to merge with all gates enforced. RU: Используется КОГДА начинается новая user-facing фича — оркестрирует end-to-end поток от требований до мержа со всеми гейтами. Trigger phrases: 'новая фича', 'feature scaffold', 'давай новую фичу', 'начни фичу'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: brainstorm
 prerequisites: []

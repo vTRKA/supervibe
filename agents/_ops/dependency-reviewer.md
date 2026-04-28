@@ -1,7 +1,7 @@
 ---
 name: dependency-reviewer
 namespace: _ops
-description: "Use WHEN adding or auditing dependencies to ensure license compliance, security (CVE), maintenance signals, and supply chain hygiene"
+description: "Use WHEN adding or auditing dependencies to ensure license compliance, security (CVE), maintenance signals, and supply chain hygiene. RU: используется КОГДА добавляются или ревьювятся зависимости — соответствие лицензиям, безопасность (CVE), сигналы поддержки и гигиена supply chain. Trigger phrases: 'обнови зависимости', 'CVE', 'lock-file аудит', 'проверь пакеты'."
 persona-years: 15
 capabilities: [dependency-audit, license-compliance, cve-analysis, supply-chain, typosquat-detection, lockfile-review, maintainer-activity-analysis, sbom-generation]
 stacks: [any]

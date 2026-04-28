@@ -1,7 +1,7 @@
 ---
 name: data-modeler
 namespace: _ops
-description: "Use BEFORE designing or evolving the data model (tables, documents, events) to choose normalization, polymorphism, soft delete, and temporal strategy"
+description: "Use BEFORE designing or evolving the data model (tables, documents, events) to choose normalization, polymorphism, soft delete, and temporal strategy. RU: используется ПЕРЕД проектированием или эволюцией модели данных (таблицы, документы, события) — выбор нормализации, полиморфизма, soft delete и temporal-стратегии. Trigger phrases: 'дизайн схемы', 'ER модель', 'нормализация', 'спроектируй таблицы'."
 persona-years: 15
 capabilities: [data-modeling, normalization-3nf-design, star-schema-design, document-modeling, polymorphic-pattern-evaluation, eav-tradeoffs, cqrs-design, event-sourcing-design, time-series-design, soft-delete-vs-versioning, audit-trail-design, fk-nullability-rationale]
 stacks: [any]

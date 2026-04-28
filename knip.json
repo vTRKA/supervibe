@@ -19,7 +19,8 @@
     "scripts/validate-agent-output-contract.mjs",
     "scripts/hooks/post-tool-use-log.mjs",
     "scripts/evolve-upgrade.mjs",
-    "scripts/evolve-upgrade-check.mjs"
+    "scripts/evolve-upgrade-check.mjs",
+    "scripts/evolve-detect.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

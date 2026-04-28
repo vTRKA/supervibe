@@ -1,6 +1,6 @@
 ---
 name: confidence-discipline
-description: "Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric before claiming done; <9 requires explicit /evolve-override with reason"
+description: "Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric before claiming done; <9 requires explicit /evolve-override with reason. RU: Скоринг каждой работы рубрикой; гейт ≥9; override логируется с обоснованием. Trigger phrases: 'confidence', 'оценка', 'rubric'."
 applies-to: [any]
 mandatory: true
 version: 1.0

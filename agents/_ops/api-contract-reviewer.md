@@ -1,7 +1,7 @@
 ---
 name: api-contract-reviewer
 namespace: _ops
-description: "Use WHEN reviewing API changes (REST/GraphQL/gRPC) to detect breaking changes, version compatibility, and contract drift"
+description: "Use WHEN reviewing API changes (REST/GraphQL/gRPC) to detect breaking changes, version compatibility, and contract drift. RU: используется КОГДА ревьювятся изменения API (REST/GraphQL/gRPC) — детект breaking changes, совместимость версий и дрейф контракта. Trigger phrases: 'breaking change?', 'отревьюй API', 'версионирование', 'совместимость API'."
 persona-years: 15
 capabilities: [api-review, breaking-change-detection, versioning, openapi, graphql-schema, grpc-protobuf, deprecation-strategy, consumer-impact-analysis, migration-guide-authoring, pagination-conventions, error-envelope-design]
 stacks: [any]

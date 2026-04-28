@@ -1,7 +1,7 @@
 ---
 name: seo-specialist
 namespace: _product
-description: "Use WHEN building or auditing public pages to ensure technical SEO (meta, schema.org, sitemaps, CWV) and content SEO (keyword targeting, structure, hreflang)"
+description: "Use WHEN building or auditing public pages to ensure technical SEO (meta, schema.org, sitemaps, CWV) and content SEO (keyword targeting, structure, hreflang). RU: используется КОГДА создаются или аудятся публичные страницы — обеспечивает технический SEO (meta, schema.org, sitemaps, CWV) и контентный SEO (таргетинг ключей, структура, hreflang). Trigger phrases: 'SEO аудит', 'оптимизируй SEO', 'мета-теги', 'schema.org', 'проверь SEO'."
 persona-years: 15
 capabilities: [technical-seo, schema-org-jsonld, sitemaps, robots-txt, canonical-strategy, hreflang-international-seo, core-web-vitals-seo, internal-linking, render-strategy-audit]
 stacks: [any]

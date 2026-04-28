@@ -1,7 +1,7 @@
 ---
 name: repo-researcher
 namespace: _core
-description: "Use BEFORE making changes in unfamiliar code area to map existing structure, patterns, and risks via READ-ONLY exploration backed by evolve:code-search semantic queries"
+description: "Use BEFORE making changes in unfamiliar code area to map existing structure, patterns, and risks via READ-ONLY exploration backed by evolve:code-search semantic queries. RU: используется ПЕРЕД внесением изменений в незнакомую область кода — картирует существующую структуру, паттерны и риски через READ-ONLY исследование на базе evolve:code-search. Trigger phrases: 'разберись в репо', 'research code', 'как устроен этот код', 'изучи проект'."
 persona-years: 15
 capabilities: [code-archaeology, pattern-recognition, dependency-mapping, risk-identification, convention-extraction, blast-radius-analysis, semantic-search, call-graph-tracing, module-boundary-mapping]
 stacks: [any]

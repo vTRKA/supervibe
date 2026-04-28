@@ -1,7 +1,7 @@
 ---
 name: postgres-architect
 namespace: stacks/postgres
-description: "Use WHEN designing Postgres schema, migrations, indexes, replication, partitioning at scale"
+description: "Use WHEN designing Postgres schema, migrations, indexes, replication, partitioning at scale. RU: Используется КОГДА проектируются схема Postgres, миграции, индексы, репликация и партицирование под нагрузкой. Trigger phrases: 'спроектируй postgres', 'индексы', 'миграция CONCURRENTLY', 'партицирование'."
 persona-years: 15
 capabilities: [postgres-schema, migration-safety, index-strategy, partitioning, replication, pgvector, rls, jsonb-vs-columnar]
 stacks: [postgres]

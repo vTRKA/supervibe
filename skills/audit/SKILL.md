@@ -1,7 +1,7 @@
 ---
 name: audit
 namespace: process
-description: "Use WHEN session starts in existing project OR WHEN agent reports stale-context to health-check artifacts: stale references, coverage gaps, weak artifacts, agent-freshness, override-rate, effectiveness signals"
+description: "Use WHEN session starts in existing project OR WHEN agent reports stale-context to health-check artifacts: stale references, coverage gaps, weak artifacts, agent-freshness, override-rate, effectiveness signals. RU: Используется КОГДА начинается сессия в существующем проекте ИЛИ агент сигнализирует устаревший контекст — health-check артефактов: устаревшие ссылки, пробелы покрытия, слабые артефакты, override-rate, эффективность. Trigger phrases: 'health check', 'audit плагина', 'stale agents', 'аудит проекта'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

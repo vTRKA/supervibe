@@ -1,7 +1,7 @@
 ---
 name: incident-response
 namespace: process
-description: "Use WHEN production is broken (outage, data issue, security event) to triage, mitigate, root-cause, and write postmortem with timeline and action items"
+description: "Use WHEN production is broken (outage, data issue, security event) to triage, mitigate, root-cause, and write postmortem with timeline and action items. RU: Используется КОГДА продакшн сломан (outage, инцидент с данными, security event) — триаж, митигация, root-cause и постмортем с timeline и action-items. Trigger phrases: 'incident', 'постмортем', 'упал прод', 'разбор инцидента'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: exec
 prerequisites: []

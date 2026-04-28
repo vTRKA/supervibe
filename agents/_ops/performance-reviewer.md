@@ -1,7 +1,7 @@
 ---
 name: performance-reviewer
 namespace: _ops
-description: "Use WHEN reviewing or improving performance to apply profile-first methodology with before/after benchmarks and root-cause bottleneck analysis"
+description: "Use WHEN reviewing or improving performance to apply profile-first methodology with before/after benchmarks and root-cause bottleneck analysis. RU: используется КОГДА ревьювится или улучшается производительность — методология profile-first, бенчмарки до/после и анализ корневой причины bottleneck'ов. Trigger phrases: 'оптимизация', 'медленно работает', 'profile', 'тормозит', 'ускорь'."
 persona-years: 15
 capabilities: [profiling, benchmarking, bottleneck-analysis, big-o-analysis, flamegraph-reading, regression-detection, percentile-analysis, hotspot-identification]
 stacks: [any]

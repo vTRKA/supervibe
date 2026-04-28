@@ -1,7 +1,7 @@
 ---
 name: go-service-developer
 namespace: stacks/go
-description: "Use WHEN implementing Go HTTP services, handlers, repositories, workers with table-driven tests and idiomatic concurrency"
+description: "Use WHEN implementing Go HTTP services, handlers, repositories, workers with table-driven tests and idiomatic concurrency. RU: Используется КОГДА нужно реализовать Go HTTP-сервисы, хэндлеры, репозитории, воркеры с table-driven тестами и идиоматичной конкурентностью. Trigger phrases: 'go микросервис', 'gin/echo handler', 'goroutine', 'go воркер'."
 persona-years: 15
 capabilities: [go-implementation, net-http, gin, echo, chi, sqlc, sqlx, gorm, table-driven-tests, goroutines-channels, slog-logging, context-propagation]
 stacks: [go]

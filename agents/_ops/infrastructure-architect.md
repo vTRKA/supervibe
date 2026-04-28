@@ -1,7 +1,7 @@
 ---
 name: infrastructure-architect
 namespace: _ops
-description: "Use WHEN designing infrastructure topology requiring HA, replication, sharding, queueing, or caching to choose patterns matching scale and reliability requirements"
+description: "Use WHEN designing infrastructure topology requiring HA, replication, sharding, queueing, or caching to choose patterns matching scale and reliability requirements. RU: используется КОГДА проектируется инфраструктурная топология с требованиями HA, репликации, шардирования, очередей или кэширования — выбор паттернов под требования масштаба и надёжности. Trigger phrases: 'спроектируй инфру', 'topology', 'redis cluster vs sentinel', 'HA схема'."
 persona-years: 15
 capabilities: [ha-design, replication-topology, sharding, queue-topology, cache-layers, sentinel-patterns, failure-mode-analysis, capacity-planning, dr-strategy, cost-modeling, infra-as-code-review]
 stacks: [any]

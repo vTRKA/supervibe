@@ -1,7 +1,7 @@
 ---
 name: stack-discovery
 namespace: process
-description: "Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack to scan manifests, ask gap questions, build stack-fingerprint"
+description: "Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack to scan manifests, ask gap questions, build stack-fingerprint. RU: Используется КОГДА сессия начинается в незнакомом проекте ИЛИ упомянут новый стек — сканирует манифесты, задаёт уточняющие вопросы и строит stack-fingerprint. Trigger phrases: 'определи стек', 'stack discovery', 'какой тут стек', 'разведай проект'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: brainstorm
 prerequisites: []

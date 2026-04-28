@@ -1,7 +1,7 @@
 ---
 name: drf-specialist
 namespace: stacks/django
-description: "Use WHEN designing or implementing DRF APIs (serializers, viewsets, permissions, pagination, filtering, throttling, simple-jwt) with N+1 discipline"
+description: "Use WHEN designing or implementing DRF APIs (serializers, viewsets, permissions, pagination, filtering, throttling, simple-jwt) with N+1 discipline. RU: Используется КОГДА проектируешь или реализуешь DRF API — сериализаторы, viewsets, permissions, пагинация, фильтрация, throttling, simple-jwt с дисциплиной по N+1. Trigger phrases: 'DRF serializer', 'viewset', 'permission для DRF', 'добавь endpoint на DRF'."
 persona-years: 15
 capabilities: [drf-implementation, modelserializer-design, nested-serializer-design, viewset-vs-apiview, permission-design, simple-jwt-integration, pagination-and-filtering, throttling, openapi-schema]
 stacks: [django]

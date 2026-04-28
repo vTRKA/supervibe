@@ -1,7 +1,7 @@
 ---
 name: finishing-a-development-branch
 namespace: process
-description: "Use WHEN implementation complete and all verifications pass to decide how to integrate the work (merge, PR, archive, discard) with safety checks"
+description: "Use WHEN implementation complete and all verifications pass to decide how to integrate the work (merge, PR, archive, discard) with safety checks. RU: Используется КОГДА реализация завершена и все верификации прошли — решает, как интегрировать работу (merge / PR / archive / discard) с safety-чеками. Trigger phrases: 'finish branch', 'merge готовое', 'закрой ветку', 'wrap up branch'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []

@@ -1,6 +1,6 @@
 ---
 name: rule-maintenance
-description: "Defines lifecycle of rules in .claude/rules/: when to add, when to retire, how rules-curator agent maintains them"
+description: "Defines lifecycle of rules in .claude/rules/: when to add, when to retire, how rules-curator agent maintains them. RU: Правила пересматриваются раз в квартал; last-verified держится свежим; rules-curator поддерживает lifecycle. Trigger phrases: 'rules audit', 'аудит правил', 'rule maintenance'."
 applies-to: [any]
 mandatory: true
 version: 1.0

@@ -1,7 +1,7 @@
 ---
 name: competitive-design-researcher
 namespace: _ops
-description: "Use WHEN researching market visual/UX patterns for product category to inform brand and design without copying"
+description: "Use WHEN researching market visual/UX patterns for product category to inform brand and design without copying. RU: используется КОГДА исследуются визуальные/UX-паттерны рынка в категории продукта — чтобы информировать бренд и дизайн без копирования. Trigger phrases: 'как у конкурентов', 'скрап Linear', 'дизайн research', 'посмотри как сделано у'."
 persona-years: 15
 capabilities: [competitive-research, design-pattern-extraction, market-analysis, public-design-system-tracking, screenshot-capture, benchmark-scoring, trend-analysis]
 stacks: [any]

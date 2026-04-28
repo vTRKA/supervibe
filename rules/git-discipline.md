@@ -1,6 +1,6 @@
 ---
 name: git-discipline
-description: "Bans destructive git operations (stash/pop, force-push, reset --hard, clean -f, branch -D, etc.) to preserve work and history"
+description: "Bans destructive git operations (stash/pop, force-push, reset --hard, clean -f, branch -D, etc.) to preserve work and history. RU: Запрещает деструктивные git операции — force-push на main, reset --hard, skip hooks. Trigger phrases: 'git push', 'force push', 'merge'."
 applies-to: [any]
 mandatory: true
 version: 1.0

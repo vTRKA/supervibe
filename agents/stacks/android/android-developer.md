@@ -1,7 +1,7 @@
 ---
 name: android-developer
 namespace: stacks/android
-description: "Use WHEN implementing Android features in Jetpack Compose, Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 with Espresso + Compose UI tests"
+description: "Use WHEN implementing Android features in Jetpack Compose, Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 with Espresso + Compose UI tests. RU: Используется КОГДА нужно реализовать Android-фичи на Jetpack Compose, Coroutines + Flow, Hilt DI, Room + WorkManager, Material 3 с Espresso и Compose UI-тестами. Trigger phrases: 'android compose', 'jetpack', 'gradle config', 'kotlin coroutines'."
 persona-years: 15
 capabilities: [compose-implementation, coroutines, flow, hilt-di, room, workmanager, espresso, compose-ui-tests, material-3, navigation-compose, type-safe-routes]
 stacks: [android]

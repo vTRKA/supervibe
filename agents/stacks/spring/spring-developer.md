@@ -1,7 +1,7 @@
 ---
 name: spring-developer
 namespace: stacks/spring
-description: "Use WHEN implementing Spring Boot features — REST controllers, services, JPA repositories, Bean Validation, Spring Security, Testcontainers integration tests"
+description: "Use WHEN implementing Spring Boot features — REST controllers, services, JPA repositories, Bean Validation, Spring Security, Testcontainers integration tests. RU: Используется КОГДА реализуешь фичи Spring Boot — REST controllers, сервисы, JPA-репозитории, Bean Validation, Spring Security, интеграционные тесты с Testcontainers. Trigger phrases: 'реализуй на Spring', 'JPA репозиторий', 'добавь controller Spring', 'Spring Security настройка'."
 persona-years: 15
 capabilities: [spring-implementation, rest-controllers, jpa-hibernate, bean-validation, spring-security-jwt, testcontainers, transaction-management, exception-handling]
 stacks: [spring]
