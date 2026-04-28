@@ -108,7 +108,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 
    Success:
    ```
-   === Evolve Test — full suite ===
+   === Supervibe Test — full suite ===
    Validators:    8 / 8 ✓
    Tests:         253 / 253 ✓
    Duration:      17.3s
@@ -119,7 +119,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 
    Failure:
    ```
-   === Evolve Test — full suite ===
+   === Supervibe Test — full suite ===
    Validators:    7 / 8 ✓
      ✓ plugin-json
      ✓ frontmatter

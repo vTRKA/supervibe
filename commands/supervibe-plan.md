@@ -61,7 +61,7 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
 ## Output contract
 
 ```
-=== Evolve Plan ===
+=== Supervibe Plan ===
 Spec:        <path>
 Plan:        docs/plans/YYYY-MM-DD-<slug>.md
 Phases:      <count>

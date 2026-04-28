@@ -12,7 +12,7 @@ function runStatus() {
 
 test('evolve-status: prints index health summary header', () => {
   const out = runStatus();
-  assert.match(out, /Evolve Index Status/);
+  assert.match(out, /Supervibe Index Status/);
   assert.match(out, /Project root:/);
 });
 

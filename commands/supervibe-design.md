@@ -213,7 +213,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
 ## Output contract
 
 ```
-=== Evolve Design ===
+=== Supervibe Design ===
 Brief:        <one-line>
 Brand:        prototypes/_brandbook/direction.md     (score: X.X/10)
 System:       prototypes/_design-system/manifest.json (approved)

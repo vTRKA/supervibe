@@ -133,7 +133,7 @@ Print the threshold table above. Useful for documentation.
 ## Output contract
 
 ```
-=== Evolve Strengthen ===
+=== Supervibe Strengthen ===
 Agent:        laravel-developer
 File:         agents/stacks/laravel/laravel-developer.md
 

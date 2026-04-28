@@ -1,4 +1,4 @@
-// Track which Evolve plugin version was last seen by each project.
+// Track which Supervibe plugin version was last seen by each project.
 // On SessionStart, compare current plugin.json version to stored value;
 // when bumped, surface a one-line banner with link to CHANGELOG section.
 //

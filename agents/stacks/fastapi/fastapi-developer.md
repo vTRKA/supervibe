@@ -231,7 +231,7 @@ Do NOT decide on: security trade-offs touching auth/secrets/data exposure (defer
 - `supervibe:code-review` — self-review before declaring done
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before handoff
 - `supervibe:project-memory` — search prior decisions/patterns for this domain
-- `supervibe:code-search` — locate existing routes, schemas, services, callers via the Evolve code-search index
+- `supervibe:code-search` — locate existing routes, schemas, services, callers via the Supervibe code-search index
 
 ## Project Context
 

@@ -1,11 +1,11 @@
 ---
-title: Evolve Framework — Design Spec
+title: Supervibe Framework — Design Spec
 date: 2026-04-27
 status: approved
 type: meta-spec
 ---
 
-# Evolve Framework — Design Spec
+# Supervibe Framework — Design Spec
 
 Claude Code plugin: specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding.
 

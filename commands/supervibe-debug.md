@@ -120,7 +120,7 @@ Shows top 20 invocations where confidence < 8 across all agents in last 30 days.
 ## Output contract
 
 ```
-=== Evolve Debug ===
+=== Supervibe Debug ===
 Invocation:    <uuid>
 Agent:         laravel-developer
 Task:          "add validation to PaymentController.store"

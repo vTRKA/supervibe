@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Evolve universal installer — macOS + Linux.
+# Supervibe universal installer — macOS + Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
@@ -10,7 +10,7 @@
 #
 # What it does (idempotent — safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
-#   2. Clones the Evolve repo (LFS optional — model lazy-fetches from HuggingFace)
+#   2. Clones the Supervibe repo (LFS optional — model lazy-fetches from HuggingFace)
 #   3. Runs npm install + npm run check
 #   4. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
@@ -23,7 +23,7 @@ set -euo pipefail
 REPO_URL="${SUPERVIBE_REPO:-https://github.com/vTRKA/supervibe.git}"
 REF="${SUPERVIBE_REF:-main}"
 PLUGIN_NAME="supervibe"
-MARKETPLACE_NAME="evolve-marketplace"
+MARKETPLACE_NAME="supervibe-marketplace"
 LOG_DIR="${TMPDIR:-/tmp}/evolve-install.$$"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
@@ -53,20 +53,22 @@ if [ "$NODE_MAJOR" -lt 22 ]; then
 fi
 ok "node $(node --version) ok"
 
-# ---- detect AI CLIs ----
+# ---- detect AI CLIs (by both directory and command in PATH) ----
 
 CLAUDE_DIR="$HOME/.claude"
 CODEX_DIR="$HOME/.codex"
 GEMINI_DIR="$HOME/.gemini"
 
 CLIS_FOUND=()
-[ -d "$CLAUDE_DIR" ] && CLIS_FOUND+=("claude") || true
-[ -d "$CODEX_DIR" ]  && CLIS_FOUND+=("codex")  || true
-[ -d "$GEMINI_DIR" ] && CLIS_FOUND+=("gemini") || true
+[ -d "$CLAUDE_DIR" ] && CLIS_FOUND+=("claude") || command -v claude >/dev/null 2>&1 && CLIS_FOUND+=("claude") || true
+[ -d "$CODEX_DIR" ]  && CLIS_FOUND+=("codex")  || command -v codex >/dev/null 2>&1 && CLIS_FOUND+=("codex") || true
+[ -d "$GEMINI_DIR" ] && CLIS_FOUND+=("gemini") || command -v gemini >/dev/null 2>&1 && CLIS_FOUND+=("gemini") || true
+command -v cursor >/dev/null 2>&1     && CLIS_FOUND+=("cursor") || true
+command -v copilot >/dev/null 2>&1    && CLIS_FOUND+=("copilot") || true
+command -v opencode >/dev/null 2>&1   && CLIS_FOUND+=("opencode") || true
 
 if [ ${#CLIS_FOUND[@]} -eq 0 ]; then
-  warn "No AI CLI directory detected (~/.claude, ~/.codex, ~/.gemini)."
-  warn "Installing under ~/.claude/ — register manually in your CLI if you use a different one."
+  warn "No AI CLI detected. Installing under ~/.claude/ — register manually in your CLI if needed."
   mkdir -p "$CLAUDE_DIR/plugins/marketplaces"
   CLIS_FOUND=("claude")
 else
@@ -268,7 +270,7 @@ done
 cat <<EOF
 
 ${C_GREEN}=================================================================${C_RESET}
-${C_GREEN}  Evolve v$INSTALLED_VERSION installed${C_RESET}
+${C_GREEN}  Supervibe v$INSTALLED_VERSION installed${C_RESET}
 ${C_GREEN}=================================================================${C_RESET}
 
   Location:    $TARGET

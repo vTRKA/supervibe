@@ -1,0 +1,6 @@
+{
+  "name": "supervibe",
+  "description": "Specialist agents (79), code graph (10 langs), semantic RAG, project memory, confidence gates, design pipeline, preview server.",
+  "version": "1.7.0",
+  "contextFileName": "GEMINI.md"
+}

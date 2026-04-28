@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
 #
 # What it does:
-#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/evolve-marketplace)
+#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
 #   2. Refuses to clobber local edits (uncommitted changes → stop)
 #   3. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
 #      git fetch → ff-only pull → lfs pull (if available) → npm install →
@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-PLUGIN_ROOT_DEFAULT="$HOME/.claude/plugins/marketplaces/evolve-marketplace"
+PLUGIN_ROOT_DEFAULT="$HOME/.claude/plugins/marketplaces/supervibe-marketplace"
 PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
 
 if [ -t 1 ]; then
@@ -40,7 +40,7 @@ command -v npm  >/dev/null || die "npm not found."
 
 if [ ! -d "$PLUGIN_ROOT/.git" ]; then
   cat >&2 <<EOF
-${C_RED}[evolve-update]${C_RESET} no Evolve install found at $PLUGIN_ROOT
+${C_RED}[evolve-update]${C_RESET} no Supervibe install found at $PLUGIN_ROOT
 
 If this is your first install, run:
   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Upgrade the Evolve plugin to the latest commit on the tracked branch.
+// Upgrade the Supervibe plugin to the latest commit on the tracked branch.
 // Cross-platform (Windows / macOS / Linux). Pure Node — no shell tricks.
 //
 // Steps:

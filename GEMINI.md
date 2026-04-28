@@ -1,10 +1,10 @@
-# GEMINI.md — Evolve plugin context for Gemini CLI
+# GEMINI.md — Supervibe plugin context for Gemini CLI
 
 > Loaded automatically by Gemini CLI on session start. Mirrors `CLAUDE.md` but with Gemini-tool-name mappings so skills and agents authored against Claude Code tools work unchanged.
 
 ## Tool name mapping (Gemini CLI ↔ Claude Code)
 
-When Evolve skills or agents reference these Claude Code tools, use the Gemini CLI equivalents:
+When Supervibe skills or agents reference these Claude Code tools, use the Gemini CLI equivalents:
 
 | Claude Code | Gemini CLI |
 |-------------|-----------|
@@ -19,9 +19,9 @@ When Evolve skills or agents reference these Claude Code tools, use the Gemini C
 | `Task` (subagent dispatch) | direct invocation — Gemini CLI does not have first-class subagents yet; treat skill content as inline instructions |
 | `TodoWrite` | inline task list in response |
 
-When Evolve agents/skills reference Claude Code tools by name, mentally substitute via this table. Output contracts and confidence-scoring stay identical.
+When Supervibe agents/skills reference Claude Code tools by name, mentally substitute via this table. Output contracts and confidence-scoring stay identical.
 
-## What Evolve provides
+## What Supervibe provides
 
 Same as `CLAUDE.md`:
 - 73 specialist agents in `./agents/`

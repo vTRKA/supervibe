@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Evolve Confidence Rubric",
+  "title": "Supervibe Confidence Rubric",
   "type": "object",
   "required": ["artifact", "max-score", "dimensions", "gates"],
   "additionalProperties": false,

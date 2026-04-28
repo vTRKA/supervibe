@@ -10,7 +10,7 @@ Allow continuing past a confidence-scoring BLOCK status by recording the overrid
 
 `.claude/confidence-log.jsonl` is resolved **relative to the current working directory** (the project root where Claude Code is running), NOT relative to the plugin install path.
 
-- When using Evolve in a target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
+- When using Supervibe in a target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
 - When testing the plugin inside its own dev repo, the log lands at `<plugin-repo>/.claude/confidence-log.jsonl`.
 
 If `.claude/` does not exist yet, this command must create it.

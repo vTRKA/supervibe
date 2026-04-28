@@ -1,7 +1,7 @@
 {
   "name": "supervibe-framework",
   "version": "1.7.0",
-  "description": "Dev tooling for the Evolve Claude Code plugin",
+  "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
   "engines": {

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Evolve plugin will be documented in this file.
+All notable changes to the Supervibe plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -57,7 +57,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 
 ### Added — README rewrite (Phase F5)
 
-- Removed "15-year-persona" marketing language; comparison table focused on Evolve vs superpowers
+- Removed "15-year-persona" marketing language; comparison table focused on Supervibe vs superpowers
 - Cookbook with 5 end-to-end scenarios (Laravel feature / refactor blast-radius / debug incident / brand redesign / DB migration safety)
 
 ### Added — Agent Evolution Loop (Phase G + H)

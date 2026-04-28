@@ -1,6 +1,6 @@
 ---
 description: >-
-  Update the Evolve plugin: git pull + lfs pull + npm install + tests +
+  Update the Supervibe plugin: git pull + lfs pull + npm install + tests +
   register-refresh. Idempotent. Now with mid-upgrade rollback procedure if tests
   fail. Идемпотентно. С rollback при сбое тестов на середине upgrade. Triggers:
   'update plugin', 'обнови плагин', 'evolve upgrade', '/supervibe-update'.
@@ -8,7 +8,7 @@ description: >-
 
 # /supervibe-update
 
-Update the installed Evolve plugin to the latest commit. Wraps `npm run supervibe:upgrade` with explicit rollback procedure if anything fails mid-upgrade.
+Update the installed Supervibe plugin to the latest commit. Wraps `npm run supervibe:upgrade` with explicit rollback procedure if anything fails mid-upgrade.
 
 ## Difference from `/supervibe-adapt`
 
@@ -152,7 +152,7 @@ If the state file is corrupted: `git reflog` shows recent HEAD positions.
 Successful upgrade:
 
 ```
-=== Evolve Update ===
+=== Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         v1.6.0
 After:          v1.7.0
@@ -171,7 +171,7 @@ Next:
 Failed upgrade with rollback:
 
 ```
-=== Evolve Update — FAILED ===
+=== Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
 Target:         v1.7.0
@@ -195,7 +195,7 @@ Next:
 Dry-run:
 
 ```
-=== Evolve Update — DRY RUN ===
+=== Supervibe Update — DRY RUN ===
 Current:        v1.6.0
 Latest:         v1.7.0
 Changelog summary: [see /supervibe-changelog --since v1.6.0]

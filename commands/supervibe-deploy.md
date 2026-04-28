@@ -179,7 +179,7 @@ When user runs `/supervibe-deploy --rollback <slug>`:
 ## Output contract
 
 ```
-=== Evolve Deploy ===
+=== Supervibe Deploy ===
 Prototype:    landing-fintech-2026
 Approval:     2026-04-25 (3 days ago)
 Target:       web (production: Next.js detected)

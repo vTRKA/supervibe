@@ -1,6 +1,6 @@
-# Getting Started with Evolve
+# Getting Started with Supervibe
 
-Evolve is a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding — backed by SQLite.
+Supervise is a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding — backed by SQLite.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ The plugin uses Claude Code's standard plugin format with `agents:[]` array (ver
 
 ### Option A — Via marketplace (recommended for users)
 
-If a marketplace publishes Evolve:
+If a marketplace publishes Supervibe:
 
 ```bash
 # Add marketplace (URL TBD when published)
@@ -31,7 +31,7 @@ If a marketplace publishes Evolve:
 ### Option B — Local install (current; for early adopters and developers)
 
 ```bash
-# 1. Clone or download Evolve
+# 1. Clone or download Supervibe
 git clone https://github.com/your-org/supervibe ~/dev/supervibe   # or download archive
 cd ~/dev/supervibe
 
@@ -204,7 +204,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/build-memory-index.mjs
 
 ## Code Search (RAG over your source code)
 
-Beyond markdown memory, Evolve indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
+Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
 
 ```bash
 # One-time full index (after install or major refactor)
@@ -232,7 +232,7 @@ Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_
 
 ## Code Graph (structural relationships)
 
-Beyond semantic similarity, Evolve builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
+Beyond semantic similarity, Supervibe builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
 
 This is automatic — built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on every `Write`/`Edit` without any daemon.
 
@@ -392,7 +392,7 @@ rm -rf ~/.claude/plugins/cache/local/supervibe
 # Remove from installed_plugins.json (manual edit OR Claude Code UI)
 # /plugin uninstall evolve   # if marketplace install was used
 
-# Per-project cleanup (only if removing Evolve from a specific project):
+# Per-project cleanup (only if removing Supervibe from a specific project):
 rm -rf <project>/.claude/agents
 rm -rf <project>/.claude/rules
 rm -rf <project>/.claude/skills

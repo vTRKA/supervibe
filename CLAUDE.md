@@ -2,7 +2,7 @@
 
 > **Audience:** Claude Code agents loading this file as system context. Humans should read `README.md` first.
 
-This is the **Evolve Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22+. Pure JS. No Docker. No native compilation.**
+This is the **Supervibe Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22+. Pure JS. No Docker. No native compilation.**
 
 For deep dives, agents read on demand from `.claude/docs/`:
 

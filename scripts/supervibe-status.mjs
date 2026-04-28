@@ -28,7 +28,7 @@ function ageStr(ms) {
 }
 
 async function main() {
-  console.log(color('Evolve Index Status', 'cyan'));
+  console.log(color('Supervibe Index Status', 'cyan'));
   console.log(color('===================', 'dim'));
   console.log(`Project root: ${PROJECT_ROOT}\n`);
 

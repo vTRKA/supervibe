@@ -1,4 +1,4 @@
-# Contributing to Evolve
+# Contributing to Supervibe
 
 ## Adding an agent
 

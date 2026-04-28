@@ -16,7 +16,7 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN target project has no `.claude/agents/` OR no routing table in `CLAUDE.md` AND user wants Evolve scaffolding. Triggered by `/supervibe-genesis` command.
+WHEN target project has no `.claude/agents/` OR no routing table in `CLAUDE.md` AND user wants Supervibe scaffolding. Triggered by `/supervibe-genesis` command.
 
 ## Step 0 — Read source of truth (required)
 

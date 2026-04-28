@@ -12,7 +12,7 @@
 
 **Constraints (read before starting):**
 1. **No new commands beyond `/supervibe-preview`** — the planning surface must NOT grow new top-level commands. Items 1–6 in user spec emphasized "ТОЛЬКО усиление текущих" for planning.
-2. **No external services** — pure local Node, like all other Evolve infrastructure.
+2. **No external services** — pure local Node, like all other Supervibe infrastructure.
 3. **Preview-server must die when session dies** — no zombie processes. Heartbeat + SIGINT/SIGTERM handlers + registry validation.
 4. **Hot-reload must work without browser plugins or WebSocket** — SSE only.
 5. **All code must run on Windows / macOS / Linux** — no shell-specific tricks.
@@ -940,7 +940,7 @@ const { values } = parseArgs({
 });
 
 if (values.help) {
-  console.log(`Evolve Preview Server
+  console.log(`Supervibe Preview Server
 
 Usage:
   preview-server.mjs --root <dir> [--port N] [--label "name"] [--no-watch]
@@ -4354,8 +4354,8 @@ git commit -m "feat(skills): add 4 app-excellence skills (test-strategy / featur
 
 **Goals:**
 1. Drop "15 years experience" language (sounds like marketing)
-2. Add comparison table — **Evolve vs superpowers ONLY** (per user spec — no aider/cursor/continue.dev)
-3. Add "Why use Evolve if you already have superpowers" section
+2. Add comparison table — **Supervibe vs superpowers ONLY** (per user spec — no aider/cursor/continue.dev)
+3. Add "Why use Supervibe if you already have superpowers" section
 4. Add cookbook with 5 end-to-end scenarios
 
 - [ ] **Step 1: Remove "15-year-persona" mentions**
@@ -4365,18 +4365,18 @@ In `README.md`, search/replace:
 - "**Каждый агент — это 15-летний опыт**" → "**Каждый агент — это специалист со строгой методологией**"
 - Remove any other "15 years" / "20 years" / "decades" expert-marketing phrases throughout README
 
-- [ ] **Step 2: Add Evolve vs superpowers comparison section**
+- [ ] **Step 2: Add Supervibe vs superpowers comparison section**
 
 After "Что вы получаете" table, add:
 
 ```markdown
-## Чем Evolve отличается от superpowers
+## Чем Supervibe отличается от superpowers
 
 (superpowers — главный аналог; обе расширяют Claude Code через `.claude-plugin`. Сравнение фактическое, без оценочных суждений.)
 
 **Только различающиеся возможности — то что реально влияет на выбор:**
 
-| Возможность | Evolve | superpowers |
+| Возможность | Supervibe | superpowers |
 |-------------|--------|-------------|
 | Граф вызовов (callers / callees / neighborhood) | ✅ tree-sitter, 9 языков, через SQLite | ❌ нет |
 | Семантический Code RAG (multilingual e5, RU+EN+100 langs) | ✅ оффлайн, ~129MB bundled | ❌ нет |
@@ -4391,17 +4391,17 @@ After "Что вы получаете" table, add:
 | Agent evolution loop (invocation log → effectiveness tracker → underperformer detector → auto-strengthen) | ✅ полная петля | ❌ |
 | Bundle size | ~140 МБ (модель + грамматики через LFS) | <10 МБ |
 
-### Когда выбирать Evolve вместо superpowers
+### Когда выбирать Supervibe вместо superpowers
 
 - Хотите **жёсткие гейты** (confidence-engine блокирует мерж пока score < 9), а не «мягкие» рекомендации
 - Нужен **Code Graph** для рефакторов (`--callers`, `--neighbors`) — superpowers не имеет
 - Нужен **семантический поиск по коду** (multilingual) — superpowers не имеет
-- Работа на **русском / неанглийском** — Evolve embedding model тренировалась на 100 языках
+- Работа на **русском / неанглийском** — Supervibe embedding model тренировалась на 100 языках
 - Делаете много **дизайна / мокапов** — preview-server из коробки
 - Работаете со специфичным **стеком** (Laravel / Django / Rails / Spring / etc) — есть подготовленные специалисты
 - Хотите **дисциплину** (anti-hallucination, no-half-finished, use-codegraph-before-refactor — формальные правила с severity)
 
-### Когда выбирать superpowers вместо Evolve
+### Когда выбирать superpowers вместо Supervibe
 
 - Меньший bundle size (без bundled-models)
 - Не нужен Code Graph / семантический Code RAG (агенты пишут только английский text-only)
@@ -4411,7 +4411,7 @@ After "Что вы получаете" table, add:
 
 ### Можно использовать оба одновременно?
 
-Да. Skills из superpowers и Evolve могут coexist в одном `.claude-plugin/`. Evolve преднамеренно использует те же conventions (markdown frontmatter, slash commands, hooks). Конфликты на уровне skill names не возникают — Evolve использует префикс `supervibe:` namespace.
+Да. Skills из superpowers и Supervibe могут coexist в одном `.claude-plugin/`. Supervibe преднамеренно использует те же conventions (markdown frontmatter, slash commands, hooks). Конфликты на уровне skill names не возникают — Supervibe использует префикс `supervibe:` namespace.
 ```
 
 - [ ] **Step 3: Add cookbook with 5 scenarios**
@@ -4518,7 +4518,7 @@ git commit -m "docs(readme): rewrite for accessibility + comparison vs alternati
 
 ## PHASE G — Agent Evolution Loop
 
-**Goal:** make «Evolve» live up to its name. Currently agents are static; evolution requires manual `/supervibe-strengthen`. Phase G adds:
+**Goal:** make «Supervibe» live up to its name. Currently agents are static; evolution requires manual `/supervibe-strengthen`. Phase G adds:
 1. Structured invocation logging (every agent task → JSONL log)
 2. `effectiveness-tracker.mjs` actually writes back to agent frontmatter
 3. Underperformer detection from logs
@@ -5583,7 +5583,7 @@ After cookbook scenarios, add:
 ```markdown
 ## Как агенты «развиваются»
 
-Плагин называется Evolve не зря. Под капотом работает четырёхступенчатая петля:
+Плагин называется Supervibe не зря. Под капотом работает четырёхступенчатая петля:
 
 1. **Логирование** — каждый раз когда агент выполняет задачу через `Task` tool, hook (`post-tool-use-log.mjs`) записывает в `.claude/memory/agent-invocations.jsonl`: какой агент, описание задачи, confidence score, был ли override
 2. **PII-редакция** — emails / номера карт / API keys / JWT автоматически маскируются перед записью
@@ -6017,8 +6017,8 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 ### Added — README rewrite (Phase F5)
 
 - Removed "15-year-persona" marketing language
-- Added comparison table (Evolve vs superpowers — main analog)
-- Added "When to choose Evolve vs superpowers" section + reverse direction
+- Added comparison table (Supervibe vs superpowers — main analog)
+- Added "When to choose Supervibe vs superpowers" section + reverse direction
 - Added "Can I use both" section
 - Added cookbook with 5 end-to-end scenarios
 

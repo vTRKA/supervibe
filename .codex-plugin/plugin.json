@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Supervibe",
     "shortDescription": "73 specialist agents + code graph + semantic RAG + project memory + confidence gates.",
-    "longDescription": "Evolve turns any AI coding agent into a team of specialists with fixed methodology. Includes a code graph (10 languages) for refactor blast-radius checks, multilingual semantic RAG over your codebase, persistent project memory (decisions / patterns / incidents / learnings / solutions), and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
+    "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes a code graph (10 languages) for refactor blast-radius checks, multilingual semantic RAG over your codebase, persistent project memory (decisions / patterns / incidents / learnings / solutions), and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
     "developerName": "vTRKA",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write", "Read"],

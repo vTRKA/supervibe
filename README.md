@@ -1,6 +1,6 @@
-# Evolve
+# Supervibe
 
-**English** · [Русский](README.ru.md)
+> **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 79 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
@@ -44,7 +44,40 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | b
 irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 ```
 
-The installer detects every supported AI CLI on your machine, clones the plugin into `~/.claude/plugins/marketplaces/supervibe-marketplace/`, runs 220 tests, and registers the plugin with each CLI. Re-run the same command later to upgrade.
+The installer auto-detects every supported AI CLI on your machine and registers the plugin.
+
+**Claude Code (auto-detect):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
+```
+
+**Cursor:**
+```text
+/add-plugin supervibe
+```
+Or search for "supervibe" in Cursor's plugin marketplace.
+
+**OpenCode:**
+Add to your `opencode.json`:
+```json
+{
+  "plugin": ["supervibe@git+https://github.com/vTRKA/supervibe.git"]
+}
+```
+
+**GitHub Copilot CLI:**
+```bash
+copilot plugin marketplace add vTRKA/supervibe-marketplace
+copilot plugin install supervibe@supervibe-marketplace
+```
+
+**Gemini CLI:**
+```bash
+gemini extensions install https://github.com/vTRKA/supervibe
+```
+
+**Codex CLI:**
+Open the plugin search interface (`/plugins`) and search for "supervibe".
 
 Restart your AI CLI. On the next session you should see:
 
@@ -216,13 +249,13 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 ```bash
 # macOS / Linux
 rm -rf ~/.claude/plugins/marketplaces/supervibe-marketplace
-rm -f  ~/.codex/plugins/evolve
+rm -f  ~/.codex/plugins/supervibe
 
 node -e "
 const fs=require('fs'),p=process.env.HOME+'/.claude/plugins/installed_plugins.json';
 if(!fs.existsSync(p))process.exit(0);
 const d=JSON.parse(fs.readFileSync(p,'utf8'));
-delete d.plugins['evolve@evolve-marketplace'];
+delete d.plugins['supervibe@supervibe-marketplace'];
 fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
 "
 
@@ -230,7 +263,7 @@ node -e "
 const fs=require('fs'),p=process.env.HOME+'/.claude/plugins/known_marketplaces.json';
 if(!fs.existsSync(p))process.exit(0);
 const d=JSON.parse(fs.readFileSync(p,'utf8'));
-delete d['evolve-marketplace'];
+delete d['supervibe-marketplace'];
 fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
 "
 
@@ -238,8 +271,8 @@ node -e "
 const fs=require('fs'),p=process.env.HOME+'/.claude/settings.json';
 if(!fs.existsSync(p))process.exit(0);
 const d=JSON.parse(fs.readFileSync(p,'utf8'));
-if(d.enabledPlugins) delete d.enabledPlugins['evolve@evolve-marketplace'];
-if(d.extraKnownMarketplaces) delete d.extraKnownMarketplaces['evolve-marketplace'];
+if(d.enabledPlugins) delete d.enabledPlugins['supervibe@supervibe-marketplace'];
+if(d.extraKnownMarketplaces) delete d.extraKnownMarketplaces['supervibe-marketplace'];
 fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
 "
 

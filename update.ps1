@@ -4,7 +4,7 @@
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 #
 # What it does:
-#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/evolve-marketplace)
+#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
 #   2. Refuses to clobber local edits (uncommitted changes → stop)
 #   3. Delegates to `npm run supervibe:upgrade` inside the checkout
 #
@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
   $env:SUPERVIBE_PLUGIN_ROOT
 } else {
-  Join-Path $HOME '.claude\plugins\marketplaces\evolve-marketplace'
+  Join-Path $HOME '.claude\plugins\marketplaces\supervibe-marketplace'
 }
 
 function Say  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Cyan }
@@ -32,7 +32,7 @@ if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die 'npm not found.
 # ---- locate install ----
 
 if (-not (Test-Path (Join-Path $PluginRoot '.git'))) {
-  Write-Host "[evolve-update] no Evolve install found at $PluginRoot" -ForegroundColor Red
+  Write-Host "[evolve-update] no Supervibe install found at $PluginRoot" -ForegroundColor Red
   Write-Host ''
   Write-Host 'If this is your first install, run:'
   Write-Host '  irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'

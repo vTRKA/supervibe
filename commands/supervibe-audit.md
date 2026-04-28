@@ -31,7 +31,7 @@ Run a full plugin + project health check. No writes — only reports.
 ## Output contract
 
 ```
-=== Evolve Audit ===
+=== Supervibe Audit ===
 Indexes:        <status line>
 Frontmatter:    <N OK / M issues>
 Skill triggers: <N OK / M issues>

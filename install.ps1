@@ -1,4 +1,4 @@
-# Evolve universal installer — Windows.
+# Supervibe universal installer — Windows.
 #
 # Usage (PowerShell):
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
@@ -13,8 +13,8 @@ $ErrorActionPreference = 'Stop'
 
 $RepoUrl         = if ($env:SUPERVIBE_REPO) { $env:SUPERVIBE_REPO } else { 'https://github.com/vTRKA/supervibe.git' }
 $Ref             = if ($env:SUPERVIBE_REF)  { $env:SUPERVIBE_REF }  else { 'main' }
-$PluginName      = 'evolve'
-$MarketplaceName = 'evolve-marketplace'
+$PluginName      = 'supervibe'
+$MarketplaceName = 'supervibe-marketplace'
 
 $LogDir = Join-Path $env:TEMP "evolve-install.$PID"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -37,20 +37,22 @@ if ($nodeMajor -lt 22) {
 }
 Ok "node $(node --version) ok"
 
-# ---- detect AI CLIs ----
+# ---- detect AI CLIs (by both directory and command in PATH) ----
 
 $ClaudeDir = Join-Path $HOME '.claude'
 $CodexDir  = Join-Path $HOME '.codex'
 $GeminiDir = Join-Path $HOME '.gemini'
 
 $ClisFound = @()
-if (Test-Path $ClaudeDir) { $ClisFound += 'claude' }
-if (Test-Path $CodexDir)  { $ClisFound += 'codex'  }
-if (Test-Path $GeminiDir) { $ClisFound += 'gemini' }
+if (Test-Path $ClaudeDir) { $ClisFound += 'claude' } elseif (Get-Command claude -ErrorAction SilentlyContinue) { $ClisFound += 'claude' }
+if (Test-Path $CodexDir)  { $ClisFound += 'codex' } elseif (Get-Command codex -ErrorAction SilentlyContinue) { $ClisFound += 'codex' }
+if (Test-Path $GeminiDir) { $ClisFound += 'gemini' } elseif (Get-Command gemini -ErrorAction SilentlyContinue) { $ClisFound += 'gemini' }
+if (Get-Command cursor -ErrorAction SilentlyContinue)   { $ClisFound += 'cursor' }
+if (Get-Command copilot -ErrorAction SilentlyContinue)  { $ClisFound += 'copilot' }
+if (Get-Command opencode -ErrorAction SilentlyContinue) { $ClisFound += 'opencode' }
 
 if ($ClisFound.Count -eq 0) {
-  Warn 'No AI CLI directory detected (~/.claude, ~/.codex, ~/.gemini).'
-  Warn 'Installing under ~/.claude/ — register manually if you use a different CLI.'
+  Warn 'No AI CLI detected. Installing under ~/.claude/ — register manually if needed.'
   New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeDir 'plugins\marketplaces') | Out-Null
   $ClisFound = @('claude')
 } else {

@@ -48,7 +48,7 @@ Treat the most recent user message as the topic.
 ## Output contract
 
 ```
-=== Evolve Brainstorm ===
+=== Supervibe Brainstorm ===
 Topic:     <one-line summary>
 Spec:      docs/specs/YYYY-MM-DD-<slug>-design.md
 Lines:     <count>

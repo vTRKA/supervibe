@@ -1511,7 +1511,7 @@ function ageStr(ms) {
 }
 
 async function main() {
-  console.log(color('Evolve Index Status', 'cyan'));
+  console.log(color('Supervibe Index Status', 'cyan'));
   console.log(color('===================', 'dim'));
   console.log(`Project root: ${PROJECT_ROOT}\n`);
 
@@ -1608,7 +1608,7 @@ After the existing "Code Search (RAG over your source code)" section, add:
 ```markdown
 ## Code Graph (structural relationships)
 
-Beyond semantic similarity, Evolve builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
+Beyond semantic similarity, Supervibe builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
 
 This is automatic — built on first session, kept fresh by the file-watcher.
 

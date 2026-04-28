@@ -1,0 +1,26 @@
+{
+  "name": "supervibe",
+  "displayName": "Supervibe",
+  "description": "Specialist agents (79), code graph (10 langs), semantic RAG, project memory, confidence gates, design pipeline, preview server.",
+  "version": "1.7.0",
+  "author": {
+    "name": "vTRKA"
+  },
+  "homepage": "https://github.com/vTRKA/supervibe",
+  "repository": "https://github.com/vTRKA/supervibe",
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "code-graph",
+    "rag",
+    "memory",
+    "confidence",
+    "scaffolding",
+    "design",
+    "prototype"
+  ],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "hooks": "./hooks/hooks.json"
+}

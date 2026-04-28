@@ -115,7 +115,7 @@ test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
   const src = readFileSync(UPD_SH, 'utf8');
   assert.match(src, /^#!\/usr\/bin\/env bash/, 'must start with bash shebang');
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
-  assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
+  assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
   assert.match(src, /git -C .* status --porcelain/, 'must check for uncommitted changes before updating');
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
@@ -123,7 +123,7 @@ test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
 test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
   const src = readFileSync(UPD_PS1, 'utf8');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
-  assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
+  assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
   assert.match(src, /status --porcelain/, 'must check for uncommitted changes before updating');
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
@@ -131,8 +131,8 @@ test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
 test('update scripts use the same plugin-marketplace path layout as install scripts', () => {
   const sh = readFileSync(UPD_SH, 'utf8');
   const ps1 = readFileSync(UPD_PS1, 'utf8');
-  assert.match(sh, /\.claude\/plugins\/marketplaces\/evolve-marketplace/);
-  assert.match(ps1, /\.claude\\plugins\\marketplaces\\evolve-marketplace/);
+  assert.match(sh, /\.claude\/plugins\/marketplaces\/supervibe-marketplace/);
+  assert.match(ps1, /\.claude\\plugins\\marketplaces\\supervibe-marketplace/);
 });
 
 test('update scripts honor SUPERVIBE_PLUGIN_ROOT env override', () => {

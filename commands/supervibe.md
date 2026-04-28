@@ -38,7 +38,7 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 Mirrors what `evolve-detect.mjs` prints, plus a one-line conclusion:
 
 ```
-=== Evolve State ===
+=== Supervibe State ===
 Project:  <path>
 Plugin:   <path>
 

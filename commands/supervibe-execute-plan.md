@@ -214,7 +214,7 @@ This becomes searchable context for future similar plans.
 ### Dry-run mode
 
 ```
-=== Evolve Execute Plan — DRY RUN ===
+=== Supervibe Execute Plan — DRY RUN ===
 Plan:        docs/plans/<file>.md
 Tasks:       <N> across <M> phases
 Readiness:   <X>/10  ✓ or ✗
@@ -227,7 +227,7 @@ Recommendation: <fix gaps | proceed | cancel>
 ### Full execution mode
 
 ```
-=== Evolve Execute Plan ===
+=== Supervibe Execute Plan ===
 Plan:        <path>
 Mode:        <subagent-driven | inline>
 Phases:      <N>

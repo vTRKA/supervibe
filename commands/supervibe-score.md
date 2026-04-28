@@ -137,7 +137,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 Single-artifact:
 
 ```
-=== Evolve Score ===
+=== Supervibe Score ===
 Artifact:    docs/plans/2026-04-28-token-economy-safe-mode.md
 Type:        plan (auto-detected from docs/plans/)
 Rubric:      confidence-rubrics/plan.yaml
@@ -167,7 +167,7 @@ Next:
 Batch:
 
 ```
-=== Evolve Score — Batch ===
+=== Supervibe Score — Batch ===
 Type:        agent-quality
 Pattern:     agents/_design/**/*.md
 Files:       10
@@ -187,7 +187,7 @@ Run `/supervibe-score agent-quality <path>` for per-file detail.
 Dry-run:
 
 ```
-=== Evolve Score — Dry Run ===
+=== Supervibe Score — Dry Run ===
 Type:        plan
 Rubric:      confidence-rubrics/plan.yaml
 Max score:   10

@@ -48,7 +48,7 @@ Evaluate any artifact on disk, even outside an active task. Example: `/supervibe
 ## Output contract
 
 ```
-=== Evolve Evaluate ===
+=== Supervibe Evaluate ===
 Artifact:     <path or task summary>
 Rubric:       <name>.yaml
 Total:        <N>/10  (gate: ≥9)

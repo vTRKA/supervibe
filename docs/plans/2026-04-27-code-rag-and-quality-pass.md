@@ -1203,7 +1203,7 @@ Insert after `## Memory system (SQLite FTS5)` block:
 ```markdown
 ## Code Search (RAG over your source code)
 
-Beyond markdown memory, Evolve indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
+Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
 
 ```bash
 # One-time full index (after install or major refactor)

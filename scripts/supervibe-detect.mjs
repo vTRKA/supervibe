@@ -25,7 +25,7 @@ if (jsonOnly) {
   process.exit(0);
 }
 
-console.log('=== Evolve State ===');
+console.log('=== Supervibe State ===');
 console.log(`Project:  ${projectRoot}`);
 console.log(`Plugin:   ${pluginRoot}`);
 console.log('');

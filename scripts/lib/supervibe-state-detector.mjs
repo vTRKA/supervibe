@@ -67,7 +67,7 @@ async function checkProjectScaffolded(projectRoot) {
     if (!existsSync(claudeAgentsDir) && !existsSync(claudeMd)) {
       return { triggered: true, evidence: 'no .claude/agents/ and no CLAUDE.md — run genesis first' };
     }
-    return { triggered: false, evidence: 'project has Evolve scaffolding' };
+    return { triggered: false, evidence: 'project has Supervibe scaffolding' };
   } catch (err) {
     return { triggered: false, error: err.message };
   }

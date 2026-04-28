@@ -2934,7 +2934,7 @@ git commit -m "feat(feedback): zero-dep WebSocket channel for browser→agent fe
   const button = el('button', {
     id: 'evolve-fb-toggle',
     textContent: '💬',
-    title: 'Click to comment on a region (Evolve feedback)',
+    title: 'Click to comment on a region (Supervibe feedback)',
   });
   document.documentElement.appendChild(button);
 

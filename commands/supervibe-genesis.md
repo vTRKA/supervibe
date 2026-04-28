@@ -4,7 +4,7 @@ description: "Bootstrap a project's .claude/ scaffold from a stack-pack matched 
 
 # /supervibe-genesis
 
-Set up Evolve for a fresh project (or one without `.claude/agents/`).
+Set up Supervibe for a fresh project (or one without `.claude/agents/`).
 
 ## Procedure
 

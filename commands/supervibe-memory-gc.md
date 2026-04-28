@@ -144,7 +144,7 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
 
 7. **Print summary:**
    ```
-   === Evolve Memory GC ===
+   === Supervibe Memory GC ===
    
    Archived: 14 entries
      - 3 decisions (superseded)

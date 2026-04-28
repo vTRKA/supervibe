@@ -44,7 +44,7 @@ const { values } = parseArgs({
 });
 
 if (values.help) {
-  console.log(`Evolve Preview Server
+  console.log(`Supervibe Preview Server
 
 Usage:
   preview-server.mjs --root <dir> [--port N] [--label "name"] [--no-watch] [--idle-timeout <min>] [--force]

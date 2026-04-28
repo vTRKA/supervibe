@@ -1,5 +1,5 @@
 {
-  "$schema": "https://github.com/vTRKA/evolve-agent/schemas/prototype-approval.json",
+  "$schema": "https://github.com/vTRKA/supervibe/schemas/prototype-approval.json",
   "status": "approved",
   "approvedAt": "{{ISO date — e.g. 2026-04-28T14:30:00Z}}",
   "approvedBy": "{{user — read from `git config user.name`}}",

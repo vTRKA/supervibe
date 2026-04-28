@@ -1,8 +1,8 @@
-# Evolve Framework v1.0 — Mega-Plan (All Phases)
+# Supervibe Framework v1.0 — Mega-Plan (All Phases)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship Evolve plugin v1.0 — a complete Claude Code plugin with specialist agents and confidence gates covering all 22 original requirements. Phases 0+1 (Foundation + Confidence Core) get full bite-sized TDD-style task breakdown. Phases 2-8 (Process Skills, Knowledge Base, Reference Stack, Discovery & Scaffolding, Self-Evolution, Orchestration & Research, Polish) get compact-format tasks (one task per artifact, with file/what/gate/verification/commit fields) — each phase remains executable but without TDD-bite-sized substeps. Each artifact in any phase still passes its respective `*-quality` rubric ≥9 before commit.
+**Goal:** Ship Supervibe plugin v1.0 — a complete Claude Code plugin with specialist agents and confidence gates covering all 22 original requirements. Phases 0+1 (Foundation + Confidence Core) get full bite-sized TDD-style task breakdown. Phases 2-8 (Process Skills, Knowledge Base, Reference Stack, Discovery & Scaffolding, Self-Evolution, Orchestration & Research, Polish) get compact-format tasks (one task per artifact, with file/what/gate/verification/commit fields) — each phase remains executable but without TDD-bite-sized substeps. Each artifact in any phase still passes its respective `*-quality` rubric ≥9 before commit.
 
 **Architecture:** Node.js-based dev tooling for the plugin (no runtime deps for Claude — Claude reads markdown/YAML directly; scripts are dev-time only). Confidence rubrics are YAML conforming to a JSON Schema. Scoring is implemented as an `supervibe:confidence-scoring` skill (markdown procedure + LLM evaluates against rubric dimensions). The override mechanism is a `/supervibe-override` command that appends to `.claude/confidence-log.jsonl` in the target project (resolved relative to current working directory — see Task 12 Path resolution). Plugin manifest lives at `.claude-plugin/plugin.json` per Claude Code convention (verified against superpowers reference); fields restricted to `name/description/version/author/homepage/repository/license/keywords`.
 
@@ -13,7 +13,7 @@
 - Test runner: `node --test` (no external framework)
 - Pre-commit dogfood: husky + lint-staged + commitlint
 - CI: GitHub Actions on Linux + Windows runners (verifies Windows path normalization)
-- Git discipline: conventional commits enforced by commitlint; no stash, no force push (per Evolve's own rules)
+- Git discipline: conventional commits enforced by commitlint; no stash, no force push (per Supervibe's own rules)
 
 ---
 
@@ -299,7 +299,7 @@ Create `package.json`:
 {
   "name": "evolve-framework",
   "version": "0.1.0",
-  "description": "Dev tooling for the Evolve Claude Code plugin",
+  "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
   "engines": {
@@ -557,7 +557,7 @@ Create `confidence-rubrics/_schema.json`:
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Evolve Confidence Rubric",
+  "title": "Supervibe Confidence Rubric",
   "type": "object",
   "required": ["artifact", "max-score", "dimensions", "gates"],
   "additionalProperties": false,
@@ -2470,10 +2470,10 @@ Allow continuing past a confidence-scoring BLOCK status by recording the overrid
 
 `.claude/confidence-log.jsonl` is resolved **relative to the current working directory** (the project root where Claude Code is running), NOT relative to the plugin install path.
 
-- When developer is using the Evolve plugin in their target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
-- When the Evolve plugin author is testing the plugin inside its own dev repo (`D:\ggsel projects\evolve\`), the log lands at `D:\ggsel projects\evolve\.claude\confidence-log.jsonl`. This is correct dev behaviour — the plugin repo IS a project from Claude's perspective.
+- When developer is using the Supervibe plugin in their target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
+- When the Supervibe plugin author is testing the plugin inside its own dev repo (`D:\ggsel projects\evolve\`), the log lands at `D:\ggsel projects\evolve\.claude\confidence-log.jsonl`. This is correct dev behaviour — the plugin repo IS a project from Claude's perspective.
 
-This means: every project using Evolve gets its own override journal, isolated from other projects. There is no cross-project sync (deferred to v2.0+).
+This means: every project using Supervibe gets its own override journal, isolated from other projects. There is no cross-project sync (deferred to v2.0+).
 
 If `.claude/` does not exist yet in the project, this command must create it (`mkdir -p .claude`) before writing the log file.
 
@@ -2610,7 +2610,7 @@ description: "Bootstrap a project's .claude/ scaffold from a stack-pack matched 
 
 # /supervibe-genesis (stub)
 
-Phase 5 of the Evolve roadmap. Currently not implemented.
+Phase 5 of the Supervibe roadmap. Currently not implemented.
 
 When implemented, this command will:
 1. Run `supervibe:stack-discovery` to identify the project's stack
@@ -2634,7 +2634,7 @@ description: "Health-check the project's agents/skills/rules and CLAUDE.md routi
 
 # /supervibe-audit (stub)
 
-Phase 6 of the Evolve roadmap. Currently not implemented.
+Phase 6 of the Supervibe roadmap. Currently not implemented.
 
 For now, respond: "Audit is not yet implemented in v0.1.0 (Phase 6 work). Partial functionality available via `node scripts/validate-frontmatter.mjs` and `node scripts/lint-skill-descriptions.mjs`."
 ```
@@ -2651,7 +2651,7 @@ description: "Deepen weak agents/skills/rules using project context, MEMORY.md, 
 
 # /supervibe-strengthen (stub)
 
-Phase 6 of the Evolve roadmap. Currently not implemented.
+Phase 6 of the Supervibe roadmap. Currently not implemented.
 
 For now, respond: "Strengthen is not yet implemented in v0.1.0 (Phase 6 work)."
 ```
@@ -2668,7 +2668,7 @@ description: "Sync agents/skills to recent project changes (renamed paths, new m
 
 # /supervibe-adapt (stub)
 
-Phase 6 of the Evolve roadmap. Currently not implemented.
+Phase 6 of the Supervibe roadmap. Currently not implemented.
 
 For now, respond: "Adapt is not yet implemented in v0.1.0 (Phase 6 work)."
 ```
@@ -2685,7 +2685,7 @@ description: "Track agent effectiveness (outcome, iterations, blockers) into fro
 
 # /supervibe-evaluate (stub)
 
-Phase 6 of the Evolve roadmap. Currently not implemented.
+Phase 6 of the Supervibe roadmap. Currently not implemented.
 
 For now, respond: "Evaluate is not yet implemented in v0.1.0 (Phase 6 work)."
 ```
@@ -2720,7 +2720,7 @@ git commit -m "feat(commands): add /evolve dispatcher and stubs for genesis/audi
 Create `README.md`:
 
 ```markdown
-# Evolve Framework
+# Supervibe Framework
 
 > Claude Code plugin: specialist agents, confidence engine, stack-aware scaffolding.
 
@@ -2775,7 +2775,7 @@ See `CONTRIBUTING.md` for how to add agents, skills, rules, and stack-packs.
 Create `CONTRIBUTING.md`:
 
 ```markdown
-# Contributing to Evolve
+# Contributing to Supervibe
 
 ## Adding an agent
 
@@ -2954,7 +2954,7 @@ Create `CHANGELOG.md`:
 ```markdown
 # Changelog
 
-All notable changes to the Evolve plugin will be documented in this file.
+All notable changes to the Supervibe plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -3048,7 +3048,7 @@ git commit -m "chore: scaffold empty directories for future-phase content"
 
 ## Task 17: Setup husky + lint-staged + commitlint for plugin's own dev (dogfood)
 
-**Why:** The plugin's own rules (`git-discipline`, `commit-discipline`, `pre-commit-discipline`) demand that consumer projects use husky/commitlint/lint-staged. We must dogfood — if Evolve doesn't use its own rules in its own repo, the rules lose credibility.
+**Why:** The plugin's own rules (`git-discipline`, `commit-discipline`, `pre-commit-discipline`) demand that consumer projects use husky/commitlint/lint-staged. We must dogfood — if Supervibe doesn't use its own rules in its own repo, the rules lose credibility.
 
 **Files:**
 - Create: `.husky/pre-commit`
@@ -4391,13 +4391,13 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 
 ```bash
 git add CHANGELOG.md .claude-plugin/plugin.json README.md
-git commit -m "chore(release): v1.0.0 — Evolve Framework"
+git commit -m "chore(release): v1.0.0 — Supervibe Framework"
 git tag v1.0.0
 ```
 
 (Push and GitHub Release creation are user-decision steps — not automated.)
 
-- **Commit:** `chore(release): v1.0.0 — Evolve Framework`
+- **Commit:** `chore(release): v1.0.0 — Supervibe Framework`
 
 ---
 

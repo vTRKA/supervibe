@@ -12,13 +12,13 @@ related-rules: [anti-hallucination, no-dead-code, commit-discipline]
 
 ## Why this rule exists
 
-Without measurable quality gates, "done" means whatever the agent feels like meaning. The 10-point confidence engine (Phase 0+1 of Evolve) provides per-artifact rubrics with concrete dimensions; this rule enforces them as gates.
+Without measurable quality gates, "done" means whatever the agent feels like meaning. The 10-point confidence engine (Phase 0+1 of Supervibe) provides per-artifact rubrics with concrete dimensions; this rule enforces them as gates.
 
 Concrete consequence of NOT following: shipped half-done features, plans skipping verification, agents claiming completion without evidence.
 
 ## When this rule applies
 
-- ALL artifacts produced by Evolve agents/skills:
+- ALL artifacts produced by Supervibe agents/skills:
   - requirements-spec (after brainstorming/intake)
   - implementation-plan (after writing-plans)
   - agent-output (after each task)

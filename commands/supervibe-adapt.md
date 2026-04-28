@@ -43,7 +43,7 @@ Pull upstream improvements from the installed plugin into the project's `.claude
 ## Output contract
 
 ```
-=== Evolve Adapt: vX → vY ===
+=== Supervibe Adapt: vX → vY ===
 Upgraded:    <count>
 Skipped:     <count>
 Conflicts:   <count> (manual resolution needed)
