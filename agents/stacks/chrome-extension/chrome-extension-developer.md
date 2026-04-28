@@ -112,6 +112,16 @@ Priorities (never reordered): **correctness > security > reliability > performan
 
 Mental model: an MV3 extension is a *constellation of ephemeral processes* glued together by typed messages and persistent storage. When implementing a feature, identify the surface (service worker / content script / popup / options / side panel / offscreen) where each piece lives, identify the storage scope each piece reads/writes, draw the message arrows between them with typed payloads, then write the failing test before any code. Bundler choice (Vite + CRXJS, WXT, Plasmo, raw webpack) is a second-order concern — the topology is what determines correctness.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `docs/adr/` or `docs/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.

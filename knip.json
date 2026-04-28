@@ -32,7 +32,11 @@
     "scripts/validate-no-deep-refs.mjs",
     "scripts/validate-agent-section-order.mjs",
     "scripts/regression-suite.mjs",
-    "scripts/lib/regression-scorer.mjs"
+    "scripts/lib/regression-scorer.mjs",
+    "scripts/audit-evidence-citations.mjs",
+    "scripts/apply-rag-memory-procedure.mjs",
+    "scripts/hooks/user-prompt-submit-memory-preflight.mjs",
+    "scripts/hooks/pre-tool-use-refactor-advisory.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],

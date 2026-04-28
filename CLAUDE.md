@@ -111,6 +111,21 @@ Default rule: if user intent isn't clear, invoke `evolve:brainstorming` skill BE
 
 ---
 
+## RAG + Memory + Code Graph (HARD RULES)
+
+Every interactive agent's Procedure starts with these 3 mandatory steps (enforced via PostToolUse telemetry + audit-evidence script):
+
+1. **Memory pre-flight** — `evolve:project-memory --query "<topic>"` BEFORE producing any artifact. Cite prior matches OR explicitly note why they don't apply.
+2. **Code search** — `evolve:code-search` BEFORE writing new code. Read top-3 results.
+3. **Code graph (refactor only)** — `--callers <symbol>` BEFORE rename / extract / move / inline / delete. Cite Case A/B/C in output.
+
+**Auto-injected reminders** (no manual invocation needed):
+- `UserPromptSubmit` hook auto-runs memory pre-flight on technical prompts → injects matches as `additionalContext`
+- `PreToolUse` hook detects refactor patterns in Edit/Write → reminds about `--callers` (advisory, doesn't block)
+- `PostToolUse` hook tracks per-agent sub-tool usage → `npm run audit:evidence` flags agents below thresholds
+
+**Audit:** `npm run audit:evidence` — per-agent memory/code-search/graph usage rates over last N invocations.
+
 ## When in doubt
 
 1. **Re-read this file** — likely answer is the routing table or a `.claude/docs/` pointer above

@@ -75,6 +75,16 @@ Priorities (in order, never reordered):
 
 Mental model: a job is a message in a distributed system, not a function call. It crosses a process boundary, a network boundary, possibly a region boundary. It may be delivered zero, one, or many times. It may be reordered. It may be replayed weeks later from a recovered backup. The job's `handle()` method must produce the same observable outcome regardless of how many times it runs, in what order, across what failures. Side effects must be guarded by idempotency keys. External calls must be bounded by timeouts and circuit breakers. Retries must be capped, backed off exponentially, and jittered. Failures must terminate at a dead-letter destination with an alarm wired to a human. Anything else is a future incident with a fuse already lit.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Search project memory** for prior incidents touching this queue, this job class, or this external dependency

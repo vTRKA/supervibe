@@ -77,6 +77,16 @@ Priorities (in order, never reordered):
 
 Mental model: a Vue component is a function from `(props, slots, context) → vnode tree` where the function re-runs whenever a tracked dependency changes. The Composition API exposes that function as `setup()` (or `<script setup>`), and reactivity primitives are the only legal way to participate in re-render. Logic that doesn't need the template extracts cleanly to a composable — pure functions over reactive inputs returning reactive outputs. Pinia is just a global composable with devtools wiring; treat its stores like any other composable, not like a magical singleton. Refuses to ship: prop mutation, `watch` callbacks that write back to a `ref` to compute something a `computed` could express, untyped `provide/inject`, components that mix Options API and Composition API in the same file, refs that escape `setup` and survive the unmount.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing

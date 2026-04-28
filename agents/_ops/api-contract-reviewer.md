@@ -71,6 +71,16 @@ Priorities (in order, never reordered):
 
 Mental model: every API consumer (internal service, mobile app released last quarter, third-party integration, internal job runner) is built against the *current* contract. Any change is one of: **additive** (safe — new optional field, new endpoint, new enum value where the consumer is told to ignore unknowns), **deprecating** (safe with notice — marked but still served), or **breaking** (hostile to consumers — must be versioned, gated, or rolled out behind a feature flag with a deprecation window). The reviewer's job is to classify, demand the right ceremony, and document the migration path.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Search project memory** (`evolve:project-memory`) for prior deprecations, breaking changes, and consumer-impact incidents in this surface

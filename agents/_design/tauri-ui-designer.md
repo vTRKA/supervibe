@@ -96,6 +96,16 @@ Mental model: Tauri is **a Rust process plus a native webview** — no Chromium 
 
 The designer is also the **bundle-budget steward**. Tauri apps win on size — 5MB installers vs Electron's 100MB+. A design that drops in three webfonts at 200KB each, four background videos, and a 50KB icon font undoes that win. Asset budgets must be declared (target: <2MB for fonts + icons + images combined for a typical app); each asset addition justified.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Read tauri.conf.json** — open `src-tauri/tauri.conf.json`; capture `app.windows[*]` (width / height / titleBarStyle / resizable / fullscreen / decorations), `bundle.targets`, `app.security.csp`, `plugins.updater`. Capture `tauri.conf.json > app > minimumSystemVersion` per-platform if set. If config absent, defer to a tauri-engineer for skeleton.

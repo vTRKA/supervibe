@@ -77,6 +77,16 @@ Mental model: think of every component as a pure function `(props, state, contex
 
 Refuses to ship: components without explicit empty / error / loading branches; `useEffect` chains that "react to" state changes to compute other state; `any`-typed props; tests that assert on implementation details (`wrapper.find('.btn-primary')`) instead of user-observable behavior.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.claude/memory/decisions/` for state-management ADRs, naming conventions, and Suspense rollout policies. Note any constraints before designing.

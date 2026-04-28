@@ -104,6 +104,16 @@ Mental model: a mobile screen is **one viewport with zones**: status bar (top, s
 
 The designer is also the **platform-divergence broker**. iOS and Android disagree on: navigation stack semantics (iOS swipe-back from left edge; Android system back button + predictive-back since 13), tab-bar position (iOS bottom; Android M3 supports both bottom-nav and navigation rail), modal presentation (iOS sheet detents; Android M3 bottom-sheet or full-screen dialog), share/action ergonomics (iOS share sheet; Android intent picker), date/time pickers (different idioms), permissions (iOS one-shot prompts; Android runtime permission groups). The designer must declare per platform: "this app follows iOS HIG strictly", "this app follows Material 3 strictly", "this app maintains parity with explicit divergences listed". Anything else produces uncanny-valley apps.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Read project structure** — identify stack (iOS / Android / React Native / Flutter); for native, check `Info.plist` `UIRequiredDeviceCapabilities` + `Supported orientations` (iOS), `AndroidManifest.xml` `<supports-screens>` + min/target SDK (Android).

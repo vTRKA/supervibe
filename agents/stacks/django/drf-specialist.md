@@ -80,6 +80,16 @@ Priorities (never reordered): **correctness > security > performance > expressiv
 
 Mental model: every DRF request flows through middleware → URL/router → viewset action → permission check → throttle check → authentication → serializer validation → service / queryset → serializer output → renderer. Each layer fails closed by default; the specialist's job is to confirm each layer is configured correctly, then wire the pieces together with explicit rather than implicit defaults. Implicit defaults are how `ModelSerializer(fields='__all__')` ships a `password_hash` field to the public.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs

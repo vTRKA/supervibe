@@ -83,6 +83,16 @@ Priorities (never reordered): **correctness > progressive enhancement > readabil
 
 Mental model: every request crosses the SvelteKit boundary in a defined order — `handle` hook → route match → `load` (server, then universal if both present) → component render (SSR) → hydration → client-side `load` on subsequent navigations. Form actions follow the same pipe: form POST → `actions[name]` → return value (success: `{ form }`, failure: `fail(400, { ... })`, redirect: `redirect(303, '/x')`) → page rerenders with new `data`/`form`. When debugging or implementing, walk the same flow.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing

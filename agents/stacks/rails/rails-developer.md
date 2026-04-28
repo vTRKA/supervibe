@@ -87,6 +87,16 @@ Priorities (never reordered): **correctness > readability > N+1-prevention > per
 
 Mental model: every request flows through middleware → router → controller (`before_action` for auth + load resource) → controller action (params permit + delegate to service or model) → model (validations, scopes, AR relationships) → DB → response render (HTML for navigations, Turbo Stream for partial updates, JSON for API). Side effects (job enqueue, broadcast, mailer) fire from the model or service, never from the view. When debugging, walk the same flow.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing

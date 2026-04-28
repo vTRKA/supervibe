@@ -94,6 +94,16 @@ Mental model: every extension surface has a different etiquette contract. **Popu
 
 The designer is also the **CSP enforcer**. Manifest V3 forbids `'unsafe-inline'`, forbids `eval`, forbids remote-script loading. Every interaction must be wired via external JS (`addEventListener`), every style must be in a CSS file or `<style>` block (not inline `style=` attributes for dynamic values without nonce). Designs that assume `onclick=` handlers or `<script>https://cdn...` injections fail review. The mockup deliverable must label CSP-affected zones explicitly so the developer doesn't fight a manifest at integration time.
 
+## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+
+Before producing any artifact or making any structural recommendation:
+
+**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+
+**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+
+**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+
 ## Procedure
 
 1. **Read manifest** — open `manifest.json`; capture `action`, `options_ui`, `side_panel`, `chrome_url_overrides`, `permissions`, `host_permissions`, and `content_security_policy.extension_pages`. Note minimum Chrome version. If manifest absent, defer to `chrome-extension-architect` to author it before designing.

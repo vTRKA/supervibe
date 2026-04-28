@@ -24,6 +24,14 @@ Beyond semantic, the same `code.db` has a **code graph** with symbols + edges:
 
 **Auto-startup:** SessionStart hook prints index status as the first 3 lines of every session. If you see `code graph ✗` or `WARN`, run `npm run code:index` before depending on graph queries.
 
-**Languages covered:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby. Vue/Svelte deferred (need multi-grammar stitching for `<script>` + `<template>`).
+**Languages covered:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby + **Vue / Svelte SFC** (script blocks parsed with TS/JS grammar, line numbers re-based; template-side refs extracted via lightweight regex covering `@click="x"`, `:prop="y"`, `{{ z }}`, `on:click={q}`, `bind:value={r}`, `{w}`).
+
+**Vue/Svelte coverage realism:**
+- ✅ Symbols + edges from `<script>` and `<script setup lang="ts">` (any lang) — full TS/JS coverage
+- ✅ Multiple script blocks (Svelte's `<script context="module">` + instance script)
+- ✅ Template-side method/computed/state references (regex-based, identifier-level)
+- ❌ Template scoping (e.g., v-for item shadowing) not modeled
+- ❌ `<style>` block ignored (CSS not part of code graph)
+- ❌ Vue/Svelte directives' internal AST not parsed (regex extracts identifiers, not types)
 
 **Coverage realism:** ~80% cross-file edge resolution baseline (industry standard for non-LSP graph extractors). Unresolved targets surface with `to_name` and `kind=external` — useful for "imports from third-party X".

@@ -23,6 +23,39 @@ const OVERRIDE_PATTERNS = [
   /\boverride\b.*\baccepted\b/i,
 ];
 
+// Sub-tool usage detection — counts agent's invocations of memory/RAG/graph tools.
+// Used to surface "agent X never used memory in last 10 invocations" audit signal.
+const SUBTOOL_PATTERNS = {
+  memory: [
+    /\bevolve:project-memory\b/i,
+    /\bsearch-memory\.mjs\b/i,
+    /\bmemory:preflight\b/i,
+    /\.claude\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
+  ],
+  'code-search': [
+    /\bevolve:code-search\b/i,
+    /\bsearch-code\.mjs\b.*--query/i,
+  ],
+  'code-graph': [
+    /\bsearch-code\.mjs\b.*--callers/i,
+    /\bsearch-code\.mjs\b.*--callees/i,
+    /\bsearch-code\.mjs\b.*--neighbors/i,
+    /\bsearch-code\.mjs\b.*--top-symbols/i,
+  ],
+};
+
+function extractSubtoolUsage(text) {
+  if (!text) return { memory: 0, 'code-search': 0, 'code-graph': 0 };
+  const counts = { memory: 0, 'code-search': 0, 'code-graph': 0 };
+  for (const [tool, patterns] of Object.entries(SUBTOOL_PATTERNS)) {
+    for (const pat of patterns) {
+      const matches = text.match(new RegExp(pat.source, pat.flags + 'g'));
+      if (matches) counts[tool] += matches.length;
+    }
+  }
+  return counts;
+}
+
 function extractConfidence(text) {
   if (!text) return null;
   for (const pattern of CONFIDENCE_PATTERNS) {
@@ -75,6 +108,7 @@ async function main() {
 
   const confidence = extractConfidence(responseText);
   const override = extractOverride(responseText);
+  const subtoolUsage = extractSubtoolUsage(responseText);
 
   const taskSummary = description.slice(0, 200);
   const score = confidence ?? 0;
@@ -88,6 +122,7 @@ async function main() {
       override,
       duration_ms: payload.duration_ms ?? null,
       session_id: payload.session_id ?? null,
+      subtool_usage: subtoolUsage,
     });
   } catch { /* silent */ }
 
