@@ -2,7 +2,7 @@
 
 > **Audience:** Claude Code agents (and the orchestrator) loading this file as system context. Humans should read `README.md` first.
 
-This is the **Evolve Framework** — a self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity. **Node 22+. Pure JS. No Docker. No native compilation.** See `README.md` and `docs/specs/2026-04-27-evolve-framework-design.md` for full design.
+This is the **Evolve Framework** — a self-evolving Claude Code plugin: stack-aware scaffolding, specialist agents with explicit decision trees, 10-point confidence engine, autonomous proactivity. **Node 22+. Pure JS. No Docker. No native compilation.** See `README.md` and `docs/specs/2026-04-27-evolve-framework-design.md` for full design.
 
 ---
 
@@ -10,7 +10,7 @@ This is the **Evolve Framework** — a self-evolving Claude Code plugin: stack-a
 
 These six principles override defaults whenever they conflict with general practice:
 
-1. **Persona over generic agents.** Every agent is a 15-year specialist with explicit decision tree, procedure, output contract, and anti-patterns. Generic helpfulness is what training data already gives — agents earn their place by being specific.
+1. **Persona over generic agents.** Every agent is a specialist with explicit decision tree, procedure, output contract, and anti-patterns. Generic helpfulness is what training data already gives — agents earn their place by being specific.
 2. **Evidence over assertion.** Every claim — "X works", "Y is safe", "Z is the right approach" — must cite file:line, test output, graph evidence, or memory entry. No "trust me" outputs.
 3. **Confidence-gated delivery.** Work isn't done when you stop typing — work is done when an applicable rubric scores ≥9/10. Below threshold: iterate. Override: log and explain.
 4. **Memory beats re-derivation.** If a decision was made before, find it in `.claude/memory/decisions/` and cite. Re-deriving silently wastes tokens and risks contradicting past resolutions.
@@ -374,7 +374,7 @@ When adding to this plugin (not to a user's project):
 1. Read `agents/_core/code-reviewer.md` as the structural reference
 2. Create `agents/<namespace>/<name>.md` with full frontmatter
 3. Body must have all 11 sections: Persona / Project Context / Skills / Decision tree / Procedure / Output contract / Anti-patterns / Verification / Common workflows / Out of scope / Related
-4. ≥250 lines; persona is 3–4 paragraphs (15-yr background, principle, priorities, mental model)
+4. ≥250 lines; persona is 3–4 paragraphs (deep-domain background with concrete past-systems, core principle, priorities, mental model)
 5. Add to `.claude-plugin/plugin.json` `agents:[]` array
 6. Run `npm run validate:frontmatter` and `npm run check`
 

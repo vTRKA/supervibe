@@ -1,6 +1,6 @@
 # Getting Started with Evolve
 
-Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + 15-year-persona agents + 10-point confidence engine + autonomous proactivity + SQLite-backed project memory.
+Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + specialist agents with explicit decision trees + 10-point confidence engine + autonomous proactivity + SQLite-backed project memory.
 
 ## Requirements
 

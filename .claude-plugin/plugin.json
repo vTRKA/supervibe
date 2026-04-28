@@ -1,6 +1,6 @@
 {
   "name": "evolve",
-  "description": "Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity. Replaces superpowers with own brainstorming/plan/exec/TDD/debug/review.",
+  "description": "Self-evolving Claude Code plugin: stack-aware scaffolding, specialist agents with explicit decision trees + output contracts, 10-point confidence engine, autonomous proactivity. Replaces superpowers with own brainstorming/plan/exec/TDD/debug/review.",
   "version": "1.7.0",
   "author": {
     "name": "vTRKA"

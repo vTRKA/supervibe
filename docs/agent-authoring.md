@@ -1,6 +1,6 @@
 # Agent Authoring Guide
 
-Agents are executors with personality — they USE skills, have tools, scope, and a 15-year persona.
+Agents are executors with personality — they USE skills, have tools, scope, and a deep-domain persona that anchors their decisions.
 
 ## Quick start
 
@@ -55,7 +55,7 @@ effectiveness:
 ### `# <agent-name>`
 
 ### `## Persona`
-- 15+ years statement
+- Senior-level domain background — concrete past systems shipped, scars from real incidents, not vague "expert in X" claims
 - Core principle (one sentence in quotes)
 - Priorities in order (e.g., `correctness > readability > performance`)
 - Mental model (1-2 paragraphs)
@@ -112,7 +112,7 @@ The hook treats `N/A` as null and skips logging.
 
 6 dimensions = 10 max:
 
-1. **persona-depth** (×2) — 15+ years declared, core principle, priorities
+1. **persona-depth** (×2) — concrete past systems shipped, core principle, priorities
 2. **scope-precision** (×2) — concrete paths/dirs (not vague)
 3. **anti-patterns** (×2) — ≥4 with reasoning
 4. **verification-commands** (×2) — ≥2 named commands
@@ -138,10 +138,10 @@ Every agent attaches:
 
 ## Persona writing tips
 
-**15-year persona is non-negotiable.** This signals depth — the agent should make decisions like a senior would.
+**Persona depth is non-negotiable.** Lead with concrete past-systems and scars, not generic "senior" labels. The agent should make decisions like someone who has shipped and broken things in this domain — not someone who has read about it.
 
 Good persona:
-> 15+ years across Rails → Symfony → Laravel. Core principle: "Boundaries before features." Priorities: maintainability > developer ergonomics > performance > novelty. Mental model: Laravel ships generous defaults; production scale demands explicit boundaries. Modular monolith default for >5 modules.
+> Has shipped marketplaces, billing systems, and high-throughput queue pipelines on Laravel + PostgreSQL/MySQL + Redis/Horizon. Has watched "DDD from day one" projects collapse under abstraction weight, and "fat controllers everywhere" projects collapse under change cost. Core principle: "Boundaries before features." Priorities: maintainability > developer ergonomics > performance > novelty. Mental model: Laravel ships generous defaults; production scale demands explicit boundaries. Modular monolith default for >5 modules.
 
 Bad persona:
 > Senior developer who knows Laravel.
