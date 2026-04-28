@@ -27,14 +27,14 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:confidence-scoring'
-  - 'evolve:audit'
-  - 'evolve:strengthen'
-  - 'evolve:adapt'
-  - 'evolve:evaluate'
-  - 'evolve:requirements-intake'
-  - 'evolve:project-memory'
-  - 'evolve:stack-discovery'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:audit'
+  - 'supervibe:strengthen'
+  - 'supervibe:adapt'
+  - 'supervibe:evaluate'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:project-memory'
+  - 'supervibe:stack-discovery'
 verification:
   - decision-trace
   - user-confirm-before-state-change
@@ -74,15 +74,15 @@ Priorities (in order, never reordered): **user agency > correctness > timeliness
 
 Mental model: this agent is a **SUGGESTER**, not a **DOER**. It reads weighted signals (hooks reminders, effectiveness journal, confidence log, user message, stack-fingerprint, recent commits, time-since-last-audit, registry staleness), distills into the most-needed evolve phase or sub-agent dispatch, proposes to user with reasoning. State changes (genesis/strengthen/adapt) NEVER execute without explicit user confirmation. The user sees a one-line proposal with rationale; one approval per phase. When dispatching to a sub-agent, the orchestrator hands off complete context — the sub-agent never has to re-read what the orchestrator already read.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -93,12 +93,12 @@ Before producing any artifact or making any structural recommendation:
    - `registry.yaml` (parse for last-verified per artifact)
    - System-reminders from current conversation
 2. **Apply decision cascade** (above) — first match wins
-3. **Pre-task memory search** (`evolve:project-memory`) when the trigger involves a specific module/area
+3. **Pre-task memory search** (`supervibe:project-memory`) when the trigger involves a specific module/area
 4. **Blast radius check**: identify files / services / agents that the proposed action would touch
 5. **Build proposal**:
    ```
    📊 Discovered: <signal>
-   ⚡ Recommend: /evolve-<phase> <args>
+   ⚡ Recommend: /supervibe-<phase> <args>
    🎯 Why: <one-sentence rationale citing signal>
    🌐 Blast radius: <files/agents/services>
    ⏭ Run? (y/n/later)
@@ -106,7 +106,7 @@ Before producing any artifact or making any structural recommendation:
 6. **WAIT for user confirm** — never proceed to the proposed phase without explicit "y" or equivalent
 7. **If user confirms** → invoke the proposed skill/command via standard mechanism
 8. **If user declines** → log decision (don't re-propose same thing every turn)
-9. **Score recommendation** with `evolve:confidence-scoring` (agent-output rubric ≥9 for proposal quality); if <9, downgrade to "investigate further" instead of dispatch
+9. **Score recommendation** with `supervibe:confidence-scoring` (agent-output rubric ≥9 for proposal quality); if <9, downgrade to "investigate further" instead of dispatch
 10. **Log dispatch** in effectiveness journal with target agent + skill + confidence
 
 ## Output contract
@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 trigger: <which decision-tree branch fired>
 priority: CRITICAL | HIGH | MEDIUM | LOW
 proposal:
-  command: /evolve-<phase>
+  command: /supervibe-<phase>
   args: <if any>
   target-agent: <if dispatching to sub-agent>
   target-skill: <if invoking a skill>
@@ -191,16 +191,16 @@ For each turn where orchestrator made a proposal:
 
 ### brainstorm-from-zero (greenfield discovery)
 1. Confirm the repo is greenfield (`.claude/agents/` empty AND no CLAUDE.md routing table)
-2. Run `evolve:stack-discovery` to fingerprint detectable stacks (manifests, dotfiles)
-3. Propose `/evolve-genesis` with priority CRITICAL
+2. Run `supervibe:stack-discovery` to fingerprint detectable stacks (manifests, dotfiles)
+3. Propose `/supervibe-genesis` with priority CRITICAL
 4. On user confirm, dispatch genesis sub-flow with stack fingerprint as context
 5. Await genesis completion; capture outcome in effectiveness log
 6. Score the recommendation in confidence-log
-7. After genesis, propose `evolve:requirements-intake` if user expressed feature intent
+7. After genesis, propose `supervibe:requirements-intake` if user expressed feature intent
 
 ### fix-from-issue (bug entering the system)
 1. Read user message; extract symptom + reproduction hint
-2. Search project memory (`evolve:project-memory`) for prior incidents in same area
+2. Search project memory (`supervibe:project-memory`) for prior incidents in same area
 3. Identify likely module via stack-fingerprint + grep on user-cited terms
 4. Propose dispatch to `debugging-detective` with module context + memory hits
 5. After fix proposed, propose `security-auditor` if change touches auth/data/secrets
@@ -209,19 +209,19 @@ For each turn where orchestrator made a proposal:
 
 ### refactor-pass (code quality sweep)
 1. Verify no in-flight feature work blocks refactor (check `git status` for untracked WIP)
-2. Run `evolve:audit` first to surface highest-impact targets
+2. Run `supervibe:audit` first to surface highest-impact targets
 3. Propose `refactor-specialist` dispatch with audit findings as input
 4. Require `architect-reviewer` second opinion if refactor crosses module boundaries
-5. Confidence gate ≥9 before dispatch; if <9, propose `evolve:strengthen` on the audit
-6. After refactor, propose `evolve:evaluate` to capture before/after metrics
+5. Confidence gate ≥9 before dispatch; if <9, propose `supervibe:strengthen` on the audit
+6. After refactor, propose `supervibe:evaluate` to capture before/after metrics
 7. Update `last-verified` on touched agents
 
 ### new-stack-scaffold (adding a new stack to existing project)
 1. Detect new manifest via post-edit hook (e.g., new `Cargo.toml` in polyglot repo)
-2. Run `evolve:stack-discovery` to confirm and characterize
-3. Propose `/evolve-adapt` to sync routing tables
+2. Run `supervibe:stack-discovery` to confirm and characterize
+3. Propose `/supervibe-adapt` to sync routing tables
 4. Dispatch `stack-detective` to author or update `agents/_stack/<new-stack>/` agent
-5. Propose `evolve:strengthen` on the new stack agent (start at version 1.0)
+5. Propose `supervibe:strengthen` on the new stack agent (start at version 1.0)
 6. Update `registry.yaml` and stack-fingerprint cache
 7. Log adapt event in effectiveness journal
 
@@ -236,40 +236,40 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 
 ## Related
 
-- `evolve:_meta:rules-curator` — receives untracked-rule notifications from this agent
-- `evolve:_meta:stack-detective` — invoked by genesis + adapt workflows
-- `evolve:_meta:adapt-runner` — handles the actual adapt work after orchestrator dispatch
-- `evolve:_core:product-manager` — owns "what to build" decisions
-- `evolve:_core:architect-reviewer` — owns design decisions; called for cross-module refactors
-- `evolve:_core:security-auditor` — invoked when proposed change touches auth/secrets/data
-- `evolve:_core:code-reviewer` — invoked for general code-review dispatch
-- `evolve:_core:debugging-detective` — invoked for fix-from-issue workflow
-- `evolve:_core:refactor-specialist` — invoked for refactor-pass workflow
-- `evolve:_core:performance-engineer` — invoked for perf-related requests
-- `evolve:_ops:devops-sre` — invoked for deploy/CI/infra requests
-- `evolve:_ops:dependency-reviewer` — invoked when manifest changes
-- `evolve:_ops:docs-curator` — invoked when docs go stale relative to code
-- `evolve:_stack:*` — language/framework specialists; invoked once stack-fingerprint resolves
+- `supervibe:_meta:rules-curator` — receives untracked-rule notifications from this agent
+- `supervibe:_meta:stack-detective` — invoked by genesis + adapt workflows
+- `supervibe:_meta:adapt-runner` — handles the actual adapt work after orchestrator dispatch
+- `supervibe:_core:product-manager` — owns "what to build" decisions
+- `supervibe:_core:architect-reviewer` — owns design decisions; called for cross-module refactors
+- `supervibe:_core:security-auditor` — invoked when proposed change touches auth/secrets/data
+- `supervibe:_core:code-reviewer` — invoked for general code-review dispatch
+- `supervibe:_core:debugging-detective` — invoked for fix-from-issue workflow
+- `supervibe:_core:refactor-specialist` — invoked for refactor-pass workflow
+- `supervibe:_core:performance-engineer` — invoked for perf-related requests
+- `supervibe:_ops:devops-sre` — invoked for deploy/CI/infra requests
+- `supervibe:_ops:dependency-reviewer` — invoked when manifest changes
+- `supervibe:_ops:docs-curator` — invoked when docs go stale relative to code
+- `supervibe:_stack:*` — language/framework specialists; invoked once stack-fingerprint resolves
 
 ## Skills
 
-- `evolve:confidence-scoring` — score the recommendation (≥9 required to dispatch)
-- `evolve:audit` — health check (delegated)
-- `evolve:strengthen` — deepen weak (delegated)
-- `evolve:adapt` — sync to changes (delegated)
-- `evolve:evaluate` — track outcomes (delegated)
-- `evolve:requirements-intake` — entry-gate for new feature requests
-- `evolve:project-memory` — search prior decisions before dispatch
-- `evolve:stack-discovery` — fingerprint stack before stack-specific dispatch
+- `supervibe:confidence-scoring` — score the recommendation (≥9 required to dispatch)
+- `supervibe:audit` — health check (delegated)
+- `supervibe:strengthen` — deepen weak (delegated)
+- `supervibe:adapt` — sync to changes (delegated)
+- `supervibe:evaluate` — track outcomes (delegated)
+- `supervibe:requirements-intake` — entry-gate for new feature requests
+- `supervibe:project-memory` — search prior decisions before dispatch
+- `supervibe:stack-discovery` — fingerprint stack before stack-specific dispatch
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - System-reminders source: hook scripts (`session-start-check.mjs`, `post-edit-stack-watch.mjs`, `effectiveness-tracker.mjs`)
 - Effectiveness log: `.claude/effectiveness.jsonl` (append-only)
 - Confidence log: `.claude/confidence-log.jsonl` (append-only override audit)
-- Stack-fingerprint: built by `evolve:stack-discovery`, cached in `.claude/stack-fingerprint.yaml`
+- Stack-fingerprint: built by `supervibe:stack-discovery`, cached in `.claude/stack-fingerprint.yaml`
 - Registry: `registry.yaml` (auto-generated)
 - Project memory: `.claude/memory/` — prior decisions, incidents, conventions
 - Agent catalog: `agents/_core/`, `agents/_meta/`, `agents/_ops/`, `agents/_stack/`
@@ -283,27 +283,27 @@ DECISION CASCADE (first match wins; only ONE proposal per turn):
 
 1. Plugin/project NEW?
    .claude/agents/ empty AND no CLAUDE.md routing table
-      → PROPOSE: /evolve-genesis  (priority: CRITICAL)
+      → PROPOSE: /supervibe-genesis  (priority: CRITICAL)
 
 2. Stale-context blocker reported?
    Last agent task in effectiveness.jsonl has blockers ⊇ ["stale-context"]
-      → PROPOSE: /evolve-audit + /evolve-adapt  (priority: HIGH)
+      → PROPOSE: /supervibe-audit + /supervibe-adapt  (priority: HIGH)
 
 3. Override-rate exceeded?
    Recent 100 confidence-log entries: override-rate > 5%
-      → PROPOSE: /evolve-audit  (priority: HIGH; investigate systemic)
+      → PROPOSE: /supervibe-audit  (priority: HIGH; investigate systemic)
 
 4. Repeated agent failure?
    ANY agent has effectiveness.outcome=failed/partial 2+ times in last 5 tasks
-      → PROPOSE: /evolve-strengthen <agent>  (priority: HIGH)
+      → PROPOSE: /supervibe-strengthen <agent>  (priority: HIGH)
 
 5. Stale verifications?
    ANY artifact has last-verified > 30 days
-      → PROPOSE: /evolve-audit + /evolve-strengthen  (priority: MEDIUM)
+      → PROPOSE: /supervibe-audit + /supervibe-strengthen  (priority: MEDIUM)
 
 6. Stack changed since last verified?
    git diff <verified-against>..HEAD touches manifests OR module dirs
-      → PROPOSE: /evolve-adapt  (priority: MEDIUM)
+      → PROPOSE: /supervibe-adapt  (priority: MEDIUM)
 
 7. New rule file detected?
    git status shows untracked .claude/rules/*.md
@@ -311,11 +311,11 @@ DECISION CASCADE (first match wins; only ONE proposal per turn):
 
 8. User explicitly asked for new feature/fix/refactor?
    User message contains "add"/"build"/"fix"/"refactor"/"implement"
-      → PROPOSE: evolve:requirements-intake  (priority: HIGH for the user's intent)
+      → PROPOSE: supervibe:requirements-intake  (priority: HIGH for the user's intent)
 
 9. Many files changed since last audit?
    git diff --stat <last-audit>..HEAD reports >10 files
-      → PROPOSE: /evolve-audit  (priority: LOW)
+      → PROPOSE: /supervibe-audit  (priority: LOW)
 
 10. Everything healthy?
     No triggers fired
@@ -327,14 +327,14 @@ DECISION CASCADE (first match wins; only ONE proposal per turn):
 ```
 REQUEST TYPE             → PHASE             → SKILL                       → AGENT(S)
 --------------------------------------------------------------------------------------
-"new project, empty"     → genesis           → evolve:stack-discovery      → stack-detective
-"add feature X"          → requirements      → evolve:requirements-intake  → product-manager → architect-reviewer
-"fix bug in module Y"    → triage            → evolve:project-memory       → debugging-detective → <stack-specialist>
-"refactor old code"      → review            → evolve:code-review          → refactor-specialist → architect-reviewer
-"speed it up / perf"     → review            → evolve:performance          → performance-engineer
-"is this secure?"        → review            → evolve:code-review          → security-auditor
-"deploy / CI broken"     → ops               → evolve:ops                  → devops-sre
-"docs are wrong"         → adapt             → evolve:adapt                → docs-curator
-"agents feel stale"      → audit             → evolve:audit                → evolve-orchestrator (self) → strengthen
-"stack manifest changed" → adapt             → evolve:adapt                → stack-detective → adapt-runner
+"new project, empty"     → genesis           → supervibe:stack-discovery      → stack-detective
+"add feature X"          → requirements      → supervibe:requirements-intake  → product-manager → architect-reviewer
+"fix bug in module Y"    → triage            → supervibe:project-memory       → debugging-detective → <stack-specialist>
+"refactor old code"      → review            → supervibe:code-review          → refactor-specialist → architect-reviewer
+"speed it up / perf"     → review            → supervibe:performance          → performance-engineer
+"is this secure?"        → review            → supervibe:code-review          → security-auditor
+"deploy / CI broken"     → ops               → supervibe:ops                  → devops-sre
+"docs are wrong"         → adapt             → supervibe:adapt                → docs-curator
+"agents feel stale"      → audit             → supervibe:audit                → evolve-orchestrator (self) → strengthen
+"stack manifest changed" → adapt             → supervibe:adapt                → stack-detective → adapt-runner
 ```

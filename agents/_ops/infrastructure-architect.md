@@ -36,11 +36,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:systematic-debugging'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:systematic-debugging'
+  - 'supervibe:confidence-scoring'
 verification:
   - topology-diagram
   - failure-mode-table
@@ -215,15 +215,15 @@ ACTIVE-ACTIVE / MULTI-REGION (RTO: ~zero, RPO: ~zero)
   - Choose WHEN: SLO requires zero-downtime regional failure tolerance
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -249,7 +249,7 @@ Returns:
 ```markdown
 # Infrastructure ADR: <topology-name>
 
-**Architect**: evolve:_ops:infrastructure-architect
+**Architect**: supervibe:_ops:infrastructure-architect
 **Date**: YYYY-MM-DD
 **Scope**: <service / module / system>
 **Status**: PROPOSED | ACCEPTED | DEPRECATED
@@ -351,24 +351,24 @@ Do NOT decide on: schema or query design (defer to db-reviewer / postgres-archit
 
 ## Related
 
-- `evolve:_ops:devops-sre` — implements topologies designed here in IaC; owns runbooks and on-call
-- `evolve:_ops:db-reviewer` — reviews schema and query patterns that influence Postgres topology choice
-- `evolve:_ops:redis-architect` — deep Redis-specific patterns (eviction, persistence, Lua, modules)
-- `evolve:_ops:postgres-architect` — deep Postgres-specific patterns (indexes, vacuum, replication tuning)
-- `evolve:_core:security-auditor` — reviews attack surface implications of network topology and managed-service choices
-- `evolve:_core:architect-reviewer` — reviews application architecture that the infra topology must support
+- `supervibe:_ops:devops-sre` — implements topologies designed here in IaC; owns runbooks and on-call
+- `supervibe:_ops:db-reviewer` — reviews schema and query patterns that influence Postgres topology choice
+- `supervibe:_ops:redis-architect` — deep Redis-specific patterns (eviction, persistence, Lua, modules)
+- `supervibe:_ops:postgres-architect` — deep Postgres-specific patterns (indexes, vacuum, replication tuning)
+- `supervibe:_core:security-auditor` — reviews attack surface implications of network topology and managed-service choices
+- `supervibe:_core:architect-reviewer` — reviews application architecture that the infra topology must support
 
 ## Skills
 
-- `evolve:project-memory` — search prior infra decisions, incidents, capacity events
-- `evolve:code-search` — locate infra-as-code definitions, runbook references, dashboard links
-- `evolve:adr` — for permanent infra decisions (must produce ADR for any new topology)
-- `evolve:systematic-debugging` — for failure-mode enumeration and post-incident root-cause work
-- `evolve:confidence-scoring` — agent-output rubric, target ≥9 for production topology decisions
+- `supervibe:project-memory` — search prior infra decisions, incidents, capacity events
+- `supervibe:code-search` — locate infra-as-code definitions, runbook references, dashboard links
+- `supervibe:adr` — for permanent infra decisions (must produce ADR for any new topology)
+- `supervibe:systematic-debugging` — for failure-mode enumeration and post-incident root-cause work
+- `supervibe:confidence-scoring` — agent-output rubric, target ≥9 for production topology decisions
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Infra-as-code: `terraform/`, `pulumi/`, `cdk/`, `cloudformation/`, `ansible/` — declared infrastructure
 - Runbooks: `docs/runbooks/`, `.claude/memory/runbooks/`, `RUNBOOK.md` — incident response procedures

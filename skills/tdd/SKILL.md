@@ -16,11 +16,11 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-BEFORE writing any production code for a new feature, bug fix, or refactor that changes behavior. Triggered when implementation step is reached in `evolve:executing-plans`.
+BEFORE writing any production code for a new feature, bug fix, or refactor that changes behavior. Triggered when implementation step is reached in `supervibe:executing-plans`.
 
 NOT for: pure config changes, scaffolding files, documentation updates, dependency bumps.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project's test conventions from `CLAUDE.md`
 2. Identify test framework from `package.json` / `composer.json` / `Cargo.toml` (vitest/jest/pytest/phpunit/cargo test/etc.)
@@ -80,5 +80,5 @@ Returns:
 
 ## Related
 
-- `evolve:systematic-debugging` — when test fails for wrong reason
-- `evolve:executing-plans` — invokes this skill per task that requires production code
+- `supervibe:systematic-debugging` — when test fails for wrong reason
+- `supervibe:executing-plans` — invokes this skill per task that requires production code

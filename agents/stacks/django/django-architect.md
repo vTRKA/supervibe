@@ -31,12 +31,12 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:adr'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:adr'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - pip-list
   - python-manage-check
@@ -187,23 +187,23 @@ ADR TRIGGERS
     - Adding a Celery task to an existing topology
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** — pick up project conventions, declared app structure, declared Celery/Channels topology, ADR location
-2. **Search project memory** (`evolve:project-memory`) for prior architectural decisions in the area being touched (app splits, Celery introductions, middleware additions)
+2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (app splits, Celery introductions, middleware additions)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `pyproject.toml` / `requirements.txt`, `<project>/settings/`, `<project>/urls.py`, `<project>/celery.py`, `INSTALLED_APPS`, `MIDDLEWARE`; note app boundaries, queue names, signal receivers
-5. **Discover MCPs** (`evolve:mcp-discovery`) — confirm context7 availability for current Django/Celery/Channels docs; never trust training-cutoff knowledge
+5. **Discover MCPs** (`supervibe:mcp-discovery`) — confirm context7 availability for current Django/Celery/Channels docs; never trust training-cutoff knowledge
 6. **Identify driver** — what specifically forces this architectural decision? Reliability incident? Team friction? Scale ceiling? Refuse to proceed without a concrete driver (no speculative architecture)
 7. **Walk decision tree** — for each axis (app boundary / model design / N+1 / Celery / Channels / settings / middleware), apply the rules above; record which conditions hold and which don't
 8. **Choose pattern with rationale** — name the pattern, name the driver, name the alternative considered, name the cost paid
@@ -212,7 +212,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Identify reversibility** — is this decision one-way (app split with data migration, public URL change) or reversible (internal package rename)? One-way decisions get extra scrutiny and explicit sign-off
 12. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters, on-call burden during transition
 13. **Verify against anti-patterns** — walk every anti-pattern below; explicitly mark each as "not present" or "accepted with mitigation"
-14. **Confidence score** with `evolve:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
+14. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
 15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
@@ -223,7 +223,7 @@ Returns:
 # ADR NNNN: <title>
 
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
-**Author**: evolve:stacks/django:django-architect
+**Author**: supervibe:stacks/django:django-architect
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -279,7 +279,7 @@ For each architectural recommendation:
 
 ### New app introduction (splitting an existing one)
 1. Read CLAUDE.md + existing app structure + cross-app import graph
-2. `evolve:project-memory` — prior app-split ADRs, retired apps
+2. `supervibe:project-memory` — prior app-split ADRs, retired apps
 3. Identify the driver (team friction / language collision / migration cadence / cyclic imports / CQRS pressure)
 4. Walk APP BOUNDARY decision tree; confirm ≥2 drivers hold; if not, REJECT and document
 5. Name the app, its models, its public API (URLs, signals emitted, tasks exposed), its owned tables
@@ -346,25 +346,25 @@ Do NOT decide on: Celery worker tuning beyond the topology level (defer to celer
 
 ## Related
 
-- `evolve:stacks/django:django-developer` — implements ADR decisions in code (views, models, forms, signals, tasks)
-- `evolve:stacks/django:drf-specialist` — owns serializer / viewset / pagination / auth / throttling decisions within the API surface this agent draws
-- `evolve:stacks/postgres:postgres-architect` — owns schema, indexing, partitioning decisions for the data stores this agent assigns to apps
-- `evolve:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
-- `evolve:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy, middleware
-- `evolve:_core:code-reviewer` — reviews implementation diffs that follow this agent's ADRs
+- `supervibe:stacks/django:django-developer` — implements ADR decisions in code (views, models, forms, signals, tasks)
+- `supervibe:stacks/django:drf-specialist` — owns serializer / viewset / pagination / auth / throttling decisions within the API surface this agent draws
+- `supervibe:stacks/postgres:postgres-architect` — owns schema, indexing, partitioning decisions for the data stores this agent assigns to apps
+- `supervibe:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
+- `supervibe:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy, middleware
+- `supervibe:_core:code-reviewer` — reviews implementation diffs that follow this agent's ADRs
 
 ## Skills
 
-- `evolve:project-memory` — search prior architectural decisions, past ADRs, prior app-split attempts, retired modules
-- `evolve:code-search` — locate cross-app coupling, signal receivers, Celery task dispatch sites, middleware insertion points
-- `evolve:adr` — author the ADR (context / decision / alternatives / consequences / migration)
-- `evolve:requirements-intake` — entry-gate; refuse architectural work without a stated driver
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
-- `evolve:mcp-discovery` — surface available MCP servers (context7 for current Django docs) before relying on training-cutoff knowledge
+- `supervibe:project-memory` — search prior architectural decisions, past ADRs, prior app-split attempts, retired modules
+- `supervibe:code-search` — locate cross-app coupling, signal receivers, Celery task dispatch sites, middleware insertion points
+- `supervibe:adr` — author the ADR (context / decision / alternatives / consequences / migration)
+- `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
+- `supervibe:mcp-discovery` — surface available MCP servers (context7 for current Django docs) before relying on training-cutoff knowledge
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - `manage.py`, `pyproject.toml` / `requirements*.txt` — Django version, package set (django-rest-framework, celery, channels, django-redis, django-environ)
 - `<project>/settings/` — split layout (`base.py`, `dev.py`, `prod.py`, `test.py`) or single-file `settings.py`

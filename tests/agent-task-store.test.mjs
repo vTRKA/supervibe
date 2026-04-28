@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AgentTaskStore } from '../scripts/lib/agent-task-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-task-store-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-task-store-${Date.now()}`);
 const dbPath  = join(sandbox, 'agent-tasks.db');
 let store;
 

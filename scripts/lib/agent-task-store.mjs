@@ -47,7 +47,7 @@ const SCHEMA = `
 `;
 
 function defaultDbPath(projectRoot) {
-  return process.env.EVOLVE_AGENT_TASK_DB
+  return process.env.SUPERVIBE_AGENT_TASK_DB
     || join(projectRoot, '.claude', 'memory', 'agent-tasks.db');
 }
 

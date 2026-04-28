@@ -93,7 +93,7 @@ async function main() {
       console.warn(`Failed to update ${file}: ${err.message}`);
     }
   }
-  console.log(`[evolve/effectiveness] updated ${updated} agent files from ${allInvocations.length} invocations`);
+  console.log(`[supervibe/effectiveness] updated ${updated} agent files from ${allInvocations.length} invocations`);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;

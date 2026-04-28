@@ -93,7 +93,7 @@ For each agent ≥350 lines, extract these sections into `agents/<namespace>/<ag
 - `.claude-plugin/stack-packs/nestjs.json`
 - `.claude-plugin/stack-packs/express.json`
 - `.claude-plugin/stack-packs/aspnet.json`
-- `scripts/lib/stack-pack-loader.mjs` — auto-activate based on `evolve:stack-discovery`
+- `scripts/lib/stack-pack-loader.mjs` — auto-activate based on `supervibe:stack-discovery`
 - `tests/stack-pack-loader.test.mjs`
 
 **Phase 6 — Quality guards + validators:**
@@ -134,8 +134,8 @@ For each agent ≥350 lines, extract these sections into `agents/<namespace>/<ag
 
 **Phase 5:**
 - `.claude-plugin/plugin.json` — core agents stay (44 of 79), 35 stack-pack agents move to opt-in packs
-- `agents/_meta/evolve-orchestrator.md` — recognises stack-pack auto-activation
-- `scripts/evolve-detect.mjs` — emits stack-pack activation reminder
+- `agents/_meta/supervibe-orchestrator.md` — recognises stack-pack auto-activation
+- `scripts/supervibe-detect.mjs` — emits stack-pack activation reminder
 - `CLAUDE.md` — adds "Stack-pack auto-activation" section
 
 **Phase 6:**
@@ -274,7 +274,7 @@ Structure:
 
 > **Audience:** Claude Code agents loading this file as system context. Humans read `README.md` first.
 
-This is the **Evolve Framework** — self-evolving Claude Code plugin. Node 22+. Pure JS. No Docker.
+This is the **Evolve Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. Node 22+. Pure JS. No Docker.
 
 For deep dives, agents should read on demand:
 - `.claude/docs/memory-system.md` — Memory system + 5 categories + indexing
@@ -352,7 +352,7 @@ Expected: <200 lines, <5,000 chars. If over → continue trimming until target m
 
 This is the canonical risk: memory-curator writes new entries by schema. If schema description was relocated and curator can't find it, it might invent/hallucinate schema.
 
-Dispatch `evolve:_meta:memory-curator` with task: "Add a new decision memory entry: I decided to use SQLite FTS5 over PostgreSQL trigrams for project memory because of zero-deps requirement. Tagged: `db, search`. Confidence 9."
+Dispatch `supervibe:_meta:memory-curator` with task: "Add a new decision memory entry: I decided to use SQLite FTS5 over PostgreSQL trigrams for project memory because of zero-deps requirement. Tagged: `db, search`. Confidence 9."
 
 PASS criteria (ALL must hold):
 - Curator reads `.claude/docs/memory-system.md` (verifiable via Read tool call)
@@ -364,7 +364,7 @@ FAIL → STOP, restore CLAUDE.md from git, audit which CLAUDE.md pointers were u
 
 - [ ] **Step 2: repo-researcher memory-system test**
 
-Dispatch `evolve:repo-researcher` with task: "Where does the project store decision memories and how does indexing work?"
+Dispatch `supervibe:repo-researcher` with task: "Where does the project store decision memories and how does indexing work?"
 
 PASS criteria:
 - Agent reads CLAUDE.md → sees pointer → reads `.claude/docs/memory-system.md`
@@ -375,7 +375,7 @@ FAIL → audit memory-system.md pointer wording in new CLAUDE.md.
 
 - [ ] **Step 3: refactoring-specialist code-graph test**
 
-Dispatch `evolve:refactoring-specialist` with task: "Outline the steps to safely rename a public function `processPayment` in this codebase."
+Dispatch `supervibe:refactoring-specialist` with task: "Outline the steps to safely rename a public function `processPayment` in this codebase."
 
 PASS criteria:
 - Agent references `use-codegraph-before-refactor` rule (rule file untouched)
@@ -387,7 +387,7 @@ FAIL → check rule still loads correctly. Rule file is untouched in Phase 1.
 
 - [ ] **Step 4: prototype-builder design-system test**
 
-Dispatch `evolve:_design:prototype-builder` with task: "Build a hero section prototype using approved tokens."
+Dispatch `supervibe:_design:prototype-builder` with task: "Build a hero section prototype using approved tokens."
 
 PASS criteria:
 - Agent loads `prototypes/_design-system/manifest.json`
@@ -653,7 +653,7 @@ Expected: ~43 agents modified, ~18,000 chars saved, ~4,500 tokens saved (per ses
 
 ```bash
 # Sample 5 agents and check their triggers are still present
-for f in agents/_design/creative-director.md agents/_design/ux-ui-designer.md agents/_design/prototype-builder.md agents/_product/systems-analyst.md agents/_meta/evolve-orchestrator.md; do
+for f in agents/_design/creative-director.md agents/_design/ux-ui-designer.md agents/_design/prototype-builder.md agents/_product/systems-analyst.md agents/_meta/supervibe-orchestrator.md; do
   echo "=== $f ==="
   grep "description:" "$f" -A 2 | head -5
 done
@@ -741,7 +741,7 @@ RU triggers (12):
 5. "нужны requirements для нового модуля" → `systems-analyst`
 6. "сделай рефакторинг этого класса" → `refactoring-specialist`
 7. "проведи security аудит" → `security-auditor`
-8. "напиши план для фичи" → `evolve:writing-plans`
+8. "напиши план для фичи" → `supervibe:writing-plans`
 9. "проверь схему миграции" → `db-reviewer`
 10. "оптимизируй производительность" → `performance-reviewer`
 11. "создай chrome extension" → `chrome-extension-architect`
@@ -755,7 +755,7 @@ EN triggers (8):
 17. "Tauri main window UI" → `tauri-ui-designer`
 18. "Electron settings UI" → `electron-ui-designer`
 19. "mobile app screen" → `mobile-ui-designer`
-20. "browser feedback overlay" → `evolve:browser-feedback`
+20. "browser feedback overlay" → `supervibe:browser-feedback`
 
 PASS criteria: 20/20 routes correctly. ZERO routing failures = no trigger phrase was inadvertently dropped.
 
@@ -970,7 +970,7 @@ Expected: <250 lines, <10K chars.
 
 - [ ] **Step 1: Test that creative-director still authors complete animation decisions**
 
-Dispatch `evolve:creative-director` with task: "Specify animation library + easing curves for a fintech landing page hero. The brand is patient, not punchy."
+Dispatch `supervibe:creative-director` with task: "Specify animation library + easing curves for a fintech landing page hero. The brand is patient, not punchy."
 
 Expected agent output should include:
 - Read `references/library-decision.md` (citation in agent's reasoning)
@@ -990,7 +990,7 @@ If unacceptable → restore the matrix inline. Progressive disclosure works only
 
 - [ ] **Step 3: Test prototype-builder still emits real CSS**
 
-Dispatch `evolve:prototype-builder` with: "Add a hover micro-interaction to the primary CTA per our timing tier."
+Dispatch `supervibe:prototype-builder` with: "Add a hover micro-interaction to the primary CTA per our timing tier."
 
 Agent should:
 - Read `references/animation-recipes.md` for the CSS transition recipe
@@ -1397,7 +1397,7 @@ STABLE (rarely changes — goes FIRST in agent file for cache prefix):
 - `## Output contract` (artifact spec, stable)
 
 VOLATILE (changes per project / strengthen run — goes LAST):
-- `## Project Context` filled by `evolve:strengthen` with grep-verified paths from CURRENT project (changes on every strengthen run)
+- `## Project Context` filled by `supervibe:strengthen` with grep-verified paths from CURRENT project (changes on every strengthen run)
 - `## Skills` list (sometimes adjusted)
 - `effectiveness:` block in frontmatter (updated by tracker every Task)
 - `last-verified` date (bumped on strengthen)
@@ -1630,14 +1630,14 @@ version: 1
 ---
 
 ## Skills
-- evolve:foo
+- supervibe:foo
 
 ## Persona
 x
 `;
   const out = reorderAgent(sample);
   assert.ok(out.includes('## Skills'));
-  assert.ok(out.includes('- evolve:foo'));
+  assert.ok(out.includes('- supervibe:foo'));
 });
 ```
 
@@ -1725,7 +1725,7 @@ Required section order (top to bottom):
 10. `## Out of scope`
 11. `## Related`
 12. `## Skills`
-13. `## Project Context` (LAST — filled by `evolve:strengthen` with project-specific
+13. `## Project Context` (LAST — filled by `supervibe:strengthen` with project-specific
     paths; VOLATILE)
 
 The validator `validate-agent-section-order` (see Phase 6) enforces this.
@@ -1812,7 +1812,7 @@ dispatches in the same window pay ~10% input cost for the cached prefix.
 Reordered all agents so STABLE sections (Persona, Decision tree, Procedure,
 Output contract, Anti-patterns, User dialogue discipline, Verification,
 Common workflows, Out of scope, Related) come first; VOLATILE Project
-Context (filled per-project by evolve:strengthen) and frontmatter
+Context (filled per-project by supervibe:strengthen) and frontmatter
 last-verified/effectiveness fields go last.
 
 Effective savings: ~80-85% of agent body becomes cache-warm in active
@@ -1945,7 +1945,7 @@ export async function loadActivePacks({ projectRoot }) {
 
 When SessionStart runs, emit a system-reminder:
 ```
-[evolve] Stack-pack auto-activated: django (3 agents)
+[supervibe] Stack-pack auto-activated: django (3 agents)
 ```
 
 - [ ] **Step 4: Test in 3 different projects**
@@ -1969,11 +1969,11 @@ Acceptance: 100% routing accuracy across 5 test stacks.
 ## Task 5.4: Commit Phase 5
 
 ```bash
-git add .claude-plugin/ scripts/lib/stack-pack-loader.mjs scripts/evolve-detect.mjs CLAUDE.md
+git add .claude-plugin/ scripts/lib/stack-pack-loader.mjs scripts/supervibe-detect.mjs CLAUDE.md
 git commit -m "feat(plugin): stack-pack opt-in segmentation via auto-detect
 
 35 stack-specific agents move out of core plugin.json into 21 opt-in
-stack-pack manifests. Auto-activation via evolve:stack-discovery — when
+stack-pack manifests. Auto-activation via supervibe:stack-discovery — when
 project files match a pack's regex/file patterns, that pack's agents
 become available.
 

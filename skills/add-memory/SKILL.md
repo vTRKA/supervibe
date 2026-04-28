@@ -25,7 +25,7 @@ AFTER:
 
 NOT for: routine commits, doc edits, trivial bug fixes.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read existing entries in target category to avoid duplication
 2. Read project's `.claude/memory/index.json` for tag conventions (use existing tags where possible)
@@ -71,7 +71,7 @@ Confidence self-assessment:
    - **Why** (rationale)
    - **How to apply** (concrete usage / when to invoke this knowledge)
    - **References** (links to specs, ADRs, code, PRs)
-7. **Score** with `evolve:confidence-scoring` (memory-entry rubric ≥9 required)
+7. **Score** with `supervibe:confidence-scoring` (memory-entry rubric ≥9 required)
 8. **Trigger `scripts/build-memory-index.mjs`** to update `index.json`
 9. **Cross-link** — update `related:` in any related entries (bidirectional)
 
@@ -86,7 +86,7 @@ Returns:
 ## Guard rails
 
 - DO NOT: add memory for trivial things (lowers signal-to-noise)
-- DO NOT: duplicate existing entries — search first via `evolve:project-memory`
+- DO NOT: duplicate existing entries — search first via `supervibe:project-memory`
 - DO NOT: use ad-hoc tags — reuse project vocabulary (read index.json tags)
 - DO NOT: add memory with confidence <9 (hallucination/noise risk)
 - ALWAYS: add memory at end of significant tasks (otherwise lost)
@@ -101,6 +101,6 @@ Returns:
 
 ## Related
 
-- `evolve:project-memory` — search/read companion
+- `supervibe:project-memory` — search/read companion
 - `agents/_meta/memory-curator` — maintains hygiene
-- `evolve:_core:quality-gate-reviewer` — invokes this at end of significant tasks
+- `supervibe:_core:quality-gate-reviewer` — invokes this at end of significant tasks

@@ -32,11 +32,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:systematic-debugging'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:systematic-debugging'
+  - 'supervibe:confidence-scoring'
 verification:
   - eval-harness-results
   - cost-latency-budget
@@ -121,15 +121,15 @@ safety-rails:
   PII may appear in input or output            → pre-redact + post-scrub + log scrubbed only
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -148,7 +148,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Fallback chain**: primary → secondary model → cached response → static fallback message; document SLA per tier
 14. **Observability**: log prompt-id + version + model + tokens + cost + latency per call; sample full payloads (PII-scrubbed) for debugging
 15. **ADR** for permanent decisions (model, vector DB, RAG architecture, eval methodology)
-16. **Score** with `evolve:confidence-scoring` (target ≥9 for production rollout)
+16. **Score** with `supervibe:confidence-scoring` (target ≥9 for production rollout)
 
 ## Output contract
 
@@ -157,7 +157,7 @@ Returns:
 ```markdown
 # AI Architecture ADR: <feature/scope>
 
-**Architect**: evolve:_ops:ai-integration-architect
+**Architect**: supervibe:_ops:ai-integration-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -202,7 +202,7 @@ For each AI integration design:
 - **Prompts versioned** in `prompts/` with semver tags; prompt-id logged per call for traceability
 - **Fallback chain verified** by chaos test (kill primary, confirm secondary serves; kill both, confirm static fallback)
 - **Latency p95 measured** under realistic load (not single-shot in dev)
-- **Confidence score** ≥9 from `evolve:confidence-scoring` rubric
+- **Confidence score** ≥9 from `supervibe:confidence-scoring` rubric
 
 ## Common workflows
 
@@ -253,24 +253,24 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 
 ## Related
 
-- `evolve:_ops:infrastructure-architect` — provisions vector DB, model-serving infra, GPU pools, network policies for AI workloads
-- `evolve:_core:security-auditor` — audits prompt-injection defenses, PII redaction, tool-authz, secrets handling for AI calls
-- `evolve:adr` skill — base methodology for architecture decision records (this agent emits ADRs through it)
-- `evolve:_ops:dependency-reviewer` — vets AI SDK / vector-DB-client dep updates for CVE + license
-- `evolve:_ops:devops-sre` — wires cost telemetry, latency dashboards, alert thresholds for LLM routes
-- `evolve:_core:code-reviewer` — invokes this agent for PRs touching `prompts/`, `evals/`, model-call sites
+- `supervibe:_ops:infrastructure-architect` — provisions vector DB, model-serving infra, GPU pools, network policies for AI workloads
+- `supervibe:_core:security-auditor` — audits prompt-injection defenses, PII redaction, tool-authz, secrets handling for AI calls
+- `supervibe:adr` skill — base methodology for architecture decision records (this agent emits ADRs through it)
+- `supervibe:_ops:dependency-reviewer` — vets AI SDK / vector-DB-client dep updates for CVE + license
+- `supervibe:_ops:devops-sre` — wires cost telemetry, latency dashboards, alert thresholds for LLM routes
+- `supervibe:_core:code-reviewer` — invokes this agent for PRs touching `prompts/`, `evals/`, model-call sites
 
 ## Skills
 
-- `evolve:project-memory` — search prior AI/ML decisions, model swaps, eval baselines
-- `evolve:code-search` — locate prompt usages, model invocations, embedding call sites
-- `evolve:adr` — for permanent architecture decisions (model, vector DB, RAG vs fine-tune)
-- `evolve:systematic-debugging` — for unexpected LLM behavior (hallucination, drift, latency spike)
-- `evolve:confidence-scoring` — research-output rubric ≥9 for prompt-quality / architecture choice
+- `supervibe:project-memory` — search prior AI/ML decisions, model swaps, eval baselines
+- `supervibe:code-search` — locate prompt usages, model invocations, embedding call sites
+- `supervibe:adr` — for permanent architecture decisions (model, vector DB, RAG vs fine-tune)
+- `supervibe:systematic-debugging` — for unexpected LLM behavior (hallucination, drift, latency spike)
+- `supervibe:confidence-scoring` — research-output rubric ≥9 for prompt-quality / architecture choice
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Prompt registry**: `prompts/` — centralized, versioned, language-tagged templates (one prompt = one file = one version)
 - **Eval harness**: `evals/` — golden datasets per prompt, scoring scripts, regression baselines

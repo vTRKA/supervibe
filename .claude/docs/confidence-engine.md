@@ -14,15 +14,15 @@ Every agent output is scored against an applicable rubric (0–10). Gate thresho
 | `rule-quality` | Rule markdown files |
 | `requirements` | Requirements docs from systems-analyst |
 | `plan` | Implementation plans from writing-plans skill |
-| `scaffold` | Output of /evolve-genesis or stack-pack apply |
+| `scaffold` | Output of /supervibe-genesis or stack-pack apply |
 | `framework` | Foundational framework changes |
 | `prototype` | Prototype-builder outputs |
 | `research-output` | Research notes from *-researcher agents |
 | `memory-entry` | Memory entries before persistence |
 | `brandbook` | Brandbook deliverables |
 
-**Override flow:** when a justified result scores 8.x, agent may override with `evolve:_core:quality-gate-reviewer` reviewing the rationale. Override is logged to `.claude/confidence-log.jsonl`. Override rate >5% in a 100-entry window triggers SessionStart warning.
+**Override flow:** when a justified result scores 8.x, agent may override with `supervibe:_core:quality-gate-reviewer` reviewing the rationale. Override is logged to `.claude/confidence-log.jsonl`. Override rate >5% in a 100-entry window triggers SessionStart warning.
 
-**Skill:** `evolve:confidence-scoring` — applies the rubric and emits structured score + evidence.
+**Skill:** `supervibe:confidence-scoring` — applies the rubric and emits structured score + evidence.
 
 See also: `docs/confidence-gates-spec.md` for unified gate semantics across commands + skills.

@@ -10,7 +10,7 @@ import { detectUnderperformers } from '../scripts/lib/underperformer-detector.mj
 import { aggregateForAgent } from '../scripts/effectiveness-tracker.mjs';
 import { buildStrengthenSuggestions } from '../scripts/lib/auto-strengthen-trigger.mjs';
 
-const sandbox = join(tmpdir(), `evolve-e2e-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-e2e-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
@@ -43,5 +43,5 @@ test('E2E: invocations → log → aggregate → detect → suggest', async () =
   const suggestions = await buildStrengthenSuggestions();
   const sug = suggestions.find(s => s.agent_id === 'failing-stack-agent');
   assert.ok(sug, 'suggestion should be present');
-  assert.match(sug.command, /^\/evolve-strengthen/);
+  assert.match(sug.command, /^\/supervibe-strengthen/);
 });

@@ -100,7 +100,7 @@ async function processOrder(order: Order) {
 
 - Project linter / typechecker config matches stack section above
 - Code review checks for usage of patterns
-- `evolve:_ops:best-practices-researcher` agent updates this rule periodically based on community signals
+- `supervibe:_ops:best-practices-researcher` agent updates this rule periodically based on community signals
 
 ## Related rules
 

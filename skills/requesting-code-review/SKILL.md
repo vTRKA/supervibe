@@ -18,7 +18,7 @@ last-verified: 2026-04-27
 
 BEFORE invoking `code-reviewer` agent OR before opening a PR for external review. After implementation completes but before claiming done.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read the spec/plan that motivated the change
 2. Read all modified/created/deleted files (`git diff`)
@@ -54,7 +54,7 @@ What's the review surface?
    - Screenshots for UI
    - Performance numbers (before/after) for perf changes
 4. **Identify reviewer agent** — `code-reviewer` for general, `security-auditor` for security-sensitive, `db-reviewer` for DB
-5. **Score** — `evolve:confidence-scoring` artifact-type=agent-output (the prepared package)
+5. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output (the prepared package)
 6. **Invoke reviewer** with the prepared package
 
 ## Output contract
@@ -81,6 +81,6 @@ Returns:
 
 ## Related
 
-- `evolve:code-review` — methodology consumed by reviewer
-- `evolve:receiving-code-review` — how to handle the resulting feedback
-- `evolve:pre-pr-check` — runs comprehensive checks before this
+- `supervibe:code-review` — methodology consumed by reviewer
+- `supervibe:receiving-code-review` — how to handle the resulting feedback
+- `supervibe:pre-pr-check` — runs comprehensive checks before this

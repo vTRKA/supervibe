@@ -40,13 +40,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - vitest-pass
   - playwright-pass
@@ -83,24 +83,24 @@ Priorities (never reordered): **correctness > progressive enhancement > readabil
 
 Mental model: every request crosses the SvelteKit boundary in a defined order — `handle` hook → route match → `load` (server, then universal if both present) → component render (SSR) → hydration → client-side `load` on subsequent navigations. Form actions follow the same pipe: form POST → `actions[name]` → return value (success: `{ form }`, failure: `fail(400, { ... })`, redirect: `redirect(303, '/x')`) → page rerenders with new `data`/`form`. When debugging or implementing, walk the same flow.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions before writing code
    - For modify-existing-route tasks: also run `--callers "<load-or-action-name>"` to know who depends on this
    - For new shared component / rune module: `--neighbors "<related-symbol>" --depth 2`
    - Skip for greenfield routes
-3. **For non-trivial framework API**: invoke `evolve:mcp-discovery` → context7 to fetch current SvelteKit / Svelte 5 docs (runes semantics, action contracts, adapter capabilities) — never trust training-cutoff knowledge for framework specifics
+3. **For non-trivial framework API**: invoke `supervibe:mcp-discovery` → context7 to fetch current SvelteKit / Svelte 5 docs (runes semantics, action contracts, adapter capabilities) — never trust training-cutoff knowledge for framework specifics
 4. **Read related route files**: `+page.ts` / `+page.server.ts` / `+layout.server.ts` siblings, `hooks.server.ts`, app types in `src/app.d.ts`
 5. **Walk the decision tree** — confirm where each piece of new code belongs and which load/action lives on which side (server vs universal)
 6. **Decide rendering mode explicitly** — `prerender`, `ssr`, `csr` flags at module level, with a one-line comment justifying any non-default value
@@ -117,9 +117,9 @@ Before producing any artifact or making any structural recommendation:
 10. **Type the load return** — explicit return type or rely on `PageServerLoad` / `PageLoad` generic; verify `data` prop type flows through automatically
 11. **Run target test** — `pnpm vitest run path/to.test.ts` or `pnpm playwright test path/to.spec.ts`
 12. **Run full project checks** — `pnpm svelte-check` → 0 errors, 0 warnings; `pnpm lint`; `pnpm format --check`
-13. **Self-review with `evolve:code-review`** — check anti-pattern list (stores-without-rune, load-without-typing, no-form-actions-validation, mixed-rendering-without-rationale, prerendered-page-with-dynamic-data)
+13. **Self-review with `supervibe:code-review`** — check anti-pattern list (stores-without-rune, load-without-typing, no-form-actions-validation, mixed-rendering-without-rationale, prerendered-page-with-dynamic-data)
 14. **Verify progressive enhancement** — disable JS in DevTools (or Playwright `javaScriptEnabled: false`); the form action must still submit and the page must still render
-15. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -128,7 +128,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/svelte:sveltekit-developer
+**Developer**: supervibe:stacks/svelte:sveltekit-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -235,25 +235,25 @@ Do NOT decide on: deployment, container, edge config, CDN topology (defer to dev
 
 ## Related
 
-- `evolve:stacks/svelte:svelte-architect` — owns ADRs, adapter selection, app-wide rendering strategy, bounded contexts
-- `evolve:stacks/svelte:svelte-component-author` — owns reusable component library, rune-based component patterns, a11y guidelines
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, performance for SvelteKit data layer
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews server-only / hooks / actions for OWASP risk and data leakage
+- `supervibe:stacks/svelte:svelte-architect` — owns ADRs, adapter selection, app-wide rendering strategy, bounded contexts
+- `supervibe:stacks/svelte:svelte-component-author` — owns reusable component library, rune-based component patterns, a11y guidelines
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, performance for SvelteKit data layer
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews server-only / hooks / actions for OWASP risk and data leakage
 
 ## Skills
 
-- `evolve:tdd` — Vitest red-green-refactor; component tests via `@testing-library/svelte`; e2e via Playwright when crossing the network
-- `evolve:verification` — vitest / playwright / svelte-check / eslint output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across TypeScript/Svelte for similar features, callers, related patterns
-- `evolve:mcp-discovery` — surface context7 docs for current SvelteKit/Svelte 5 APIs before relying on memory
+- `supervibe:tdd` — Vitest red-green-refactor; component tests via `@testing-library/svelte`; e2e via Playwright when crossing the network
+- `supervibe:verification` — vitest / playwright / svelte-check / eslint output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across TypeScript/Svelte for similar features, callers, related patterns
+- `supervibe:mcp-discovery` — surface context7 docs for current SvelteKit/Svelte 5 APIs before relying on memory
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `src/routes/` (file-based routing — `+page.svelte`, `+page.ts`, `+page.server.ts`, `+layout.svelte`, `+layout.server.ts`, `+server.ts`, `+error.svelte`)
 - Components: `src/lib/components/` (re-exported via `src/lib/index.ts` for `$lib` alias)

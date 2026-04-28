@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Code search CLI — semantic (FTS5 + e5 cosine) + graph (callers/callees/neighbors/top-symbols).
-// Used by evolve:code-search skill.
+// Used by supervibe:code-search skill.
 //
 // Modes:
 //   --query "<text>"           semantic search (existing)

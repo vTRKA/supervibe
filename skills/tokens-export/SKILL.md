@@ -23,10 +23,10 @@ WHEN:
 
 NOT for: ad-hoc one-off color changes (those go through brandbook update first).
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/_brandbook/tokens.css` (or `tokens.json`)
-2. Identify frontend stack from `evolve:stack-discovery` output
+2. Identify frontend stack from `supervibe:stack-discovery` output
 3. Identify target file convention per stack:
    - Tailwind: `tailwind.config.js` `theme.extend`
    - MUI: `src/theme/index.ts` `createTheme()`
@@ -97,7 +97,7 @@ Returns:
 
 ## Related
 
-- `evolve:brandbook` — produces input
+- `supervibe:brandbook` — produces input
 - `agents/_design/prototype-builder` — maintains brandbook tokens
 - `agents/stacks/nextjs/nextjs-developer` — consumer (uses generated theme)
 - `agents/stacks/react/react-implementer` — consumer

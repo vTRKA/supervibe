@@ -2,7 +2,7 @@
 
 > Relocated from CLAUDE.md as part of Phase 1 token-economy plan. Content byte-identical.
 
-Files in `rules/`. Each enforced by `evolve:rule-audit` skill and applies-when frontmatter.
+Files in `rules/`. Each enforced by `supervibe:rule-audit` skill and applies-when frontmatter.
 
 | Rule | Severity | What it enforces |
 |------|----------|------------------|

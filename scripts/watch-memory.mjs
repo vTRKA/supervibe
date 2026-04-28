@@ -11,7 +11,7 @@ async function main() {
   const args = process.argv.slice(2);
   const noEmbeddings = args.includes('--no-embeddings');
 
-  console.log(`Starting evolve memory + code watcher in ${PROJECT_ROOT}`);
+  console.log(`Starting supervibe memory + code watcher in ${PROJECT_ROOT}`);
   if (noEmbeddings) console.log('  (embeddings disabled — BM25 only)');
 
   const handle = await startWatcher(PROJECT_ROOT, {
@@ -20,7 +20,7 @@ async function main() {
   });
 
   const shutdown = async (sig) => {
-    console.log(`\n[evolve-watcher] received ${sig}, shutting down...`);
+    console.log(`\n[supervibe-watcher] received ${sig}, shutting down...`);
     await handle.stop();
     process.exit(0);
   };

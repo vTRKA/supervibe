@@ -20,7 +20,7 @@ WHEN receiving review feedback (from `code-reviewer` agent, human reviewer, or a
 
 This skill bans performative agreement ("I'll fix everything you said") and demands technical evaluation per finding.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read the full review report (don't skim)
 2. Read the original spec/plan to understand intent
@@ -48,7 +48,7 @@ Per finding, classify:
 6. **For CLARIFY**: ask reviewer one question per ambiguity
 7. **For DEFER**: create issue/note in `docs/follow-ups.md`
 8. **Mark each finding resolved** with link to evidence (commit/PR/issue)
-9. **Score** — `evolve:confidence-scoring` artifact-type=agent-output; ≥9 required
+9. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required
 10. **Re-invoke reviewer** if substantive changes made
 
 ## Output contract
@@ -79,6 +79,6 @@ Returns per-finding resolution table:
 
 ## Related
 
-- `evolve:code-review` — produces input
-- `evolve:requesting-code-review` — opposite flow
-- `evolve:systematic-debugging` — used when finding reveals real bug
+- `supervibe:code-review` — produces input
+- `supervibe:requesting-code-review` — opposite flow
+- `supervibe:systematic-debugging` — used when finding reveals real bug

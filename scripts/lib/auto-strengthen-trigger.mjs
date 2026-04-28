@@ -16,6 +16,6 @@ export async function buildStrengthenSuggestions() {
     agent_id: f.agent_id,
     reason: f.reason,
     value: f.value,
-    command: `/evolve-strengthen ${f.agent_id}`,
+    command: `/supervibe-strengthen ${f.agent_id}`,
   }));
 }

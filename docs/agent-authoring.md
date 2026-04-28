@@ -11,14 +11,14 @@ Agents are executors with personality — they USE skills, have tools, scope, an
    ```
 2. Fill in all `{{...}}` placeholders
 3. Validate: `npm run validate:frontmatter`
-4. Score: `/evolve-score agent-quality agents/<namespace>/<your-agent>.md` — must be ≥9
+4. Score: `/supervibe-score agent-quality agents/<namespace>/<your-agent>.md` — must be ≥9
 
 ## Namespaces
 
 | Namespace | Purpose | Examples |
 |-----------|---------|----------|
 | `_core/` | Process agents (review, debug, research) | code-reviewer, root-cause-debugger |
-| `_meta/` | Framework self-management | rules-curator, evolve-orchestrator |
+| `_meta/` | Framework self-management | rules-curator, supervibe-orchestrator |
 | `_product/` | Product / strategy / QA | product-manager (CPO scope), systems-analyst |
 | `_ops/` | Infrastructure / deps / DB / research | devops-sre, ai-integration-architect, *-researcher |
 | `_design/` | UX / brand / accessibility | ux-ui-designer, prototype-builder |
@@ -37,7 +37,7 @@ stacks: [<stack> | any]                   # required
 requires-stacks: []                       # required if stack-specific
 optional-stacks: []                       # required (use [] if none)
 tools: [Read, Grep, Glob, Bash, Edit, Write]  # required, scoped to role
-skills: [evolve:<skill>, ...]             # required (≥1)
+skills: [supervibe:<skill>, ...]             # required (≥1)
 verification: [<command1>, ...]           # required (≥1)
 anti-patterns: [<pattern1>, ...]          # required (≥4)
 version: 1.0
@@ -61,7 +61,7 @@ effectiveness:
 - Mental model (1-2 paragraphs)
 
 ### `## Project Context`
-Real paths from current project (filled by `evolve:strengthen` per project). Placeholder OK in plugin source.
+Real paths from current project (filled by `supervibe:strengthen` per project). Placeholder OK in plugin source.
 
 ### `## Skills`
 List of attached skills with one-line purpose each.
@@ -119,7 +119,7 @@ The hook treats `N/A` as null and skips logging.
 5. **size-and-shape** (×1) — ≥250 lines, ≤25 KB, all required frontmatter
 6. **canonical-output-format** (×1) — Output contract has Confidence + Override + Rubric footer
 
-Threshold: ≥9 to ship. **Note**: in v0.x, many agents are 60-150 lines (compact form). `evolve:strengthen` pass will expand to ≥250.
+Threshold: ≥9 to ship. **Note**: in v0.x, many agents are 60-150 lines (compact form). `supervibe:strengthen` pass will expand to ≥250.
 
 ## Tool selection
 
@@ -132,9 +132,9 @@ Principle: smallest tool set that lets agent do its job.
 ## Skill attachment
 
 Every agent attaches:
-- `evolve:confidence-scoring` (mandatory — final score)
+- `supervibe:confidence-scoring` (mandatory — final score)
 - Domain skill(s) — what it does
-- `evolve:verification` (recommended — evidence-before-claim)
+- `supervibe:verification` (recommended — evidence-before-claim)
 
 ## Persona writing tips
 
@@ -159,7 +159,7 @@ Bad persona:
 - `agents/_core/code-reviewer.md` — clean process agent
 - `agents/_core/root-cause-debugger.md` — methodology-heavy
 - `agents/_meta/rules-curator.md` — meta-level (manages other artifacts)
-- `agents/_meta/evolve-orchestrator.md` — full decision tree
+- `agents/_meta/supervibe-orchestrator.md` — full decision tree
 - `agents/stacks/laravel/laravel-architect.md` — stack-specific READ-ONLY
 - `agents/stacks/laravel/laravel-developer.md` — stack-specific WRITE
 

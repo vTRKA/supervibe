@@ -4,26 +4,26 @@ description: >-
   remediation actions. Supports auto-detect of artifact type from file
   path/extension, batch scoring, dry-run, and override flow. Поддерживает
   auto-detect типа артефакта, batch-режим, dry-run и override. Triggers:
-  'оцени', 'score', 'evaluate confidence', 'gap analysis', '/evolve-score'.
+  'оцени', 'score', 'evaluate confidence', 'gap analysis', '/supervibe-score'.
 ---
 
-# /evolve-score
+# /supervibe-score
 
 Score one or more artifacts against their confidence rubrics. Returns structured score + per-dimension verdicts + concrete remediation actions. Inspection-only by default — does NOT modify artifacts.
 
-For inline scoring during agent execution, agents use `evolve:confidence-scoring` skill directly. This command is the user-facing entry point for explicit, on-demand scoring.
+For inline scoring during agent execution, agents use `supervibe:confidence-scoring` skill directly. This command is the user-facing entry point for explicit, on-demand scoring.
 
 ## Invocation forms
 
-### `/evolve-score <artifact-type> <path>` — explicit
+### `/supervibe-score <artifact-type> <path>` — explicit
 
 Examples:
-- `/evolve-score requirements docs/specs/2026-04-28-billing-design.md`
-- `/evolve-score plan docs/plans/2026-04-28-token-economy-safe-mode.md`
-- `/evolve-score skill-quality skills/component-library-integration/SKILL.md`
-- `/evolve-score brandbook prototypes/_brandbook/system.md`
+- `/supervibe-score requirements docs/specs/2026-04-28-billing-design.md`
+- `/supervibe-score plan docs/plans/2026-04-28-token-economy-safe-mode.md`
+- `/supervibe-score skill-quality skills/component-library-integration/SKILL.md`
+- `/supervibe-score brandbook prototypes/_brandbook/system.md`
 
-### `/evolve-score <path>` — auto-detect type
+### `/supervibe-score <path>` — auto-detect type
 
 Inferred from path conventions:
 - `docs/specs/*.md` → `requirements`
@@ -37,20 +37,20 @@ Inferred from path conventions:
 
 If type cannot be inferred → ask user with the valid types listed.
 
-### `/evolve-score <artifact-type>` — most recent of type
+### `/supervibe-score <artifact-type>` — most recent of type
 
 Auto-resolve "most recent" via mtime in the canonical location for that type.
 Useful when user just produced an artifact in this session.
 
-### `/evolve-score --batch <pattern>` — score multiple
+### `/supervibe-score --batch <pattern>` — score multiple
 
 Glob pattern matched against artifact-type-aware locations:
-- `/evolve-score --batch agent-quality "agents/_design/**/*.md"` — scores all design agents
-- `/evolve-score --batch plan "docs/plans/*.md"` — scores every plan
+- `/supervibe-score --batch agent-quality "agents/_design/**/*.md"` — scores all design agents
+- `/supervibe-score --batch plan "docs/plans/*.md"` — scores every plan
 
 Returns: aggregate table + worst-3 detail.
 
-### `/evolve-score --dry-run <artifact-type> <path>` — show rubric only
+### `/supervibe-score --dry-run <artifact-type> <path>` — show rubric only
 
 Print the rubric dimensions + evidence requirements WITHOUT actually scoring. Useful for understanding what scoring will check before running.
 
@@ -60,19 +60,19 @@ Read live from `confidence-rubrics/*.yaml`:
 
 | Type | Rubric file | When to score |
 |---|---|---|
-| `requirements` | `requirements.yaml` | After spec produced via `/evolve-brainstorm` |
-| `plan` | `plan.yaml` | After plan produced via `/evolve-plan` |
+| `requirements` | `requirements.yaml` | After spec produced via `/supervibe-brainstorm` |
+| `plan` | `plan.yaml` | After plan produced via `/supervibe-plan` |
 | `agent-output` | `agent-delivery.yaml` | After agent dispatch returns |
 | `agent-quality` | `agent-quality.yaml` | When auditing agent file quality |
 | `skill-quality` | `skill-quality.yaml` | When auditing skill file quality |
 | `rule-quality` | `rule-quality.yaml` | When auditing rule file quality |
-| `scaffold` | `scaffold.yaml` | After `/evolve-genesis` produces scaffold |
+| `scaffold` | `scaffold.yaml` | After `/supervibe-genesis` produces scaffold |
 | `framework` | `framework.yaml` | Foundational changes to the plugin itself |
 | `prototype` | `prototype.yaml` | After prototype-builder produces files |
 | `research-output` | `research-output.yaml` | After researcher agents return |
 | `memory-entry` | `memory-entry.yaml` | Before persisting a memory entry |
 | `brandbook` | `brandbook.yaml` | After brandbook skill produces system |
-| `plan-execution` | `execute-plan.yaml` | After `/evolve-execute-plan` finishes |
+| `plan-execution` | `execute-plan.yaml` | After `/supervibe-execute-plan` finishes |
 
 If user invokes with unknown type → list valid types from disk + suggest the closest match (Levenshtein on the type name).
 
@@ -98,7 +98,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
    - If file missing → print path + suggest `find -name '<basename>'` to locate.
    - If file >2 MB → warn user and ask if they really want to score (skill loads file into context).
 
-4. **Invoke skill `evolve:confidence-scoring`:**
+4. **Invoke skill `supervibe:confidence-scoring`:**
    - Pass artifact-type + path + content.
    - Skill returns: per-dimension scores, weighted total, gates verdict (block/warn/pass), per-dimension gaps + remediation suggestions.
 
@@ -116,10 +116,10 @@ If user invokes with unknown type → list valid types from disk + suggest the c
      ```
 
 7. **Offer follow-up actions** based on verdict:
-   - If `block` (score < gate): offer `/evolve-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
+   - If `block` (score < gate): offer `/supervibe-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
    - If `warn`: print warning + suggest single targeted improvement.
    - If `pass`: print confirmation + suggest `/schedule` if natural follow-up exists.
-   - If user wants to override the gate → redirect to `/evolve-override` with score context.
+   - If user wants to override the gate → redirect to `/supervibe-override` with score context.
 
 ## Error recovery
 
@@ -129,7 +129,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 | Artifact path missing | Suggest `find` command to locate; offer `--batch` if user meant glob |
 | Artifact >2 MB | Warn + ask confirmation (loading large file costs tokens) |
 | Skill returns error | Print error + suggest re-running with `--dry-run` to see expected format |
-| Score below threshold | Offer 3 paths: fix inline / `/evolve-strengthen` / `/evolve-override` |
+| Score below threshold | Offer 3 paths: fix inline / `/supervibe-strengthen` / `/supervibe-override` |
 | Score-log write fails | Score returned to user; log attempt logged separately; user not blocked |
 
 ## Output contract
@@ -160,8 +160,8 @@ Rubric: plan
 Score logged: .claude/memory/score-log.jsonl#<uuid>
 
 Next:
-  • Apply remediation (raises to 9.7) → re-score with /evolve-score
-  • Accept current score → ready to /evolve-execute-plan
+  • Apply remediation (raises to 9.7) → re-score with /supervibe-score
+  • Accept current score → ready to /supervibe-execute-plan
 ```
 
 Batch:
@@ -181,7 +181,7 @@ Worst 3:
   ⚠ ux-ui-designer.md          8.6/10  gap: missing motion handoff section
   ⚠ accessibility-reviewer.md  8.9/10  gap: WCAG version not declared
 
-Run `/evolve-score agent-quality <path>` for per-file detail.
+Run `/supervibe-score agent-quality <path>` for per-file detail.
 ```
 
 Dry-run:
@@ -202,15 +202,15 @@ Dimensions:
 
 ## When NOT to invoke
 
-- During an active agent dispatch — that agent uses `evolve:confidence-scoring` skill internally; no need for the command.
+- During an active agent dispatch — that agent uses `supervibe:confidence-scoring` skill internally; no need for the command.
 - For files outside the rubric coverage list (the rubric you'd want doesn't exist).
 - For binary artifacts (images, compiled bundles) — rubrics expect text content.
 
 ## Related
 
-- `evolve:confidence-scoring` skill — the underlying methodology
+- `supervibe:confidence-scoring` skill — the underlying methodology
 - `confidence-rubrics/*.yaml` — the 13 rubrics this command scores against
-- `/evolve-evaluate` — closes the evolution loop after scoring (writes outcome to invocation telemetry)
-- `/evolve-strengthen` — if score is `block`, this is the agent-improvement path
-- `/evolve-override` — if score is `block` but user has justification to ship anyway
+- `/supervibe-evaluate` — closes the evolution loop after scoring (writes outcome to invocation telemetry)
+- `/supervibe-strengthen` — if score is `block`, this is the agent-improvement path
+- `/supervibe-override` — if score is `block` but user has justification to ship anyway
 - `.claude/memory/score-log.jsonl` — telemetry trail for score trends over time

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { logInvocation, readInvocations, updateLatestInvocation, INVOCATION_LOG_PATH_FOR_TEST } from '../scripts/lib/agent-invocation-logger.mjs';
 
-const sandbox = join(tmpdir(), `evolve-inv-log-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-inv-log-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });

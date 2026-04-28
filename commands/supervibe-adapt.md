@@ -2,15 +2,15 @@
 description: "Sync project-level .claude/ artifacts to upstream plugin changes (new agent versions, deprecated rules, renamed files). Diff-driven, user-gated."
 ---
 
-# /evolve-adapt
+# /supervibe-adapt
 
 Pull upstream improvements from the installed plugin into the project's `.claude/` directory without losing local customizations.
 
 ## When to invoke
 
-- After `npm run evolve:upgrade` reports a version bump (e.g. `1.7.0 → 1.8.0`).
+- After `npm run supervibe:upgrade` reports a version bump (e.g. `1.7.0 → 1.8.0`).
 - The SessionStart banner shows `[evolve] ⬆ plugin upgraded N → M`.
-- An audit (`/evolve-audit`) flagged drift between upstream and project copies.
+- An audit (`/supervibe-audit`) flagged drift between upstream and project copies.
 - The project has been on the same plugin version for >90 days and you want to refresh.
 
 ## Procedure
@@ -23,7 +23,7 @@ Pull upstream improvements from the installed plugin into the project's `.claude
    - **Both changed** (project has local customizations + upstream evolved) → propose 3-way merge with conflict markers, ask user to resolve manually.
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.claude/_archive/`, or delete.
 
-3. **Use the `evolve:adapt` skill** for the actual diff/merge logic. It already encodes the methodology.
+3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. It already encodes the methodology.
 
 4. **Show summary.** Before any write, print a table:
    ```
@@ -38,7 +38,7 @@ Pull upstream improvements from the installed plugin into the project's `.claude
 
 6. **Update version marker.** After all approved writes, refresh `.claude/memory/.evolve-version` to the current plugin version.
 
-7. **Score the result.** Run a quick `/evolve-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
+7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
 ## Output contract
 
@@ -61,7 +61,7 @@ Confidence:  N/10  Rubric: agent-delivery
 
 ## Related
 
-- `evolve:adapt` skill — the underlying diff/merge methodology
-- `/evolve-changelog` — see what upstream changed before adapting
-- `/evolve-genesis` — for projects without `.claude/` yet
-- `/evolve-audit` — to discover drift in the first place
+- `supervibe:adapt` skill — the underlying diff/merge methodology
+- `/supervibe-changelog` — see what upstream changed before adapting
+- `/supervibe-genesis` — for projects without `.claude/` yet
+- `/supervibe-audit` — to discover drift in the first place

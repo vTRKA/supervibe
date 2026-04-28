@@ -8,7 +8,7 @@ import {
   findCallers, findCallees, neighborhood, topSymbolsByDegree, disambiguate
 } from '../scripts/lib/code-graph-queries.mjs';
 
-const sandbox = join(tmpdir(), `evolve-graph-q-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-graph-q-${Date.now()}`);
 let store;
 
 before(async () => {

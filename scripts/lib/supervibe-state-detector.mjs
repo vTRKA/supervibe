@@ -1,12 +1,12 @@
-// Deterministic state detector for the /evolve auto-router.
+// Deterministic state detector for the /supervibe auto-router.
 //
 // Runs the 8 detection checks documented in commands/evolve.md as actual
 // code instead of relying on the AI to interpret a procedure. Returns the
 // recommended next phase command + structured evidence for each signal.
 //
 // Used by:
-//   - scripts/evolve-detect.mjs  (CLI wrapper, called from /evolve)
-//   - tests/evolve-state-detector.test.mjs
+//   - scripts/supervibe-detect.mjs  (CLI wrapper, called from /evolve)
+//   - tests/supervibe-state-detector.test.mjs
 //
 // Every check is independent and failure-tolerant: a check that throws
 // returns {triggered: false, error: '<msg>'}, never propagating.
@@ -41,7 +41,7 @@ async function checkUpstreamBehind(pluginRoot) {
 
 async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
   try {
-    const versionPath = join(projectRoot, '.claude', 'memory', '.evolve-version');
+    const versionPath = join(projectRoot, '.claude', 'memory', '.supervibe-version');
     if (!existsSync(versionPath)) return { triggered: false, evidence: 'project has not seen any plugin version yet' };
     const lastSeen = (await readFile(versionPath, 'utf8')).trim();
     const manifestPath = join(pluginRoot, '.claude-plugin', 'plugin.json');
@@ -79,7 +79,7 @@ async function checkUnderperformers(projectRoot) {
     if (!existsSync(logPath)) return { triggered: false, evidence: 'no telemetry log yet' };
     const { readInvocations } = await import('./agent-invocation-logger.mjs');
     const { detectUnderperformers } = await import('./underperformer-detector.mjs');
-    process.env.EVOLVE_INVOCATION_LOG = logPath;
+    process.env.SUPERVIBE_INVOCATION_LOG = logPath;
     const all = await readInvocations({ limit: 10000 });
     if (all.length < 10) {
       return { triggered: false, evidence: `only ${all.length} invocations logged (need ≥10 for analysis)` };
@@ -168,7 +168,7 @@ async function checkPendingEvaluation(projectRoot) {
     if (!last.outcome && !last.user_feedback) {
       return {
         triggered: true,
-        evidence: `latest invocation (${last.agent_id}) has no outcome — run /evolve-evaluate to lock feedback`,
+        evidence: `latest invocation (${last.agent_id}) has no outcome — run /supervibe-evaluate to lock feedback`,
         last,
       };
     }
@@ -186,13 +186,13 @@ async function checkPendingEvaluation(projectRoot) {
  */
 export async function detectNextPhase(projectRoot, pluginRoot) {
   const checks = [
-    { name: 'upstream-behind',       run: () => checkUpstreamBehind(pluginRoot),               recommend: '/evolve-update' },
-    { name: 'version-bump-unacked',  run: () => checkVersionBumpUnacked(projectRoot, pluginRoot), recommend: '/evolve-adapt' },
-    { name: 'project-not-scaffolded', run: () => checkProjectScaffolded(projectRoot),           recommend: '/evolve-genesis' },
-    { name: 'underperformers',       run: () => checkUnderperformers(projectRoot),             recommend: '/evolve-strengthen' },
-    { name: 'stale-artifacts',       run: () => checkStaleArtifacts(pluginRoot),               recommend: '/evolve-audit' },
-    { name: 'override-rate-high',    run: () => checkOverrideRate(projectRoot),                recommend: '/evolve-audit' },
-    { name: 'pending-evaluation',    run: () => checkPendingEvaluation(projectRoot),           recommend: '/evolve-evaluate' },
+    { name: 'upstream-behind',       run: () => checkUpstreamBehind(pluginRoot),               recommend: '/supervibe-update' },
+    { name: 'version-bump-unacked',  run: () => checkVersionBumpUnacked(projectRoot, pluginRoot), recommend: '/supervibe-adapt' },
+    { name: 'project-not-scaffolded', run: () => checkProjectScaffolded(projectRoot),           recommend: '/supervibe-genesis' },
+    { name: 'underperformers',       run: () => checkUnderperformers(projectRoot),             recommend: '/supervibe-strengthen' },
+    { name: 'stale-artifacts',       run: () => checkStaleArtifacts(pluginRoot),               recommend: '/supervibe-audit' },
+    { name: 'override-rate-high',    run: () => checkOverrideRate(projectRoot),                recommend: '/supervibe-audit' },
+    { name: 'pending-evaluation',    run: () => checkPendingEvaluation(projectRoot),           recommend: '/supervibe-evaluate' },
   ];
 
   const report = [];

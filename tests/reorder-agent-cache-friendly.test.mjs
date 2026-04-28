@@ -61,7 +61,7 @@ version: 1
 b
 
 ## Skills
-- evolve:foo
+- supervibe:foo
 
 ## Persona
 x
@@ -71,7 +71,7 @@ x
 `;
   const out = reorderAgent(sample);
   assert.ok(out.includes('## Skills'));
-  assert.ok(out.includes('- evolve:foo'));
+  assert.ok(out.includes('- supervibe:foo'));
   assert.ok(out.includes('## Anti-patterns'));
   assert.ok(out.includes('- bad'));
   assert.ok(out.includes('## Persona'));

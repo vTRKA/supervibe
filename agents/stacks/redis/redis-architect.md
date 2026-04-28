@@ -29,11 +29,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:systematic-debugging'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:systematic-debugging'
+  - 'supervibe:confidence-scoring'
 verification:
   - redis-info-output
   - sentinel-quorum-check
@@ -123,15 +123,15 @@ LOCK PATTERN:
   → Document that lock is best-effort, not a safety property
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -151,7 +151,7 @@ Before producing any artifact or making any structural recommendation:
 14. **Failover rehearsal** — schedule a quarterly drill: kill primary, time RTO, verify clients reconnect, verify no data divergence
 15. **Persistence restore drill** — quarterly: take last RDB+AOF, restore to a clean node, diff key count and sample values
 16. **Observability** — wire `INFO`, slowlog, latency, hot-keys, evicted_keys, replication lag, AOF size, command stats; alert thresholds documented
-17. **ADR** — emit decision record; score with `evolve:confidence-scoring`
+17. **ADR** — emit decision record; score with `supervibe:confidence-scoring`
 
 ## Output contract
 
@@ -160,7 +160,7 @@ Returns a Redis architecture ADR:
 ```markdown
 # ADR-NNNN: Redis Architecture for <scope>
 
-**Author**: evolve:stacks/redis:redis-architect
+**Author**: supervibe:stacks/redis:redis-architect
 **Date**: YYYY-MM-DD
 **Status**: Proposed | Accepted | Superseded
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -265,23 +265,23 @@ Do NOT decide on: data model in primary DB (defer to db-reviewer).
 
 ## Related
 
-- `evolve:stacks/infrastructure:infrastructure-architect` — owns provisioning, networking, and cloud-vs-self-hosted choice; consumes this agent's topology decision
-- `evolve:stacks/queues:queue-worker-architect` — owns job-processing semantics; coordinates on Redis Streams as transport
-- `evolve:_core:db-reviewer` — owns primary-store schema; coordinates on what flows through Redis vs lives in DB
-- `evolve:_core:architect-reviewer` — invokes this agent when a design touches caching, locking, or pub/sub
-- `evolve:_ops:devops-sre` — implements monitoring, alerts, and failover drills based on this agent's runbooks
+- `supervibe:stacks/infrastructure:infrastructure-architect` — owns provisioning, networking, and cloud-vs-self-hosted choice; consumes this agent's topology decision
+- `supervibe:stacks/queues:queue-worker-architect` — owns job-processing semantics; coordinates on Redis Streams as transport
+- `supervibe:_core:db-reviewer` — owns primary-store schema; coordinates on what flows through Redis vs lives in DB
+- `supervibe:_core:architect-reviewer` — invokes this agent when a design touches caching, locking, or pub/sub
+- `supervibe:_ops:devops-sre` — implements monitoring, alerts, and failover drills based on this agent's runbooks
 
 ## Skills
 
-- `evolve:project-memory` — search prior Redis incidents, ADRs, sizing decisions
-- `evolve:code-search` — locate all client code, key patterns, lock usage
-- `evolve:adr` — emit topology and persistence decisions as ADRs
-- `evolve:systematic-debugging` — hot-key, slow-log, replication-lag investigations
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before finalizing recommendation
+- `supervibe:project-memory` — search prior Redis incidents, ADRs, sizing decisions
+- `supervibe:code-search` — locate all client code, key patterns, lock usage
+- `supervibe:adr` — emit topology and persistence decisions as ADRs
+- `supervibe:systematic-debugging` — hot-key, slow-log, replication-lag investigations
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before finalizing recommendation
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Redis config: `redis.conf` — `maxmemory`, `maxmemory-policy`, `save`, `appendonly`, `appendfsync`, `bind`, `protected-mode`
 - Sentinel config: `sentinel.conf` — quorum, `down-after-milliseconds`, `failover-timeout`, `parallel-syncs`

@@ -28,7 +28,7 @@ function routeFeedback(entry) {
 function formatEntry(entry) {
   const agent = routeFeedback(entry);
   return [
-    `[evolve] browser-feedback received:`,
+    `[supervibe] browser-feedback received:`,
     `- id: ${entry.id}`,
     `- prototype: ${entry.prototypeSlug}`,
     `- viewport: ${entry.viewport}`,
@@ -59,7 +59,7 @@ ${entries.length} new browser-feedback entr${entries.length === 1 ? 'y' : 'ies'}
 
 ${blocks}
 
-INVOKE the \`evolve:browser-feedback\` skill to triage and respond. Do NOT skip; the user is waiting for action on these.
+INVOKE the \`supervibe:browser-feedback\` skill to triage and respond. Do NOT skip; the user is waiting for action on these.
 </system-reminder>`;
 
   process.stdout.write(JSON.stringify({

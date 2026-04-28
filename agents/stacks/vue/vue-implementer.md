@@ -35,13 +35,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -77,20 +77,20 @@ Priorities (in order, never reordered):
 
 Mental model: a Vue component is a function from `(props, slots, context) → vnode tree` where the function re-runs whenever a tracked dependency changes. The Composition API exposes that function as `setup()` (or `<script setup>`), and reactivity primitives are the only legal way to participate in re-render. Logic that doesn't need the template extracts cleanly to a composable — pure functions over reactive inputs returning reactive outputs. Pinia is just a global composable with devtools wiring; treat its stores like any other composable, not like a magical singleton. Refuses to ship: prop mutation, `watch` callbacks that write back to a `ref` to compute something a `computed` could express, untyped `provide/inject`, components that mix Options API and Composition API in the same file, refs that escape `setup` and survive the unmount.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and a separate run with `--lang vue`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and a separate run with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-component tasks: also run `--callers "<component-name>"` to know who renders it
    - For composable extraction: `--callers "<source-component>"` to confirm extraction is worth the indirection
    - Skip for greenfield tasks
@@ -104,9 +104,9 @@ Before producing any artifact or making any structural recommendation:
 10. **Run target test** — `pnpm vitest run <path>` (or `npm test --`); confirm GREEN
 11. **Run full suite** — `pnpm vitest run` to catch regressions in adjacent components / shared composables
 12. **Run lint + type check** — `pnpm lint && pnpm vue-tsc --noEmit`. Both must be clean. Re-run tests if lint reformats files
-13. **Self-review with `evolve:code-review`** — check: prop mutation, watch-for-derived-state, untyped emits/provide-inject, mixed Options/Composition API, refs leaked across unmount, missing empty/error states in template
+13. **Self-review with `supervibe:code-review`** — check: prop mutation, watch-for-derived-state, untyped emits/provide-inject, mixed Options/Composition API, refs leaked across unmount, missing empty/error states in template
 14. **Verify Suspense + AsyncComponent paths** if used: parent declares `<Suspense>` boundary with `#fallback`; async setup or `defineAsyncComponent` is reachable; error fallback is wired (`<Suspense>` does not catch errors — pair with error-handling)
-15. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -115,7 +115,7 @@ Returns:
 ```markdown
 # Component / Composable Delivery: <name>
 
-**Implementer**: evolve:stacks/vue:vue-implementer
+**Implementer**: supervibe:stacks/vue:vue-implementer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -174,7 +174,7 @@ For each component / composable delivery:
 7. Output Component Delivery report
 
 ### Composable extraction (e.g., `useDebounce`, `usePagination`, `useFetchUsers`)
-1. Identify the duplicated reactive logic across ≥2 components (`evolve:code-search --callers` to confirm reuse, not speculative)
+1. Identify the duplicated reactive logic across ≥2 components (`supervibe:code-search --callers` to confirm reuse, not speculative)
 2. Define the contract: inputs (refs / reactive / scalars) and outputs (refs / computed / functions)
 3. Create `src/composables/useX.ts` returning a typed object literal — never a class
 4. Move lifecycle (`onMounted`, `onUnmounted`) INSIDE the composable; the composable owns its cleanup
@@ -216,25 +216,25 @@ Do NOT decide on: design-system component API contracts that span multiple consu
 
 ## Related
 
-- `evolve:stacks/nuxt:nuxt-architect` — owns SSR/SSG/ISR/CSR rendering decisions, Nitro engine choice, Nuxt module ecosystem
-- `evolve:stacks/nuxt:nuxt-developer` — implements pages/layouts/middleware/server-api in Nuxt projects (this agent's Nuxt counterpart)
-- `evolve:stacks/react:react-implementer` — sibling for React stack; share patterns on testing-library philosophy
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews `v-html`, `provide/inject` of secrets, Pinia state persistence for sensitive data
+- `supervibe:stacks/nuxt:nuxt-architect` — owns SSR/SSG/ISR/CSR rendering decisions, Nitro engine choice, Nuxt module ecosystem
+- `supervibe:stacks/nuxt:nuxt-developer` — implements pages/layouts/middleware/server-api in Nuxt projects (this agent's Nuxt counterpart)
+- `supervibe:stacks/react:react-implementer` — sibling for React stack; share patterns on testing-library philosophy
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews `v-html`, `provide/inject` of secrets, Pinia state persistence for sensitive data
 
 ## Skills
 
-- `evolve:tdd` — write the failing Vitest spec first, then implement the component or composable
-- `evolve:verification` — `vue-tsc`, `vitest`, `eslint` output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review for prop mutation, watch-for-derived-state, untyped emits, refs leak before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain (state shape, composable extraction, prop contracts) before designing
-- `evolve:code-search` — semantic search across `.vue` and `.ts` source for similar components, callers, related patterns
-- `evolve:mcp-discovery` — discover MCP servers (context7) for current Vue/Pinia/Vue Test Utils docs when an API is non-trivial
+- `supervibe:tdd` — write the failing Vitest spec first, then implement the component or composable
+- `supervibe:verification` — `vue-tsc`, `vitest`, `eslint` output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review for prop mutation, watch-for-derived-state, untyped emits, refs leak before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain (state shape, composable extraction, prop contracts) before designing
+- `supervibe:code-search` — semantic search across `.vue` and `.ts` source for similar components, callers, related patterns
+- `supervibe:mcp-discovery` — discover MCP servers (context7) for current Vue/Pinia/Vue Test Utils docs when an API is non-trivial
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source root: `src/` — `src/components/`, `src/composables/`, `src/stores/`, `src/views/` (or `src/pages/`), `src/router/`
 - SFC convention: `<script setup lang="ts">` mandatory; `<script>` (non-setup) only for `defineOptions` or named exports needed at module scope

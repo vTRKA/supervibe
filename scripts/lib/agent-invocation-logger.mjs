@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const PROJECT_ROOT = process.cwd();
-let _logPath = process.env.EVOLVE_INVOCATION_LOG
+let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
   || join(PROJECT_ROOT, '.claude', 'memory', 'agent-invocations.jsonl');
 
 export function INVOCATION_LOG_PATH_FOR_TEST(path) { _logPath = path; }

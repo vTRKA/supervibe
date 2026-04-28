@@ -157,14 +157,14 @@ async function main() {
       if (suggestions.length > 0) {
         const head = taskSummary.length > 80 ? taskSummary.slice(0, 80) + '…' : taskSummary;
         const lines = [
-          `[evolve] dispatch-hint: ${agent_id} finished "${head}" at confidence ${score.toFixed(1)}`,
-          `[evolve] similar tasks scored higher with:`,
+          `[supervibe] dispatch-hint: ${agent_id} finished "${head}" at confidence ${score.toFixed(1)}`,
+          `[supervibe] similar tasks scored higher with:`,
         ];
         for (const s of suggestions) {
           const sample = s.sample_task.length > 60 ? s.sample_task.slice(0, 60) + '…' : s.sample_task;
           lines.push(`  - ${s.agent_id} avg ${s.avg_score.toFixed(1)} from ${s.sample_count} sample(s) (e.g. "${sample}")`);
         }
-        lines.push(`[evolve] consider re-running via Task subagent_type=${suggestions[0].agent_id}`);
+        lines.push(`[supervibe] consider re-running via Task subagent_type=${suggestions[0].agent_id}`);
         console.log(lines.join('\n'));
       }
     }

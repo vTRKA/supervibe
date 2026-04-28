@@ -11,7 +11,7 @@ test('valid agent frontmatter passes', () => {
     capabilities: ['code-review'],
     stacks: ['any'],
     tools: ['Read', 'Grep'],
-    skills: ['evolve:code-review'],
+    skills: ['supervibe:code-review'],
     verification: ['npm test'],
     'anti-patterns': ['no-tests', 'large-pr'],
     version: '1.0',

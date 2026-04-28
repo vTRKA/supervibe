@@ -20,7 +20,7 @@ BEFORE any merge to main, BEFORE opening a PR for external review, AFTER complet
 
 This is methodology — used by the `code-reviewer` agent (Phase 3) AND can be attached to any other agent for self-review.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read the change scope (all files modified/created/deleted)
 2. Read the spec/plan that motivated the change
@@ -69,7 +69,7 @@ Is the diff touching public symbols (rename / move / extract / delete)?
    - Verify: all callers updated in same diff OR documented as breaking change
    - If breaking: require migration note + deprecation period per `api-contract-reviewer` rules
 7. **Output report** — see Output contract
-8. **Score** — `evolve:confidence-scoring` artifact-type=agent-output; ≥9 required to mark review complete
+8. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required to mark review complete
 
 ## Output contract
 
@@ -108,6 +108,6 @@ Evidence: <typecheck/test/lint output summary>
 
 ## Related
 
-- `evolve:requesting-code-review` — prepares the package this skill consumes
-- `evolve:receiving-code-review` — how the reviewed agent should respond
+- `supervibe:requesting-code-review` — prepares the package this skill consumes
+- `supervibe:receiving-code-review` — how the reviewed agent should respond
 - Phase 3 `code-reviewer` agent — primary user of this skill

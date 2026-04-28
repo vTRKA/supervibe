@@ -3,43 +3,43 @@ description: >-
   Update the Evolve plugin: git pull + lfs pull + npm install + tests +
   register-refresh. Idempotent. Now with mid-upgrade rollback procedure if tests
   fail. Идемпотентно. С rollback при сбое тестов на середине upgrade. Triggers:
-  'update plugin', 'обнови плагин', 'evolve upgrade', '/evolve-update'.
+  'update plugin', 'обнови плагин', 'evolve upgrade', '/supervibe-update'.
 ---
 
-# /evolve-update
+# /supervibe-update
 
-Update the installed Evolve plugin to the latest commit. Wraps `npm run evolve:upgrade` with explicit rollback procedure if anything fails mid-upgrade.
+Update the installed Evolve plugin to the latest commit. Wraps `npm run supervibe:upgrade` with explicit rollback procedure if anything fails mid-upgrade.
 
-## Difference from `/evolve-adapt`
+## Difference from `/supervibe-adapt`
 
-- `/evolve-update` updates the **plugin source** in `~/.claude/plugins/marketplaces/evolve-marketplace/` (global, single install per machine).
-- `/evolve-adapt` propagates upstream agent improvements into a **specific project's** `.claude/` overrides.
+- `/supervibe-update` updates the **plugin source** in `~/.claude/plugins/marketplaces/supervibe-marketplace/` (global, single install per machine).
+- `/supervibe-adapt` propagates upstream agent improvements into a **specific project's** `.claude/` overrides.
 
-Run `/evolve-update` first, then `/evolve-adapt` per project that has overrides.
+Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.
 
 ## Invocation forms
 
-### `/evolve-update` — full upgrade
+### `/supervibe-update` — full upgrade
 
 Standard procedure: pull, install, test, refresh cache.
 
-### `/evolve-update --check` — non-mutating probe
+### `/supervibe-update --check` — non-mutating probe
 
-Equivalent to `npm run evolve:upgrade-check`. Reports whether a newer version exists without applying.
+Equivalent to `npm run supervibe:upgrade-check`. Reports whether a newer version exists without applying.
 
-### `/evolve-update --rollback` — explicit rollback
+### `/supervibe-update --rollback` — explicit rollback
 
 Roll back to the previous commit on the plugin checkout. Useful after a failed upgrade left a partially-installed state, or after discovering a new release introduced regression.
 
-### `/evolve-update --to <ref>` — pin to specific version
+### `/supervibe-update --to <ref>` — pin to specific version
 
 Examples:
-- `/evolve-update --to v1.6.0` — checkout tag
-- `/evolve-update --to abc123` — checkout commit SHA
+- `/supervibe-update --to v1.6.0` — checkout tag
+- `/supervibe-update --to abc123` — checkout commit SHA
 
 After pin: same install + test cycle. Use to test a specific candidate before adopting.
 
-### `/evolve-update --dry-run` — show what would happen
+### `/supervibe-update --dry-run` — show what would happen
 
 Print: current version, target version, changelog summary between them, breaking changes if any. No modification.
 
@@ -47,7 +47,7 @@ Print: current version, target version, changelog summary between them, breaking
 
 1. **Locate the plugin checkout.**
    - Use `$CLAUDE_PLUGIN_ROOT`. Fail fast with actionable error if not set:
-     > "CLAUDE_PLUGIN_ROOT not set. Re-run installer: curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash"
+     > "CLAUDE_PLUGIN_ROOT not set. Re-run installer: curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash"
 
 2. **Capture pre-upgrade state (REQUIRED for rollback):**
    ```bash
@@ -62,13 +62,13 @@ Print: current version, target version, changelog summary between them, breaking
 
 3. **Refuse to clobber local edits.**
    - Run `git -C $CLAUDE_PLUGIN_ROOT status --porcelain`. If non-empty:
-     - Print: "Plugin checkout has uncommitted changes. Stash or commit first, then re-run /evolve-update."
+     - Print: "Plugin checkout has uncommitted changes. Stash or commit first, then re-run /supervibe-update."
      - List the dirty files.
      - Exit. Never auto-discard user edits.
 
 4. **Run the upgrade.**
    ```bash
-   cd $CLAUDE_PLUGIN_ROOT && npm run evolve:upgrade
+   cd $CLAUDE_PLUGIN_ROOT && npm run supervibe:upgrade
    ```
    This script does: `git fetch --tags --prune` → `git pull --ff-only` → `git lfs pull` (if available) → `npm install` → `npm run check`.
 
@@ -106,8 +106,8 @@ Print: current version, target version, changelog summary between them, breaking
    Error: <full output>
    Rollback: succeeded
    Action items:
-     - File issue at github.com/vTRKA/evolve-agent/issues
-     - Try /evolve-update --to <safer-version> to pin
+     - File issue at github.com/vTRKA/supervibe/issues
+     - Try /supervibe-update --to <safer-version> to pin
    ```
 
 6. **If upgrade succeeds:**
@@ -119,8 +119,8 @@ Print: current version, target version, changelog summary between them, breaking
 7. **Print next steps:**
    - Restart the AI CLI to pick up new plugin code.
    - Each project sees `[evolve] ⬆ plugin upgraded ...` on next session.
-   - If project has `.claude/` overrides → run `/evolve-adapt`.
-   - To see what changed → run `/evolve-changelog`.
+   - If project has `.claude/` overrides → run `/supervibe-adapt`.
+   - To see what changed → run `/supervibe-changelog`.
 
 ## Error recovery
 
@@ -164,8 +164,8 @@ Rollback anchor: cleaned up (no longer needed)
 
 Next:
   1. Restart your AI CLI
-  2. Read changelog: /evolve-changelog
-  3. (if project has overrides) /evolve-adapt
+  2. Read changelog: /supervibe-changelog
+  3. (if project has overrides) /supervibe-adapt
 ```
 
 Failed upgrade with rollback:
@@ -188,8 +188,8 @@ Plugin remains on v1.6.0.
 Failure log: .claude/memory/incidents/upgrade-failure-2026-04-28T15-30-00.md
 
 Next:
-  1. File issue: https://github.com/vTRKA/evolve-agent/issues
-  2. Or pin to safer version: /evolve-update --to v1.6.5
+  1. File issue: https://github.com/vTRKA/supervibe/issues
+  2. Or pin to safer version: /supervibe-update --to v1.6.5
 ```
 
 Dry-run:
@@ -198,29 +198,29 @@ Dry-run:
 === Evolve Update — DRY RUN ===
 Current:        v1.6.0
 Latest:         v1.7.0
-Changelog summary: [see /evolve-changelog --since v1.6.0]
+Changelog summary: [see /supervibe-changelog --since v1.6.0]
 
 Breaking changes detected: 2
-  - Removed: evolve:legacy-prompt-quality
+  - Removed: supervibe:legacy-prompt-quality
   - Schema change: confidence-rubrics gates field
 
-Run `/evolve-update` to apply (auto-rollback on failure).
+Run `/supervibe-update` to apply (auto-rollback on failure).
 ```
 
 ## When NOT to invoke
 
 - Plugin checkout has uncommitted changes — stash/commit first.
-- You only want to *check* whether an upgrade exists, not apply — use `/evolve-update --check`.
-- You want to update project-level overrides — that is `/evolve-adapt`.
+- You only want to *check* whether an upgrade exists, not apply — use `/supervibe-update --check`.
+- You want to update project-level overrides — that is `/supervibe-adapt`.
 - An upgrade is already in progress (state file exists with recent timestamp) — wait for it or run `--rollback` if stuck.
 
 ## Related
 
-- `npm run evolve:upgrade` — the underlying script (called by this command)
-- `npm run evolve:upgrade-check` — non-mutating probe
-- `/evolve-update --rollback` — explicit revert to last good state
-- `/evolve-changelog` — what changed
-- `/evolve-adapt` — propagate upstream changes into a specific project
+- `npm run supervibe:upgrade` — the underlying script (called by this command)
+- `npm run supervibe:upgrade-check` — non-mutating probe
+- `/supervibe-update --rollback` — explicit revert to last good state
+- `/supervibe-changelog` — what changed
+- `/supervibe-adapt` — propagate upstream changes into a specific project
 - `.claude/memory/.evolve-update-state.json` — rollback anchor (transient)
 - `.claude/memory/incidents/upgrade-failure-*.md` — failure forensics
 - `.claude/memory/decisions/upgrades.md` — success log

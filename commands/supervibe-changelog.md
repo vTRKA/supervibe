@@ -3,10 +3,10 @@ description: >-
   Show what changed in Evolve since this project's last seen version. Reads
   CHANGELOG.md without truncation; emits structured breaking-change + migration
   sections; offers automatic migration plan if applicable. Triggers:
-  'changelog', 'что нового', 'что изменилось', '/evolve-changelog'.
+  'changelog', 'что нового', 'что изменилось', '/supervibe-changelog'.
 ---
 
-# /evolve-changelog
+# /supervibe-changelog
 
 Display CHANGELOG entries between the project's last-seen Evolve version and the currently installed version. Use when SessionStart shows `⬆ plugin upgraded X → Y`, or whenever the user wants to know what changed.
 
@@ -14,25 +14,25 @@ This command does NOT silently truncate. If the changelog is large, sections are
 
 ## Invocation forms
 
-### `/evolve-changelog` — auto-resolve
+### `/supervibe-changelog` — auto-resolve
 
 Reads `.claude/memory/.evolve-version` (last seen) and `plugin.json.version` (current). Shows entries between (last, current], inclusive of current.
 
-### `/evolve-changelog <from> <to>` — explicit version range
+### `/supervibe-changelog <from> <to>` — explicit version range
 
 Examples:
-- `/evolve-changelog 1.5.0 1.7.0` — show 1.6.0 + 1.7.0
-- `/evolve-changelog 1.6.0 latest` — show everything since 1.6.0
+- `/supervibe-changelog 1.5.0 1.7.0` — show 1.6.0 + 1.7.0
+- `/supervibe-changelog 1.6.0 latest` — show everything since 1.6.0
 
-### `/evolve-changelog --since <version>` — open-ended forward
+### `/supervibe-changelog --since <version>` — open-ended forward
 
 Show every release after `<version>` up to current.
 
-### `/evolve-changelog --breaking-only` — filter to breaking changes
+### `/supervibe-changelog --breaking-only` — filter to breaking changes
 
-Print ONLY entries containing `BREAKING`, `Removed`, `Migration`, or `Deprecated` markers. Useful before `/evolve-update`.
+Print ONLY entries containing `BREAKING`, `Removed`, `Migration`, or `Deprecated` markers. Useful before `/supervibe-update`.
 
-### `/evolve-changelog --migrate` — produce migration plan
+### `/supervibe-changelog --migrate` — produce migration plan
 
 For each breaking change between last-seen and current, generate a concrete migration step list. Output format:
 
@@ -42,17 +42,17 @@ Migration: vX.Y → vA.B
 
 1. Renamed `agents/foo.md` → `agents/_core/foo.md`
    Action: `git mv` if you have project-level overrides. Otherwise no action.
-2. Removed `evolve:legacy-skill` skill
-   Action: search for callers: `grep -r 'evolve:legacy-skill' agents/ skills/`
+2. Removed `supervibe:legacy-skill` skill
+   Action: search for callers: `grep -r 'supervibe:legacy-skill' agents/ skills/`
 3. Schema change in confidence-rubrics: gates moved from gate-on to gates.block-below
    Action: run `node scripts/migrate-rubrics-v2.mjs` (auto-fixes existing files)
 ```
 
 If no breaking changes: print "No migration needed".
 
-### `/evolve-changelog --page <N>` — pagination
+### `/supervibe-changelog --page <N>` — pagination
 
-If output exceeds context comfort (~6,000 chars), the command splits into pages of ~5,000 chars each. Default shows page 1 + "Run /evolve-changelog --page 2 for next 5K chars". User can iterate.
+If output exceeds context comfort (~6,000 chars), the command splits into pages of ~5,000 chars each. Default shows page 1 + "Run /supervibe-changelog --page 2 for next 5K chars". User can iterate.
 
 ## Procedure
 
@@ -79,7 +79,7 @@ If output exceeds context comfort (~6,000 chars), the command splits into pages 
 
 5. **Calculate output size:**
    - If total chars ≤ 5,000 → print everything.
-   - If > 5,000 → paginate: 5,000 chars per page; print page 1 + footer "Pages: 1/N. Run /evolve-changelog --page 2 for next."
+   - If > 5,000 → paginate: 5,000 chars per page; print page 1 + footer "Pages: 1/N. Run /supervibe-changelog --page 2 for next."
    - If `--breaking-only` → print only breaking section, regardless of size (breaking is critical, no truncation).
 
 6. **Format output (NEVER truncate silently):**
@@ -117,7 +117,7 @@ Pages: 1/N (if paginated)
 | Failure | Recovery action |
 |---|---|
 | `.evolve-version` missing | Run `node scripts/lib/version-tracker.mjs --init` to create baseline; exit |
-| `plugin.json` missing | Plugin install corrupted; suggest `/evolve-update` or reinstall |
+| `plugin.json` missing | Plugin install corrupted; suggest `/supervibe-update` or reinstall |
 | `CHANGELOG.md` missing | Print: "No changelog at expected path. Plugin source may be incomplete." |
 | Range invalid (from > to) | Show in reverse with warning |
 | Output exceeds 5K chars | Auto-paginate with explicit page indicators (NEVER silent truncate) |
@@ -134,7 +134,7 @@ Range: v1.6.0 → v1.7.0  (3 versions)
 
 ⚠ BREAKING CHANGES:
 ## [v1.7.0] — 2026-04-28
-  - Removed deprecated `evolve:legacy-prompt-quality` skill
+  - Removed deprecated `supervibe:legacy-prompt-quality` skill
   - Schema change: confidence-rubrics top-level field `id:` renamed to `artifact:`
   - hooks.json structure: `Stop` matcher field is now required
 
@@ -144,7 +144,7 @@ Features:
 Fixes:
 [verbatim fix: lines]
 
-Tip: Run `/evolve-changelog --migrate` for action items.
+Tip: Run `/supervibe-changelog --migrate` for action items.
 ```
 
 Breaking-only mode:
@@ -162,9 +162,9 @@ Migrate mode:
 
 3 breaking changes detected.
 
-[1/3] Removed `evolve:legacy-prompt-quality` skill
-  Action: grep -rn "evolve:legacy-prompt-quality" .
-  Replacement: use `evolve:prompt-quality-engineer` (different signature; see learnings/)
+[1/3] Removed `supervibe:legacy-prompt-quality` skill
+  Action: grep -rn "supervibe:legacy-prompt-quality" .
+  Replacement: use `supervibe:prompt-quality-engineer` (different signature; see learnings/)
 
 [2/3] Schema change in confidence-rubrics
   Action: run `node scripts/migrate-rubrics-v2.mjs`
@@ -179,14 +179,14 @@ Migrate mode:
 ## When NOT to invoke
 
 - Same session that already showed SessionStart upgrade banner — Claude already has context (the banner IS the changelog summary).
-- After `/evolve-update` reported "no-op (already on latest)" — nothing to show.
+- After `/supervibe-update` reported "no-op (already on latest)" — nothing to show.
 - For changes within your own project's `docs/plans/*.md` history — that's `git log`, not the plugin changelog.
 
 ## Related
 
-- `npm run evolve:upgrade` — actually pulls a newer plugin
-- `/evolve-update` — alias for the upgrade flow with status check
-- `/evolve-adapt` — propagates plugin changes into project-level overrides (run AFTER reading the changelog)
+- `npm run supervibe:upgrade` — actually pulls a newer plugin
+- `/supervibe-update` — alias for the upgrade flow with status check
+- `/supervibe-adapt` — propagates plugin changes into project-level overrides (run AFTER reading the changelog)
 - `.claude/memory/.evolve-version` — last-seen version marker
 - `scripts/lib/version-tracker.mjs` — version-bump detector that maintains the marker
 - `CHANGELOG.md` (plugin root) — source of truth this command reads

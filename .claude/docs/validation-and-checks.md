@@ -23,9 +23,9 @@ This composes:
 Individual scripts:
 - `npm run code:index` — full code index rebuild
 - `npm run code:search -- --query "..."` / `--callers` / `--top-symbols` — graph queries
-- `npm run evolve:status` — comprehensive index health
-- `npm run evolve:upgrade` — git pull + lfs + install + check; refreshes upstream-check cache
-- `npm run evolve:upgrade-check` — manually query upstream for newer commits (normally runs in background)
+- `npm run supervibe:status` — comprehensive index health
+- `npm run supervibe:upgrade` — git pull + lfs + install + check; refreshes upstream-check cache
+- `npm run supervibe:upgrade-check` — manually query upstream for newer commits (normally runs in background)
 - `npm run memory:watch` — start file-watcher daemon
 - `npm run registry:build` — regenerate `registry.yaml`
 - `npm run migrate:prototype-configs` — backfill `config.json` for legacy prototypes (auto-runs on SessionStart)

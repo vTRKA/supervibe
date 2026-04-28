@@ -26,7 +26,7 @@ test('appendOverrideEntry creates .claude/ if missing', async () => {
     override: true,
     reason: 'shipping prototype phase',
     gaps: ['no error handling'],
-    agent: 'evolve:test-agent',
+    agent: 'supervibe:test-agent',
     'user-confirmed': true
   };
   await appendOverrideEntry(SANDBOX, entry);
@@ -56,7 +56,7 @@ test('appendOverrideEntry appends without overwriting existing entries', async (
     override: true,
     reason: 'follow-up override scenario',
     gaps: [],
-    agent: 'evolve:test-agent-2',
+    agent: 'supervibe:test-agent-2',
     'user-confirmed': true
   });
   const logPath = join(SANDBOX, '.claude', 'confidence-log.jsonl');

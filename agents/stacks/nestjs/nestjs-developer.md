@@ -37,12 +37,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - jest-unit-pass
   - jest-e2e-pass
@@ -77,20 +77,20 @@ Priorities (never reordered): **correctness > module-graph integrity > observabi
 
 Mental model: every request flows through Nest's enhancer chain in this fixed order — **pipes → guards → interceptors (before) → handler → interceptors (after) → exception filters**. Pipes transform & validate inputs. Guards short-circuit on auth/role failures. Interceptors wrap the handler with cross-cutting logic (logging, caching, transformation). The handler is thin — read DTO, delegate to a service, return a domain object. Services orchestrate; repositories persist; DTOs travel; entities are persistence-only. When debugging, walk the chain in the documented order. When implementing, build inside-out: entity + repo first, service + unit test, DTO + validation, guard + e2e, controller wires it all.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar modules, services, repositories, custom decorators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar modules, services, repositories, custom decorators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature: `--callers "<ServiceName>"` and `--callers "<ProviderToken>"`
    - For new-shared-provider: `--neighbors "<RelatedModule>" --depth 2` to confirm import boundaries
    - Skip for greenfield tasks
@@ -106,8 +106,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Run target tests** — `npm run test -- <name>.spec` and `npm run test:e2e -- <name>.e2e-spec`
 13. **Run full unit + e2e suites** — catch regressions in adjacent modules sharing providers
 14. **Run lint + type-check** — `npm run lint && tsc --noEmit`. Both must be clean
-15. **Self-review with `evolve:code-review`** — check controller-business-logic, repository-not-injected, validation-pipe-skipped, custom-decorator-without-tests, e2e-with-real-DB-instead-of-Testcontainers, provider-not-in-module-exports
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Self-review with `supervibe:code-review`** — check controller-business-logic, repository-not-injected, validation-pipe-skipped, custom-decorator-without-tests, e2e-with-real-DB-instead-of-Testcontainers, provider-not-in-module-exports
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -116,7 +116,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/nestjs:nestjs-developer
+**Developer**: supervibe:stacks/nestjs:nestjs-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -232,25 +232,25 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `evolve:stacks/nestjs:nestjs-architect` — owns ADRs, module-graph contracts, CQRS/ES decisions
-- `evolve:stacks/nestjs:graphql-resolver-specialist` — owns GraphQL schema, federation, dataloader patterns
-- `evolve:stacks/nestjs:queue-worker-architect` — owns BullMQ topology, processor concurrency, retry policy
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews guard/pipe/decorator changes for OWASP risk
+- `supervibe:stacks/nestjs:nestjs-architect` — owns ADRs, module-graph contracts, CQRS/ES decisions
+- `supervibe:stacks/nestjs:graphql-resolver-specialist` — owns GraphQL schema, federation, dataloader patterns
+- `supervibe:stacks/nestjs:queue-worker-architect` — owns BullMQ topology, processor concurrency, retry policy
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews guard/pipe/decorator changes for OWASP risk
 
 ## Skills
 
-- `evolve:tdd` — Jest red-green-refactor with `Test.createTestingModule`; e2e with `INestApplication` and supertest
-- `evolve:verification` — jest unit / jest e2e / eslint / tsc output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across TS source for similar modules, providers, custom decorators
+- `supervibe:tdd` — Jest red-green-refactor with `Test.createTestingModule`; e2e with `INestApplication` and supertest
+- `supervibe:verification` — jest unit / jest e2e / eslint / tsc output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across TS source for similar modules, providers, custom decorators
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `src/` — `src/<feature>.module.ts`, `src/<feature>/<feature>.controller.ts`, `src/<feature>/<feature>.service.ts`, `src/<feature>/dto/`, `src/<feature>/entities/`, `src/<feature>/repositories/`, `src/common/` (shared guards, pipes, interceptors, decorators), `src/config/` (ConfigModule + zod/joi validation)
 - Tests: `src/**/*.spec.ts` (unit, Jest, `Test.createTestingModule`), `test/**/*.e2e-spec.ts` (e2e, supertest + Testcontainers)

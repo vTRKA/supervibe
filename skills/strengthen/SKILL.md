@@ -16,9 +16,9 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN `evolve:audit` flagged weak or stale artifacts, OR user runs `/evolve-strengthen`. Loops over each flagged artifact.
+WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe-strengthen`. Loops over each flagged artifact.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read MEMORY.md for prior feedback
 2. Read `.claude/rules/` for project standards
@@ -32,15 +32,15 @@ WHEN `evolve:audit` flagged weak or stale artifacts, OR user runs `/evolve-stren
 Artifact is stale (last-verified >90d)?
 ├─ YES:
 │   ├─ References "best practices" / current patterns?
-│   │   → MUST invoke evolve:_ops:best-practices-researcher first
+│   │   → MUST invoke supervibe:_ops:best-practices-researcher first
 │   ├─ References dependencies / library versions?
-│   │   → MUST invoke evolve:_ops:dependency-researcher first
+│   │   → MUST invoke supervibe:_ops:dependency-researcher first
 │   ├─ References security patterns / CVEs?
-│   │   → MUST invoke evolve:_ops:security-researcher first
+│   │   → MUST invoke supervibe:_ops:security-researcher first
 │   ├─ References infrastructure topology?
-│   │   → MUST invoke evolve:_ops:infra-pattern-researcher first
+│   │   → MUST invoke supervibe:_ops:infra-pattern-researcher first
 │   ├─ References competitive design / UX patterns?
-│   │   → MUST invoke evolve:_ops:competitive-design-researcher first
+│   │   → MUST invoke supervibe:_ops:competitive-design-researcher first
 │   └─ Otherwise → strengthen from project context only
 └─ NO (just weak, not stale): strengthen from project context only
 ```
@@ -80,5 +80,5 @@ Returns:
 
 ## Related
 
-- `evolve:audit` — produces input list
+- `supervibe:audit` — produces input list
 - `agents/_ops/*-researcher` — consulted for stale artifacts

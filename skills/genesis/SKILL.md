@@ -16,11 +16,11 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN target project has no `.claude/agents/` OR no routing table in `CLAUDE.md` AND user wants Evolve scaffolding. Triggered by `/evolve-genesis` command.
+WHEN target project has no `.claude/agents/` OR no routing table in `CLAUDE.md` AND user wants Evolve scaffolding. Triggered by `/supervibe-genesis` command.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
-1. Read stack-fingerprint from `evolve:stack-discovery`
+1. Read stack-fingerprint from `supervibe:stack-discovery`
 2. Read `stack-packs/` to find matching pack
 3. Read `templates/` for CLAUDE.md / settings.json templates
 4. Read target project's existing files (NEVER overwrite)
@@ -59,7 +59,7 @@ Returns:
 - Husky + commitlint + lint-staged configs
 - Project skeleton dirs
 - Confidence score
-- Path to `evolve:stack-discovery` fingerprint used
+- Path to `supervibe:stack-discovery` fingerprint used
 
 ## Guard rails
 
@@ -79,6 +79,6 @@ Returns:
 
 ## Related
 
-- `evolve:stack-discovery` — produces input
+- `supervibe:stack-discovery` — produces input
 - `stack-packs/` — pack definitions
 - `templates/` — generators

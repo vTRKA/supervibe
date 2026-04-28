@@ -35,12 +35,12 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/user-prompt-submit-feedback.mjs\"",
-            "async": false
+            "async": true
           },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/user-prompt-submit-memory-preflight.mjs\"",
-            "async": false
+            "async": true
           }
         ]
       }

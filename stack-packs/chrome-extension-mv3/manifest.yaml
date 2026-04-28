@@ -14,38 +14,38 @@ matches:
 
 agents-attach:
   # Universal _core
-  - evolve:_core:code-reviewer
-  - evolve:_core:repo-researcher
-  - evolve:_core:security-auditor
-  - evolve:_core:refactoring-specialist
-  - evolve:_core:architect-reviewer
-  - evolve:_core:quality-gate-reviewer
-  - evolve:_core:root-cause-debugger
+  - supervibe:_core:code-reviewer
+  - supervibe:_core:repo-researcher
+  - supervibe:_core:security-auditor
+  - supervibe:_core:refactoring-specialist
+  - supervibe:_core:architect-reviewer
+  - supervibe:_core:quality-gate-reviewer
+  - supervibe:_core:root-cause-debugger
   # Meta
-  - evolve:_meta:rules-curator
-  - evolve:_meta:evolve-orchestrator
+  - supervibe:_meta:rules-curator
+  - supervibe:_meta:evolve-orchestrator
   # Product
-  - evolve:_product:product-manager
-  - evolve:_product:systems-analyst
-  - evolve:_product:qa-test-engineer
-  - evolve:_product:analytics-implementation
+  - supervibe:_product:product-manager
+  - supervibe:_product:systems-analyst
+  - supervibe:_product:qa-test-engineer
+  - supervibe:_product:analytics-implementation
   # Ops
-  - evolve:_ops:devops-sre
-  - evolve:_ops:performance-reviewer
-  - evolve:_ops:dependency-reviewer
-  - evolve:_ops:api-contract-reviewer
-  - evolve:_ops:auth-architect
-  - evolve:_ops:observability-architect
+  - supervibe:_ops:devops-sre
+  - supervibe:_ops:performance-reviewer
+  - supervibe:_ops:dependency-reviewer
+  - supervibe:_ops:api-contract-reviewer
+  - supervibe:_ops:auth-architect
+  - supervibe:_ops:observability-architect
   # Design — extensions ship UI, treat them as design surfaces
-  - evolve:_design:creative-director
-  - evolve:_design:ux-ui-designer
-  - evolve:_design:ui-polish-reviewer
-  - evolve:_design:accessibility-reviewer
-  - evolve:_design:copywriter
-  - evolve:_design:prototype-builder
+  - supervibe:_design:creative-director
+  - supervibe:_design:ux-ui-designer
+  - supervibe:_design:ui-polish-reviewer
+  - supervibe:_design:accessibility-reviewer
+  - supervibe:_design:copywriter
+  - supervibe:_design:prototype-builder
   # Stack-specific
-  - evolve:stacks/chrome-extension:chrome-extension-architect
-  - evolve:stacks/chrome-extension:chrome-extension-developer
+  - supervibe:stacks/chrome-extension:chrome-extension-architect
+  - supervibe:stacks/chrome-extension:chrome-extension-developer
 
 rules-attach:
   - best-practices-2026

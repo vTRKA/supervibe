@@ -20,7 +20,7 @@ BEFORE any creative work — creating features, building components, adding func
 
 NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writing-plans), documentation tweaks.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 Before asking any question, read:
 - Project's `CLAUDE.md` (architecture, conventions, scope boundaries)
@@ -56,9 +56,9 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 6. **Present design** in sections scaled to complexity (architecture, components, data flow, error handling, testing). Get approval per section.
 7. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, sections, accepted limitations, out-of-scope list.
 8. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check. Fix inline.
-9. **Score** — invoke `evolve:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
+9. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
 10. **User review of written spec** — explicit approval required.
-11. **Handoff** to `evolve:writing-plans`.
+11. **Handoff** to `supervibe:writing-plans`.
 
 ## Output contract
 
@@ -68,7 +68,7 @@ After saving the spec, ALWAYS print a one-line hand-off so the user knows the ne
 
 ```
 Spec saved to docs/specs/YYYY-MM-DD-<slug>-design.md
-Next: /evolve-plan docs/specs/YYYY-MM-DD-<slug>-design.md  (for complexity 3+)
+Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md  (for complexity 3+)
       or implement directly (for complexity 1-2)
 ```
 
@@ -91,8 +91,8 @@ This skill's correct application is verifiable by:
 
 ## Related
 
-- `evolve:requirements-intake` — entry-gate that decides if brainstorming is needed
-- `evolve:writing-plans` — the only skill invoked AFTER brainstorming completes
+- `supervibe:requirements-intake` — entry-gate that decides if brainstorming is needed
+- `supervibe:writing-plans` — the only skill invoked AFTER brainstorming completes
 
 ## First-principle decomposition (mandatory before option generation)
 
@@ -111,7 +111,7 @@ Skip this section ONLY if user explicitly says "I just need a quick brainstorm."
 
 When the problem has known industry analogues (auth flows, billing, onboarding, design patterns):
 
-1. Invoke `evolve:mcp-discovery` to check if Firecrawl/Playwright MCP available
+1. Invoke `supervibe:mcp-discovery` to check if Firecrawl/Playwright MCP available
 2. If yes: scan 3–5 reference products. Take screenshots OR text excerpts.
 3. If no MCP: list reference products by name + ask user "have you seen these? what works/doesn't?"
 4. Document findings as "Competitive scan" section in output — DO NOT cargo-cult; flag what's stale
@@ -190,10 +190,10 @@ Required sections (in order):
 
 ### Workflow: New feature brainstorm (greenfield)
 
-1. First-principle decomposition (mandatory)
+1. First-principle decomposition (required)
 2. Competitive scan (3 reference products)
 3. Stakeholder map
-4. Generate ≥3 options (lean on `evolve:explore-alternatives` for matrix)
+4. Generate ≥3 options (lean on `supervibe:explore-alternatives` for matrix)
 5. Risks + kill criteria
 6. Decision matrix → recommend
 7. Save to `docs/specs/`
@@ -230,11 +230,11 @@ Required sections (in order):
 
 ## Related
 
-- `evolve:writing-plans` — next step after brainstorm picks a direction
-- `evolve:explore-alternatives` — sub-skill for decision matrix
-- `evolve:requirements-intake` — predecessor when intake hasn't happened yet
-- `evolve:adr` — when brainstorm output IS an architectural decision
-- `evolve:mcp-discovery` — for competitive scan tools
+- `supervibe:writing-plans` — next step after brainstorm picks a direction
+- `supervibe:explore-alternatives` — sub-skill for decision matrix
+- `supervibe:requirements-intake` — predecessor when intake hasn't happened yet
+- `supervibe:adr` — when brainstorm output IS an architectural decision
+- `supervibe:mcp-discovery` — for competitive scan tools
 
 ## FAQ
 
@@ -251,7 +251,7 @@ A: Save partial progress to `docs/specs/YYYY-MM-DD-<topic>-brainstorm.md` after 
 session. Mark unresolved sections with `TBD: <what's missing>` and surface them at the
 top of the file so the next session resumes without re-discovery.
 
-**Q: When should I escalate to `evolve:adr` instead of finishing here?**
+**Q: When should I escalate to `supervibe:adr` instead of finishing here?**
 A: If the recommended option locks in a long-term architectural choice (DB engine,
 runtime, framework, vendor), the output should also produce an ADR. Brainstorm captures
 exploration; ADR captures the binding decision with reversal cost.
@@ -266,7 +266,7 @@ This preserves the decision audit trail and prevents repeating the same blind sp
 
 ## Telemetry hooks
 
-When `evolve:telemetry` is enabled, this skill emits:
+When `supervibe:telemetry` is enabled, this skill emits:
 - `brainstorm.started` — with topic and detected workflow variant
 - `brainstorm.gate.passed` — confidence score and section count
 - `brainstorm.gate.failed` — score and failing dimensions, for trend analysis

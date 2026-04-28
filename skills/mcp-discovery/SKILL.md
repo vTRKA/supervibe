@@ -69,5 +69,5 @@ Returns:
 
 - Tool: `scripts/lib/mcp-registry.mjs` — registry helpers
 - Tool: `scripts/discover-mcps.mjs` — refresh registry
-- Status: `npm run evolve:status` shows available MCPs
+- Status: `npm run supervibe:status` shows available MCPs
 - Used by: best-practices-researcher / competitive-design-researcher / dependency-researcher / preview-server (for screenshots)

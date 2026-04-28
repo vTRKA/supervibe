@@ -8,7 +8,7 @@
 4. Body must include: Persona, Project Context, Skills, Procedure, Anti-patterns, Verification, Out of scope
 5. Run `npm run validate:frontmatter` — must show OK for your file
 6. Run `npm run registry:build` — agent should appear in `registry.yaml`
-7. Score with `/evolve-score agent-quality agents/<namespace>/<name>.md` — must be ≥9
+7. Score with `/supervibe-score agent-quality agents/<namespace>/<name>.md` — must be ≥9
 
 ## Adding a skill
 
@@ -18,7 +18,7 @@
 4. Description MUST follow format: `Use {WHEN|BEFORE|AFTER} <trigger> TO <verb-led purpose> [GATES <scoring>]`
 5. Body must include: When to invoke, Step 0 (mandatory), Decision tree, Procedure, Output contract, Guard rails, Verification
 6. Run `npm run lint:descriptions` — must show OK
-7. Score with `/evolve-score skill-quality skills/<name>/SKILL.md` — must be ≥9
+7. Score with `/supervibe-score skill-quality skills/<name>/SKILL.md` — must be ≥9
 
 ## Adding a rule
 
@@ -26,7 +26,7 @@
 2. Fill in all placeholders
 3. Frontmatter must include all fields in `REQUIRED_RULE_FIELDS`
 4. Body must include: Why this rule exists, When this rule applies, What to do, Examples (good and bad), Enforcement, Related rules
-5. Score with `/evolve-score rule-quality rules/<name>.md` — must be ≥9
+5. Score with `/supervibe-score rule-quality rules/<name>.md` — must be ≥9
 
 ## Adding a confidence rubric
 

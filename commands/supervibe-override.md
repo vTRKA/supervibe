@@ -1,8 +1,8 @@
 ---
-description: "Escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Usage: /evolve-override \"reason text\""
+description: "Escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Usage: /supervibe-override \"reason text\""
 ---
 
-# /evolve-override
+# /supervibe-override
 
 Allow continuing past a confidence-scoring BLOCK status by recording the override decision in an append-only audit log.
 
@@ -50,7 +50,7 @@ If reason is missing or shorter than 10 characters: respond "Override requires a
 
 ## Audit interaction
 
-`evolve:audit` reads the log and computes:
+`supervibe:audit` reads the log and computes:
 - Override rate per N artifacts
 - Most-overridden artifact types
 - Reasons clustering

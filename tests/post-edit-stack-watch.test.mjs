@@ -17,7 +17,7 @@ function runHook(env = {}) {
     env: {
       ...process.env,
       CLAUDE_PROJECT_DIR: sandbox,
-      EVOLVE_HOOK_SILENT: '1',
+      SUPERVIBE_HOOK_SILENT: '1',
       ...env,
     },
     encoding: 'utf8',
@@ -63,7 +63,7 @@ test('hook: ignores non-source files (e.g. random .json)', () => {
   assert.strictEqual(out.trim(), '');
 });
 
-test('hook: still emits manifest reminder + skips index when EVOLVE_HOOK_NO_INDEX=1', async () => {
+test('hook: still emits manifest reminder + skips index when SUPERVIBE_HOOK_NO_INDEX=1', async () => {
   await writeFile(join(sandbox, 'package.json'), '{}');
   const out = execSync(`node "${process.cwd()}/scripts/post-edit-stack-watch.mjs"`, {
     cwd: sandbox,
@@ -71,12 +71,12 @@ test('hook: still emits manifest reminder + skips index when EVOLVE_HOOK_NO_INDE
       ...process.env,
       CLAUDE_PROJECT_DIR: sandbox,
       CLAUDE_FILE_PATHS: join(sandbox, 'package.json'),
-      EVOLVE_HOOK_NO_INDEX: '1',
+      SUPERVIBE_HOOK_NO_INDEX: '1',
     },
     encoding: 'utf8',
   });
   assert.match(out, /package\.json/);
-  assert.match(out, /evolve-adapt/);
+  assert.match(out, /supervibe-adapt/);
 });
 
 test('hook: empty CLAUDE_FILE_PATHS is a no-op', () => {
@@ -122,7 +122,7 @@ test('hook: tolerates missing code.db (no first-time bootstrap)', async () => {
       ...process.env,
       CLAUDE_PROJECT_DIR: fresh,
       CLAUDE_FILE_PATHS: f,
-      EVOLVE_HOOK_SILENT: '1',
+      SUPERVIBE_HOOK_SILENT: '1',
     },
     encoding: 'utf8',
   });

@@ -20,7 +20,7 @@ dimensions:
   - id: gate-on-exit
     weight: 2
     question: "Does the skill enforce confidence-scoring before exit (gate-on-exit: true in frontmatter OR explicit step in procedure)?"
-    evidence-required: "Frontmatter gate-on-exit:true OR procedure step calling evolve:confidence-scoring"
+    evidence-required: "Frontmatter gate-on-exit:true OR procedure step calling supervibe:confidence-scoring"
 gates:
   block-below: 9
   warn-below: 10

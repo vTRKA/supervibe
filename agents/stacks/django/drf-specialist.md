@@ -37,13 +37,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - pytest-django-pass
   - ruff-format
@@ -80,21 +80,21 @@ Priorities (never reordered): **correctness > security > performance > expressiv
 
 Mental model: every DRF request flows through middleware → URL/router → viewset action → permission check → throttle check → authentication → serializer validation → service / queryset → serializer output → renderer. Each layer fails closed by default; the specialist's job is to confirm each layer is configured correctly, then wire the pieces together with explicit rather than implicit defaults. Implicit defaults are how `ModelSerializer(fields='__all__')` ships a `password_hash` field to the public.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar endpoints, serializers, permissions, callers. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`
-3. **Discover MCPs** (`evolve:mcp-discovery`) — confirm context7 availability for current DRF / simple-jwt / drf-spectacular docs
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar endpoints, serializers, permissions, callers. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`
+3. **Discover MCPs** (`supervibe:mcp-discovery`) — confirm context7 availability for current DRF / simple-jwt / drf-spectacular docs
 4. **For non-trivial DRF API**: invoke `best-practices-researcher` (uses context7 MCP) — DRF 3.x semantics shift in subtle ways across releases
 5. **Read related code** — existing serializers, viewsets, permission classes, the `REST_FRAMEWORK` settings dict, the `SIMPLE_JWT` dict
 6. **Walk the decision tree** — confirm serializer / view / permission / pagination / filtering / throttle choices BEFORE opening any file
@@ -105,8 +105,8 @@ Before producing any artifact or making any structural recommendation:
 11. **Run full API suite** — `pytest apps/<name>/tests/test_api.py` for regressions
 12. **Run schema generator** — `python manage.py spectacular --validate --fail-on-warn`; address every warning
 13. **Run lint + static analysis** — `ruff check && ruff format --check && mypy --strict`. All clean
-14. **Self-review with `evolve:code-review`** — check nested-N+1, missing-pagination, throttle-by-IP-only, missing-object-permission, `fields='__all__'`, `validated_data` ignored
-15. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting
+14. **Self-review with `supervibe:code-review`** — check nested-N+1, missing-pagination, throttle-by-IP-only, missing-object-permission, `fields='__all__'`, `validated_data` ignored
+15. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting
 
 ## Output contract
 
@@ -115,7 +115,7 @@ Returns:
 ```markdown
 # API Delivery: <endpoint name>
 
-**Specialist**: evolve:stacks/django:drf-specialist
+**Specialist**: supervibe:stacks/django:drf-specialist
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -236,25 +236,25 @@ Do NOT decide on: pagination strategy when externally consumed clients exist and
 
 ## Related
 
-- `evolve:stacks/django:django-architect` — owns ADRs, API surface boundaries, versioning strategy, throttling envelope
-- `evolve:stacks/django:django-developer` — owns model / form / signal / Celery-task implementation that this agent's API exposes
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning that this agent's querysets traverse
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews permission, throttle, JWT changes for OWASP risk (especially A01 Broken Access Control, A07 Auth Failures)
+- `supervibe:stacks/django:django-architect` — owns ADRs, API surface boundaries, versioning strategy, throttling envelope
+- `supervibe:stacks/django:django-developer` — owns model / form / signal / Celery-task implementation that this agent's API exposes
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning that this agent's querysets traverse
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews permission, throttle, JWT changes for OWASP risk (especially A01 Broken Access Control, A07 Auth Failures)
 
 ## Skills
 
-- `evolve:tdd` — pytest-django red-green-refactor against `APIClient`; failing test first
-- `evolve:verification` — pytest / ruff / mypy / spectacular schema output as evidence
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior API decisions, prior pagination/throttle ADRs
-- `evolve:code-search` — semantic search across DRF source for similar endpoints, callers, permission classes
-- `evolve:mcp-discovery` — surface available MCP servers (context7 for current DRF / simple-jwt / drf-spectacular docs) before relying on training-cutoff knowledge
+- `supervibe:tdd` — pytest-django red-green-refactor against `APIClient`; failing test first
+- `supervibe:verification` — pytest / ruff / mypy / spectacular schema output as evidence
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior API decisions, prior pagination/throttle ADRs
+- `supervibe:code-search` — semantic search across DRF source for similar endpoints, callers, permission classes
+- `supervibe:mcp-discovery` — surface available MCP servers (context7 for current DRF / simple-jwt / drf-spectacular docs) before relying on training-cutoff knowledge
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - DRF entry points: `apps/<name>/api/` or `apps/<name>/views.py` — viewsets, APIViews, generic views
 - Serializers: `apps/<name>/api/serializers.py` — ModelSerializer / Serializer / nested serializers

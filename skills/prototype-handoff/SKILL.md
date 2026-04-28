@@ -18,12 +18,12 @@ Package an approved native HTML/CSS/JS prototype into a **ready-for-development 
 
 ## When to invoke
 
-- After `evolve:prototype` or `evolve:landing-page` produced a prototype AND user explicitly approved it (`prototypes/<slug>/.approval.json` exists with `status: "approved"`)
-- After `/evolve-design` Stage 8 fires
+- After `supervibe:prototype` or `supervibe:landing-page` produced a prototype AND user explicitly approved it (`prototypes/<slug>/.approval.json` exists with `status: "approved"`)
+- After `/supervibe-design` Stage 8 fires
 - When user says "готово к разработке", "передай разработчикам", "approved, hand it off", "ready for stack"
 
 NOT for:
-- Drafts or under-review prototypes — refuse with "Прототип не утверждён. Получите явное `✅ approve` через feedback loop в `evolve:prototype` сначала."
+- Drafts or under-review prototypes — refuse with "Прототип не утверждён. Получите явное `✅ approve` через feedback loop в `supervibe:prototype` сначала."
 - Production deployment — that's still the chosen `<stack>-developer` agent's job
 
 ## Hard constraints
@@ -33,7 +33,7 @@ NOT for:
 3. **Verbatim copy of approved files.** No "improvements" during handoff — the prototype is already approved as-is.
 4. **Inventory + traceability.** Every component used + every token consumed listed with file:line refs so downstream developer doesn't have to grep.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/<slug>/.approval.json`. Parse `status`, `viewports`, `designSystemVersion`, `approvedAt`. If `status !== "approved"` → STOP.
 2. Read `prototypes/<slug>/config.json` for declared viewports, interaction depth, structure.
@@ -145,7 +145,7 @@ contract.
 ### React / Next.js
 - Each `<button class="btn btn-primary">` becomes `<Button variant="primary" />`
 - Tokens: import `prototypes/_design-system/tokens.css` directly OR run
-  `evolve:tokens-export --target=tailwind` to get a tailwind theme
+  `supervibe:tokens-export --target=tailwind` to get a tailwind theme
 - State machinery: keep useState minimal; the prototype's `data-loading="true"`
   attribute pattern transfers verbatim
 
@@ -175,7 +175,7 @@ See `components-used.json` for full inventory.
 
 ## Tokens to wire (count: <N>)
 
-See `tokens-used.json`. Run `evolve:tokens-export` for framework-specific format.
+See `tokens-used.json`. Run `supervibe:tokens-export` for framework-specific format.
 
 ## Reviews already done
 
@@ -209,7 +209,7 @@ Write `handoff/README.md`:
 2. Read `stack-agnostic.md` for per-framework adapter hints.
 3. Read `components-used.json` + `tokens-used.json` for the inventory.
 4. Re-implement files as the framework requires.
-5. Import tokens via `evolve:tokens-export --target=<framework>` OR by
+5. Import tokens via `supervibe:tokens-export --target=<framework>` OR by
    linking `prototypes/_design-system/tokens.css` directly.
 
 ## Verification before merging to production
@@ -261,8 +261,8 @@ Rubric:     prototype
 
 ## Related
 
-- `evolve:prototype` + `evolve:landing-page` — produce the source prototype
-- `evolve:brandbook` — produces the design system this bundle inherits
-- `evolve:tokens-export` — invoked by downstream `<stack>-developer` to convert tokens
-- `commands/evolve-design.md` — Stage 8 invokes this skill
+- `supervibe:prototype` + `supervibe:landing-page` — produce the source prototype
+- `supervibe:brandbook` — produces the design system this bundle inherits
+- `supervibe:tokens-export` — invoked by downstream `<stack>-developer` to convert tokens
+- `commands/supervibe-design.md` — Stage 8 invokes this skill
 - `<stack>-developer` agents — consumers of the handoff bundle

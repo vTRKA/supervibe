@@ -16,9 +16,9 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `evolve:executing-plans` (inline) when both apply.
+WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `supervibe:executing-plans` (inline) when both apply.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read full plan
 2. Identify task dependencies (which tasks need others' output first)
@@ -48,7 +48,7 @@ Per task: which subagent type?
    - Quality gate (≥9 on agent-output)
 4. **Dispatch wave** — parallel Agent tool calls in single message
 5. **Two-stage review per task**:
-   - Stage 1: subagent self-reviews via attached `evolve:verification` and `evolve:confidence-scoring`
+   - Stage 1: subagent self-reviews via attached `supervibe:verification` and `supervibe:confidence-scoring`
    - Stage 2: parent (this skill) reviews subagent output for scope respect, evidence completeness, regression safety
 6. **Reject if**: scope violation, missing evidence, regression introduced
 7. **Re-dispatch with corrected brief** if rejected
@@ -83,5 +83,5 @@ Final: combined deliverable + per-wave confidence score
 
 ## Related
 
-- `evolve:executing-plans` — fallback when subagents unavailable
-- `evolve:dispatching-parallel-agents` — for ad-hoc parallelism (not plan execution)
+- `supervibe:executing-plans` — fallback when subagents unavailable
+- `supervibe:dispatching-parallel-agents` — for ad-hoc parallelism (not plan execution)

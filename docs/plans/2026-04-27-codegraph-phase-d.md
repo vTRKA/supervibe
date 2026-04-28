@@ -8,9 +8,9 @@
 - **NO Docker, NO external services, NO native compilation.** Everything in-process Node.js, same constraints as Phase A/B.
 - **Tree-sitter via `web-tree-sitter` (WASM)** — pure JS, loads `.wasm` grammar files for each language. ~500KB per grammar, 8 grammars ≈ 4 MB total.
 - **Single SQLite store** — extend the existing `.claude/memory/code.db` with two tables (`code_symbols`, `code_edges`). No new DB.
-- **Same skill, more flags** — extend `evolve:code-search` with `--callers`, `--callees`, `--neighbors`. Don't fragment skill surface.
+- **Same skill, more flags** — extend `supervibe:code-search` with `--callers`, `--callees`, `--neighbors`. Don't fragment skill surface.
 - **Auto-startup** — wire into existing `SessionStart` hook. On open: detect missing/stale index → background reindex → print 3-line status banner.
-- **User confidence** — three signals: SessionStart banner, agent output cites symbol IDs + edge kinds, dedicated `/evolve-status` command.
+- **User confidence** — three signals: SessionStart banner, agent output cites symbol IDs + edge kinds, dedicated `/supervibe-status` command.
 
 **Tech Stack:** Node 22+, `web-tree-sitter` (WASM), pre-built `.wasm` grammars from `tree-sitter-*` packages, `node:sqlite` (already in use), `@huggingface/transformers` (already in use for embeddings — graph nodes also get embedded for hybrid). No Python, no Docker, no native deps.
 
@@ -67,7 +67,7 @@ evolve/
 │   │   └── grammar-loader.mjs                 # NEW — lazy WASM grammar loading + cache
 │   ├── build-code-index.mjs                   # MODIFIED — add graph extraction phase
 │   ├── search-code.mjs                        # MODIFIED — add --callers/--callees/--neighbors
-│   ├── evolve-status.mjs                      # NEW — `/evolve-status` CLI for user
+│   ├── evolve-status.mjs                      # NEW — `/supervibe-status` CLI for user
 │   └── session-start-check.mjs                # MODIFIED — auto-refresh code index + graph
 │
 ├── tests/
@@ -83,7 +83,7 @@ evolve/
 - `scripts/lib/code-store.mjs` — add `indexGraphFor(filePath)`, `searchByGraph()`, schema migration for `code_symbols` + `code_edges`
 - `scripts/lib/code-watcher.mjs` — extend chokidar `change` handler to refresh graph too
 - `skills/code-search/SKILL.md` — document new flags + decision tree
-- `package.json` — add `web-tree-sitter` dep, add `evolve:status` script
+- `package.json` — add `web-tree-sitter` dep, add `supervibe:status` script
 - `knip.json` — allowlist new entry scripts
 - `.gitattributes` — track `*.wasm` via LFS (some grammars are >100KB; bundle stays comfortable)
 - `hooks.json` — already wires SessionStart; just confirm `session-start-check.mjs` does the new work
@@ -91,7 +91,7 @@ evolve/
 
 ### Untouched
 
-- All 46 agents (graph queries surface through existing `evolve:code-search` skill)
+- All 46 agents (graph queries surface through existing `supervibe:code-search` skill)
 - Memory store / chunker / embeddings (graph is a separate dimension; stays orthogonal)
 - All 70 existing tests continue to pass
 
@@ -102,7 +102,7 @@ evolve/
 1. **NO Docker, NO daemons, NO external services.** Everything must run in-process. If a step suggests "spin up a service", reject the step.
 2. **NO native compilation.** `web-tree-sitter` is WASM — `npm install` works on Win/Mac/Linux without C compiler.
 3. **NO new SQLite DB.** Extend the existing `code.db`. Two new tables, both CASCADE-FK to existing `code_files.path`.
-4. **NO new agent.** Existing `evolve:code-search` skill grows new flags. Surface stays small.
+4. **NO new agent.** Existing `supervibe:code-search` skill grows new flags. Surface stays small.
 5. **Bundle stays loadable**: total grammar payload ≤10 MB (post-LFS). One-time download for users without LFS.
 6. **Graph index is rebuildable**: deleting `code.db` and re-running `npm run code:index` must produce identical graph.
 
@@ -1323,7 +1323,7 @@ What's the question?
 
 ## Procedure
 
-1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/evolve-status.mjs`
+1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`
 2. Pick mode from decision tree
 3. **Semantic**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<text>" [--lang <lang>] [--limit 10]`
 4. **Callers/Callees**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` (resp. --callees)
@@ -1408,15 +1408,15 @@ async function ensureCodeIndexFresh(projectRoot) {
 const result = await ensureCodeIndexFresh(process.cwd()).catch(err => ({ error: err.message }));
 
 if (result.error) {
-  console.log(`[evolve] code RAG: WARN ${result.error}`);
+  console.log(`[supervibe] code RAG: WARN ${result.error}`);
 } else if (result.action === 'skip') {
-  console.log('[evolve] code RAG ✓ index fresh');
+  console.log('[supervibe] code RAG ✓ index fresh');
 } else {
   const { stats } = result;
-  console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks`);
-  console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${(stats.edgeResolutionRate * 100).toFixed(0)}% resolved)`);
+  console.log(`[supervibe] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks`);
+  console.log(`[supervibe] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${(stats.edgeResolutionRate * 100).toFixed(0)}% resolved)`);
   if (result.action === 'full') {
-    console.log('[evolve] full index built — subsequent sessions will be near-instant');
+    console.log('[supervibe] full index built — subsequent sessions will be near-instant');
   }
 }
 ```
@@ -1432,16 +1432,16 @@ node scripts/session-start-check.mjs
 
 Expected output (something like):
 ```
-[evolve] code RAG ✓ 25 files / 113 chunks
-[evolve] code graph ✓ 142 symbols / 87 edges (78% resolved)
-[evolve] full index built — subsequent sessions will be near-instant
+[supervibe] code RAG ✓ 25 files / 113 chunks
+[supervibe] code graph ✓ 142 symbols / 87 edges (78% resolved)
+[supervibe] full index built — subsequent sessions will be near-instant
 ```
 
 Then re-run:
 ```bash
 node scripts/session-start-check.mjs
 ```
-Expected: `[evolve] code RAG ✓ index fresh`
+Expected: `[supervibe] code RAG ✓ index fresh`
 
 - [ ] **Step 3: Commit**
 
@@ -1452,17 +1452,17 @@ git commit -m "feat(graph): SessionStart hook auto-builds + refreshes code index
 
 ---
 
-### Task D9: `/evolve-status` CLI for user confidence
+### Task D9: `/supervibe-status` CLI for user confidence
 
 **Files:**
-- Create: `scripts/evolve-status.mjs`
-- Create: `tests/evolve-status.test.mjs`
-- Modify: `package.json` (add `evolve:status` script)
+- Create: `scripts/supervibe-status.mjs`
+- Create: `tests/supervibe-status.test.mjs`
+- Modify: `package.json` (add `supervibe:status` script)
 - Modify: `knip.json`
 
 - [ ] **Step 1: Write failing test**
 
-Create `tests/evolve-status.test.mjs`:
+Create `tests/supervibe-status.test.mjs`:
 
 ```javascript
 import { test } from 'node:test';
@@ -1470,7 +1470,7 @@ import assert from 'node:assert';
 import { execSync } from 'node:child_process';
 
 test('evolve-status: prints index health summary', () => {
-  const out = execSync('node scripts/evolve-status.mjs --no-color', {
+  const out = execSync('node scripts/supervibe-status.mjs --no-color', {
     cwd: process.cwd(), encoding: 'utf8'
   });
   // Should mention key health metrics
@@ -1481,12 +1481,12 @@ test('evolve-status: prints index health summary', () => {
 
 - [ ] **Step 2: Implement CLI**
 
-Create `scripts/evolve-status.mjs`:
+Create `scripts/supervibe-status.mjs`:
 
 ```javascript
 #!/usr/bin/env node
 // Prints comprehensive status of evolve indexes (code RAG + graph + memory).
-// Used by /evolve-status command and for user confidence checks.
+// Used by /supervibe-status command and for user confidence checks.
 
 import { CodeStore } from './lib/code-store.mjs';
 import { MemoryStore } from './lib/memory-store.mjs';
@@ -1566,28 +1566,28 @@ main().catch(err => { console.error('evolve-status error:', err); process.exit(1
 
 In `package.json`:
 ```json
-"evolve:status": "node scripts/evolve-status.mjs",
+"supervibe:status": "node scripts/supervibe-status.mjs",
 ```
 
 - [ ] **Step 4: Add to knip allowlist**
 
 In `knip.json` `entry`:
 ```json
-"scripts/evolve-status.mjs",
+"scripts/supervibe-status.mjs",
 ```
 
 - [ ] **Step 5: Run tests + verify output**
 
 ```bash
-node --no-warnings --test tests/evolve-status.test.mjs
-node scripts/evolve-status.mjs
+node --no-warnings --test tests/supervibe-status.test.mjs
+node scripts/supervibe-status.mjs
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/evolve-status.mjs tests/evolve-status.test.mjs package.json knip.json
-git commit -m "feat(status): add evolve:status command — index health for user confidence"
+git add scripts/supervibe-status.mjs tests/supervibe-status.test.mjs package.json knip.json
+git commit -m "feat(status): add supervibe:status command — index health for user confidence"
 ```
 
 ---
@@ -1614,7 +1614,7 @@ This is automatic — built on first session, kept fresh by the file-watcher.
 
 ```bash
 # Status check (built into SessionStart, also runnable manually)
-npm run evolve:status
+npm run supervibe:status
 
 # Manual graph queries
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "loginHandler"
@@ -1646,8 +1646,8 @@ Add at top of `CHANGELOG.md`:
 - `scripts/lib/grammar-loader.mjs` — lazy WASM loader with parser cache
 - `code_symbols` + `code_edges` tables added to existing `code.db` (CASCADE-FK to `code_files`)
 - `search-code.mjs` extended with `--callers`, `--callees`, `--neighbors --depth N`
-- `evolve:code-search` skill: hybrid pattern (semantic find → graph expand)
-- `npm run evolve:status` — index health report (RAG + graph + memory)
+- `supervibe:code-search` skill: hybrid pattern (semantic find → graph expand)
+- `npm run supervibe:status` — index health report (RAG + graph + memory)
 - SessionStart hook auto-builds/refreshes index; prints 3-line status banner
 
 ### Stats (v1.6.0)
@@ -1706,9 +1706,9 @@ git commit -m "chore(release): v1.6.0 — code graph (tree-sitter) + auto-startu
 
 **Common amendments per agent (apply to each file):**
 
-- [ ] **Step 1: Skills section — add `evolve:code-search` (graph-aware)**
+- [ ] **Step 1: Skills section — add `supervibe:code-search` (graph-aware)**
 
-If agent already has `evolve:code-search` in skills (4 stack-developer agents do, after Phase A), keep as-is. If missing, add. Verify via `grep "evolve:code-search" agents/<path>.md`.
+If agent already has `supervibe:code-search` in skills (4 stack-developer agents do, after Phase A), keep as-is. If missing, add. Verify via `grep "supervibe:code-search" agents/<path>.md`.
 
 - [ ] **Step 2: Decision tree — add structural-query branch**
 
@@ -1736,7 +1736,7 @@ For **refactoring-specialist** (highest leverage), insert as Procedure step 2.5 
 For **stack-developer agents** (4 of them), append to existing pre-task section:
 
 ```markdown
-3. **Pre-task: invoke `evolve:code-search` GRAPH mode (when applicable)** —
+3. **Pre-task: invoke `supervibe:code-search` GRAPH mode (when applicable)** —
    - For modify-existing-feature tasks: `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
@@ -1904,7 +1904,7 @@ id: use-codegraph-before-refactor
 title: Use code graph to assess blast radius before refactor
 applies-when: ["refactor", "rename", "extract-method", "move-file", "inline", "delete-public-symbol", "rename-symbol"]
 severity: critical
-trigger-skills: [evolve:code-search]
+trigger-skills: [supervibe:code-search]
 created: 2026-04-27
 last-fired: null
 fire-count: 0
@@ -1916,7 +1916,7 @@ version: 1.0
 
 ## What
 
-For ANY change that modifies the public surface of code (rename, extract, move, inline, delete) — first run `evolve:code-search` graph queries to enumerate the blast radius.
+For ANY change that modifies the public surface of code (rename, extract, move, inline, delete) — first run `supervibe:code-search` graph queries to enumerate the blast radius.
 
 ## Why
 
@@ -1954,7 +1954,7 @@ Override: if graph query genuinely doesn't apply (e.g., adding new endpoint, no 
 
 ## Related
 
-- skill: `evolve:code-search`
+- skill: `supervibe:code-search`
 - agent: `refactoring-specialist`, `code-reviewer`, `architect-reviewer`
 - rubric: `agent-delivery` evidence dimension
 ```
@@ -2256,7 +2256,7 @@ export function topSymbolsByDegree(db, { limit = 20, kind = null } = {}) {
 node scripts/search-code.mjs --top-symbols 20 --kind class
 ```
 
-- [ ] **Step 3: Add to `evolve:code-search` skill decision tree**
+- [ ] **Step 3: Add to `supervibe:code-search` skill decision tree**
 
 ```
 Question: "what are the key parts of this codebase?"
@@ -2296,11 +2296,11 @@ git commit -m "feat(graph): top-symbols-by-degree for orientation in unfamiliar 
 Insert step (e.g., step 13 — after "synthesize report"):
 
 ```markdown
-13. **Persist non-obvious graph findings to memory**: if neighborhood query reveals a pattern (cross-module coupling, hidden dependency cluster, hot symbol with >10 callers), invoke `evolve:add-memory` with type=`pattern`:
+13. **Persist non-obvious graph findings to memory**: if neighborhood query reveals a pattern (cross-module coupling, hidden dependency cluster, hot symbol with >10 callers), invoke `supervibe:add-memory` with type=`pattern`:
     - Title: "<Symbol> coupling pattern"
     - Body: graph evidence + affected files + suggested boundaries
     - Tags: `coupling`, `<module-name>`, `code-graph`
-    - This makes the pattern queryable in future sessions via `evolve:project-memory`.
+    - This makes the pattern queryable in future sessions via `supervibe:project-memory`.
 ```
 
 - [ ] **Step 2: Add to memory-curator Procedure**
@@ -2310,7 +2310,7 @@ Add a workflow scenario:
 ```markdown
 ### Common workflow: graph-pattern hygiene
 
-When `evolve:project-memory` returns ≥3 entries with tag `code-graph`:
+When `supervibe:project-memory` returns ≥3 entries with tag `code-graph`:
 - Group by affected module
 - Look for contradictions (e.g., 2 patterns prescribing opposite refactors of same area)
 - Consolidate into one canonical pattern with cross-refs to historical entries
@@ -2336,7 +2336,7 @@ git commit -m "feat(memory): repo-researcher persists graph findings; memory-cur
 ### Task D19: Status command — surface broken-grammar warnings + watcher state
 
 **Files:**
-- Modify: `scripts/evolve-status.mjs`
+- Modify: `scripts/supervibe-status.mjs`
 - Modify: `scripts/lib/code-store.mjs` (add `getGrammarHealth()` helper)
 
 **Why this task exists:** D9 status command shows totals, but if a grammar's query fails silently (e.g., for one weird file), user has no visibility. Closing this raises confidence further.
@@ -2421,14 +2421,14 @@ if (existsSync(heartbeatPath)) {
 
 - [ ] **Step 4: Test**
 
-Update `tests/evolve-status.test.mjs` to assert:
+Update `tests/supervibe-status.test.mjs` to assert:
 - Output mentions language coverage
 - Output mentions watcher state
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/evolve-status.mjs scripts/lib/code-store.mjs scripts/lib/code-watcher.mjs tests/evolve-status.test.mjs
+git add scripts/supervibe-status.mjs scripts/lib/code-store.mjs scripts/lib/code-watcher.mjs tests/supervibe-status.test.mjs
 git commit -m "feat(status): surface grammar health + watcher heartbeat for full transparency"
 ```
 
@@ -2455,7 +2455,7 @@ Replace the v1.6.0 section drafted in D10 with:
 - `scripts/lib/{code-graph,code-graph-queries,grammar-loader}.mjs` — extraction + traversal
 - `code_symbols` + `code_edges` tables in existing `code.db` (CASCADE-FK)
 - `search-code.mjs` flags: `--callers`, `--callees`, `--neighbors`, `--top-symbols`, `--symbol-id`, `--since`
-- `npm run evolve:status` — comprehensive index + grammar + watcher health
+- `npm run supervibe:status` — comprehensive index + grammar + watcher health
 - SessionStart hook auto-builds/refreshes index; prints status banner
 
 ### Added — Agent integration (closes "capability dark" gap)
@@ -2508,7 +2508,7 @@ Replace the v1.6.0 section drafted in D10 with:
 
 ```bash
 npm run check
-node scripts/evolve-status.mjs
+node scripts/supervibe-status.mjs
 ```
 
 Expected: all tests pass, status shows green checkmarks for RAG / graph / grammars.
@@ -2522,12 +2522,12 @@ git commit -m "chore(release): v1.6.0 — code graph (Phase D) + 10-agent wiring
 
 ---
 
-### Task D21: Update `evolve:code-review` skill — graph evidence check
+### Task D21: Update `supervibe:code-review` skill — graph evidence check
 
 **Files:**
 - Modify: `skills/code-review/SKILL.md`
 
-**Why this task exists:** D11 updated the `code-reviewer` agent's procedure, but `evolve:code-review` is a SKILL applied by many other agents (laravel-developer self-review, refactoring-specialist's final pass, etc.). Without updating the skill itself, those other agents won't know to check graph evidence.
+**Why this task exists:** D11 updated the `code-reviewer` agent's procedure, but `supervibe:code-review` is a SKILL applied by many other agents (laravel-developer self-review, refactoring-specialist's final pass, etc.). Without updating the skill itself, those other agents won't know to check graph evidence.
 
 - [ ] **Step 1: Read current skill**
 
@@ -2749,7 +2749,7 @@ test('grammar-loader: getBrokenLanguages reports state', async () => {
 
 - [ ] **Step 4: Wire into `evolve-status.mjs` (D19 already added grammar health, augment it)**
 
-In `scripts/evolve-status.mjs`, after the `getGrammarHealth()` reporting block, add:
+In `scripts/supervibe-status.mjs`, after the `getGrammarHealth()` reporting block, add:
 
 ```javascript
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
@@ -2769,7 +2769,7 @@ node --no-warnings --test tests/code-graph.test.mjs
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/lib/grammar-loader.mjs scripts/lib/code-graph.mjs scripts/evolve-status.mjs tests/code-graph.test.mjs
+git add scripts/lib/grammar-loader.mjs scripts/lib/code-graph.mjs scripts/supervibe-status.mjs tests/code-graph.test.mjs
 git commit -m "feat(graph): grammar-loader detects LFS pointers + graceful per-language fallback"
 ```
 
@@ -2868,21 +2868,21 @@ async function reportCodeIndexHealth() {
   try {
     const result = await ensureCodeIndexFresh(process.cwd());
     if (result.error) {
-      console.log(`[evolve] code RAG: WARN ${result.error}`);
+      console.log(`[supervibe] code RAG: WARN ${result.error}`);
       return;
     }
     if (result.action === 'skip') {
-      console.log('[evolve] code RAG ✓ index fresh');
+      console.log('[supervibe] code RAG ✓ index fresh');
       return;
     }
     const { stats } = result;
-    console.log(`[evolve] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks`);
-    console.log(`[evolve] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${(stats.edgeResolutionRate * 100).toFixed(0)}% resolved)`);
+    console.log(`[supervibe] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks`);
+    console.log(`[supervibe] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${(stats.edgeResolutionRate * 100).toFixed(0)}% resolved)`);
     if (result.action === 'full') {
-      console.log('[evolve] full index built — subsequent sessions will be near-instant');
+      console.log('[supervibe] full index built — subsequent sessions will be near-instant');
     }
   } catch (err) {
-    console.log(`[evolve] code index: WARN ${err.message}`);
+    console.log(`[supervibe] code index: WARN ${err.message}`);
   }
 }
 
@@ -2895,7 +2895,7 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[evolve] session-start-check error:', err.message);
+  console.error('[supervibe] session-start-check error:', err.message);
   process.exit(0); // never block session start with non-zero
 });
 ```
@@ -2910,8 +2910,8 @@ node scripts/session-start-check.mjs 2>&1 | head -10
 
 Expected output includes:
 ```
-[evolve] code RAG ✓ 25 files / 113 chunks
-[evolve] code graph ✓ 142 symbols / 87 edges (78% resolved)
+[supervibe] code RAG ✓ 25 files / 113 chunks
+[supervibe] code graph ✓ 142 symbols / 87 edges (78% resolved)
 ```
 
 (Or `WARN` if grammars aren't pulled yet — that's fine, just verifying invocation runs.)
@@ -3198,7 +3198,7 @@ git commit -m "feat(agents): graph evidence template covers 3 cases (callers / z
 | Auto-startup on session begin | D8 (SessionStart hook) |
 | User confidence ("knows it works") | D8 (banner) + D9 (status command) + D19 (grammar/watcher health) |
 | Same SQLite DB, no fragmentation | D4 (schema extension on `code.db`) |
-| Same skill surface | D7 (extend `evolve:code-search`) |
+| Same skill surface | D7 (extend `supervibe:code-search`) |
 | Hybrid semantic + graph | D7 (decision tree + procedure) |
 | Cross-file edge resolution | D4 (`resolveAllEdges`) |
 | Test coverage per task | D2/D3/D5/D9/D11/D14/D15/D17/D19/D22/D26 all TDD-style |
@@ -3211,7 +3211,7 @@ git commit -m "feat(agents): graph evidence template covers 3 cases (callers / z
 | **Centrality / orientation** | **D17** (`--top-symbols`) |
 | **Memory persistence of findings** | **D18** (repo-researcher + memory-curator) |
 | **Grammar/watcher visibility** | **D19** |
-| **`evolve:code-review` skill graph-aware** | **D21** (closes "skill-level dark" gap) |
+| **`supervibe:code-review` skill graph-aware** | **D21** (closes "skill-level dark" gap) |
 | **Grammar LFS-pointer graceful fallback** | **D22** (matches embeddings.mjs pattern) |
 | **Concurrent watcher + manual index safety** | **D23** (SQLite WAL mode) |
 | **SessionStart wiring made explicit** | **D24** (no dead-code risk) |
@@ -3264,7 +3264,7 @@ git commit -m "feat(agents): graph evidence template covers 3 cases (callers / z
 | Agent procedures (D11) | 9.5/10 | 10 agents wired; D27 covers edge case |
 | CLAUDE.md system prompt | 9.5/10 | Capability advertised in system context |
 | Rules / discipline | 9.5/10 | D13 critical-severity rule + D14 rubric reinforcement |
-| `evolve:code-review` skill | 9.5/10 | D21 closes skill-level gap |
+| `supervibe:code-review` skill | 9.5/10 | D21 closes skill-level gap |
 | Grammar fallback | 9.5/10 | D22 LFS-pointer detection + per-language graceful skip |
 | Output contract (3 cases) | 9.5/10 | D27 enumerates all paths |
 | Confidence rubric | 9.5/10 | D14 sub-criterion + D27 enforcement text |

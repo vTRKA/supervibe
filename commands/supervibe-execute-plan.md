@@ -4,34 +4,34 @@ description: >-
   readiness audit BEFORE execution + completion audit AFTER. Optionally takes a
   plan path; otherwise auto-detects most recent plan. Опционально принимает путь
   плана; иначе берёт самый свежий. Triggers: 'execute plan', 'выполни план',
-  'запусти план', '/evolve-execute-plan'.
+  'запусти план', '/supervibe-execute-plan'.
 ---
 
-# /evolve-execute-plan
+# /supervibe-execute-plan
 
-Direct trigger for plan execution with two **mandatory 10/10 confidence gates** — one BEFORE execution (readiness) and one AFTER (completion). Wraps `evolve:executing-plans` (or `evolve:subagent-driven-development` for parallelisable plans) with structured pre/post audits.
+Direct trigger for plan execution with two **mandatory 10/10 confidence gates** — one BEFORE execution (readiness) and one AFTER (completion). Wraps `supervibe:executing-plans` (or `supervibe:subagent-driven-development` for parallelisable plans) with structured pre/post audits.
 
-This is the safety-critical sibling of `/evolve-plan` — that one writes the plan, this one runs it without quality compromise.
+This is the safety-critical sibling of `/supervibe-plan` — that one writes the plan, this one runs it without quality compromise.
 
 ## Invocation forms
 
-### `/evolve-execute-plan <plan-path>`
+### `/supervibe-execute-plan <plan-path>`
 
 Examples:
-- `/evolve-execute-plan docs/plans/2026-04-28-token-economy-safe-mode.md`
-- `/evolve-execute-plan docs/plans/2026-04-27-codegraph-phase-d.md`
+- `/supervibe-execute-plan docs/plans/2026-04-28-token-economy-safe-mode.md`
+- `/supervibe-execute-plan docs/plans/2026-04-27-codegraph-phase-d.md`
 
-### `/evolve-execute-plan` (no args)
+### `/supervibe-execute-plan` (no args)
 
 Auto-detects most recent plan in `docs/plans/`. If multiple recent or ambiguous, lists them and asks user to pick.
 
-If no plans exist → redirect: "Нет планов в `docs/plans/`. Запусти `/evolve-plan <spec>` первым".
+If no plans exist → redirect: "Нет планов в `docs/plans/`. Запусти `/supervibe-plan <spec>` первым".
 
-### `/evolve-execute-plan --resume <plan-path>`
+### `/supervibe-execute-plan --resume <plan-path>`
 
 Resume a partially-executed plan: scans the plan for `- [x]` (done) vs `- [ ]` (pending) checkboxes, picks up at the first pending task. Re-runs the readiness audit on remaining tasks only.
 
-### `/evolve-execute-plan --dry-run <plan-path>`
+### `/supervibe-execute-plan --dry-run <plan-path>`
 
 Run readiness audit ONLY. Don't execute. Reports the 10-dimension confidence score + gaps. Use to vet a plan before committing to execution.
 
@@ -103,12 +103,12 @@ a. If `<plan-path>` given → use it.
 b. If `--resume <path>` → use it; mark as resume mode.
 c. If `--dry-run <path>` → use it; mark as readiness-only.
 d. If no args → glob `docs/plans/*.md`, sort by mtime desc, pick top 1 (or list and ask if multiple created today).
-e. If no plans exist → redirect to `/evolve-plan`, exit.
+e. If no plans exist → redirect to `/supervibe-plan`, exit.
 
 ### 1. Read plan + context
 
 - Read full plan file
-- Read `evolve:project-memory --query <topic-from-plan-title>` for prior similar executions
+- Read `supervibe:project-memory --query <topic-from-plan-title>` for prior similar executions
 - Read related rules from `rules/` (per applies-to globs)
 - Read any spec referenced by the plan (links to `docs/specs/`)
 
@@ -158,8 +158,8 @@ Print recommendation + ask user.
 ### 4. Execute
 
 Dispatch the chosen execution skill:
-- Subagent-driven → `evolve:subagent-driven-development`
-- Inline → `evolve:executing-plans`
+- Subagent-driven → `supervibe:subagent-driven-development`
+- Inline → `supervibe:executing-plans`
 
 Pass the plan path + readiness audit log + override note (if any).
 
@@ -268,7 +268,7 @@ Sum = 10. Gate at ≥9 for non-blocking; override allowed once-per-plan.
 
 ## When NOT to invoke
 
-- Plan doesn't exist → run `/evolve-plan` first
+- Plan doesn't exist → run `/supervibe-plan` first
 - Plan readiness < 5/10 → fix the plan, don't execute a broken plan
 - Plan executes irreversible side-effects (prod migrations, mass external API calls) → use a wrapper that adds confirmation per side-effect, this command doesn't add per-action confirmations
 - One-line trivial change → just implement, no plan needed
@@ -277,13 +277,13 @@ Sum = 10. Gate at ≥9 for non-blocking; override allowed once-per-plan.
 
 ## Related
 
-- `evolve:executing-plans` skill — inline execution methodology
-- `evolve:subagent-driven-development` skill — fan-out execution
-- `evolve:writing-plans` skill — produces what this consumes
-- `evolve:confidence-scoring` skill — applies the rubric
-- `/evolve-plan` — what produces the plan input
-- `/evolve-brainstorm` — what produces the spec input to /evolve-plan
-- `/evolve-score` — score a single artifact (this command auto-scores final delivery)
+- `supervibe:executing-plans` skill — inline execution methodology
+- `supervibe:subagent-driven-development` skill — fan-out execution
+- `supervibe:writing-plans` skill — produces what this consumes
+- `supervibe:confidence-scoring` skill — applies the rubric
+- `/supervibe-plan` — what produces the plan input
+- `/supervibe-brainstorm` — what produces the spec input to /supervibe-plan
+- `/supervibe-score` — score a single artifact (this command auto-scores final delivery)
 - `superpowers:executing-plans` — comparable upstream pattern
 - `docs/templates/plan-template.md` — the plan format this command parses
 - `confidence-rubrics/execute-plan.yaml` — scoring rubric (created when this command ships)

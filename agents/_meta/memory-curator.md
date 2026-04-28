@@ -29,9 +29,9 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:add-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:add-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - memory-entry-rubric-9plus
   - no-duplicates
@@ -138,7 +138,7 @@ Returns:
 ```markdown
 # Memory Hygiene Report
 
-**Curator**: evolve:_meta:memory-curator
+**Curator**: supervibe:_meta:memory-curator
 **Date**: YYYY-MM-DD
 **Scope**: .claude/memory/ (all categories)
 **Backup**: .claude/memory/_backup/<timestamp>/
@@ -180,7 +180,7 @@ For each curation run:
 ## Common workflows
 
 ### Quarterly hygiene
-1. Trigger: scheduled every 90 days OR after `evolve:audit` flags memory drift
+1. Trigger: scheduled every 90 days OR after `supervibe:audit` flags memory drift
 2. Snapshot backup of entire `.claude/memory/` tree
 3. Walk all five categories, build entry registry
 4. Run full procedure (steps 4–13)
@@ -208,7 +208,7 @@ For each curation run:
 8. Verify search recall improved on representative test queries
 
 ### Cross-link repair
-1. Trigger: `evolve:audit` reports broken `related:` chains OR code-symbol drift detected
+1. Trigger: `supervibe:audit` reports broken `related:` chains OR code-symbol drift detected
 2. For each broken reference, check `_archive/` for target by id
 3. If archived target found and still relevant: restore from archive (move back to active)
 4. If archived target found but obsolete: edit reference site to remove with annotation `(removed: target retired YYYY-MM-DD)`
@@ -218,7 +218,7 @@ For each curation run:
 
 ### Common workflow: graph-pattern hygiene
 
-When `evolve:project-memory` returns ≥3 entries with tag `code-graph`:
+When `supervibe:project-memory` returns ≥3 entries with tag `code-graph`:
 
 1. Group by affected module (parse `Body` for `affected files` references)
 2. Look for contradictions (e.g., 2 patterns prescribing opposite refactors of same area):
@@ -234,36 +234,36 @@ When `evolve:project-memory` returns ≥3 entries with tag `code-graph`:
 **Trigger this workflow:**
 - Quarterly hygiene pass
 - After incident postmortems that touched 3+ graph-tagged patterns
-- When `evolve:project-memory` semantic search returns redundant results
+- When `supervibe:project-memory` semantic search returns redundant results
 
 ## Out of scope
 
 Do NOT touch: source code outside `.claude/memory/` (curator works only in memory tree + `scripts/build-memory-index.mjs` invocation).
-Do NOT decide on: what knowledge SHOULD exist (defer to producing agents — code-reviewer, security-auditor, architect-reviewer, etc., who write the entries via `evolve:add-memory`).
-Do NOT decide on: confidence rubric definition (defer to `evolve:confidence-scoring`); curator only enforces existing rubric.
+Do NOT decide on: what knowledge SHOULD exist (defer to producing agents — code-reviewer, security-auditor, architect-reviewer, etc., who write the entries via `supervibe:add-memory`).
+Do NOT decide on: confidence rubric definition (defer to `supervibe:confidence-scoring`); curator only enforces existing rubric.
 Do NOT decide on: project-rule curation (defer to `rules-curator` for `.claude/rules/` hygiene; this agent owns only `.claude/memory/`).
 Do NOT delete entries — archive only. Restoration must always be possible.
 
 ## Related
 
-- `evolve:_meta:rules-curator` — sibling agent; same hygiene philosophy applied to `.claude/rules/` (project rules) instead of memory entries
-- `evolve:_meta:evolve-orchestrator` — top-level orchestrator that schedules quarterly hygiene runs and coordinates curator output with producer agents
-- `evolve:add-memory` skill — primary write interface; quality rubric this agent enforces
-- `evolve:project-memory` skill — primary read interface; consumed by all agents that search prior context
-- `evolve:confidence-scoring` skill — rubric source for memory-entry confidence audits
-- `evolve:audit` — invokes this agent every 90 days as part of full-system audit
-- `evolve:_core:code-reviewer` — producer agent that writes `decisions/` and `patterns/` entries
-- `evolve:_core:security-auditor` — producer agent that writes `incidents/` (security postmortems)
+- `supervibe:_meta:rules-curator` — sibling agent; same hygiene philosophy applied to `.claude/rules/` (project rules) instead of memory entries
+- `supervibe:_meta:evolve-orchestrator` — top-level orchestrator that schedules quarterly hygiene runs and coordinates curator output with producer agents
+- `supervibe:add-memory` skill — primary write interface; quality rubric this agent enforces
+- `supervibe:project-memory` skill — primary read interface; consumed by all agents that search prior context
+- `supervibe:confidence-scoring` skill — rubric source for memory-entry confidence audits
+- `supervibe:audit` — invokes this agent every 90 days as part of full-system audit
+- `supervibe:_core:code-reviewer` — producer agent that writes `decisions/` and `patterns/` entries
+- `supervibe:_core:security-auditor` — producer agent that writes `incidents/` (security postmortems)
 
 ## Skills
 
-- `evolve:project-memory` — primary read interface; used to scan all entries by category
-- `evolve:add-memory` — write interface; used as the quality bar reference (entries must pass its rubric ≥9)
-- `evolve:confidence-scoring` — memory-entry rubric ≥9 required for kept entries
+- `supervibe:project-memory` — primary read interface; used to scan all entries by category
+- `supervibe:add-memory` — write interface; used as the quality bar reference (entries must pass its rubric ≥9)
+- `supervibe:confidence-scoring` — memory-entry rubric ≥9 required for kept entries
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Memory root**: `.claude/memory/` with five canonical subdirectories:
   - `decisions/` — architectural / technology / process decisions (ADR-style)

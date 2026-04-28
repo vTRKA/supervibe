@@ -5,8 +5,8 @@ description: "Adds db-reviewer + infrastructure-architect for replica topology a
 type: atomic
 
 agents-attach:
-  - evolve:_ops:db-reviewer
-  - evolve:_ops:infrastructure-architect
+  - supervibe:_ops:db-reviewer
+  - supervibe:_ops:infrastructure-architect
 
 rules-attach:
   - infrastructure-patterns

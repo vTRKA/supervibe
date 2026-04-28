@@ -20,7 +20,7 @@ ALWAYS, before saying any of: "works", "fixed", "complete", "passing", "done", "
 
 The single line that calls this skill: **evidence before assertion, always.**
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 Read:
 - The project's `CLAUDE.md` to find the canonical verification commands for this stack (typecheck, test, lint, build).
@@ -84,7 +84,7 @@ If verdict is `FAIL`, the calling agent MUST NOT proceed with the claim.
 
 This skill's correct application is itself verifiable:
 - Every "done" claim in conversation history MUST be preceded by a Bash tool call with output shown.
-- `evolve:audit` includes a discipline check: scan transcripts for "done"/"works"/"fixed" claims and check the preceding 5 messages for verification command output.
+- `supervibe:audit` includes a discipline check: scan transcripts for "done"/"works"/"fixed" claims and check the preceding 5 messages for verification command output.
 
 ## Related rules
 

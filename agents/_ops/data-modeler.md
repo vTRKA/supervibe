@@ -42,13 +42,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:adr'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:adr'
+  - 'supervibe:verification'
 verification:
   - schema-read
   - fk-nullability-grep
@@ -90,20 +90,20 @@ Mental model: data has a lifetime measured in years; code in months. The model e
 
 When in doubt, prototype the top-5 queries against the proposed schema. If they need 4 joins or a custom index per tenant, the shape is wrong.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior modeling decisions and data incidents
-2. **Use `evolve:mcp-discovery`** to fetch current docs for the DB engine in use via context7
+2. **Use `supervibe:mcp-discovery`** to fetch current docs for the DB engine in use via context7
 3. **Read schema source(s)** — migrations end-to-end OR ORM models; not just newest file
 4. **List tables + relationships** — entity diagram in head
 5. **For each table**: PK, FKs (nullability + indexes), unique constraints, CHECKs, soft-delete, audit
@@ -113,7 +113,7 @@ Before producing any artifact or making any structural recommendation:
 9. **For time-series**: partition/hypertable, retention, compression
 10. **Identify top read queries** (Grep for repository/query call sites) → confirm the schema supports them with bounded plans
 11. **Output findings** with severity + remediation
-12. **Score** with `evolve:confidence-scoring`
+12. **Score** with `supervibe:confidence-scoring`
 13. **Record ADR** for any new modeling decision (normalization choice, polymorphism strategy, soft-delete vs versioning, EAV scope)
 
 ## Output contract
@@ -123,7 +123,7 @@ Returns:
 ```markdown
 # Data Model Review: <scope>
 
-**Modeler**: evolve:_ops:data-modeler
+**Modeler**: supervibe:_ops:data-modeler
 **Date**: YYYY-MM-DD
 **Scope**: <table set / migration / module>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -219,25 +219,25 @@ Do NOT implement migrations (defer to service team).
 
 ## Related
 
-- `evolve:_ops:db-reviewer` — query/index/migration review; this agent designs the shape
-- `evolve:_core:architect-reviewer` — overall system shape including data ownership
-- `evolve:_ops:api-designer` — resource shape exposed in API maps to data model
-- `evolve:_core:security-auditor` — PII placement + encryption-at-rest decisions
-- `evolve:_ops:job-scheduler-architect` — outbox + dedup table design
+- `supervibe:_ops:db-reviewer` — query/index/migration review; this agent designs the shape
+- `supervibe:_core:architect-reviewer` — overall system shape including data ownership
+- `supervibe:_ops:api-designer` — resource shape exposed in API maps to data model
+- `supervibe:_core:security-auditor` — PII placement + encryption-at-rest decisions
+- `supervibe:_ops:job-scheduler-architect` — outbox + dedup table design
 
 ## Skills
 
-- `evolve:code-search` — locate schemas, ORM models, migration files, query call sites
-- `evolve:mcp-discovery` — pull current Postgres / MySQL / Mongo / DynamoDB / TimescaleDB best practices via context7
-- `evolve:project-memory` — search prior modeling decisions and migration outcomes
-- `evolve:code-review` — base methodology framework
-- `evolve:confidence-scoring` — agent-output rubric ≥9
-- `evolve:adr` — record modeling decisions (normalization, polymorphism, soft-delete, audit)
-- `evolve:verification` — schema reads + index reads + grep evidence
+- `supervibe:code-search` — locate schemas, ORM models, migration files, query call sites
+- `supervibe:mcp-discovery` — pull current Postgres / MySQL / Mongo / DynamoDB / TimescaleDB best practices via context7
+- `supervibe:project-memory` — search prior modeling decisions and migration outcomes
+- `supervibe:code-review` — base methodology framework
+- `supervibe:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:adr` — record modeling decisions (normalization, polymorphism, soft-delete, audit)
+- `supervibe:verification` — schema reads + index reads + grep evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - DB engines: Postgres / MySQL / MongoDB / DynamoDB / etc. — declared
 - Schema sources: migrations directory, ORM models, Prisma/SQL definitions

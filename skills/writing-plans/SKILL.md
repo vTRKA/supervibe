@@ -16,13 +16,13 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-AFTER `evolve:brainstorming` produces an approved spec, OR AFTER `evolve:requirements-intake` decides complexity 3-6 (skip brainstorm direct to plan).
+AFTER `supervibe:brainstorming` produces an approved spec, OR AFTER `supervibe:requirements-intake` decides complexity 3-6 (skip brainstorm direct to plan).
 
 NOT for: still-vague requirements (go back to brainstorming), trivial one-line changes (skip to executing).
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
-1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `docs/specs/`. Запусти `/evolve-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/evolve-plan <path>`." Do not proceed with planning vapor.
+1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `docs/specs/`. Запусти `/supervibe-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/supervibe-plan <path>`." Do not proceed with planning vapor.
 2. Read `CLAUDE.md` for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
@@ -54,9 +54,9 @@ Per task: TDD applicable?
    - Verification command + expected output
    - Commit step (or note if commits suppressed)
 4. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix.
-5. **Score** — `evolve:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
+5. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
 6. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
-7. **Handoff** to `evolve:executing-plans` (or subagent-driven-development if independent tasks).
+7. **Handoff** to `supervibe:executing-plans` (or subagent-driven-development if independent tasks).
 
 ## Output contract
 
@@ -79,11 +79,11 @@ Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure se
 
 ## Related
 
-- `evolve:brainstorming` — produces input spec
-- `evolve:executing-plans` — consumes this output
-- `evolve:subagent-driven-development` — alternative consumer for parallel tasks
+- `supervibe:brainstorming` — produces input spec
+- `supervibe:executing-plans` — consumes this output
+- `supervibe:subagent-driven-development` — alternative consumer for parallel tasks
 
-## Critical path identification (mandatory)
+## Critical path identification (required)
 
 After listing all tasks, identify which tasks block which:
 1. Build dependency graph: task A → task B means A must complete before B starts
@@ -97,7 +97,7 @@ Critical path: T1 → T3 → T5 → T8 → T-FINAL (5 tasks, est. 6h sequential)
 Parallelizable: T2 || T4 (off-path); T6 || T7 (after T5)
 ```
 
-## Parallelization opportunities (mandatory)
+## Parallelization opportunities (required)
 
 Identify which tasks can run as parallel subagents:
 - Independent file modifications (e.g., 10 agent files = 10 parallel subagents)
@@ -114,7 +114,7 @@ Subagent-Driven batches:
 
 This drastically reduces wall-clock execution time.
 
-## Rollback plan per task (mandatory)
+## Rollback plan per task (required)
 
 Each task gets a one-line "rollback" entry:
 
@@ -242,9 +242,9 @@ Required at end:
 
 ## Related
 
-- `evolve:brainstorming` — predecessor; provides recommended option as input
-- `evolve:executing-plans` — consumer; this skill writes what that skill executes
-- `evolve:subagent-driven-development` — when handoff says Subagent-Driven
-- `evolve:explore-alternatives` — for risk-register options
-- `evolve:confidence-scoring` — gate before saving plan (≥9 required)
-- `evolve:requirements-intake` — alternative entry point for complexity 3-6 plans
+- `supervibe:brainstorming` — predecessor; provides recommended option as input
+- `supervibe:executing-plans` — consumer; this skill writes what that skill executes
+- `supervibe:subagent-driven-development` — when handoff says Subagent-Driven
+- `supervibe:explore-alternatives` — for risk-register options
+- `supervibe:confidence-scoring` — gate before saving plan (≥9 required)
+- `supervibe:requirements-intake` — alternative entry point for complexity 3-6 plans

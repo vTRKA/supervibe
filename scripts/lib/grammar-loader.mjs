@@ -75,8 +75,8 @@ export async function getLanguage(lang) {
     if (!check.ok) {
       _brokenLangs.add(lang);
       if (check.reason === 'pointer-or-truncated') _pointerLangs.add(lang);
-      if (process.env.EVOLVE_VERBOSE === '1') {
-        console.warn(`[evolve/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Run 'git lfs pull'.`);
+      if (process.env.SUPERVIBE_VERBOSE === '1') {
+        console.warn(`[supervibe/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Run 'git lfs pull'.`);
       }
       throw new Error(`Grammar file unusable for ${lang}: ${check.reason} at ${wasmPath}`);
     }

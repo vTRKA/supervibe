@@ -13,7 +13,7 @@
  *   Out of scope, Related, Skills
  *
  * VOLATILE section (cache miss expected, goes last):
- *   Project Context (filled by evolve:strengthen with project-specific paths)
+ *   Project Context (filled by supervibe:strengthen with project-specific paths)
  *
  * IMPORTANT: zero content removed. Every byte preserved, only order changed.
  * Byte-balance enforced via 2% tolerance check; reorder rejected if exceeded.

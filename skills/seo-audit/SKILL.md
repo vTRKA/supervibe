@@ -20,7 +20,7 @@ last-verified: 2026-04-27
 - After major content restructure
 - Quarterly site-wide audit
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Identify pages in scope (`prototypes/landing/` or live URLs)
 2. Read sitemap, robots.txt

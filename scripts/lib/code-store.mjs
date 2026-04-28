@@ -190,7 +190,7 @@ export class CodeStore {
     try {
       await this.indexGraphFor(absPath, content);
     } catch (err) {
-      if (process.env.EVOLVE_VERBOSE === '1') {
+      if (process.env.SUPERVIBE_VERBOSE === '1') {
         console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
       }
     }

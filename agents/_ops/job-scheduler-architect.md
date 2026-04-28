@@ -44,13 +44,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:adr'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:adr'
+  - 'supervibe:verification'
 verification:
   - job-handler-idempotency-grep
   - dlq-config-read
@@ -91,20 +91,20 @@ Mental model: "exactly-once" usually means "at-least-once with idempotent consum
 
 Queue choice is a one-way door. You can swap business logic in a sprint; swapping Kafka for SQS is a quarter. Pick based on real requirements (throughput, ordering, retention, fan-out shape), not resume bingo.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior queue-related incidents and decisions
-2. **Use `evolve:mcp-discovery`** to fetch current docs for the queue tech in use via context7
+2. **Use `supervibe:mcp-discovery`** to fetch current docs for the queue tech in use via context7
 3. **Read broker config** — connection, retention, ack timeout, DLQ binding
 4. **List job handlers** — Glob for handlers / Grep for `perform`/`handle`/`@app.task`
 5. **For each handler**: read end-to-end; identify side effects; verify idempotency strategy; check retry policy
@@ -114,7 +114,7 @@ Before producing any artifact or making any structural recommendation:
 9. **Verify DLQ exists + has alert + has runbook**
 10. **Verify backoff has jitter and bounded retries**
 11. **Output findings** with severity + remediation
-12. **Score** with `evolve:confidence-scoring`
+12. **Score** with `supervibe:confidence-scoring`
 13. **Record ADR** for queue choice / delivery semantics / idempotency strategy
 
 ## Output contract
@@ -124,7 +124,7 @@ Returns:
 ```markdown
 # Job Scheduler Review: <scope>
 
-**Architect**: evolve:_ops:job-scheduler-architect
+**Architect**: supervibe:_ops:job-scheduler-architect
 **Date**: YYYY-MM-DD
 **Scope**: <queue / module / PR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -210,25 +210,25 @@ Do NOT decide on: data retention beyond queue-related (defer to data-modeler)
 
 ## Related
 
-- `evolve:_ops:api-designer` — webhook delivery semantics align with queue retry
-- `evolve:_ops:observability-architect` — trace propagation across queues
-- `evolve:_ops:devops-sre` — broker ops + DLQ alerts
-- `evolve:_core:architect-reviewer` — system shape including async boundaries
-- `evolve:_ops:data-modeler` — outbox pattern + dedup table design
+- `supervibe:_ops:api-designer` — webhook delivery semantics align with queue retry
+- `supervibe:_ops:observability-architect` — trace propagation across queues
+- `supervibe:_ops:devops-sre` — broker ops + DLQ alerts
+- `supervibe:_core:architect-reviewer` — system shape including async boundaries
+- `supervibe:_ops:data-modeler` — outbox pattern + dedup table design
 
 ## Skills
 
-- `evolve:code-search` — locate every job handler, cron entry, broker config
-- `evolve:mcp-discovery` — pull current Sidekiq, RabbitMQ, Kafka, SQS, Temporal docs via context7
-- `evolve:project-memory` — search prior queue-related incidents and decisions
-- `evolve:code-review` — base methodology framework
-- `evolve:confidence-scoring` — agent-output rubric ≥9
-- `evolve:adr` — record queue choice + delivery semantics decisions
-- `evolve:verification` — grep + config reads as evidence
+- `supervibe:code-search` — locate every job handler, cron entry, broker config
+- `supervibe:mcp-discovery` — pull current Sidekiq, RabbitMQ, Kafka, SQS, Temporal docs via context7
+- `supervibe:project-memory` — search prior queue-related incidents and decisions
+- `supervibe:code-review` — base methodology framework
+- `supervibe:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:adr` — record queue choice + delivery semantics decisions
+- `supervibe:verification` — grep + config reads as evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Queue tech in use: Sidekiq / RabbitMQ / Kafka / SQS / Redis Streams / Bull / Celery — declared
 - Broker connection points: detected via Grep for client init, urls

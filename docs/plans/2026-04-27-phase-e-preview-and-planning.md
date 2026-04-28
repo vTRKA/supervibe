@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** (1) Add a local-host preview-server infrastructure so design/prototype agents can spawn `http://localhost:PORT`, serve mockups with hot-reload, optionally take Playwright screenshots, and surface running previews in `evolve:status`. (2) Strengthen the 6 existing planning skills (brainstorming / writing-plans / prd / adr / requirements-intake / explore-alternatives) into reference-grade methodologies — **no new commands, only deeper existing skills**.
+**Goal:** (1) Add a local-host preview-server infrastructure so design/prototype agents can spawn `http://localhost:PORT`, serve mockups with hot-reload, optionally take Playwright screenshots, and surface running previews in `supervibe:status`. (2) Strengthen the 6 existing planning skills (brainstorming / writing-plans / prd / adr / requirements-intake / explore-alternatives) into reference-grade methodologies — **no new commands, only deeper existing skills**.
 
 **Architecture:**
 - **Preview Server**: pure-Node `http` + `fs` (zero new deps), SSE-based hot-reload (no WebSocket lib needed), file-based process registry (`.claude/memory/preview-servers.json`), chokidar (already installed) for file watching, deterministic port scan (3047–3099 then OS-assigned), graceful SIGINT cleanup. Optional Playwright MCP integration when available.
@@ -11,7 +11,7 @@
 **Tech Stack:** Node 22+ (`node:http`, `node:net`, `node:fs/promises`), `chokidar` (existing), `mime` (small dep ~10KB or hardcoded map), pure SSE (`text/event-stream`), no Express, no WebSocket library, no Docker.
 
 **Constraints (read before starting):**
-1. **No new commands beyond `/evolve-preview`** — the planning surface must NOT grow new top-level commands. Items 1–6 in user spec emphasized "ТОЛЬКО усиление текущих" for planning.
+1. **No new commands beyond `/supervibe-preview`** — the planning surface must NOT grow new top-level commands. Items 1–6 in user spec emphasized "ТОЛЬКО усиление текущих" for planning.
 2. **No external services** — pure local Node, like all other Evolve infrastructure.
 3. **Preview-server must die when session dies** — no zombie processes. Heartbeat + SIGINT/SIGTERM handlers + registry validation.
 4. **Hot-reload must work without browser plugins or WebSocket** — SSE only.
@@ -77,7 +77,7 @@ evolve/
 ├── skills/
 │   ├── landing-page/SKILL.md            # MODIFY — auto-spawn preview after generate
 │   └── interaction-design-patterns/SKILL.md # MODIFY — same
-├── scripts/evolve-status.mjs            # MODIFY — surface running preview servers
+├── scripts/supervibe-status.mjs            # MODIFY — surface running preview servers
 ├── scripts/session-start-check.mjs      # MODIFY — cleanup stale preview registry on start
 ├── CLAUDE.md                            # MODIFY — add Preview Server section
 ├── README.md                            # MODIFY — add Preview to feature table
@@ -892,7 +892,7 @@ git commit -m "feat(preview): chokidar→SSE hot-reload bridge with debouncing"
 
 **Files:**
 - Create: `scripts/preview-server.mjs`
-- Modify: `package.json` (add `evolve:preview` script)
+- Modify: `package.json` (add `supervibe:preview` script)
 - Modify: `knip.json` (allowlist new entry)
 
 - [ ] **Step 1: Implement CLI**
@@ -901,7 +901,7 @@ Create `scripts/preview-server.mjs`:
 
 ```javascript
 #!/usr/bin/env node
-// Preview Server CLI — used by /evolve-preview command and design-related skills.
+// Preview Server CLI — used by /supervibe-preview command and design-related skills.
 //
 // Modes:
 //   --root <dir>            Start server serving <dir> (default: ./mockups or ./)
@@ -1042,12 +1042,12 @@ process.on('exit', () => {
 setInterval(() => {}, 1 << 30);
 ```
 
-- [ ] **Step 2: Add `npm run evolve:preview` script**
+- [ ] **Step 2: Add `npm run supervibe:preview` script**
 
 Edit `package.json` `scripts` block, add:
 
 ```json
-"evolve:preview": "node scripts/preview-server.mjs",
+"supervibe:preview": "node scripts/preview-server.mjs",
 ```
 
 - [ ] **Step 3: Add to knip allowlist**
@@ -1088,7 +1088,7 @@ git commit -m "feat(preview): CLI entry — start/list/kill preview servers, hot
 
 ---
 
-### Task E1.6: `evolve:preview-server` SKILL.md
+### Task E1.6: `supervibe:preview-server` SKILL.md
 
 **Files:**
 - Create: `skills/preview-server/SKILL.md`
@@ -1117,9 +1117,9 @@ last-verified: 2026-04-27
 ## When to invoke
 
 AFTER any agent or skill that generates HTML/CSS/JS files for user review:
-- `evolve:landing-page` — finished landing page mockup
-- `evolve:prototype` — interactive HTML/CSS prototype
-- `evolve:interaction-design-patterns` — multi-screen flow demo
+- `supervibe:landing-page` — finished landing page mockup
+- `supervibe:prototype` — interactive HTML/CSS prototype
+- `supervibe:interaction-design-patterns` — multi-screen flow demo
 - `agents/_design/prototype-builder` — explicit prototype output
 - Any time user asks "show me what it would look like"
 
@@ -1156,7 +1156,7 @@ Should I capture a screenshot for the agent output?
 4. Capture stdout — first line `[evolve-preview] <label> → http://localhost:NNNN`
 5. Hand URL to user in a clearly-formatted line:
    > **Preview ready:** http://localhost:NNNN — auto-reloads on file edits
-6. If Playwright MCP is available (check via `evolve:mcp-discovery`):
+6. If Playwright MCP is available (check via `supervibe:mcp-discovery`):
    - `mcp__playwright__browser_navigate(url)`
    - `mcp__playwright__browser_take_screenshot(filename: ".claude/memory/previews/<label>-<timestamp>.png")`
    - Reference screenshot in your output as evidence
@@ -1193,14 +1193,14 @@ Should I capture a screenshot for the agent output?
 
 - `curl -s http://localhost:NNNN/` returns HTML containing your mockup content
 - HTML response contains `EventSource('/__evolve_preview/sse')` injection
-- `npm run evolve:preview -- --list` shows your server in the list
+- `npm run supervibe:preview -- --list` shows your server in the list
 
 ## Related
 
-- `evolve:prototype` — generates the HTML/CSS that this skill serves
-- `evolve:landing-page` — same
-- `evolve:interaction-design-patterns` — same
-- `evolve:mcp-discovery` — find Playwright MCP for screenshots
+- `supervibe:prototype` — generates the HTML/CSS that this skill serves
+- `supervibe:landing-page` — same
+- `supervibe:interaction-design-patterns` — same
+- `supervibe:mcp-discovery` — find Playwright MCP for screenshots
 - `agents/_design/prototype-builder` — primary caller
 - `agents/_design/ux-ui-designer` — uses for design-review hand-off
 ```
@@ -1218,26 +1218,26 @@ Both must show `OK`.
 
 ```bash
 git add skills/preview-server/SKILL.md
-git commit -m "feat(preview): evolve:preview-server skill (methodology for design agents)"
+git commit -m "feat(preview): supervibe:preview-server skill (methodology for design agents)"
 ```
 
 ---
 
-### Task E1.7: `/evolve-preview` slash command
+### Task E1.7: `/supervibe-preview` slash command
 
 **Files:**
-- Create: `commands/evolve-preview.md`
+- Create: `commands/supervibe-preview.md`
 
 - [ ] **Step 1: Write command**
 
-Create `commands/evolve-preview.md`:
+Create `commands/supervibe-preview.md`:
 
 ```markdown
 ---
 description: "Manage local preview servers for HTML/CSS/JS mockups (start / list / kill). Use after generating mockup files to view them at http://localhost:PORT with auto-reload."
 ---
 
-# /evolve-preview
+# /supervibe-preview
 
 User-facing command to manage preview servers.
 
@@ -1245,11 +1245,11 @@ User-facing command to manage preview servers.
 
 | Form | Action |
 |------|--------|
-| `/evolve-preview` | List currently running preview servers |
-| `/evolve-preview <dir>` | Start a server serving <dir> on auto-allocated port |
-| `/evolve-preview <dir> --port 3050` | Start on specific port |
-| `/evolve-preview --kill <port>` | Kill server on a specific port |
-| `/evolve-preview --kill-all` | Kill all preview servers |
+| `/supervibe-preview` | List currently running preview servers |
+| `/supervibe-preview <dir>` | Start a server serving <dir> on auto-allocated port |
+| `/supervibe-preview <dir> --port 3050` | Start on specific port |
+| `/supervibe-preview --kill <port>` | Kill server on a specific port |
+| `/supervibe-preview --kill-all` | Kill all preview servers |
 
 ## What I do when invoked
 
@@ -1277,8 +1277,8 @@ Expected: 95+/95+ tests pass (no regression).
 - [ ] **Step 3: Commit**
 
 ```bash
-git add commands/evolve-preview.md
-git commit -m "feat(preview): /evolve-preview slash command"
+git add commands/supervibe-preview.md
+git commit -m "feat(preview): /supervibe-preview slash command"
 ```
 
 ---
@@ -1293,13 +1293,13 @@ git commit -m "feat(preview): /evolve-preview slash command"
 In `agents/_design/prototype-builder.md`, find the `## Skills` section. Append:
 
 ```markdown
-- `evolve:preview-server` — spawn http://localhost preview after generating mockup files
+- `supervibe:preview-server` — spawn http://localhost preview after generating mockup files
 ```
 
 In `## Procedure`, after the step where the agent generates HTML/CSS, insert:
 
 ```markdown
-N. **Spawn preview**: invoke `evolve:preview-server` skill with `--root mockups/<feature>` to start a local server at http://localhost:NNNN. Hand URL to user with hot-reload note.
+N. **Spawn preview**: invoke `supervibe:preview-server` skill with `--root mockups/<feature>` to start a local server at http://localhost:NNNN. Hand URL to user with hot-reload note.
 ```
 
 (Renumber subsequent steps.)
@@ -1311,7 +1311,7 @@ In `## Output contract`, add a new section:
 - **URL**: http://localhost:NNNN — handed to user, opens in browser
 - **Label**: <feature-name>
 - **Hot-reload**: on (file edits in `mockups/<feature>/` auto-refresh browser)
-- **Port lifecycle**: cleanup on session end via SIGINT, OR `/evolve-preview --kill <port>` manually
+- **Port lifecycle**: cleanup on session end via SIGINT, OR `/supervibe-preview --kill <port>` manually
 
 If task is non-visual (e.g., design tokens only): explicitly state "Preview: N/A (no visual mockup generated)".
 ```
@@ -1345,7 +1345,7 @@ git commit -m "feat(agent): prototype-builder spawns preview server + cites URL 
 In `skills/landing-page/SKILL.md` `## Procedure`, append step:
 
 ```markdown
-N. **Auto-spawn preview** (mandatory): invoke `evolve:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note. Continue task — user will iterate visually.
+N. **Auto-spawn preview** (mandatory): invoke `supervibe:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note. Continue task — user will iterate visually.
 ```
 
 Add to `## Output contract`:
@@ -1376,12 +1376,12 @@ git commit -m "feat(skills): landing-page + interaction-design-patterns auto-spa
 ### Task E1.10: `evolve-status.mjs` surfaces running preview servers
 
 **Files:**
-- Modify: `scripts/evolve-status.mjs`
-- Modify: `tests/evolve-status.test.mjs`
+- Modify: `scripts/supervibe-status.mjs`
+- Modify: `tests/supervibe-status.test.mjs`
 
 - [ ] **Step 1: Add import + render section**
 
-In `scripts/evolve-status.mjs`, near top after existing imports:
+In `scripts/supervibe-status.mjs`, near top after existing imports:
 
 ```javascript
 import { listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
@@ -1406,7 +1406,7 @@ if (previews.length === 0) {
 
 - [ ] **Step 2: Add test assertion**
 
-In `tests/evolve-status.test.mjs`, append a new test:
+In `tests/supervibe-status.test.mjs`, append a new test:
 
 ```javascript
 test('evolve-status: reports preview server state', () => {
@@ -1421,7 +1421,7 @@ test('evolve-status: reports preview server state', () => {
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/evolve-status.test.mjs 2>&1 | tail -10
+cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
 ```
 
 Expected: 7 tests pass (was 6, added 1).
@@ -1429,7 +1429,7 @@ Expected: 7 tests pass (was 6, added 1).
 - [ ] **Step 4: Manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run evolve:status | tail -5
+cd "D:/ggsel projects/evolve" && npm run supervibe:status | tail -5
 ```
 
 Expected: line "Preview servers: none running" (since no servers active during status call).
@@ -1437,7 +1437,7 @@ Expected: line "Preview servers: none running" (since no servers active during s
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/evolve-status.mjs tests/evolve-status.test.mjs
+git add scripts/supervibe-status.mjs tests/supervibe-status.test.mjs
 git commit -m "feat(status): surface running preview servers with URL/PID/age"
 ```
 
@@ -1685,7 +1685,7 @@ For each strengthened skill, the diff pattern is:
 
 ---
 
-### Task E2.1: Strengthen `evolve:brainstorming`
+### Task E2.1: Strengthen `supervibe:brainstorming`
 
 **Files:**
 - Modify: `skills/brainstorming/SKILL.md`
@@ -1714,7 +1714,7 @@ Skip this section ONLY if user explicitly says "I just need a quick brainstorm."
 
 When the problem has known industry analogues (auth flows, billing, onboarding, design patterns):
 
-1. Invoke `evolve:mcp-discovery` to check if Firecrawl/Playwright MCP available
+1. Invoke `supervibe:mcp-discovery` to check if Firecrawl/Playwright MCP available
 2. If yes: scan 3–5 reference products (e.g., for billing UI: Stripe, Square, Lemonsqueezy). Take screenshots OR text excerpts.
 3. If no MCP: list reference products by name + ask user "have you seen these? what works/doesn't?"
 4. Document findings as "Competitive scan" section in output — DO NOT cargo-cult; flag what's stale
@@ -1796,7 +1796,7 @@ Required sections (in order):
 1. First-principle decomposition (mandatory)
 2. Competitive scan (3 reference products)
 3. Stakeholder map
-4. Generate ≥3 options (lean on `evolve:explore-alternatives` for matrix)
+4. Generate ≥3 options (lean on `supervibe:explore-alternatives` for matrix)
 5. Risks + kill criteria
 6. Decision matrix → recommend
 7. Save to `docs/specs/`
@@ -1833,11 +1833,11 @@ Required sections (in order):
 
 ## Related
 
-- `evolve:writing-plans` — next step after brainstorm picks a direction
-- `evolve:explore-alternatives` — sub-skill for decision matrix
-- `evolve:requirements-intake` — predecessor when intake hasn't happened yet
-- `evolve:adr` — when brainstorm output IS an architectural decision
-- `evolve:mcp-discovery` — for competitive scan tools
+- `supervibe:writing-plans` — next step after brainstorm picks a direction
+- `supervibe:explore-alternatives` — sub-skill for decision matrix
+- `supervibe:requirements-intake` — predecessor when intake hasn't happened yet
+- `supervibe:adr` — when brainstorm output IS an architectural decision
+- `supervibe:mcp-discovery` — for competitive scan tools
 ```
 
 - [ ] **Step 2: Verify size and frontmatter**
@@ -1854,12 +1854,12 @@ Lines must be ≥250. Both validations OK.
 
 ```bash
 git add skills/brainstorming/SKILL.md
-git commit -m "feat(skill): strengthen evolve:brainstorming with first-principle decomp + matrix + kill criteria"
+git commit -m "feat(skill): strengthen supervibe:brainstorming with first-principle decomp + matrix + kill criteria"
 ```
 
 ---
 
-### Task E2.2: Strengthen `evolve:writing-plans`
+### Task E2.2: Strengthen `supervibe:writing-plans`
 
 **Files:**
 - Modify: `skills/writing-plans/SKILL.md`
@@ -2030,10 +2030,10 @@ Required at end:
 
 ## Related
 
-- `evolve:brainstorming` — predecessor; provides recommended option as input
-- `evolve:executing-plans` — consumer; this skill writes what that skill executes
-- `evolve:subagent-driven-development` — when handoff says Subagent-Driven
-- `evolve:explore-alternatives` — for risk-register options
+- `supervibe:brainstorming` — predecessor; provides recommended option as input
+- `supervibe:executing-plans` — consumer; this skill writes what that skill executes
+- `supervibe:subagent-driven-development` — when handoff says Subagent-Driven
+- `supervibe:explore-alternatives` — for risk-register options
 ```
 
 - [ ] **Step 2: Verify**
@@ -2049,12 +2049,12 @@ npm run validate:frontmatter | grep writing-plans
 
 ```bash
 git add skills/writing-plans/SKILL.md
-git commit -m "feat(skill): strengthen evolve:writing-plans with critical-path + parallelization + rollback"
+git commit -m "feat(skill): strengthen supervibe:writing-plans with critical-path + parallelization + rollback"
 ```
 
 ---
 
-### Task E2.3: Strengthen `evolve:prd`
+### Task E2.3: Strengthen `supervibe:prd`
 
 **Files:**
 - Modify: `skills/prd/SKILL.md`
@@ -2123,7 +2123,7 @@ Before launch (Phase N+1 of plan), verify:
 
 ## Instrumentation plan
 
-What events do we emit? What dashboards do we add? Required input from `evolve:_product:analytics-implementation`:
+What events do we emit? What dashboards do we add? Required input from `supervibe:_product:analytics-implementation`:
 
 - **Tracked events**: <list with properties>
 - **Dashboards**: <which existing dashboards add this; which new ones create>
@@ -2208,12 +2208,12 @@ Required sections (in order):
 
 ## Related
 
-- `evolve:requirements-intake` — predecessor (intake → research → PRD)
-- `evolve:writing-plans` — consumer (PRD → implementation plan)
-- `evolve:adr` — design decisions called out separately from PRD
-- `evolve:_product:product-manager` — primary author
-- `evolve:_product:systems-analyst` — collaborator on ACs
-- `evolve:_product:analytics-implementation` — collaborator on instrumentation
+- `supervibe:requirements-intake` — predecessor (intake → research → PRD)
+- `supervibe:writing-plans` — consumer (PRD → implementation plan)
+- `supervibe:adr` — design decisions called out separately from PRD
+- `supervibe:_product:product-manager` — primary author
+- `supervibe:_product:systems-analyst` — collaborator on ACs
+- `supervibe:_product:analytics-implementation` — collaborator on instrumentation
 ```
 
 - [ ] **Step 2: Verify**
@@ -2226,12 +2226,12 @@ cd "D:/ggsel projects/evolve" && wc -l skills/prd/SKILL.md && npm run validate:f
 
 ```bash
 git add skills/prd/SKILL.md
-git commit -m "feat(skill): strengthen evolve:prd with research grounding + Gherkin ACs + metrics matrix"
+git commit -m "feat(skill): strengthen supervibe:prd with research grounding + Gherkin ACs + metrics matrix"
 ```
 
 ---
 
-### Task E2.4: Strengthen `evolve:adr`
+### Task E2.4: Strengthen `supervibe:adr`
 
 **Files:**
 - Modify: `skills/adr/SKILL.md`
@@ -2369,11 +2369,11 @@ Required sections:
 
 ## Related
 
-- `evolve:writing-plans` — consumer (ADR → plan if implementation needed)
-- `evolve:prd` — sibling (PRD says what; ADR says how)
-- `evolve:_core:architect-reviewer` — reviewer for sign-off
-- `evolve:explore-alternatives` — sub-skill for the alternatives matrix
-- `evolve:_core:repo-researcher` — pull related ADRs / past decisions
+- `supervibe:writing-plans` — consumer (ADR → plan if implementation needed)
+- `supervibe:prd` — sibling (PRD says what; ADR says how)
+- `supervibe:_core:architect-reviewer` — reviewer for sign-off
+- `supervibe:explore-alternatives` — sub-skill for the alternatives matrix
+- `supervibe:_core:repo-researcher` — pull related ADRs / past decisions
 ```
 
 - [ ] **Step 2: Verify**
@@ -2386,12 +2386,12 @@ cd "D:/ggsel projects/evolve" && wc -l skills/adr/SKILL.md && npm run validate:f
 
 ```bash
 git add skills/adr/SKILL.md
-git commit -m "feat(skill): strengthen evolve:adr with alternatives matrix + NFRs + review trigger"
+git commit -m "feat(skill): strengthen supervibe:adr with alternatives matrix + NFRs + review trigger"
 ```
 
 ---
 
-### Task E2.5: Strengthen `evolve:requirements-intake`
+### Task E2.5: Strengthen `supervibe:requirements-intake`
 
 **Files:**
 - Modify: `skills/requirements-intake/SKILL.md`
@@ -2536,11 +2536,11 @@ Required sections:
 
 ## Related
 
-- `evolve:brainstorming` — successor when intake reveals exploration needed
-- `evolve:prd` — successor when intake is well-defined enough for product spec
-- `evolve:adr` — successor when intake is purely architectural
-- `evolve:_product:product-manager` — collaborator
-- `evolve:_product:systems-analyst` — collaborator on ACs
+- `supervibe:brainstorming` — successor when intake reveals exploration needed
+- `supervibe:prd` — successor when intake is well-defined enough for product spec
+- `supervibe:adr` — successor when intake is purely architectural
+- `supervibe:_product:product-manager` — collaborator
+- `supervibe:_product:systems-analyst` — collaborator on ACs
 ```
 
 - [ ] **Step 2: Verify**
@@ -2553,12 +2553,12 @@ cd "D:/ggsel projects/evolve" && wc -l skills/requirements-intake/SKILL.md && np
 
 ```bash
 git add skills/requirements-intake/SKILL.md
-git commit -m "feat(skill): strengthen evolve:requirements-intake with personas + constraints + success criteria"
+git commit -m "feat(skill): strengthen supervibe:requirements-intake with personas + constraints + success criteria"
 ```
 
 ---
 
-### Task E2.6: Strengthen `evolve:explore-alternatives`
+### Task E2.6: Strengthen `supervibe:explore-alternatives`
 
 **Files:**
 - Modify: `skills/explore-alternatives/SKILL.md`
@@ -2574,10 +2574,10 @@ Append to `skills/explore-alternatives/SKILL.md`:
 
 BEFORE generating original alternatives, ask: has someone else solved this problem?
 
-1. Invoke `evolve:project-memory` with the problem keywords — past decisions in this repo
-2. Invoke `evolve:code-search` semantic — similar code patterns in the codebase
-3. Invoke `evolve:_ops:best-practices-researcher` if applicable — industry references
-4. Invoke `evolve:_ops:competitive-design-researcher` for design problems
+1. Invoke `supervibe:project-memory` with the problem keywords — past decisions in this repo
+2. Invoke `supervibe:code-search` semantic — similar code patterns in the codebase
+3. Invoke `supervibe:_ops:best-practices-researcher` if applicable — industry references
+4. Invoke `supervibe:_ops:competitive-design-researcher` for design problems
 
 If carbon copies exist: list them BEFORE generating new options. Often one of them is the answer.
 
@@ -2691,12 +2691,12 @@ Required sections:
 
 ## Related
 
-- `evolve:brainstorming` — uses this skill as core for option exploration
-- `evolve:adr` — uses this skill for the alternatives matrix
-- `evolve:project-memory` — for carbon-copy lookup
-- `evolve:code-search` — for code-pattern carbon copies
-- `evolve:_ops:best-practices-researcher` — for industry carbon copies
-- `evolve:_ops:competitive-design-researcher` — for design carbon copies
+- `supervibe:brainstorming` — uses this skill as core for option exploration
+- `supervibe:adr` — uses this skill for the alternatives matrix
+- `supervibe:project-memory` — for carbon-copy lookup
+- `supervibe:code-search` — for code-pattern carbon copies
+- `supervibe:_ops:best-practices-researcher` — for industry carbon copies
+- `supervibe:_ops:competitive-design-researcher` — for design carbon copies
 ```
 
 - [ ] **Step 2: Verify**
@@ -2709,7 +2709,7 @@ cd "D:/ggsel projects/evolve" && wc -l skills/explore-alternatives/SKILL.md && n
 
 ```bash
 git add skills/explore-alternatives/SKILL.md
-git commit -m "feat(skill): strengthen evolve:explore-alternatives with carbon-copy + sensitivity + adversarial"
+git commit -m "feat(skill): strengthen supervibe:explore-alternatives with carbon-copy + sensitivity + adversarial"
 ```
 
 ---
@@ -3301,9 +3301,9 @@ Create `docs/templates/brainstorm-output-template.md`:
 
 ## Next step
 
-- [ ] PRD (`evolve:prd`)
-- [ ] ADR (`evolve:adr`)
-- [ ] Plan (`evolve:writing-plans`)
+- [ ] PRD (`supervibe:prd`)
+- [ ] ADR (`supervibe:adr`)
+- [ ] Plan (`supervibe:writing-plans`)
 - [ ] More brainstorm (parked)
 ```
 
@@ -3394,10 +3394,10 @@ Create `docs/templates/intake-template.md`:
 
 ## Suggested next step
 
-- [ ] Brainstorm (`evolve:brainstorming`)
-- [ ] PRD (`evolve:prd`)
-- [ ] ADR (`evolve:adr`)
-- [ ] Direct implementation plan (`evolve:writing-plans`)
+- [ ] Brainstorm (`supervibe:brainstorming`)
+- [ ] PRD (`supervibe:prd`)
+- [ ] ADR (`supervibe:adr`)
+- [ ] Direct implementation plan (`supervibe:writing-plans`)
 ```
 
 - [ ] **Step 7: Verify all 6 templates exist**
@@ -3433,9 +3433,9 @@ In `CLAUDE.md`, find the existing `## Code Graph` section. After it, add:
 
 Design / prototype agents can spawn a local `http://localhost:NNNN` to serve generated HTML/CSS/JS with hot-reload — user opens in browser, edits propagate via SSE within ~200ms.
 
-**When to use:** after `evolve:landing-page`, `evolve:prototype`, `evolve:interaction-design-patterns`, or any agent that produces visual output.
+**When to use:** after `supervibe:landing-page`, `supervibe:prototype`, `supervibe:interaction-design-patterns`, or any agent that produces visual output.
 
-**Skill:** `evolve:preview-server`
+**Skill:** `supervibe:preview-server`
 
 **CLI:**
 | Form | Action |
@@ -3447,7 +3447,7 @@ Design / prototype agents can spawn a local `http://localhost:NNNN` to serve gen
 
 **Auto-cleanup:** SessionStart prunes stale registry entries (PIDs no longer alive). SIGINT/SIGTERM cleanup on session end.
 
-**Status:** `npm run evolve:status` shows running previews with URL/PID/age.
+**Status:** `npm run supervibe:status` shows running previews with URL/PID/age.
 
 **Optional Playwright integration:** when MCP available, skill captures screenshot to `.claude/memory/previews/<label>-<timestamp>.png` as evidence.
 
@@ -3467,12 +3467,12 @@ Strengthened planning skills reference these templates in `docs/templates/`:
 
 | Template | Used by | Sections required |
 |----------|---------|-------------------|
-| `PRD-template.md` | `evolve:prd` | TL;DR / Problem / Users / Competitive / Goals / Non-goals / Stories / Solution / Risks / Deprecation / Instrumentation / Launch / Open questions |
-| `ADR-template.md` | `evolve:adr` | Status / Context / Decision / Alternatives matrix / NFRs / Consequences / Review trigger / Out of scope / Related |
-| `plan-template.md` | `evolve:writing-plans` | Goal / Architecture / Files / Critical path / Tasks (TDD steps) / Review gates / Self-review / Handoff |
+| `PRD-template.md` | `supervibe:prd` | TL;DR / Problem / Users / Competitive / Goals / Non-goals / Stories / Solution / Risks / Deprecation / Instrumentation / Launch / Open questions |
+| `ADR-template.md` | `supervibe:adr` | Status / Context / Decision / Alternatives matrix / NFRs / Consequences / Review trigger / Out of scope / Related |
+| `plan-template.md` | `supervibe:writing-plans` | Goal / Architecture / Files / Critical path / Tasks (TDD steps) / Review gates / Self-review / Handoff |
 | `RFC-template.md` | proposals across teams | Summary / Motivation / Design / Drawbacks / Alternatives / Prior art / Unresolved |
-| `brainstorm-output-template.md` | `evolve:brainstorming` | Problem / Decomposition / Competitive / Options / Risks / Kill criteria / Matrix / Recommendation |
-| `intake-template.md` | `evolve:requirements-intake` | Request / Restated / Personas / Constraints / Success / Out of scope / Stakeholders / Open questions |
+| `brainstorm-output-template.md` | `supervibe:brainstorming` | Problem / Decomposition / Competitive / Options / Risks / Kill criteria / Matrix / Recommendation |
+| `intake-template.md` | `supervibe:requirements-intake` | Request / Restated / Personas / Constraints / Success / Out of scope / Stakeholders / Open questions |
 
 These are skeletons — copy-paste and fill in. Skills reference them and verify completeness in their Verification step.
 ```
@@ -3506,19 +3506,19 @@ git commit -m "docs(claude.md): surface Preview Server + reference templates"
 In `README.md`, find the "Что вы получаете" table. Add row:
 
 ```markdown
-| **Live mockup preview** | `evolve:preview-server` запускает `http://localhost:PORT` для HTML-мокапов с auto-reload; Playwright скриншоты опционально |
+| **Live mockup preview** | `supervibe:preview-server` запускает `http://localhost:PORT` для HTML-мокапов с auto-reload; Playwright скриншоты опционально |
 ```
 
 In Commands section, add:
 ```markdown
-| `/evolve-preview` | Управление preview серверами (start / list / kill) |
+| `/supervibe-preview` | Управление preview серверами (start / list / kill) |
 ```
 
 NPM scripts:
 ```markdown
-| `npm run evolve:preview -- --root <dir>` | Запустить preview сервер для директории |
-| `npm run evolve:preview -- --list` | Список запущенных |
-| `npm run evolve:preview -- --kill <port>` | Killшоп |
+| `npm run supervibe:preview -- --root <dir>` | Запустить preview сервер для директории |
+| `npm run supervibe:preview -- --list` | Список запущенных |
+| `npm run supervibe:preview -- --kill <port>` | Killшоп |
 ```
 
 - [ ] **Step 2: Add Preview section to getting-started**
@@ -3534,7 +3534,7 @@ In `docs/getting-started.md`, add new section after "Code Graph":
 
 ```bash
 # Из проекта где лежат мокапы:
-npm run evolve:preview -- --root mockups/checkout
+npm run supervibe:preview -- --root mockups/checkout
 
 # Output:
 # [evolve-preview] checkout → http://localhost:3047
@@ -3544,15 +3544,15 @@ npm run evolve:preview -- --root mockups/checkout
 **Список запущенных:**
 
 ```bash
-npm run evolve:preview -- --list
+npm run supervibe:preview -- --list
 ```
 
 **Kill:**
 
 ```bash
-npm run evolve:preview -- --kill 3047
+npm run supervibe:preview -- --kill 3047
 # or
-npm run evolve:preview -- --kill-all
+npm run supervibe:preview -- --kill-all
 ```
 
 **Что под капотом:**
@@ -3563,9 +3563,9 @@ npm run evolve:preview -- --kill-all
 - SIGINT cleanup на завершение сессии
 
 **Использование агентами:**
-- `prototype-builder` агент автоматически дёргает skill `evolve:preview-server` после генерации мокапа
-- `evolve:landing-page` skill — то же
-- `evolve:interaction-design-patterns` skill — то же
+- `prototype-builder` агент автоматически дёргает skill `supervibe:preview-server` после генерации мокапа
+- `supervibe:landing-page` skill — то же
+- `supervibe:interaction-design-patterns` skill — то же
 - Агент печатает URL пользователю в output: "**Preview ready:** http://localhost:3047"
 
 **Опциональная интеграция с Playwright MCP:**
@@ -3586,12 +3586,12 @@ After Preview section:
 
 | Файл | Скилл | Что внутри |
 |------|-------|------------|
-| `PRD-template.md` | `evolve:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
-| `ADR-template.md` | `evolve:adr` | Architecture decision с alternatives matrix + review trigger |
-| `plan-template.md` | `evolve:writing-plans` | TDD план с critical path + parallelization batches |
+| `PRD-template.md` | `supervibe:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
+| `ADR-template.md` | `supervibe:adr` | Architecture decision с alternatives matrix + review trigger |
+| `plan-template.md` | `supervibe:writing-plans` | TDD план с critical path + parallelization batches |
 | `RFC-template.md` | RFC для cross-team | Motivation + detailed design + prior art |
-| `brainstorm-output-template.md` | `evolve:brainstorming` | First-principle decomp + decision matrix |
-| `intake-template.md` | `evolve:requirements-intake` | Personas + constraints + success criteria |
+| `brainstorm-output-template.md` | `supervibe:brainstorming` | First-principle decomp + decision matrix |
+| `intake-template.md` | `supervibe:requirements-intake` | Personas + constraints + success criteria |
 
 Скиллы автоматически заполняют эти шаблоны и проверяют что все обязательные секции присутствуют. Запустить вручную можно скопировав шаблон в `docs/specs/YYYY-MM-DD-<topic>-<type>.md` и наполнив.
 ```
@@ -3895,7 +3895,7 @@ git commit -m "feat(mcp): SessionStart refreshes MCP registry"
 
 ---
 
-### Task F1.3: Strengthen `evolve:mcp-discovery` skill
+### Task F1.3: Strengthen `supervibe:mcp-discovery` skill
 
 **Files:**
 - Modify: `skills/mcp-discovery/SKILL.md`
@@ -3962,7 +3962,7 @@ Returns:
 
 - Tool: `scripts/lib/mcp-registry.mjs` — registry helpers
 - Tool: `scripts/discover-mcps.mjs` — refresh registry
-- Status: `npm run evolve:status` shows available MCPs
+- Status: `npm run supervibe:status` shows available MCPs
 - Used by: best-practices-researcher / competitive-design-researcher / dependency-researcher / preview-server (for screenshots)
 ```
 
@@ -3982,7 +3982,7 @@ git commit -m "feat(mcp): strengthen mcp-discovery skill — registry-driven, fa
 
 ---
 
-### Task F1.4: Refactor 8 hardcoded-MCP agents to use evolve:mcp-discovery
+### Task F1.4: Refactor 8 hardcoded-MCP agents to use supervibe:mcp-discovery
 
 **Files:**
 - Modify: `agents/_ops/best-practices-researcher.md`
@@ -3994,7 +3994,7 @@ git commit -m "feat(mcp): strengthen mcp-discovery skill — registry-driven, fa
 - Modify: `agents/_design/prototype-builder.md`
 - Modify: `agents/_design/competitive-design-researcher.md` (if exists)
 
-**Why:** these agents have `tools: [mcp__mcp-server-context7__...]` hardcoded. Refactor to invoke `evolve:mcp-discovery` skill which abstracts the choice.
+**Why:** these agents have `tools: [mcp__mcp-server-context7__...]` hardcoded. Refactor to invoke `supervibe:mcp-discovery` skill which abstracts the choice.
 
 - [ ] **Step 1: For each agent — replace hardcoded MCPs in frontmatter**
 
@@ -4010,14 +4010,14 @@ tools: [Read, Grep, Glob, Bash, WebFetch]
 
 (Tools become "what's safe to use even without MCPs"; MCP tools come dynamically via skill).
 
-In `skills:` array, ADD `evolve:mcp-discovery` (preserve existing).
+In `skills:` array, ADD `supervibe:mcp-discovery` (preserve existing).
 
 - [ ] **Step 2: For each agent — update Procedure to invoke skill**
 
 In `## Procedure`, for any step like "Look up library X via context7", replace with:
 
 ```markdown
-N. **Pick research tool**: invoke `evolve:mcp-discovery` skill with category=`current-docs` to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
+N. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=`current-docs` to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
 ```
 
 - [ ] **Step 3: Validate**
@@ -4032,20 +4032,20 @@ All must show OK.
 
 ```bash
 git add agents/_ops/best-practices-researcher.md agents/_ops/competitive-design-researcher.md agents/_ops/dependency-researcher.md agents/_ops/security-researcher.md agents/_ops/infra-pattern-researcher.md agents/_design/ux-ui-designer.md agents/_design/prototype-builder.md
-git commit -m "refactor(agents): use evolve:mcp-discovery instead of hardcoded MCP refs (8 agents)"
+git commit -m "refactor(agents): use supervibe:mcp-discovery instead of hardcoded MCP refs (8 agents)"
 ```
 
 ---
 
-### Task F1.5: `evolve:status` surfaces available MCPs
+### Task F1.5: `supervibe:status` surfaces available MCPs
 
 **Files:**
-- Modify: `scripts/evolve-status.mjs`
-- Modify: `tests/evolve-status.test.mjs`
+- Modify: `scripts/supervibe-status.mjs`
+- Modify: `tests/supervibe-status.test.mjs`
 
 - [ ] **Step 1: Add MCP section to status**
 
-In `scripts/evolve-status.mjs`, after preview server section, append:
+In `scripts/supervibe-status.mjs`, after preview server section, append:
 
 ```javascript
 import { getRegistry as getMcpRegistry } from './lib/mcp-registry.mjs';
@@ -4063,7 +4063,7 @@ if (mcpReg.mcps.length === 0) {
 
 - [ ] **Step 2: Add test**
 
-In `tests/evolve-status.test.mjs`:
+In `tests/supervibe-status.test.mjs`:
 
 ```javascript
 test('evolve-status: reports MCP registry state', () => {
@@ -4075,14 +4075,14 @@ test('evolve-status: reports MCP registry state', () => {
 - [ ] **Step 3: Run tests + manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/evolve-status.test.mjs 2>&1 | tail -10
-npm run evolve:status | tail -10
+cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/supervibe-status.test.mjs 2>&1 | tail -10
+npm run supervibe:status | tail -10
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add scripts/evolve-status.mjs tests/evolve-status.test.mjs
+git add scripts/supervibe-status.mjs tests/supervibe-status.test.mjs
 git commit -m "feat(status): show available MCPs"
 ```
 
@@ -4411,7 +4411,7 @@ After "Что вы получаете" table, add:
 
 ### Можно использовать оба одновременно?
 
-Да. Skills из superpowers и Evolve могут coexist в одном `.claude-plugin/`. Evolve преднамеренно использует те же conventions (markdown frontmatter, slash commands, hooks). Конфликты на уровне skill names не возникают — Evolve использует префикс `evolve:` namespace.
+Да. Skills из superpowers и Evolve могут coexist в одном `.claude-plugin/`. Evolve преднамеренно использует те же conventions (markdown frontmatter, slash commands, hooks). Конфликты на уровне skill names не возникают — Evolve использует префикс `supervibe:` namespace.
 ```
 
 - [ ] **Step 3: Add cookbook with 5 scenarios**
@@ -4428,15 +4428,15 @@ After Troubleshooting section, add:
 
 # Под капотом происходит:
 1. /evolve auto-detects stack=laravel
-2. Invokes evolve:project-memory — ищет past idempotency решения
-3. Invokes evolve:code-search --query "idempotency redis" — находит pattern
+2. Invokes supervibe:project-memory — ищет past idempotency решения
+3. Invokes supervibe:code-search --query "idempotency redis" — находит pattern
 4. Invokes laravel-developer agent с pre-task graph check
 5. agent пишет failing Pest test
 6. Implements: FormRequest + Service + idempotent Job
 7. Запускает pest + pint + phpstan
-8. evolve:code-review проверяет 8-dim
-9. evolve:confidence-scoring → score=9.2
-10. evolve:add-memory сохраняет в .claude/memory/solutions/
+8. supervibe:code-review проверяет 8-dim
+9. supervibe:confidence-scoring → score=9.2
+10. supervibe:add-memory сохраняет в .claude/memory/solutions/
 ```
 
 ### Сценарий 2: Refactor с blast-radius check
@@ -4445,12 +4445,12 @@ After Troubleshooting section, add:
 Пользователь: "Переименуй processOrder → processCheckout"
 
 # Под капотом:
-1. evolve:code-search --callers "processOrder" → 14 callers
+1. supervibe:code-search --callers "processOrder" → 14 callers
 2. Rule use-codegraph-before-refactor триггерит:
    - Если callers > 10 → escalate to architect-reviewer
 3. architect-reviewer строит migration ADR
 4. refactoring-specialist делает renames в одном PR
-5. evolve:code-search --callers "processOrder" → 0 (validation)
+5. supervibe:code-search --callers "processOrder" → 0 (validation)
 6. Output contract: Case A — 14 callers updated в этом diff
 ```
 
@@ -4460,12 +4460,12 @@ After Troubleshooting section, add:
 Пользователь: "Юзеры жалуются что иногда payment висит"
 
 # Под капотом:
-1. root-cause-debugger agent (использует evolve:systematic-debugging)
-2. Invokes evolve:project-memory --tags incident,payment
-3. Invokes evolve:code-search --query "payment timeout retry"
+1. root-cause-debugger agent (использует supervibe:systematic-debugging)
+2. Invokes supervibe:project-memory --tags incident,payment
+3. Invokes supervibe:code-search --query "payment timeout retry"
 4. Reproduce locally → narrow → root cause
 5. Output: incident memo с file:line + reproduction steps + fix proposal
-6. evolve:add-memory сохраняет в incidents/
+6. supervibe:add-memory сохраняет в incidents/
 ```
 
 ### Сценарий 4: Brand redesign + landing page mockup
@@ -4477,8 +4477,8 @@ After Troubleshooting section, add:
 1. competitive-design-researcher (через Firecrawl MCP) скрапит Linear
 2. creative-director предлагает 3 направления + mood boards
 3. ux-ui-designer строит spec со state matrix
-4. evolve:landing-page skill генерирует HTML/CSS в mockups/
-5. evolve:preview-server поднимает http://localhost:3047 ← preview
+4. supervibe:landing-page skill генерирует HTML/CSS в mockups/
+5. supervibe:preview-server поднимает http://localhost:3047 ← preview
 6. (опционально) Playwright MCP делает screenshot
 7. ui-polish-reviewer 8-dim review
 8. accessibility-reviewer WCAG check
@@ -4491,13 +4491,13 @@ After Troubleshooting section, add:
 
 # Под капотом:
 1. db-reviewer agent
-2. Invokes evolve:code-search --callers "User" — найти все queries
+2. Invokes supervibe:code-search --callers "User" — найти все queries
 3. Migration-safety pattern: 3-deploy column add (NOT VALID + VALIDATE)
 4. Постгрес-architect генерирует миграцию с CONCURRENTLY
 5. Lock duration estimate < 500ms ✓
 6. Replication impact: < 2s ✓
 7. Plan включает rollback step (DROP CONCURRENTLY если что)
-8. evolve:add-memory → patterns/safe-column-add
+8. supervibe:add-memory → patterns/safe-column-add
 ```
 ```
 
@@ -4516,9 +4516,9 @@ git commit -m "docs(readme): rewrite for accessibility + comparison vs alternati
 
 ---
 
-## PHASE G — Agent Evolution Loop (the actual self-evolving part)
+## PHASE G — Agent Evolution Loop
 
-**Goal:** make «Evolve» live up to its name. Currently agents are static; evolution requires manual `/evolve-strengthen`. Phase G adds:
+**Goal:** make «Evolve» live up to its name. Currently agents are static; evolution requires manual `/supervibe-strengthen`. Phase G adds:
 1. Structured invocation logging (every agent task → JSONL log)
 2. `effectiveness-tracker.mjs` actually writes back to agent frontmatter
 3. Underperformer detection from logs
@@ -4593,7 +4593,7 @@ Create `scripts/lib/agent-invocation-logger.mjs`:
 ```javascript
 // Append-only JSONL log of agent invocations.
 // Used by effectiveness-tracker to update frontmatter, by quality-gate-reviewer
-// to detect override-rate trends, by /evolve-audit to find underperformers.
+// to detect override-rate trends, by /supervibe-audit to find underperformers.
 
 import { appendFile, readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -4962,9 +4962,9 @@ git commit -m "feat(evolution): underperformer detector (low-avg + rising-overri
 
 **Files:**
 - Modify: `scripts/session-start-check.mjs`
-- Modify: `scripts/evolve-status.mjs`
+- Modify: `scripts/supervibe-status.mjs`
 
-**Why:** when underperformers detected, surface to user at SessionStart with recommendation. User confirms → existing `/evolve-strengthen` command runs.
+**Why:** when underperformers detected, surface to user at SessionStart with recommendation. User confirms → existing `/supervibe-strengthen` command runs.
 
 - [ ] **Step 1: Add detection to SessionStart**
 
@@ -4979,7 +4979,7 @@ async function reportUnderperformers() {
     if (all.length < 10) return; // not enough data
     const flagged = detectUnderperformers(all);
     if (flagged.length === 0) return;
-    console.log(`[evolve] ⚠ ${flagged.length} agent(s) underperforming — recommend /evolve-strengthen:`);
+    console.log(`[evolve] ⚠ ${flagged.length} agent(s) underperforming — recommend /supervibe-strengthen:`);
     for (const f of flagged) {
       console.log(`  - ${f.agent_id}: ${f.reason} (${f.value})`);
     }
@@ -4990,7 +4990,7 @@ await reportUnderperformers();
 
 - [ ] **Step 2: Add to evolve-status.mjs**
 
-In `scripts/evolve-status.mjs`, after MCP section, add:
+In `scripts/supervibe-status.mjs`, after MCP section, add:
 
 ```javascript
 // Underperformer detection
@@ -5005,7 +5005,7 @@ if (allInv.length < 10) {
   if (flagged.length === 0) {
     console.log(color(`✓ Agent telemetry: ${allInv.length} invocations, no underperformers`, 'green'));
   } else {
-    console.log(color(`⚠ Agent telemetry: ${flagged.length} underperformers detected (run /evolve-strengthen)`, 'yellow'));
+    console.log(color(`⚠ Agent telemetry: ${flagged.length} underperformers detected (run /supervibe-strengthen)`, 'yellow'));
     for (const f of flagged) {
       console.log(color(`  - ${f.agent_id}: ${f.reason} (${f.value})`, 'dim'));
     }
@@ -5015,7 +5015,7 @@ if (allInv.length < 10) {
 
 - [ ] **Step 3: Add test for status output**
 
-In `tests/evolve-status.test.mjs`:
+In `tests/supervibe-status.test.mjs`:
 
 ```javascript
 test('evolve-status: reports agent telemetry state', () => {
@@ -5027,14 +5027,14 @@ test('evolve-status: reports agent telemetry state', () => {
 - [ ] **Step 4: Run + manual verify**
 
 ```bash
-cd "D:/ggsel projects/evolve" && npm run evolve:status | tail -10
+cd "D:/ggsel projects/evolve" && npm run supervibe:status | tail -10
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/session-start-check.mjs scripts/evolve-status.mjs tests/evolve-status.test.mjs
-git commit -m "feat(evolution): SessionStart + status surface underperforming agents → recommend /evolve-strengthen"
+git add scripts/session-start-check.mjs scripts/supervibe-status.mjs tests/supervibe-status.test.mjs
+git commit -m "feat(evolution): SessionStart + status surface underperforming agents → recommend /supervibe-strengthen"
 ```
 
 ---
@@ -5335,11 +5335,11 @@ git commit -m "chore(hooks): wire PostToolUse → post-tool-use-log script"
 ### Task H3: Auto-strengthen trigger flow with user gate
 
 **Files:**
-- Modify: `commands/evolve-strengthen.md`
+- Modify: `commands/supervibe-strengthen.md`
 - Create: `scripts/lib/auto-strengthen-trigger.mjs`
 - Create: `tests/auto-strengthen-trigger.test.mjs`
 
-**Why:** G4 surfaces underperformers in SessionStart but only as text. H4 lets user say "yes" once and triggers `/evolve-strengthen` for all flagged agents. User gate is mandatory — never auto-modify agents without confirmation.
+**Why:** G4 surfaces underperformers in SessionStart but only as text. H4 lets user say "yes" once and triggers `/supervibe-strengthen` for all flagged agents. User gate is mandatory — never auto-modify agents without confirmation.
 
 - [ ] **Step 1: Create trigger logic**
 
@@ -5364,7 +5364,7 @@ export async function buildStrengthenSuggestions() {
     agent_id: f.agent_id,
     reason: f.reason,
     value: f.value,
-    command: `/evolve-strengthen ${f.agent_id}`,
+    command: `/supervibe-strengthen ${f.agent_id}`,
   }));
 }
 ```
@@ -5405,7 +5405,7 @@ test('buildStrengthenSuggestions: returns commands for flagged agents', async ()
   const suggestions = await buildStrengthenSuggestions();
   const found = suggestions.find(s => s.agent_id === 'weak-agent');
   assert.ok(found, 'should suggest strengthen for weak-agent');
-  assert.strictEqual(found.command, '/evolve-strengthen weak-agent');
+  assert.strictEqual(found.command, '/supervibe-strengthen weak-agent');
 });
 
 test('buildStrengthenSuggestions: empty when nothing flagged', async () => {
@@ -5416,14 +5416,14 @@ test('buildStrengthenSuggestions: empty when nothing flagged', async () => {
 });
 ```
 
-- [ ] **Step 3: Update `/evolve-strengthen` command to accept underperformers list**
+- [ ] **Step 3: Update `/supervibe-strengthen` command to accept underperformers list**
 
-In `commands/evolve-strengthen.md`, append a section:
+In `commands/supervibe-strengthen.md`, append a section:
 
 ```markdown
 ## Auto-trigger flow (Phase H)
 
-When invoked without arguments AND `evolve:status` shows underperformers:
+When invoked without arguments AND `supervibe:status` shows underperformers:
 
 1. Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs`
 2. Show user the list with reasons + suggested commands
@@ -5431,7 +5431,7 @@ When invoked without arguments AND `evolve:status` shows underperformers:
    - "Apply strengthen to all N flagged agents?" → run sequentially
    - "Pick specific" → list, user selects
    - "Cancel" → stop
-4. Per agent: dispatch `evolve:strengthen` skill on the agent file
+4. Per agent: dispatch `supervibe:strengthen` skill on the agent file
 5. After all complete: show summary
 
 When invoked with explicit `<agent_id>`: directly strengthen that agent (skip detection).
@@ -5446,7 +5446,7 @@ cd "D:/ggsel projects/evolve" && node --no-warnings --test tests/auto-strengthen
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/lib/auto-strengthen-trigger.mjs commands/evolve-strengthen.md tests/auto-strengthen-trigger.test.mjs
+git add scripts/lib/auto-strengthen-trigger.mjs commands/supervibe-strengthen.md tests/auto-strengthen-trigger.test.mjs
 git commit -m "feat(evolution): auto-strengthen trigger flow with user confirmation gate"
 ```
 
@@ -5514,7 +5514,7 @@ test('E2E: invocations → log → aggregate → detect → suggest', async () =
   const suggestions = await buildStrengthenSuggestions();
   const sug = suggestions.find(s => s.agent_id === 'failing-stack-agent');
   assert.ok(sug, 'suggestion should be present');
-  assert.match(sug.command, /^\/evolve-strengthen/);
+  assert.match(sug.command, /^\/supervibe-strengthen/);
 });
 ```
 
@@ -5542,15 +5542,15 @@ Plugin tracks every agent invocation and detects degradation:
 3. **PII redaction** at log time (emails / cards / API keys / JWT auto-masked)
 4. **Effectiveness tracker** (`scripts/effectiveness-tracker.mjs`) — aggregates log → updates each agent's `frontmatter.effectiveness` block
 5. **Underperformer detector** — flags agents with avg-confidence < 8.5 OR rising override-rate trend
-6. **SessionStart surface** — banner shows flagged agents + recommends `/evolve-strengthen`
-7. **Auto-strengthen trigger** — `/evolve-strengthen` (no args) reads suggestions, asks user confirmation, dispatches strengthen sequentially
+6. **SessionStart surface** — banner shows flagged agents + recommends `/supervibe-strengthen`
+7. **Auto-strengthen trigger** — `/supervibe-strengthen` (no args) reads suggestions, asks user confirmation, dispatches strengthen sequentially
 
 **Discipline:**
 - Underperformers reviewed at every SessionStart
 - Auto-prune log entries > 180 days at SessionStart
 - Manual strengthen always wins — auto-trigger never modifies without user gate
 
-**Override rate** > 5% in 100-entry window also triggers `/evolve-audit` recommendation (existing behavior).
+**Override rate** > 5% in 100-entry window also triggers `/supervibe-audit` recommendation (existing behavior).
 ```
 
 - [ ] **Step 4: Commit**
@@ -5573,7 +5573,7 @@ git commit -m "feat(evolution): E2E test proves loop closes (log→aggregate→d
 In `README.md`, in the "Что вы получаете" table, add row:
 
 ```markdown
-| **Agent evolution loop** | Каждый агент-вызов логируется → effectiveness-tracker обновляет frontmatter → detector ловит underperformers → SessionStart предлагает `/evolve-strengthen` |
+| **Agent evolution loop** | Каждый агент-вызов логируется → effectiveness-tracker обновляет frontmatter → detector ловит underperformers → SessionStart предлагает `/supervibe-strengthen` |
 ```
 
 - [ ] **Step 2: Add explanation section**
@@ -5589,9 +5589,9 @@ After cookbook scenarios, add:
 2. **PII-редакция** — emails / номера карт / API keys / JWT автоматически маскируются перед записью
 3. **Агрегация** — `effectiveness-tracker.mjs` периодически читает лог и обновляет frontmatter каждого агента: `iterations`, `avg-confidence`, `override-rate`, `last-task`, `last-applied`
 4. **Детекция деградации** — если у агента avg-confidence упал ниже 8.5 ИЛИ override-rate растёт (например, было 10% → стало 60% за последние 10 задач) — он флагуется как underperformer
-5. **SessionStart предупреждает** — на старте каждой сессии плагин показывает: «⚠ N агентов underperforming — recommend /evolve-strengthen». Пользователь видит конкретные имена и причины
+5. **SessionStart предупреждает** — на старте каждой сессии плагин показывает: «⚠ N агентов underperforming — recommend /supervibe-strengthen». Пользователь видит конкретные имена и причины
 
-**`/evolve-strengthen` без аргументов** прочитает текущих underperformers, спросит подтверждение и применит strengthen-skill ко всем по очереди — так агенты улучшаются на основе реальных метрик использования, а не догадок.
+**`/supervibe-strengthen` без аргументов** прочитает текущих underperformers, спросит подтверждение и применит strengthen-skill ко всем по очереди — так агенты улучшаются на основе реальных метрик использования, а не догадок.
 
 **Лог не растёт бесконечно** — записи старше 180 дней авто-чистятся при SessionStart.
 ```
@@ -5964,7 +5964,7 @@ In `CHANGELOG.md`, prepend before v1.6.0 section:
 - `scripts/lib/preview-hot-reload.mjs` — chokidar→SSE bridge with debouncing
 - `scripts/preview-server.mjs` — CLI: `--root`, `--port`, `--label`, `--list`, `--kill`, `--kill-all`, `--idle-timeout`, `--force`
 - `skills/preview-server/SKILL.md` — methodology
-- `commands/evolve-preview.md` — slash command
+- `commands/supervibe-preview.md` — slash command
 - Process hardening: idle-shutdown after 30min, max 10 concurrent (`--force` override)
 - Auto-wiring: `prototype-builder` agent + `landing-page` skill + `interaction-design-patterns` skill auto-spawn previews
 - `evolve-status` reports running previews with URL/PID/age
@@ -5972,12 +5972,12 @@ In `CHANGELOG.md`, prepend before v1.6.0 section:
 
 ### Added — Strengthened Planning Skills (Phase E2, 6 skills)
 
-- `evolve:brainstorming` (87→250+ lines): first-principle decomp / competitive scan / stakeholder map / non-obvious risks / kill criteria / decision matrix / 3 named workflows
-- `evolve:writing-plans` (84→250+): critical path / parallelization batches / rollback per task / risk register / honest scope / review gates
-- `evolve:prd` (105→250+): user research / Gherkin ACs / metrics matrix / deprecation plan / instrumentation / launch checklist
-- `evolve:adr` (108→250+): alternatives matrix with weights / NFRs / decision review trigger / consequences (positive/negative/operational/migration)
-- `evolve:requirements-intake` (90→250+): persona elicitation / constraint matrix / success criteria before solution
-- `evolve:explore-alternatives` (128→250+): carbon-copy lookup / weighted matrix / sensitivity analysis / adversarial scoring
+- `supervibe:brainstorming` (87→250+ lines): first-principle decomp / competitive scan / stakeholder map / non-obvious risks / kill criteria / decision matrix / 3 named workflows
+- `supervibe:writing-plans` (84→250+): critical path / parallelization batches / rollback per task / risk register / honest scope / review gates
+- `supervibe:prd` (105→250+): user research / Gherkin ACs / metrics matrix / deprecation plan / instrumentation / launch checklist
+- `supervibe:adr` (108→250+): alternatives matrix with weights / NFRs / decision review trigger / consequences (positive/negative/operational/migration)
+- `supervibe:requirements-intake` (90→250+): persona elicitation / constraint matrix / success criteria before solution
+- `supervibe:explore-alternatives` (128→250+): carbon-copy lookup / weighted matrix / sensitivity analysis / adversarial scoring
 
 ### Added — Reference Templates (Phase E3)
 
@@ -5990,8 +5990,8 @@ In `CHANGELOG.md`, prepend before v1.6.0 section:
 - `scripts/lib/mcp-registry.mjs` — discover/persist/query MCPs from user's Claude config
 - `scripts/discover-mcps.mjs` — populate registry CLI
 - SessionStart auto-refreshes registry; status shows available MCPs
-- `evolve:mcp-discovery` skill rewritten to be registry-driven with fallback awareness
-- 8 researcher/design agents refactored to use `evolve:mcp-discovery` instead of hardcoded `mcp__*` refs
+- `supervibe:mcp-discovery` skill rewritten to be registry-driven with fallback awareness
+- 8 researcher/design agents refactored to use `supervibe:mcp-discovery` instead of hardcoded `mcp__*` refs
 
 ### Added — 16 New Stack Agents (Phase F2)
 
@@ -6012,7 +6012,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 ### Added — App Excellence (Phase F3 + F4)
 
 - 5 new agents: `api-designer`, `auth-architect`, `observability-architect`, `job-scheduler-architect`, `data-modeler`
-- 4 new skills: `evolve:test-strategy`, `evolve:feature-flag-rollout`, `evolve:error-envelope-design`, `evolve:auth-flow-design`
+- 4 new skills: `supervibe:test-strategy`, `supervibe:feature-flag-rollout`, `supervibe:error-envelope-design`, `supervibe:auth-flow-design`
 
 ### Added — README rewrite (Phase F5)
 
@@ -6027,7 +6027,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - `scripts/lib/agent-invocation-logger.mjs` — append-only JSONL invocation log + `pruneOldEntries`
 - `scripts/effectiveness-tracker.mjs` writes to agent frontmatter (`effectiveness.iterations / last-task / last-outcome / avg-confidence / override-rate`)
 - `scripts/lib/underperformer-detector.mjs` — flags low-avg-confidence + rising-override-rate trends
-- SessionStart + status surface underperforming agents → recommend `/evolve-strengthen`
+- SessionStart + status surface underperforming agents → recommend `/supervibe-strengthen`
 
 ### Added — Orchestrator-side Wiring (Phase H, 4 tasks) — closes the evolution loop
 
@@ -6035,7 +6035,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - `hooks.json` wired with PostToolUse → invocation logger
 - **Confidence-score parser** — extracts `Confidence: 9.2/10`, `Final score: 8.5`, etc. from agent output
 - **Override marker parser** — detects `override: true` patterns in agent output
-- `scripts/lib/auto-strengthen-trigger.mjs` — `/evolve-strengthen` (no args) reads underperformers, asks user gate, dispatches strengthen sequentially
+- `scripts/lib/auto-strengthen-trigger.mjs` — `/supervibe-strengthen` (no args) reads underperformers, asks user gate, dispatches strengthen sequentially
 - E2E test proves loop closes (log → aggregate → detect → suggest)
 - README + getting-started document the evolution loop
 
@@ -6060,7 +6060,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **Evolution loop**: closed:
   - Every Task tool dispatch logged with confidence + override extraction
   - Underperformers flagged at SessionStart
-  - One-click `/evolve-strengthen`
+  - One-click `/supervibe-strengthen`
   - Canonical output footer enforced via build-time validator
 
 ### Intentionally NOT included (scope discipline — value-vs-complexity tradeoff)
@@ -6153,7 +6153,7 @@ git commit -m "chore(release): v1.7.0 — Phase E+F+G+H+I (preview / planning / 
 ### 4. Risks / accepted limitations
 
 - **Phase F2 — 16 agents from canonical template**: real expertise per stack varies; first uses may show gaps. Acceptable — strengthen workflow exists. Rubric will catch low-confidence outputs.
-- **Phase F1 — MCP refactor on 8 agents**: changing `tools:` array could break agent dispatching. Mitigated by `evolve:mcp-discovery` providing tool lookup. Manual smoke-test on 1 agent before all 8.
+- **Phase F1 — MCP refactor on 8 agents**: changing `tools:` array could break agent dispatching. Mitigated by `supervibe:mcp-discovery` providing tool lookup. Manual smoke-test on 1 agent before all 8.
 - **Preview server idle-shutdown false-positive**: tab left open without interaction >30 min → server shuts down. Mitigation: SSE keepalive every 25s counts as activity → open tab keeps server alive. Closed-tab idle does shut down (correct behavior).
 - **Max-servers limit (10 default)**: realistic ceiling for parallel design tasks. `--force` to bypass.
 - **MCP registry stale**: detected at SessionStart. Mid-session install/remove needs manual `node scripts/discover-mcps.mjs`. Acceptable.

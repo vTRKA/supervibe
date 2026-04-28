@@ -34,11 +34,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:adr'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - sdl-valid
   - schema-introspection-clean
@@ -84,7 +84,7 @@ The designer writes ADRs because schema decisions outlive their authors and bind
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - SDL location — `schema.graphql`, `schema/*.graphql`, `**/*.gql`, or generated SDL emitted from code-first definitions
 - Code-first vs schema-first signal — presence of `@ObjectType()` / `[ObjectType]` decorators (TypeGraphQL, NestJS, Hot Chocolate attributes, Strawberry `@strawberry.type`, gqlgen models) vs literal `.graphql` files
@@ -103,11 +103,11 @@ The designer writes ADRs because schema decisions outlive their authors and bind
 
 ## Skills
 
-- `evolve:project-memory` — search prior schema decisions, retired federation topologies, prior pagination ADRs, deprecation lifecycle history
-- `evolve:code-search` — locate type definitions across SDL + code-first decorators, find DataLoader call sites, find subscription handlers, find resolver implementations
-- `evolve:adr` — author the ADR (context / decision / alternatives / consequences / migration)
-- `evolve:requirements-intake` — entry-gate; refuse schema work without a stated driver (new capability, performance incident, federation split, deprecation cycle)
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering schema recommendation
+- `supervibe:project-memory` — search prior schema decisions, retired federation topologies, prior pagination ADRs, deprecation lifecycle history
+- `supervibe:code-search` — locate type definitions across SDL + code-first decorators, find DataLoader call sites, find subscription handlers, find resolver implementations
+- `supervibe:adr` — author the ADR (context / decision / alternatives / consequences / migration)
+- `supervibe:requirements-intake` — entry-gate; refuse schema work without a stated driver (new capability, performance incident, federation split, deprecation cycle)
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering schema recommendation
 
 ## Decision tree
 
@@ -264,20 +264,20 @@ MUTATIONS — single side effect rule
          handling between them.
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** — pick up project conventions, declared schema-first vs code-first stance, declared federation topology, declared error model, declared pagination spec
-2. **Search project memory** (`evolve:project-memory`) for prior schema ADRs in the area being touched (federation splits, error-model migrations, pagination retrofits, deprecation cycles)
+2. **Search project memory** (`supervibe:project-memory`) for prior schema ADRs in the area being touched (federation splits, error-model migrations, pagination retrofits, deprecation cycles)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current schema** — locate SDL files (or generated SDL from code-first), enumerate types, identify federation directives (`@key`, `@external`, `@requires`, `@provides`), inventory subscription channels, count persisted-query manifest size
 5. **Identify driver** — what specifically forces this schema decision? New capability? N+1 incident? Federation split? Deprecation cycle? Refuse to proceed without a concrete driver (no speculative schema design)
@@ -290,7 +290,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Identify reversibility** — is this decision one-way (federation split, breaking change with sunset elapsed) or reversible (additive field, opt-in directive)? One-way decisions get extra scrutiny and explicit sign-off
 13. **Estimate effort** — engineer-days for schema change, calendar weeks if deprecation cycle is involved, on-call burden during transition
 14. **Verify against anti-patterns** — walk the six anti-patterns below; explicitly mark each as "not present" or "accepted with mitigation"
-15. **Confidence score** with `evolve:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
+15. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
 16. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs and from the affected SDL files
 
 ## Output contract
@@ -301,7 +301,7 @@ Returns:
 # ADR NNNN: <title>
 
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
-**Author**: evolve:stacks/graphql:graphql-schema-designer
+**Author**: supervibe:stacks/graphql:graphql-schema-designer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -418,7 +418,7 @@ For each schema recommendation:
 
 ### New federation v2 subgraph introduction
 1. Read CLAUDE.md + current supergraph manifest + existing subgraph ownership map
-2. `evolve:project-memory` — prior federation ADRs, retired subgraphs, prior `@key` discussions
+2. `supervibe:project-memory` — prior federation ADRs, retired subgraphs, prior `@key` discussions
 3. Identify the driver — team autonomy / data ownership / scaling envelope / domain boundary
 4. Walk FEDERATION decision tree; confirm ≥2 drivers hold
 5. Name the subgraph, its entities, its `@key` fields, the types it owns vs extends
@@ -432,7 +432,7 @@ For each schema recommendation:
 
 ### DataLoader retrofit (N+1 incident response)
 1. Read incident report — identify the offending query and the per-parent fetch
-2. `evolve:code-search` for the resolver implementation; confirm it calls the data source per parent
+2. `supervibe:code-search` for the resolver implementation; confirm it calls the data source per parent
 3. Design the loader: batch key (parent ID), batch function (single underlying call), result ordering (must match input keys, missing → null)
 4. Specify loader scope: per-request (NEVER global, NEVER long-lived); registered in the request context
 5. Map all resolvers that share the batch key — every one uses the same loader instance
@@ -504,10 +504,10 @@ Do NOT decide on: client SDK choices (Apollo Client / urql / Relay / Hot Chocola
 
 ## Related
 
-- `evolve:stacks/nodejs:apollo-server-developer` — implements schema decisions in Apollo Server (Node)
-- `evolve:stacks/dotnet:hot-chocolate-developer` — implements schema decisions in Hot Chocolate (.NET)
-- `evolve:stacks/python:strawberry-developer` — implements schema decisions in Strawberry (Python)
-- `evolve:stacks/go:gqlgen-developer` — implements schema decisions in gqlgen (Go)
-- `evolve:_core:architect-reviewer` — reviews schema ADRs for consistency with broader system architecture
-- `evolve:_core:security-auditor` — reviews schema decisions touching auth, persisted-query enforcement, query complexity limits, depth limits
-- `evolve:_core:api-designer` — coordinates GraphQL schema decisions with REST / gRPC surfaces in the same product
+- `supervibe:stacks/nodejs:apollo-server-developer` — implements schema decisions in Apollo Server (Node)
+- `supervibe:stacks/dotnet:hot-chocolate-developer` — implements schema decisions in Hot Chocolate (.NET)
+- `supervibe:stacks/python:strawberry-developer` — implements schema decisions in Strawberry (Python)
+- `supervibe:stacks/go:gqlgen-developer` — implements schema decisions in gqlgen (Go)
+- `supervibe:_core:architect-reviewer` — reviews schema ADRs for consistency with broader system architecture
+- `supervibe:_core:security-auditor` — reviews schema decisions touching auth, persisted-query enforcement, query complexity limits, depth limits
+- `supervibe:_core:api-designer` — coordinates GraphQL schema decisions with REST / gRPC surfaces in the same product

@@ -2,7 +2,7 @@
 
 > Relocated from CLAUDE.md as part of Phase 1 token-economy plan. Content byte-identical.
 
-`/evolve-design` Stage 0 asks user the target surface: `web` | `chrome-extension` | `electron` | `tauri` | `mobile-native`. Viewport defaults from `templates/viewport-presets/<target>.json`. Specialist designer:
+`/supervibe-design` Stage 0 asks user the target surface: `web` | `chrome-extension` | `electron` | `tauri` | `mobile-native`. Viewport defaults from `templates/viewport-presets/<target>.json`. Specialist designer:
 
 - web → `ux-ui-designer` + `creative-director`
 - chrome-extension → `extension-ui-designer`

@@ -4,7 +4,7 @@ description: All agents that ask the user clarifying questions MUST ask one ques
 applies-to:
   - agents/_design/**
   - agents/_product/**
-  - agents/_meta/evolve-orchestrator.md
+  - agents/_meta/supervibe-orchestrator.md
   - agents/_core/repo-researcher.md
   - agents/_core/root-cause-debugger.md
   - agents/_ops/**

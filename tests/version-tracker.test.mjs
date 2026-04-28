@@ -40,7 +40,7 @@ test('getLastSeenVersion: returns null on first run', async () => {
   assert.strictEqual(v, null);
 });
 
-test('checkVersionBump: firstTime=true when no .evolve-version yet', async () => {
+test('checkVersionBump: firstTime=true when no .supervibe-version yet', async () => {
   const r = await checkVersionBump(projectRoot, pluginRoot);
   assert.strictEqual(r.current, '1.7.0');
   assert.strictEqual(r.lastSeen, null);

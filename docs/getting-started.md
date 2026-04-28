@@ -1,6 +1,6 @@
 # Getting Started with Evolve
 
-Evolve is a self-evolving Claude Code plugin: stack-aware scaffolding + specialist agents with explicit decision trees + 10-point confidence engine + autonomous proactivity + SQLite-backed project memory.
+Evolve is a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding — backed by SQLite.
 
 ## Requirements
 
@@ -22,18 +22,18 @@ If a marketplace publishes Evolve:
 
 ```bash
 # Add marketplace (URL TBD when published)
-# /plugin marketplace add <evolve-marketplace-url>
+# /plugin marketplace add <supervibe-marketplace-url>
 
 # Install plugin
-# /plugin install evolve@evolve-marketplace
+# /plugin install evolve@supervibe-marketplace
 ```
 
 ### Option B — Local install (current; for early adopters and developers)
 
 ```bash
 # 1. Clone or download Evolve
-git clone https://github.com/your-org/evolve ~/dev/evolve   # or download archive
-cd ~/dev/evolve
+git clone https://github.com/your-org/supervibe ~/dev/supervibe   # or download archive
+cd ~/dev/supervibe
 
 # 2. Install Node deps for dev tooling (validates structure, runs tests)
 nvm use     # uses Node 20 from .nvmrc; ensure Node 22+ for SQLite memory features
@@ -46,7 +46,7 @@ npm run check    # 51/51 tests must pass before installing to plugins dir
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.2.0
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/1.2.0
 
 # Windows (PowerShell):
 mkdir $HOME\.claude\plugins\cache\local\evolve\1.2.0
@@ -54,13 +54,13 @@ xcopy /E /I "D:\ggsel projects\evolve" "$HOME\.claude\plugins\cache\local\evolve
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/evolve ~/.claude/plugins/cache/local/evolve/1.2.0
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/1.2.0
 # Windows (admin shell):
 mklink /D "$HOME\.claude\plugins\cache\local\evolve\1.2.0" "D:\ggsel projects\evolve"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
-# Verify: type /evolve — should respond with auto-detect dispatcher
+# Verify: type /supervibe — should respond with auto-detect dispatcher
 ```
 
 ### Verify install
@@ -68,13 +68,13 @@ mklink /D "$HOME\.claude\plugins\cache\local\evolve\1.2.0" "D:\ggsel projects\ev
 After restart, in a Claude Code session:
 
 ```
-/evolve
+/supervibe
 ```
 
-Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/evolve-genesis if `.claude/agents/` empty").
+Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/supervibe-genesis if `.claude/agents/` empty").
 
-If `/evolve` not recognized:
-- Check `~/.claude/plugins/cache/local/evolve/1.2.0/.claude-plugin/plugin.json` exists
+If `/supervibe` not recognized:
+- Check `~/.claude/plugins/cache/local/supervibe/1.2.0/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -93,7 +93,7 @@ The orchestrator detects empty `.claude/` and proposes:
 
 ```
 📊 Discovered: empty project (no .claude/agents/, no CLAUDE.md routing)
-⚡ Recommend: /evolve-genesis
+⚡ Recommend: /supervibe-genesis
 🎯 Why: bootstrap stack-aware scaffold from empty repo
 ⏭ Run? (y/n)
 ```
@@ -102,7 +102,7 @@ Type `y`.
 
 ### 3. Discovery questionnaire
 
-`evolve:stack-discovery` asks one question at a time:
+`supervibe:stack-discovery` asks one question at a time:
 
 - "What are you building?" → `web-app`
 - "Backend stack?" → `laravel`
@@ -113,7 +113,7 @@ Type `y`.
 
 ### 4. Genesis
 
-`evolve:genesis` composes the matching pack (`laravel-nextjs-postgres-redis`):
+`supervibe:genesis` composes the matching pack (`laravel-nextjs-postgres-redis`):
 
 - Copies all 32 attached agents to `.claude/agents/`
 - Copies all 16 attached rules to `.claude/rules/`
@@ -129,33 +129,33 @@ After ~30-60 seconds: scaffolded project ready.
 Tell Claude: "Add a user-billing module with subscription plans."
 
 Orchestrator proposes:
-> ⚡ Recommend: evolve:requirements-intake (complexity ≥4)
+> ⚡ Recommend: supervibe:requirements-intake (complexity ≥4)
 
 Type `y`. The framework chains:
-1. **`evolve:project-memory`** searches prior decisions (empty for first task)
-2. **`evolve:requirements-intake`** asks clarifying questions
-3. **`evolve:brainstorming`** (if complexity ≥7) → spec
-4. **`evolve:explore-alternatives`** for any decision complexity ≥5
-5. **`evolve:writing-plans`** → phased plan
-6. **`evolve:executing-plans`** → executes with TDD per task
-7. **`evolve:_core:code-reviewer`** → review across 8 dimensions
-8. **`evolve:_core:quality-gate-reviewer`** → final ≥9 gate
-9. **`evolve:add-memory`** → records this decision for future
+1. **`supervibe:project-memory`** searches prior decisions (empty for first task)
+2. **`supervibe:requirements-intake`** asks clarifying questions
+3. **`supervibe:brainstorming`** (if complexity ≥7) → spec
+4. **`supervibe:explore-alternatives`** for any decision complexity ≥5
+5. **`supervibe:writing-plans`** → phased plan
+6. **`supervibe:executing-plans`** → executes with TDD per task
+7. **`supervibe:_core:code-reviewer`** → review across 8 dimensions
+8. **`supervibe:_core:quality-gate-reviewer`** → final ≥9 gate
+9. **`supervibe:add-memory`** → records this decision for future
 
-Every artifact confidence-scored ≥9 before progression. Override with `/evolve-override "<reason>"` if needed.
+Every artifact confidence-scored ≥9 before progression. Override with `/supervibe-override "<reason>"` if needed.
 
 ## Command reference
 
 | Command | What it does |
 |---------|--------------|
-| `/evolve` | Auto-detect dispatcher; suggests next phase |
-| `/evolve-genesis` | Bootstrap empty project with stack-pack |
-| `/evolve-audit` | Health-check artifacts (stale/weak/coverage) |
-| `/evolve-strengthen` | Deepen weak agents/skills/rules |
-| `/evolve-adapt` | Sync to stack changes (new modules/deps) |
-| `/evolve-evaluate` | Track effectiveness in journal |
-| `/evolve-score <type> [path]` | Score artifact against rubric |
-| `/evolve-override "<reason>"` | Escape-hatch past BLOCK gate (logged) |
+| `/supervibe` | Auto-detect dispatcher; suggests next phase |
+| `/supervibe-genesis` | Bootstrap empty project with stack-pack |
+| `/supervibe-audit` | Health-check artifacts (stale/weak/coverage) |
+| `/supervibe-strengthen` | Deepen weak agents/skills/rules |
+| `/supervibe-adapt` | Sync to stack changes (new modules/deps) |
+| `/supervibe-evaluate` | Track effectiveness in journal |
+| `/supervibe-score <type> [path]` | Score artifact against rubric |
+| `/supervibe-override "<reason>"` | Escape-hatch past BLOCK gate (logged) |
 
 ## MCP integration (optional but recommended)
 
@@ -168,7 +168,7 @@ Plugin agents have `recommended-mcps:` frontmatter for capability boost:
 | `playwright` | qa-test-engineer, accessibility-reviewer, ui-polish-reviewer — browser automation |
 | `firecrawl` | researchers — scraping/searching authoritative sources |
 
-`evolve:mcp-discovery` skill detects available MCPs and proactively maps them. Without MCPs, agents fall back to WebFetch (slower, limited).
+`supervibe:mcp-discovery` skill detects available MCPs and proactively maps them. Without MCPs, agents fall back to WebFetch (slower, limited).
 
 ## Memory system (SQLite FTS5)
 
@@ -200,7 +200,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs \
 node $CLAUDE_PLUGIN_ROOT/scripts/build-memory-index.mjs
 ```
 
-**Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `evolve:add-memory` skill — writes markdown + auto-rebuilds index.
+**Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `supervibe:add-memory` skill — writes markdown + auto-rebuilds index.
 
 ## Code Search (RAG over your source code)
 
@@ -221,12 +221,12 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 **Auto-index on changes:** Three paths, all automatic by default:
 
 1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.claude/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
-2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[evolve] mtime-scan: N reindexed, M removed`.
+2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
 3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar long-running with embeddings.
 
 For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is opt-in.
 
-Env knobs: `EVOLVE_HOOK_NO_INDEX=1` disables pseudo-watcher; `EVOLVE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without any path: re-run `npm run code:index` after major changes.
+Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without any path: re-run `npm run code:index` after major changes.
 
 **Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
@@ -238,7 +238,7 @@ This is automatic — built on first session via SessionStart hook, kept fresh b
 
 ```bash
 # Status check (built into SessionStart, also runnable manually)
-npm run evolve:status
+npm run supervibe:status
 
 # Manual graph queries (agents auto-invoke these)
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "loginHandler"
@@ -268,7 +268,7 @@ npm run code:index -- --since=HEAD~100   # only files changed in last 100 commit
 
 ```bash
 # Из проекта где лежат мокапы:
-npm run evolve:preview -- --root mockups/checkout
+npm run supervibe:preview -- --root mockups/checkout
 
 # Output:
 # [evolve-preview] checkout → http://localhost:3047
@@ -278,15 +278,15 @@ npm run evolve:preview -- --root mockups/checkout
 **Список запущенных:**
 
 ```bash
-npm run evolve:preview -- --list
+npm run supervibe:preview -- --list
 ```
 
 **Kill:**
 
 ```bash
-npm run evolve:preview -- --kill 3047
+npm run supervibe:preview -- --kill 3047
 # or
-npm run evolve:preview -- --kill-all
+npm run supervibe:preview -- --kill-all
 ```
 
 **Что под капотом:**
@@ -299,9 +299,9 @@ npm run evolve:preview -- --kill-all
 - Max 10 параллельных серверов (--force чтобы превысить)
 
 **Использование агентами:**
-- `prototype-builder` агент автоматически дёргает skill `evolve:preview-server` после генерации мокапа
-- `evolve:landing-page` skill — то же
-- `evolve:interaction-design-patterns` skill — то же
+- `prototype-builder` агент автоматически дёргает skill `supervibe:preview-server` после генерации мокапа
+- `supervibe:landing-page` skill — то же
+- `supervibe:interaction-design-patterns` skill — то же
 - Агент печатает URL пользователю в output: "**Preview ready:** http://localhost:3047"
 
 **Опциональная интеграция с Playwright MCP:**
@@ -316,12 +316,12 @@ npm run evolve:preview -- --kill-all
 
 | Файл | Скилл | Что внутри |
 |------|-------|------------|
-| `PRD-template.md` | `evolve:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
-| `ADR-template.md` | `evolve:adr` | Architecture decision с alternatives matrix + review trigger |
-| `plan-template.md` | `evolve:writing-plans` | TDD план с critical path + parallelization batches |
+| `PRD-template.md` | `supervibe:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
+| `ADR-template.md` | `supervibe:adr` | Architecture decision с alternatives matrix + review trigger |
+| `plan-template.md` | `supervibe:writing-plans` | TDD план с critical path + parallelization batches |
 | `RFC-template.md` | RFC для cross-team | Motivation + detailed design + prior art |
-| `brainstorm-output-template.md` | `evolve:brainstorming` | First-principle decomp + decision matrix |
-| `intake-template.md` | `evolve:requirements-intake` | Personas + constraints + success criteria |
+| `brainstorm-output-template.md` | `supervibe:brainstorming` | First-principle decomp + decision matrix |
+| `intake-template.md` | `supervibe:requirements-intake` | Personas + constraints + success criteria |
 
 Скиллы автоматически заполняют эти шаблоны и проверяют что все обязательные секции присутствуют. Запустить вручную можно скопировав шаблон в `docs/specs/YYYY-MM-DD-<topic>-<type>.md` и наполнив.
 
@@ -338,17 +338,17 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 | Underperformer detector | `scripts/lib/underperformer-detector.mjs` |
 | Auto-strengthen trigger | `scripts/lib/auto-strengthen-trigger.mjs` |
 
-**How it closes the loop:** every `Task` call → logged with extracted confidence score → on session stop, frontmatter `effectiveness:` blocks updated per agent → on next SessionStart, agents with `avg-confidence < 8.5` or rising override-rate are shown in the banner → user runs `/evolve-strengthen` (with or without explicit agent_id) → confirms diff per agent → improvements persist.
+**How it closes the loop:** every `Task` call → logged with extracted confidence score → on session stop, frontmatter `effectiveness:` blocks updated per agent → on next SessionStart, agents with `avg-confidence < 8.5` or rising override-rate are shown in the banner → user runs `/supervibe-strengthen` (with or without explicit agent_id) → confirms diff per agent → improvements persist.
 
-**Inspect:** `npm run evolve:status` shows current telemetry counts + flagged agents.
+**Inspect:** `npm run supervibe:status` shows current telemetry counts + flagged agents.
 
 **No surprises:** strengthen never modifies agent files without explicit user confirmation. Detector requires ≥10 invocations before flagging.
 
 ## Troubleshooting
 
-### `/evolve` not recognized after install
+### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/evolve/1.2.0/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/1.2.0/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists evolve
@@ -368,7 +368,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 ### Genesis fails partway
 
 - Check `.claude/confidence-log.jsonl` for last successful step
-- Don't manually clean up — re-run `/evolve-genesis`; it skips existing files
+- Don't manually clean up — re-run `/supervibe-genesis`; it skips existing files
 - If broken: `mv .claude .claude.bak` and start fresh
 
 ### Windows path issues
@@ -387,7 +387,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ```bash
 # Remove plugin from cache
-rm -rf ~/.claude/plugins/cache/local/evolve
+rm -rf ~/.claude/plugins/cache/local/supervibe
 
 # Remove from installed_plugins.json (manual edit OR Claude Code UI)
 # /plugin uninstall evolve   # if marketplace install was used
@@ -403,7 +403,7 @@ rm -rf <project>/.claude/skills
 
 ### v1.0 → v1.1
 
-- New: `evolve:project-memory`, `evolve:add-memory`, `evolve:mcp-discovery`, `evolve:explore-alternatives`, `evolve:interaction-design-patterns`, `evolve:tokens-export`
+- New: `supervibe:project-memory`, `supervibe:add-memory`, `supervibe:mcp-discovery`, `supervibe:explore-alternatives`, `supervibe:interaction-design-patterns`, `supervibe:tokens-export`
 - New rules: `no-hardcode`, `no-half-finished`
 - Stack agents got `WebFetch` + `recommended-mcps` frontmatter
 - **No action needed** — just update plugin version in install path

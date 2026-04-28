@@ -2,12 +2,12 @@
 # Evolve standalone updater — macOS + Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/evolve-marketplace)
 #   2. Refuses to clobber local edits (uncommitted changes → stop)
-#   3. Delegates to `npm run evolve:upgrade` inside the checkout, which does
+#   3. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
 #      git fetch → ff-only pull → lfs pull (if available) → npm install →
 #      npm run check → refresh upstream-check cache
 #
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT_DEFAULT="$HOME/.claude/plugins/marketplaces/evolve-marketplace"
-PLUGIN_ROOT="${EVOLVE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
+PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
 
 if [ -t 1 ]; then
   C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_RED='\033[0;31m'; C_RESET='\033[0m'
@@ -43,10 +43,10 @@ if [ ! -d "$PLUGIN_ROOT/.git" ]; then
 ${C_RED}[evolve-update]${C_RESET} no Evolve install found at $PLUGIN_ROOT
 
 If this is your first install, run:
-  curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
 
 If your plugin lives elsewhere, point the updater at it:
-  EVOLVE_PLUGIN_ROOT=/path/to/evolve curl -fsSL .../update.sh | bash
+  SUPERVIBE_PLUGIN_ROOT=/path/to/evolve curl -fsSL .../update.sh | bash
 EOF
   exit 1
 fi
@@ -60,10 +60,10 @@ if [ -n "$dirty" ]; then
   die "uncommitted changes in $PLUGIN_ROOT — commit or stash before updating."
 fi
 
-# ---- delegate to npm run evolve:upgrade ----
+# ---- delegate to npm run supervibe:upgrade ----
 
-say "running npm run evolve:upgrade (does fetch + pull --ff-only + lfs pull + install + tests)"
-( cd "$PLUGIN_ROOT" && npm run evolve:upgrade ) || die "upgrade failed; see output above."
+say "running npm run supervibe:upgrade (does fetch + pull --ff-only + lfs pull + install + tests)"
+( cd "$PLUGIN_ROOT" && npm run supervibe:upgrade ) || die "upgrade failed; see output above."
 
 ok "done. Restart your AI CLI to pick up the new plugin code."
 ok "if any project has .claude/ overrides, run /evolve-adapt inside that project."

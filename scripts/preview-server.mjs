@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Preview Server CLI — used by /evolve-preview command and design-related skills.
+// Preview Server CLI — used by /supervibe-preview command and design-related skills.
 //
 // Modes:
 //   --root <dir>            Start server serving <dir> (default: ./mockups or ./)
@@ -88,7 +88,7 @@ if (values['kill-all']) {
 const force = values.force ?? false;
 const existingServers = await listServers();
 if (existingServers.length >= MAX_SERVERS_DEFAULT && !force) {
-  console.error(`[evolve-preview] max ${MAX_SERVERS_DEFAULT} preview servers already running. Use --force to override or kill some with --kill-all.`);
+  console.error(`[supervibe-preview] max ${MAX_SERVERS_DEFAULT} preview servers already running. Use --force to override or kill some with --kill-all.`);
   for (const s of existingServers) {
     console.error(`  http://localhost:${s.port}  ${s.label}  (pid=${s.pid})`);
   }
@@ -132,12 +132,12 @@ await registerServer({
 });
 
 const url = `http://localhost:${server.port}`;
-console.log(`[evolve-preview] ${label} → ${url}`);
-console.log(`[evolve-preview] root: ${absRoot}`);
-console.log(`[evolve-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
-console.log(`[evolve-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click 💬 in browser)`);
-console.log(`[evolve-preview] PID: ${process.pid}`);
-console.log(`[evolve-preview] press Ctrl+C to stop`);
+console.log(`[supervibe-preview] ${label} → ${url}`);
+console.log(`[supervibe-preview] root: ${absRoot}`);
+console.log(`[supervibe-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
+console.log(`[supervibe-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click 💬 in browser)`);
+console.log(`[supervibe-preview] PID: ${process.pid}`);
+console.log(`[supervibe-preview] press Ctrl+C to stop`);
 
 // Idle-shutdown timer
 const idleTimeoutMin = parseInt(values['idle-timeout'] ?? '30', 10);
@@ -148,14 +148,14 @@ if (idleTimeoutMin > 0) {
     const idleMin = idleMs / 1000 / 60;
     const hasClients = server.hasActiveSseClients();
     if (idleMin > idleTimeoutMin && !hasClients) {
-      console.log(`[evolve-preview] idle for ${idleMin.toFixed(1)}m and no SSE clients — auto-shutdown`);
+      console.log(`[supervibe-preview] idle for ${idleMin.toFixed(1)}m and no SSE clients — auto-shutdown`);
       shutdown('IDLE-TIMEOUT');
     }
   }, 60_000);
 }
 
 async function shutdown(sig) {
-  console.log(`\n[evolve-preview] received ${sig}, shutting down...`);
+  console.log(`\n[supervibe-preview] received ${sig}, shutting down...`);
   if (idleCheckTimer) clearInterval(idleCheckTimer);
   if (watcher) await watcher.close();
   await server.stop();

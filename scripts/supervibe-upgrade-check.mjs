@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // CLI: query upstream for newer plugin versions and update the local cache.
-// Run via `npm run evolve:upgrade-check` (foreground, prints result) or
+// Run via `npm run supervibe:upgrade-check` (foreground, prints result) or
 // auto-spawned in background by SessionStart hook (--background, silent).
 
 import { performUpstreamCheck, readUpgradeCache } from './lib/upgrade-check.mjs';
@@ -14,16 +14,16 @@ async function main() {
   if (isBackground) return; // silent: cache is the only side-effect
 
   if (result.error) {
-    console.log(`[evolve:upgrade-check] could not check upstream: ${result.error}`);
+    console.log(`[supervibe:upgrade-check] could not check upstream: ${result.error}`);
     return;
   }
 
   if (result.behind > 0) {
     const tagInfo = result.latestTag ? ` (latest tag: ${result.latestTag})` : '';
-    console.log(`[evolve:upgrade-check] ⬆ ${result.behind} commit(s) behind upstream${tagInfo}`);
-    console.log(`[evolve:upgrade-check] run \`npm run evolve:upgrade\` to apply`);
+    console.log(`[supervibe:upgrade-check] ⬆ ${result.behind} commit(s) behind upstream${tagInfo}`);
+    console.log(`[supervibe:upgrade-check] run \`npm run supervibe:upgrade\` to apply`);
   } else {
-    console.log(`[evolve:upgrade-check] ✓ up to date with upstream`);
+    console.log(`[supervibe:upgrade-check] ✓ up to date with upstream`);
   }
 }
 

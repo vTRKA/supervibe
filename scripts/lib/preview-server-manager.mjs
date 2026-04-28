@@ -1,6 +1,6 @@
 // Preview Server Manager — port allocation, process tracking, registry persistence.
 // Registry is a JSON file in .claude/memory/preview-servers.json so multiple
-// evolve sessions and the status command can see/manage each other's servers.
+// supervibe sessions and the status command can see/manage each other's servers.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

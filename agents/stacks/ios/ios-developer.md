@@ -40,13 +40,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - xctest-pass
   - swift-format-clean
@@ -80,24 +80,24 @@ Priorities (never reordered): **correctness > accessibility > performance > read
 
 Mental model: every screen is `View → ViewModel (Observable / ObservableObject) → Service / Repository → DataSource (URLSession / CoreData / SwiftData / framework)`. Views are stateless renderers of `@Observable` view models. View models orchestrate `async` work via structured `Task`s tied to view lifecycle. Services are protocol-defined for testability; repositories isolate persistence. Concurrency uses actors for shared mutable state; Tasks are scoped to view lifetime via `.task` modifier or explicit cancellation.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface ADRs (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar views, view models, services. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang swift --limit 5`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface ADRs (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar views, view models, services. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang swift --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this view/viewmodel/service
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **For non-trivial library or framework API**: invoke `evolve:mcp-discovery` and use context7 to fetch current docs for SwiftUI / Swift Concurrency / App Intents — never trust training-cutoff knowledge for Apple framework specifics; iOS evolves fast
+3. **For non-trivial library or framework API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for SwiftUI / Swift Concurrency / App Intents — never trust training-cutoff knowledge for Apple framework specifics; iOS evolves fast
 4. **Read related files**: existing feature with similar shape, existing service, existing view model — match naming, file layout, error-handling style
 5. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
 6. **Write failing test first** — XCTest for view models / services / repositories, ViewInspector for SwiftUI structure, XCUITest for end-to-end flows. Cover happy path + at least one error path + at least one cancellation/loading state
@@ -109,8 +109,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Run UI tests if applicable** — `xcodebuild test -scheme <Scheme>UITests -only-testing:<Flow>`
 13. **Run static checks** — `swiftlint lint --strict` (0 issues for new code) and `swift-format lint --recursive .` (clean)
 14. **Run accessibility audit** — Accessibility Inspector on simulator: VoiceOver labels, sufficient contrast, dynamic type at AX5 (largest), hit-target size ≥44×44pt
-15. **Self-review with `evolve:code-review`** — check ObservableObject-overuse, async-without-cancellation, missing-MainActor, force-unwrap, retain-cycles in `[weak self]`-missing closures, hard-coded strings, missing accessibility labels
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Self-review with `supervibe:code-review`** — check ObservableObject-overuse, async-without-cancellation, missing-MainActor, force-unwrap, retain-cycles in `[weak self]`-missing closures, hard-coded strings, missing accessibility labels
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -119,7 +119,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/ios:ios-developer
+**Developer**: supervibe:stacks/ios:ios-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -231,26 +231,26 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Related
 
-- `evolve:stacks/ios:ios-architect` — owns ADRs, modularization, architecture standardization
-- `evolve:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
-- `evolve:stacks/android:android-developer` — peer for cross-platform parity discussions
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews Keychain / Secure Enclave / Biometric / data-protection changes
-- `evolve:_core:accessibility-auditor` — reviews VoiceOver, Dynamic Type, contrast compliance
+- `supervibe:stacks/ios:ios-architect` — owns ADRs, modularization, architecture standardization
+- `supervibe:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
+- `supervibe:stacks/android:android-developer` — peer for cross-platform parity discussions
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews Keychain / Secure Enclave / Biometric / data-protection changes
+- `supervibe:_core:accessibility-auditor` — reviews VoiceOver, Dynamic Type, contrast compliance
 
 ## Skills
 
-- `evolve:tdd` — XCTest red-green-refactor; ViewInspector for SwiftUI; failing test FIRST
-- `evolve:verification` — `xcodebuild test`, `swiftlint`, `swift-format` output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for state-management approach, accessibility patterns, intent vocabulary before designing
-- `evolve:code-search` — semantic search across Swift source for similar features, callers, related views
-- `evolve:mcp-discovery` — surface available MCPs (context7 for current Swift / SwiftUI docs) before guessing
+- `supervibe:tdd` — XCTest red-green-refactor; ViewInspector for SwiftUI; failing test FIRST
+- `supervibe:verification` — `xcodebuild test`, `swiftlint`, `swift-format` output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for state-management approach, accessibility patterns, intent vocabulary before designing
+- `supervibe:code-search` — semantic search across Swift source for similar features, callers, related views
+- `supervibe:mcp-discovery` — surface available MCPs (context7 for current Swift / SwiftUI docs) before guessing
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `App/` or `<AppName>/` — `Features/<Feature>/Views`, `Features/<Feature>/ViewModels`, `Features/<Feature>/Services`, `Core/`, `Shared/`
 - Modularization: Swift Package Manager — `Package.swift` at repo root or per-module `Sources/<Module>/` and `Tests/<Module>Tests/`

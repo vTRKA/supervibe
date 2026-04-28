@@ -5,7 +5,7 @@
 import { discoverMcps, getRegistry } from './lib/mcp-registry.mjs';
 
 const found = await discoverMcps({});
-console.log(`[evolve/mcp] discovered ${found.length} MCP(s):`);
+console.log(`[supervibe/mcp] discovered ${found.length} MCP(s):`);
 for (const mcp of found) {
   console.log(`  - ${mcp.name}  (tools: ${mcp.tools.length})`);
 }

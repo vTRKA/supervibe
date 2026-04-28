@@ -24,7 +24,7 @@ WHEN about to make a decision that:
 
 NOT for: tactical code changes, bug fixes, routine refactors.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. List existing ADRs in `docs/adr/` to find the next number
 2. Read related code to ground the decision in current state
@@ -77,7 +77,7 @@ What status?
    - ADR-NNNN: ...
    - Spec: docs/specs/...
    ```
-4. **Score** — `evolve:confidence-scoring` artifact-type=agent-output
+4. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output
 5. **Cross-link** — update related ADRs / rules / CLAUDE.md
 6. **User approval** — explicit before transitioning status to ACCEPTED
 
@@ -103,11 +103,11 @@ Returns: ADR file path with all sections filled, status declared, alternatives d
 
 ## Related
 
-- `evolve:brainstorming` — may produce an ADR as part of design
-- `evolve:writing-plans` — may reference ADR as design rationale
-- `evolve:strengthen` (Phase 6) — strengthens stale ADRs via researcher consultation
+- `supervibe:brainstorming` — may produce an ADR as part of design
+- `supervibe:writing-plans` — may reference ADR as design rationale
+- `supervibe:strengthen` (Phase 6) — strengthens stale ADRs via researcher consultation
 
-## Alternatives matrix (mandatory)
+## Alternatives matrix (required)
 
 Every ADR must include ≥3 alternatives — even if obvious:
 
@@ -134,7 +134,7 @@ What NFRs does this decision touch?
 
 For each NFR: state "no impact" or quantify.
 
-## Decision review trigger (mandatory)
+## Decision review trigger (required)
 
 Specify when to re-evaluate this ADR:
 
@@ -153,7 +153,7 @@ ADR consequences must include:
 - **Operational consequences**: runbook changes / oncall impact
 - **Migration consequences** (if replacing existing): timeline + path
 
-## Out of scope (mandatory)
+## Out of scope (required)
 
 What this ADR does NOT decide. Forces clarity on boundary:
 
@@ -246,8 +246,8 @@ Use sparingly — only for clarifications that don't change the decision:
 
 ## Related
 
-- `evolve:writing-plans` — consumer (ADR → plan if implementation needed)
-- `evolve:prd` — sibling (PRD says what; ADR says how)
-- `evolve:_core:architect-reviewer` — reviewer for sign-off
-- `evolve:explore-alternatives` — sub-skill for the alternatives matrix
-- `evolve:_core:repo-researcher` — pull related ADRs / past decisions
+- `supervibe:writing-plans` — consumer (ADR → plan if implementation needed)
+- `supervibe:prd` — sibling (PRD says what; ADR says how)
+- `supervibe:_core:architect-reviewer` — reviewer for sign-off
+- `supervibe:explore-alternatives` — sub-skill for the alternatives matrix
+- `supervibe:_core:repo-researcher` — pull related ADRs / past decisions

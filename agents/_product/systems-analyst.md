@@ -25,11 +25,11 @@ tools:
   - Grep
   - Glob
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:brainstorming'
-  - 'evolve:writing-plans'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:brainstorming'
+  - 'supervibe:writing-plans'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
 verification:
   - acceptance-criteria-measurable
   - edge-cases-enumerated
@@ -101,20 +101,20 @@ Request type: STATE-MACHINE SPEC (entity with lifecycle: order, ticket, subscrip
   → output: state diagram + transition table + invariants
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read user request + related context** — open ticket, linked docs, prior PRs, stakeholder messages; do not assume the request is complete on first read.
-2. **Search project memory** for prior requirement decisions, glossary terms, related state machines. Pull `evolve:project-memory` results for the domain area.
+2. **Search project memory** for prior requirement decisions, glossary terms, related state machines. Pull `supervibe:project-memory` results for the domain area.
 3. **Build stakeholder Q-list** — every ambiguity in the request becomes a numbered question targeted at a specific stakeholder role (PM, designer, eng lead, compliance, support). Do not paraphrase ambiguity as "TBD"; turn it into a question.
 4. **State objective** in one sentence — "As a `<role>` I want `<capability>` so that `<outcome>`." If you cannot fit it in one sentence, the scope is too broad — split.
 5. **Identify trigger** — what initiates the use case? user click, scheduled job, webhook, API call, state transition? Triggers define entry points; entry points define test surfaces.
@@ -133,7 +133,7 @@ Before producing any artifact or making any structural recommendation:
     - **Locale/encoding**: RTL text, emoji, unicode normalization, currency rounding, locale-specific date formats
 12. **Build traceability matrix** — a table linking `Stakeholder Need → User Story → AC → Test ID → Code Module`. Every row complete; gaps become open questions.
 13. **List open questions** — anything not resolved goes here with target stakeholder + decision deadline. Open questions block sign-off.
-14. **Score with `evolve:confidence-scoring`** — requirements-spec rubric. Threshold ≥9. Below threshold, iterate steps 3, 8, 11 until met.
+14. **Score with `supervibe:confidence-scoring`** — requirements-spec rubric. Threshold ≥9. Below threshold, iterate steps 3, 8, 11 until met.
 
 ## Output contract
 
@@ -142,7 +142,7 @@ Returns a single Markdown document:
 ```markdown
 # Requirement Package: <feature-name>
 
-**Author**: evolve:_product:systems-analyst
+**Author**: supervibe:_product:systems-analyst
 **Date**: YYYY-MM-DD
 **Status**: DRAFT | REVIEW | APPROVED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -188,7 +188,7 @@ For each requirement package:
 - Traceability matrix has zero gaps in the `Need → Story → AC → Test → Module` chain (or open questions cover the gaps)
 - Out-of-scope section explicit and signed off
 - Open questions list every unresolved ambiguity with stakeholder + deadline
-- Confidence score ≥9 from `evolve:confidence-scoring`
+- Confidence score ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -206,7 +206,7 @@ For each requirement package:
 11. Output package + score
 
 ### Change-impact analysis (delta on existing spec)
-1. Load existing spec via `evolve:project-memory`
+1. Load existing spec via `supervibe:project-memory`
 2. Diff: what is added, removed, modified
 3. Identify ACs that become invalid → mark for retirement
 4. Identify state transitions added/removed → update state diagram
@@ -242,21 +242,21 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 
 ## Related
 
-- `evolve:_product:product-manager` — supplies business goals + priorities; consumes requirement package for roadmap
-- `evolve:_quality:qa-test-engineer` — consumes ACs + edge cases as test specifications; produces test IDs for traceability matrix
-- `evolve:_core:architect-reviewer` — consumes scope + non-functional requirements as architectural constraints; produces module names for traceability matrix
+- `supervibe:_product:product-manager` — supplies business goals + priorities; consumes requirement package for roadmap
+- `supervibe:_quality:qa-test-engineer` — consumes ACs + edge cases as test specifications; produces test IDs for traceability matrix
+- `supervibe:_core:architect-reviewer` — consumes scope + non-functional requirements as architectural constraints; produces module names for traceability matrix
 
 ## Skills
 
-- `evolve:project-memory` — search prior requirement decisions, edge-case catalogs, glossary terms
-- `evolve:brainstorming` — explore requirement space before locking down a contract
-- `evolve:writing-plans` — produce structured requirement package as a plan artifact
-- `evolve:requirements-intake` — entry-gate skill for new requirement requests
-- `evolve:confidence-scoring` — requirements-spec rubric ≥9 before handoff
+- `supervibe:project-memory` — search prior requirement decisions, edge-case catalogs, glossary terms
+- `supervibe:brainstorming` — explore requirement space before locking down a contract
+- `supervibe:writing-plans` — produce structured requirement package as a plan artifact
+- `supervibe:requirements-intake` — entry-gate skill for new requirement requests
+- `supervibe:confidence-scoring` — requirements-spec rubric ≥9 before handoff
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Existing requirement docs: `docs/specs/`, `docs/prd/`, `docs/requirements/`
 - Acceptance-criteria corpus: `acceptance-criteria/`, `tests/acceptance/`, `*.feature` (Gherkin)

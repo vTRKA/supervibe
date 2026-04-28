@@ -67,7 +67,7 @@ Ask user one question at a time.
 
 3. Update `prototypes/_design-system/manifest.json` with `componentLibrary: { name: "...", bridgeDepth: "...", bridgePath: "..." }`.
 
-4. Print feedback prompt (mandatory):
+4. Print feedback prompt (required):
    ```
    ✅ Утвердить — фиксирую bridge, продолжаю handoff
    ✎ Доработать — что поменять в маппинге?
@@ -100,6 +100,6 @@ Rubric: framework
 - Token references in bridge file (grep for token names from `tokens.css`) — count must be > 0; bridge that doesn't reference any token is broken.
 
 ## Related
-- `evolve:brandbook` — produces tokens this skill consumes
-- `evolve:prototype-handoff` — consumes bridge as part of handoff bundle
+- `supervibe:brandbook` — produces tokens this skill consumes
+- `supervibe:prototype-handoff` — consumes bridge as part of handoff bundle
 - `agents/_design/creative-director.md` — invokes this skill when component-library decision branch fires

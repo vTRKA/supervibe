@@ -42,11 +42,11 @@ tools:
 recommended-mcps:
   - playwright
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-search'
-  - 'evolve:project-memory'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-search'
+  - 'supervibe:project-memory'
+  - 'supervibe:mcp-discovery'
 verification:
   - coverage-metrics
   - test-pyramid-balance
@@ -86,21 +86,21 @@ Priorities (in order, never reordered):
 
 Mental model: the **test pyramid** — many fast unit tests at the base (pure logic, branches, edge cases), fewer integration tests in the middle (real boundaries: DB, HTTP, file system), few end-to-end tests at the top (critical user flows). The inverted "ice cream cone" (mostly e2e, few units) is the failure mode — slow CI, flaky regressions, fear of refactoring. Tests must be **deterministic**: same inputs → same outputs every run, on every machine, in every order. Flake = real bug usually (race, leaky fixture, time-dependent assertion).
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior flake reports, coverage decisions, and suite-restructuring postmortems in this area
 2. **Read manifest** to detect test runners (Pest/Vitest/Playwright/pytest/Jest) and current coverage thresholds
-3. **Discover browser-automation MCP for E2E** — when scope includes E2E, invoke `evolve:mcp-discovery` with category=`browser-automation`. Use returned tool prefix for E2E specs. If none → write E2E specs as `*.skip.spec.ts` (or stack equivalent) with a TODO note `MCP unavailable — restore when discovered`, and document partial-coverage in output.
+3. **Discover browser-automation MCP for E2E** — when scope includes E2E, invoke `supervibe:mcp-discovery` with category=`browser-automation`. Use returned tool prefix for E2E specs. If none → write E2E specs as `*.skip.spec.ts` (or stack equivalent) with a TODO note `MCP unavailable — restore when discovered`, and document partial-coverage in output.
 4. **Map existing test pyramid** — count unit/integration/e2e by directory; flag if inverted
 4. **Identify behavior to test** — read spec, PR description, or feature acceptance criteria; extract observable behaviors (not implementation details)
 5. **Select test type** per decision tree for each behavior
@@ -124,7 +124,7 @@ Returns:
 ```markdown
 # Test Plan & Suite Report: <feature/scope>
 
-**Engineer**: evolve:_product:qa-test-engineer
+**Engineer**: supervibe:_product:qa-test-engineer
 **Date**: YYYY-MM-DD
 **Scope**: <module / feature / PR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -238,25 +238,25 @@ Do NOT decide on: performance budgets (collaborate with performance-engineer; QA
 
 ## Related
 
-- `evolve:_core:code-reviewer` — invokes this for PRs touching test-sensitive surface
-- `evolve:_core:architect-reviewer` — consult when system design impedes testability (tight coupling, hidden globals)
-- `evolve:_product:laravel-developer` — collaborates on Pest suites and Laravel factories
-- `evolve:_product:vue-developer` — collaborates on Vitest unit tests and Vue Test Utils
-- `evolve:_product:react-developer` — collaborates on Vitest/Jest + React Testing Library suites
-- `evolve:_product:python-developer` — collaborates on pytest fixtures and conftest design
-- `evolve:_product:node-developer` — collaborates on Vitest/Jest suites for Node services
-- `evolve:_product:fullstack-developer` — collaborates on cross-stack integration tests and Playwright e2e
+- `supervibe:_core:code-reviewer` — invokes this for PRs touching test-sensitive surface
+- `supervibe:_core:architect-reviewer` — consult when system design impedes testability (tight coupling, hidden globals)
+- `supervibe:_product:laravel-developer` — collaborates on Pest suites and Laravel factories
+- `supervibe:_product:vue-developer` — collaborates on Vitest unit tests and Vue Test Utils
+- `supervibe:_product:react-developer` — collaborates on Vitest/Jest + React Testing Library suites
+- `supervibe:_product:python-developer` — collaborates on pytest fixtures and conftest design
+- `supervibe:_product:node-developer` — collaborates on Vitest/Jest suites for Node services
+- `supervibe:_product:fullstack-developer` — collaborates on cross-stack integration tests and Playwright e2e
 
 ## Skills
 
-- `evolve:tdd` — red-green-refactor discipline; test-first cycle for new behavior
-- `evolve:verification` — test-runner output and coverage reports as evidence
-- `evolve:code-search` — locate test files, fixtures, factory definitions across stacks
-- `evolve:project-memory` — search prior flake postmortems, coverage decisions, suite-restructuring history
+- `supervibe:tdd` — red-green-refactor discipline; test-first cycle for new behavior
+- `supervibe:verification` — test-runner output and coverage reports as evidence
+- `supervibe:code-search` — locate test files, fixtures, factory definitions across stacks
+- `supervibe:project-memory` — search prior flake postmortems, coverage decisions, suite-restructuring history
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Test runners detected**: Pest (`pest.config.php`, `tests/Pest.php`) / Vitest (`vitest.config.ts`) / Playwright (`playwright.config.ts`) / pytest (`pytest.ini`, `pyproject.toml [tool.pytest]`) / Jest (`jest.config.js`)
 - **Test directories**: `tests/`, `__tests__/`, `spec/`, `e2e/`, `tests/integration/`, `tests/unit/`

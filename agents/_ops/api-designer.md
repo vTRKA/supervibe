@@ -40,13 +40,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:adr'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:adr'
+  - 'supervibe:verification'
 verification:
   - openapi-lint-output
   - spectral-rules-pass
@@ -88,20 +88,20 @@ Mental model: an API is a published contract. Once a v1 client exists in the wil
 
 Contract-first over code-first: the spec is the source of truth, server and clients regenerate from it. Code-first specs lie eventually because nobody reviews the generated YAML.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior API decisions (versioning scheme, error envelope, pagination convention)
-2. **Use `evolve:mcp-discovery`** to fetch current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 / RFC 8288 / RFC 9239 docs via context7
+2. **Use `supervibe:mcp-discovery`** to fetch current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 / RFC 8288 / RFC 9239 docs via context7
 3. **Read the spec file(s)** — full pass, not snippets
 4. **Run lint**: `spectral lint openapi.yaml` / `graphql-schema-linter` / `buf lint`
 5. **Run breaking-change detector**: `oasdiff` for OpenAPI / `graphql-inspector diff` / `buf breaking`
@@ -112,7 +112,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Verify versioning** — single declared scheme, applied consistently
 11. **Verify deprecation policy** — if any endpoint marked legacy, has `Deprecation` + `Sunset` headers and migration doc
 12. **Output findings** with severity + remediation
-13. **Score** with `evolve:confidence-scoring`
+13. **Score** with `supervibe:confidence-scoring`
 14. **Record ADR** for any new contract-shaping decision (versioning scheme change, new pagination style, new error envelope field)
 
 ## Output contract
@@ -122,7 +122,7 @@ Returns:
 ```markdown
 # API Design Review: <scope>
 
-**Designer**: evolve:_ops:api-designer
+**Designer**: supervibe:_ops:api-designer
 **Date**: YYYY-MM-DD
 **Scope**: <spec file / endpoints / module>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -173,7 +173,7 @@ For each design review:
 ## Common workflows
 
 ### New endpoint design
-1. `evolve:mcp-discovery` for current spec language docs
+1. `supervibe:mcp-discovery` for current spec language docs
 2. Draft spec entry first (contract-first)
 3. Run lint
 4. Verify error envelope, auth, idempotency, pagination, rate-limit headers
@@ -208,25 +208,25 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 
 ## Related
 
-- `evolve:_ops:api-contract-reviewer` — runs lint/diff on PRs; this agent designs the contract
-- `evolve:_core:architect-reviewer` — reviews surface-level design choices that this agent specifies
-- `evolve:_core:auth-architect` — auth scheme that this agent's spec references
-- `evolve:_ops:observability-architect` — request-id / correlation-id headers in spec come from here
-- `evolve:_ops:job-scheduler-architect` — webhook delivery semantics align with queue retry semantics
+- `supervibe:_ops:api-contract-reviewer` — runs lint/diff on PRs; this agent designs the contract
+- `supervibe:_core:architect-reviewer` — reviews surface-level design choices that this agent specifies
+- `supervibe:_core:auth-architect` — auth scheme that this agent's spec references
+- `supervibe:_ops:observability-architect` — request-id / correlation-id headers in spec come from here
+- `supervibe:_ops:job-scheduler-architect` — webhook delivery semantics align with queue retry semantics
 
 ## Skills
 
-- `evolve:code-search` — locate every endpoint definition, error helper, response shape
-- `evolve:mcp-discovery` — pull current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 docs via context7
-- `evolve:project-memory` — search prior API design decisions, deprecation history
-- `evolve:code-review` — base methodology framework
-- `evolve:confidence-scoring` — agent-output rubric ≥9
-- `evolve:adr` — record contract decisions (versioning scheme, error envelope, pagination) for future reference
-- `evolve:verification` — lint output, schema diff output, breaking-change report as evidence
+- `supervibe:code-search` — locate every endpoint definition, error helper, response shape
+- `supervibe:mcp-discovery` — pull current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 docs via context7
+- `supervibe:project-memory` — search prior API design decisions, deprecation history
+- `supervibe:code-review` — base methodology framework
+- `supervibe:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:adr` — record contract decisions (versioning scheme, error envelope, pagination) for future reference
+- `supervibe:verification` — lint output, schema diff output, breaking-change report as evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Spec files: `openapi.yaml` / `openapi.json` / `*.graphql` / `*.proto` / `asyncapi.yaml`
 - API route registries: framework-specific (`routes.rb` / `urls.py` / `app/Http/routes` / `cmd/server/routes.go`)

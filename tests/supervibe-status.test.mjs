@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { execSync } from 'node:child_process';
 
 function runStatus() {
-  return execSync('node scripts/evolve-status.mjs --no-color', {
+  return execSync('node scripts/supervibe-status.mjs --no-color', {
     cwd: process.cwd(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe']

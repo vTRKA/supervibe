@@ -159,7 +159,7 @@ async function main() {
     for (const v of violations) {
       console.log(`  • ${v.agent_id}: ${v.kind} — ${(v.rate * 100).toFixed(0)}% (threshold ${(v.threshold * 100).toFixed(0)}%, ${v.sample} samples)`);
     }
-    console.log('\nFix: run /evolve-strengthen <agent_id> to add explicit "Step 1: evolve:project-memory" / "Step 2: evolve:code-search" entries to the agent\'s Procedure.');
+    console.log('\nFix: run /supervibe-strengthen <agent_id> to add explicit "Step 1: supervibe:project-memory" / "Step 2: supervibe:code-search" entries to the agent\'s Procedure.');
     if (strict) process.exit(1);
   } else {
     console.log('\n[OK] All agents within evidence-citation thresholds.');

@@ -18,7 +18,7 @@ import matter from 'gray-matter';
 const APPLIES_TO_GLOBS = [
   /^agents[\\/]_design[\\/]/,
   /^agents[\\/]_product[\\/]/,
-  /^agents[\\/]_meta[\\/]evolve-orchestrator\.md$/,
+  /^agents[\\/]_meta[\\/]supervibe-orchestrator\.md$/,
   /^agents[\\/]_core[\\/]repo-researcher\.md$/,
   /^agents[\\/]_core[\\/]root-cause-debugger\.md$/,
   /^agents[\\/]_core[\\/]refactoring-specialist\.md$/,
@@ -33,9 +33,9 @@ const STEP_BLOCK = `## RAG + Memory pre-flight (MANDATORY before any non-trivial
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run \`evolve:project-memory --query "<topic>"\` (or via \`node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"\`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run \`supervibe:project-memory --query "<topic>"\` (or via \`node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"\`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run \`evolve:code-search\` (or \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"\`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run \`supervibe:code-search\` (or \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"\`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
 **Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"\` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
 

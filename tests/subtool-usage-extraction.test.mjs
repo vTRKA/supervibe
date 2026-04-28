@@ -38,7 +38,7 @@ function extractSubtoolUsage(text) {
 }
 
 test('detects memory references', () => {
-  const out = extractSubtoolUsage('I called evolve:project-memory --query "auth"');
+  const out = extractSubtoolUsage('I called supervibe:project-memory --query "auth"');
   assert.equal(out.memory, 1);
 });
 
@@ -54,8 +54,8 @@ test('detects code-graph callers', () => {
 
 test('counts multiple invocations', () => {
   const out = extractSubtoolUsage(`
-    Step 1: evolve:project-memory --query "auth"
-    Step 2: evolve:code-search --query "JWT validation"
+    Step 1: supervibe:project-memory --query "auth"
+    Step 2: supervibe:code-search --query "JWT validation"
     Step 3: search-code.mjs --callers "validateJWT"
   `);
   assert.equal(out.memory, 1);

@@ -27,8 +27,8 @@ tools:
   - Bash
   - WebFetch
 skills:
-  - 'evolve:confidence-scoring'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:mcp-discovery'
 verification:
   - cve-list-with-cvss
   - advisory-snapshot
@@ -240,18 +240,18 @@ Do NOT decide on: incident response operational steps (defer to devops-sre).
 
 ## Related
 
-- `evolve:_core:security-auditor` — consumes research notes to score PR-level findings
-- `evolve:_ops:dependency-reviewer` — pairs with this agent on dep audits + license compliance
-- `evolve:_ops:devops-sre` — implements detection alerts based on this agent's findings
-- `evolve:_core:code-reviewer` — invokes security-auditor for security-sensitive PRs which in turn invokes this agent
+- `supervibe:_core:security-auditor` — consumes research notes to score PR-level findings
+- `supervibe:_ops:dependency-reviewer` — pairs with this agent on dep audits + license compliance
+- `supervibe:_ops:devops-sre` — implements detection alerts based on this agent's findings
+- `supervibe:_core:code-reviewer` — invokes security-auditor for security-sensitive PRs which in turn invokes this agent
 
 ## Skills
 
-- `evolve:confidence-scoring` — research-output rubric ≥9 (citation-density, recency, applicability)
+- `supervibe:confidence-scoring` — research-output rubric ≥9 (citation-density, recency, applicability)
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Audit tool outputs: `npm audit`, `composer audit`, `cargo audit`, `pip-audit`, `bundler-audit`, `osv-scanner`
 - Project deps + versions: `package-lock.json`, `composer.lock`, `Cargo.lock`, `poetry.lock`, `Gemfile.lock`
@@ -260,19 +260,19 @@ Do NOT decide on: incident response operational steps (defer to devops-sre).
 - Prior incidents: `.claude/memory/incidents/` — past advisories already evaluated
 - Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (declared in CLAUDE.md, drives detection-control depth)
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure (full implementation, Phase 7)
 
-0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`search` (advisory/CVE searches) or `crawl` (NVD/GHSA/vendor pages) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
+0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`search` (advisory/CVE searches) or `crawl` (NVD/GHSA/vendor pages) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
 1. **Cache check** at `.claude/research-cache/sec-<topic>-*.md` — if present and < 7 days old, reuse; otherwise refresh
 2. **Run audit tool** for stack (`npm/composer/cargo/pip-audit/osv-scanner`); capture findings verbatim
 3. **For each CVE found**:
@@ -284,11 +284,11 @@ Before producing any artifact or making any structural recommendation:
 4. **Pattern-level research** (OWASP Top 10 / CWE) for stack-specific defenses
 5. **Threat-intel sweep** for any zero-day chatter affecting stack components
 6. **Cache findings** with full citation block (URL + retrieval date + author + score-as-of-date)
-7. **Score** with `evolve:confidence-scoring` research-output rubric
+7. **Score** with `supervibe:confidence-scoring` research-output rubric
 
 ## Security Research Note: <scope>
 
-**Researcher**: evolve:_ops:security-researcher
+**Researcher**: supervibe:_ops:security-researcher
 **Date**: YYYY-MM-DD (retrieval timestamp)
 **Confidence**: N/10
 

@@ -44,13 +44,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:adr'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:adr'
+  - 'supervibe:verification'
 verification:
   - otel-instrumentation-grep
   - log-correlation-id-grep
@@ -92,20 +92,20 @@ Mental model: signals serve questions. Metrics for "is something wrong?" (low ca
 
 SLO before alert. Alert on burn rate, not threshold. Pager only when human action is required within an hour. Everything else: ticket queue.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior incidents and SLO definitions
-2. **Use `evolve:mcp-discovery`** to fetch current OpenTelemetry, Prometheus best practices, Google SRE workbook docs via context7
+2. **Use `supervibe:mcp-discovery`** to fetch current OpenTelemetry, Prometheus best practices, Google SRE workbook docs via context7
 3. **Read instrumentation entry points** — startup, middleware, queue producers/consumers
 4. **Grep for log call sites** — confirm structured (JSON/logfmt), confirm correlation id present
 5. **Grep for metric definitions** — estimate cardinality per label
@@ -114,7 +114,7 @@ Before producing any artifact or making any structural recommendation:
 8. **Read alert rules** — every page-level alert has runbook annotation pointing to live doc
 9. **Verify trace context propagation** across HTTP, gRPC, message queues
 10. **Output findings** with severity + remediation
-11. **Score** with `evolve:confidence-scoring`
+11. **Score** with `supervibe:confidence-scoring`
 12. **Record ADR** for sampling strategy, SLO targets, retention windows
 
 ## Output contract
@@ -124,7 +124,7 @@ Returns:
 ```markdown
 # Observability Review: <scope>
 
-**Architect**: evolve:_ops:observability-architect
+**Architect**: supervibe:_ops:observability-architect
 **Date**: YYYY-MM-DD
 **Scope**: <service / module / PR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -218,25 +218,25 @@ Do NOT implement instrumentation (defer to devops-sre + service team).
 
 ## Related
 
-- `evolve:_ops:devops-sre` — implements alert rules + dashboards + collector config
-- `evolve:_core:architect-reviewer` — system shape that this agent observes
-- `evolve:_ops:api-designer` — request-id / traceparent declared in API spec
-- `evolve:_ops:job-scheduler-architect` — queue trace propagation aligns with job retry semantics
-- `evolve:_core:security-auditor` — auth events + log PII scrubbing overlap
+- `supervibe:_ops:devops-sre` — implements alert rules + dashboards + collector config
+- `supervibe:_core:architect-reviewer` — system shape that this agent observes
+- `supervibe:_ops:api-designer` — request-id / traceparent declared in API spec
+- `supervibe:_ops:job-scheduler-architect` — queue trace propagation aligns with job retry semantics
+- `supervibe:_core:security-auditor` — auth events + log PII scrubbing overlap
 
 ## Skills
 
-- `evolve:code-search` — locate instrumentation, log calls, metric definitions
-- `evolve:mcp-discovery` — pull current OpenTelemetry spec, Prometheus best practices, SRE workbook docs via context7
-- `evolve:project-memory` — search prior incidents, SLO history
-- `evolve:code-review` — base methodology framework
-- `evolve:confidence-scoring` — agent-output rubric ≥9
-- `evolve:adr` — record observability decisions (sampling strategy, retention, SLO targets)
-- `evolve:verification` — grep + config reads as evidence
+- `supervibe:code-search` — locate instrumentation, log calls, metric definitions
+- `supervibe:mcp-discovery` — pull current OpenTelemetry spec, Prometheus best practices, SRE workbook docs via context7
+- `supervibe:project-memory` — search prior incidents, SLO history
+- `supervibe:code-review` — base methodology framework
+- `supervibe:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:adr` — record observability decisions (sampling strategy, retention, SLO targets)
+- `supervibe:verification` — grep + config reads as evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Telemetry SDK: OpenTelemetry / Datadog APM / New Relic / Honeycomb / native — declared
 - Backend: Prometheus+Grafana / Datadog / Honeycomb / Lightstep — declared

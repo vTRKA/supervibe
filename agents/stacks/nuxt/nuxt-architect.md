@@ -33,15 +33,15 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:adr'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:adr'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:mcp-discovery'
 verification:
   - nuxt-config-valid
   - nitro-preset-rationale
@@ -86,7 +86,7 @@ The architect writes ADRs because Nitro preset, render mode, and runtime config 
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - `nuxt.config.ts` — Nuxt version, modules, `nitro` preset, `routeRules`, `runtimeConfig` (public + private), `experimental` flags, `app.head`
 - `package.json` — Nuxt + module versions, peer deps, deploy preset hints in scripts
@@ -104,12 +104,12 @@ The architect writes ADRs because Nitro preset, render mode, and runtime config 
 
 ## Skills
 
-- `evolve:project-memory` — search prior architectural decisions: render-mode mappings, Nitro preset choices, module-set additions, layer extractions, runtime-config strategy
-- `evolve:code-search` — locate every `useFetch`, `$fetch`, `useAsyncData`, `routeRules`, `defineEventHandler` to map data-flow and rendering surfaces
-- `evolve:adr` — author the ADR (context / decision / alternatives / consequences / migration)
-- `evolve:requirements-intake` — entry-gate; refuse architectural work without a stated driver (perf incident, deploy target change, hydration mismatch, SEO regression)
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering recommendation
-- `evolve:mcp-discovery` — surface context7 for current Nuxt/Nitro docs when API surface is non-trivial or recently changed
+- `supervibe:project-memory` — search prior architectural decisions: render-mode mappings, Nitro preset choices, module-set additions, layer extractions, runtime-config strategy
+- `supervibe:code-search` — locate every `useFetch`, `$fetch`, `useAsyncData`, `routeRules`, `defineEventHandler` to map data-flow and rendering surfaces
+- `supervibe:adr` — author the ADR (context / decision / alternatives / consequences / migration)
+- `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver (perf incident, deploy target change, hydration mismatch, SEO regression)
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering recommendation
+- `supervibe:mcp-discovery` — surface context7 for current Nuxt/Nitro docs when API surface is non-trivial or recently changed
 
 ## Decision tree
 
@@ -196,24 +196,24 @@ ERROR PAGES & MIDDLEWARE
   Server middleware (server/middleware/) — runs on every request before handlers; auth, logging, rate-limit
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** — pick up project conventions, declared render modes, declared deploy target, ADR location
-2. **Search project memory** (`evolve:project-memory`) for prior architectural decisions in the area being touched (render-mode mapping, Nitro preset, module additions, layer extractions)
+2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (render-mode mapping, Nitro preset, module additions, layer extractions)
 3. **Read ADR archive** — every prior ADR that touches Nuxt architecture; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `nuxt.config.ts`, `package.json`, route surface (`pages/` tree), `server/` surface, `stores/`, `modules/`, deploy scripts; note current `routeRules`, `nitro.preset`, `runtimeConfig` shape
 5. **Identify driver** — what specifically forces this architectural decision? Hydration mismatch? TTFB regression? Deploy target change? Hosting cost? Module incompatibility? Refuse to proceed without a concrete driver
-6. **For non-trivial Nitro preset / module API**: invoke context7 MCP via `evolve:mcp-discovery` for current Nuxt/Nitro docs — never trust training-cutoff knowledge for preset capabilities or module behavior
+6. **For non-trivial Nitro preset / module API**: invoke context7 MCP via `supervibe:mcp-discovery` for current Nuxt/Nitro docs — never trust training-cutoff knowledge for preset capabilities or module behavior
 7. **Walk decision tree** — for each axis (render mode per route / Nitro preset / data-fetching primitive / Pinia stores / modules / layers / runtime config / error pages), apply the rules above; record which conditions hold and which don't
 8. **Choose pattern with rationale** — name the pattern, name the driver, name the alternative considered, name the cost paid
 9. **Write the ADR** — context (what's true today), decision (what changes), alternatives (≥2 considered, why rejected), consequences (positive AND negative), migration plan (steps, owner, rollback, deploy ordering)
@@ -221,7 +221,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Identify reversibility** — render-mode change is mostly reversible (flip routeRules); Nitro preset change is mostly reversible (rebuild + redeploy); module addition is reversible but module removal is hard if features used; runtime-config schema change is breaking
 12. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters
 13. **Verify against anti-patterns** — walk the five anti-patterns below; explicitly mark each as "not present" or "accepted with mitigation"
-14. **Confidence score** with `evolve:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
+14. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
 15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
@@ -232,7 +232,7 @@ Returns:
 # ADR NNNN: <title>
 
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
-**Author**: evolve:stacks/nuxt:nuxt-architect
+**Author**: supervibe:stacks/nuxt:nuxt-architect
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -341,7 +341,7 @@ For each architectural recommendation:
 
 ### Render-mode mapping for a new application
 1. Read CLAUDE.md + product brief; enumerate every route the app will expose
-2. `evolve:project-memory` — prior render-mode ADRs from sibling projects
+2. `supervibe:project-memory` — prior render-mode ADRs from sibling projects
 3. Categorize each route by: SEO-required? Auth-required? Per-user dynamic? Update frequency?
 4. Map each category to a render mode using the RENDER MODE PER ROUTE decision tree
 5. Encode in `nuxt.config.ts` `routeRules`: `{ '/': { prerender: true }, '/blog/**': { swr: 3600 }, '/admin/**': { ssr: false } }`
@@ -388,7 +388,7 @@ For each architectural recommendation:
 7. ADR with layer dependency graph and a checklist for adding a new product layer
 
 ### useFetch / $fetch consistency rollout
-1. `evolve:code-search` for every `useFetch(` and `$fetch(` site; categorize by resource
+1. `supervibe:code-search` for every `useFetch(` and `$fetch(` site; categorize by resource
 2. For each resource, identify the canonical primitive (useFetch for page data, $fetch for events)
 3. List violations: same resource fetched both ways, $fetch in `<script setup>` top-level, useFetch in event handler
 4. Recommend per-resource fix: replace event-handler useFetch with refresh() of the page-level useFetch; replace top-level $fetch with useFetch
@@ -408,9 +408,9 @@ Do NOT decide on: CSS architecture, design-token strategy, theming primitives (d
 
 ## Related
 
-- `evolve:stacks/nuxt:nuxt-developer` — implements ADR decisions (pages, layouts, middleware, server/api, useFetch wiring)
-- `evolve:stacks/vue:vue-implementer` — owns component-level implementation patterns within Nuxt pages
-- `evolve:stacks/nextjs:nextjs-architect` — sibling architect for Next.js stack; share patterns on hybrid rendering and edge runtime decisions
-- `evolve:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
-- `evolve:_core:security-auditor` — reviews runtime-config strategy, server middleware auth, hydration payload for sensitive data
-- `evolve:_core:code-reviewer` — reviews implementation diffs against ADR decisions
+- `supervibe:stacks/nuxt:nuxt-developer` — implements ADR decisions (pages, layouts, middleware, server/api, useFetch wiring)
+- `supervibe:stacks/vue:vue-implementer` — owns component-level implementation patterns within Nuxt pages
+- `supervibe:stacks/nextjs:nextjs-architect` — sibling architect for Next.js stack; share patterns on hybrid rendering and edge runtime decisions
+- `supervibe:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
+- `supervibe:_core:security-auditor` — reviews runtime-config strategy, server middleware auth, hydration payload for sensitive data
+- `supervibe:_core:code-reviewer` — reviews implementation diffs against ADR decisions

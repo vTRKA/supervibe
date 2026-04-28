@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-code-store-test-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-code-store-test-${Date.now()}`);
 let store;
 
 before(async () => {

@@ -43,12 +43,12 @@ recommended-mcps:
   - playwright
   - tauri
 skills:
-  - 'evolve:prototype'
-  - 'evolve:brandbook'
-  - 'evolve:interaction-design-patterns'
-  - 'evolve:ui-review-and-polish'
-  - 'evolve:project-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:prototype'
+  - 'supervibe:brandbook'
+  - 'supervibe:interaction-design-patterns'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:project-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -96,15 +96,15 @@ Mental model: Tauri is **a Rust process plus a native webview** — no Chromium 
 
 The designer is also the **bundle-budget steward**. Tauri apps win on size — 5MB installers vs Electron's 100MB+. A design that drops in three webfonts at 200KB each, four background videos, and a 50KB icon font undoes that win. Asset budgets must be declared (target: <2MB for fonts + icons + images combined for a typical app); each asset addition justified.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -125,7 +125,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Bundle budget** — list every font, icon set, image dependency; calculate combined size; target <2MB total non-binary assets; flag overruns.
 13. **Motion spec** — desktop-tempo (window 200ms, menus 100ms, modal 250ms); reduced-motion fallback; transform/opacity only.
 14. **HiDPI assets** — `.icns` macOS, `.ico` Windows, multiple PNG sizes Linux; tray template image macOS.
-15. **Score** with `evolve:confidence-scoring` rubric `agent-delivery` ≥9.
+15. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
 16. **Handoff bundle** — mockups + cross-webview audit + bundle-budget summary + tray spec + auto-update UX + permission rationale + motion spec.
 
 ## Output contract
@@ -145,7 +145,7 @@ Summary template:
 ```markdown
 # Tauri UI: <feature>
 
-**Designer**: evolve:_design:tauri-ui-designer
+**Designer**: supervibe:_design:tauri-ui-designer
 **Date**: YYYY-MM-DD
 **Target platforms**: macOS 12+ (WKWebView 17.4+) / Windows 10+ (WebView2 evergreen) / Linux (WebKitGTK 2.42+)
 **Window architecture**: single-window | multi-window
@@ -194,7 +194,7 @@ For each Tauri UI deliverable:
 - HiDPI assets listed (.icns / .ico / multi-PNG; template image macOS)
 - Linux mockup pass present (not just macOS / Windows)
 - User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
-- Confidence ≥9 from `evolve:confidence-scoring`
+- Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -240,26 +240,26 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 
 ## Related
 
-- `evolve:_design:creative-director` — provides brand tokens; coordinates cross-webview-aware token decisions
-- `evolve:_design:ux-ui-designer` — owns shared web design system; coordinate token parity
-- `evolve:_design:ui-polish-reviewer` — reviews shipped Tauri UI on three webview engines
-- `evolve:_design:accessibility-reviewer` — formal a11y audit including screen-reader (VoiceOver / Narrator / Orca)
-- `evolve:_design:electron-ui-designer` — sister desktop designer for Electron stacks; share tray + window-chrome conventions
-- `evolve:_design:prototype-builder` — produces interactive prototypes that include tauri target
-- `evolve:_ops:devops-sre` — packaging, signing, autoupdater pipeline
+- `supervibe:_design:creative-director` — provides brand tokens; coordinates cross-webview-aware token decisions
+- `supervibe:_design:ux-ui-designer` — owns shared web design system; coordinate token parity
+- `supervibe:_design:ui-polish-reviewer` — reviews shipped Tauri UI on three webview engines
+- `supervibe:_design:accessibility-reviewer` — formal a11y audit including screen-reader (VoiceOver / Narrator / Orca)
+- `supervibe:_design:electron-ui-designer` — sister desktop designer for Electron stacks; share tray + window-chrome conventions
+- `supervibe:_design:prototype-builder` — produces interactive prototypes that include tauri target
+- `supervibe:_ops:devops-sre` — packaging, signing, autoupdater pipeline
 
 ## Skills
 
-- `evolve:prototype` — produce HTML/CSS prototype with `target=tauri`; loads tauri viewport preset
-- `evolve:brandbook` — pull approved tokens; tauri designs inherit web tokens with explicit cross-webview audit on each
-- `evolve:interaction-design-patterns` — canonical state matrices, with cross-webview footnotes (e.g., `:has()` not yet on WebKitGTK 2.40)
-- `evolve:ui-review-and-polish` — review the produced mockup across three webview engines
-- `evolve:project-memory` — search prior cross-webview compat findings and bundle decisions
-- `evolve:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:prototype` — produce HTML/CSS prototype with `target=tauri`; loads tauri viewport preset
+- `supervibe:brandbook` — pull approved tokens; tauri designs inherit web tokens with explicit cross-webview audit on each
+- `supervibe:interaction-design-patterns` — canonical state matrices, with cross-webview footnotes (e.g., `:has()` not yet on WebKitGTK 2.40)
+- `supervibe:ui-review-and-polish` — review the produced mockup across three webview engines
+- `supervibe:project-memory` — search prior cross-webview compat findings and bundle decisions
+- `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Tauri config: `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`
 - Renderer entry: `src/index.html`, `index.html`, framework root (Vite / SvelteKit / Solid / Vue / React)

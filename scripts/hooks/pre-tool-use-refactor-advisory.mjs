@@ -18,7 +18,7 @@
  * This is OPT-IN advisory: never blocks the edit. Hard enforcement is left
  * to the agent-delivery rubric (graph-evidence-when-applicable dimension).
  *
- * Disable: set EVOLVE_REFACTOR_ADVISORY_DISABLED=1
+ * Disable: set SUPERVIBE_REFACTOR_ADVISORY_DISABLED=1
  */
 
 const RENAME_PATTERNS = [
@@ -83,7 +83,7 @@ function readEvent() {
 }
 
 async function main() {
-  if (process.env.EVOLVE_REFACTOR_ADVISORY_DISABLED === '1') {
+  if (process.env.SUPERVIBE_REFACTOR_ADVISORY_DISABLED === '1') {
     process.stdout.write(JSON.stringify({ decision: 'allow' }));
     return;
   }
@@ -97,7 +97,7 @@ async function main() {
   }
 
   // Emit advisory — does NOT block. Agent sees the reminder and decides.
-  const reason = `[evolve] refactor advisory: this Edit removes/renames symbols [${refactor.symbols.join(', ')}] in ${refactor.file}. Per rule use-codegraph-before-refactor: BEFORE applying, run \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers <symbol>\` and cite Case A/B/C in your output. Skipping this on a structural change FAILS the agent-delivery rubric (graph-evidence-when-applicable dimension).`;
+  const reason = `[supervibe] refactor advisory: this Edit removes/renames symbols [${refactor.symbols.join(', ')}] in ${refactor.file}. Per rule use-codegraph-before-refactor: BEFORE applying, run \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers <symbol>\` and cite Case A/B/C in your output. Skipping this on a structural change FAILS the agent-delivery rubric (graph-evidence-when-applicable dimension).`;
 
   // Use systemMessage to surface to user without blocking; agent reads next turn
   process.stdout.write(JSON.stringify({

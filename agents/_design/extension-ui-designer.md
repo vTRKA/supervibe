@@ -42,12 +42,12 @@ recommended-mcps:
   - figma
   - playwright
 skills:
-  - 'evolve:prototype'
-  - 'evolve:brandbook'
-  - 'evolve:interaction-design-patterns'
-  - 'evolve:ui-review-and-polish'
-  - 'evolve:project-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:prototype'
+  - 'supervibe:brandbook'
+  - 'supervibe:interaction-design-patterns'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:project-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -94,15 +94,15 @@ Mental model: every extension surface has a different etiquette contract. **Popu
 
 The designer is also the **CSP enforcer**. Manifest V3 forbids `'unsafe-inline'`, forbids `eval`, forbids remote-script loading. Every interaction must be wired via external JS (`addEventListener`), every style must be in a CSS file or `<style>` block (not inline `style=` attributes for dynamic values without nonce). Designs that assume `onclick=` handlers or `<script>https://cdn...` injections fail review. The mockup deliverable must label CSP-affected zones explicitly so the developer doesn't fight a manifest at integration time.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -124,7 +124,7 @@ Before producing any artifact or making any structural recommendation:
     - Zero remote `<script src>` (no CDN)
     - Inline `style=` only for static values; dynamic styles via class toggling
 13. **Cross-browser sanity** — note any Chrome-only API used (e.g., `side_panel`); confirm the manifest declares minimum Chrome version supporting it; flag for Edge/Firefox parity if multi-browser shipping.
-14. **Score** with `evolve:confidence-scoring` rubric `agent-delivery` ≥9.
+14. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
 15. **Handoff bundle** to `chrome-extension-developer`: surface mockups + permission-rationale + motion spec + CSP audit notes + open questions list.
 
 ## Output contract
@@ -144,7 +144,7 @@ Summary template:
 ```markdown
 # Extension UI: <feature>
 
-**Designer**: evolve:_design:extension-ui-designer
+**Designer**: supervibe:_design:extension-ui-designer
 **Date**: YYYY-MM-DD
 **Target browsers**: Chrome <ver>+ | Edge | Brave | Firefox-WebExt
 **Manifest version**: 3
@@ -192,7 +192,7 @@ For each extension UI deliverable:
 - CSP audit shows zero inline handlers / scripts / eval / remote-src
 - Cross-browser parity flagged where relevant
 - User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
-- Confidence ≥9 from `evolve:confidence-scoring`
+- Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -245,26 +245,26 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 
 ## Related
 
-- `evolve:stacks:chrome-extension:chrome-extension-architect` — owns manifest structure, permissions strategy, build pipeline
-- `evolve:stacks:chrome-extension:chrome-extension-developer` — implements the UI from this designer's mockups
-- `evolve:_design:creative-director` — provides brand tokens that this designer inherits
-- `evolve:_design:ux-ui-designer` — owns shared web design system; coordinate token parity
-- `evolve:_design:ui-polish-reviewer` — reviews shipped extension UI at pixel level
-- `evolve:_design:accessibility-reviewer` — formal a11y audit on extension surfaces
-- `evolve:_design:prototype-builder` — produces interactive prototypes that include extension target
+- `supervibe:stacks:chrome-extension:chrome-extension-architect` — owns manifest structure, permissions strategy, build pipeline
+- `supervibe:stacks:chrome-extension:chrome-extension-developer` — implements the UI from this designer's mockups
+- `supervibe:_design:creative-director` — provides brand tokens that this designer inherits
+- `supervibe:_design:ux-ui-designer` — owns shared web design system; coordinate token parity
+- `supervibe:_design:ui-polish-reviewer` — reviews shipped extension UI at pixel level
+- `supervibe:_design:accessibility-reviewer` — formal a11y audit on extension surfaces
+- `supervibe:_design:prototype-builder` — produces interactive prototypes that include extension target
 
 ## Skills
 
-- `evolve:prototype` — produce HTML/CSS prototype with `target=chrome-extension`; loads the viewport preset above and constrains widths/heights accordingly
-- `evolve:brandbook` — pull approved tokens (color, type, motion, radius, elevation) so extension UI inherits the same identity as marketing/web surfaces
-- `evolve:interaction-design-patterns` — canonical state matrices (resting/hover/focus/loading/empty/error) per surface
-- `evolve:ui-review-and-polish` — review the produced mockup against the 8-dimension checklist, scoped to extension viewports
-- `evolve:project-memory` — search prior popup decisions, abandoned side-panel structures, permission-prompt copy
-- `evolve:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff to chrome-extension-developer
+- `supervibe:prototype` — produce HTML/CSS prototype with `target=chrome-extension`; loads the viewport preset above and constrains widths/heights accordingly
+- `supervibe:brandbook` — pull approved tokens (color, type, motion, radius, elevation) so extension UI inherits the same identity as marketing/web surfaces
+- `supervibe:interaction-design-patterns` — canonical state matrices (resting/hover/focus/loading/empty/error) per surface
+- `supervibe:ui-review-and-polish` — review the produced mockup against the 8-dimension checklist, scoped to extension viewports
+- `supervibe:project-memory` — search prior popup decisions, abandoned side-panel structures, permission-prompt copy
+- `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff to chrome-extension-developer
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Manifest source: `manifest.json` (MV3 fields: `action.default_popup`, `options_page` / `options_ui`, `side_panel.default_path`, `chrome_url_overrides.newtab`, `permissions[]`, `host_permissions[]`, `content_security_policy.extension_pages`)
 - Surface entry HTML: `src/popup/index.html`, `src/options/index.html`, `src/side-panel/index.html`, `src/newtab/index.html`

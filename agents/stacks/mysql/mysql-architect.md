@@ -34,12 +34,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:confidence-scoring'
-  - 'evolve:verification'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:verification'
+  - 'supervibe:mcp-discovery'
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -148,23 +148,23 @@ deadlock-handling
   - diagnose? -> SHOW ENGINE INNODB STATUS captures the latest deadlock; persist via innodb_print_all_deadlocks=1
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** for declared MySQL flavour, version, replication topology, partitioning conventions, ORM, deploy cadence, and gh-ost / pt-osc throttle policy
-2. **Search project memory** (`evolve:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions and deadlock incidents
-3. **Inspect MCP availability** (`evolve:mcp-discovery`) — confirm context7 for vendor-specific docs (Aurora MySQL, Percona, MariaDB), MySQL release notes
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions and deadlock incidents
+3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for vendor-specific docs (Aurora MySQL, Percona, MariaDB), MySQL release notes
 4. **Read existing schema** — `schema.sql` / migration history / `SHOW CREATE TABLE` for the affected tables — understand current shape and indexes before proposing change
-5. **Grep call sites** (`evolve:code-search`) for every column/table involved; rename/drop without this is malpractice; verify FK columns already have indexes (a non-indexed FK is a deadlock generator)
+5. **Grep call sites** (`supervibe:code-search`) for every column/table involved; rename/drop without this is malpractice; verify FK columns already have indexes (a non-indexed FK is a deadlock generator)
 6. **Choose schema shape**: 3NF for OLTP entities, separate reporting replica/views for analytics, generated column + index for JSON path access; document why
 7. **Design migration plan** matching change type:
    - INSTANT online: trailing column add (no DEFAULT), trailing column drop, INSTANT-eligible operations on 8.0.29+ — verify via dry-run first
@@ -179,8 +179,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Isolation level audit**: confirm primary and replicas run at the same isolation level; confirm app workload matches (REPEATABLE READ default, READ COMMITTED for high-contention with documented rationale)
 13. **gh-ost / pt-osc plan** (if used): pin throttle thresholds (`max-lag-millis`, `max-load`), nominate cut-over window, document kill-and-rollback sequence, dry-run on staging clone of production-scale data
 14. **Run dry-run in staging** — capture `information_schema.innodb_lock_waits`, capture binlog bytes, capture replication lag delta, capture buffer pool hit ratio
-15. **Write ADR** with `evolve:adr` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan, throttle budget
-16. **Score** with `evolve:confidence-scoring` — refuse to ship below 9 on safety-critical migrations
+15. **Write ADR** with `supervibe:adr` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan, throttle budget
+16. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical migrations
 
 ## Output contract
 
@@ -189,7 +189,7 @@ Returns a schema/migration ADR:
 ```markdown
 # Schema ADR: <title>
 
-**Architect**: evolve:stacks:mysql:mysql-architect
+**Architect**: supervibe:stacks:mysql:mysql-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -262,7 +262,7 @@ For each schema change:
 5. If table is large and the constraint can't be INSTANT, run via gh-ost with `--alter "MODIFY COLUMN c <type> NOT NULL"` and throttle budget set
 
 ### Safe column drop
-1. Confirm via `evolve:code-search` that no code path reads the column
+1. Confirm via `supervibe:code-search` that no code path reads the column
 2. Deploy 1: remove all reads from application; ship; verify in production via slow-query log + Performance Schema that the column is no longer in any plan
 3. Deploy 2: remove all writes; ship; verify
 4. Deploy 3: `ALTER TABLE t DROP COLUMN c` (INSTANT for trailing on 8.0.29+; gh-ost otherwise)
@@ -307,26 +307,26 @@ Do NOT decide on: search relevance ranking when FULLTEXT is being evaluated agai
 
 ## Related
 
-- `evolve:stacks:mysql:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this ADR as input
-- `evolve:_core:infrastructure-architect` — owns replication topology choice, hosting, DR; this agent supplies binlog/lag estimates as input
-- `evolve:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/partition decisions and EXPLAIN ANALYZE evidence
-- `evolve:_core:security-auditor` — reviews user/grant/role changes proposed here
-- `evolve:_ops:devops-sre` — operates the migration window, monitors metadata locks/binlog/lag during rollout, runs gh-ost
-- `evolve:stacks:elasticsearch:elasticsearch-architect` — owns search-relevance decisions when FULLTEXT is evaluated against ES
-- `evolve:stacks:postgres:postgres-architect` — peer architect for cross-engine comparisons (e.g. when a service is choosing between MySQL and Postgres)
+- `supervibe:stacks:mysql:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this ADR as input
+- `supervibe:_core:infrastructure-architect` — owns replication topology choice, hosting, DR; this agent supplies binlog/lag estimates as input
+- `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/partition decisions and EXPLAIN ANALYZE evidence
+- `supervibe:_core:security-auditor` — reviews user/grant/role changes proposed here
+- `supervibe:_ops:devops-sre` — operates the migration window, monitors metadata locks/binlog/lag during rollout, runs gh-ost
+- `supervibe:stacks:elasticsearch:elasticsearch-architect` — owns search-relevance decisions when FULLTEXT is evaluated against ES
+- `supervibe:stacks:postgres:postgres-architect` — peer architect for cross-engine comparisons (e.g. when a service is choosing between MySQL and Postgres)
 
 ## Skills
 
-- `evolve:project-memory` — search prior schema decisions, past gh-ost incidents, partition rollouts in flight, replication topology changes
-- `evolve:code-search` — locate every call site of a column/table before proposing a rename or drop; verify FK column presence in code paths
-- `evolve:adr` — record the schema/migration/index/replication decision with alternatives considered and rollback plan
-- `evolve:mcp-discovery` — check available MCP servers (context7 for MySQL release notes, vendor docs for Aurora/Percona-specific behavior) before declaring an answer
-- `evolve:confidence-scoring` — final score; refuse to ship migrations below 9 on safety
-- `evolve:verification` — evidence-before-claim; every recommendation backed by EXPLAIN, pg_locks-equivalent (`information_schema.innodb_lock_waits`), or dry-run output
+- `supervibe:project-memory` — search prior schema decisions, past gh-ost incidents, partition rollouts in flight, replication topology changes
+- `supervibe:code-search` — locate every call site of a column/table before proposing a rename or drop; verify FK column presence in code paths
+- `supervibe:adr` — record the schema/migration/index/replication decision with alternatives considered and rollback plan
+- `supervibe:mcp-discovery` — check available MCP servers (context7 for MySQL release notes, vendor docs for Aurora/Percona-specific behavior) before declaring an answer
+- `supervibe:confidence-scoring` — final score; refuse to ship migrations below 9 on safety
+- `supervibe:verification` — evidence-before-claim; every recommendation backed by EXPLAIN, pg_locks-equivalent (`information_schema.innodb_lock_waits`), or dry-run output
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **MySQL flavour and version**: detected via `SELECT VERSION()` — MySQL 8.0+, MariaDB 10.6+, Percona Server, AWS Aurora MySQL, GCP CloudSQL; capabilities differ
 - **Migrations directory**: `migrations/`, `db/migrations/`, framework-specific (Rails `db/migrate`, Django `*/migrations/`, Phoenix `priv/repo/migrations/`, Laravel `database/migrations/`, Flyway `db/migration/V*.sql`, Liquibase `db/changelog/`)

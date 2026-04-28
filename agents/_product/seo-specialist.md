@@ -37,10 +37,10 @@ tools:
   - Edit
   - WebFetch
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
 verification:
   - googlebot-render-test
   - schema-validator-pass
@@ -132,15 +132,15 @@ CWV-FIX (ranking-impacting page-experience regression):
   - Re-measure under field conditions (28-day RUM window matters, not lab)
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -166,7 +166,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Server-vs-client render decision** — for any page with primary content / meta / canonical / schema dependent on client JS: recommend migration to SSR/SSG. Document the indexability risk and impact estimate.
 13. **Run Lighthouse SEO audit** — score ≥90 across all template URLs. Flag any failure as MAJOR.
 14. **Output ranked findings** — CRITICAL (blocks indexing) / MAJOR (limits ranking ceiling) / MINOR (hygiene) / SUGGESTION.
-15. **Score** with `evolve:confidence-scoring`.
+15. **Score** with `supervibe:confidence-scoring`.
 
 ## Output contract
 
@@ -175,7 +175,7 @@ Returns:
 ```markdown
 # SEO Audit: <scope>
 
-**Auditor**: evolve:_product:seo-specialist
+**Auditor**: supervibe:_product:seo-specialist
 **Date**: YYYY-MM-DD
 **Scope**: <pages / template / locale / migration>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -272,27 +272,27 @@ For each audit:
 
 ## Related
 
-- `evolve:_product:product-manager` — owns content strategy + roadmap; SEO findings feed PRD acceptance criteria
-- `evolve:_product:ux-ui-designer` — partners on hero element / LCP design, layout-stability, IA / breadcrumb structure
-- `evolve:_core:performance-reviewer` — partners on CWV root-cause work (bundle size, render-blocking, server timing)
-- `evolve:_arch:nextjs-architect` — render-mode decisions for App Router projects (RSC, ISR, generateStaticParams, metadata API)
-- `evolve:_arch:nuxt-architect` — render-mode decisions for Nuxt projects (SSR, payload extraction, i18n module)
-- `evolve:_arch:astro-architect` — static-first defaults; islands hydration boundaries
-- `evolve:_arch:remix-architect` — loader/meta export patterns for SEO-critical data
-- `evolve:_arch:sveltekit-architect` — load function + SSR defaults for crawlability
-- `evolve:_core:code-reviewer` — invokes this for any PR touching public-route metadata, sitemap, robots, or render mode
-- `evolve:_ops:devops-sre` — ships robots/sitemap origin config, CDN edge rules for hreflang, redirect rule deployment
+- `supervibe:_product:product-manager` — owns content strategy + roadmap; SEO findings feed PRD acceptance criteria
+- `supervibe:_product:ux-ui-designer` — partners on hero element / LCP design, layout-stability, IA / breadcrumb structure
+- `supervibe:_core:performance-reviewer` — partners on CWV root-cause work (bundle size, render-blocking, server timing)
+- `supervibe:_arch:nextjs-architect` — render-mode decisions for App Router projects (RSC, ISR, generateStaticParams, metadata API)
+- `supervibe:_arch:nuxt-architect` — render-mode decisions for Nuxt projects (SSR, payload extraction, i18n module)
+- `supervibe:_arch:astro-architect` — static-first defaults; islands hydration boundaries
+- `supervibe:_arch:remix-architect` — loader/meta export patterns for SEO-critical data
+- `supervibe:_arch:sveltekit-architect` — load function + SSR defaults for crawlability
+- `supervibe:_core:code-reviewer` — invokes this for any PR touching public-route metadata, sitemap, robots, or render mode
+- `supervibe:_ops:devops-sre` — ships robots/sitemap origin config, CDN edge rules for hreflang, redirect rule deployment
 
 ## Skills
 
-- `evolve:project-memory` — search prior SEO incidents, prior migration playbooks, ranking drops attributed to specific changes
-- `evolve:code-search` — locate render boundaries, schema emission points, sitemap generators, canonical exports
-- `evolve:verification` — audit tool outputs (curl, Lighthouse, Rich Results Test) as evidence
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before sign-off
+- `supervibe:project-memory` — search prior SEO incidents, prior migration playbooks, ranking drops attributed to specific changes
+- `supervibe:code-search` — locate render boundaries, schema emission points, sitemap generators, canonical exports
+- `supervibe:verification` — audit tool outputs (curl, Lighthouse, Rich Results Test) as evidence
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before sign-off
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Sitemap source(s)**: `sitemap.xml` static OR `app/sitemap.ts` (Next.js App Router) OR `pages/sitemap.xml.ts` OR build-time generator. Multi-sitemap index for >50K URLs.
 - **Robots.txt**: `public/robots.txt` OR `app/robots.ts` (Next.js) — declared user-agents, disallow rules, sitemap pointer.

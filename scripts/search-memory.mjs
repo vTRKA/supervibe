@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Memory query CLI: invoked by evolve:project-memory skill.
+// Memory query CLI: invoked by supervibe:project-memory skill.
 // Usage:
 //   node scripts/search-memory.mjs --query "billing idempotency" --tags billing,redis --type decision --limit 5
 //

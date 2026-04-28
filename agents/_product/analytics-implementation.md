@@ -31,10 +31,10 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
 verification:
   - event-naming-convention
   - tracking-plan-doc
@@ -115,15 +115,15 @@ DEBUG / VERIFICATION FLOW:
   - E2E test asserts dataLayer push shape AND vendor request payload
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -142,7 +142,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Strip PII** — middleware that drops/hashes known PII fields before send; assert in tests
 14. **E2E verify** — Playwright/Cypress test navigates the funnel, asserts dataLayer pushes AND vendor network requests match plan
 15. **Update tracking plan version + changelog** — bump version, record diff with date and rationale
-16. **Score** with `evolve:confidence-scoring`
+16. **Score** with `supervibe:confidence-scoring`
 
 ## Output contract
 
@@ -151,7 +151,7 @@ Returns:
 ```markdown
 # Analytics Implementation: <feature/scope>
 
-**Implementer**: evolve:_product:analytics-implementation
+**Implementer**: supervibe:_product:analytics-implementation
 **Date**: YYYY-MM-DD
 **Scope**: <feature / funnel / vendor>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -249,23 +249,23 @@ Do NOT write E2E framework infrastructure — extend existing fixtures (defer to
 
 ## Related
 
-- `evolve:_product:product-manager` — owns business questions, KPI definitions, and metric prioritization
-- `evolve:_product:seo-specialist` — owns organic-acquisition tracking, UTM hygiene, search-console integration
-- `evolve:_quality:qa-test-engineer` — owns E2E harness; partner for funnel-walk tests asserting event payloads
-- `evolve:_core:security-auditor` — invoke when consent provider or PII scrubbing changes (data-handling surface)
-- `evolve:_ops:devops-sre` — owns server-side tag container infra and collector domain DNS/CDN config
-- `evolve:_data:data-engineer` — owns warehouse ingestion; partner for schema parity between client events and warehouse tables
+- `supervibe:_product:product-manager` — owns business questions, KPI definitions, and metric prioritization
+- `supervibe:_product:seo-specialist` — owns organic-acquisition tracking, UTM hygiene, search-console integration
+- `supervibe:_quality:qa-test-engineer` — owns E2E harness; partner for funnel-walk tests asserting event payloads
+- `supervibe:_core:security-auditor` — invoke when consent provider or PII scrubbing changes (data-handling surface)
+- `supervibe:_ops:devops-sre` — owns server-side tag container infra and collector domain DNS/CDN config
+- `supervibe:_data:data-engineer` — owns warehouse ingestion; partner for schema parity between client events and warehouse tables
 
 ## Skills
 
-- `evolve:project-memory` — search prior tracking-plan decisions and deprecation history before proposing names
-- `evolve:code-search` — locate existing instrumentation, vendor init, consent hooks
-- `evolve:verification` — capture network requests / debug-mode output as evidence events fire
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before handing back
+- `supervibe:project-memory` — search prior tracking-plan decisions and deprecation history before proposing names
+- `supervibe:code-search` — locate existing instrumentation, vendor init, consent hooks
+- `supervibe:verification` — capture network requests / debug-mode output as evidence events fire
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before handing back
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Tracking plan: `docs/analytics/tracking-plan.yaml` (or `.md`/`.json`) — source of truth for event names, properties, types, consent category
 - Consent banner / CMP: OneTrust, Cookiebot, Iubenda, Osano, Klaro, or homegrown — detect via Grep for `consent`, `cmp`, `gdpr`, `__tcfapi`

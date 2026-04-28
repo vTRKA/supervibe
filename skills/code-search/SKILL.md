@@ -25,7 +25,7 @@ BEFORE any non-trivial code change. Specifically:
 
 This skill replaces blind grep. It surfaces conceptually-related code even when keywords don't overlap, leveraging the multilingual-e5-small embedding model and FTS5 BM25 over the project's source files.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Verify code index exists: `.claude/memory/code.db`
 2. If missing → run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs` first
@@ -47,7 +47,7 @@ What's the search intent?
 
 ## Procedure
 
-1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/evolve-status.mjs` (or rely on SessionStart banner)
+1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs` (or rely on SessionStart banner)
 2. Pick mode from decision tree
 3. **Semantic**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<text>" [--lang <lang>] [--limit 10]`
 4. **Graph — callers/callees**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` (or --callees)
@@ -82,6 +82,6 @@ Returns:
 
 ## Related
 
-- `evolve:project-memory` — search past decisions/patterns (different corpus: markdown notes, not code)
-- `evolve:_core:repo-researcher` — uses this skill as primary tool
+- `supervibe:project-memory` — search past decisions/patterns (different corpus: markdown notes, not code)
+- `supervibe:_core:repo-researcher` — uses this skill as primary tool
 - All stack-developer agents — invoke this BEFORE non-trivial implementation

@@ -40,43 +40,43 @@ function runQuiet(cmd, args) {
 }
 
 function fail(msg) {
-  console.error(`\n[evolve:upgrade] ${msg}`);
+  console.error(`\n[supervibe:upgrade] ${msg}`);
   process.exit(1);
 }
 
-console.log(`[evolve:upgrade] plugin root: ${PLUGIN_ROOT}`);
+console.log(`[supervibe:upgrade] plugin root: ${PLUGIN_ROOT}`);
 
 if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
   fail('Not a git checkout — upgrade only works for symlink/clone installs. Re-clone from upstream.');
 }
 
 const before = manifestVersion(PLUGIN_ROOT);
-console.log(`[evolve:upgrade] current version: ${before || 'unknown'}`);
+console.log(`[supervibe:upgrade] current version: ${before || 'unknown'}`);
 
 // Refuse to upgrade with uncommitted changes — protects user mods
 const status = runQuiet('git', ['status', '--porcelain']);
 if (status.ok && status.stdout) {
-  console.error('[evolve:upgrade] uncommitted changes in plugin dir:');
+  console.error('[supervibe:upgrade] uncommitted changes in plugin dir:');
   console.error(status.stdout);
   fail('Commit/stash your changes in the plugin checkout first, then re-run.');
 }
 
-console.log('[evolve:upgrade] git fetch + pull --ff-only ...');
+console.log('[supervibe:upgrade] git fetch + pull --ff-only ...');
 if (!run('git', ['fetch', '--tags', '--prune'])) fail('git fetch failed');
 if (!run('git', ['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
 
 const lfsCheck = runQuiet('git', ['lfs', 'version']);
 if (lfsCheck.ok) {
-  console.log('[evolve:upgrade] git lfs pull ...');
+  console.log('[supervibe:upgrade] git lfs pull ...');
   run('git', ['lfs', 'pull']);
 } else {
-  console.log('[evolve:upgrade] git-lfs not installed; skipping (model will lazy-fetch from HF on first use)');
+  console.log('[supervibe:upgrade] git-lfs not installed; skipping (model will lazy-fetch from HF on first use)');
 }
 
-console.log('[evolve:upgrade] npm install ...');
+console.log('[supervibe:upgrade] npm install ...');
 if (!run('npm', ['install'])) fail('npm install failed');
 
-console.log('[evolve:upgrade] npm run check ...');
+console.log('[supervibe:upgrade] npm run check ...');
 if (!run('npm', ['run', 'check'])) fail('npm run check failed — upgrade applied but tests are red. Investigate before using.');
 
 const after = manifestVersion(PLUGIN_ROOT);
@@ -89,10 +89,10 @@ try {
 
 console.log('\n=================================================');
 if (before === after) {
-  console.log(`[evolve:upgrade] already up to date (v${after})`);
+  console.log(`[supervibe:upgrade] already up to date (v${after})`);
 } else {
-  console.log(`[evolve:upgrade] ✓ upgraded ${before} → ${after}`);
-  console.log(`[evolve:upgrade] restart Claude Code to pick up the new plugin code.`);
-  console.log(`[evolve:upgrade] Each project will see [evolve] ⬆ on its next session start.`);
+  console.log(`[supervibe:upgrade] ✓ upgraded ${before} → ${after}`);
+  console.log(`[supervibe:upgrade] restart Claude Code to pick up the new plugin code.`);
+  console.log(`[supervibe:upgrade] Each project will see [supervibe] ⬆ on its next session start.`);
 }
 console.log('=================================================');

@@ -6,7 +6,7 @@ description: >-
   (375 + 1440), one question at a time.
 ---
 
-# /evolve-design
+# /supervibe-design
 
 Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 design skills through 8 explicit stages, ending with an **approved, ready-for-development** prototype that any stack-developer agent can pick up.
 
@@ -23,21 +23,21 @@ Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 d
 
 ## Invocation forms
 
-### `/evolve-design <brief>`
+### `/supervibe-design <brief>`
 
 ```
-/evolve-design landing in the style of Linear, focused on dev-tool buyers
-/evolve-design checkout flow for one-time purchases, mobile-first
-/evolve-design лендинг для финтех-продукта, brutalist стиль
+/supervibe-design landing in the style of Linear, focused on dev-tool buyers
+/supervibe-design checkout flow for one-time purchases, mobile-first
+/supervibe-design лендинг для финтех-продукта, brutalist стиль
 ```
 
-### `/evolve-design <existing-spec-path>`
+### `/supervibe-design <existing-spec-path>`
 
 ```
-/evolve-design docs/specs/2026-04-28-checkout-design.md
+/supervibe-design docs/specs/2026-04-28-checkout-design.md
 ```
 
-### `/evolve-design` (no args)
+### `/supervibe-design` (no args)
 
 Use most recent brief from the conversation, or ask one clarifying question.
 
@@ -58,8 +58,8 @@ Each stage is gated on user explicit approval before the next starts. Skip stage
 Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as starting viewport list. Save `target`, `viewports`, `runtime`, `constraints` into `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook will block writes until config.json exists.
 
 **Шаг 0b/N: Triage.** Then determine:
-- Is this a marketing landing page → uses `evolve:landing-page` skill
-- Is this an in-product flow → uses `evolve:prototype` skill
+- Is this a marketing landing page → uses `supervibe:landing-page` skill
+- Is this an in-product flow → uses `supervibe:prototype` skill
 - Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes skip Stage 1
 - Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes skip Stage 2
 - For non-web targets dispatch the corresponding specialist designer (`extension-ui-designer` / `electron-ui-designer` / `tauri-ui-designer` / `mobile-ui-designer`) instead of `ux-ui-designer` for spec/review.
@@ -71,8 +71,8 @@ ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prot
 
 If brand direction missing OR brief asks for "new brand / rebrand":
 
-1. Invoke `evolve:project-memory --query brand` to surface prior brand decisions.
-2. If brief named a competitor reference, invoke `evolve:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
+1. Invoke `supervibe:project-memory --query brand` to surface prior brand decisions.
+2. If brief named a competitor reference, invoke `supervibe:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
 3. Dispatch `creative-director` agent.
 4. Output: `prototypes/_brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords. Score against `brandbook` rubric ≥9.
 5. **Feedback gate** — present direction to user. Options:
@@ -85,7 +85,7 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 
 If design system missing OR Stage 1 just produced a new direction:
 
-1. Invoke `evolve:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
+1. Invoke `supervibe:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
 2. Each sub-section is a separate dialogue (one question at a time, markdown with "Шаг N/8" progress).
 3. Each sub-section gets explicit approval before next; per-section approvals saved to `prototypes/_design-system/.approvals/<section>.json`.
 4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with `manifest.json.status === 'approved'`.
@@ -116,8 +116,8 @@ Output: `prototypes/<slug>/content/copy.md` — every visible string nailed. No 
 ### Stage 5 — Prototype build (native HTML/CSS/JS)
 
 Dispatch `prototype-builder` agent. Decide which skill it dispatches:
-- Marketing landing → `evolve:landing-page`
-- In-product flow → `evolve:prototype`
+- Marketing landing → `supervibe:landing-page`
+- In-product flow → `supervibe:prototype`
 
 Both skills enforce:
 - Pure native (no frameworks, no npm)
@@ -130,7 +130,7 @@ Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `a
 
 ### Stage 6 — Live preview + parallel review
 
-1. Skill auto-spawns `evolve:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user. Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt via UserPromptSubmit hook.
+1. Skill auto-spawns `supervibe:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user. Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt via UserPromptSubmit hook.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `prototypes/<slug>/_reviews/a11y.md`.
@@ -234,21 +234,21 @@ Rubric:     prototype
 
 ## When NOT to invoke
 
-- Pure feature spec without visual surface — `/evolve-brainstorm` then `/evolve-plan`
+- Pure feature spec without visual surface — `/supervibe-brainstorm` then `/supervibe-plan`
 - Already have an approved prototype, want to ship it — call the chosen stack-developer agent directly with the `prototypes/<slug>/handoff/` path
-- Just want to manage already-running preview servers — `/evolve-preview`
-- Want to update design system tokens only (no prototype) — invoke `evolve:brandbook` skill in narrow-section mode
+- Just want to manage already-running preview servers — `/supervibe-preview`
+- Want to update design system tokens only (no prototype) — invoke `supervibe:brandbook` skill in narrow-section mode
 
 ## Related
 
 - `creative-director` — Stage 1 brand direction
-- `evolve:brandbook` — Stage 2 design system materialization
+- `supervibe:brandbook` — Stage 2 design system materialization
 - `ux-ui-designer` — Stage 3 spec
 - `copywriter` — Stage 4 copy
-- `prototype-builder` + `evolve:prototype` / `evolve:landing-page` — Stage 5 native build
-- `evolve:preview-server` — Stage 6 live URL
+- `prototype-builder` + `supervibe:prototype` / `supervibe:landing-page` — Stage 5 native build
+- `supervibe:preview-server` — Stage 6 live URL
 - `ui-polish-reviewer` + `accessibility-reviewer` + `seo-specialist` — Stage 6 reviews
-- `evolve:tokens-export` — when downstream stack picked, exports tokens to its format
+- `supervibe:tokens-export` — when downstream stack picked, exports tokens to its format
 - `<stack>-developer` agents (laravel / nextjs / vue / etc.) — pick up `handoff/` after Stage 8
-- `evolve:interaction-design-patterns` — animation recipes referenced from `motion.css`
+- `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`
 - `mcp-server-figma`, `mcp-server-firecrawl`, `mcp-playwright` — optional MCPs that improve specific stages

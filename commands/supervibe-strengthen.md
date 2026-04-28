@@ -4,10 +4,10 @@ description: >-
   .claude/memory/agent-invocations.jsonl with quantitative metric thresholds.
   Detects: avg-confidence <8.5 over last 10, override-rate ≥40% delta over 50/50
   split, repeated stale-context (≥2/10 invocations). Triggers: 'strengthen
-  agent', 'усиль агента', '/evolve-strengthen'.
+  agent', 'усиль агента', '/supervibe-strengthen'.
 ---
 
-# /evolve-strengthen
+# /supervibe-strengthen
 
 Strengthens an agent (or all flagged agents) by analyzing invocation telemetry, identifying failure modes via **quantitative thresholds**, and proposing concrete edits with diff-gate.
 
@@ -34,14 +34,14 @@ Implementation: `scripts/lib/underperformer-detector.mjs::detectUnderperformers(
 |---|---|
 | `low-avg-confidence` | Tighten Decision tree branches; add 1-2 anti-patterns from frequent failure modes |
 | `rising-override-rate` | Audit Persona for ambiguity; clarify Output contract; add explicit verification step |
-| `repeated-stale-context` | Update Project Context with grep-verified paths via `/evolve-adapt` (often agent file is fine, project context drifted) |
+| `repeated-stale-context` | Update Project Context with grep-verified paths via `/supervibe-adapt` (often agent file is fine, project context drifted) |
 | `repeated-missing-skill` | Add the missing skill reference to Skills list; verify skill exists |
 | `repeated-wrong-approach` | Persona/Decision tree mismatch — review with user; usually requires manual refactor |
 | `iteration-rate-high` | Procedure too vague; add explicit step ordering with verification commands |
 
 ## Invocation forms
 
-### `/evolve-strengthen <agent_id>` — explicit target
+### `/supervibe-strengthen <agent_id>` — explicit target
 
 Directly strengthen the named agent regardless of metrics. Useful when user has anecdotal evidence of weakness without telemetry threshold being hit.
 
@@ -53,7 +53,7 @@ Procedure:
 5. Show user the current weakness summary + proposed edits with diff.
 6. Wait for user "yes" before writing.
 
-### `/evolve-strengthen` — auto-trigger flow
+### `/supervibe-strengthen` — auto-trigger flow
 
 When invoked without arguments:
 
@@ -66,11 +66,11 @@ When invoked without arguments:
      - nestjs-developer   (low-avg-confidence: 8.10 + iteration-rate: 2.8) — recommended: Procedure + verification
    ```
 3. User chooses:
-   - `apply all` → run `/evolve-strengthen <agent_id>` sequentially per flagged agent
+   - `apply all` → run `/supervibe-strengthen <agent_id>` sequentially per flagged agent
    - `pick <agent_id>` → strengthen specific
    - `cancel` → exit
 
-### `/evolve-strengthen --metrics <agent_id>` — diagnostic only
+### `/supervibe-strengthen --metrics <agent_id>` — diagnostic only
 
 Print the metric values for one agent without proposing edits. Useful to understand why an agent was flagged or to verify thresholds.
 
@@ -86,7 +86,7 @@ Firing: low-avg-confidence
 Recommended edit: Decision tree + Anti-patterns
 ```
 
-### `/evolve-strengthen --explain` — show metric definitions
+### `/supervibe-strengthen --explain` — show metric definitions
 
 Print the threshold table above. Useful for documentation.
 
@@ -104,7 +104,7 @@ Print the threshold table above. Useful for documentation.
 2. Compute metrics via `detectUnderperformers([agent_id])`.
 3. If no metrics fire → print "Agent above all thresholds; no strengthening needed" and exit.
 4. Read last N invocations to understand failure context (read the `task` field, the failed outputs, any override rationales).
-5. Search project memory: `evolve:project-memory --query "<agent_id> failures"` for prior strengthen learnings.
+5. Search project memory: `supervibe:project-memory --query "<agent_id> failures"` for prior strengthen learnings.
 6. Propose edits per the firing-metric → edit-type mapping. For each proposed edit, cite:
    - Specific failure invocation(s) that motivate it (file:line in jsonl)
    - Which agent section gets edited
@@ -126,7 +126,7 @@ Print the threshold table above. Useful for documentation.
 |---|---|
 | Agent file not found | List all agents with similar names (Levenshtein) |
 | <10 invocations available | Print "Insufficient data — wait for more usage or use `<agent_id>` form to skip threshold gate" |
-| All metrics within threshold | Print "Agent above all thresholds" + suggest `/evolve-strengthen --metrics <id>` to verify |
+| All metrics within threshold | Print "Agent above all thresholds" + suggest `/supervibe-strengthen --metrics <id>` to verify |
 | Test fails after edit | Revert via `git restore`; print error; offer to retry with narrower edit scope |
 | User rejects diff | Save proposal to `.claude/memory/learnings/rejected-strengthen-<agent>-<date>.md` for future reference |
 
@@ -170,10 +170,10 @@ Apply? [y / n / modify]
 
 ## Related
 
-- `evolve:strengthen` skill — methodology
+- `supervibe:strengthen` skill — methodology
 - `scripts/lib/underperformer-detector.mjs` — metric calculation
 - `scripts/lib/auto-strengthen-trigger.mjs` — flagged-list builder
 - `tests/underperformer-detector.test.mjs` — threshold tests
 - `.claude/memory/agent-invocations.jsonl` — telemetry source
-- `/evolve-evaluate` — closes the loop after strengthen by re-scoring
-- `/evolve-score agent-quality <path>` — score agent file quality independently
+- `/supervibe-evaluate` — closes the loop after strengthen by re-scoring
+- `/supervibe-score agent-quality <path>` — score agent file quality independently

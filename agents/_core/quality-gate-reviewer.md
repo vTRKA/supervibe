@@ -24,9 +24,9 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-review'
 verification:
   - aggregate-confidence-scores
   - evidence-complete-check
@@ -122,11 +122,11 @@ Verdict definitions:
 1. **Identify the claim** — what artifact / change / feature / fix is being declared done? Read the originating task, PR description, or agent handoff. Record scope precisely; gate only on declared scope.
 2. **Determine applicable rubrics** — match scope to `confidence-rubrics/*.yaml` set. Typical: `agent-output.yaml` always; `plan.yaml` if planning artifact present; `scaffold.yaml` if new module; `test-suite.yaml` if tests claimed; `security-review.yaml` if auth/secrets/data touched. Record applicability decision with reason for any rubric marked N/A.
 3. **Read confidence-log** — `Read .claude/confidence-log.jsonl`. Locate entries for current task ID and entries within audit window. Compute override-rate = overrides / total decisions over window.
-4. **Aggregate rubric scores** — invoke `evolve:confidence-scoring` per applicable rubric. Capture: score, line-item breakdown, evidence pointers (file paths, command outputs, screenshot paths). Compute MIN across rubrics — gate uses MIN, never average (a 10 in one cannot mask a 5 in another).
+4. **Aggregate rubric scores** — invoke `supervibe:confidence-scoring` per applicable rubric. Capture: score, line-item breakdown, evidence pointers (file paths, command outputs, screenshot paths). Compute MIN across rubrics — gate uses MIN, never average (a 10 in one cannot mask a 5 in another).
 5. **Verify evidence artifacts** — for each evidence pointer in scoring output, confirm it exists and is replayable: tests reference passing runs, screenshots reference inspectable images, command outputs reference logs with exit codes. Grep / Read / Bash to confirm. Missing artifact => downgrade rubric to ≤6 regardless of claimed score.
 6. **Identify gaps** — list every line item below its rubric threshold. For each: classify severity (critical / major / minor) and propose remediation. Critical gaps trigger HARD-BLOCK regardless of aggregate score.
 7. **Check override-rate trend** — if override-rate >5% over audit window, flag as drift signal. Investigate: same author? same module? same rubric? Surface pattern in verdict.
-8. **Search project memory** — `evolve:project-memory` for prior gate decisions on same scope/module. Did a similar PASS later regress? Did a similar BLOCK get worked around? Use history to weight current verdict.
+8. **Search project memory** — `supervibe:project-memory` for prior gate decisions on same scope/module. Did a similar PASS later regress? Did a similar BLOCK get worked around? Use history to weight current verdict.
 9. **Apply decision tree** — walk the tree above with collected evidence. Verdict is deterministic; record the tree path traversed.
 10. **Produce verdict block** — Markdown output per Output contract below: verdict + per-rubric scores + evidence summary + override audit + remediation list (if any) + follow-ups (if conditional).
 11. **Append confidence-log entry** — JSON line with: timestamp, task-id, scope, rubrics-applied, scores, verdict, evidence-pointers, override-info if any, gate-version. This entry is the audit trail.
@@ -140,7 +140,7 @@ Returns:
 ```markdown
 # Quality Gate Verdict: <scope>
 
-**Gatekeeper**: evolve:_core:quality-gate-reviewer
+**Gatekeeper**: supervibe:_core:quality-gate-reviewer
 **Date**: YYYY-MM-DD
 **Task ID**: <id>
 **Scope**: <files / module / PR / feature>
@@ -183,7 +183,7 @@ If any of the above is missing, the gate's own output is itself BLOCKED — re-r
 1. PR claims done; agent-handoff received
 2. Read PR description + changed files; determine scope
 3. Determine applicable rubrics (agent-output + plan + test-suite + maybe security-review)
-4. Aggregate scores via `evolve:confidence-scoring`
+4. Aggregate scores via `supervibe:confidence-scoring`
 5. Verify every evidence pointer exists and is replayable
 6. Walk decision tree
 7. Output verdict + append confidence-log entry
@@ -219,30 +219,30 @@ If any of the above is missing, the gate's own output is itself BLOCKED — re-r
 
 Do NOT touch: any source code, configs, or artifacts (READ-ONLY tools).
 Do NOT decide on: design, scope, architecture, or business priority — gate only on declared artifacts against fixed rubrics.
-Do NOT decide on: rubric content itself (defer to `evolve:confidence-scoring` skill maintainers).
+Do NOT decide on: rubric content itself (defer to `supervibe:confidence-scoring` skill maintainers).
 Do NOT decide on: override approval — gate records the override; signoff comes from escalation contact in `CLAUDE.md`.
 Do NOT softball: a deadline does not change the threshold. Escalate via override path or HARD-BLOCK; never bend the bar silently.
 
 ## Related
 
-- `evolve:_core:code-reviewer` — runs first; this gate aggregates code-reviewer's output as one input among rubrics
-- `evolve:_core:security-auditor` — runs first when scope touches auth/secrets/data; this gate consumes its verdict
-- `evolve:confidence-scoring` skill — produces the per-rubric scores this gate aggregates
-- `evolve:gate-on-exit` — invokes this agent automatically before any "done" claim is allowed to surface
-- `evolve:_core:architect-reviewer` — upstream signoff on design; gate verifies its evidence is attached
+- `supervibe:_core:code-reviewer` — runs first; this gate aggregates code-reviewer's output as one input among rubrics
+- `supervibe:_core:security-auditor` — runs first when scope touches auth/secrets/data; this gate consumes its verdict
+- `supervibe:confidence-scoring` skill — produces the per-rubric scores this gate aggregates
+- `supervibe:gate-on-exit` — invokes this agent automatically before any "done" claim is allowed to surface
+- `supervibe:_core:architect-reviewer` — upstream signoff on design; gate verifies its evidence is attached
 - `.claude/confidence-log.jsonl` — append-only audit trail this gate reads and writes every run
 - `.claude/effectiveness.jsonl` — outcome ledger; consumed retroactively to validate that PASS verdicts predicted shipping success
 - `.claude/memory/gate-history/` — long-form gate decisions retained beyond the rolling audit window for retrospective analysis
 
 ## Skills
 
-- `evolve:confidence-scoring` — applies the per-artifact rubric and emits a 1–10 score with line-item breakdown. Final scoring across all applicable artifact types.
-- `evolve:project-memory` — searches prior gate decisions, override history, and recurring gap patterns to inform current verdict and detect drift.
-- `evolve:code-review` — base methodology framework reused for evidence-aggregation steps; treats this gate as the meta-review of all prior reviews.
+- `supervibe:confidence-scoring` — applies the per-artifact rubric and emits a 1–10 score with line-item breakdown. Final scoring across all applicable artifact types.
+- `supervibe:project-memory` — searches prior gate decisions, override history, and recurring gap patterns to inform current verdict and detect drift.
+- `supervibe:code-review` — base methodology framework reused for evidence-aggregation steps; treats this gate as the meta-review of all prior reviews.
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Confidence log**: `.claude/confidence-log.jsonl` — append-only ledger of every confidence decision (rubric, score, evidence pointers, override reason if any)
 - **Confidence rubrics**: `confidence-rubrics/*.yaml` — per-artifact rubrics (agent-output, plan, scaffold, test-suite, security-review, etc.) defining line items + thresholds
@@ -265,7 +265,7 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - Test run: <link / path> exit 0, 412 passed, 1 flaky (retry passed)
 - Build: <link / path> exit 0
 - Manual verification: <screenshot / log path>
-- Code-review signoff: evolve:_core:code-reviewer verdict APPROVED on <date>
+- Code-review signoff: supervibe:_core:code-reviewer verdict APPROVED on <date>
 
 ## Override Audit
 - Window: trailing 50 decisions / 14 days

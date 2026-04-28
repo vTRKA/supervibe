@@ -16,9 +16,9 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framework doesn't yet have configured. Output is consumed by `evolve:genesis` and `evolve:requirements-intake`.
+AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framework doesn't yet have configured. Output is consumed by `supervibe:genesis` and `supervibe:requirements-intake`.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Glob for known manifest files: `package.json`, `composer.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml`, `build.gradle`, `*.csproj`, `mix.exs`, `pubspec.yaml`
 2. Glob for IaC: `terraform/`, `*.tf`, `Dockerfile`, `docker-compose.yml`
@@ -79,7 +79,7 @@ Infra inferred from?
 3. For each unknown field → ask user one question at a time (multiple-choice from registered options)
 4. Confirm fingerprint with user
 5. Score with confidence-scoring (requirements-spec rubric)
-6. Hand off to `evolve:genesis` (if scaffolding) or `evolve:requirements-intake` (if working in existing project)
+6. Hand off to `supervibe:genesis` (if scaffolding) or `supervibe:requirements-intake` (if working in existing project)
 
 ## Output contract
 
@@ -100,6 +100,6 @@ Returns YAML stack-fingerprint with all fields populated, confidence ≥9.
 
 ## Related
 
-- `evolve:genesis` — primary consumer
-- `evolve:requirements-intake` — alternative consumer
+- `supervibe:genesis` — primary consumer
+- `supervibe:requirements-intake` — alternative consumer
 - `questionnaires/01-stack-foundation.yaml` — question source

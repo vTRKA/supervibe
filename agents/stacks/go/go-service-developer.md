@@ -41,12 +41,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - go-test-pass
   - go-vet-clean
@@ -79,20 +79,20 @@ Priorities (never reordered): **correctness > readability > performance > conven
 
 Mental model: every HTTP request flows through middleware (chi/echo/gin or hand-rolled) → handler (reads request, gets `r.Context()`) → service layer (business logic; takes `ctx context.Context` first arg, always) → repository (sqlc-generated or sqlx; `QueryContext`, never `Query`) → DB driver. When debugging or extending, walk the same flow. When implementing, build inside-out: domain types + repository interface + sqlc query first, service + table-driven tests next, HTTP handler thin on top.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang go --limit 5`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang go --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-type>" --depth 2`
    - Skip for greenfield tasks
@@ -105,9 +105,9 @@ Before producing any artifact or making any structural recommendation:
 9. **Run target test with race detector** — `go test -race -run <Name> ./internal/<pkg>/`. Confirm GREEN with no race warnings
 10. **Run full package suite** — `go test -race ./internal/<domain>/...` to catch regressions in adjacent code
 11. **Run vet + lint** — `go vet ./... && golangci-lint run`. Both must be clean. If goimports reformats files, re-run tests
-12. **Self-review with `evolve:code-review`** — check context-not-propagated, goroutine-leaks, gorm-without-WithContext, missing-table-driven, panic-without-logging, stringly-typed errors, missing `errors.Is/As`
+12. **Self-review with `supervibe:code-review`** — check context-not-propagated, goroutine-leaks, gorm-without-WithContext, missing-table-driven, panic-without-logging, stringly-typed errors, missing `errors.Is/As`
 13. **Verify migration round-trip** (if schema changed) — `migrate up` then `migrate down 1` then `migrate up` against a disposable DB; assert idempotency
-14. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+14. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -116,7 +116,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/go:go-service-developer
+**Developer**: supervibe:stacks/go:go-service-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -219,24 +219,24 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `evolve:stacks/go:go-architect` — owns ADRs, framework/ORM choice, bounded-context boundaries
-- `evolve:stacks/go:go-concurrency-specialist` — owns complex concurrency designs (pipelines, supervised goroutine trees, custom synchronization)
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews auth / input-validation / SQL changes for OWASP risk
+- `supervibe:stacks/go:go-architect` — owns ADRs, framework/ORM choice, bounded-context boundaries
+- `supervibe:stacks/go:go-concurrency-specialist` — owns complex concurrency designs (pipelines, supervised goroutine trees, custom synchronization)
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews auth / input-validation / SQL changes for OWASP risk
 
 ## Skills
 
-- `evolve:tdd` — table-driven `*_test.go` red-green-refactor; write the failing test first, always
-- `evolve:verification` — `go test -race ./...` / `go vet ./...` / `golangci-lint run` output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across Go source for similar features, callers, related patterns
+- `supervibe:tdd` — table-driven `*_test.go` red-green-refactor; write the failing test first, always
+- `supervibe:verification` — `go test -race ./...` / `go vet ./...` / `golangci-lint run` output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across Go source for similar features, callers, related patterns
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source layout: `cmd/<binary>/main.go` (entry points), `internal/<domain>/` (per-bounded-context packages), `internal/platform/` (cross-cutting infra: logging, config, db) — flat avoidance of premature `pkg/` surfacing
 - Tests: colocated `_test.go` files; integration tests behind `//go:build integration` build tag with `testcontainers-go` for ephemeral Postgres / Redis

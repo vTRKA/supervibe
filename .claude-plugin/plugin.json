@@ -1,6 +1,6 @@
 {
-  "name": "evolve",
-  "description": "Self-evolving Claude Code plugin: stack-aware scaffolding, specialist agents with explicit decision trees + output contracts, 10-point confidence engine, autonomous proactivity. Replaces superpowers with own brainstorming/plan/exec/TDD/debug/review.",
+  "name": "supervibe",
+  "description": "Claude Code plugin: specialist agents with explicit decision trees + output contracts, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
   "version": "1.7.0",
   "author": {
     "name": "vTRKA"
@@ -13,7 +13,7 @@
     "skills",
     "scaffolding",
     "confidence-engine",
-    "self-evolving",
+    "claude-code",
     "framework"
   ],
   "agents": [
@@ -35,7 +35,7 @@
     "./agents/_design/tauri-ui-designer.md",
     "./agents/_design/ui-polish-reviewer.md",
     "./agents/_design/ux-ui-designer.md",
-    "./agents/_meta/evolve-orchestrator.md",
+    "./agents/_meta/supervibe-orchestrator.md",
     "./agents/_meta/memory-curator.md",
     "./agents/_meta/rules-curator.md",
     "./agents/_ops/ai-integration-architect.md",

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { AgentTaskStore } from '../scripts/lib/agent-task-store.mjs';
 import { suggestAlternatives } from '../scripts/lib/dispatch-suggester.mjs';
 
-const sandbox = join(tmpdir(), `evolve-suggester-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-suggester-${Date.now()}`);
 const dbPath  = join(sandbox, 'agent-tasks.db');
 let store;
 

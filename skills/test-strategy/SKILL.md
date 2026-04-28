@@ -20,7 +20,7 @@ BEFORE writing the first test for a new feature. BEFORE adding a new test layer 
 
 The skill answers four questions in order: what shape is the pyramid, how do fixtures stay isolated, what flake budget is acceptable, how is coverage triangulated.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project `CLAUDE.md` for any pre-declared testing conventions.
 2. Read `package.json` / `pyproject.toml` / `Cargo.toml` to enumerate which test runners exist already.
@@ -58,7 +58,7 @@ Is the feature behind a flag with staged rollout?
 6. **CI gate thresholds**: encode minimum line / branch / mutation thresholds as CI failures, not advisory warnings. Differential coverage on the diff is preferable to absolute repo numbers.
 7. **Fast-feedback loops**: keep the unit suite under 60 seconds locally. If it grows beyond that, split by package/module before adding parallelism — slow tests usually mean leaked I/O.
 8. **Output**: write the strategy as a short ADR-style note (see Output contract).
-9. **Score** — invoke `evolve:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
+9. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
 
 ## Output contract
 
@@ -96,7 +96,7 @@ Open risks: <enumerated>
 
 ## Related
 
-- `evolve:tdd` — drives the day-to-day red/green/refactor loop on top of this strategy.
-- `evolve:audit` — periodic re-check of flake rate and coverage triangulation.
-- `evolve:feature-flag-rollout` — paired strategy when the feature ships behind a flag.
-- `evolve:error-envelope-design` — defines the contract that integration tests assert against.
+- `supervibe:tdd` — drives the day-to-day red/green/refactor loop on top of this strategy.
+- `supervibe:audit` — periodic re-check of flake rate and coverage triangulation.
+- `supervibe:feature-flag-rollout` — paired strategy when the feature ships behind a flag.
+- `supervibe:error-envelope-design` — defines the contract that integration tests assert against.

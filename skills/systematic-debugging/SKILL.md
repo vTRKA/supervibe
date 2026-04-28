@@ -20,7 +20,7 @@ WHEN ANY of: a bug is reported, a test fails, code behaves unexpectedly, a build
 
 This skill bans "guess and check" debugging.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Reproduce the issue first — run the exact failing command, capture output verbatim
 2. Read the error message in full (don't paraphrase)
@@ -49,7 +49,7 @@ What kind of bug?
 5. **Isolation** — narrow to smallest reproducer (single test, minimal input, single function)
 6. **Minimal fix** — propose smallest change that addresses root cause (NOT symptom)
 7. **Verify** — run failing test/command; show pre-fix FAIL + post-fix PASS
-8. **Score** — `evolve:confidence-scoring` artifact-type=agent-output; gate ≥9
+8. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; gate ≥9
 9. **Postmortem note** — if non-trivial bug, add a one-liner to project's MEMORY.md or rules
 
 ## Output contract
@@ -80,6 +80,6 @@ Returns:
 
 ## Related
 
-- `evolve:verification` — invoked to prove fix works
-- `evolve:tdd` — preferred next step (write regression test before fix)
-- `evolve:requesting-code-review` — for non-trivial fixes
+- `supervibe:verification` — invoked to prove fix works
+- `supervibe:tdd` — preferred next step (write regression test before fix)
+- `supervibe:requesting-code-review` — for non-trivial fixes

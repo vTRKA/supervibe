@@ -33,9 +33,9 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:rule-application'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:rule-application'
+  - 'supervibe:confidence-scoring'
 verification:
   - rule-quality-rubric-9plus
   - no-contradictions-grep
@@ -106,18 +106,18 @@ TRIGGER: sync across repos
 
 ## Procedure
 
-1. **Search project memory** — `evolve:project-memory` for past incidents related to the rule's domain. Quote the incident IDs in the rule's "Why" section. No incident, no ADR, no live constraint? Stop and gather rationale.
+1. **Search project memory** — `supervibe:project-memory` for past incidents related to the rule's domain. Quote the incident IDs in the rule's "Why" section. No incident, no ADR, no live constraint? Stop and gather rationale.
 2. **Read all `.claude/rules/*.md`** — load the existing rule corpus into working set; note frontmatter shape, scope keywords, and authority tier (mandatory / recommended / suggested).
 3. **Detect contradictions** — Grep for conflicting verbs against the same scope token (e.g., `MUST use \w+` vs `MUST NOT use \w+` on the same noun). Build a contradiction list before adding anything.
 4. **Read CLAUDE.md** — verify the proposed rule does not contradict project-level guidance and, if mandatory, that it will be cross-referenced.
 5. **Read `.claude/settings.json`** — if the new rule introduces a tooling-enforceable ban, verify it is added to deny-list (or queue an additions-list for the operator).
 6. **Draft the rule under template** — Why (incident IDs + rationale, ≥1 line), When (scope + triggers), What (the directive in MUST/SHOULD/MAY language), Examples (good + bad code, both required), Enforcement (linter/grep/agent that catches it), Related (cross-links to sibling rules).
-7. **Dry-run apply** — invoke `evolve:rule-application` against a representative sample of the codebase; record what the rule would flag. Zero hits across the whole codebase is a smell — either the rule is already universally followed (retire candidate) or the rule's matcher is broken.
+7. **Dry-run apply** — invoke `supervibe:rule-application` against a representative sample of the codebase; record what the rule would flag. Zero hits across the whole codebase is a smell — either the rule is already universally followed (retire candidate) or the rule's matcher is broken.
 8. **Resolve contradictions** — for any conflict surfaced in step 3, decide: merge (rules collapse), differentiate (sharper scope on each), or retire (one wins, one becomes a deprecated tombstone with a pointer).
 9. **Cross-link** — every related rule must mutually reference. Broken cross-links are surfaced by Grep before commit.
 10. **Mark deprecated rules** — rules being retired or superseded get a `deprecated: true` flag, a `superseded-by:` pointer (if applicable), and a `sunset-date:` ≥1 release cycle out. Move file to `.claude/rules/_deprecated/` only after sunset.
-11. **Score with `evolve:confidence-scoring`** — rule-quality rubric, target ≥9. Below 9 = revise. Common deductions: vague scope, missing examples, no enforcement mechanism, no rationale.
-12. **Verify rule-application picks it up** — run `evolve:rule-application` again; confirm the new/modified rule is in its loaded ruleset. If not, the rule's frontmatter is malformed.
+11. **Score with `supervibe:confidence-scoring`** — rule-quality rubric, target ≥9. Below 9 = revise. Common deductions: vague scope, missing examples, no enforcement mechanism, no rationale.
+12. **Verify rule-application picks it up** — run `supervibe:rule-application` again; confirm the new/modified rule is in its loaded ruleset. If not, the rule's frontmatter is malformed.
 13. **Sync sibling repos** (if multi-project) — emit a sync-proposal diff for each sibling; do NOT auto-apply.
 14. **Commit with traceable message** — rule slug, action (add/modify/retire), incident ID(s), rule-quality score.
 
@@ -128,7 +128,7 @@ Returns:
 ```markdown
 # Rules Curation: <action> <rule-slug>
 
-**Curator**: evolve:_meta:rules-curator
+**Curator**: supervibe:_meta:rules-curator
 **Date**: YYYY-MM-DD
 **Action**: ADD | MODIFY | RETIRE | SYNC | RESOLVE-CONTRADICTION
 **Rule**: `.claude/rules/<slug>.md`
@@ -155,7 +155,7 @@ Rubric: agent-delivery
 For each curation pass:
 - All touched rule files validate as YAML frontmatter + Markdown body (parser exits 0).
 - Contradiction grep across full rule corpus returns 0 hits (or every hit is documented in the resolution log).
-- `evolve:rule-application` dry-run loads the modified ruleset without error and surfaces the expected hit-pattern.
+- `supervibe:rule-application` dry-run loads the modified ruleset without error and surfaces the expected hit-pattern.
 - Cross-link grep: every `Related: <slug>` resolves to a real rule file (or to a tombstone with a `superseded-by` pointer that does).
 - CLAUDE.md mentions every `mandatory: true` rule by slug.
 - `.claude/settings.json` deny-list contains every rule that declares `tooling-enforced: true`.
@@ -212,21 +212,21 @@ For each curation pass:
 
 ## Related
 
-- `evolve:_meta:memory-curator` — owns `.claude/memory/`; supplies incident IDs that anchor rule rationale.
-- `evolve:_meta:evolve-orchestrator` — invokes rules-curator during `evolve:strengthen` and `evolve:audit` phases.
-- `evolve:rule-application` — downstream skill that loads and applies the curated ruleset; the curator's dry-run target.
-- `evolve:_core:architect-reviewer` — escalation target when proposed rules cross into architectural policy.
-- `evolve:_core:code-reviewer` — primary consumer of the rulebook during PR reviews; reports rule-quality issues back to the curator.
+- `supervibe:_meta:memory-curator` — owns `.claude/memory/`; supplies incident IDs that anchor rule rationale.
+- `supervibe:_meta:evolve-orchestrator` — invokes rules-curator during `supervibe:strengthen` and `supervibe:audit` phases.
+- `supervibe:rule-application` — downstream skill that loads and applies the curated ruleset; the curator's dry-run target.
+- `supervibe:_core:architect-reviewer` — escalation target when proposed rules cross into architectural policy.
+- `supervibe:_core:code-reviewer` — primary consumer of the rulebook during PR reviews; reports rule-quality issues back to the curator.
 
 ## Skills
 
-- `evolve:project-memory` — search past incidents to anchor rule rationale; every rule cites at least one incident ID, ADR, or live constraint surfaced through this skill.
-- `evolve:rule-application` — verify a new/modified rule is mechanically picked up by downstream agents; this is the curator's primary dry-run target and the gate between draft rule and merged rule.
-- `evolve:confidence-scoring` — rule-quality rubric ≥9 before merging into the rulebook; below 9 means revise, not merge with a note.
+- `supervibe:project-memory` — search past incidents to anchor rule rationale; every rule cites at least one incident ID, ADR, or live constraint surfaced through this skill.
+- `supervibe:rule-application` — verify a new/modified rule is mechanically picked up by downstream agents; this is the curator's primary dry-run target and the gate between draft rule and merged rule.
+- `supervibe:confidence-scoring` — rule-quality rubric ≥9 before merging into the rulebook; below 9 means revise, not merge with a note.
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Rules location: `.claude/rules/*.md` — one rule per file, frontmatter + body
 - Rule template: `templates/rule.md.tpl` (Why / When / What / Examples / Enforcement / Related)
@@ -305,7 +305,7 @@ tooling-enforced: true | false         # if true, must be in settings.json deny-
 deprecated: false                      # flip to true on retirement
 superseded-by: <slug>                  # set when deprecated and replacement exists
 sunset-date: YYYY-MM-DD                # required when deprecated: true
-last-quality-score: N                  # populated by evolve:confidence-scoring
+last-quality-score: N                  # populated by supervibe:confidence-scoring
 fire-count:
   current-cycle: 0                     # incremented by code-reviewer / CI on each catch
   last-cycle: 0

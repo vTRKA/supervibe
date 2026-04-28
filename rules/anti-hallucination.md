@@ -86,10 +86,10 @@ Why this is good: command run, output shown, claim supported.
 
 ## Enforcement
 
-- `evolve:verification` skill enforces evidence-before-assertion at per-claim level
-- `evolve:confidence-scoring` `agent-delivery.yaml` rubric has `anti-hallucination` dim (weight 2)
+- `supervibe:verification` skill enforces evidence-before-assertion at per-claim level
+- `supervibe:confidence-scoring` `agent-delivery.yaml` rubric has `anti-hallucination` dim (weight 2)
 - Code review checks for unverified claims
-- `evolve:audit` scans transcript for "done"/"works"/"fixed" claims preceded by no command output
+- `supervibe:audit` scans transcript for "done"/"works"/"fixed" claims preceded by no command output
 
 ## Related rules
 

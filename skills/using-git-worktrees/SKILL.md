@@ -20,7 +20,7 @@ BEFORE starting feature work or executing a plan, IF current workspace has uncom
 
 NOT for: small fixes, doc-only changes, work on a fresh repo.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Run `git status` — check for uncommitted changes
 2. Run `git branch -v` — list current branches
@@ -49,7 +49,7 @@ Worktree location:
 5. **Verify**: `git worktree list` shows new entry
 6. **Switch context** — communicate to user: subsequent commands run in `<path>`
 7. **Work** — execute plan / feature / fix
-8. **When done** → `evolve:finishing-a-development-branch` skill decides merge / PR / discard
+8. **When done** → `supervibe:finishing-a-development-branch` skill decides merge / PR / discard
 9. **Cleanup** — `git worktree remove <path>` (only after merge/PR done; don't remove uncommitted work)
 
 ## Output contract
@@ -76,5 +76,5 @@ Returns:
 
 ## Related
 
-- `evolve:finishing-a-development-branch` — invoked at end of work to decide cleanup
+- `supervibe:finishing-a-development-branch` — invoked at end of work to decide cleanup
 - `git-discipline` rule (Phase 3) — bans stash; this skill respects that

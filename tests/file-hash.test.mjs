@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { hashFile, hashContent } from '../scripts/lib/file-hash.mjs';
 
-const sandbox = join(tmpdir(), `evolve-hash-test-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-hash-test-${Date.now()}`);
 
 test('hashContent: deterministic for same input', () => {
   const a = hashContent('hello world');

@@ -27,8 +27,8 @@ tools:
   - Bash
   - WebFetch
 skills:
-  - 'evolve:confidence-scoring'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:mcp-discovery'
 verification:
   - sources-cited
   - dates-recent
@@ -127,7 +127,7 @@ Returns a research note in this exact structure:
 ```markdown
 # Research note: <topic> (<library>@<version>)
 
-**Researcher:** evolve:_ops:best-practices-researcher
+**Researcher:** supervibe:_ops:best-practices-researcher
 **Date:** YYYY-MM-DD
 **TTL:** 30 days (re-verify after YYYY-MM-DD)
 **Status:** cache-hit | fresh-fetch
@@ -179,7 +179,7 @@ For each research note:
 - Contradictions are explicitly resolved, not papered over
 - Applicability section references project's actual version from stack-fingerprint
 - Cache file written at expected path with correct date stamp
-- Confidence ≥9 on `evolve:confidence-scoring` research-output rubric
+- Confidence ≥9 on `supervibe:confidence-scoring` research-output rubric
 
 ## Common workflows
 
@@ -203,7 +203,7 @@ For each research note:
 2. Identify 2-4 candidate patterns from official docs + community
 3. For each: stated trade-offs, who endorses, contraindications
 4. Compare against project constraints (perf budget, team skill, existing arch)
-5. Output: ranked options with trade-off matrix + cite trail; do NOT pick — that's `evolve:adr`
+5. Output: ranked options with trade-off matrix + cite trail; do NOT pick — that's `supervibe:adr`
 
 ### deprecation-tracking
 1. Walk project manifest; for each dep, fetch deprecation/EOL data at pinned version
@@ -222,28 +222,28 @@ For each research note:
 ## Out of scope
 
 - Do NOT touch source code (READ-ONLY research agent).
-- Do NOT decide on adoption — researcher provides info; team decides via `evolve:adr`.
-- Do NOT audit security CVEs — defer to `evolve:_ops:security-researcher`.
-- Do NOT audit license compliance or transitive dep graphs — defer to `evolve:_ops:dependency-researcher`.
-- Do NOT design infrastructure topology — defer to `evolve:_ops:infra-pattern-researcher`.
-- Do NOT do competitive UX/product analysis — defer to `evolve:_ops:competitive-design-researcher`.
+- Do NOT decide on adoption — researcher provides info; team decides via `supervibe:adr`.
+- Do NOT audit security CVEs — defer to `supervibe:_ops:security-researcher`.
+- Do NOT audit license compliance or transitive dep graphs — defer to `supervibe:_ops:dependency-researcher`.
+- Do NOT design infrastructure topology — defer to `supervibe:_ops:infra-pattern-researcher`.
+- Do NOT do competitive UX/product analysis — defer to `supervibe:_ops:competitive-design-researcher`.
 
 ## Related
 
-- `evolve:_ops:dependency-researcher` — package-level audit (versions, licenses, transitive risk)
-- `evolve:_ops:infra-pattern-researcher` — cloud/deployment/topology patterns
-- `evolve:_ops:security-researcher` — CVE details, exploit availability, threat intel
-- `evolve:_ops:competitive-design-researcher` — UX/product patterns from comparable products
-- `evolve:_core:architect-reviewer` — consumes research notes for design decisions
-- `evolve:adr` — captures the decision once research is in
+- `supervibe:_ops:dependency-researcher` — package-level audit (versions, licenses, transitive risk)
+- `supervibe:_ops:infra-pattern-researcher` — cloud/deployment/topology patterns
+- `supervibe:_ops:security-researcher` — CVE details, exploit availability, threat intel
+- `supervibe:_ops:competitive-design-researcher` — UX/product patterns from comparable products
+- `supervibe:_core:architect-reviewer` — consumes research notes for design decisions
+- `supervibe:adr` — captures the decision once research is in
 
 ## Skills
 
-- `evolve:confidence-scoring` — research-output rubric ≥9 (5 dims: source-recency / source-authority / claim-support / contradiction-resolution / applicability)
+- `supervibe:confidence-scoring` — research-output rubric ≥9 (5 dims: source-recency / source-authority / claim-support / contradiction-resolution / applicability)
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Research cache: `.claude/research-cache/` (created on first miss)
 - TTL: 30 days per `topic-YYYY-MM-DD.md`
@@ -252,28 +252,28 @@ For each research note:
 - Stack fingerprint: `.claude/stack-fingerprint.md` — lib versions in use
 - Past research: `.claude/research-cache/` index (search before re-fetching)
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure (full implementation, Phase 7)
 
 1. **Identify research topic** with version constraint (e.g., "Next.js 15.2 cache patterns" not "Next.js cache patterns")
 2. **Cache check** — Read `.claude/research-cache/<topic-slug>-*.md`; if mtime within TTL → return
-3. **Pick research tool**: invoke `evolve:mcp-discovery` skill with category=`current-docs` (or `crawl`/`search` for general web sweep) to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
+3. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=`current-docs` (or `crawl`/`search` for general web sweep) to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
 4. **WebFetch fallback** (if discovery returns nothing usable): query official docs URL directly at pinned version path
 5. **Source authority filter**: drop non-authoritative per decision tree
 6. **Recency filter**: ≥80% of cited sources within 12 months OR explicitly canonical
 7. **Contradiction resolution**: if sources disagree, note explicitly with reasoning for chosen position
 8. **Applicability**: state how findings apply to current project's stack version (read from stack-fingerprint)
 9. **Cache** at `.claude/research-cache/<topic-slug>-<YYYY-MM-DD>.md` (template below)
-10. **Score** with `evolve:confidence-scoring` (research-output rubric ≥9)
+10. **Score** with `supervibe:confidence-scoring` (research-output rubric ≥9)
 11. Return findings + cache path + status
 
 ## Query
@@ -307,7 +307,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Next steps
 - [ ] <suggested follow-up research>
-- [ ] <suggested ADR if a decision is needed> (route to `evolve:adr`)
+- [ ] <suggested ADR if a decision is needed> (route to `supervibe:adr`)
 - [ ] <re-verify date> (TTL expiry)
 ```
 

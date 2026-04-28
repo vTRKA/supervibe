@@ -38,11 +38,11 @@ NOT for:
 5. **Versioned + reversible** — each approved section gets a git commit; reverting is git revert, not "undo".
 6. **Alternatives are first-class** — when user rejects a direction, this skill produces 2 alternatives with explicit tradeoffs documented, never random regen.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/_brandbook/direction.md` if exists (creative-director's moodboard + intent doc).
 2. Read `prototypes/_design-system/` if exists — discover what's already approved vs what needs work.
-3. Read `evolve:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
+3. Read `supervibe:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
 4. Read user's brief / requirements doc if pointed at one.
 
 **Step 0a — Determine target baseline.**
@@ -148,7 +148,7 @@ Timing tiers, easing curves, named keyframes for common animations. Output to `m
 @keyframes pulse-ring { ... }
 ```
 
-Reference `evolve:interaction-design-patterns` for the full menu of approaches. The system declares which timings + easings ARE the brand's vocabulary; prototypes don't author new ones.
+Reference `supervibe:interaction-design-patterns` for the full menu of approaches. The system declares which timings + easings ARE the brand's vocabulary; prototypes don't author new ones.
 
 ### Section 5 — Voice (copy)
 
@@ -195,7 +195,7 @@ Output: copy each chosen template to `prototypes/_design-system/components/<name
 - E) **Radix UI / HeadlessUI** — только логика, визуал полностью наш.
 - F) **Angular Material / PrimeVue / Quasar / другое** — указываем явно.
 
-После выбора — запустим `evolve:component-library-integration` для генерации bridge перед тем как переходить к Section 7. Не пропускаем bridge: без него выбранная библиотека рендерится в её дефолтном визуале и наши токены становятся декорацией.
+После выбора — запустим `supervibe:component-library-integration` для генерации bridge перед тем как переходить к Section 7. Не пропускаем bridge: без него выбранная библиотека рендерится в её дефолтном визуале и наши токены становятся декорацией.
 
 For target=mobile-native, library options shift:
 - React Native: Tamagui / NativeBase / RN Paper
@@ -294,7 +294,7 @@ Rubric:     brandbook
 ## Related
 
 - `agents/_design/creative-director` — produces brand DIRECTION (mood-board, intent) BEFORE this skill materializes the system
-- `evolve:tokens-export` — when system approved, exports to framework-specific format (Tailwind / MUI / CSS vars / Style Dictionary) for downstream stack
-- `evolve:prototype` + `evolve:landing-page` — consume this system; cannot run without it (prerequisite: `design-system-approved`)
-- `evolve:interaction-design-patterns` — animation recipe library; system DECLARES which timings/easings to use
-- `commands/evolve-design.md` — full pipeline orchestrator
+- `supervibe:tokens-export` — when system approved, exports to framework-specific format (Tailwind / MUI / CSS vars / Style Dictionary) for downstream stack
+- `supervibe:prototype` + `supervibe:landing-page` — consume this system; cannot run without it (prerequisite: `design-system-approved`)
+- `supervibe:interaction-design-patterns` — animation recipe library; system DECLARES which timings/easings to use
+- `commands/supervibe-design.md` — full pipeline orchestrator

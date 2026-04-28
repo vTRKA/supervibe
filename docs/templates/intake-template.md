@@ -74,7 +74,7 @@
 
 ## Suggested next step
 
-- [ ] Brainstorm (`evolve:brainstorming`)
-- [ ] PRD (`evolve:prd`)
-- [ ] ADR (`evolve:adr`)
-- [ ] Direct implementation plan (`evolve:writing-plans`)
+- [ ] Brainstorm (`supervibe:brainstorming`)
+- [ ] PRD (`supervibe:prd`)
+- [ ] ADR (`supervibe:adr`)
+- [ ] Direct implementation plan (`supervibe:writing-plans`)

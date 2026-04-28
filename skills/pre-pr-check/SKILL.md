@@ -16,9 +16,9 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch. Invoked by `evolve:finishing-a-development-branch` and `evolve:requesting-code-review`.
+BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch. Invoked by `supervibe:finishing-a-development-branch` and `supervibe:requesting-code-review`.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project's check command(s) from `CLAUDE.md` or `package.json`/`composer.json`/`Cargo.toml`/`Makefile`
 2. Identify stack (decides which checks apply)
@@ -47,7 +47,7 @@ What stack determines which checks?
    - Audit: 0 high+critical vulns
 4. **If ANY fail** → STOP, return failure with output; caller must fix
 5. **If ALL pass** → emit evidence bundle
-6. **Score** — `evolve:confidence-scoring` artifact-type=agent-output; ≥9 required
+6. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required
 
 ## Output contract
 
@@ -79,6 +79,6 @@ Verdict: READY / NOT-READY
 
 ## Related
 
-- `evolve:finishing-a-development-branch` — invokes this first
-- `evolve:requesting-code-review` — invokes this before reviewer
-- `evolve:verification` — per-claim verification (this is per-PR)
+- `supervibe:finishing-a-development-branch` — invokes this first
+- `supervibe:requesting-code-review` — invokes this before reviewer
+- `supervibe:verification` — per-claim verification (this is per-PR)

@@ -5,7 +5,7 @@ description: "Adds queue-worker-architect + queue idempotency rules"
 type: atomic
 
 agents-attach:
-  - evolve:stacks/laravel:queue-worker-architect
+  - supervibe:stacks/laravel:queue-worker-architect
 
 rules-attach:
   - infrastructure-patterns

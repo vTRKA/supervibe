@@ -83,7 +83,7 @@ Why this is good: visible, recoverable, communicable.
 - `.claude/settings.json` `permissions.deny` blocks Claude from running banned commands
 - Pre-push hook runs `npm run check` (no commit-bypass)
 - Code review checks for any sneaked-in destructive commands
-- `evolve:audit` includes git-discipline check (scan recent shell history if available)
+- `supervibe:audit` includes git-discipline check (scan recent shell history if available)
 
 ## Related rules
 

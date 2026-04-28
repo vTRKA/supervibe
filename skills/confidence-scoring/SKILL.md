@@ -18,9 +18,9 @@ last-verified: 2026-04-27
 
 EVERY skill marked `gate-on-exit: true` MUST invoke this skill before completing.
 
-Direct invocation: `/evolve-score <artifact-type> [path-to-artifact]` from the user.
+Direct invocation: `/supervibe-score <artifact-type> [path-to-artifact]` from the user.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `confidence-rubrics/<artifact-type>.yaml` for the rubric matching the artifact being scored.
 2. Read the artifact itself.
@@ -86,22 +86,22 @@ Returns JSON-shaped object:
 }
 ```
 
-If status is BLOCK and the user did NOT issue `/evolve-override`, the calling skill MUST loop back rather than claim completion.
+If status is BLOCK and the user did NOT issue `/supervibe-override`, the calling skill MUST loop back rather than claim completion.
 
 ## Guard rails
 
 - DO NOT: invent evidence that isn't in the artifact (anti-hallucination).
 - DO NOT: round scores up — always round down for partial credit.
-- DO NOT: change rubric on the fly — if rubric needs updating, that's a separate `evolve:strengthen` job.
-- DO NOT: persist scores anywhere — scoring is stateless. Override decisions are persisted by `/evolve-override`, not by this skill.
+- DO NOT: change rubric on the fly — if rubric needs updating, that's a separate `supervibe:strengthen` job.
+- DO NOT: persist scores anywhere — scoring is stateless. Override decisions are persisted by `/supervibe-override`, not by this skill.
 - ALWAYS: include `evidence-found` per dimension so the user can audit the score.
 - ALWAYS: if `block-below = warn-below = 10`, the only PASS is exactly 10/10.
 
 ## Override interaction
 
-If a user invokes `/evolve-override "<reason>"`, that command appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
+If a user invokes `/supervibe-override "<reason>"`, that command appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
 
-The append-only log allows `/evolve-audit` to compute override-rate later.
+The append-only log allows `/supervibe-audit` to compute override-rate later.
 
 ## Verification (of this skill itself)
 
@@ -112,6 +112,6 @@ This skill's correctness can be verified by:
 
 ## Related skills
 
-- `evolve:verification` — operates at per-claim level; this skill operates at per-artifact level.
-- `evolve:requirements-intake` (Phase 2) — consumes this skill at exit.
-- `evolve:writing-plans` (Phase 2) — consumes this skill at exit.
+- `supervibe:verification` — operates at per-claim level; this skill operates at per-artifact level.
+- `supervibe:requirements-intake` (Phase 2) — consumes this skill at exit.
+- `supervibe:writing-plans` (Phase 2) — consumes this skill at exit.

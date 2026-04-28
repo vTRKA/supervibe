@@ -39,7 +39,7 @@ async function loadAgents() {
     const content = await readFile(filePath, 'utf8');
     const { data } = matter(content);
     if (!data.name || !data.namespace) continue;
-    const id = `evolve:${data.namespace}:${data.name}`;
+    const id = `supervibe:${data.namespace}:${data.name}`;
     agents[id] = {
       file: toRepoRelative(filePath),
       capabilities: data.capabilities || [],
@@ -60,7 +60,7 @@ async function loadSkills() {
     const content = await readFile(filePath, 'utf8');
     const { data } = matter(content);
     if (!data.name) continue;
-    const id = `evolve:${data.name}`;
+    const id = `supervibe:${data.name}`;
     skills[id] = {
       file: toRepoRelative(filePath),
       phase: data.phase,

@@ -19,9 +19,9 @@ last-verified: 2026-04-27
 - AT SESSION START if `last-verified` of any artifact >30 days
 - After ≥10 files changed in session
 - Agent reports `stale-context` blocker
-- User runs `/evolve-audit`
+- User runs `/supervibe-audit`
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current artifact list
 2. Read `.claude/effectiveness.jsonl` (if exists)
@@ -38,7 +38,7 @@ last-verified: 2026-04-27
 6. **Override-rate** — compute over last 100 entries; >5% → flag systemic
 7. **Effectiveness signals** — agents with `failed/partial` outcome 2+ times → flag
 8. Output structured health report
-9. Recommend: `/evolve-strengthen` for weak, `/evolve-adapt` for stale refs, `/evolve-evaluate` for effectiveness
+9. Recommend: `/supervibe-strengthen` for weak, `/supervibe-adapt` for stale refs, `/supervibe-evaluate` for effectiveness
 
 ## Output contract
 
@@ -57,8 +57,8 @@ last-verified: 2026-04-27
 ### Effectiveness Concerns (N)
 - ...
 ### Recommended Actions
-- /evolve-strengthen
-- /evolve-adapt
+- /supervibe-strengthen
+- /supervibe-adapt
 ```
 
 ## Guard rails
@@ -69,6 +69,6 @@ last-verified: 2026-04-27
 
 ## Related
 
-- `evolve:strengthen` — fix weak
-- `evolve:adapt` — fix stale references
-- `evolve:evaluate` — track effectiveness
+- `supervibe:strengthen` — fix weak
+- `supervibe:adapt` — fix stale references
+- `supervibe:evaluate` — track effectiveness

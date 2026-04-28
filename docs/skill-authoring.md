@@ -11,7 +11,7 @@ Skills are methodology — they describe HOW to do something. Agents USE skills;
    ```
 2. Fill in placeholders
 3. Validate: `npm run validate:frontmatter && npm run lint:descriptions`
-4. Score: `/evolve-score skill-quality skills/<your-skill>/SKILL.md` — must be ≥9
+4. Score: `/supervibe-score skill-quality skills/<your-skill>/SKILL.md` — must be ≥9
 
 ## Required frontmatter fields
 
@@ -114,7 +114,7 @@ If your skill emits a new artifact type not covered by existing rubrics:
 
 ## Strengthen pass
 
-When `evolve:audit` flags your skill as weak:
+When `supervibe:audit` flags your skill as weak:
 - Add more decision tree branches
 - Expand examples
 - Sharpen guard rails

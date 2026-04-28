@@ -20,7 +20,7 @@ WHEN designing the first endpoint of a new API. WHEN extending an API whose erro
 
 The skill produces a single answer for the project: one envelope shape, one error-code registry, one retry contract, one partial-failure pattern. Mixed envelopes are the most common cause of unreliable client retries.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read API style guide / OpenAPI / GraphQL schema / proto files for the project.
 2. Sample real error responses from at least three endpoints — confirm whether the shape is already consistent or already drifted.
@@ -61,7 +61,7 @@ Is the error machine-actionable by the client?
 7. **Stack traces and internals never cross the boundary**: clients receive a stable `code` plus a `correlationId`. Stack traces, SQL fragments, and internal hostnames are logged server-side only.
 8. **Deprecation policy for codes**: introduce `Deprecation` / `Sunset` headers (HTTP) or a `deprecated` flag in the registry. Maintain old codes for at least one major version with monitoring on residual usage.
 9. **Output**: the envelope spec + registry skeleton (see Output contract).
-10. **Score** — invoke `evolve:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
+10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
 
 ## Output contract
 
@@ -104,7 +104,7 @@ Deprecation: <Sunset header + monitoring metric>
 
 ## Related
 
-- `evolve:test-strategy` — contract tests assert the envelope at the API boundary.
-- `evolve:auth-flow-design` — auth errors must use the same envelope, not a bespoke one.
-- `evolve:adr` — capture envelope choice as an ADR; future API versions inherit it.
-- `evolve:incident-response` — `correlationId` from the envelope is the bridge to logs/traces.
+- `supervibe:test-strategy` — contract tests assert the envelope at the API boundary.
+- `supervibe:auth-flow-design` — auth errors must use the same envelope, not a bespoke one.
+- `supervibe:adr` — capture envelope choice as an ADR; future API versions inherit it.
+- `supervibe:incident-response` — `correlationId` from the envelope is the bridge to logs/traces.

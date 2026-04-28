@@ -1,5 +1,5 @@
 // Pure node:http static server with SSE-based hot-reload script injection.
-// Zero new deps. SSE endpoint lives at /__evolve_preview/sse.
+// Zero new deps. SSE endpoint lives at /__supervibe_preview/sse.
 
 import { createServer as createHttpServer } from 'node:http';
 import { createReadStream, statSync, existsSync } from 'node:fs';
@@ -12,18 +12,18 @@ import { injectOverlay } from './feedback-overlay-injector.mjs';
 const HOT_RELOAD_SCRIPT = `
 <script>
 (function() {
-  if (window.__evolve_preview_initialized) return;
-  window.__evolve_preview_initialized = true;
-  const es = new EventSource('/__evolve_preview/sse');
+  if (window.__supervibe_preview_initialized) return;
+  window.__supervibe_preview_initialized = true;
+  const es = new EventSource('/__supervibe_preview/sse');
   es.addEventListener('reload', () => {
-    console.log('[evolve-preview] reload triggered');
+    console.log('[supervibe-preview] reload triggered');
     window.location.reload();
   });
   es.addEventListener('connected', () => {
-    console.log('[evolve-preview] connected');
+    console.log('[supervibe-preview] connected');
   });
   es.onerror = () => {
-    console.warn('[evolve-preview] SSE connection error — retry in 2s');
+    console.warn('[supervibe-preview] SSE connection error — retry in 2s');
   };
 })();
 </script>
@@ -54,7 +54,7 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
   const httpServer = createHttpServer(async (req, res) => {
     touch();
 
-    if (req.url === '/__evolve_preview/sse') {
+    if (req.url === '/__supervibe_preview/sse') {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

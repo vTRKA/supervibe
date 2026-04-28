@@ -11,4 +11,4 @@ Tools wired into agents via `tools:` array in frontmatter:
 | `mcp-server-figma` | Read Figma designs | ux-ui-designer, prototype-builder |
 | `mcp-server-firecrawl` | Web crawling / extraction | competitive-design-researcher, security-researcher |
 
-Skill `evolve:mcp-discovery` — when user task seems to need an external tool, check if an MCP exists before resorting to WebFetch.
+Skill `supervibe:mcp-discovery` — when user task seems to need an external tool, check if an MCP exists before resorting to WebFetch.

@@ -31,10 +31,10 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
 verification:
   - next-build-success
   - lighthouse-cwv
@@ -127,15 +127,15 @@ ROUTE GROUPS ((group)):
   Just folder hygiene?                                          → route groups OK
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -151,8 +151,8 @@ Before producing any artifact or making any structural recommendation:
 10. **Parallel routes / route groups review** — confirm parallel slots solve a real layout-state problem (not just conditional rendering); confirm route groups serve layout isolation or organization
 11. **Middleware scope review** — middleware runs on every matching request; verify `matcher` is tight, edge-compatible, and does only auth/redirect/header work — never data fetching
 12. **Performance budget mapping** — assign LCP/INP/CLS budgets per route class (marketing/app/admin); flag client islands that breach budget
-13. **Produce ADR** — via `evolve:adr` skill; include decision, alternatives considered, trade-offs, invalidation contracts, runtime choices, migration plan if applicable
-14. **Score** — `evolve:confidence-scoring` ≥9 before delivery
+13. **Produce ADR** — via `supervibe:adr` skill; include decision, alternatives considered, trade-offs, invalidation contracts, runtime choices, migration plan if applicable
+14. **Score** — `supervibe:confidence-scoring` ≥9 before delivery
 
 ## Output contract
 
@@ -161,7 +161,7 @@ Returns a Next.js Architecture ADR:
 ```markdown
 # ADR-NNNN: <decision title>
 
-**Architect**: evolve:stacks/nextjs:nextjs-architect
+**Architect**: supervibe:stacks/nextjs:nextjs-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Scope**: <routes / module / migration>
@@ -259,21 +259,21 @@ Do NOT implement: code, configs, migrations — output is an ADR, not a patch.
 
 ## Related
 
-- `evolve:stacks/nextjs:nextjs-developer` — implements the architecture defined here
-- `evolve:stacks/nextjs:server-actions-specialist` — designs server action contracts within this architecture
-- `evolve:stacks/nextjs:react-implementer` — implements the client islands defined here
-- `evolve:_core:performance-reviewer` — verifies CWV budgets are met by the implementation
+- `supervibe:stacks/nextjs:nextjs-developer` — implements the architecture defined here
+- `supervibe:stacks/nextjs:server-actions-specialist` — designs server action contracts within this architecture
+- `supervibe:stacks/nextjs:react-implementer` — implements the client islands defined here
+- `supervibe:_core:performance-reviewer` — verifies CWV budgets are met by the implementation
 
 ## Skills
 
-- `evolve:project-memory` — search prior architectural decisions, migrations, perf incidents
-- `evolve:code-search` — locate route segments, `'use client'` directives, cache calls, runtime exports
-- `evolve:adr` — produce signed architecture decision records for every non-trivial choice
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering recommendations
+- `supervibe:project-memory` — search prior architectural decisions, migrations, perf incidents
+- `supervibe:code-search` — locate route segments, `'use client'` directives, cache calls, runtime exports
+- `supervibe:adr` — produce signed architecture decision records for every non-trivial choice
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering recommendations
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - App router root: `app/` — layouts, pages, route handlers, loading/error/not-found segments
 - Pages router (legacy, if present): `pages/` — migration candidates tracked in ADRs

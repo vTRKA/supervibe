@@ -20,7 +20,7 @@ WHEN production is broken: outage, data corruption, security event, user-facing 
 
 This skill prioritizes mitigation > investigation > postmortem (in that order, time-pressured).
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read incident channel / pager / monitoring dashboard for the symptom
 2. Read recent deploys (`git log --since='2 hours ago'`)
@@ -49,7 +49,7 @@ Mitigation options (SEV1/2):
 1. **Acknowledge** — declare incident, assign roles (commander, comms, scribe)
 2. **Severity classification** (decision tree)
 3. **Mitigate** (SEV1/2 only) — apply fastest fix, communicate to stakeholders
-4. **Investigate** — `evolve:systematic-debugging` for root cause
+4. **Investigate** — `supervibe:systematic-debugging` for root cause
 5. **Verify mitigation holding** — monitoring shows recovery
 6. **Communicate resolution** — close incident in channel/pager
 7. **Postmortem** — within 48h, write `docs/postmortems/YYYY-MM-DD-<incident>.md`:
@@ -85,7 +85,7 @@ Mitigation options (SEV1/2):
    ## What went well / poorly
    <blame-free retrospective>
    ```
-8. **Score** — `evolve:confidence-scoring` agent-output ≥9
+8. **Score** — `supervibe:confidence-scoring` agent-output ≥9
 9. **Update runbooks / monitors / alerts** per action items
 
 ## Output contract
@@ -113,6 +113,6 @@ Returns:
 
 ## Related
 
-- `evolve:systematic-debugging` — invoked for root-cause investigation
+- `supervibe:systematic-debugging` — invoked for root-cause investigation
 - Phase 3 `devops-sre` agent — primary user
-- `evolve:adr` — for architectural changes resulting from postmortem
+- `supervibe:adr` — for architectural changes resulting from postmortem

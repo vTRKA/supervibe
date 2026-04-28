@@ -25,10 +25,10 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
 verification:
   - before-after-benchmark
   - profiler-output
@@ -69,15 +69,15 @@ Mental model: performance is a distribution, not a number. p50 lies, p99 tells t
 
 Mental model #2: performance work without a regression guard is performance theater. The fix that landed today regresses tomorrow under a refactor unless a benchmark in CI catches it. Every meaningful optimization ships with a guard.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -96,7 +96,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Add regression guard** — a benchmark in CI that fails if this metric regresses by >X% (with statistical noise floor in mind)
 14. **Attach profile evidence** — flamegraph (before + after), benchmark output, percentile table
 15. **Document in ADR** if architectural (cache layer added, query rewritten, async refactor)
-16. **Score** with `evolve:confidence-scoring` — confidence ≥9 means measurement is reproducible and improvement is statistically significant
+16. **Score** with `supervibe:confidence-scoring` — confidence ≥9 means measurement is reproducible and improvement is statistically significant
 
 ## Output contract
 
@@ -105,7 +105,7 @@ Returns:
 ```markdown
 # Performance Review: <scope>
 
-**Reviewer**: evolve:_ops:performance-reviewer
+**Reviewer**: supervibe:_ops:performance-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <endpoint / module / PR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -200,21 +200,21 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 
 ## Related
 
-- `evolve:_ops:db-reviewer` — owns query plans, indexes, schema-level perf concerns
-- `evolve:_ops:infrastructure-architect` — owns capacity, scaling, regional topology
-- `evolve:_ops:devops-sre` — owns production observability, SLO/SLI definitions, alert thresholds
-- `evolve:_core:root-cause-debugger` — invoked when a regression's cause is non-obvious
+- `supervibe:_ops:db-reviewer` — owns query plans, indexes, schema-level perf concerns
+- `supervibe:_ops:infrastructure-architect` — owns capacity, scaling, regional topology
+- `supervibe:_ops:devops-sre` — owns production observability, SLO/SLI definitions, alert thresholds
+- `supervibe:_core:root-cause-debugger` — invoked when a regression's cause is non-obvious
 
 ## Skills
 
-- `evolve:project-memory` — recall prior perf incidents, baselines, and "we tried that and it didn't work" notes
-- `evolve:code-search` — locate hot paths, existing benchmarks, profiler hooks
-- `evolve:verification` — capture profiler output and benchmark deltas as evidence
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before recommending merge
+- `supervibe:project-memory` — recall prior perf incidents, baselines, and "we tried that and it didn't work" notes
+- `supervibe:code-search` — locate hot paths, existing benchmarks, profiler hooks
+- `supervibe:verification` — capture profiler output and benchmark deltas as evidence
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before recommending merge
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Performance budgets**: declared in `CLAUDE.md` or `docs/performance.md` (e.g., p95 < 200ms, LCP < 2.5s, memory < 512MB)
 - **Profiler tools per stack**:

@@ -18,11 +18,11 @@ Build a **native HTML / CSS / JS** prototype that materializes an approved desig
 
 ## When to invoke
 
-AFTER `evolve:brandbook` has produced an approved design system at `prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
+AFTER `supervibe:brandbook` has produced an approved design system at `prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
 
 NOT for:
 - Implementing in a real framework — that is `<stack>-developer` agents AFTER prototype is approved and handed off
-- Production landing pages — `evolve:landing-page` covers SEO + analytics requirements
+- Production landing pages — `supervibe:landing-page` covers SEO + analytics requirements
 - Pure visual exploration without interaction — that's brandbook moodboard territory
 
 ## Hard constraints
@@ -33,10 +33,10 @@ NOT for:
 4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with progress indicator ("Шаг 2/5: viewports").
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
-1. **Design system check.** Read `prototypes/_design-system/tokens.css`, `prototypes/_design-system/components/*.md`, `prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/evolve-design <бриф>` или `evolve:brandbook` для согласования tokens + components ПЕРВЫМ".
-2. **Memory check.** `evolve:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
+1. **Design system check.** Read `prototypes/_design-system/tokens.css`, `prototypes/_design-system/components/*.md`, `prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
+2. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
 3. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
 
 ## Target surfaces (Шаг 0 — ASK BEFORE viewport)
@@ -90,7 +90,7 @@ What level of fidelity does this prototype need?
 ├─ Realistic interaction — form validation, animations,
 │   skeleton loaders, micro-interactions
 │   → CSS animations + Web Animations API + Intersection Observer
-│   (defer to evolve:interaction-design-patterns for recipes)
+│   (defer to supervibe:interaction-design-patterns for recipes)
 └─ Data-fed mock — fake API responses, realistic content state
     → fetch() against local JSON files in prototypes/<slug>/mocks/
 ```
@@ -143,11 +143,11 @@ Wait for explicit answer. Then next question. Never combine.
 
 ### Stage 4 — Live preview
 
-1. Invoke `evolve:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min.
+1. Invoke `supervibe:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min.
 2. Print URL to user. Hand-off to user for visual review.
 3. Ensure server stays alive while feedback loop runs.
 
-### Stage 5 — Feedback loop (MANDATORY)
+### Stage 5 — Feedback loop (required)
 
 After delivering the URL, the skill EXPLICITLY prompts feedback:
 
@@ -185,7 +185,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
    ```
 
 2. Update `config.json`: `"approval": "approved"`.
-3. Stop here. The skill does not write the handoff — that is `prototype-handoff` skill or the `/evolve-design` command's Stage 7.
+3. Stop here. The skill does not write the handoff — that is `prototype-handoff` skill or the `/supervibe-design` command's Stage 7.
 
 ### Stage 7 — Score + done
 
@@ -217,7 +217,7 @@ Rubric:     prototype
 - DO NOT exceed 2 viewports unless user explicitly asked for more.
 - DO NOT proceed past delivery without explicit feedback choice.
 - DO NOT mark approved without `.approval.json` artifact.
-- DO NOT extend the design system inside a prototype dir — design system extensions go through `evolve:brandbook`.
+- DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
 - DO NOT ask >1 question per message.
 - DO NOT use raw hex / magic px / ad-hoc cubic-bezier — everything from tokens.
 
@@ -240,11 +240,11 @@ Rubric:     prototype
 
 ## Related
 
-- `evolve:brandbook` — produces the design system this skill consumes (PREREQUISITE)
-- `evolve:interaction-design-patterns` — animation recipes referenced from `motion.css`
-- `evolve:preview-server` — auto-spawned at Stage 4 for live URL
-- `evolve:landing-page` — sibling skill for marketing-page-specific concerns (SEO, analytics)
+- `supervibe:brandbook` — produces the design system this skill consumes (PREREQUISITE)
+- `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`
+- `supervibe:preview-server` — auto-spawned at Stage 4 for live URL
+- `supervibe:landing-page` — sibling skill for marketing-page-specific concerns (SEO, analytics)
 - `agents/_design/prototype-builder` — the implementer agent that wraps this skill
 - `agents/_design/ui-polish-reviewer` — invoked after delivery for 8-dim review
 - `agents/_design/accessibility-reviewer` — invoked after delivery for WCAG check
-- `commands/evolve-design.md` — full pipeline orchestrator (brand → spec → prototype → review → handoff)
+- `commands/supervibe-design.md` — full pipeline orchestrator (brand → spec → prototype → review → handoff)

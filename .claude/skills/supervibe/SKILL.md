@@ -6,18 +6,18 @@ version: 1.0
 last-verified: 2026-04-17
 ---
 
-# /evolve — Living Agent & Skill System
+# /supervibe — Living Agent & Skill System
 
 Single command orchestrator. Auto-detects which phase to run. Contains complete knowledge base for bootstrapping agents/skills on ANY project stack.
 
 ## Invocation
 
 ```
-/evolve              → auto-detect: diagnostic + needed phases
-/evolve genesis      → bootstrap: create agents/skills for project stack
-/evolve audit        → check: stale references, gaps, thin agents
-/evolve strengthen   → deepen: weak agents/skills from project context
-/evolve adapt        → update: for stack changes
+/supervibe              → auto-detect: diagnostic + needed phases
+/supervibe genesis      → bootstrap: create agents/skills for project stack
+/supervibe audit        → check: stale references, gaps, thin agents
+/supervibe strengthen   → deepen: weak agents/skills from project context
+/supervibe adapt        → update: for stack changes
 ```
 
 ## Auto-detect Logic (no arguments)
@@ -747,14 +747,14 @@ Verify every claim with grep/read before reporting.
 {if tests: - `{test_command}` — when explicitly asked}
 
 ## Auto-evolve triggers
-The main agent MUST suggest `/evolve` to the user when:
-1. `.claude/agents/` empty or no routing table → `/evolve genesis`
-2. New module/command/service created → `/evolve adapt`
-3. New major dependency → `/evolve adapt`
-4. Agent failed due to stale context → `/evolve audit`
-5. >10 files changed in session → `/evolve audit`
-6. Oldest `last-verified` > 30 days → `/evolve audit + strengthen`
-7. New rule file in `.claude/rules/` → `/evolve strengthen`
+The main agent MUST suggest `/supervibe` to the user when:
+1. `.claude/agents/` empty or no routing table → `/supervibe genesis`
+2. New module/command/service created → `/supervibe adapt`
+3. New major dependency → `/supervibe adapt`
+4. Agent failed due to stale context → `/supervibe audit`
+5. >10 files changed in session → `/supervibe audit`
+6. Oldest `last-verified` > 30 days → `/supervibe audit + strengthen`
+7. New rule file in `.claude/rules/` → `/supervibe strengthen`
 ```
 
 ### Step 7: Show plan to user, get confirmation, write files
@@ -791,8 +791,8 @@ Output:
 - [ ] agents/A.md — last-verified N days ago
 
 ### Recommended Actions
-- Run `/evolve adapt` to fix stale references
-- Run `/evolve strengthen` to deepen weak agents/skills
+- Run `/supervibe adapt` to fix stale references
+- Run `/supervibe strengthen` to deepen weak agents/skills
 ```
 
 ---
@@ -840,7 +840,7 @@ Output:
 
 ## Auto-trigger Rules
 
-System MUST suggest `/evolve` when:
+System MUST suggest `/supervibe` when:
 
 | Trigger | Phase | Detection |
 |---------|-------|-----------|
@@ -852,7 +852,7 @@ System MUST suggest `/evolve` when:
 | Oldest last-verified > 30 days | audit + strengthen | Session start |
 | New rule file in .claude/rules/ | strengthen | After creating rule |
 
-Format: "Discovered: {trigger}. Recommend `/evolve {phase}`. Run?"
+Format: "Discovered: {trigger}. Recommend `/supervibe {phase}`. Run?"
 
 ---
 
@@ -880,18 +880,18 @@ Format: "Discovered: {trigger}. Recommend `/evolve {phase}`. Run?"
    ```
 
 3. **Pattern detection**:
-   - Same agent fails 2+ times with `stale-context` → trigger `/evolve audit`
-   - Same agent fails 2+ times with `missing-skill` → trigger `/evolve strengthen`
+   - Same agent fails 2+ times with `stale-context` → trigger `/supervibe audit`
+   - Same agent fails 2+ times with `missing-skill` → trigger `/supervibe strengthen`
    - Same agent fails 2+ times with `wrong-approach` → review agent Persona and Procedure
 
-4. **Strengthen input**: When `/evolve strengthen` runs, it reads `effectiveness` from all agents:
+4. **Strengthen input**: When `/supervibe strengthen` runs, it reads `effectiveness` from all agents:
    - Agents with `failed` or `partial` outcomes → priority for strengthening
    - Agents with repeated `stale-context` → priority for adapt
    - Agents with consistent `success` → skip (already strong)
 
 ### Auto-trigger
-- After any agent task completion where human made corrections → suggest `/evolve evaluate`
-- Format: "Agent {name} needed corrections on this task. Run `/evolve evaluate` to track effectiveness?"
+- After any agent task completion where human made corrections → suggest `/supervibe evaluate`
+- Format: "Agent {name} needed corrections on this task. Run `/supervibe evaluate` to track effectiveness?"
 
 ---
 
@@ -923,7 +923,7 @@ Format: "Discovered: {trigger}. Recommend `/evolve {phase}`. Run?"
 
 4. **If user chooses B (skip)**:
    - Log as uncovered: `# UNCOVERED: {dep} — user skipped`
-   - Next `/evolve audit` will flag this as coverage gap
+   - Next `/supervibe audit` will flag this as coverage gap
 
 5. **If user chooses C (utility)**:
    - Add to ignore list in evolve frontmatter: `ignored-deps: [dep1, dep2]`

@@ -19,9 +19,9 @@ last-verified: 2026-04-27
 - New directory in `src/modules/` or `src/commands/`
 - New major dependency in package.json/composer.json/Cargo.toml
 - Files renamed/deleted that artifacts reference
-- User runs `/evolve-adapt`
+- User runs `/supervibe-adapt`
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current state
 2. Run `git diff <verified-against>..HEAD --stat` to find changes
@@ -34,10 +34,10 @@ last-verified: 2026-04-27
 3. **New modules** — determine which agent should cover; update Project Context
 4. **New deps**:
    - Minor (new lib in existing stack) → update agent context
-   - Major (new framework / new layer) → suggest `evolve:genesis` for new component
+   - Major (new framework / new layer) → suggest `supervibe:genesis` for new component
 5. **Deleted files** — remove references from artifacts
 6. **Bump versions** + update `last-verified` + `verified-against`
-7. Run `evolve:audit` to verify clean state
+7. Run `supervibe:audit` to verify clean state
 
 ## Output contract
 
@@ -54,5 +54,5 @@ Returns:
 
 ## Related
 
-- `evolve:audit` — pre + post check
-- `evolve:genesis` — invoked for new major components
+- `supervibe:audit` — pre + post check
+- `supervibe:genesis` — invoked for new major components

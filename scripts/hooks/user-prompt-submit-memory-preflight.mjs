@@ -10,7 +10,7 @@
  *
  * Cost guard: only runs when prompt is non-trivial AND length >= 30 chars (skip "yes"/"no"/"ok").
  *
- * Disable per-session: set EVOLVE_PREFLIGHT_DISABLED=1
+ * Disable per-session: set SUPERVIBE_PREFLIGHT_DISABLED=1
  */
 import { join } from 'node:path';
 import { preflight, formatMatches } from '../lib/memory-preflight.mjs';
@@ -54,7 +54,7 @@ function readEvent() {
 }
 
 async function main() {
-  if (process.env.EVOLVE_PREFLIGHT_DISABLED === '1') {
+  if (process.env.SUPERVIBE_PREFLIGHT_DISABLED === '1') {
     process.stdout.write(JSON.stringify({}));
     return;
   }
@@ -88,7 +88,7 @@ async function main() {
   }
 
   const reminder = `<system-reminder>
-[evolve] memory pre-flight: found ${matches.length} prior entr${matches.length === 1 ? 'y' : 'ies'} similar to this request.
+[supervibe] memory pre-flight: found ${matches.length} prior entr${matches.length === 1 ? 'y' : 'ies'} similar to this request.
 
 ${formatMatches(matches)}
 

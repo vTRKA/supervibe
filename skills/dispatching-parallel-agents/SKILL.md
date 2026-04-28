@@ -20,7 +20,7 @@ WHEN you have 2+ tasks to do AND you're about to start them. BEFORE you go seque
 
 NOT for: single tasks, tasks with sequential dependencies, tasks sharing mutable state.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. List the candidate tasks
 2. Identify what each task reads vs writes
@@ -39,7 +39,7 @@ Are tasks independent?
 If parallel OK, count tasks:
 ├─ 2-5 tasks → parallel via single message with multiple Agent tool calls
 ├─ 6-15 tasks → parallel batches of 5
-└─ 16+ tasks → use evolve:subagent-driven-development with full plan
+└─ 16+ tasks → use supervibe:subagent-driven-development with full plan
 ```
 
 ## Procedure
@@ -52,7 +52,7 @@ If parallel OK, count tasks:
    b. Dispatch in single message with multiple Agent tool calls
    c. Wait for all to return
    d. Aggregate outputs
-   e. Score combined result with `evolve:confidence-scoring`
+   e. Score combined result with `supervibe:confidence-scoring`
 5. **Per-agent verification** — each subagent's output verified separately
 6. **Aggregation review** — does combined output meet original goal?
 
@@ -81,5 +81,5 @@ Returns:
 
 ## Related
 
-- `evolve:subagent-driven-development` — preferred for plan-execution at scale
-- `evolve:executing-plans` — alternative when sequential is fine
+- `supervibe:subagent-driven-development` — preferred for plan-execution at scale
+- `supervibe:executing-plans` — alternative when sequential is fine

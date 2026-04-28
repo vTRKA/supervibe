@@ -34,9 +34,9 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
 verification:
   - spf-dkim-dmarc
   - html-email-renders-cross-client
@@ -118,15 +118,15 @@ Template design choice:
     -> Locale-keyed templates with shared layout, RTL support for ar/he
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -145,7 +145,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Reputation monitoring**: enroll in Google Postmaster Tools, Microsoft SNDS, Yahoo CFL; baseline domain/IP reputation, spam-rate (target <0.1%, hard limit 0.3% per Gmail), authentication pass rates
 14. **IP warmup (if dedicated IP)**: graduated send schedule — day 1: 50, day 2: 100, doubling daily up to ESP-recommended cap; segment to highest-engagement users first to seed positive reputation
 15. **Lifecycle state machine review**: every state has entry condition, exit condition, max-time-in-state, idempotency key; no infinite loops; suppression check at every transition
-16. **Score** with `evolve:confidence-scoring` — agent-output ≥9 required to ship
+16. **Score** with `supervibe:confidence-scoring` — agent-output ≥9 required to ship
 
 ## Output contract
 
@@ -154,7 +154,7 @@ Returns:
 ```markdown
 # Email Lifecycle Audit: <scope>
 
-**Auditor**: evolve:_product:email-lifecycle
+**Auditor**: supervibe:_product:email-lifecycle
 **Date**: YYYY-MM-DD
 **Domain(s)**: <sending domains audited>
 **ESP**: <provider>
@@ -251,19 +251,19 @@ Do NOT decide on: analytics event taxonomy (defer to analytics-implementation).
 
 ## Related
 
-- `evolve:_product:product-manager` — owns lifecycle business rules, campaign goals, consent policy
-- `evolve:_product:analytics-implementation` — owns event taxonomy that drives lifecycle triggers and engagement signals
-- `evolve:_core:infrastructure-architect` — owns DNS records, sub-domain delegation, ESP credential management
+- `supervibe:_product:product-manager` — owns lifecycle business rules, campaign goals, consent policy
+- `supervibe:_product:analytics-implementation` — owns event taxonomy that drives lifecycle triggers and engagement signals
+- `supervibe:_core:infrastructure-architect` — owns DNS records, sub-domain delegation, ESP credential management
 
 ## Skills
 
-- `evolve:project-memory` — search prior deliverability incidents and reputation history
-- `evolve:code-search` — locate templates, sender configuration, suppression integration points
-- `evolve:verification` — DNS lookup output, spam-score reports, render screenshots as evidence
+- `supervibe:project-memory` — search prior deliverability incidents and reputation history
+- `supervibe:code-search` — locate templates, sender configuration, suppression integration points
+- `supervibe:verification` — DNS lookup output, spam-score reports, render screenshots as evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **DNS configuration**: SPF TXT record (`v=spf1 ...`), DKIM selectors (often `s1._domainkey`, `s2._domainkey`, ESP-specific), DMARC TXT (`_dmarc.<domain>`), optional BIMI (`default._bimi`) with VMC certificate
 - **ESP**: Amazon SES / Postmark / SendGrid / Mailgun / Resend / Customer.io — detected via env (`SES_*`, `POSTMARK_*`, `SENDGRID_*`, `MAILGUN_*`) or SDK imports

@@ -3,10 +3,10 @@ description: >-
   Archive old/superseded memory entries to prevent unbounded growth. Reads
   decisions/learnings/patterns, applies retention policy, moves stale to
   .claude/memory/.archive/. Always reversible. Reversible. Triggers: 'memory
-  garbage collect', 'cleanup memory', 'архив памяти', '/evolve-memory-gc'.
+  garbage collect', 'cleanup memory', 'архив памяти', '/supervibe-memory-gc'.
 ---
 
-# /evolve-memory-gc
+# /supervibe-memory-gc
 
 Garbage-collect (archive, not delete) old or superseded entries from `.claude/memory/`. Prevents unbounded memory growth while preserving every entry forever — archived entries are moved to `.claude/memory/.archive/`, never erased, fully reversible via `--restore`.
 
@@ -28,35 +28,35 @@ The principle: **memory grows over time and that's fine.** GC is for entries tha
 
 ## Invocation forms
 
-### `/evolve-memory-gc` — full sweep with default policy
+### `/supervibe-memory-gc` — full sweep with default policy
 
 Scans all 5 categories, applies default retention, lists candidates for archival, asks user confirmation, then archives.
 
-### `/evolve-memory-gc --dry-run` — preview only
+### `/supervibe-memory-gc --dry-run` — preview only
 
 Same scan, but doesn't archive. Reports what WOULD be moved.
 
-### `/evolve-memory-gc <category>` — single category
+### `/supervibe-memory-gc <category>` — single category
 
 Examples:
-- `/evolve-memory-gc incidents` — only incidents
-- `/evolve-memory-gc learnings` — only learnings
+- `/supervibe-memory-gc incidents` — only incidents
+- `/supervibe-memory-gc learnings` — only learnings
 
-### `/evolve-memory-gc --policy <category>=<days>` — override retention
+### `/supervibe-memory-gc --policy <category>=<days>` — override retention
 
 Examples:
-- `/evolve-memory-gc --policy incidents=730` — keep incidents for 2 years
-- `/evolve-memory-gc --policy learnings=90,incidents=180` — multi-override
+- `/supervibe-memory-gc --policy incidents=730` — keep incidents for 2 years
+- `/supervibe-memory-gc --policy learnings=90,incidents=180` — multi-override
 
-### `/evolve-memory-gc --supersede <new-id> <old-id>` — mark relationship
+### `/supervibe-memory-gc --supersede <new-id> <old-id>` — mark relationship
 
 Mark `old-id` as superseded by `new-id`. Adds `superseded-by: <new-id>` frontmatter to old; adds `supersedes: <old-id>` to new. Old becomes archive candidate on next GC.
 
-### `/evolve-memory-gc --restore <archived-id>` — restore from archive
+### `/supervibe-memory-gc --restore <archived-id>` — restore from archive
 
 Move file back from `.claude/memory/.archive/<category>/<file>` to `.claude/memory/<category>/<file>`. Re-indexes via `npm run memory:watch` or next session-start.
 
-### `/evolve-memory-gc --stats` — memory size report
+### `/supervibe-memory-gc --stats` — memory size report
 
 Prints per-category counts + total bytes + oldest entry date. No archival action.
 
@@ -156,7 +156,7 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
    Memory size after:  273 entries / 1.3 MB
    Archive size:       14 entries / 87 KB (.claude/memory/.archive/)
    
-   Restore any: /evolve-memory-gc --restore <id>
+   Restore any: /supervibe-memory-gc --restore <id>
    View archive: ls .claude/memory/.archive/<category>/
    ```
 
@@ -188,29 +188,29 @@ Archive (.claude/memory/.archive/):
   Total archived: 14 entries (87 KB)
 
 Stale candidates by current default policy: 14
-Run /evolve-memory-gc --dry-run for details.
+Run /supervibe-memory-gc --dry-run for details.
 ```
 
 Dry-run mode:
 ```
 === Memory GC — DRY RUN ===
 [same candidate list as full mode, no archival]
-Action: review candidates above; run /evolve-memory-gc to apply.
+Action: review candidates above; run /supervibe-memory-gc to apply.
 ```
 
 Full mode: see step 7 above.
 
 ## When NOT to invoke
 
-- Right after `/evolve-genesis` on a new project — almost no memory yet, GC is no-op.
+- Right after `/supervibe-genesis` on a new project — almost no memory yet, GC is no-op.
 - During an active session that just wrote new memory entries — give entries time to settle (>1 day).
 - For removing PII or sensitive data — that's NOT what GC does. Use direct `git filter-branch` or `git filter-repo` for sensitive data removal (and reach out to security team).
 
 ## Related
 
-- `evolve:project-memory` skill — reads memory entries
-- `evolve:add-memory` skill — writes new entries
+- `supervibe:project-memory` skill — reads memory entries
+- `supervibe:add-memory` skill — writes new entries
 - `scripts/build-memory-index.mjs` — re-indexes after archival
 - `scripts/lib/memory-store.mjs` — read/write logic
 - `.claude/memory/.archive/_archive-log.jsonl` — audit trail of archivals
-- `/evolve-audit` — surfaces memory growth in health check
+- `/supervibe-audit` — surfaces memory growth in health check

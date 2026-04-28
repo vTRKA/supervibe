@@ -6,7 +6,7 @@ When `preview-server` runs (default), every served HTML page is injected with a 
 
 **Delivery to active Claude session:** the `UserPromptSubmit` hook (`scripts/hooks/user-prompt-submit-feedback.mjs`) drains new entries on EVERY prompt the user sends, advances the per-session cursor at `.claude/memory/feedback-cursor.json`, and emits the entries as `additionalContext` so Claude sees them inline in the prompt context. There is NO separate watcher / sidecar process — claude-code reads only its own input + hook outputs.
 
-The skill `evolve:browser-feedback` then triages each entry → routes to `creative-director` (visual/motion) or `prototype-builder` (layout/a11y/copy) → applies minimal change → writes `prototypes/<slug>/feedback-resolutions/<id>.md`.
+The skill `supervibe:browser-feedback` then triages each entry → routes to `creative-director` (visual/motion) or `prototype-builder` (layout/a11y/copy) → applies minimal change → writes `prototypes/<slug>/feedback-resolutions/<id>.md`.
 
 Disable: `node scripts/preview-server.mjs --no-feedback ...`.
 

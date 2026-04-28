@@ -10,7 +10,7 @@ Rules are project-level standards. They explain WHY a constraint exists, WHEN it
    ```
 2. Fill in placeholders
 3. Validate: `npm run validate:frontmatter`
-4. Score: `/evolve-score rule-quality rules/<your-rule>.md` — must be ≥9
+4. Score: `/supervibe-score rule-quality rules/<your-rule>.md` — must be ≥9
 
 ## Required frontmatter fields
 
@@ -95,18 +95,18 @@ Threshold: ≥9 to ship.
 - **No examples** — rule without example is wish
 - **Vague "applies-to"** — "everywhere" ≠ helpful
 - **No enforcement** — rules-curator agent flags this
-- **Contradicts another rule** — rules-curator agent flags this (use `evolve:rule-audit`)
+- **Contradicts another rule** — rules-curator agent flags this (use `supervibe:rule-audit`)
 
 ## After authoring
 
 1. If `mandatory: true` → reference in target project's `CLAUDE.md`
 2. If introduces command ban → add to `.claude/settings.json` deny-list
-3. Run `evolve:rule-audit` to check for contradictions with existing rules
+3. Run `supervibe:rule-audit` to check for contradictions with existing rules
 4. Run `npm run registry:build` — rule should appear in `registry.yaml`
 
 ## Strengthen pass
 
-`evolve:strengthen` periodically (or on-demand) deepens rules:
+`supervibe:strengthen` periodically (or on-demand) deepens rules:
 - For stale rules: invokes `best-practices-researcher` for current state
 - Adds examples from real project usage
 - Updates cross-links as related rules change

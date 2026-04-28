@@ -2,7 +2,7 @@
 
 > **Audience:** Claude Code agents loading this file as system context. Humans should read `README.md` first.
 
-This is the **Evolve Framework** — a self-evolving Claude Code plugin: stack-aware scaffolding, specialist agents with explicit decision trees, 10-point confidence engine, autonomous proactivity. **Node 22+. Pure JS. No Docker. No native compilation.**
+This is the **Evolve Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22+. Pure JS. No Docker. No native compilation.**
 
 For deep dives, agents read on demand from `.claude/docs/`:
 
@@ -50,7 +50,7 @@ evolve/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
 ├── agents/                        79 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        49 process skills
-├── commands/                      19 slash commands (/evolve, /evolve-design, /evolve-execute-plan, /evolve-debug, ...)
+├── commands/                      19 slash commands (/evolve, /supervibe-design, /supervibe-execute-plan, /supervibe-debug, ...)
 ├── rules/                         21 project rules
 ├── confidence-rubrics/            14 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars (LFS)
@@ -73,10 +73,10 @@ When user asks X, route as follows:
 
 | User intent | First action |
 |-------------|--------------|
-| "Set up a new project" / no `.claude/` exists | `/evolve-genesis` (auto via `/evolve`) |
-| "Add feature X" / "implement Y" | `evolve:project-memory` → `evolve:code-search` → relevant stack-developer |
-| "Refactor X" / "rename Y" | `evolve:code-search --callers` → `refactoring-specialist` |
-| "Why does X happen?" / debug | `root-cause-debugger` (uses `evolve:systematic-debugging`) |
+| "Set up a new project" / no `.claude/` exists | `/supervibe-genesis` (auto via `/evolve`) |
+| "Add feature X" / "implement Y" | `supervibe:project-memory` → `supervibe:code-search` → relevant stack-developer |
+| "Refactor X" / "rename Y" | `supervibe:code-search --callers` → `refactoring-specialist` |
+| "Why does X happen?" / debug | `root-cause-debugger` (uses `supervibe:systematic-debugging`) |
 | "Review this code" / "is it safe?" | `code-reviewer` + `security-auditor` |
 | "Design X" / "what should the UI look like?" | `ux-ui-designer` then `prototype-builder` |
 | "Brand for X" / new product | `creative-director` then `ux-ui-designer` |
@@ -84,16 +84,16 @@ When user asks X, route as follows:
 | "Performance issue" / "slow X" | `performance-reviewer` (uses profile-first methodology) |
 | "DB migration" / "schema change" | `db-reviewer` then `postgres-architect` (or stack-equivalent) |
 | "Deploy X" / "infrastructure" | `infrastructure-architect` then `devops-sre` |
-| "Plan for X" / specs | `systems-analyst` then `evolve:writing-plans` |
-| "Execute plan X" / "run the plan" / "go through plan" | `/evolve-execute-plan <path>` — Stage A readiness audit (10/10) BEFORE + Stage B completion audit (10/10) AFTER |
-| "Why did agent X fail?" / "debug invocation Y" | `/evolve-debug <invocation-id\|agent-id>` — replay + root-cause classification |
-| "Run tests" / "check the plugin" | `/evolve-test` — wraps `npm run check` with structured output |
-| "Deploy this prototype" / "promote to production" | `/evolve-deploy <slug>` — handoff bundle → stack-developer with 6-invariant pre-deploy gate |
-| "Cleanup memory" / "archive old learnings" | `/evolve-memory-gc` — reversible archival with retention policy |
-| "Score artifact X" / "evaluate confidence" | `/evolve-score <type> <path>` — explicit rubric scoring with auto-fix offers |
+| "Plan for X" / specs | `systems-analyst` then `supervibe:writing-plans` |
+| "Execute plan X" / "run the plan" / "go through plan" | `/supervibe-execute-plan <path>` — Stage A readiness audit (10/10) BEFORE + Stage B completion audit (10/10) AFTER |
+| "Why did agent X fail?" / "debug invocation Y" | `/supervibe-debug <invocation-id\|agent-id>` — replay + root-cause classification |
+| "Run tests" / "check the plugin" | `/supervibe-test` — wraps `npm run check` with structured output |
+| "Deploy this prototype" / "promote to production" | `/supervibe-deploy <slug>` — handoff bundle → stack-developer with 6-invariant pre-deploy gate |
+| "Cleanup memory" / "archive old learnings" | `/supervibe-memory-gc` — reversible archival with retention policy |
+| "Score artifact X" / "evaluate confidence" | `/supervibe-score <type> <path>` — explicit rubric scoring with auto-fix offers |
 | "Research best X" | relevant `*-researcher` agent (uses context7 MCP) |
 
-Default rule: if user intent isn't clear, invoke `evolve:brainstorming` skill BEFORE picking an agent.
+Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill BEFORE picking an agent.
 
 ---
 
@@ -111,26 +111,26 @@ Default rule: if user intent isn't clear, invoke `evolve:brainstorming` skill BE
 
 ---
 
-## RAG + Memory + Code Graph (HARD RULES)
+## RAG + Memory + Code Graph (recommended workflow)
 
-Every interactive agent's Procedure starts with these 3 mandatory steps (enforced via PostToolUse telemetry + audit-evidence script):
+For consistent quality, agents are encouraged to follow this order:
 
-1. **Memory pre-flight** — `evolve:project-memory --query "<topic>"` BEFORE producing any artifact. Cite prior matches OR explicitly note why they don't apply.
-2. **Code search** — `evolve:code-search` BEFORE writing new code. Read top-3 results.
-3. **Code graph (refactor only)** — `--callers <symbol>` BEFORE rename / extract / move / inline / delete. Cite Case A/B/C in output.
+1. **Memory pre-flight** — when practical, check `supervibe:project-memory --query "<topic>"` before producing artifacts. This helps reuse past decisions.
+2. **Code search** — `supervibe:code-search` before writing new code helps understand existing patterns.
+3. **Code graph (refactor only)** — `--callers <symbol>` before rename/extract/move/delete helps catch all call sites.
 
-**Auto-injected reminders** (no manual invocation needed):
-- `UserPromptSubmit` hook auto-runs memory pre-flight on technical prompts → injects matches as `additionalContext`
-- `PreToolUse` hook detects refactor patterns in Edit/Write → reminds about `--callers` (advisory, doesn't block)
-- `PostToolUse` hook tracks per-agent sub-tool usage → `npm run audit:evidence` flags agents below thresholds
+**Hook assistance** (when the plugin is active):
+- `UserPromptSubmit` hook may run memory pre-flight on technical prompts and attach matches as `additionalContext`
+- `PreToolUse` hook may detect refactor patterns in Edit/Write and suggest `--callers` (advisory only, never blocks)
+- `PostToolUse` hook may log per-agent sub-tool usage for optional later review
 
-**Audit:** `npm run audit:evidence` — per-agent memory/code-search/graph usage rates over last N invocations.
+**Optional audit:** `npm run audit:evidence` reports per-agent memory/code-search/graph usage rates.
 
 ## When in doubt
 
 1. **Re-read this file** — likely answer is the routing table or a `.claude/docs/` pointer above
 2. **Read the specific `.claude/docs/<topic>.md`** — they encode the discipline (relocated from earlier monolithic CLAUDE.md)
-3. **Run `npm run evolve:status`** — see real index state
+3. **Run `npm run supervibe:status`** — see real index state
 4. **Read the specific agent** from `agents/<namespace>/`
 5. **Read the relevant rule** from `rules/`
 6. **Search memory**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"` — past decisions

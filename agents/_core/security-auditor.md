@@ -26,10 +26,10 @@ tools:
   - Bash
   - WebFetch
 skills:
-  - 'evolve:code-review'
-  - 'evolve:verification'
-  - 'evolve:project-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:code-review'
+  - 'supervibe:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - npm-audit
   - composer-audit
@@ -95,7 +95,7 @@ Threat model first: who attacks? what's the goal? what's the path? Then defenses
 9. **Verify HTTPS** enforcement
 10. **OWASP checklist** walk
 11. **Output OWASP-mapped findings** with severity + remediation
-12. **Score** with `evolve:confidence-scoring`
+12. **Score** with `supervibe:confidence-scoring`
 
 ## Output contract
 
@@ -104,7 +104,7 @@ Returns:
 ```markdown
 # Security Audit: <scope>
 
-**Auditor**: evolve:_core:security-auditor
+**Auditor**: supervibe:_core:security-auditor
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / PR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -174,21 +174,21 @@ Do NOT decide on: compliance scope (defer to product-manager).
 
 ## Related
 
-- `evolve:_core:code-reviewer` — invokes this for security-sensitive PRs
-- `evolve:_ops:dependency-reviewer` — handles dep audit + license compliance
-- `evolve:_ops:security-researcher` — fetches CVE details + exploit availability
-- `evolve:_ops:devops-sre` — implements detection alerts based on findings
+- `supervibe:_core:code-reviewer` — invokes this for security-sensitive PRs
+- `supervibe:_ops:dependency-reviewer` — handles dep audit + license compliance
+- `supervibe:_ops:security-researcher` — fetches CVE details + exploit availability
+- `supervibe:_ops:devops-sre` — implements detection alerts based on findings
 
 ## Skills
 
-- `evolve:code-review` — base methodology framework
-- `evolve:verification` — audit tool outputs as evidence
-- `evolve:project-memory` — search prior security incidents/decisions
-- `evolve:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:code-review` — base methodology framework
+- `supervibe:verification` — audit tool outputs as evidence
+- `supervibe:project-memory` — search prior security incidents/decisions
+- `supervibe:confidence-scoring` — agent-output rubric ≥9
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Auth code paths: detected via Grep for auth/middleware/policy/guard
 - Secrets sources: `.env*`, `config/`, vault references (HashiCorp Vault, AWS Secrets Manager, etc.)

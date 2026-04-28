@@ -16,7 +16,7 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-BEFORE committing to ANY decision with complexity ≥5 (per `evolve:requirements-intake` complexity score). Specifically:
+BEFORE committing to ANY decision with complexity ≥5 (per `supervibe:requirements-intake` complexity score). Specifically:
 - Library / framework choice
 - Pattern adoption (when ≥2 patterns plausibly fit)
 - Architecture decision
@@ -27,10 +27,10 @@ NOT for: trivial fixes, single-obvious-solution tasks.
 
 This skill bans "first idea wins" thinking. Forces comparison.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read task context (spec / plan / bug report)
-2. Read `evolve:project-memory` for prior decisions in this area
+2. Read `supervibe:project-memory` for prior decisions in this area
 3. Check if existing ADR or pattern already addresses (don't reinvent)
 
 ## Decision tree
@@ -43,7 +43,7 @@ How many alternatives realistic?
 
 Source of alternatives:
 ├─ Domain knowledge (agent's training)
-├─ Project memory (evolve:project-memory)
+├─ Project memory (supervibe:project-memory)
 ├─ Research (best-practices-researcher / infra-pattern-researcher / dependency-researcher)
 └─ User suggestion
 ```
@@ -69,8 +69,8 @@ Source of alternatives:
    | DX        | OK    | Best  | OK    |
    ```
 5. **Recommendation** — explicit choice with rationale citing project context (constraints, prior decisions, team skills)
-6. **Score** with `evolve:confidence-scoring` (agent-output ≥9)
-7. **If decision is structural** → propose `evolve:adr` to record permanently
+6. **Score** with `supervibe:confidence-scoring` (agent-output ≥9)
+7. **If decision is structural** → propose `supervibe:adr` to record permanently
 8. **If user-facing decision** → seek user approval before implementing
 
 ## Output contract
@@ -122,23 +122,23 @@ Rationale: <2-3 sentences citing project context>
 
 ## Related
 
-- `evolve:project-memory` — for prior similar decisions
-- `evolve:adr` — to record structural decisions
-- `evolve:brainstorming` — already includes "propose 2-3 approaches"; this skill is for tactical decisions DURING execution where brainstorming is overkill
+- `supervibe:project-memory` — for prior similar decisions
+- `supervibe:adr` — to record structural decisions
+- `supervibe:brainstorming` — already includes "propose 2-3 approaches"; this skill is for tactical decisions DURING execution where brainstorming is overkill
 - `agents/_core/architect-reviewer` — invokes this skill for architectural decisions
 
 ## Carbon-copy lookup (mandatory pre-step)
 
 BEFORE generating original alternatives, ask: has someone else solved this problem?
 
-1. Invoke `evolve:project-memory` with the problem keywords — past decisions in this repo
-2. Invoke `evolve:code-search` semantic — similar code patterns in the codebase
-3. Invoke `evolve:_ops:best-practices-researcher` if applicable — industry references
-4. Invoke `evolve:_ops:competitive-design-researcher` for design problems
+1. Invoke `supervibe:project-memory` with the problem keywords — past decisions in this repo
+2. Invoke `supervibe:code-search` semantic — similar code patterns in the codebase
+3. Invoke `supervibe:_ops:best-practices-researcher` if applicable — industry references
+4. Invoke `supervibe:_ops:competitive-design-researcher` for design problems
 
 If carbon copies exist: list them BEFORE generating new options. Often one of them is the answer.
 
-## Weighted decision matrix (mandatory)
+## Weighted decision matrix (required)
 
 Required format:
 
@@ -248,9 +248,9 @@ Required sections:
 
 ## Related
 
-- `evolve:brainstorming` — uses this skill as core for option exploration
-- `evolve:adr` — uses this skill for the alternatives matrix
-- `evolve:project-memory` — for carbon-copy lookup
-- `evolve:code-search` — for code-pattern carbon copies
-- `evolve:_ops:best-practices-researcher` — for industry carbon copies
-- `evolve:_ops:competitive-design-researcher` — for design carbon copies
+- `supervibe:brainstorming` — uses this skill as core for option exploration
+- `supervibe:adr` — uses this skill for the alternatives matrix
+- `supervibe:project-memory` — for carbon-copy lookup
+- `supervibe:code-search` — for code-pattern carbon copies
+- `supervibe:_ops:best-practices-researcher` — for industry carbon copies
+- `supervibe:_ops:competitive-design-researcher` — for design carbon copies

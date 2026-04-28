@@ -29,7 +29,7 @@ WHEN building UI that involves:
 
 NOT for: pure static layout, content-only screens.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/_brandbook/motion.md` for timing tiers + easing
 2. Read `prototypes/_brandbook/components/` for component-specific transitions
@@ -635,7 +635,7 @@ But for EVOLVE PROTOTYPES default to **native CSS + Web Animations API + Interse
 8. **DevTools Performance audit** — confirm stable 60fps, no purple/green bars during animation
 9. **ui-polish-reviewer** check: feels right, not gratuitous
 10. **Score** with prototype rubric
-11. **Auto-spawn preview** (mandatory): invoke `evolve:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note.
+11. **Auto-spawn preview** (required): invoke `supervibe:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note.
 
 ## Output contract
 
@@ -710,7 +710,7 @@ Rubric: prototype
 - `agents/_design/ui-polish-reviewer` — reviews motion quality and polish
 - `agents/_design/accessibility-reviewer` — verifies reduced-motion + a11y compliance
 - `agents/_design/ux-ui-designer` — owns interaction-design layer
-- `evolve:brandbook` — `motion.md` is source of truth for tiers + easings
-- `evolve:prototype` — invokes this skill during prototype build
-- `evolve:landing-page` — invokes this skill for hero animations
-- `evolve:preview-server` — auto-spawned after implementation for live preview
+- `supervibe:brandbook` — `motion.md` is source of truth for tiers + easings
+- `supervibe:prototype` — invokes this skill during prototype build
+- `supervibe:landing-page` — invokes this skill for hero animations
+- `supervibe:preview-server` — auto-spawned after implementation for live preview

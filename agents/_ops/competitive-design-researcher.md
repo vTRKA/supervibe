@@ -25,9 +25,9 @@ tools:
   - Bash
   - WebFetch
 skills:
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:mcp-discovery'
 verification:
   - screenshot-evidence
   - public-design-system-citations
@@ -113,24 +113,24 @@ Pattern classification (apply to every observation):
   ANTI-PATTERN (users complain about it on forums/reviews) → avoid even if competitor does it
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Cache check** at `.claude/research-cache/comp-design-<category>-*.md` — if a report ≤90 days old exists, decide refresh-vs-reuse with the user
-2. **Search project memory** via `evolve:project-memory` for prior reports + brand briefs in this category
+2. **Search project memory** via `supervibe:project-memory` for prior reports + brand briefs in this category
 3. **Identify category + 5-10 competitors** from PRD, brand brief, or user input; confirm with user before capture
 4. **Choose mode** from decision tree (single-competitor-deep / category-survey / pattern-extraction / trend-tracking)
 5. **Read ≥2 public design systems** for pattern conventions baseline
-6. **Pick research tool**: invoke `evolve:mcp-discovery` skill with category=`crawl` for public/logged-out scrape and `browser` for interactive/authenticated flows to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output (manual capture path).
+6. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=`crawl` for public/logged-out scrape and `browser` for interactive/authenticated flows to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output (manual capture path).
 7. **Capture screenshots** of key flows per chosen mode
    - Public, logged-out flows: returned `crawl` MCP screenshot tool (or WebFetch + manual capture fallback)
    - Authenticated or multi-step flows: returned `browser` MCP with explicit user-supplied test account (with consent confirmed)
@@ -142,7 +142,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Write differentiation recommendation** — one paragraph naming where our product *deliberately* deviates and why
 12. **Cite all sources** with URL + capture date + license note where applicable
 13. **Cache report** with attribution per screenshot
-14. **Score** with `evolve:confidence-scoring` research-output rubric (≥9 to ship)
+14. **Score** with `supervibe:confidence-scoring` research-output rubric (≥9 to ship)
 
 ## Output contract
 
@@ -151,7 +151,7 @@ Returns:
 ```markdown
 # Competitive Design Research: <category>
 
-**Researcher**: evolve:_ops:competitive-design-researcher
+**Researcher**: supervibe:_ops:competitive-design-researcher
 **Date**: YYYY-MM-DD
 **Mode**: single-competitor-deep | category-survey | pattern-extraction | trend-tracking
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -203,7 +203,7 @@ For each report:
 - DO/DON'T table populated with rationale tied to user need or strategic positioning
 - Differentiation recommendation paragraph present, names ≥1 deliberate deviation with rationale + risk
 - Source links checked (no 404s) at time of report
-- Confidence score ≥9 via `evolve:confidence-scoring`
+- Confidence score ≥9 via `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -254,26 +254,26 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 
 ## Related
 
-- `evolve:_design/creative-director` — consumes this report for brand/visual direction calls
-- `evolve:_design/design-system-architect` — consumes pattern-library-build output
-- `evolve:_ops/product-manager` — consumes positioning + pricing surveys
-- `evolve:_ops/user-researcher` — pairs qualitative user research with this quantitative pattern audit
-- `evolve:_ops/legal-reviewer` — consulted before scraping authenticated or rate-limited flows
+- `supervibe:_design/creative-director` — consumes this report for brand/visual direction calls
+- `supervibe:_design/design-system-architect` — consumes pattern-library-build output
+- `supervibe:_ops/product-manager` — consumes positioning + pricing surveys
+- `supervibe:_ops/user-researcher` — pairs qualitative user research with this quantitative pattern audit
+- `supervibe:_ops/legal-reviewer` — consulted before scraping authenticated or rate-limited flows
 
 ## Skills
 
-- `evolve:confidence-scoring` — research-output rubric ≥9
-- `evolve:project-memory` — surface prior reports for the same category to avoid redundant capture
+- `supervibe:confidence-scoring` — research-output rubric ≥9
+- `supervibe:project-memory` — surface prior reports for the same category to avoid redundant capture
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Product category + competitor list (from PRD, brand brief, or user input)
 - Public design systems referenced: Material, Carbon, Polaris, Atlassian, Salesforce Lightning, Apple HIG, Fluent (Microsoft)
 - Research cache: `.claude/research-cache/comp-design-<category>-<YYYY-MM-DD>.md`
 - Screenshot store: `.claude/research-cache/screenshots/<competitor>/<flow>-<YYYY-MM-DD>.png`
-- Prior reports: searched via `evolve:project-memory` for the same category
+- Prior reports: searched via `supervibe:project-memory` for the same category
 - Tooling: Firecrawl for headless scrape + screenshot, Playwright for interactive flows requiring login or multi-step state
 
 ## Competitors analyzed

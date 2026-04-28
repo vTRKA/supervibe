@@ -47,9 +47,9 @@ env.allowLocalModels = localOK;
 env.allowRemoteModels = !localOK;
 env.cacheDir = join(PLUGIN_ROOT, 'node_modules', '@huggingface', '.cache');
 
-if (!localOK && process.env.EVOLVE_VERBOSE === '1') {
+if (!localOK && process.env.SUPERVIBE_VERBOSE === '1') {
   // eslint-disable-next-line no-console
-  console.warn('[evolve/embeddings] bundled model not usable (missing or LFS pointer); falling back to remote HuggingFace download (~118MB, one-time).');
+  console.warn('[supervibe/embeddings] bundled model not usable (missing or LFS pointer); falling back to remote HuggingFace download (~118MB, one-time).');
 }
 
 const MODEL_ID = 'Xenova/multilingual-e5-small';

@@ -42,12 +42,12 @@ recommended-mcps:
   - figma
   - playwright
 skills:
-  - 'evolve:prototype'
-  - 'evolve:brandbook'
-  - 'evolve:interaction-design-patterns'
-  - 'evolve:ui-review-and-polish'
-  - 'evolve:project-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:prototype'
+  - 'supervibe:brandbook'
+  - 'supervibe:interaction-design-patterns'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:project-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -96,15 +96,15 @@ Mental model: Electron is **two processes plus a webview** — the main process 
 
 The designer is also the **platform-divergence broker**. macOS has a unified title bar with traffic lights and an app menu in the system menu bar. Windows has a Microsoft-style title bar with min/max/close on the right and an in-window menu bar. Linux varies wildly (GNOME header bars, KDE/Plasma chrome, traditional X11). Every window needs an explicit per-platform plan: which platform owns the menu, where the close button lives, whether a custom title bar is justified. Default position: native chrome on all three; only switch to frameless/custom when the brief demands brand-immersive presence.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -122,7 +122,7 @@ Before producing any artifact or making any structural recommendation:
 12. **First-run onboarding** — Electron apps usually open the main window first launch with an embedded onboarding overlay (NOT a modal-popup at boot). 3-step max; persists "completed" via electron-store or app config.
 13. **HiDPI asset list** — required icon sizes: 16, 24, 32, 48, 64, 128, 256, 512, 1024 PNG; `.icns` for macOS (multi-resolution); `.ico` for Windows. Tray icons: 16, 32 PNG (Windows + Linux); template image (black with alpha, named `*Template.png`) for macOS auto-tinting.
 14. **Motion spec** — desktop tempo: window opens 200ms ease-out; menus 100ms; modal sheet 250ms; reduced-motion: instant. Animate transform/opacity only.
-15. **Score** with `evolve:confidence-scoring` rubric `agent-delivery` ≥9.
+15. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
 16. **Handoff bundle** — mockups + window-chrome decisions + menu template + accelerator catalog + tray spec + HiDPI asset list + motion spec.
 
 ## Output contract
@@ -142,7 +142,7 @@ Summary template:
 ```markdown
 # Electron UI: <feature>
 
-**Designer**: evolve:_design:electron-ui-designer
+**Designer**: supervibe:_design:electron-ui-designer
 **Date**: YYYY-MM-DD
 **Target platforms**: macOS 12+ / Windows 10+ / Linux (GNOME 42+, KDE 5.27+)
 **Window architecture**: single-window | multi-window | hybrid
@@ -192,7 +192,7 @@ For each Electron UI deliverable:
 - Linux mockup pass present (not just macOS / Windows)
 - Touch-target ≥44pt where touchscreen Windows is in-scope
 - User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
-- Confidence ≥9 from `evolve:confidence-scoring`
+- Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -238,26 +238,26 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 
 ## Related
 
-- `evolve:_design:creative-director` — provides brand tokens; coordinates desktop-specific accent / focus overrides
-- `evolve:_design:ux-ui-designer` — owns shared web design system; coordinate token parity for cross-surface (web + desktop) products
-- `evolve:_design:ui-polish-reviewer` — reviews shipped Electron UI at pixel level on three platforms
-- `evolve:_design:accessibility-reviewer` — formal a11y audit including screen-reader (VoiceOver / Narrator / Orca)
-- `evolve:_design:prototype-builder` — produces interactive prototypes that include electron target
-- `evolve:_design:tauri-ui-designer` — sister desktop designer for Tauri stacks; share decisions on cross-webview compatibility patterns
-- `evolve:_ops:devops-sre` — packaging, signing, autoupdater
+- `supervibe:_design:creative-director` — provides brand tokens; coordinates desktop-specific accent / focus overrides
+- `supervibe:_design:ux-ui-designer` — owns shared web design system; coordinate token parity for cross-surface (web + desktop) products
+- `supervibe:_design:ui-polish-reviewer` — reviews shipped Electron UI at pixel level on three platforms
+- `supervibe:_design:accessibility-reviewer` — formal a11y audit including screen-reader (VoiceOver / Narrator / Orca)
+- `supervibe:_design:prototype-builder` — produces interactive prototypes that include electron target
+- `supervibe:_design:tauri-ui-designer` — sister desktop designer for Tauri stacks; share decisions on cross-webview compatibility patterns
+- `supervibe:_ops:devops-sre` — packaging, signing, autoupdater
 
 ## Skills
 
-- `evolve:prototype` — produce HTML/CSS prototype with `target=electron`; loads electron viewport preset; canvas locked to `1280×800` main / `800×600` settings
-- `evolve:brandbook` — pull approved tokens; desktop UI inherits same tokens as web/extension surfaces with platform-tuned overrides for accent + focus
-- `evolve:interaction-design-patterns` — canonical state matrices, including desktop-specific states (window-blurred, app-not-foreground, multi-display)
-- `evolve:ui-review-and-polish` — review the produced mockup at desktop viewports
-- `evolve:project-memory` — search prior window decisions and accelerator conflicts
-- `evolve:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:prototype` — produce HTML/CSS prototype with `target=electron`; loads electron viewport preset; canvas locked to `1280×800` main / `800×600` settings
+- `supervibe:brandbook` — pull approved tokens; desktop UI inherits same tokens as web/extension surfaces with platform-tuned overrides for accent + focus
+- `supervibe:interaction-design-patterns` — canonical state matrices, including desktop-specific states (window-blurred, app-not-foreground, multi-display)
+- `supervibe:ui-review-and-polish` — review the produced mockup at desktop viewports
+- `supervibe:project-memory` — search prior window decisions and accelerator conflicts
+- `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Electron main config: `src/main/index.ts`, `src/main/window.ts`, `electron-builder.json` / `forge.config.js`
 - Renderer entry: `src/renderer/index.html`, `index.html`

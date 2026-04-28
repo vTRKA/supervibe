@@ -1,19 +1,19 @@
 # Evolve standalone updater — Windows.
 #
 # Usage (PowerShell):
-#   irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/update.ps1 | iex
+#   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/evolve-marketplace)
 #   2. Refuses to clobber local edits (uncommitted changes → stop)
-#   3. Delegates to `npm run evolve:upgrade` inside the checkout
+#   3. Delegates to `npm run supervibe:upgrade` inside the checkout
 #
 # For first-time install, use install.ps1 — this script does not bootstrap.
 
 $ErrorActionPreference = 'Stop'
 
-$PluginRoot = if ($env:EVOLVE_PLUGIN_ROOT) {
-  $env:EVOLVE_PLUGIN_ROOT
+$PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
+  $env:SUPERVIBE_PLUGIN_ROOT
 } else {
   Join-Path $HOME '.claude\plugins\marketplaces\evolve-marketplace'
 }
@@ -35,10 +35,10 @@ if (-not (Test-Path (Join-Path $PluginRoot '.git'))) {
   Write-Host "[evolve-update] no Evolve install found at $PluginRoot" -ForegroundColor Red
   Write-Host ''
   Write-Host 'If this is your first install, run:'
-  Write-Host '  irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex'
+  Write-Host '  irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'
   Write-Host ''
   Write-Host 'If your plugin lives elsewhere, point the updater at it:'
-  Write-Host '  $env:EVOLVE_PLUGIN_ROOT = "C:\path\to\evolve"; irm .../update.ps1 | iex'
+  Write-Host '  $env:SUPERVIBE_PLUGIN_ROOT = "C:\path\to\evolve"; irm .../update.ps1 | iex'
   exit 1
 }
 Ok "found checkout at $PluginRoot"
@@ -51,12 +51,12 @@ if ($dirty) {
   Die "uncommitted changes in $PluginRoot — commit or stash before updating."
 }
 
-# ---- delegate to npm run evolve:upgrade ----
+# ---- delegate to npm run supervibe:upgrade ----
 
-Say 'running npm run evolve:upgrade (fetch + pull --ff-only + lfs pull + install + tests)'
+Say 'running npm run supervibe:upgrade (fetch + pull --ff-only + lfs pull + install + tests)'
 Push-Location $PluginRoot
 try {
-  npm run evolve:upgrade
+  npm run supervibe:upgrade
   if ($LASTEXITCODE -ne 0) { Die 'upgrade failed; see output above.' }
 } finally {
   Pop-Location

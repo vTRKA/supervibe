@@ -20,7 +20,7 @@ BEFORE any new feature/bug/refactor request enters the workflow. This is the ent
 
 Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project state (Glob package.json/composer.json/Cargo.toml — detect stack)
 2. Read `CLAUDE.md` for project conventions
@@ -31,9 +31,9 @@ Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 
 ```
 Estimated complexity (1-10 scale):
-├─ ≥7 → invoke evolve:brainstorming (full design exploration)
-├─ 3-6 → invoke evolve:writing-plans directly (skip brainstorm)
-└─ ≤2 → invoke evolve:executing-plans directly with single-task plan
+├─ ≥7 → invoke supervibe:brainstorming (full design exploration)
+├─ 3-6 → invoke supervibe:writing-plans directly (skip brainstorm)
+└─ ≤2 → invoke supervibe:executing-plans directly with single-task plan
                   (only after triviality confirmed via verification)
 
 Complexity signals:
@@ -53,7 +53,7 @@ Complexity signals:
 3. **Load questionnaires** — pull questions matching detected stack and request type
 4. **Ask one question at a time** — multiple-choice when possible
 5. **Build requirements-spec** with: objective, scope (in/out), acceptance criteria, edge cases, stakeholders, complexity score
-6. **Confidence-score** the spec (`evolve:confidence-scoring` artifact-type=requirements-spec)
+6. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
 7. **If <9** → continue questioning to fill gaps; loop until ≥9
 8. **Compute complexity** using signals table above
 9. **Decide handoff**: brainstorming / writing-plans / executing-plans
@@ -84,12 +84,12 @@ Returns:
 
 ## Related
 
-- `evolve:brainstorming` — invoked when complexity ≥7
-- `evolve:writing-plans` — invoked when complexity 3-6
-- `evolve:executing-plans` — invoked when complexity ≤2
+- `supervibe:brainstorming` — invoked when complexity ≥7
+- `supervibe:writing-plans` — invoked when complexity 3-6
+- `supervibe:executing-plans` — invoked when complexity ≤2
 - `questionnaires/` (Phase 5) — source of stack-aware questions
 
-## User persona elicitation (mandatory)
+## User persona elicitation (required)
 
 Before solution discussion, elicit ≥2 personas:
 
@@ -102,7 +102,7 @@ For each persona ask:
 
 If user can't articulate personas: that's a finding — flag "no clear user defined" as Risk #1.
 
-## Constraint elicitation (mandatory)
+## Constraint elicitation (required)
 
 Probe for hard constraints BEFORE designing:
 
@@ -222,14 +222,14 @@ Required sections:
 
 ## Related
 
-- `evolve:brainstorming` — successor when intake reveals exploration needed
-- `evolve:prd` — successor when intake is well-defined enough for product spec
-- `evolve:adr` — successor when intake is purely architectural
-- `evolve:_product:product-manager` — collaborator
-- `evolve:_product:systems-analyst` — collaborator on ACs
-- `evolve:explore-alternatives` — for tradeoff matrix when multiple paths exist
-- `evolve:writing-plans` — terminal successor when intake leads directly to plan
-- `evolve:project-memory` — search prior intakes from this project before drafting
+- `supervibe:brainstorming` — successor when intake reveals exploration needed
+- `supervibe:prd` — successor when intake is well-defined enough for product spec
+- `supervibe:adr` — successor when intake is purely architectural
+- `supervibe:_product:product-manager` — collaborator
+- `supervibe:_product:systems-analyst` — collaborator on ACs
+- `supervibe:explore-alternatives` — for tradeoff matrix when multiple paths exist
+- `supervibe:writing-plans` — terminal successor when intake leads directly to plan
+- `supervibe:project-memory` — search prior intakes from this project before drafting
 
 ## Trap patterns to recognize
 

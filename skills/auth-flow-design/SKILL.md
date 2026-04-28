@@ -20,7 +20,7 @@ BEFORE implementing the first auth path of a new app. BEFORE adding a new client
 
 This skill picks the OAuth 2.x / OIDC flow per client type, defines refresh-token rotation, decides session-cookie vs. token storage, and coordinates logout across SPA + API + IdP.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read OAuth 2.1 draft and RFC 6749 / RFC 7636 (PKCE) / RFC 8628 (device authorization) / RFC 6749 §4.3 (ROPC, deprecated) / RFC 6750 (bearer) / RFC 9068 (JWT access tokens).
 2. Read the IdP docs in use (Auth0, Okta, Keycloak, Cognito, Entra ID, custom). Capability matrices vary; some IdPs disable certain flows by default.
@@ -63,7 +63,7 @@ Logout?
 7. **Logout coordination**: server clears the session, revokes the refresh token at the IdP, AND broadcasts logout to other tabs (BroadcastChannel) and other relying parties (back-channel logout). Document the maximum staleness window for any access token still in flight.
 8. **CSRF**: cookie-based auth requires CSRF defence (double-submit token or SameSite=Strict + origin check). Token-based auth in `Authorization` header avoids CSRF but takes on XSS risk.
 9. **Output**: the auth design (see Output contract) signed off by security review before code.
-10. **Score** — invoke `evolve:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
+10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
 
 ## Output contract
 
@@ -107,7 +107,7 @@ Threat-model notes: <XSS / open redirector / mix-up / token substitution>
 
 ## Related
 
-- `evolve:error-envelope-design` — auth errors share the project envelope (e.g. `auth.token_expired`).
-- `evolve:test-strategy` — contract tests cover refresh rotation and logout propagation.
-- `evolve:adr` — record the flow choice per client as an ADR.
-- `evolve:incident-response` — token compromise runbook depends on the rotation + revocation design here.
+- `supervibe:error-envelope-design` — auth errors share the project envelope (e.g. `auth.token_expired`).
+- `supervibe:test-strategy` — contract tests cover refresh rotation and logout propagation.
+- `supervibe:adr` — record the flow choice per client as an ADR.
+- `supervibe:incident-response` — token compromise runbook depends on the rotation + revocation design here.

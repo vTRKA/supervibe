@@ -11,9 +11,9 @@
 // Env contract (from Claude Code hooks):
 //   CLAUDE_FILE_PATHS — comma-separated absolute paths affected by the tool use
 //   CLAUDE_PROJECT_DIR — repo root (optional fallback to cwd)
-//   EVOLVE_HOOK_EMBED=1 — opt-in to also run embeddings (slower)
-//   EVOLVE_HOOK_SILENT=1 — opt-out of any non-error stdout
-//   EVOLVE_HOOK_NO_INDEX=1 — opt-out of pseudo-watcher (reminders still fire)
+//   SUPERVIBE_HOOK_EMBED=1 — opt-in to also run embeddings (slower)
+//   SUPERVIBE_HOOK_SILENT=1 — opt-out of any non-error stdout
+//   SUPERVIBE_HOOK_NO_INDEX=1 — opt-out of pseudo-watcher (reminders still fire)
 
 import { existsSync } from 'node:fs';
 import { basename, isAbsolute, resolve } from 'node:path';
@@ -24,9 +24,9 @@ if (editedPaths.length === 0) process.exit(0);
 
 const MANIFESTS = new Set(['package.json', 'composer.json', 'Cargo.toml', 'pyproject.toml', 'go.mod', 'Gemfile']);
 const SUPPORTED_CODE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py|php|rs|go|java|rb|vue|svelte)$/i;
-const SILENT = process.env.EVOLVE_HOOK_SILENT === '1';
-const NO_INDEX = process.env.EVOLVE_HOOK_NO_INDEX === '1';
-const USE_EMBED = process.env.EVOLVE_HOOK_EMBED === '1';
+const SILENT = process.env.SUPERVIBE_HOOK_SILENT === '1';
+const NO_INDEX = process.env.SUPERVIBE_HOOK_NO_INDEX === '1';
+const USE_EMBED = process.env.SUPERVIBE_HOOK_EMBED === '1';
 
 const reminders = [];
 const sourceFiles = [];
@@ -38,10 +38,10 @@ for (const raw of editedPaths) {
   const fwdPath = path.replace(/\\/g, '/');
 
   if (MANIFESTS.has(name)) {
-    reminders.push(`Discovered: edit to ${name}. If a major dependency was added/upgraded, recommend /evolve-adapt to update agent context.`);
+    reminders.push(`Discovered: edit to ${name}. If a major dependency was added/upgraded, recommend /supervibe-adapt to update agent context.`);
   }
   if (fwdPath.includes('/.claude/rules/') && path.endsWith('.md')) {
-    reminders.push(`Discovered: edit to .claude/rules/. Recommend rules-curator review + /evolve-sync-rules if multi-project setup.`);
+    reminders.push(`Discovered: edit to .claude/rules/. Recommend rules-curator review + /supervibe-sync-rules if multi-project setup.`);
   }
   if (SUPPORTED_CODE_EXT.test(path) && existsSync(path)) {
     sourceFiles.push(path);
@@ -112,8 +112,8 @@ async function reindexMemory() {
 async function reindex() {
   const [code, mem] = await Promise.all([reindexCode(), reindexMemory()]);
   const total = code + mem;
-  if (total > 0 && !SILENT && process.env.EVOLVE_VERBOSE === '1') {
-    console.log(`[evolve] auto-reindexed ${code} code file(s), ${mem} memory entr(ies)`);
+  if (total > 0 && !SILENT && process.env.SUPERVIBE_VERBOSE === '1') {
+    console.log(`[supervibe] auto-reindexed ${code} code file(s), ${mem} memory entr(ies)`);
   }
 }
 

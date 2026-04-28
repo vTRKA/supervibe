@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship Evolve plugin v1.0 — a complete self-evolving Claude Code plugin covering all 22 original requirements. Phases 0+1 (Foundation + Confidence Core) get full bite-sized TDD-style task breakdown. Phases 2-8 (Process Skills, Knowledge Base, Reference Stack, Discovery & Scaffolding, Self-Evolution, Orchestration & Research, Polish) get compact-format tasks (one task per artifact, with file/what/gate/verification/commit fields) — each phase remains executable but without TDD-bite-sized substeps. Each artifact in any phase still passes its respective `*-quality` rubric ≥9 before commit.
+**Goal:** Ship Evolve plugin v1.0 — a complete Claude Code plugin with specialist agents and confidence gates covering all 22 original requirements. Phases 0+1 (Foundation + Confidence Core) get full bite-sized TDD-style task breakdown. Phases 2-8 (Process Skills, Knowledge Base, Reference Stack, Discovery & Scaffolding, Self-Evolution, Orchestration & Research, Polish) get compact-format tasks (one task per artifact, with file/what/gate/verification/commit fields) — each phase remains executable but without TDD-bite-sized substeps. Each artifact in any phase still passes its respective `*-quality` rubric ≥9 before commit.
 
-**Architecture:** Node.js-based dev tooling for the plugin (no runtime deps for Claude — Claude reads markdown/YAML directly; scripts are dev-time only). Confidence rubrics are YAML conforming to a JSON Schema. Scoring is implemented as an `evolve:confidence-scoring` skill (markdown procedure + LLM evaluates against rubric dimensions). The override mechanism is a `/evolve-override` command that appends to `.claude/confidence-log.jsonl` in the target project (resolved relative to current working directory — see Task 12 Path resolution). Plugin manifest lives at `.claude-plugin/plugin.json` per Claude Code convention (verified against superpowers reference); fields restricted to `name/description/version/author/homepage/repository/license/keywords`.
+**Architecture:** Node.js-based dev tooling for the plugin (no runtime deps for Claude — Claude reads markdown/YAML directly; scripts are dev-time only). Confidence rubrics are YAML conforming to a JSON Schema. Scoring is implemented as an `supervibe:confidence-scoring` skill (markdown procedure + LLM evaluates against rubric dimensions). The override mechanism is a `/supervibe-override` command that appends to `.claude/confidence-log.jsonl` in the target project (resolved relative to current working directory — see Task 12 Path resolution). Plugin manifest lives at `.claude-plugin/plugin.json` per Claude Code convention (verified against superpowers reference); fields restricted to `name/description/version/author/homepage/repository/license/keywords`.
 
 **Tech Stack:**
 - Plugin runtime: pure Markdown/YAML (Claude reads directly)
@@ -84,7 +84,7 @@ evolve/
 │       ├── parse-frontmatter.mjs
 │       ├── load-rubrics.mjs                 # accepts toRelativeFn for portable paths
 │       ├── trigger-clarity.mjs
-│       └── append-override-log.mjs          # used by /evolve-override + audit
+│       └── append-override-log.mjs          # used by /supervibe-override + audit
 │
 ├── tests/
 │   ├── plugin-manifest.test.mjs             # verifies .claude-plugin/plugin.json shape
@@ -127,7 +127,7 @@ evolve/
 | **2: Process Skills** (own brainstorming/plan/exec replacing superpowers) | 14 process + 6 capability skills | 21 | 20 SKILL.md files, updated registry | 4-6 weeks | Phase 0+1 |
 | **3: Universal Agents + Rules** | Stack-agnostic agent catalog + universal rules | 43 (42-83 + 67.5) | 33 agents (_core/_meta/_product/_ops/_design + ai-integration-architect), 9 rules | 6-8 weeks | Phase 2 |
 | **4: Reference Stack (Laravel + Next.js + Postgres + Redis) + back-fills** | Stack-specific agents + stack rules ported from product-framework + back-fill agents needed by Phase 5 | 20 (17 + 89.5 + 92.5a + 92.5b) | 12 stack agents (9 reference + react-implementer + 2 fastapi), 7 stack rules | 4-5 weeks | Phase 3 |
-| **5: Discovery & Scaffolding** | Stack-discovery, genesis, prototype workflow, brandbook workflow, 3 full stack-packs | 23 (20 + 103.5 + 115b + 115c) | **4 skills (added evolve:brandbook)**, 6 questionnaires, 3 full stack-packs + 5 atomic packs, templates dir with explicit per-stack deny-list enumeration (laravel/nextjs/postgres/redis/fastapi/django/rails) | 5-6 weeks | Phase 4 |
+| **5: Discovery & Scaffolding** | Stack-discovery, genesis, prototype workflow, brandbook workflow, 3 full stack-packs | 23 (20 + 103.5 + 115b + 115c) | **4 skills (added supervibe:brandbook)**, 6 questionnaires, 3 full stack-packs + 5 atomic packs, templates dir with explicit per-stack deny-list enumeration (laravel/nextjs/postgres/redis/fastapi/django/rails) | 5-6 weeks | Phase 4 |
 | **6: Self-Evolution** | audit/strengthen/adapt/evaluate/sync-rules + hooks | 12 | 6 evolution skills, 3 hook scripts, hooks.json, effectiveness journal, wired stub commands | 3-4 weeks | Phase 5 |
 | **7: Orchestration & Research** | evolve-orchestrator agent + 5 research agents + research-cache + MCP integration | 10 | orchestrator procedure, 5 researcher implementations, research-cache, MCP wiring, seo-audit skill | 2-3 weeks | Phase 6 |
 | **8: Polish & v1.0 Release** | End-to-end smoke on empty repo, demo feature, docs, deprecate old evolve skill, framework-self ≥9 | 8 | docs (getting-started, skill/agent/rule authoring), CHANGELOG v1.0, removal of `.claude/skills/evolve/`, GitHub release | 1-2 weeks | Phase 7 |
@@ -135,12 +135,12 @@ evolve/
 
 ### Per-phase confidence-gate
 
-Each phase has a phase-completion gate scored against `framework-self.yaml` rubric. Gate ≥9 required to advance to next phase. Gaps below 9 must be remediated OR explicitly documented in `.claude/confidence-log.jsonl` via `/evolve-override`.
+Each phase has a phase-completion gate scored against `framework-self.yaml` rubric. Gate ≥9 required to advance to next phase. Gaps below 9 must be remediated OR explicitly documented in `.claude/confidence-log.jsonl` via `/supervibe-override`.
 
 ### v1.0 ship criteria (from spec Section 8)
 
 On an empty repo, after all 8 phases complete:
-1. `/evolve-genesis` triggers stack-discovery → confirms Laravel+Next+Postgres+Redis fingerprint
+1. `/supervibe-genesis` triggers stack-discovery → confirms Laravel+Next+Postgres+Redis fingerprint
 2. Full scaffold generated; all confidence-gates ≥9
 3. Demo feature ("add user-billing module") implemented end-to-end without override
 4. `evolve-orchestrator` proactively suggested all phases without explicit user commands
@@ -159,7 +159,7 @@ On an empty repo, after all 8 phases complete:
 | 6 (architecture choice) | Phase 5 (questionnaire 02-architecture.yaml) |
 | 7 (modular backend, FSD) | Phase 4 (rules) |
 | 8 (pre-commit structure) | Phase 0+1 (dogfood husky), Phase 3 (pre-commit-discipline rule for distribution), Phase 5 (template generators) |
-| 9 (self-evolving agents) | Phase 6 (audit/strengthen/adapt/evaluate skills) |
+| 9 (agent evolution loop) | Phase 6 (audit/strengthen/adapt/evaluate skills) |
 | 10 (proactive, not command-driven) | Phase 0+1 (trigger-clarity linter), Phase 6 (hooks), Phase 7 (orchestrator) |
 | 11 (UI/UX/CPO + HTML mockups 1:1) | Phase 3 (6 design agents), Phase 5 (prototype skill) |
 | 12 (research agents) | Phase 7 (5 research agents + research-cache + MCP) |
@@ -233,7 +233,7 @@ Create `.claude-plugin/plugin.json`:
 ```json
 {
   "name": "evolve",
-  "description": "Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity. Replaces superpowers with own brainstorming/plan/exec/TDD/debug/review.",
+  "description": "Claude Code plugin: stack-aware scaffolding, specialist agents, confidence engine.",
   "version": "0.1.0",
   "author": {
     "name": "vTRKA"
@@ -246,7 +246,6 @@ Create `.claude-plugin/plugin.json`:
     "skills",
     "scaffolding",
     "confidence-engine",
-    "self-evolving",
     "framework"
   ]
 }
@@ -984,7 +983,7 @@ dimensions:
   - id: gate-on-exit
     weight: 2
     question: "Does the skill enforce confidence-scoring before exit (gate-on-exit: true in frontmatter OR explicit step in procedure)?"
-    evidence-required: "Frontmatter gate-on-exit:true OR procedure step calling evolve:confidence-scoring"
+    evidence-required: "Frontmatter gate-on-exit:true OR procedure step calling supervibe:confidence-scoring"
 gates:
   block-below: 9
   warn-below: 10
@@ -1039,7 +1038,7 @@ git commit -m "feat(confidence): add 5 sub-artifact rubrics (prototype, research
 
 ## Task 4.5: brandbook rubric (closes original-requirement-11 gap on brand-as-document)
 
-**Why:** Original requirement 11 explicitly mentions "**брендбук** и прочих дизайн экранов". Design screens are covered by `prototype.yaml` rubric (Task 4). The brandbook AS A SEPARATE ARTIFACT — palette, typography, components inventory, voice-of-brand, motion principles, accessibility commitments — needs its own rubric so `evolve:brandbook` skill (added in Phase 5 Task 103.5) can score its output.
+**Why:** Original requirement 11 explicitly mentions "**брендбук** и прочих дизайн экранов". Design screens are covered by `prototype.yaml` rubric (Task 4). The brandbook AS A SEPARATE ARTIFACT — palette, typography, components inventory, voice-of-brand, motion principles, accessibility commitments — needs its own rubric so `supervibe:brandbook` skill (added in Phase 5 Task 103.5) can score its output.
 
 **Files:**
 - Create: `confidence-rubrics/brandbook.yaml`
@@ -1336,7 +1335,7 @@ test('valid agent frontmatter passes', () => {
     capabilities: ['code-review'],
     stacks: ['any'],
     tools: ['Read', 'Grep'],
-    skills: ['evolve:code-review'],
+    skills: ['supervibe:code-review'],
     verification: ['npm test'],
     'anti-patterns': ['no-tests', 'large-pr'],
     version: '1.0',
@@ -1477,7 +1476,7 @@ persona-years: 15
 capabilities: [code-review]
 stacks: [any]
 tools: [Read, Grep, Glob]
-skills: [evolve:code-review]
+skills: [supervibe:code-review]
 verification: [npm test, npm run lint]
 anti-patterns: [no-tests, large-pr-without-review, ignoring-failures]
 version: 1.0
@@ -1638,7 +1637,7 @@ Mental model: {{MENTAL_MODEL}}.
 
 ## Project Context
 
-(filled by evolve:strengthen with grep-verified paths from current project)
+(filled by supervibe:strengthen with grep-verified paths from current project)
 
 - Primary code paths: {{PROJECT_PATHS}}
 - Key entry points: {{ENTRY_POINTS}}
@@ -1655,7 +1654,7 @@ Mental model: {{MENTAL_MODEL}}.
 3. **Plan minimal change**: {{PLAN_STEP}}
 4. **Execute change**: {{EXECUTE_STEP}}
 5. **Verify**: run all commands in `verification` frontmatter; show output
-6. **Score**: invoke evolve:confidence-scoring with artifact=agent-output
+6. **Score**: invoke supervibe:confidence-scoring with artifact=agent-output
 7. **Done if score ≥9, else iterate**
 
 ## Anti-patterns
@@ -1715,7 +1714,7 @@ Before doing anything, read:
 1. {{STEP_1}}
 2. {{STEP_2}}
 3. {{STEP_3}}
-4. **Score**: invoke evolve:confidence-scoring with artifact={{ARTIFACT_TYPE}}
+4. **Score**: invoke supervibe:confidence-scoring with artifact={{ARTIFACT_TYPE}}
 5. If score <9: identify gaps, return to relevant step
 6. If score ≥9 OR override invoked: emit artifact
 
@@ -1962,7 +1961,7 @@ async function loadAgents() {
     const content = await readFile(filePath, 'utf8');
     const { data } = matter(content);
     if (!data.name || !data.namespace) continue;
-    const id = `evolve:${data.namespace}:${data.name}`;
+    const id = `supervibe:${data.namespace}:${data.name}`;
     agents[id] = {
       file: toRepoRelative(filePath),
       capabilities: data.capabilities || [],
@@ -1983,7 +1982,7 @@ async function loadSkills() {
     const content = await readFile(filePath, 'utf8');
     const { data } = matter(content);
     if (!data.name) continue;
-    const id = `evolve:${data.name}`;
+    const id = `supervibe:${data.name}`;
     skills[id] = {
       file: toRepoRelative(filePath),
       phase: data.phase,
@@ -2103,7 +2102,7 @@ git commit -m "feat(registry): add build-registry script with rubric loading"
 
 ---
 
-## Task 9: Write evolve:verification skill
+## Task 9: Write supervibe:verification skill
 
 **Files:**
 - Create: `skills/verification/SKILL.md`
@@ -2199,7 +2198,7 @@ If verdict is `FAIL`, the calling agent MUST NOT proceed with the claim.
 
 This skill's correct application is itself verifiable:
 - Every "done" claim in conversation history MUST be preceded by a Bash tool call with output shown.
-- `evolve:audit` includes a discipline check: scan transcripts for "done"/"works"/"fixed" claims and check the preceding 5 messages for verification command output.
+- `supervibe:audit` includes a discipline check: scan transcripts for "done"/"works"/"fixed" claims and check the preceding 5 messages for verification command output.
 
 ## Related rules
 
@@ -2226,12 +2225,12 @@ Expected: counts now show `skills: 1`.
 
 ```bash
 git add skills/verification/SKILL.md
-git commit -m "feat(skills): add evolve:verification skill"
+git commit -m "feat(skills): add supervibe:verification skill"
 ```
 
 ---
 
-## Task 10: Write evolve:confidence-scoring skill
+## Task 10: Write supervibe:confidence-scoring skill
 
 **Files:**
 - Create: `skills/confidence-scoring/SKILL.md`
@@ -2261,7 +2260,7 @@ last-verified: 2026-04-27
 
 EVERY skill marked `gate-on-exit: true` MUST invoke this skill before completing.
 
-Direct invocation: `/evolve-score <artifact-type> [path-to-artifact]` from the user.
+Direct invocation: `/supervibe-score <artifact-type> [path-to-artifact]` from the user.
 
 ## Step 0 — Read source of truth (MANDATORY)
 
@@ -2334,22 +2333,22 @@ Returns JSON-shaped object:
 }
 ```
 
-If status is BLOCK and the user did NOT issue `/evolve-override`, the calling skill MUST loop back rather than claim completion.
+If status is BLOCK and the user did NOT issue `/supervibe-override`, the calling skill MUST loop back rather than claim completion.
 
 ## Guard rails
 
 - DO NOT: invent evidence that isn't in the artifact (anti-hallucination).
 - DO NOT: round scores up — always round down for partial credit.
-- DO NOT: change rubric on the fly — if rubric needs updating, that's a separate `evolve:strengthen` job.
-- DO NOT: persist scores anywhere — scoring is stateless. Override decisions are persisted by `/evolve-override`, not by this skill.
+- DO NOT: change rubric on the fly — if rubric needs updating, that's a separate `supervibe:strengthen` job.
+- DO NOT: persist scores anywhere — scoring is stateless. Override decisions are persisted by `/supervibe-override`, not by this skill.
 - ALWAYS: include `evidence-found` per dimension so the user can audit the score.
 - ALWAYS: if `block-below = warn-below = 10`, the only PASS is exactly 10/10.
 
 ## Override interaction
 
-If a user invokes `/evolve-override "<reason>"`, that command appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
+If a user invokes `/supervibe-override "<reason>"`, that command appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
 
-The append-only log allows `/evolve-audit` to compute override-rate later.
+The append-only log allows `/supervibe-audit` to compute override-rate later.
 
 ## Verification (of this skill itself)
 
@@ -2362,9 +2361,9 @@ This skill's correctness can be verified by:
 
 ## Related skills
 
-- `evolve:verification` — operates at per-claim level; this skill operates at per-artifact level.
-- (Phase 2) `evolve:requirements-intake` — consumes this skill at exit.
-- (Phase 2) `evolve:writing-plans` — consumes this skill at exit.
+- `supervibe:verification` — operates at per-claim level; this skill operates at per-artifact level.
+- (Phase 2) `supervibe:requirements-intake` — consumes this skill at exit.
+- (Phase 2) `supervibe:writing-plans` — consumes this skill at exit.
 ```
 
 - [ ] **Step 2: Validate frontmatter**
@@ -2386,29 +2385,29 @@ Expected: counts now show `skills: 2`.
 
 ```bash
 git add skills/confidence-scoring/SKILL.md
-git commit -m "feat(skills): add evolve:confidence-scoring skill"
+git commit -m "feat(skills): add supervibe:confidence-scoring skill"
 ```
 
 ---
 
-## Task 11: Write the real /evolve-score command
+## Task 11: Write the real /supervibe-score command
 
 **Files:**
-- Create: `commands/evolve-score.md`
+- Create: `commands/supervibe-score.md`
 
 - [ ] **Step 1: Create the command**
 
-Create `commands/evolve-score.md`:
+Create `commands/supervibe-score.md`:
 
 ```markdown
 ---
 name: evolve-score
-description: "Score an artifact against its confidence rubric. Usage: /evolve-score <artifact-type> [path]. Example: /evolve-score requirements-spec docs/specs/2026-04-27-foo.md"
+description: "Score an artifact against its confidence rubric. Usage: /supervibe-score <artifact-type> [path]. Example: /supervibe-score requirements-spec docs/specs/2026-04-27-foo.md"
 ---
 
-# /evolve-score
+# /supervibe-score
 
-Run the `evolve:confidence-scoring` skill against a specified artifact.
+Run the `supervibe:confidence-scoring` skill against a specified artifact.
 
 ## Argument parsing
 
@@ -2421,7 +2420,7 @@ Run the `evolve:confidence-scoring` skill against a specified artifact.
 2. Verify the rubric file exists at `$CLAUDE_PLUGIN_ROOT/confidence-rubrics/<artifact-type>.yaml`.
    - If missing → respond: "Unknown artifact type. Valid types: requirements-spec, implementation-plan, agent-output, scaffold-bundle, framework-self, prototype, research-output, agent-quality, skill-quality, rule-quality."
 3. Load the artifact (Read tool on path).
-4. Invoke skill `evolve:confidence-scoring` with:
+4. Invoke skill `supervibe:confidence-scoring` with:
    - `artifact-type`: parsed value
    - `artifact-content`: file content
 5. Display the structured score result (status, score, dimensions, gaps, remediation) to the user.
@@ -2429,41 +2428,41 @@ Run the `evolve:confidence-scoring` skill against a specified artifact.
 
 ## Examples
 
-- `/evolve-score requirements-spec docs/specs/2026-04-27-billing-design.md`
-- `/evolve-score framework-self` (scores the plugin itself; no path needed)
-- `/evolve-score skill-quality skills/confidence-scoring/SKILL.md`
+- `/supervibe-score requirements-spec docs/specs/2026-04-27-billing-design.md`
+- `/supervibe-score framework-self` (scores the plugin itself; no path needed)
+- `/supervibe-score skill-quality skills/confidence-scoring/SKILL.md`
 ```
 
 - [ ] **Step 2: Verify the file is well-formed**
 
-Run: `node -e "import('gray-matter').then(m => { import('fs').then(fs => { const c = fs.readFileSync('commands/evolve-score.md', 'utf8'); const r = m.default(c); if (!r.data.name) throw new Error('missing name'); console.log('OK'); }); });"`
+Run: `node -e "import('gray-matter').then(m => { import('fs').then(fs => { const c = fs.readFileSync('commands/supervibe-score.md', 'utf8'); const r = m.default(c); if (!r.data.name) throw new Error('missing name'); console.log('OK'); }); });"`
 Expected: stdout "OK"
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add commands/evolve-score.md
-git commit -m "feat(commands): add /evolve-score command for on-demand artifact scoring"
+git add commands/supervibe-score.md
+git commit -m "feat(commands): add /supervibe-score command for on-demand artifact scoring"
 ```
 
 ---
 
-## Task 12: Write the real /evolve-override command
+## Task 12: Write the real /supervibe-override command
 
 **Files:**
-- Create: `commands/evolve-override.md`
+- Create: `commands/supervibe-override.md`
 
 - [ ] **Step 1: Create the command**
 
-Create `commands/evolve-override.md`:
+Create `commands/supervibe-override.md`:
 
 ```markdown
 ---
 name: evolve-override
-description: "Escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Usage: /evolve-override \"reason text\""
+description: "Escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Usage: /supervibe-override \"reason text\""
 ---
 
-# /evolve-override
+# /supervibe-override
 
 Allow continuing past a confidence-scoring BLOCK status by recording the override decision in an append-only audit log.
 
@@ -2501,7 +2500,7 @@ If reason is missing or shorter than 10 characters: respond "Override requires a
 1. Parse the reason from arguments.
 2. Validate reason length ≥10 characters.
 3. Read the most recent confidence-scoring result from the conversation context.
-   - If no recent BLOCK result: respond "No recent BLOCK to override. /evolve-override only applies after a confidence-scoring BLOCK."
+   - If no recent BLOCK result: respond "No recent BLOCK to override. /supervibe-override only applies after a confidence-scoring BLOCK."
 4. Construct the log entry:
    ```json
    {
@@ -2526,7 +2525,7 @@ If reason is missing or shorter than 10 characters: respond "Override requires a
 
 ## Audit interaction
 
-`evolve:audit` reads the log and computes:
+`supervibe:audit` reads the log and computes:
 - Override rate per N artifacts
 - Most-overridden artifact types
 - Reasons clustering (manual review)
@@ -2543,14 +2542,14 @@ If override rate >5% of last 100 entries → flag systemic issue.
 
 - [ ] **Step 2: Verify**
 
-Run: `node -e "import('gray-matter').then(m => { import('fs').then(fs => { const c = fs.readFileSync('commands/evolve-override.md', 'utf8'); const r = m.default(c); if (!r.data.name) throw new Error('missing name'); console.log('OK'); }); });"`
+Run: `node -e "import('gray-matter').then(m => { import('fs').then(fs => { const c = fs.readFileSync('commands/supervibe-override.md', 'utf8'); const r = m.default(c); if (!r.data.name) throw new Error('missing name'); console.log('OK'); }); });"`
 Expected: "OK"
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add commands/evolve-override.md
-git commit -m "feat(commands): add /evolve-override escape hatch with audit log"
+git add commands/supervibe-override.md
+git commit -m "feat(commands): add /supervibe-override escape hatch with audit log"
 ```
 
 ---
@@ -2559,11 +2558,11 @@ git commit -m "feat(commands): add /evolve-override escape hatch with audit log"
 
 **Files:**
 - Create: `commands/evolve.md`
-- Create: `commands/evolve-genesis.md`
-- Create: `commands/evolve-audit.md`
-- Create: `commands/evolve-strengthen.md`
-- Create: `commands/evolve-adapt.md`
-- Create: `commands/evolve-evaluate.md`
+- Create: `commands/supervibe-genesis.md`
+- Create: `commands/supervibe-audit.md`
+- Create: `commands/supervibe-strengthen.md`
+- Create: `commands/supervibe-adapt.md`
+- Create: `commands/supervibe-evaluate.md`
 
 - [ ] **Step 1: Create the auto-detect dispatcher /evolve**
 
@@ -2581,10 +2580,10 @@ Dispatch to the right evolve phase based on current project state.
 
 ## Auto-detect logic
 
-1. **No `.claude/agents/` AND no routing table in `CLAUDE.md`** → propose `/evolve-genesis`
-2. **Stale references found** (paths/functions/commands referenced in agents that no longer exist) → propose `/evolve-audit + /evolve-adapt`
-3. **Weak artifacts found** (agents <250 lines, skills <80 lines, rules <200 lines, missing Persona/Step 0/decision-tree) → propose `/evolve-strengthen`
-4. **Coverage gaps** (new modules/commands/services without agent coverage) → propose `/evolve-adapt`
+1. **No `.claude/agents/` AND no routing table in `CLAUDE.md`** → propose `/supervibe-genesis`
+2. **Stale references found** (paths/functions/commands referenced in agents that no longer exist) → propose `/supervibe-audit + /supervibe-adapt`
+3. **Weak artifacts found** (agents <250 lines, skills <80 lines, rules <200 lines, missing Persona/Step 0/decision-tree) → propose `/supervibe-strengthen`
+4. **Coverage gaps** (new modules/commands/services without agent coverage) → propose `/supervibe-adapt`
 5. **Everything current** → respond "System healthy. No changes needed."
 
 ## What I do when invoked
@@ -2596,12 +2595,12 @@ Dispatch to the right evolve phase based on current project state.
 
 ## Note (Phase 0+1 reality)
 
-In v0.1.0, only `evolve:confidence-scoring` and `evolve:verification` skills exist. Detection of weak artifacts is partially functional (frontmatter validation works, but full audit logic ships in Phase 6). Until then, this dispatcher is informational and tells the user which phases are not yet implemented.
+In v0.1.0, only `supervibe:confidence-scoring` and `supervibe:verification` skills exist. Detection of weak artifacts is partially functional (frontmatter validation works, but full audit logic ships in Phase 6). Until then, this dispatcher is informational and tells the user which phases are not yet implemented.
 ```
 
-- [ ] **Step 2: Create stub for /evolve-genesis**
+- [ ] **Step 2: Create stub for /supervibe-genesis**
 
-Create `commands/evolve-genesis.md`:
+Create `commands/supervibe-genesis.md`:
 
 ```markdown
 ---
@@ -2609,23 +2608,23 @@ name: evolve-genesis
 description: "Bootstrap a project's .claude/ scaffold from a stack-pack matched to detected project stack. STUB in v0.1.0 — full implementation lands in Phase 5."
 ---
 
-# /evolve-genesis (stub)
+# /supervibe-genesis (stub)
 
 Phase 5 of the Evolve roadmap. Currently not implemented.
 
 When implemented, this command will:
-1. Run `evolve:stack-discovery` to identify the project's stack
+1. Run `supervibe:stack-discovery` to identify the project's stack
 2. Match against `stack-packs/` to select or compose a pack
 3. Copy pack artifacts to the target project (`.claude/`, `husky/`, configs, structure)
 4. Generate `CLAUDE.md` and `settings.json` from templates
 5. Score the resulting scaffold against `confidence-rubrics/scaffold.yaml` ≥9
 
-For now, respond to the user: "Genesis is not yet implemented in v0.1.0 (Phase 5 work). Currently available: /evolve-score, /evolve-override."
+For now, respond to the user: "Genesis is not yet implemented in v0.1.0 (Phase 5 work). Currently available: /supervibe-score, /supervibe-override."
 ```
 
-- [ ] **Step 3: Create stub for /evolve-audit**
+- [ ] **Step 3: Create stub for /supervibe-audit**
 
-Create `commands/evolve-audit.md`:
+Create `commands/supervibe-audit.md`:
 
 ```markdown
 ---
@@ -2633,16 +2632,16 @@ name: evolve-audit
 description: "Health-check the project's agents/skills/rules and CLAUDE.md routing table. STUB in v0.1.0 — full implementation lands in Phase 6."
 ---
 
-# /evolve-audit (stub)
+# /supervibe-audit (stub)
 
 Phase 6 of the Evolve roadmap. Currently not implemented.
 
 For now, respond: "Audit is not yet implemented in v0.1.0 (Phase 6 work). Partial functionality available via `node scripts/validate-frontmatter.mjs` and `node scripts/lint-skill-descriptions.mjs`."
 ```
 
-- [ ] **Step 4: Create stub for /evolve-strengthen**
+- [ ] **Step 4: Create stub for /supervibe-strengthen**
 
-Create `commands/evolve-strengthen.md`:
+Create `commands/supervibe-strengthen.md`:
 
 ```markdown
 ---
@@ -2650,16 +2649,16 @@ name: evolve-strengthen
 description: "Deepen weak agents/skills/rules using project context, MEMORY.md, and effectiveness logs. STUB in v0.1.0 — lands in Phase 6."
 ---
 
-# /evolve-strengthen (stub)
+# /supervibe-strengthen (stub)
 
 Phase 6 of the Evolve roadmap. Currently not implemented.
 
 For now, respond: "Strengthen is not yet implemented in v0.1.0 (Phase 6 work)."
 ```
 
-- [ ] **Step 5: Create stub for /evolve-adapt**
+- [ ] **Step 5: Create stub for /supervibe-adapt**
 
-Create `commands/evolve-adapt.md`:
+Create `commands/supervibe-adapt.md`:
 
 ```markdown
 ---
@@ -2667,16 +2666,16 @@ name: evolve-adapt
 description: "Sync agents/skills to recent project changes (renamed paths, new modules, removed files, new dependencies). STUB in v0.1.0 — lands in Phase 6."
 ---
 
-# /evolve-adapt (stub)
+# /supervibe-adapt (stub)
 
 Phase 6 of the Evolve roadmap. Currently not implemented.
 
 For now, respond: "Adapt is not yet implemented in v0.1.0 (Phase 6 work)."
 ```
 
-- [ ] **Step 6: Create stub for /evolve-evaluate**
+- [ ] **Step 6: Create stub for /supervibe-evaluate**
 
-Create `commands/evolve-evaluate.md`:
+Create `commands/supervibe-evaluate.md`:
 
 ```markdown
 ---
@@ -2684,7 +2683,7 @@ name: evolve-evaluate
 description: "Track agent effectiveness (outcome, iterations, blockers) into frontmatter and effectiveness.jsonl. STUB in v0.1.0 — lands in Phase 6."
 ---
 
-# /evolve-evaluate (stub)
+# /supervibe-evaluate (stub)
 
 Phase 6 of the Evolve roadmap. Currently not implemented.
 
@@ -2704,7 +2703,7 @@ Expected: 8 lines starting with "OK" (evolve, evolve-genesis, evolve-audit, evol
 - [ ] **Step 8: Commit**
 
 ```bash
-git add commands/evolve.md commands/evolve-genesis.md commands/evolve-audit.md commands/evolve-strengthen.md commands/evolve-adapt.md commands/evolve-evaluate.md
+git add commands/evolve.md commands/supervibe-genesis.md commands/supervibe-audit.md commands/supervibe-strengthen.md commands/supervibe-adapt.md commands/supervibe-evaluate.md
 git commit -m "feat(commands): add /evolve dispatcher and stubs for genesis/audit/strengthen/adapt/evaluate"
 ```
 
@@ -2723,7 +2722,7 @@ Create `README.md`:
 ```markdown
 # Evolve Framework
 
-> Self-evolving Claude Code plugin: stack-aware scaffolding, 15-year-persona agents, 10-point confidence engine, autonomous proactivity.
+> Claude Code plugin: specialist agents, confidence engine, stack-aware scaffolding.
 
 **Status:** Alpha (v0.1.0). Phase 0+1 only — plugin foundation and confidence engine. See `docs/specs/2026-04-27-evolve-framework-design.md` for the full roadmap.
 
@@ -2731,8 +2730,8 @@ Create `README.md`:
 
 - Plugin manifest and dev tooling (`plugin.json`, `package.json`, `scripts/`)
 - 10 confidence rubrics (`confidence-rubrics/*.yaml`)
-- 2 process skills: `evolve:confidence-scoring`, `evolve:verification`
-- 8 commands: `/evolve`, `/evolve-score`, `/evolve-override`, plus stubs for genesis/audit/strengthen/adapt/evaluate (real impls land in later phases)
+- 2 process skills: `supervibe:confidence-scoring`, `supervibe:verification`
+- 8 commands: `/evolve`, `/supervibe-score`, `/supervibe-override`, plus stubs for genesis/audit/strengthen/adapt/evaluate (real impls land in later phases)
 - Templates for agent/skill/rule authoring
 - Validators: frontmatter, trigger-clarity, registry build
 
@@ -2786,7 +2785,7 @@ Create `CONTRIBUTING.md`:
 4. Body must include: Persona, Project Context, Skills, Procedure, Anti-patterns, Verification, Out of scope
 5. Run `npm run validate:frontmatter` — must show OK for your file
 6. Run `npm run registry:build` — agent should appear in `registry.yaml`
-7. Score with `/evolve-score agent-quality agents/<namespace>/<name>.md` — must be ≥9
+7. Score with `/supervibe-score agent-quality agents/<namespace>/<name>.md` — must be ≥9
 
 ## Adding a skill
 
@@ -2796,7 +2795,7 @@ Create `CONTRIBUTING.md`:
 4. Description MUST follow format: `Use {WHEN|BEFORE|AFTER} <trigger> TO <verb-led purpose> [GATES <scoring>]`
 5. Body must include: When to invoke, Step 0 (mandatory), Decision tree, Procedure, Output contract, Guard rails, Verification
 6. Run `npm run lint:descriptions` — must show OK
-7. Score with `/evolve-score skill-quality skills/<name>/SKILL.md` — must be ≥9
+7. Score with `/supervibe-score skill-quality skills/<name>/SKILL.md` — must be ≥9
 
 ## Adding a rule
 
@@ -2804,7 +2803,7 @@ Create `CONTRIBUTING.md`:
 2. Fill in all placeholders
 3. Frontmatter must include all fields in `REQUIRED_RULE_FIELDS`
 4. Body must include: Why this rule exists, When this rule applies, What to do, Examples (good and bad), Enforcement, Related rules
-5. Score with `/evolve-score rule-quality rules/<name>.md` — must be ≥9
+5. Score with `/supervibe-score rule-quality rules/<name>.md` — must be ≥9
 
 ## Adding a confidence rubric
 
@@ -2861,18 +2860,18 @@ Expected: stdout "Registry written to ..." and counts JSON showing `confidence-r
 Read first 30 lines of `registry.yaml` (use Read tool).
 Expected: Top-level keys present, version 1.0.0, generated-at timestamp, confidence-rubrics dictionary with 10 entries. Critically — every `file:` path uses POSIX separators (`/`), NO backslashes, NO `%20` URL-encoding, NO leading slash, NO Windows drive prefix.
 
-- [ ] **Step 4: Manually exercise /evolve-score on the verification skill itself**
+- [ ] **Step 4: Manually exercise /supervibe-score on the verification skill itself**
 
 Manual integration check (no automated harness for slash commands). In a Claude Code session with the plugin loaded:
-- Invoke `/evolve-score skill-quality skills/verification/SKILL.md`
+- Invoke `/supervibe-score skill-quality skills/verification/SKILL.md`
 - Expect Claude to load the rubric, evaluate the skill against the 5 dimensions, and return a structured score
 - Score should be ≥9 (because we wrote the skill following all dimension requirements)
 
 If score is <9, identify the failed dimension(s) and use that as feedback to fix the skill before merging.
 
-- [ ] **Step 5: Manually exercise /evolve-score on the confidence-scoring skill itself**
+- [ ] **Step 5: Manually exercise /supervibe-score on the confidence-scoring skill itself**
 
-- Invoke `/evolve-score skill-quality skills/confidence-scoring/SKILL.md`
+- Invoke `/supervibe-score skill-quality skills/confidence-scoring/SKILL.md`
 - Score should be ≥9
 - Same remediation flow if not
 
@@ -2922,20 +2921,20 @@ Expected: stdout `CI workflow: parses OK`
 - [ ] **Step 4: Verify override flow end-to-end manually**
 
 In a Claude Code session with the plugin loaded:
-- Invoke `/evolve-score skill-quality skills/verification/SKILL.md` and assume score is e.g. 9/10 with one minor gap.
-- Invoke `/evolve-override "shipping v0.1.0 alpha; minor gap is acceptable for foundation release"`
+- Invoke `/supervibe-score skill-quality skills/verification/SKILL.md` and assume score is e.g. 9/10 with one minor gap.
+- Invoke `/supervibe-override "shipping v0.1.0 alpha; minor gap is acceptable for foundation release"`
 - Verify `.claude/confidence-log.jsonl` now exists in the dev repo with one entry containing `override: true`, the reason, and a timestamp.
 
 (This exercises the path resolution from Task 12 + the helper from Task 19 in the real Claude Code runtime.)
 
 - [ ] **Step 5: Self-score the plan itself**
 
-Invoke `/evolve-score implementation-plan docs/plans/2026-04-27-plugin-foundation-confidence-core.md`
+Invoke `/supervibe-score implementation-plan docs/plans/2026-04-27-plugin-foundation-confidence-core.md`
 Expected score: ≥9/10. If <9, identify the failed dimension and amend the plan before tagging.
 
 - [ ] **Step 6: Self-score the META spec**
 
-Invoke `/evolve-score requirements-spec docs/specs/2026-04-27-evolve-framework-design.md`
+Invoke `/supervibe-score requirements-spec docs/specs/2026-04-27-evolve-framework-design.md`
 Expected score: ≥9/10. If <9, amend the spec before tagging.
 
 - [ ] **Step 7: Final commit and v0.1.0 tag**
@@ -2971,10 +2970,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — Confidence Engine
 - 10 confidence rubrics (5 main artifact types + 5 quality sub-rubrics)
-- `evolve:confidence-scoring` skill — scores artifacts against rubrics
-- `evolve:verification` skill — bans claims without command output
-- `/evolve-score` command — on-demand artifact scoring
-- `/evolve-override` command — escape hatch with append-only audit log
+- `supervibe:confidence-scoring` skill — scores artifacts against rubrics
+- `supervibe:verification` skill — bans claims without command output
+- `/supervibe-score` command — on-demand artifact scoring
+- `/supervibe-override` command — escape hatch with append-only audit log
 
 ### Added — Dev Infrastructure
 - `scripts/build-registry.mjs` — generates portable POSIX-path `registry.yaml`
@@ -2988,7 +2987,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PR template with confidence checklist
 
 ### Stub commands (Phase 5-6 work)
-- `/evolve-genesis`, `/evolve-audit`, `/evolve-strengthen`, `/evolve-adapt`, `/evolve-evaluate`
+- `/supervibe-genesis`, `/supervibe-audit`, `/supervibe-strengthen`, `/supervibe-adapt`, `/supervibe-evaluate`
 
 ### Out of scope for v0.1.0
 - Knowledge base of agents, rules, stack-packs (Phases 3-5)
@@ -3478,7 +3477,7 @@ Create `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ## Override declaration
 
-<!-- If shipping below 10/10 on any rubric, declare here with reason. Override entries will be appended to .claude/confidence-log.jsonl by /evolve-override. -->
+<!-- If shipping below 10/10 on any rubric, declare here with reason. Override entries will be appended to .claude/confidence-log.jsonl by /supervibe-override. -->
 
 None.
 ```
@@ -3497,9 +3496,9 @@ git commit -m "ci: add GitHub Actions check workflow with Linux + Windows runner
 
 ---
 
-## Task 19: Integration test for /evolve-override → log → audit flow
+## Task 19: Integration test for /supervibe-override → log → audit flow
 
-**Why:** Unit tests cover individual pieces (rubric validation, frontmatter, trigger-clarity). But the user-facing flow — agent gets BLOCK, user runs `/evolve-override "<reason>"`, log entry appears, future audit can read it — has no end-to-end test. This task adds one.
+**Why:** Unit tests cover individual pieces (rubric validation, frontmatter, trigger-clarity). But the user-facing flow — agent gets BLOCK, user runs `/supervibe-override "<reason>"`, log entry appears, future audit can read it — has no end-to-end test. This task adds one.
 
 **Files:**
 - Create: `scripts/lib/append-override-log.mjs` (extracted helper, callable from both the command and the test)
@@ -3539,7 +3538,7 @@ test('appendOverrideEntry creates .claude/ if missing', async () => {
     override: true,
     reason: 'shipping prototype phase',
     gaps: ['no error handling'],
-    agent: 'evolve:test-agent',
+    agent: 'supervibe:test-agent',
     'user-confirmed': true
   };
   await appendOverrideEntry(SANDBOX, entry);
@@ -3569,7 +3568,7 @@ test('appendOverrideEntry appends without overwriting existing entries', async (
     override: true,
     reason: 'follow-up override scenario',
     gaps: [],
-    agent: 'evolve:test-agent-2',
+    agent: 'supervibe:test-agent-2',
     'user-confirmed': true
   });
   const logPath = join(SANDBOX, '.claude', 'confidence-log.jsonl');
@@ -3709,9 +3708,9 @@ export async function computeOverrideRate(projectRoot, { window = 100 } = {}) {
 Run: `node --test tests/override-log-flow.test.mjs`
 Expected: 7 tests PASS
 
-- [ ] **Step 5: Update /evolve-override command to reference this helper**
+- [ ] **Step 5: Update /supervibe-override command to reference this helper**
 
-Modify `commands/evolve-override.md`. Add this paragraph after the "Path resolution" section:
+Modify `commands/supervibe-override.md`. Add this paragraph after the "Path resolution" section:
 
 ```markdown
 ## Implementation reference
@@ -3724,17 +3723,17 @@ The append/read/rate-compute logic is implemented in `$CLAUDE_PLUGIN_ROOT/script
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/lib/append-override-log.mjs tests/override-log-flow.test.mjs commands/evolve-override.md
-git commit -m "test(integration): add /evolve-override → log → rate-compute end-to-end test"
+git add scripts/lib/append-override-log.mjs tests/override-log-flow.test.mjs commands/supervibe-override.md
+git commit -m "test(integration): add /supervibe-override → log → rate-compute end-to-end test"
 ```
 
 **Note on Phase 0+1 task order in this document:** Tasks appear in document order 1, 2, ..., 15, 20, 16, 17, 18, 19 due to incremental amendment. **Logical execution order is 1 → 2 → ... → 15 → 16 → 17 → 18 → 19 → 20** (Task 20 is the final smoke + v0.1.0 tag, runs LAST). The Execution Handoff section at the end of this plan lists this correct order.
 
 ---
 
-# Phase 2: Process Skills (own brainstorming/plan/exec — replaces superpowers)
+# Phase 2: Process Skills (own brainstorming/plan/exec)
 
-**Phase goal:** Ship 14 process + 6 capability skills following same structural standard as `evolve:verification` and `evolve:confidence-scoring` from Phase 1. After this phase, the plugin has its own complete process toolkit and superpowers can be uninstalled at end of v1.0.
+**Phase goal:** Ship 14 process + 6 capability skills following same structural standard as `supervibe:verification` and `supervibe:confidence-scoring` from Phase 1. After this phase, the plugin has its own complete process toolkit.
 
 **Phase confidence target:** Every skill scores ≥9 on `skill-quality.yaml`. Phase-completion: framework-self with `skill-quality-pass` dim ≥80% (16/20 skills passing).
 
@@ -3749,133 +3748,133 @@ git commit -m "test(integration): add /evolve-override → log → rate-compute 
 
 ---
 
-### Task 21: evolve:brainstorming skill
+### Task 21: supervibe:brainstorming skill
 
 - **Files:** Create `skills/brainstorming/SKILL.md`
 - **What:** Own brainstorming skill matching superpowers feature set + (a) auto-decomposition for multi-subsystem requests, (b) stack-aware questions loaded from `questionnaires/` (Phase 5), (c) confidence-gate ≥9 on requirements-spec before transition to writing-plans, (d) HARD-GATE preventing implementation until design approved. Body: When-to-invoke, Step 0 (read project context), Decision tree (one-shot vs multi-section design vs decomposition), Procedure (10 numbered steps), Output contract (spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`), Guard rails (no visual companion in v1.0).
-- **Quality gate:** `/evolve-score skill-quality skills/brainstorming/SKILL.md` ≥9
+- **Quality gate:** `/supervibe-score skill-quality skills/brainstorming/SKILL.md` ≥9
 - **Verification:** `npm run lint:descriptions` passes for new skill; `npm run validate:frontmatter` shows OK
-- **Commit:** `feat(skills): add evolve:brainstorming (replaces superpowers:brainstorming)`
+`feat(skills): add supervibe:brainstorming`
 
-### Task 22: evolve:writing-plans skill
+### Task 22: supervibe:writing-plans skill
 
 - **Files:** Create `skills/writing-plans/SKILL.md`
 - **What:** Phased plan template generator with per-phase verification commands and per-phase confidence-gate. Procedure: read approved spec → file structure mapping → per-task bite-sized step decomposition (TDD where applicable) → write to `docs/plans/YYYY-MM-DD-<feature>.md` → self-review (placeholder/coverage/type-consistency) → confidence-scoring(implementation-plan) ≥9 → handoff to executing-plans. Includes scope-check that decomposes multi-subsystem plans into separate plans (one per independent subsystem).
 - **Quality gate:** ≥9 on skill-quality
 - **Verification:** lint + validate pass
-- **Commit:** `feat(skills): add evolve:writing-plans (replaces superpowers:writing-plans)`
+`feat(skills): add supervibe:writing-plans`
 
-### Task 23: evolve:executing-plans skill
+### Task 23: supervibe:executing-plans skill
 
 - **Files:** Create `skills/executing-plans/SKILL.md`
-- **What:** Phase-by-phase plan execution with mandatory verification per task and confidence-gate per phase. Procedure: load plan → for each phase: announce phase → execute tasks in order → run verification commands → capture output → call confidence-scoring(agent-output) → if BLOCK loop, if PASS continue. After last phase: invoke evolve:requesting-code-review.
+- **What:** Phase-by-phase plan execution with mandatory verification per task and confidence-gate per phase. Procedure: load plan → for each phase: announce phase → execute tasks in order → run verification commands → capture output → call confidence-scoring(agent-output) → if BLOCK loop, if PASS continue. After last phase: invoke supervibe:requesting-code-review.
 - **Quality gate:** ≥9 on skill-quality
 - **Verification:** lint + validate pass
-- **Commit:** `feat(skills): add evolve:executing-plans (replaces superpowers:executing-plans)`
+`feat(skills): add supervibe:executing-plans`
 
-### Task 24: evolve:tdd skill
+### Task 24: supervibe:tdd skill
 
 - **Files:** Create `skills/tdd/SKILL.md`
 - **What:** Red-green-refactor methodology. Step 0: read project's test framework conventions from CLAUDE.md/package.json/composer.json. Procedure: write failing test → run to confirm RED → minimal implementation → run to confirm GREEN → refactor → run to confirm still GREEN → commit. Decision tree: integration tests (default) vs mocks (only when external dependency truly unavailable). Guard rails: never test implementation details, never commit without GREEN.
 - **Quality gate:** ≥9 on skill-quality
 - **Verification:** lint + validate pass
-- **Commit:** `feat(skills): add evolve:tdd (replaces superpowers:test-driven-development)`
+`feat(skills): add supervibe:tdd`
 
-### Task 25: evolve:systematic-debugging skill
+### Task 25: supervibe:systematic-debugging skill
 
 - **Files:** Create `skills/systematic-debugging/SKILL.md`
 - **What:** Symptom → max-3 hypotheses → evidence per hypothesis → isolation → minimal fix → verify methodology. Decision tree: bug type (logic/concurrency/state/integration/perf) → which evidence-gathering tools (logs/profiler/debugger/git-bisect). Anti-patterns: fixing-before-understanding, suppressing-instead-of-solving, guessing-instead-of-tracing. Confidence-gate at minimal-fix step.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:systematic-debugging (replaces superpowers:systematic-debugging)`
+`feat(skills): add supervibe:systematic-debugging`
 
-### Task 26: evolve:code-review skill
+### Task 26: supervibe:code-review skill
 
 - **Files:** Create `skills/code-review/SKILL.md`
 - **What:** Methodology (not agent — the agent in Phase 3 USES this skill). 8-dimensional review: correctness > security > readability > performance > test coverage > error handling > naming > documentation. Per-dim severity (CRITICAL/MAJOR/MINOR/SUGGESTION). Output contract: ranked findings with file:line references and remediation suggestions.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:code-review methodology skill`
+- **Commit:** `feat(skills): add supervibe:code-review methodology skill`
 
-### Task 27: evolve:requirements-intake skill
+### Task 27: supervibe:requirements-intake skill
 
 - **Files:** Create `skills/requirements-intake/SKILL.md`
 - **What:** Entry-gate skill that decides what skill to invoke next based on complexity. Procedure: scan project state → load relevant questionnaires (Phase 5 dependency) → ask one question at a time (multiple-choice preferred) → build requirements-spec → confidence-scoring ≥9 → decision: complexity ≥7 → brainstorming, 3-6 → writing-plans direct, ≤2 → executing direct. Stack-aware question loading.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:requirements-intake (entry-gate decides brainstorm vs plan vs exec)`
+- **Commit:** `feat(skills): add supervibe:requirements-intake (entry-gate decides brainstorm vs plan vs exec)`
 
-### Task 28: evolve:requesting-code-review skill
+### Task 28: supervibe:requesting-code-review skill
 
 - **Files:** Create `skills/requesting-code-review/SKILL.md`
 - **What:** Pre-PR preparation: collect changed files, write PR description with What/Why/Test plan, attach evidence (test output, screenshots), invoke code-reviewer agent with prepared package.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:requesting-code-review`
+- **Commit:** `feat(skills): add supervibe:requesting-code-review`
 
-### Task 29: evolve:receiving-code-review skill
+### Task 29: supervibe:receiving-code-review skill
 
 - **Files:** Create `skills/receiving-code-review/SKILL.md`
 - **What:** How to receive critique without performative agreement. Procedure: classify each finding (agree/disagree/clarify) → for disagrees: write counterargument with evidence → for clarifies: ask reviewer specific question → for agrees: implement fix → mark each as resolved with evidence link. Anti-pattern: blind implementation of every suggestion.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:receiving-code-review`
+- **Commit:** `feat(skills): add supervibe:receiving-code-review`
 
-### Task 30: evolve:dispatching-parallel-agents skill
+### Task 30: supervibe:dispatching-parallel-agents skill
 
 - **Files:** Create `skills/dispatching-parallel-agents/SKILL.md`
 - **What:** Decision criteria: 2+ tasks AND no shared state AND no sequential deps → parallel. Otherwise sequential. Aggregation: collect outputs, score each (agent-output rubric), score combined.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:dispatching-parallel-agents`
+- **Commit:** `feat(skills): add supervibe:dispatching-parallel-agents`
 
-### Task 31: evolve:subagent-driven-development skill
+### Task 31: supervibe:subagent-driven-development skill
 
 - **Files:** Create `skills/subagent-driven-development/SKILL.md`
 - **What:** Pattern for executing plans via subagents — fresh subagent per task with focused brief, two-stage review (subagent self-reviews, then parent reviews). When to use: independent tasks, large plans, contexts at risk of overflow.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:subagent-driven-development`
+- **Commit:** `feat(skills): add supervibe:subagent-driven-development`
 
-### Task 32: evolve:using-git-worktrees skill
+### Task 32: supervibe:using-git-worktrees skill
 
 - **Files:** Create `skills/using-git-worktrees/SKILL.md`
 - **What:** When to create worktree (feature isolation, executing plan without polluting main checkout). Procedure: choose worktree dir, branch name, create, switch context, work, when done either merge back or discard. Safety: verify clean state before discard.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:using-git-worktrees`
+- **Commit:** `feat(skills): add supervibe:using-git-worktrees`
 
-### Task 33: evolve:finishing-a-development-branch skill
+### Task 33: supervibe:finishing-a-development-branch skill
 
 - **Files:** Create `skills/finishing-a-development-branch/SKILL.md`
 - **What:** Decision tree at end of work: merge to main / open PR / archive branch / discard. Per-option procedure with safety checks (uncommitted changes, branch ahead/behind, CI status).
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:finishing-a-development-branch`
+- **Commit:** `feat(skills): add supervibe:finishing-a-development-branch`
 
-### Task 34: evolve:pre-pr-check skill
+### Task 34: supervibe:pre-pr-check skill
 
 - **Files:** Create `skills/pre-pr-check/SKILL.md`
 - **What:** Mandatory checks before opening PR: full typecheck + tests + lint + dependency audit (npm audit / composer audit / cargo audit) + security scan + format check + bundle size delta. Stack-adaptive: reads project's check command from CLAUDE.md.
 - **Quality gate:** ≥9
 - **Verification:** lint + validate
-- **Commit:** `feat(skills): add evolve:pre-pr-check`
+- **Commit:** `feat(skills): add supervibe:pre-pr-check`
 
 ### Tasks 35-40: Capability skills (adr, prd, new-feature, landing-page, incident-response, experiment)
 
 Each is one task following the same compact template. Listed concisely:
 
-- **Task 35: evolve:adr** → `skills/adr/SKILL.md` — When to write Architecture Decision Record, format (Context/Decision/Consequences/Alternatives Considered), filing convention `docs/adr/NNNN-<title>.md`. ≥9, `feat(skills): add evolve:adr`
-- **Task 36: evolve:prd** → `skills/prd/SKILL.md` — Product Requirements Document template (Problem/Users/Solution/Success metrics/Out-of-scope/Risks). ≥9, `feat(skills): add evolve:prd`
-- **Task 37: evolve:new-feature** → `skills/new-feature/SKILL.md` — End-to-end orchestration: requirements-intake → brainstorming/writing-plans → executing-plans → code-review → quality-gate. ≥9, `feat(skills): add evolve:new-feature`
-- **Task 38: evolve:landing-page** → `skills/landing-page/SKILL.md` — Scaffold landing page with SEO + analytics + copy review by copywriter agent + accessibility check. ≥9, `feat(skills): add evolve:landing-page`
-- **Task 39: evolve:incident-response** → `skills/incident-response/SKILL.md` — Runbook execution: triage → mitigate → root-cause → postmortem with timeline + 5-whys + action items. ≥9, `feat(skills): add evolve:incident-response`
-- **Task 40: evolve:experiment** → `skills/experiment/SKILL.md` — A/B test setup: hypothesis, success metric, sample size calculation, randomization, analysis. ≥9, `feat(skills): add evolve:experiment`
+- **Task 35: supervibe:adr** → `skills/adr/SKILL.md` — When to write Architecture Decision Record, format (Context/Decision/Consequences/Alternatives Considered), filing convention `docs/adr/NNNN-<title>.md`. ≥9, `feat(skills): add supervibe:adr`
+- **Task 36: supervibe:prd** → `skills/prd/SKILL.md` — Product Requirements Document template (Problem/Users/Solution/Success metrics/Out-of-scope/Risks). ≥9, `feat(skills): add supervibe:prd`
+- **Task 37: supervibe:new-feature** → `skills/new-feature/SKILL.md` — End-to-end orchestration: requirements-intake → brainstorming/writing-plans → executing-plans → code-review → quality-gate. ≥9, `feat(skills): add supervibe:new-feature`
+- **Task 38: supervibe:landing-page** → `skills/landing-page/SKILL.md` — Scaffold landing page with SEO + analytics + copy review by copywriter agent + accessibility check. ≥9, `feat(skills): add supervibe:landing-page`
+- **Task 39: supervibe:incident-response** → `skills/incident-response/SKILL.md` — Runbook execution: triage → mitigate → root-cause → postmortem with timeline + 5-whys + action items. ≥9, `feat(skills): add supervibe:incident-response`
+- **Task 40: supervibe:experiment** → `skills/experiment/SKILL.md` — A/B test setup: hypothesis, success metric, sample size calculation, randomization, analysis. ≥9, `feat(skills): add supervibe:experiment`
 
 ### Task 41: Phase 2 wrap-up
 
 - **Files:** Modify `README.md` (update status), modify `CHANGELOG.md` (add v0.2.0 entry), regenerate `registry.yaml`
-- **What:** Update plugin status from "alpha — Phase 0+1" to "beta — Phase 0-2 (process toolkit complete)". CHANGELOG: list all 20 new skills. Verify all skills appear in registry. Run `/evolve-score framework-self` and confirm `skill-quality-pass` dimension ≥80%.
+- **What:** Update plugin status from "alpha — Phase 0+1" to "beta — Phase 0-2 (process toolkit complete)". CHANGELOG: list all 20 new skills. Verify all skills appear in registry. Run `/supervibe-score framework-self` and confirm `skill-quality-pass` dimension ≥80%.
 - **Quality gate:** framework-self ≥9
 - **Verification:** `npm run check` passes; `node scripts/build-registry.mjs` shows `skills: 22`
 - **Commit:** `chore(release): v0.2.0 — own process skills, superpowers no longer required`
@@ -3896,20 +3895,20 @@ Each is one task following the same compact template. Listed concisely:
 
 ### Tasks 42-48: _core agents (7)
 
-- **Task 42: code-reviewer** → `agents/_core/code-reviewer.md` (15-year persona, READ-ONLY tools, attaches `evolve:code-review`+`evolve:verification`+`evolve:confidence-scoring`, anti-patterns: rubber-stamp / nitpick-no-substance / unverified-claims, verification: scoring agent output ≥9). Source: port + adapt from `D:\ggsel projects\product-framework\.claude\agents\code-reviewer*` if present, else write fresh.
-- **Task 43: root-cause-debugger** → `agents/_core/root-cause-debugger.md` (attaches `evolve:systematic-debugging`)
+- **Task 42: code-reviewer** → `agents/_core/code-reviewer.md` (15-year persona, READ-ONLY tools, attaches `supervibe:code-review`+`supervibe:verification`+`supervibe:confidence-scoring`, anti-patterns: rubber-stamp / nitpick-no-substance / unverified-claims, verification: scoring agent output ≥9). Source: port + adapt from `D:\ggsel projects\product-framework\.claude\agents\code-reviewer*` if present, else write fresh.
+- **Task 43: root-cause-debugger** → `agents/_core/root-cause-debugger.md` (attaches `supervibe:systematic-debugging`)
 - **Task 44: repo-researcher** → `agents/_core/repo-researcher.md` (READ-ONLY, outputs `[EXISTS]/[MISSING]/[PARTIAL]/[PATTERN]/[RISK]` map)
 - **Task 45: security-auditor** → `agents/_core/security-auditor.md` (OWASP Top 10 checklist, secrets scan, perm review, attack-surface mapping). Source: port from `product-framework/agents/security-reviewer.md`
 - **Task 46: refactoring-specialist** → `agents/_core/refactoring-specialist.md` (preserve-behavior refactoring with caller-verification via grep)
 - **Task 47: architect-reviewer** → `agents/_core/architect-reviewer.md` (READ-ONLY, layer boundaries, dependency direction, coupling analysis)
 - **Task 48: quality-gate-reviewer** → `agents/_core/quality-gate-reviewer.md` (final gate: APPROVED / APPROVED WITH NOTES / BLOCKED + evidence)
 
-Each: ≥9 on agent-quality, lint+validate pass, commit `feat(agents): add evolve:_core:<name>`.
+Each: ≥9 on agent-quality, lint+validate pass, commit `feat(agents): add supervibe:_core:<name>`.
 
 ### Tasks 49-50: _meta agents (2)
 
 - **Task 49: rules-curator** → `agents/_meta/rules-curator.md` — Maintains `.claude/rules/*` of target project. Source: port + adapt `product-framework/agents/rules-curator.md` (13 KB reference, well-developed).
-- **Task 50: evolve-orchestrator** → `agents/_meta/evolve-orchestrator.md` — File created with placeholder Procedure (full implementation in Phase 7). Frontmatter complete; Procedure section says "Implementation lands in Phase 7 — see docs/specs/2026-04-27-evolve-framework-design.md Section 7".
+- **Task 50: evolve-orchestrator** → `agents/_meta/supervibe-orchestrator.md` — File created with placeholder Procedure (full implementation in Phase 7). Frontmatter complete; Procedure section says "Implementation lands in Phase 7 — see docs/specs/2026-04-27-evolve-framework-design.md Section 7".
 
 Each: ≥9 (orchestrator gets ≥7 acceptable for Phase 3, raised to ≥9 in Phase 7).
 
@@ -3931,13 +3930,13 @@ Each: ≥9, port + generalize from product-framework (remove Laravel-specific bi
 - **Task 59: dependency-reviewer** — Port `product-framework/agents/dependency-reviewer.md`
 - **Task 60: db-reviewer** — Port `product-framework/agents/db-reviewer.md`
 - **Task 61: api-contract-reviewer** — Port `product-framework/agents/api-contract-reviewer.md`
-- **Task 62: infrastructure-architect** — NEW (covers req 13: Sentinel, replicas, sharding, queue topology, cache layers). 15-year persona, attaches `evolve:adr` + `evolve:systematic-debugging`. Persona priorities: reliability > scalability > simplicity > cost.
+- **Task 62: infrastructure-architect** — NEW (covers req 13: Sentinel, replicas, sharding, queue topology, cache layers). 15-year persona, attaches `supervibe:adr` + `supervibe:systematic-debugging`. Persona priorities: reliability > scalability > simplicity > cost.
 - **Task 63: best-practices-researcher** — File created with placeholder Procedure ("Implementation lands in Phase 7"). Frontmatter complete.
 - **Task 64: dependency-researcher** — File created with placeholder Procedure
 - **Task 65: security-researcher** — File created with placeholder Procedure
 - **Task 66: infra-pattern-researcher** — File created with placeholder Procedure
 - **Task 67: competitive-design-researcher** — File created with placeholder Procedure
-- **Task 67.5: ai-integration-architect** → `agents/_ops/ai-integration-architect.md` — **Port from `product-framework/agents/ai-integration-architect.md` (14 KB — was previously missed; this closes original-requirement-14 gap)**. 15-year persona for designing LLM/AI integration into product code: prompt registry patterns, RAG architectures, vector DB choice (pgvector vs Pinecone vs Qdrant vs Weaviate), embedding strategies, evaluation harnesses, cost/latency tradeoffs, prompt-injection defenses, model routing (cheap-first vs quality-first), streaming UX, fallback chains. Attaches: `evolve:adr`, `evolve:systematic-debugging`, `evolve:prompt-quality-engineer` (if exists in Phase 2 — else placeholder reference). ≥9 on agent-quality.
+- **Task 67.5: ai-integration-architect** → `agents/_ops/ai-integration-architect.md` — **Port from `product-framework/agents/ai-integration-architect.md` (14 KB — was previously missed; this closes original-requirement-14 gap)**. 15-year persona for designing LLM/AI integration into product code: prompt registry patterns, RAG architectures, vector DB choice (pgvector vs Pinecone vs Qdrant vs Weaviate), embedding strategies, evaluation harnesses, cost/latency tradeoffs, prompt-injection defenses, model routing (cheap-first vs quality-first), streaming UX, fallback chains. Attaches: `supervibe:adr`, `supervibe:systematic-debugging`, `supervibe:prompt-quality-engineer` (if exists in Phase 2 — else placeholder reference). ≥9 on agent-quality.
 
 Each: ≥9 for ops agents (including ai-integration-architect), ≥7 acceptable for researchers (raised in Phase 7).
 
@@ -3948,7 +3947,7 @@ Each: ≥9 for ops agents (including ai-integration-architect), ≥7 acceptable 
 - **Task 70: ui-polish-reviewer** — NEW (8-dim review: hierarchy/spacing/alignment/states/keyboard/responsive/copy/DS-consistency)
 - **Task 71: accessibility-reviewer** — Port `product-framework/agents/accessibility-reviewer.md`
 - **Task 72: copywriter** — Port `product-framework/agents/copywriter.md` (14 KB)
-- **Task 73: prototype-builder** — NEW (covers req 11: 1:1 HTML mockups for brandbook approval). Attaches `evolve:prototype` (Phase 5 dependency — placeholder reference until Phase 5 ships).
+- **Task 73: prototype-builder** — NEW (covers req 11: 1:1 HTML mockups for brandbook approval). Attaches `supervibe:prototype` (Phase 5 dependency — placeholder reference until Phase 5 ships).
 
 Each: ≥9.
 
@@ -3969,7 +3968,7 @@ Each: ≥9 on rule-quality.
 ### Task 83: Phase 3 wrap-up
 
 - **Files:** Modify `README.md`, `CHANGELOG.md`. Regenerate registry.
-- **What:** v0.3.0. Verify registry shows 32 agents + 9 rules + 22 skills (cumulative). Run `/evolve-score framework-self`; confirm `agent-quality-pass` ≥95% and `rule-freshness` ≥90%.
+- **What:** v0.3.0. Verify registry shows 32 agents + 9 rules + 22 skills (cumulative). Run `/supervibe-score framework-self`; confirm `agent-quality-pass` ≥95% and `rule-freshness` ≥90%.
 - **Quality gate:** framework-self ≥9
 - **Verification:** `npm run check` passes; counts JSON shows agents:32, rules:9, skills:22
 - **Commit:** `chore(release): v0.3.0 — universal agents and rules complete`
@@ -4025,7 +4024,7 @@ Each: ≥9 on rule-quality. `applies-to:` field correctly scoped per rule.
 ### Task 100: Phase 4 wrap-up
 
 - **Files:** Modify `README.md`, `CHANGELOG.md`. Regenerate registry.
-- **What:** v0.4.0. Verify counts: agents:41, rules:16, skills:22. Run `/evolve-score framework-self` ≥9.
+- **What:** v0.4.0. Verify counts: agents:41, rules:16, skills:22. Run `/supervibe-score framework-self` ≥9.
 - **Verification:** `npm run check` passes
 - **Commit:** `chore(release): v0.4.0 — reference stack catalog (Laravel+Next+Postgres+Redis) complete`
 
@@ -4043,11 +4042,11 @@ Each: ≥9 on rule-quality. `applies-to:` field correctly scoped per rule.
 
 ### Tasks 101-103: 3 new skills
 
-- **Task 101: evolve:stack-discovery** → `skills/stack-discovery/SKILL.md` — Scan manifests (package.json, composer.json, Cargo.toml, etc.), apply Stack Detection Rules from spec, build stack-fingerprint object. If incomplete → invoke `evolve:requirements-intake` for gap-filling questions.
-- **Task 102: evolve:genesis** → `skills/genesis/SKILL.md` — Bootstrap: stack-fingerprint → match `stack-packs/` (or compose from atomic) → copy pack assets to target → generate CLAUDE.md from template + discovery data → generate settings.json with deny-list → confidence-scoring(scaffold-bundle) ≥9 → never overwrite existing.
-- **Task 103: evolve:prototype** → `skills/prototype/SKILL.md` — Covers design-screens part of req 11. Procedure: creative-director (visual direction) → ux-ui-designer (screen spec) → prototype-builder (1:1 HTML/CSS in `prototypes/{feature}/`) → ui-polish-reviewer → confidence-scoring(prototype) ≥9 → user approval → handoff to frontend developer for 1:1 transfer → post-transfer drift check (>5% = fail). **Step 0 enhancement: skill MUST first check if `prototypes/_brandbook/` exists in the target project; if it does, all visual decisions MUST conform to its tokens/components/voice — no parallel design language.** If brandbook missing — pause and propose `evolve:brandbook` (Task 103.5) first.
+- **Task 101: supervibe:stack-discovery** → `skills/stack-discovery/SKILL.md` — Scan manifests (package.json, composer.json, Cargo.toml, etc.), apply Stack Detection Rules from spec, build stack-fingerprint object. If incomplete → invoke `supervibe:requirements-intake` for gap-filling questions.
+- **Task 102: supervibe:genesis** → `skills/genesis/SKILL.md` — Bootstrap: stack-fingerprint → match `stack-packs/` (or compose from atomic) → copy pack assets to target → generate CLAUDE.md from template + discovery data → generate settings.json with deny-list → confidence-scoring(scaffold-bundle) ≥9 → never overwrite existing.
+- **Task 103: supervibe:prototype** → `skills/prototype/SKILL.md` — Covers design-screens part of req 11. Procedure: creative-director (visual direction) → ux-ui-designer (screen spec) → prototype-builder (1:1 HTML/CSS in `prototypes/{feature}/`) → ui-polish-reviewer → confidence-scoring(prototype) ≥9 → user approval → handoff to frontend developer for 1:1 transfer → post-transfer drift check (>5% = fail). **Step 0 enhancement: skill MUST first check if `prototypes/_brandbook/` exists in the target project; if it does, all visual decisions MUST conform to its tokens/components/voice — no parallel design language.** If brandbook missing — pause and propose `supervibe:brandbook` (Task 103.5) first.
 
-- **Task 103.5: evolve:brandbook** → `skills/brandbook/SKILL.md` — Covers brandbook-as-document part of req 11 (the "брендбук" word in original requirement, distinct from "дизайн экранов"). Procedure:
+- **Task 103.5: supervibe:brandbook** → `skills/brandbook/SKILL.md` — Covers brandbook-as-document part of req 11 (the "брендбук" word in original requirement, distinct from "дизайн экранов"). Procedure:
   1. **Step 0:** Read existing brand artifacts in target project (`prototypes/_brandbook/`, `app/styles/tokens.*`, design tokens in any package), AND read project's product context from `docs/prd/*` or CLAUDE.md.
   2. **creative-director** produces visual direction document: mood, palette intent, typographic intent, motion intent, emotional anchors, brand personality (3-5 adjectives).
   3. **prototype-builder** materializes the brandbook as HTML in `prototypes/_brandbook/`:
@@ -4061,10 +4060,10 @@ Each: ≥9 on rule-quality. `applies-to:` field correctly scoped per rule.
   5. **accessibility-reviewer** verifies all token combinations meet contrast targets.
   6. **confidence-scoring(brandbook)** ≥9 against `confidence-rubrics/brandbook.yaml` (Task 4.5).
   7. **user approval** — required before brandbook is "blessed" as source-of-truth.
-  8. **Handoff:** other skills (`evolve:prototype`, `evolve:landing-page`, `evolve:new-feature` UI parts) MUST consult `prototypes/_brandbook/` BEFORE making visual decisions. Drift between blessed brandbook and per-screen prototypes → blocked at `ui-polish-reviewer` step.
+  8. **Handoff:** other skills (`supervibe:prototype`, `supervibe:landing-page`, `supervibe:new-feature` UI parts) MUST consult `prototypes/_brandbook/` BEFORE making visual decisions. Drift between blessed brandbook and per-screen prototypes → blocked at `ui-polish-reviewer` step.
 - **Quality gate:** ≥9 on skill-quality
 - **Verification:** lint + validate; manual e2e check that brandbook scoring works
-- **Commit:** `feat(skills): add evolve:brandbook (closes req-11 brandbook-as-document gap)`
+- **Commit:** `feat(skills): add supervibe:brandbook (closes req-11 brandbook-as-document gap)`
 
 Each: ≥9 on skill-quality.
 
@@ -4093,9 +4092,9 @@ Each: validated YAML, ≥9 (rubric: questionnaire-quality may need to be added t
 - **Task 113: stack-packs/_atomic/db-replicas/** — db-reviewer + infrastructure-patterns attach
 - **Task 114: stack-packs/_atomic/husky-base/** — base husky setup
 - **Task 115: stack-packs/_atomic/commitlint-base/** — base commitlint config
-- **Task 115b: stack-packs/nextjs-vite-react-postgres/** — **Second full stack-pack to satisfy original requirement 3** (which named "react", "vite" as separate from Next.js full-stack). Composition: standalone React frontend (Vite-built) + separate Next.js BFF or Node API + Postgres. Manifest pulls: `evolve:stacks:react`, `evolve:stacks:nextjs:server-actions-specialist` (used as API layer), `evolve:stacks:postgres`, plus `_atomic/husky-base`, `_atomic/commitlint-base`. CLAUDE.md template: parameterized variant with separate `frontend/` (Vite) and `api/` (Next.js routes only) directories.
+- **Task 115b: stack-packs/nextjs-vite-react-postgres/** — **Second full stack-pack to satisfy original requirement 3** (which named "react", "vite" as separate from Next.js full-stack). Composition: standalone React frontend (Vite-built) + separate Next.js BFF or Node API + Postgres. Manifest pulls: `supervibe:stacks:react`, `supervibe:stacks:nextjs:server-actions-specialist` (used as API layer), `supervibe:stacks:postgres`, plus `_atomic/husky-base`, `_atomic/commitlint-base`. CLAUDE.md template: parameterized variant with separate `frontend/` (Vite) and `api/` (Next.js routes only) directories.
   - Note: requires writing `agents/stacks/react/react-implementer.md` (NEW agent in this Phase or back-fill into Phase 4 — recommended: add as Phase 4 Task 89.5 since it's a stack agent). Add corresponding cross-reference comment in Phase 4.
-- **Task 115c: stack-packs/fastapi-postgres/** — **Third full stack-pack** for Python-stack users (frequently requested). Composition: FastAPI backend + Postgres + Redis cache + optional Celery queue. Manifest pulls: `evolve:stacks:fastapi:fastapi-architect`, `evolve:stacks:fastapi:fastapi-developer`, `evolve:stacks:postgres`, `evolve:stacks:redis`, plus appropriate atomic packs.
+- **Task 115c: stack-packs/fastapi-postgres/** — **Third full stack-pack** for Python-stack users (frequently requested). Composition: FastAPI backend + Postgres + Redis cache + optional Celery queue. Manifest pulls: `supervibe:stacks:fastapi:fastapi-architect`, `supervibe:stacks:fastapi:fastapi-developer`, `supervibe:stacks:postgres`, `supervibe:stacks:redis`, plus appropriate atomic packs.
   - Note: requires writing `agents/stacks/fastapi/fastapi-architect.md` AND `fastapi-developer.md` — add as Phase 4 Tasks 92.5a and 92.5b (back-filled). Without these agents, Task 115c blocks. Add explicit dependency note.
 
 Each: scaffold-bundle ≥9 when applied to test-target. **All 3 full packs (laravel-nextjs-postgres-redis, nextjs-vite-react-postgres, fastapi-postgres) must pass an end-to-end Task 119 smoke test before Phase 5 wrap-up.**
@@ -4190,9 +4189,9 @@ Each: validates as well-formed (JSON/JS/Markdown), ≥9.
 
 ---
 
-# Phase 6: Self-Evolution (Tasks 121-132)
+# Phase 6: Agent Evolution (Tasks 121-132)
 
-**Phase goal:** Ship 6 evolution skills + 3 hook scripts + hooks.json wiring + effectiveness journal. After this phase, the framework can audit/strengthen/adapt itself and target projects autonomously (with confirm).
+**Phase goal:** Ship 6 evolution skills + 3 hook scripts + hooks.json wiring + effectiveness journal. After this phase, the framework can audit/strengthen/adapt itself and target projects with user confirmation.
 
 **Phase confidence target:** All evolution skills ≥9 on skill-quality. Hooks tested in real Claude Code session.
 
@@ -4202,7 +4201,7 @@ Each: validates as well-formed (JSON/JS/Markdown), ≥9.
 
 ### Tasks 121-126: 6 evolution skills (replace stub commands)
 
-- **Task 121: evolve:audit** → `skills/audit/SKILL.md` — Health check covering ALL of:
+- **Task 121: supervibe:audit** → `skills/audit/SKILL.md` — Health check covering ALL of:
   - Stale references (grep paths/funcs/cmds in artifacts → MISSING flag)
   - Coverage gaps (uncovered modules per registry vs source dirs)
   - Weak artifacts (agents <250 lines, skills <80 lines, rules <200 lines, missing Persona/Step 0/decision-tree)
@@ -4211,7 +4210,7 @@ Each: validates as well-formed (JSON/JS/Markdown), ≥9.
   - Override-rate (>5% of last 100 confidence-log entries → flag)
   - Effectiveness signals (agents with `outcome: failed/partial` in last 5 tasks → flag)
   - Output: structured health report grouped by issue category + recommended remediation actions (which other evolve skill to invoke). ≥9.
-- **Task 122: evolve:strengthen** → `skills/strengthen/SKILL.md` — Strengthen weak/stale artifacts from project context AND fresh research (closes original-requirement-2 wiring gap).
+- **Task 122: supervibe:strengthen** → `skills/strengthen/SKILL.md` — Strengthen weak/stale artifacts from project context AND fresh research (closes original-requirement-2 wiring gap).
   - **Inputs:** MEMORY + rules + recent commits + confidence-log + effectiveness logs
   - **For each weak artifact:** deepen Persona, add real paths (grep-verified), expand anti-patterns from feedback, add concrete verification, decision trees
   - **NEW (closes researcher↔strengthen wiring gap):** Decision tree for stale artifacts:
@@ -4219,24 +4218,24 @@ Each: validates as well-formed (JSON/JS/Markdown), ≥9.
     Artifact is stale (last-verified > 90d)?
     ├─ YES:
     │   ├─ Artifact references "best practices" / current patterns?
-    │   │   → MUST invoke evolve:_ops:best-practices-researcher first to fetch current state, then strengthen with new findings
+    │   │   → MUST invoke supervibe:_ops:best-practices-researcher first to fetch current state, then strengthen with new findings
     │   ├─ Artifact references dependencies / library versions?
-    │   │   → MUST invoke evolve:_ops:dependency-researcher first
+    │   │   → MUST invoke supervibe:_ops:dependency-researcher first
     │   ├─ Artifact references security patterns / CVEs?
-    │   │   → MUST invoke evolve:_ops:security-researcher first
+    │   │   → MUST invoke supervibe:_ops:security-researcher first
     │   ├─ Artifact references infrastructure topology?
-    │   │   → MUST invoke evolve:_ops:infra-pattern-researcher first
+    │   │   → MUST invoke supervibe:_ops:infra-pattern-researcher first
     │   ├─ Artifact references competitive design / UX patterns?
-    │   │   → MUST invoke evolve:_ops:competitive-design-researcher first
+    │   │   → MUST invoke supervibe:_ops:competitive-design-researcher first
     │   └─ Otherwise → strengthen from project context only
     └─ NO (just weak, not stale): strengthen from project context only (skip researcher)
     ```
   - **Output:** Bumps `version` (1.0 → 1.1), updates `last-verified` to today, updates `verified-against` (current commit hash). NEVER deletes content. If researcher was consulted, cited sources MUST appear in the artifact's footer (e.g., "Updated 2026-07-15 from research-cache/best-practices-{topic}-2026-07-15.md").
   - ≥9 on skill-quality.
-- **Task 123: evolve:adapt** → `skills/adapt/SKILL.md` — Diff with verified-against commit → resolve stale refs, assign new modules to agents, handle new deps (minor=update context, major=suggest genesis), handle deletions. ≥9.
-- **Task 124: evolve:evaluate** → `skills/evaluate/SKILL.md` — After agent task completion: write effectiveness frontmatter (outcome, iterations, blockers, confidence-score, user-corrections). Pattern detection auto-suggests audit/strengthen. ≥9.
-- **Task 125: evolve:sync-rules** → `skills/sync-rules/SKILL.md` — When rules-curator updates a rule in one project, propagate to other projects of same stack (opt-in, with diff confirm). ≥9.
-- **Task 126: evolve:rule-audit** → `skills/rule-audit/SKILL.md` — Specifically for rules: detect contradictions, redundancy, gaps. Used internally by rules-curator. ≥9.
+- **Task 123: supervibe:adapt** → `skills/adapt/SKILL.md` — Diff with verified-against commit → resolve stale refs, assign new modules to agents, handle new deps (minor=update context, major=suggest genesis), handle deletions. ≥9.
+- **Task 124: supervibe:evaluate** → `skills/evaluate/SKILL.md` — After agent task completion: write effectiveness frontmatter (outcome, iterations, blockers, confidence-score, user-corrections). Pattern detection auto-suggests audit/strengthen. ≥9.
+- **Task 125: supervibe:sync-rules** → `skills/sync-rules/SKILL.md` — When rules-curator updates a rule in one project, propagate to other projects of same stack (opt-in, with diff confirm). ≥9.
+- **Task 126: supervibe:rule-audit** → `skills/rule-audit/SKILL.md` — Specifically for rules: detect contradictions, redundancy, gaps. Used internally by rules-curator. ≥9.
 
 ### Tasks 127-129: 3 hook scripts
 
@@ -4255,7 +4254,7 @@ Each script: unit-tested, ≥9 quality.
 
 ### Task 131: Wire stub commands to real skills
 
-- **Files:** Modify `commands/evolve-genesis.md`, `evolve-audit.md`, `evolve-strengthen.md`, `evolve-adapt.md`, `evolve-evaluate.md`
+- **Files:** Modify `commands/supervibe-genesis.md`, `evolve-audit.md`, `evolve-strengthen.md`, `evolve-adapt.md`, `evolve-evaluate.md`
 - **What:** Replace each stub message with real procedure invoking the corresponding skill. Update `commands/evolve.md` (auto-detect dispatcher) to actually run the detection logic now that all backing skills exist.
 - **Verification:** All 5 commands no longer say "STUB"; manual test invokes real flow.
 - **Commit:** `feat(commands): wire genesis/audit/strengthen/adapt/evaluate to real skills (no more stubs)`
@@ -4263,8 +4262,8 @@ Each script: unit-tested, ≥9 quality.
 ### Task 132: Phase 6 wrap-up
 
 - **Files:** README, CHANGELOG, registry
-- **What:** v0.6.0. All 5 stub commands now real. framework-self ≥9. Self-evolution loop demoable end-to-end on this very plugin (audit finds something, strengthen fixes, adapt syncs).
-- **Commit:** `chore(release): v0.6.0 — self-evolution loop complete; stubs replaced`
+- **What:** v0.6.0. All 5 stub commands now real. framework-self ≥9. Agent evolution loop demoable end-to-end on this very plugin (audit finds something, strengthen fixes, adapt syncs).
+- **Commit:** `chore(release): v0.6.0 — agent evolution loop complete; stubs replaced`
 
 ---
 
@@ -4280,7 +4279,7 @@ Each script: unit-tested, ≥9 quality.
 
 ### Task 133: Fill evolve-orchestrator procedure
 
-- **Files:** Modify `agents/_meta/evolve-orchestrator.md` (placeholder from Task 50)
+- **Files:** Modify `agents/_meta/supervibe-orchestrator.md` (placeholder from Task 50)
 - **What:** Implement decision logic: read system-reminders + effectiveness + confidence log + user message + stack-fingerprint → decide which evolve phase to invoke (or none) → emit proposal to user → never auto-execute state changes.
 - **Quality gate:** ≥9 on agent-quality (raised from ≥7 acceptable in Phase 3)
 - **Commit:** `feat(agents): complete evolve-orchestrator decision procedure`
@@ -4308,19 +4307,19 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 - **What:** Standardize MCP usage across all 5 research agents. Document required MCPs (context7, firecrawl optional) in README.
 - **Commit:** `feat(integration): MCP wiring for research agents with WebFetch fallback`
 
-### Task 141: evolve:seo-audit skill
+### Task 141: supervibe:seo-audit skill
 
 - **Files:** Create `skills/seo-audit/SKILL.md`
 - **What:** Uses seo-specialist agent + best-practices-researcher for current 2026 SEO patterns. Procedure: technical SEO audit (schema.org, sitemaps, robots, canonical, hreflang, Core Web Vitals impact) + content audit (keyword targeting, heading structure, internal linking).
 - **Quality gate:** ≥9 on skill-quality
-- **Commit:** `feat(skills): add evolve:seo-audit (uses research-agents)`
+- **Commit:** `feat(skills): add supervibe:seo-audit (uses research-agents)`
 
 ### Task 142: Phase 7 wrap-up + end-to-end orchestrator smoke
 
 - **Files:** Create `tests/orchestrator-e2e.test.mjs`, modify README/CHANGELOG, regenerate registry.
 - **What:** End-to-end smoke: simulate user message "let's add billing module" → orchestrator decides → invokes requirements-intake → confidence ≥9 → invokes writing-plans → confidence ≥9 → invokes executing-plans (mocked execution) → confidence ≥9 → invokes code-review → done. Whole flow without explicit slash commands. v0.7.0.
 - **Verification:** Test passes
-- **Commit:** `chore(release): v0.7.0 — orchestration and research complete; framework runs autonomously`
+- **Commit:** `chore(release): v0.7.0 — orchestration and research complete; framework runs with user oversight`
 
 ---
 
@@ -4345,7 +4344,7 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 
 - **Files:** Create `docs/getting-started.md`
 - **What:** Install instructions, "your first project" walkthrough (empty repo → genesis → first feature), command reference, troubleshooting.
-- **Quality gate:** Manual readability check + `/evolve-score requirements-spec docs/getting-started.md` ≥9
+- **Quality gate:** Manual readability check + `/supervibe-score requirements-spec docs/getting-started.md` ≥9
 - **Commit:** `docs: add getting-started guide`
 
 ### Task 145: docs/skill-authoring.md
@@ -4375,7 +4374,7 @@ Each: ≥9. Tests in `tests/research-agents.test.mjs` (mock MCP).
 
 ### Task 149: Final framework-self scoring
 
-- **Files:** Run `/evolve-score framework-self`. If <9, identify failing dim, fix, repeat.
+- **Files:** Run `/supervibe-score framework-self`. If <9, identify failing dim, fix, repeat.
 - **What:** Final acceptance — every dimension of framework-self.yaml passes:
   - stack-coverage: ≥1 stack pack (laravel-nextjs-postgres-redis) — passes (more in v1.x)
   - agent-quality-pass: ≥95% of agents ≥9
@@ -4433,7 +4432,7 @@ Each v1.x release follows the same pattern: write stack-specific agents (Phase 4
 | Section 1 — `.claude-plugin/plugin.json` (correct location and shape) | Task 1 (rewritten after superpowers verification) |
 | Section 1 — LICENSE file | Task 1 |
 | Section 1 — registry.yaml format and Windows-safe paths | Task 8 (with fileURLToPath fix) |
-| Section 1 — commands map (`/evolve-X` not `/evolve X`) | Tasks 11, 12, 13 (hyphenated) |
+| Section 1 — commands map (`/supervibe-X` not `/evolve X`) | Tasks 11, 12, 13 (hyphenated) |
 | Section 1 — empty placeholder dirs (agents/rules/stack-packs/questionnaires/references) | Task 16 |
 | Section 2 — 10 rubrics | Tasks 2, 3, 4 |
 | Section 2 — confidence-scoring skill | Task 10 |
@@ -4448,7 +4447,7 @@ Each v1.x release follows the same pattern: write stack-specific agents (Phase 4
 | Section 8 Phase 1 — confidence core (rubrics, scoring, verification, override, score command) | Tasks 2-4, 9, 10, 11, 12 |
 | Plugin's own dogfood: husky/commitlint/lint-staged | Task 17 |
 | CI enforcement on Linux + Windows | Task 18 |
-| End-to-end /evolve-override flow tested | Task 19 |
+| End-to-end /supervibe-override flow tested | Task 19 |
 
 Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shipping).
 
@@ -4471,7 +4470,7 @@ Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shippi
 - `appendOverrideEntry(projectRoot, entry)` / `readOverrideLog(projectRoot)` / `computeOverrideRate(projectRoot, opts)` — three exports of `append-override-log.mjs`, used consistently in tests
 - Skill frontmatter field `gate-on-exit` is boolean (true/false) consistently in templates and validator
 - Rubric YAML field names use kebab-case throughout (`max-score`, `block-below`, `evidence-required`)
-- Slash commands consistently hyphenated (`/evolve-score`, `/evolve-override`, `/evolve-genesis`, `/evolve-audit`, `/evolve-strengthen`, `/evolve-adapt`, `/evolve-evaluate`); only `/evolve` (no suffix) is the auto-detect dispatcher
+- Slash commands consistently hyphenated (`/supervibe-score`, `/supervibe-override`, `/supervibe-genesis`, `/supervibe-audit`, `/supervibe-strengthen`, `/supervibe-adapt`, `/supervibe-evaluate`); only `/evolve` (no suffix) is the auto-detect dispatcher
 - Path representation: registry uses POSIX-style repo-relative paths everywhere (verified by Task 8 Step 5 head check + Task 18 CI Windows runner)
 
 ### 4. Closed gaps from previous self-review
@@ -4491,7 +4490,7 @@ Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shippi
 
 ### 5. Remaining accepted limitations (Phase 0+1)
 
-- Slash commands themselves are not directly testable in Node — Task 15 has manual verification steps for `/evolve-score`. This is unavoidable until a Claude Code plugin test harness exists.
+- Slash commands themselves are not directly testable in Node — Task 15 has manual verification steps for `/supervibe-score`. This is unavoidable until a Claude Code plugin test harness exists.
 - `agents/_core/`, `agents/_design/`, `agents/stacks/{stack}/` namespaced subdirectories are NOT yet verified to be discoverable by Claude Code (superpowers uses flat `agents/`). This is **explicitly a Phase 3 pre-task gate** (see Phase 3 header). Acceptable to defer because Phase 0+1 ships zero agents.
 - v0.1.0 ships with no example agent/skill/rule that USES the templates from Task 7 — first such use happens in Phase 2-3. Templates are validated as well-formed Markdown but not as "produces a passing agent-quality score" (chicken-and-egg).
 
@@ -4500,16 +4499,16 @@ Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shippi
 | # | Requirement | Score | Phase(s) | Tasks | Closed gaps |
 |---|------------|-------|---------|-------|-------------|
 | 1 | 15-year persona agents | 10/10 | Phase 3 + Phase 4 | 42-73, 84-92, 89.5, 92.5a, 92.5b | (skill-quality rubric covers methodology depth — separate from persona, by design) |
-| 2 | 2026 best practices | 10/10 | Phase 3 rule + Phase 7 researcher + Phase 6 audit + **strengthen-researcher wiring** | 74, 134, 121, **122** (now wires to 5 researchers via decision tree for stale artifacts), framework-self has artifact-freshness dim | Was 9/10 in round-3 — explicit decision tree in evolve:strengthen forces researcher consultation for stale best-practices/dependency/security/infra/design artifacts before strengthening |
+| 2 | 2026 best practices | 10/10 | Phase 3 rule + Phase 7 researcher + Phase 6 audit + **strengthen-researcher wiring** | 74, 134, 121, **122** (now wires to 5 researchers via decision tree for stale artifacts), framework-self has artifact-freshness dim | Was 9/10 in round-3 — explicit decision tree in supervibe:strengthen forces researcher consultation for stale best-practices/dependency/security/infra/design artifacts before strengthening |
 | 3 | Stack scaffold (multiple combinations) | 10/10 | Phase 5 — **3 full packs** | 102, 110, **115b (nextjs-vite-react)**, **115c (fastapi-postgres)**, 111-115 atomic | Was 7/10 — added 2 more full packs covering user-named "react", "vite", and Python users |
 | 4 | Discovery questionnaire | 10/10 | Phase 5 | 101, 104-109 | — |
 | 5 | Workflow rules (git stash ban etc) | 10/10 | Phase 0+1 dogfood + Phase 3 rules + Phase 5 templates | 17.5, 75-79, **117 (now exhaustive per-stack: laravel/nextjs/postgres/redis/fastapi/django/rails)** | Was 9/10 in round-3 — Task 117 now enumerates destructive commands for ALL 7 supported stacks (was only laravel + nextjs examples) + regression test `per-stack-deny-coverage.test.mjs` |
 | 6 | Architecture choice | 10/10 | Phase 5 questionnaire 02 + Phase 4 rule | 105, 94 | — |
 | 7 | Modular backend, FSD | 10/10 | Phase 4 rules | 93, 94 | — |
 | 8 | Pre-commit structure | 10/10 | Phase 0+1 dogfood + Phase 3 rule + Phase 5 templates | 17, **17.6 (knip dogfood)**, 81, 116-118 | Was 10/10 already, strengthened by dead-code linter dogfood |
-| 9 | Self-evolving agents | 10/10 | Phase 6 | 121-126 (audit now also checks agent-freshness) | — |
+| 9 | Agent evolution loop | 10/10 | Phase 6 | 121-126 (audit now also checks agent-freshness) |
 | 10 | Proactive (no commands) | 10/10 | Phase 0+1 trigger-clarity + Phase 6 hooks + Phase 7 orchestrator | 5, 127-130, 133, 142 | — |
-| 11 | UI/UX/CPO/PM + **brandbook** + HTML mockups 1:1 | 10/10 | Phase 3 design agents + Task 51 CPO scope + Phase 5 prototype + **brandbook** skills | 68-73, 51, 103, **103.5 (evolve:brandbook)**, **4.5 (brandbook.yaml rubric)** | Was 9/10 in round-3 — added explicit brandbook artifact: rubric (5 dims: visual-foundation, component-inventory, voice-and-tone, accessibility-commitments, stakeholder-approval) + skill that materializes brandbook in `prototypes/_brandbook/` + evolve:prototype Step 0 enforcement that other design work consults brandbook |
+| 11 | UI/UX/CPO/PM + **brandbook** + HTML mockups 1:1 | 10/10 | Phase 3 design agents + Task 51 CPO scope + Phase 5 prototype + **brandbook** skills | 68-73, 51, 103, **103.5 (supervibe:brandbook)**, **4.5 (brandbook.yaml rubric)** | Was 9/10 in round-3 — added explicit brandbook artifact: rubric (5 dims: visual-foundation, component-inventory, voice-and-tone, accessibility-commitments, stakeholder-approval) + skill that materializes brandbook in `prototypes/_brandbook/` + supervibe:prototype Step 0 enforcement that other design work consults brandbook |
 | 12 | Research agents | 10/10 | Phase 7 | 134-138, 139, 140 | — |
 | 13 | Infra patterns (Sentinel, replicas) | 10/10 | Phase 3 + Phase 4 + Phase 5 | 62, 99, 111, 113 | — |
 | 14 | Solutions like product-framework | 10/10 | Phase 3-4 ports — **NOW 24/24 agents** | 42-92 source notes, **67.5 (ai-integration-architect)**, 93-99 | Was 7/10 — added missing ai-integration-architect.md (14 KB port from product-framework) — closes the most material gap |
@@ -4543,9 +4542,9 @@ Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shippi
 
 | Audit gap | Closed by task |
 |-----------|----------------|
-| (9) `evolve:strengthen` not wired to research-agents for stale artifacts | **Task 122 amended** — explicit decision tree: stale + best-practices/dependency/security/infra/design-related → MUST invoke corresponding researcher BEFORE strengthening; cited sources MUST appear in artifact footer |
+| (9) `supervibe:strengthen` not wired to research-agents for stale artifacts | **Task 122 amended** — explicit decision tree: stale + best-practices/dependency/security/infra/design-related → MUST invoke corresponding researcher BEFORE strengthening; cited sources MUST appear in artifact footer |
 | (10) Per-stack deny enumeration not exhaustive (only laravel + nextjs examples) | **Task 117 amended further** — exhaustive per-stack denies for all 7 supported stacks (laravel/nextjs/postgres/redis/fastapi/django/rails) with destructive-command coverage; `per-stack-deny-coverage.test.mjs` regression test |
-| (11) "Brandbook" not formalized as artifact | **Task 4.5 added** (brandbook.yaml rubric — 5 dims) + **Task 103.5 added** (evolve:brandbook skill — produces `prototypes/_brandbook/` with tokens/components/voice/accessibility/motion) + **Task 103 amended** (evolve:prototype Step 0 now enforces brandbook consultation if exists) |
+| (11) "Brandbook" not formalized as artifact | **Task 4.5 added** (brandbook.yaml rubric — 5 dims) + **Task 103.5 added** (supervibe:brandbook skill — produces `prototypes/_brandbook/` with tokens/components/voice/accessibility/motion) + **Task 103 amended** (supervibe:prototype Step 0 now enforces brandbook consultation if exists) |
 
 ### 7. Phase 2-8 accepted limitations
 
@@ -4597,7 +4596,7 @@ Phases 2-8 explicitly out of scope of this plan (per Section 8 — phased shippi
 ### Confidence-gate between phases
 
 After each phase wrap-up task:
-1. Run `/evolve-score framework-self`
+1. Run `/supervibe-score framework-self`
 2. If <9 on any dimension → identify failing dim, remediate (don't proceed)
 3. If ≥9 → tag release, proceed to next phase
 

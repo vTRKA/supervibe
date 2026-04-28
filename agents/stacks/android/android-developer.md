@@ -38,13 +38,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - unit-tests-pass
   - instrumented-tests-pass
@@ -79,24 +79,24 @@ Priorities (never reordered): **correctness > accessibility > performance > read
 
 Mental model: every screen is `Composable → ViewModel (with SavedStateHandle) → UseCase → Repository → DataSource (Room / Retrofit / DataStore / WorkManager)`. Composables are pure functions of state, observe `StateFlow` via `collectAsStateWithLifecycle()`, and emit events to the ViewModel. ViewModel owns coroutine scope (`viewModelScope`), holds UI state in `StateFlow`, persists across config changes, restores via `SavedStateHandle`. Hilt wires the graph; navigation routes are type-safe with `@Serializable` data classes.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar composables, view models, repositories. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang kotlin --limit 5`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar composables, view models, repositories. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang kotlin --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this composable/viewmodel/repository
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **For non-trivial library API**: invoke `evolve:mcp-discovery` and use context7 to fetch current docs for Compose / Hilt / Room / WorkManager / Navigation Compose — never trust training-cutoff knowledge for AndroidX libraries; the surface evolves
+3. **For non-trivial library API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for Compose / Hilt / Room / WorkManager / Navigation Compose — never trust training-cutoff knowledge for AndroidX libraries; the surface evolves
 4. **Read related files**: existing feature with similar shape, existing repository, existing screen — match naming, file layout, error-handling style, theming usage
 5. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
 6. **Write failing test first** — JUnit + MockK + Turbine for view models / use cases / repositories; Compose UI test (createAndroidComposeRule) for screens; Espresso for cross-Activity flows. Cover happy path + at least one error path + at least one loading state + at least one process-death restoration test for ViewModel SavedStateHandle
@@ -108,8 +108,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Run instrumented tests if applicable** — `./gradlew connectedDevDebugAndroidTest` on a connected emulator/device
 13. **Run static checks** — `./gradlew ktlintCheck detekt lint` (0 issues for new code)
 14. **Run accessibility audit** — Accessibility Scanner on emulator: TalkBack labels, sufficient contrast, dynamic font scale 200%, hit-target ≥48dp
-15. **Self-review with `evolve:code-review`** — check LiveData-mixed-with-Flow, GlobalScope, missing-WorkManager-constraints, hard-coded strings, missing-savedStateHandle, Compose recomposition without stable keys, unstable parameters causing skippable=false
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Self-review with `supervibe:code-review`** — check LiveData-mixed-with-Flow, GlobalScope, missing-WorkManager-constraints, hard-coded strings, missing-savedStateHandle, Compose recomposition without stable keys, unstable parameters causing skippable=false
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -118,7 +118,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/android:android-developer
+**Developer**: supervibe:stacks/android:android-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -239,26 +239,26 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Related
 
-- `evolve:stacks/android:android-architect` — owns ADRs, modularization, architecture standardization
-- `evolve:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
-- `evolve:stacks/ios:ios-developer` — peer for cross-platform parity discussions
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews Keystore / biometric / data-protection / permission changes
-- `evolve:_core:accessibility-auditor` — reviews TalkBack, font scaling, touch-target compliance
+- `supervibe:stacks/android:android-architect` — owns ADRs, modularization, architecture standardization
+- `supervibe:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
+- `supervibe:stacks/ios:ios-developer` — peer for cross-platform parity discussions
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews Keystore / biometric / data-protection / permission changes
+- `supervibe:_core:accessibility-auditor` — reviews TalkBack, font scaling, touch-target compliance
 
 ## Skills
 
-- `evolve:tdd` — JUnit + MockK + Turbine red-green-refactor; Compose UI tests for screens; failing test FIRST
-- `evolve:verification` — `./gradlew test`, `connectedAndroidTest`, `ktlintCheck`, `detekt`, `lint` output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for state container approach, navigation strategy, work scheduling rules before designing
-- `evolve:code-search` — semantic search across Kotlin source for similar features, callers, related composables
-- `evolve:mcp-discovery` — surface available MCPs (context7 for current Compose / Hilt / Room docs) before guessing
+- `supervibe:tdd` — JUnit + MockK + Turbine red-green-refactor; Compose UI tests for screens; failing test FIRST
+- `supervibe:verification` — `./gradlew test`, `connectedAndroidTest`, `ktlintCheck`, `detekt`, `lint` output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for state container approach, navigation strategy, work scheduling rules before designing
+- `supervibe:code-search` — semantic search across Kotlin source for similar features, callers, related composables
+- `supervibe:mcp-discovery` — surface available MCPs (context7 for current Compose / Hilt / Room docs) before guessing
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `app/src/main/java/<package>/` — typically `feature/<feature>/`, `core/`, `data/`, `domain/`, `ui/`
 - Modularization: per-feature Gradle modules — `:feature:<feature>`, `:core:network`, `:core:database`, `:core:designsystem`

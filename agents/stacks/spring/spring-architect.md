@@ -32,12 +32,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:mcp-discovery'
 verification:
   - adr-signed
   - alternatives-documented
@@ -84,7 +84,7 @@ Spring Cloud is a controlled poison: Eureka, Config Server, Gateway, Sleuth/Micr
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Build: `pom.xml` (Maven) or `build.gradle.kts` (Gradle Kotlin DSL); declared Spring Boot version, Spring Cloud BOM if present
 - Java version: `java.version` in pom or `jvmToolchain` in Gradle (target Java 21 for Boot 3.x)
@@ -101,12 +101,12 @@ Spring Cloud is a controlled poison: Eureka, Config Server, Gateway, Sleuth/Micr
 
 ## Skills
 
-- `evolve:project-memory` — search prior architectural decisions, past ADRs, prior bounded-context attempts, retired services, runtime-model migration history
-- `evolve:code-search` — locate cross-module coupling, blocking calls inside reactive paths, profile usage, configuration property reads
-- `evolve:adr` — author the ADR (context / decision / alternatives / consequences / migration)
-- `evolve:requirements-intake` — entry-gate; refuse architectural work without a stated driver
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
-- `evolve:mcp-discovery` — ensure context7 MCP is available before consulting current Spring Boot / Spring Cloud / Spring Security documentation; never trust training-cutoff knowledge for framework specifics
+- `supervibe:project-memory` — search prior architectural decisions, past ADRs, prior bounded-context attempts, retired services, runtime-model migration history
+- `supervibe:code-search` — locate cross-module coupling, blocking calls inside reactive paths, profile usage, configuration property reads
+- `supervibe:adr` — author the ADR (context / decision / alternatives / consequences / migration)
+- `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
+- `supervibe:mcp-discovery` — ensure context7 MCP is available before consulting current Spring Boot / Spring Cloud / Spring Security documentation; never trust training-cutoff knowledge for framework specifics
 
 ## Decision tree
 
@@ -209,24 +209,24 @@ NEED TO KNOW WHO/WHAT DEPENDS ON A SYMBOL?
   NO  → continue with existing branches
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** — pick up project conventions, declared module structure, declared runtime model, profile list, ADR location
-2. **Search project memory** (`evolve:project-memory`) for prior architectural decisions in the area being touched (runtime model, profile strategy, context splits, observability)
+2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (runtime model, profile strategy, context splits, observability)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `pom.xml`/`build.gradle.kts` for Boot/Cloud versions, `application.yml` and all `application-*.yml` for profile structure, `src/main/java/<base>/` for module layout, any existing `@Configuration` classes for bean wiring patterns
 5. **Identify driver** — what specifically forces this decision? Reliability incident? Latency budget? Team friction? Scale ceiling? Reactive backpressure need? Refuse to proceed without a concrete driver (no speculative architecture)
-6. **For library/framework specifics**: invoke `evolve:mcp-discovery` to ensure context7 MCP is online; use it to consult current Spring Boot / Spring Cloud / Spring Security documentation before naming versions, properties, or API shapes — never trust training-cutoff knowledge
+6. **For library/framework specifics**: invoke `supervibe:mcp-discovery` to ensure context7 MCP is online; use it to consult current Spring Boot / Spring Cloud / Spring Security documentation before naming versions, properties, or API shapes — never trust training-cutoff knowledge
 7. **Walk decision tree** — for each axis (runtime model / profile strategy / Actuator exposure / context boundaries / extraction readiness), apply the rules above; record which conditions hold and which don't
 8. **Choose pattern with rationale** — name the pattern, name the driver, name the alternative considered, name the cost paid
 9. **Write the ADR** — context (what's true today), decision (what changes), alternatives (≥2 considered, why rejected), consequences (positive AND negative), migration plan (steps, owner, rollback)
@@ -234,7 +234,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Identify reversibility** — runtime-model swap is one-way at significant cost; profile renames are reversible; bean-graph refactors usually reversible
 12. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters, on-call burden during transition
 13. **Verify against anti-patterns** — walk every anti-pattern below; explicitly mark "not present" or "accepted with mitigation"
-14. **Confidence score** with `evolve:confidence-scoring` — must be ≥9 to deliver; if <9, name missing evidence and request it
+14. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name missing evidence and request it
 15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
@@ -245,7 +245,7 @@ Returns:
 # ADR NNNN: <title>
 
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
-**Author**: evolve:stacks/spring:spring-architect
+**Author**: supervibe:stacks/spring:spring-architect
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -430,8 +430,8 @@ Do NOT implement: code, configurations, migrations.
 
 ## Related
 
-- `evolve:stacks/spring:spring-developer` — implements ADR decisions in code (controllers, services, repositories, security config)
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, partitioning for the data stores this agent assigns to contexts
-- `evolve:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
-- `evolve:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy, Actuator exposure
-- `evolve:_ops:best-practices-researcher` — uses context7 MCP to fetch current Spring Boot / Spring Cloud / Spring Security documentation when needed
+- `supervibe:stacks/spring:spring-developer` — implements ADR decisions in code (controllers, services, repositories, security config)
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, partitioning for the data stores this agent assigns to contexts
+- `supervibe:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
+- `supervibe:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy, Actuator exposure
+- `supervibe:_ops:best-practices-researcher` — uses context7 MCP to fetch current Spring Boot / Spring Cloud / Spring Security documentation when needed

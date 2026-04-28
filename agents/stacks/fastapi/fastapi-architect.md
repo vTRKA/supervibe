@@ -29,9 +29,9 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
 verification:
   - openapi-schema-valid
   - dependency-graph-acyclic
@@ -113,20 +113,20 @@ migration-policy:
   breaking column rename              → expand/contract pattern, never single-revision rename
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Search project memory** for prior FastAPI ADRs, layout decisions, async incidents in this codebase
-2. **Inventory current state** with `evolve:code-search`: list routers, count modules, check existing `Depends` tree, identify any sync routes
+2. **Inventory current state** with `supervibe:code-search`: list routers, count modules, check existing `Depends` tree, identify any sync routes
 3. **Design module structure** based on service size (decision tree above); document the rule, not just the layout
 4. **Map the DI tree** top-to-bottom: `Settings` (lru_cache) → `engine` (singleton) → `async_session_factory` → `get_session` (yield) → `<Repo>` → `<Service>` → route handler. Every node is a `Depends`; nothing reaches inward via globals
 5. **Define Pydantic model triplet** per resource: `<Name>Create`, `<Name>Update`, `<Name>Read`. Never reuse one across input and output — drift between request and response shape is silent and routine
@@ -138,8 +138,8 @@ Before producing any artifact or making any structural recommendation:
 11. **Specify startup/shutdown**: lifespan context manager (not deprecated `on_event`), no blocking I/O in startup beyond engine ping, health check endpoint `/livez` returns immediately, `/readyz` checks DB + dependencies
 12. **Document async-offload boundaries**: which CPU-bound functions go through `asyncio.to_thread`, which go to a worker queue, which are forbidden in request paths
 13. **Specify OpenAPI tags + operation IDs**: every router has a `tags=[]`, every route has stable `operation_id` for client codegen
-14. **Output ADR** via `evolve:adr` with all decisions above, mapped to module paths and the DI tree
-15. **Score** with `evolve:confidence-scoring` (target ≥9)
+14. **Output ADR** via `supervibe:adr` with all decisions above, mapped to module paths and the DI tree
+15. **Score** with `supervibe:confidence-scoring` (target ≥9)
 
 ## Output contract
 
@@ -148,7 +148,7 @@ Returns:
 ```markdown
 # Architecture ADR: <service / module>
 
-**Architect**: evolve:stacks:fastapi:fastapi-architect
+**Architect**: supervibe:stacks:fastapi:fastapi-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED-BY <ADR>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -246,21 +246,21 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 
 ## Related
 
-- `evolve:stacks:fastapi:fastapi-developer` — implements code following this ADR
-- `evolve:stacks:postgres:postgres-architect` — owns DB schema, indexes, partitioning; consulted on session/transaction strategy
-- `evolve:_core:infrastructure-architect` — owns deployment topology, replica count, health-check probes; consulted on lifespan + startup budget
-- `evolve:_core:security-auditor` — reviews auth dep, error-handler leakage, settings handling for secrets
-- `evolve:_core:architect-reviewer` — cross-stack review of the ADR before acceptance
+- `supervibe:stacks:fastapi:fastapi-developer` — implements code following this ADR
+- `supervibe:stacks:postgres:postgres-architect` — owns DB schema, indexes, partitioning; consulted on session/transaction strategy
+- `supervibe:_core:infrastructure-architect` — owns deployment topology, replica count, health-check probes; consulted on lifespan + startup budget
+- `supervibe:_core:security-auditor` — reviews auth dep, error-handler leakage, settings handling for secrets
+- `supervibe:_core:architect-reviewer` — cross-stack review of the ADR before acceptance
 
 ## Skills
 
-- `evolve:project-memory` — search prior architecture decisions, ADRs, incident postmortems
-- `evolve:code-search` — locate existing modules, routers, dependencies before proposing structure
-- `evolve:adr` — emit architecture decision records as the deliverable
+- `supervibe:project-memory` — search prior architecture decisions, ADRs, incident postmortems
+- `supervibe:code-search` — locate existing modules, routers, dependencies before proposing structure
+- `supervibe:adr` — emit architecture decision records as the deliverable
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - App layout: `app/`, `app/api/`, `app/api/routers/`, `app/api/deps/`, `app/schemas/`, `app/models/`, `app/services/`, `app/repositories/`, `app/core/` (settings, logging, errors)
 - Migrations: `alembic/`, `alembic/versions/`, `alembic.ini`
@@ -269,7 +269,7 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 - Settings: `app/core/config.py` with `pydantic_settings.BaseSettings`, env-var sourced
 - DB: SQLAlchemy 2.0 async with `asyncpg` driver; sessions yielded via `Depends`
 - ADR archive: `docs/adr/` or `.claude/memory/decisions/`
-- Past decisions: `.claude/memory/decisions/` searched via `evolve:project-memory`
+- Past decisions: `.claude/memory/decisions/` searched via `supervibe:project-memory`
 
 ## Context
 <problem, constraints, scale targets, team size>

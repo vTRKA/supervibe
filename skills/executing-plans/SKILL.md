@@ -18,14 +18,14 @@ last-verified: 2026-04-27
 
 WHEN a plan exists at `docs/plans/YYYY-MM-DD-<feature>.md` with confidence-scoring ≥9, OR user explicitly says "execute the plan".
 
-If subagents available, prefer `evolve:subagent-driven-development` for fresh-context per task.
+If subagents available, prefer `supervibe:subagent-driven-development` for fresh-context per task.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read the full plan file
 2. Critical review — identify questions/concerns BEFORE starting
 3. Read project's verification commands from `CLAUDE.md`
-4. If on main branch and plan modifies code, propose worktree (`evolve:using-git-worktrees`) unless user opts out
+4. If on main branch and plan modifies code, propose worktree (`supervibe:using-git-worktrees`) unless user opts out
 
 ## HARD GATE
 
@@ -55,9 +55,9 @@ Per task: blocked?
    d. Show output verbatim
    e. If pass → mark complete; if fail → STOP, debug
    f. Commit step (skip if user said no commits)
-4. **Per-phase confidence gate** — invoke `evolve:confidence-scoring` with artifact-type=agent-output for the phase deliverable; ≥9 required to proceed
-5. **After last phase** — invoke `evolve:requesting-code-review`
-6. **Handoff** to `evolve:finishing-a-development-branch`
+4. **Per-phase confidence gate** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output for the phase deliverable; ≥9 required to proceed
+5. **After last phase** — invoke `supervibe:requesting-code-review`
+6. **Handoff** to `supervibe:finishing-a-development-branch`
 
 ## Output contract
 
@@ -70,7 +70,7 @@ Returns: TodoWrite log of completed tasks + verification outputs + per-phase con
 - DO NOT: edit plan tasks during execution (file an issue/note for retro)
 - DO NOT: start on main branch without explicit user consent
 - ALWAYS: stop and ask when blocked; never guess
-- ALWAYS: invoke `evolve:verification` before any "done" claim
+- ALWAYS: invoke `supervibe:verification` before any "done" claim
 
 ## Verification
 
@@ -81,7 +81,7 @@ Returns: TodoWrite log of completed tasks + verification outputs + per-phase con
 
 ## Related
 
-- `evolve:writing-plans` — produces input
-- `evolve:subagent-driven-development` — preferred alternative when subagents available
-- `evolve:verification` — invoked per claim
-- `evolve:finishing-a-development-branch` — invoked after all phases done
+- `supervibe:writing-plans` — produces input
+- `supervibe:subagent-driven-development` — preferred alternative when subagents available
+- `supervibe:verification` — invoked per claim
+- `supervibe:finishing-a-development-branch` — invoked after all phases done

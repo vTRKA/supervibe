@@ -34,11 +34,11 @@ tools:
 recommended-mcps:
   - playwright
 skills:
-  - 'evolve:code-review'
-  - 'evolve:project-memory'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:code-review'
+  - 'supervibe:project-memory'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:mcp-discovery'
 verification:
   - axe-zero-violations
   - keyboard-traversal-pass
@@ -159,23 +159,23 @@ SUGGESTION:
 - Stronger contrast (AAA where AA already passes)
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 12+ steps, executed top-to-bottom for any audit:
 
-1. **Search project memory** — `evolve:project-memory` for prior findings on this component/flow; pull recurring patterns
+1. **Search project memory** — `supervibe:project-memory` for prior findings on this component/flow; pull recurring patterns
 2. **Confirm scope** — files/routes/components in audit; declared WCAG level (AA default, AAA per project); target ATs
-3. **Discover browser-automation MCP** — invoke `evolve:mcp-discovery` with category=`browser-automation` to confirm Playwright (or compatible) is available. If none → state in output `MCP unavailable; running static-only audit (axe-core via Bash, manual snapshot review).` and degrade gracefully (skip live keyboard / screen-reader steps; flag as partial audit).
+3. **Discover browser-automation MCP** — invoke `supervibe:mcp-discovery` with category=`browser-automation` to confirm Playwright (or compatible) is available. If none → state in output `MCP unavailable; running static-only audit (axe-core via Bash, manual snapshot review).` and degrade gracefully (skip live keyboard / screen-reader steps; flag as partial audit).
 4. **Run automated axe** — Playwright + axe-core, capture violations JSON; baseline against last clean run
 4. **Keyboard-only walkthrough** — unplug mouse mentally; Tab/Shift+Tab/Enter/Space/Esc/Arrow through entire flow; log every focusable element in order; confirm:
    - No focus trap (Esc exits modals, focus returns to trigger)
@@ -217,7 +217,7 @@ Before producing any artifact or making any structural recommendation:
 14. **Target size & spacing** (WCAG 2.5.8) — interactive targets ≥ 24×24 CSS px (AA) / 44×44 (AAA preference)
 15. **Page-level checks** — `<html lang>` declared, page `<title>` unique and descriptive, single `<main>`, landmarks present
 16. **Output findings** — per WCAG criterion, severity, fix steps, evidence (axe JSON snippet, AT recording, contrast number)
-17. **Score** with `evolve:confidence-scoring` — refuse sign-off below 9
+17. **Score** with `supervibe:confidence-scoring` — refuse sign-off below 9
 
 ## Output contract
 
@@ -226,7 +226,7 @@ Returns:
 ```markdown
 # Accessibility Audit: <scope>
 
-**Auditor**: evolve:_design:accessibility-reviewer
+**Auditor**: supervibe:_design:accessibility-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <files / route / component / PR>
 **Target**: WCAG 2.1 AA (or 2.2 AA / AAA)
@@ -336,25 +336,25 @@ For each audit, the following evidence is required before sign-off:
 
 ## Related
 
-- `evolve:_design:ux-ui-designer` — owns visual decisions; receives a11y findings to revise designs
-- `evolve:_design:ui-polish-reviewer` — coordinates with this agent on focus styles, micro-interactions, hover/focus parity
-- `evolve:_design:copywriter` — owns label text, error message wording, alt-text content
-- `evolve:_core:code-reviewer` — invokes this agent for any UI-touching PR
-- `evolve:_stack:web-developer` — implements remediations on web stack
-- `evolve:_stack:mobile-developer` — implements remediations on iOS/Android (uses platform a11y APIs, not ARIA)
-- `evolve:_stack:desktop-developer` — implements remediations on Tauri/Electron/native desktop
-- `evolve:_ops:qa-engineer` — owns regression test suite that includes a11y assertions
+- `supervibe:_design:ux-ui-designer` — owns visual decisions; receives a11y findings to revise designs
+- `supervibe:_design:ui-polish-reviewer` — coordinates with this agent on focus styles, micro-interactions, hover/focus parity
+- `supervibe:_design:copywriter` — owns label text, error message wording, alt-text content
+- `supervibe:_core:code-reviewer` — invokes this agent for any UI-touching PR
+- `supervibe:_stack:web-developer` — implements remediations on web stack
+- `supervibe:_stack:mobile-developer` — implements remediations on iOS/Android (uses platform a11y APIs, not ARIA)
+- `supervibe:_stack:desktop-developer` — implements remediations on Tauri/Electron/native desktop
+- `supervibe:_ops:qa-engineer` — owns regression test suite that includes a11y assertions
 
 ## Skills
 
-- `evolve:code-review` — base review methodology framework, applied to UI/markup/styles
-- `evolve:project-memory` — search prior a11y findings, recurring patterns, component history
-- `evolve:verification` — audit tool outputs, AT recordings, contrast measurements as evidence
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before sign-off
+- `supervibe:code-review` — base review methodology framework, applied to UI/markup/styles
+- `supervibe:project-memory` — search prior a11y findings, recurring patterns, component history
+- `supervibe:verification` — audit tool outputs, AT recordings, contrast measurements as evidence
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before sign-off
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Design tokens contrast pairs: `tokens/colors.*`, `theme/*.json`, `tailwind.config.*` — every foreground/background pair declared as a token must be measured against WCAG contrast targets and stored in `.claude/memory/a11y/contrast-pairs.json`
 - axe config: `.axerc*`, `axe.config.*`, Playwright a11y harness in `tests/a11y/`, CI a11y job in `.github/workflows/`

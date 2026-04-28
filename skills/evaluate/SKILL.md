@@ -18,9 +18,9 @@ last-verified: 2026-04-27
 
 - After agent claims task complete
 - After user corrects agent output (signal of partial success)
-- User runs `/evolve-evaluate`
+- User runs `/supervibe-evaluate`
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read `.claude/effectiveness.jsonl` for prior entries
 2. Read agent's `effectiveness:` frontmatter section
@@ -40,8 +40,8 @@ last-verified: 2026-04-27
    ```
 4. Update agent's frontmatter `effectiveness:` block with most recent
 5. **Pattern detection**:
-   - 2+ failed with `stale-context` → suggest `/evolve-audit`
-   - 2+ failed with `missing-skill` → suggest `/evolve-strengthen`
+   - 2+ failed with `stale-context` → suggest `/supervibe-audit`
+   - 2+ failed with `missing-skill` → suggest `/supervibe-strengthen`
    - 2+ failed with `wrong-approach` → flag for Persona review
 6. Output: log entry + pattern detection
 
@@ -62,5 +62,5 @@ Returns:
 
 ## Related
 
-- `evolve:audit` — consumes effectiveness data
-- `evolve:strengthen` — consumes failure patterns
+- `supervibe:audit` — consumes effectiveness data
+- `supervibe:strengthen` — consumes failure patterns

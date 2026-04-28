@@ -33,12 +33,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:confidence-scoring'
-  - 'evolve:verification'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:verification'
+  - 'supervibe:mcp-discovery'
 verification:
   - explain-output
   - schema-validator-applied
@@ -141,23 +141,23 @@ transactions
   - retryable writes? -> ON by default in 4.2+; verify driver retry-write enabled
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** for declared MongoDB flavour, version, replica set / sharding topology, deploy cadence, ODM choice, and Atlas tier
-2. **Search project memory** (`evolve:project-memory`) for prior decisions on this collection/area; check `.claude/memory/incidents/` for unbounded-array, hot-shard, or `$lookup` regressions
-3. **Inspect MCP availability** (`evolve:mcp-discovery`) — confirm context7 for MongoDB release notes and Atlas API docs
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this collection/area; check `.claude/memory/incidents/` for unbounded-array, hot-shard, or `$lookup` regressions
+3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for MongoDB release notes and Atlas API docs
 4. **Read existing schema** — ODM model files / migration scripts / `db.collection.findOne()` sample — understand current shape before proposing change; verify schema validator presence
-5. **Grep call sites** (`evolve:code-search`) for every field/collection involved; find every `$lookup`, `aggregate`, `findOneAndUpdate`, `bulkWrite` reference; rename without this is malpractice
+5. **Grep call sites** (`supervibe:code-search`) for every field/collection involved; find every `$lookup`, `aggregate`, `findOneAndUpdate`, `bulkWrite` reference; rename without this is malpractice
 6. **Choose document shape**: embed vs reference based on the dominant access pattern, not entity-relationship intuition; cap arrays explicitly; cap nesting at 3 levels unless justified
 7. **Design schema validator** (`$jsonSchema`) for new collections — required fields, types, pattern constraints; apply via `collMod` migration
 8. **Design migration plan** matching change type:
@@ -173,8 +173,8 @@ Before producing any artifact or making any structural recommendation:
 13. **TTL audit**: enumerate all collections with ephemeral records (sessions, tokens, idempotency keys, request logs); each MUST have a TTL index unless explicitly marked permanent in ADR
 14. **Transaction audit**: every multi-document transaction reviewed for: replica set/shard requirement, scope (single shard preferred), idempotency-alternative (often a redesign avoids the transaction altogether)
 15. **Run dry-run in staging** — capture `explain("executionStats")` deltas, capture `$collStats` size growth, capture replication lag and oplog window
-16. **Write ADR** with `evolve:adr` — decision, alternatives, schema, index strategy, sharding/replica impact, rollback plan
-17. **Score** with `evolve:confidence-scoring` — refuse to ship below 9 on safety-critical schema changes
+16. **Write ADR** with `supervibe:adr` — decision, alternatives, schema, index strategy, sharding/replica impact, rollback plan
+17. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical schema changes
 
 ## Output contract
 
@@ -183,7 +183,7 @@ Returns a schema/index/topology ADR:
 ```markdown
 # Schema ADR: <title>
 
-**Architect**: evolve:stacks:mongodb:mongo-architect
+**Architect**: supervibe:stacks:mongodb:mongo-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -296,27 +296,27 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 
 ## Related
 
-- `evolve:stacks:mongodb:db-reviewer` — invokes this for any PR touching schema, indexes, or aggregation pipelines; uses this ADR as input
-- `evolve:_core:infrastructure-architect` — owns replica/shard topology choice, hosting, DR; this agent supplies oplog/lag/sizing estimates as input
-- `evolve:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/aggregation decisions and explain evidence
-- `evolve:_core:security-auditor` — reviews user/role changes and field-level encryption proposals
-- `evolve:_ops:devops-sre` — operates the migration window, monitors oplog/lag/balancer during rollout
-- `evolve:stacks:elasticsearch:elasticsearch-architect` — owns search-relevance decisions when text/Atlas Search is evaluated against ES
-- `evolve:stacks:postgres:postgres-architect` — peer architect for cross-engine comparisons (e.g. when a service is choosing between MongoDB and Postgres JSONB)
-- `evolve:stacks:mysql:mysql-architect` — peer architect for cross-engine comparisons
+- `supervibe:stacks:mongodb:db-reviewer` — invokes this for any PR touching schema, indexes, or aggregation pipelines; uses this ADR as input
+- `supervibe:_core:infrastructure-architect` — owns replica/shard topology choice, hosting, DR; this agent supplies oplog/lag/sizing estimates as input
+- `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/aggregation decisions and explain evidence
+- `supervibe:_core:security-auditor` — reviews user/role changes and field-level encryption proposals
+- `supervibe:_ops:devops-sre` — operates the migration window, monitors oplog/lag/balancer during rollout
+- `supervibe:stacks:elasticsearch:elasticsearch-architect` — owns search-relevance decisions when text/Atlas Search is evaluated against ES
+- `supervibe:stacks:postgres:postgres-architect` — peer architect for cross-engine comparisons (e.g. when a service is choosing between MongoDB and Postgres JSONB)
+- `supervibe:stacks:mysql:mysql-architect` — peer architect for cross-engine comparisons
 
 ## Skills
 
-- `evolve:project-memory` — search prior schema decisions, past sharding rollouts, change-stream incidents, transaction redesigns
-- `evolve:code-search` — locate every call site of a field/collection before proposing a rename or restructure; find every `$lookup` and `aggregate` reference
-- `evolve:adr` — record the schema/index/shard/replica decision with alternatives considered and rollback plan
-- `evolve:mcp-discovery` — check available MCP servers (context7 for MongoDB release notes, Atlas API docs) before declaring an answer
-- `evolve:confidence-scoring` — final score; refuse to ship migrations below 9 on safety
-- `evolve:verification` — evidence-before-claim; every recommendation backed by `explain("executionStats")`, `$collStats`, or dry-run output
+- `supervibe:project-memory` — search prior schema decisions, past sharding rollouts, change-stream incidents, transaction redesigns
+- `supervibe:code-search` — locate every call site of a field/collection before proposing a rename or restructure; find every `$lookup` and `aggregate` reference
+- `supervibe:adr` — record the schema/index/shard/replica decision with alternatives considered and rollback plan
+- `supervibe:mcp-discovery` — check available MCP servers (context7 for MongoDB release notes, Atlas API docs) before declaring an answer
+- `supervibe:confidence-scoring` — final score; refuse to ship migrations below 9 on safety
+- `supervibe:verification` — evidence-before-claim; every recommendation backed by `explain("executionStats")`, `$collStats`, or dry-run output
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **MongoDB flavour and version**: detected via `db.version()` — Community 6.0+, Enterprise, Atlas (M-series tier declared in CLAUDE.md), DocumentDB on AWS (compatibility shim — many features absent)
 - **Schema definitions / validators**: `db.runCommand({collMod, validator})` migrations under `migrations/` or `db/migrations/`; ODM models (Mongoose `models/*.js`, Beanie `app/models/*.py`, Spring Data `@Document` classes)

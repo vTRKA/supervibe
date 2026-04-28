@@ -8,7 +8,7 @@
 
 **Tech Stack:** Pure ESM Node 22+, SQLite (existing), tree-sitter (existing), zero-dep WebSocket via `node:net` (no `ws` dep), `node:test` for validators. No frameworks. No native compilation.
 
-**Plan v2 (2026-04-28 patch):** added 3 tasks closing self-review gaps — backward-compat migration for existing prototypes (Task 4a), prototype-handoff non-web adapters (Task 14a), brandbook target-awareness (Task 14b). Replaced standalone feedback-monitor with `UserPromptSubmit` hook for proper system-reminder delivery (Task 19 rewritten). Fixed hook-code typo (Task 4). Clarified `/evolve-design` stage renumbering (Task 12). Added agent-count reconcile to final docs (Task 21).
+**Plan v2 (2026-04-28 patch):** added 3 tasks closing self-review gaps — backward-compat migration for existing prototypes (Task 4a), prototype-handoff non-web adapters (Task 14a), brandbook target-awareness (Task 14b). Replaced standalone feedback-monitor with `UserPromptSubmit` hook for proper system-reminder delivery (Task 19 rewritten). Fixed hook-code typo (Task 4). Clarified `/supervibe-design` stage renumbering (Task 12). Added agent-count reconcile to final docs (Task 21).
 
 **Audit baseline (from conversation 2026-04-28):**
 
@@ -110,7 +110,7 @@
 - `skills/brandbook/SKILL.md` — same anti-patterns
 - `agents/_design/creative-director.md` — alternatives section reference tradeoff template
 - `agents/_design/prototype-builder.md` — alternatives section reference tradeoff template
-- `commands/evolve-design.md` — alternatives stage references tradeoff template
+- `commands/supervibe-design.md` — alternatives stage references tradeoff template
 - `hooks.json` — register `pre-write-prototype-guard` PreToolUse hook
 - `package.json` — add validator npm script
 - `CLAUDE.md` — note new validators in "Validation & checks" section
@@ -128,7 +128,7 @@
 **Phase 4:**
 - `agents/_product/systems-analyst.md` — add Single-question dialogue section + anti-pattern
 - `agents/_product/product-manager.md` — same
-- `agents/_meta/evolve-orchestrator.md` — same (orchestrator asks clarifying questions one at a time)
+- `agents/_meta/supervibe-orchestrator.md` — same (orchestrator asks clarifying questions one at a time)
 - `agents/_core/repo-researcher.md` — same
 - `agents/_core/root-cause-debugger.md` — same
 - `agents/_ops/devops-sre.md` — same
@@ -151,7 +151,7 @@
 **Phase 5:**
 - `skills/prototype/SKILL.md` — add `target` parameter (web | extension | electron | tauri | mobile) + viewport-preset loader
 - `agents/_design/prototype-builder.md` — branch on target → load appropriate viewport preset → choose appropriate native runtime (HTML for web/electron-renderer/tauri-webview/extension; React Native preview for mobile)
-- `commands/evolve-design.md` — Stage 0: ask user for target surface
+- `commands/supervibe-design.md` — Stage 0: ask user for target surface
 - `agents/stacks/chrome-extension/chrome-extension-developer.md` — consume design handoff from extension-ui-designer
 - `skills/prototype-handoff/SKILL.md` — load adapter hint per `target` from `templates/handoff-adapters/`; Stage 5 of skill branches by target
 - `skills/brandbook/SKILL.md` — read target from active prototype config; load `templates/brandbook-target-baselines/<target>.md` as starting point for Sections 3 (spacing) + 5 (voice) + 6 (components)
@@ -239,12 +239,12 @@ In `agents/_design/creative-director.md` (alternatives section, around line 113-
 
 In `agents/_design/prototype-builder.md` (line 144 area, the alternative branch), append the same paragraph.
 
-In `commands/evolve-design.md` (line 148-149 alternatives stage), append the same paragraph.
+In `commands/supervibe-design.md` (line 148-149 alternatives stage), append the same paragraph.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add templates/alternatives/tradeoff.md.tpl agents/_design/creative-director.md agents/_design/prototype-builder.md commands/evolve-design.md
+git add templates/alternatives/tradeoff.md.tpl agents/_design/creative-director.md agents/_design/prototype-builder.md commands/supervibe-design.md
 git commit -m "feat(design): add tradeoff template for parked alternative directions"
 ```
 
@@ -573,10 +573,10 @@ Read current `hooks.json` and add a `PreToolUse` matcher:
 - [ ] **Step 3: Manual test — block missing config**
 
 ```bash
-mkdir -p /tmp/evolve-test-proj/prototypes/foo
-cd /tmp/evolve-test-proj
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/evolve-test-proj/prototypes/foo/index.html","content":"<html></html>"}}' \
-  | CLAUDE_PROJECT_DIR=/tmp/evolve-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
+mkdir -p /tmp/supervibe-test-proj/prototypes/foo
+cd /tmp/supervibe-test-proj
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/supervibe-test-proj/prototypes/foo/index.html","content":"<html></html>"}}' \
+  | CLAUDE_PROJECT_DIR=/tmp/supervibe-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
 ```
 
 Expected: `decision: block`, message about missing `config.json`. Exit code 2.
@@ -584,12 +584,12 @@ Expected: `decision: block`, message about missing `config.json`. Exit code 2.
 - [ ] **Step 4: Manual test — block framework import**
 
 ```bash
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/evolve-test-proj/prototypes/foo/config.json","content":"{}"}}' \
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/supervibe-test-proj/prototypes/foo/config.json","content":"{}"}}' \
   | node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
 # Then with config in place:
-echo '{}' > /tmp/evolve-test-proj/prototypes/foo/config.json
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/evolve-test-proj/prototypes/foo/app.js","content":"import React from \"react\";"}}' \
-  | CLAUDE_PROJECT_DIR=/tmp/evolve-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
+echo '{}' > /tmp/supervibe-test-proj/prototypes/foo/config.json
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/supervibe-test-proj/prototypes/foo/app.js","content":"import React from \"react\";"}}' \
+  | CLAUDE_PROJECT_DIR=/tmp/supervibe-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
 ```
 
 Expected: first call allowed, second call blocked with framework-coupling message.
@@ -597,8 +597,8 @@ Expected: first call allowed, second call blocked with framework-coupling messag
 - [ ] **Step 5: Manual test — allow handoff/ subfolder**
 
 ```bash
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/evolve-test-proj/prototypes/foo/handoff/components-used.json","content":"[]"}}' \
-  | CLAUDE_PROJECT_DIR=/tmp/evolve-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/supervibe-test-proj/prototypes/foo/handoff/components-used.json","content":"[]"}}' \
+  | CLAUDE_PROJECT_DIR=/tmp/supervibe-test-proj node "$CLAUDE_PLUGIN_ROOT/scripts/hooks/pre-write-prototype-guard.mjs"
 ```
 
 Expected: `decision: allow`. Handoff bundle is post-approval, framework imports are intentional there (stack-agnostic adapter hints).
@@ -1181,8 +1181,8 @@ Rubric: framework
 - Token references in bridge file (grep for token names from `tokens.css`) — count must be > 0; bridge that doesn't reference any token is broken.
 
 ## Related
-- `evolve:brandbook` — produces tokens this skill consumes
-- `evolve:prototype-handoff` — consumes bridge as part of handoff bundle
+- `supervibe:brandbook` — produces tokens this skill consumes
+- `supervibe:prototype-handoff` — consumes bridge as part of handoff bundle
 - `agents/_design/creative-director.md` — invokes this skill when component-library decision branch fires
 ```
 
@@ -1337,7 +1337,7 @@ In `skills/brandbook/SKILL.md`, after the existing Section 6 (components baselin
 - E) **Radix UI / HeadlessUI** — только логика, визуал полностью наш.
 - F) **Angular Material / PrimeVue / другое** — указываем явно.
 
-После выбора → запустим `evolve:component-library-integration` для генерации bridge.
+После выбора → запустим `supervibe:component-library-integration` для генерации bridge.
 ```
 
 Update Section 6 to make the components list explicitly OPEN-ended:
@@ -1346,7 +1346,7 @@ Update Section 6 to make the components list explicitly OPEN-ended:
 - [ ] **Step 6: Wire creative-director to invoke this skill**
 
 In `agents/_design/creative-director.md`, in the brandbook flow, after Section 6 completion, append:
-> If user picks any option B–F, dispatch `skill: evolve:component-library-integration` immediately after brandbook approval. Do NOT proceed to prototype until library bridge is approved.
+> If user picks any option B–F, dispatch `skill: supervibe:component-library-integration` immediately after brandbook approval. Do NOT proceed to prototype until library bridge is approved.
 
 - [ ] **Step 7: Test the skill end-to-end manually**
 
@@ -1383,7 +1383,7 @@ description: All agents that ask the user clarifying questions MUST ask one ques
 applies-to:
   - agents/_design/**
   - agents/_product/**
-  - agents/_meta/evolve-orchestrator.md
+  - agents/_meta/supervibe-orchestrator.md
   - agents/_core/repo-researcher.md
   - agents/_core/root-cause-debugger.md
   - agents/_ops/**
@@ -1491,7 +1491,7 @@ test('agent with discipline section passes', () => {
 test('noninteractive frontmatter override skips check', () => {
   const fm = { dialogue: 'noninteractive' };
   const body = '';
-  const issues = checkAgentDiscipline('agents/_meta/evolve-orchestrator.md', fm, body);
+  const issues = checkAgentDiscipline('agents/_meta/supervibe-orchestrator.md', fm, body);
   assert.equal(issues.length, 0);
 });
 
@@ -1663,14 +1663,14 @@ git commit -m "feat(agents): single-question dialogue discipline for product age
 - [ ] **Step 2: Core + meta batch**
 
 Modify:
-- `agents/_meta/evolve-orchestrator.md` — orchestrator clarifying questions only (when it asks user "which path do you want?"). If the orchestrator never asks user clarifications and only routes, set `dialogue: noninteractive` in frontmatter instead.
+- `agents/_meta/supervibe-orchestrator.md` — orchestrator clarifying questions only (when it asks user "which path do you want?"). If the orchestrator never asks user clarifications and only routes, set `dialogue: noninteractive` in frontmatter instead.
 - `agents/_core/repo-researcher.md`
 - `agents/_core/root-cause-debugger.md`
 
 Run validator. Commit:
 
 ```bash
-git add agents/_meta/evolve-orchestrator.md agents/_core/repo-researcher.md agents/_core/root-cause-debugger.md
+git add agents/_meta/supervibe-orchestrator.md agents/_core/repo-researcher.md agents/_core/root-cause-debugger.md
 git commit -m "feat(agents): single-question dialogue discipline for meta + core agents"
 ```
 
@@ -1853,7 +1853,7 @@ git commit -m "feat(design): viewport presets for 5 target surfaces (web/extensi
 **Files:**
 - Modify: `skills/prototype/SKILL.md`
 - Modify: `agents/_design/prototype-builder.md`
-- Modify: `commands/evolve-design.md`
+- Modify: `commands/supervibe-design.md`
 
 - [ ] **Step 1: Update prototype skill**
 
@@ -1911,7 +1911,7 @@ Read `prototypes/<slug>/config.json` for `target`. Branch:
 
 - [ ] **Step 3: Update evolve-design command**
 
-In `commands/evolve-design.md`:
+In `commands/supervibe-design.md`:
 
 a. Locate the existing Stage headers (currently Stage 1 through Stage 8 per commit `2a16afc`). Read the file to confirm the current numbering before editing.
 
@@ -1923,14 +1923,14 @@ b. Insert a new section BEFORE the current Stage 1, named:
 Before any other question, ask the user the target surface as defined in skills/prototype/SKILL.md "Target surfaces" section. Save user choice into the future `prototypes/<slug>/config.json` `target` field.
 ```
 
-c. **Renumber existing stages** so the chain is contiguous: existing Stage 1 → Stage 1 (unchanged), … but if the file uses absolute Stage numbers in cross-references (e.g., "as decided in Stage 3"), keep those absolute numbers and DO NOT shift them — only insert Stage 0 ahead of Stage 1. Verify by `grep -n "Stage [0-9]" commands/evolve-design.md` before and after to confirm no broken cross-refs.
+c. **Renumber existing stages** so the chain is contiguous: existing Stage 1 → Stage 1 (unchanged), … but if the file uses absolute Stage numbers in cross-references (e.g., "as decided in Stage 3"), keep those absolute numbers and DO NOT shift them — only insert Stage 0 ahead of Stage 1. Verify by `grep -n "Stage [0-9]" commands/supervibe-design.md` before and after to confirm no broken cross-refs.
 
 d. Update any `Шаг N/M` progress labels inside Stage 0 dialogue to reflect the new total step count (e.g., if existing dialogue used `Шаг N/4`, increment M by 1 across the file).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add skills/prototype/SKILL.md agents/_design/prototype-builder.md commands/evolve-design.md
+git add skills/prototype/SKILL.md agents/_design/prototype-builder.md commands/supervibe-design.md
 git commit -m "feat(design): prototype skill supports 5 target surfaces (web/extension/electron/tauri/mobile)"
 ```
 
@@ -2639,7 +2639,7 @@ This is the largest phase. Builds a real-time feedback loop from the rendered pr
                                         ▼
                        Claude session receives system-reminder
                        inside the prompt context →
-                       invokes evolve:browser-feedback skill
+                       invokes supervibe:browser-feedback skill
 ```
 
 User clicks any region in the prototype → overlay shows comment box → submit → WebSocket → server appends to queue. On the user's NEXT prompt, the `UserPromptSubmit` hook drains new queue entries (from cursor to EOF), advances cursor, and emits them as `additionalContext` so Claude sees them inline. The skill then routes to creative-director or prototype-builder based on feedback type.
@@ -3220,7 +3220,7 @@ git commit -m "feat(preview): inject feedback overlay + WebSocket channel into p
 - Create: `scripts/hooks/user-prompt-submit-feedback.mjs` — UserPromptSubmit hook
 - Create: `skills/browser-feedback/SKILL.md`
 - Modify: `hooks.json` — register UserPromptSubmit hook
-- Modify: `agents/_design/prototype-builder.md`, `agents/_design/creative-director.md`, `commands/evolve-design.md`, `CLAUDE.md`
+- Modify: `agents/_design/prototype-builder.md`, `agents/_design/creative-director.md`, `commands/supervibe-design.md`, `CLAUDE.md`
 
 - [ ] **Step 1: Write failing cursor test**
 
@@ -3397,7 +3397,7 @@ ${entries.length} new browser-feedback entr${entries.length === 1 ? 'y' : 'ies'}
 
 ${blocks}
 
-INVOKE the \`evolve:browser-feedback\` skill to triage and respond. Do NOT skip; the user is waiting for action on these.
+INVOKE the \`supervibe:browser-feedback\` skill to triage and respond. Do NOT skip; the user is waiting for action on these.
 </system-reminder>`;
 
   process.stdout.write(JSON.stringify({
@@ -3549,14 +3549,14 @@ In `agents/_design/prototype-builder.md`, in the delivery section (where it prin
 
 In `agents/_design/creative-director.md`, in the delivery flow, add the same note.
 
-In `commands/evolve-design.md`, in the preview-launch stage, add a one-liner: `Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt.`
+In `commands/supervibe-design.md`, in the preview-launch stage, add a one-liner: `Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt.`
 
 - [ ] **Step 10: Wire to CLAUDE.md routing**
 
 In `CLAUDE.md` "Common workflows":
 
 ```markdown
-| Browser feedback received (system-reminder with [evolve] browser-feedback) | invoke `evolve:browser-feedback` skill |
+| Browser feedback received (system-reminder with [evolve] browser-feedback) | invoke `supervibe:browser-feedback` skill |
 ```
 
 In CLAUDE.md "Browser Feedback Channel" section (will be added in Task 21), document the UserPromptSubmit-hook delivery mechanism (NOT a separate watcher process).
@@ -3572,7 +3572,7 @@ Expected: PASS.
 - [ ] **Step 12: Commit**
 
 ```bash
-git add scripts/lib/feedback-cursor.mjs tests/feedback-cursor.test.mjs scripts/hooks/user-prompt-submit-feedback.mjs hooks.json skills/browser-feedback/SKILL.md agents/_design/prototype-builder.md agents/_design/creative-director.md commands/evolve-design.md CLAUDE.md
+git add scripts/lib/feedback-cursor.mjs tests/feedback-cursor.test.mjs scripts/hooks/user-prompt-submit-feedback.mjs hooks.json skills/browser-feedback/SKILL.md agents/_design/prototype-builder.md agents/_design/creative-director.md commands/supervibe-design.md CLAUDE.md
 git commit -m "feat(feedback): UserPromptSubmit hook delivers browser feedback as additionalContext"
 ```
 
@@ -3677,7 +3677,7 @@ When `preview-server` runs (default), every served HTML page is injected with a 
 
 **Delivery to active Claude session:** the `UserPromptSubmit` hook (`scripts/hooks/user-prompt-submit-feedback.mjs`) drains new entries on EVERY prompt the user sends, advances the per-session cursor at `.claude/memory/feedback-cursor.json`, and emits the entries as `additionalContext` so Claude sees them inline in the prompt context. This is the same delivery pattern used by the dispatch-suggester. There is NO separate watcher / sidecar process — claude-code reads only its own input + hook outputs.
 
-The skill `evolve:browser-feedback` then triages each entry → routes to `creative-director` (visual/motion) or `prototype-builder` (layout/a11y/copy) → applies minimal change → writes `prototypes/<slug>/feedback-resolutions/<id>.md`.
+The skill `supervibe:browser-feedback` then triages each entry → routes to `creative-director` (visual/motion) or `prototype-builder` (layout/a11y/copy) → applies minimal change → writes `prototypes/<slug>/feedback-resolutions/<id>.md`.
 
 Disable: `node scripts/preview-server.mjs --no-feedback ...`.
 
@@ -3689,7 +3689,7 @@ Add a new section "Non-web design surfaces":
 ```markdown
 ## Non-web design surfaces
 
-`/evolve-design` Stage 0 asks user the target surface: `web` | `chrome-extension` | `electron` | `tauri` | `mobile-native`. Viewport defaults from `templates/viewport-presets/<target>.json`. Specialist designer:
+`/supervibe-design` Stage 0 asks user the target surface: `web` | `chrome-extension` | `electron` | `tauri` | `mobile-native`. Viewport defaults from `templates/viewport-presets/<target>.json`. Specialist designer:
 
 - web → `ux-ui-designer` + `creative-director`
 - chrome-extension → `extension-ui-designer`

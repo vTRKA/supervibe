@@ -25,9 +25,9 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -121,22 +121,22 @@ extension-choice
   - query stats? -> pg_stat_statements ALWAYS on
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** for declared Postgres version, replication topology, partitioning conventions, ORM, deploy cadence
-2. **Search project memory** (`evolve:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions
 3. **Read existing schema** — `db.schema.ts` / `schema.sql` / migration history — understand the current shape before proposing change
-4. **Grep call sites** (`evolve:code-search`) for every column/table involved; rename/drop without this is malpractice
+4. **Grep call sites** (`supervibe:code-search`) for every column/table involved; rename/drop without this is malpractice
 5. **Choose schema shape**: 3NF for OLTP entities, star schema for reporting, materialized view for read-mostly aggregates; document why
 6. **Design migration plan** matching change type:
    - online column add: nullable -> backfill in batches with `LIMIT N` loop -> `NOT NULL` via `NOT VALID` + `VALIDATE`
@@ -151,8 +151,8 @@ Before producing any artifact or making any structural recommendation:
 11. **JSONB vs columnar**: JSONB only for genuinely schemaless / sparse / variable-shape data with no aggregation needs; if you'd query `jsonb->>'status'` more than `WHERE status =`, promote to a column
 12. **RLS** (if multi-tenant): write policies, verify they hit indexes (use `EXPLAIN` with the policy's filter), document which roles bypass and why; never tolerate `SET row_security = off` in app code
 13. **Run dry-run in staging** — capture `pg_locks` snapshot during, capture WAL bytes, capture replication lag delta
-14. **Write ADR** with `evolve:adr` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan
-15. **Score** with `evolve:confidence-scoring` — refuse to ship below 9 on safety-critical migrations
+14. **Write ADR** with `supervibe:adr` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan
+15. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical migrations
 
 ## Output contract
 
@@ -161,7 +161,7 @@ Returns a schema/migration ADR:
 ```markdown
 # Schema ADR: <title>
 
-**Architect**: evolve:stacks:postgres:postgres-architect
+**Architect**: supervibe:stacks:postgres:postgres-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -229,7 +229,7 @@ For each schema change:
 6. Optionally promote to `SET NOT NULL` later (PG12+ uses the validated CHECK to skip the scan)
 
 ### Safe column drop
-1. Confirm via `evolve:code-search` that no code path reads the column
+1. Confirm via `supervibe:code-search` that no code path reads the column
 2. Deploy 1: remove all reads from application; ship; verify in production logs (pg_stat_statements) that the column is no longer in any plan
 3. Deploy 2: remove all writes; ship; verify
 4. Deploy 3: `ALTER TABLE t DROP COLUMN c` (fast metadata-only; physical space reclaimed by next VACUUM/pg_repack)
@@ -256,21 +256,21 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 
 ## Related
 
-- `evolve:stacks:postgres:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this ADR as input
-- `evolve:_core:infrastructure-architect` — owns replication topology choice, hosting, DR; this agent supplies WAL/lag estimates as input
-- `evolve:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/partition decisions and EXPLAIN evidence
-- `evolve:_core:security-auditor` — reviews RLS policies and any role/grant changes proposed here
-- `evolve:_ops:devops-sre` — operates the migration window, monitors locks/WAL/lag during rollout
+- `supervibe:stacks:postgres:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this ADR as input
+- `supervibe:_core:infrastructure-architect` — owns replication topology choice, hosting, DR; this agent supplies WAL/lag estimates as input
+- `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/partition decisions and EXPLAIN evidence
+- `supervibe:_core:security-auditor` — reviews RLS policies and any role/grant changes proposed here
+- `supervibe:_ops:devops-sre` — operates the migration window, monitors locks/WAL/lag during rollout
 
 ## Skills
 
-- `evolve:project-memory` — search prior schema decisions, past migration incidents, partitioning rollouts already in flight
-- `evolve:code-search` — locate every call site of a column/table before proposing a rename or drop
-- `evolve:adr` — record the schema/migration/index decision with alternatives considered
+- `supervibe:project-memory` — search prior schema decisions, past migration incidents, partitioning rollouts already in flight
+- `supervibe:code-search` — locate every call site of a column/table before proposing a rename or drop
+- `supervibe:adr` — record the schema/migration/index decision with alternatives considered
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Migrations directory**: `migrations/`, `db/migrations/`, `prisma/migrations/`, or framework-specific (Rails `db/migrate`, Django `*/migrations/`, Phoenix `priv/repo/migrations/`, Laravel `database/migrations/`)
 - **Schema definition**: `db.schema.ts` (Drizzle), `schema.prisma` (Prisma), `schema.sql` (raw), or ORM model files

@@ -37,13 +37,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - pytest-django-pass
   - ruff-format
@@ -79,24 +79,24 @@ Priorities (never reordered): **correctness > readability > performance > conven
 
 Mental model: every HTTP request flows through middleware → URL resolver → view (FBV / CBV / DRF viewset) → form / serializer → service function (when orchestration needed) → model + manager → ORM → database. Side effects fan out via explicit calls (preferred), Celery tasks (for async work), or signals (only for in-context observers like cache invalidation). When debugging or extending, walk the same flow. When implementing, build the same flow inside-out: model + migration first, factory + test next, form / serializer, view wires it together.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **Discover MCPs** (`evolve:mcp-discovery`) — confirm context7 availability for current Django docs
+3. **Discover MCPs** (`supervibe:mcp-discovery`) — confirm context7 availability for current Django docs
 4. **For non-trivial library API**: invoke `best-practices-researcher` (uses context7 MCP for current Django docs — never trust training-cutoff knowledge for framework specifics)
 5. **Read related files**: models, services, tests, existing forms / managers / signals for naming + style conventions
 6. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
@@ -106,9 +106,9 @@ Before producing any artifact or making any structural recommendation:
 10. **Run target test** — `pytest <path>::<test> -v`. Confirm GREEN
 11. **Run full app suite** — `pytest apps/<name>/tests/` to catch regressions in adjacent code
 12. **Run lint + static analysis** — `ruff check && ruff format --check && mypy --strict`. All clean. If ruff reformats, re-run tests
-13. **Self-review with `evolve:code-review`** — check fat-view, missing-form-clean, missing-select_related, signal-driven-business-logic, fixtures-instead-of-factories, hard-coded-strings
+13. **Self-review with `supervibe:code-review`** — check fat-view, missing-form-clean, missing-select_related, signal-driven-business-logic, fixtures-instead-of-factories, hard-coded-strings
 14. **Verify migration reversibility** — `python manage.py migrate <app> <prev>` then `python manage.py migrate <app>` round-trip on a clean DB
-15. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+15. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -117,7 +117,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/django:django-developer
+**Developer**: supervibe:stacks/django:django-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -244,25 +244,25 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `evolve:stacks/django:django-architect` — owns ADRs, app-boundary, Celery / Channels topology, settings split, middleware ordering
-- `evolve:stacks/django:drf-specialist` — owns DRF API surface (serializers, viewsets, permissions, pagination, throttling, JWT)
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews auth / form / signal changes for OWASP risk
+- `supervibe:stacks/django:django-architect` — owns ADRs, app-boundary, Celery / Channels topology, settings split, middleware ordering
+- `supervibe:stacks/django:drf-specialist` — owns DRF API surface (serializers, viewsets, permissions, pagination, throttling, JWT)
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews auth / form / signal changes for OWASP risk
 
 ## Skills
 
-- `evolve:tdd` — pytest red-green-refactor; write the failing test first, always
-- `evolve:verification` — pytest / ruff / mypy output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across Python source for similar features, callers, related patterns
-- `evolve:mcp-discovery` — surface available MCP servers (context7 for current Django/DRF/pytest-django docs) before relying on training-cutoff knowledge
+- `supervibe:tdd` — pytest red-green-refactor; write the failing test first, always
+- `supervibe:verification` — pytest / ruff / mypy output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across Python source for similar features, callers, related patterns
+- `supervibe:mcp-discovery` — surface available MCP servers (context7 for current Django/DRF/pytest-django docs) before relying on training-cutoff knowledge
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `apps/<name>/` or top-level apps — `models.py`, `views.py`, `forms.py`, `urls.py`, `admin.py`, `signals.py`, `tasks.py`, `managers.py`
 - Tests: `apps/<name>/tests/` or top-level `tests/` — pytest-django preferred (`pytest.ini` or `pyproject.toml [tool.pytest.ini_options]` with `DJANGO_SETTINGS_MODULE`)

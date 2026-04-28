@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 const APPLIES_TO_GLOBS = [
   /^agents[\\/]_design[\\/]/,
   /^agents[\\/]_product[\\/]/,
-  /^agents[\\/]_meta[\\/]evolve-orchestrator\.md$/,
+  /^agents[\\/]_meta[\\/]supervibe-orchestrator\.md$/,
   /^agents[\\/]_core[\\/]repo-researcher\.md$/,
   /^agents[\\/]_core[\\/]root-cause-debugger\.md$/,
   /^agents[\\/]_ops[\\/]/,

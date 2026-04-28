@@ -16,6 +16,6 @@
 
 ## Override declaration
 
-<!-- If shipping below 10/10 on any rubric, declare here with reason. Override entries will be appended to .claude/confidence-log.jsonl by /evolve-override. -->
+<!-- If shipping below 10/10 on any rubric, declare here with reason. Override entries will be appended to .claude/confidence-log.jsonl by /supervibe-override. -->
 
 None.

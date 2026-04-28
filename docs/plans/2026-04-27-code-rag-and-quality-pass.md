@@ -26,12 +26,12 @@ evolve/
 │   │   ├── code-watcher.mjs            # NEW — chokidar watcher with debouncing + hash-check
 │   │   └── file-hash.mjs               # NEW — SHA-256 helper for change detection
 │   ├── build-code-index.mjs            # NEW — full index from filesystem
-│   ├── search-code.mjs                 # NEW — CLI for evolve:code-search skill
+│   ├── search-code.mjs                 # NEW — CLI for supervibe:code-search skill
 │   └── watch-memory.mjs                # NEW — daemon that auto-reindexes memory + code on changes
 │
 ├── skills/
 │   └── code-search/
-│       └── SKILL.md                    # NEW — evolve:code-search skill (agent-facing)
+│       └── SKILL.md                    # NEW — supervibe:code-search skill (agent-facing)
 │
 ├── tests/
 │   ├── code-chunker.test.mjs           # NEW — chunker handles JS/TS/Python/PHP/Rust/Go
@@ -963,7 +963,7 @@ Create `scripts/search-code.mjs`:
 
 ```javascript
 #!/usr/bin/env node
-// Code RAG search CLI. Used by evolve:code-search skill.
+// Code RAG search CLI. Used by supervibe:code-search skill.
 // Usage: node scripts/search-code.mjs --query "where is auth handled" [--lang typescript] [--kind function-or-class] [--limit 10]
 
 import { CodeStore } from './lib/code-store.mjs';
@@ -1023,12 +1023,12 @@ Expected: returns ≥1 hit pointing to `scripts/lib/embeddings.mjs` or `memory-s
 
 ```bash
 git add scripts/search-code.mjs
-git commit -m "feat(rag): add search-code CLI for evolve:code-search skill"
+git commit -m "feat(rag): add search-code CLI for supervibe:code-search skill"
 ```
 
 ---
 
-### Task A6: evolve:code-search skill
+### Task A6: supervibe:code-search skill
 
 **Files:**
 - Create: `skills/code-search/SKILL.md`
@@ -1117,8 +1117,8 @@ Returns:
 
 ## Related
 
-- `evolve:project-memory` — search past decisions/patterns (different corpus: markdown notes, not code)
-- `evolve:_core:repo-researcher` — uses this skill as primary tool
+- `supervibe:project-memory` — search past decisions/patterns (different corpus: markdown notes, not code)
+- `supervibe:_core:repo-researcher` — uses this skill as primary tool
 - All stack-developer agents — invoke this BEFORE non-trivial implementation
 ```
 
@@ -1131,7 +1131,7 @@ Expected: OK on `skills/code-search/SKILL.md`.
 
 ```bash
 git add skills/code-search/SKILL.md
-git commit -m "feat(rag): add evolve:code-search skill for agent-side semantic code lookup"
+git commit -m "feat(rag): add supervibe:code-search skill for agent-side semantic code lookup"
 ```
 
 ---
@@ -1144,20 +1144,20 @@ git commit -m "feat(rag): add evolve:code-search skill for agent-side semantic c
 - Modify: `agents/stacks/fastapi/fastapi-developer.md`
 - Modify: `agents/stacks/react/react-implementer.md`
 
-- [ ] **Step 1: Add evolve:code-search to laravel-developer skills + Procedure**
+- [ ] **Step 1: Add supervibe:code-search to laravel-developer skills + Procedure**
 
 Read `agents/stacks/laravel/laravel-developer.md`, then modify:
 
-In `skills:` array, append `evolve:code-search`. Result frontmatter line:
+In `skills:` array, append `supervibe:code-search`. Result frontmatter line:
 ```yaml
-skills: [evolve:tdd, evolve:verification, evolve:code-review, evolve:confidence-scoring, evolve:project-memory, evolve:code-search]
+skills: [supervibe:tdd, supervibe:verification, supervibe:code-review, supervibe:confidence-scoring, supervibe:project-memory, supervibe:code-search]
 ```
 
 In `## Procedure` section, the existing Step 1 is:
-> 1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions/patterns/solutions for this domain
+> 1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions/patterns/solutions for this domain
 
 Insert new Step 2 directly after it:
-> 2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns in this codebase. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang php --limit 5`. Read top 3 hits for context before writing code.
+> 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns in this codebase. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang php --limit 5`. Read top 3 hits for context before writing code.
 
 Renumber subsequent steps.
 
@@ -1182,7 +1182,7 @@ Expected: 0 errors.
 
 ```bash
 git add agents/stacks/laravel/laravel-developer.md agents/stacks/nextjs/nextjs-developer.md agents/stacks/fastapi/fastapi-developer.md agents/stacks/react/react-implementer.md
-git commit -m "feat(agents): wire stack-developer agents to evolve:code-search before implementation"
+git commit -m "feat(agents): wire stack-developer agents to supervibe:code-search before implementation"
 ```
 
 ---

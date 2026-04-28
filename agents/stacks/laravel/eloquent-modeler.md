@@ -30,10 +30,10 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
 verification:
   - explain-query-output
   - telescope-queries
@@ -119,19 +119,19 @@ Factory pattern:
   - Avoid: shared mutable state across factories
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Search project memory** for prior decisions about this model or its domain (`evolve:project-memory`)
+1. **Search project memory** for prior decisions about this model or its domain (`supervibe:project-memory`)
 2. **Read the migration(s)** for this table — column types drive casts; FK structure drives relationships
 3. **Read existing model** (if present) — capture current relationships, scopes, casts, observers
 4. **Map relationships from schema**:
@@ -148,7 +148,7 @@ Before producing any artifact or making any structural recommendation:
    - Take primitives (or `$query` + primitives) — never another model unless documented
    - Be testable in isolation (covered by a feature test or unit test)
 10. **Decide on `$with` (default eager-load)** — ONLY add a relationship to `$with` if:
-    - It is loaded in **every** read path (verified via `evolve:code-search`)
+    - It is loaded in **every** read path (verified via `supervibe:code-search`)
     - It is small (single row or bounded set), AND
     - Its absence would always trigger N+1
 11. **Document the eager-load contract** at the top of the model: a comment block listing "callers should `->with([...])` for these access patterns"
@@ -165,7 +165,7 @@ Before producing any artifact or making any structural recommendation:
     - Or `DB::listen` snippet wrapped around the read path
     - Target: each list-rendering page <= O(1) queries (constant w.r.t. row count)
 15. **Run EXPLAIN** on the hottest SELECT generated (typically the index page) — verify index usage, no full table scans on >10k-row tables
-16. **Score** with `evolve:confidence-scoring`; if <9, iterate
+16. **Score** with `supervibe:confidence-scoring`; if <9, iterate
 
 ## Output contract
 
@@ -174,7 +174,7 @@ Returns a model design report:
 ```markdown
 # Eloquent Model Report: <Model>
 
-**Modeler**: evolve:stacks/laravel:eloquent-modeler
+**Modeler**: supervibe:stacks/laravel:eloquent-modeler
 **Date**: YYYY-MM-DD
 **Scope**: app/Models/<Model>.php (+ migration, factory, observer)
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -277,22 +277,22 @@ Do NOT decide on: queue infrastructure, broadcast channels (defer to laravel-arc
 
 ## Related
 
-- `evolve:stacks/laravel:laravel-architect` — owns module boundaries, decides where models live
-- `evolve:stacks/postgres:postgres-architect` — owns index design and partitioning that scopes depend on
-- `evolve:_ops:db-reviewer` — reviews migrations + index choices feeding model-layer queries
-- `evolve:stacks/laravel:laravel-developer` — consumes the model contracts in services and controllers
-- `evolve:_core:code-reviewer` — invokes this agent on PRs touching `app/Models/`
+- `supervibe:stacks/laravel:laravel-architect` — owns module boundaries, decides where models live
+- `supervibe:stacks/postgres:postgres-architect` — owns index design and partitioning that scopes depend on
+- `supervibe:_ops:db-reviewer` — reviews migrations + index choices feeding model-layer queries
+- `supervibe:stacks/laravel:laravel-developer` — consumes the model contracts in services and controllers
+- `supervibe:_core:code-reviewer` — invokes this agent on PRs touching `app/Models/`
 
 ## Skills
 
-- `evolve:project-memory` — search prior model decisions / past N+1 incidents / polymorphic rationales
-- `evolve:code-search` — locate every callsite of a relationship before changing its eager-load contract
-- `evolve:verification` — Telescope query counts, EXPLAIN output, factory test results as evidence
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before recommendation lands
+- `supervibe:project-memory` — search prior model decisions / past N+1 incidents / polymorphic rationales
+- `supervibe:code-search` — locate every callsite of a relationship before changing its eager-load contract
+- `supervibe:verification` — Telescope query counts, EXPLAIN output, factory test results as evidence
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before recommendation lands
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Models: `app/Models/` — primary location; subnamespaces allowed (e.g., `app/Models/Billing/`)
 - Migrations: `database/migrations/` — schema source of truth; column types drive cast decisions

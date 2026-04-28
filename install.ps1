@@ -1,18 +1,18 @@
 # Evolve universal installer — Windows.
 #
 # Usage (PowerShell):
-#   irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 #
 # Override defaults:
-#   $env:EVOLVE_REF = "v1.7.0"           # tag, branch, or commit
-#   $env:EVOLVE_REPO = "git@github.com:my-fork/evolve.git"
+#   $env:SUPERVIBE_REF = "v1.7.0"           # tag, branch, or commit
+#   $env:SUPERVIBE_REPO = "git@github.com:my-fork/evolve.git"
 #
 # Idempotent — safe to re-run for upgrades.
 
 $ErrorActionPreference = 'Stop'
 
-$RepoUrl         = if ($env:EVOLVE_REPO) { $env:EVOLVE_REPO } else { 'https://github.com/vTRKA/evolve-agent.git' }
-$Ref             = if ($env:EVOLVE_REF)  { $env:EVOLVE_REF }  else { 'main' }
+$RepoUrl         = if ($env:SUPERVIBE_REPO) { $env:SUPERVIBE_REPO } else { 'https://github.com/vTRKA/supervibe.git' }
+$Ref             = if ($env:SUPERVIBE_REF)  { $env:SUPERVIBE_REF }  else { 'main' }
 $PluginName      = 'evolve'
 $MarketplaceName = 'evolve-marketplace'
 
@@ -152,7 +152,7 @@ function Register-Claude {
   $env:EVOLVE_SJ            = $settingsJson
   $env:EVOLVE_KEY           = $key
   $env:EVOLVE_MARKETPLACE   = $MarketplaceName
-  $env:EVOLVE_REPO_SLUG     = $repoSlug
+  $env:SUPERVIBE_REPO_SLUG     = $repoSlug
   $env:EVOLVE_INSTALL_PATH  = $Target
   $env:EVOLVE_VERSION       = $InstalledVersion
   $env:EVOLVE_COMMIT_SHA    = $commitSha
@@ -160,7 +160,7 @@ function Register-Claude {
   $script = @'
 const fs = require("fs");
 const now = new Date().toISOString();
-const repoSlug = (process.env.EVOLVE_REPO_SLUG || "").replace(/\.git$/, "");
+const repoSlug = (process.env.SUPERVIBE_REPO_SLUG || "").replace(/\.git$/, "");
 
 // 1. installed_plugins.json
 const pjPath = process.env.EVOLVE_PJ;
@@ -211,7 +211,7 @@ fs.writeFileSync(sjPath, JSON.stringify(sj, null, 2) + "\n");
   $script | & node -
   if ($LASTEXITCODE -ne 0) { Die 'Failed to register Claude Code config (installed_plugins / known_marketplaces / settings)' }
 
-  Remove-Item Env:EVOLVE_PJ, Env:EVOLVE_MJ, Env:EVOLVE_SJ, Env:EVOLVE_KEY, Env:EVOLVE_MARKETPLACE, Env:EVOLVE_REPO_SLUG, Env:EVOLVE_INSTALL_PATH, Env:EVOLVE_VERSION, Env:EVOLVE_COMMIT_SHA -ErrorAction SilentlyContinue
+  Remove-Item Env:EVOLVE_PJ, Env:EVOLVE_MJ, Env:EVOLVE_SJ, Env:EVOLVE_KEY, Env:EVOLVE_MARKETPLACE, Env:SUPERVIBE_REPO_SLUG, Env:EVOLVE_INSTALL_PATH, Env:EVOLVE_VERSION, Env:EVOLVE_COMMIT_SHA -ErrorAction SilentlyContinue
 
   Ok 'registered with Claude Code: installed_plugins + known_marketplaces + settings.enabledPlugins'
 }
@@ -238,7 +238,7 @@ function Register-Codex {
 function Register-Gemini {
   New-Item -ItemType Directory -Force -Path $GeminiDir | Out-Null
   $geminiMd = Join-Path $GeminiDir 'GEMINI.md'
-  $marker = '<!-- evolve-plugin-include: do-not-edit -->'
+  $marker = '<!-- supervibe-plugin-include: do-not-edit -->'
   $includeLine = "@$Target/GEMINI.md"
   $newBlock = "$marker`r`n$includeLine`r`n$marker"
 
@@ -278,12 +278,12 @@ Write-Host '  Next steps:'
 Write-Host '    1. Restart your AI CLI so it picks up the plugin'
 Write-Host '    2. Open any project — you should see [evolve] banner lines on session start'
 Write-Host '    3. /evolve-genesis (in Claude Code) for first-time project scaffolding'
-Write-Host "    4. npm run evolve:status (from $Target) for index health any time"
+Write-Host "    4. npm run supervibe:status (from $Target) for index health any time"
 Write-Host ''
-Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.ps1 | iex'
-Write-Host "  Manual:      cd '$Target'; npm run evolve:upgrade"
+Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'
+Write-Host "  Manual:      cd '$Target'; npm run supervibe:upgrade"
 Write-Host "  Uninstall:   Remove-Item -Recurse '$Target' + remove '$PluginName@$MarketplaceName'"
 Write-Host '               from ~/.claude/plugins/installed_plugins.json'
 Write-Host ''
-Write-Host '  Docs: https://github.com/vTRKA/evolve-agent#readme'
+Write-Host '  Docs: https://github.com/vTRKA/supervibe#readme'
 Write-Host ''

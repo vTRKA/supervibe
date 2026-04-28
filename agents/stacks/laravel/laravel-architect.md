@@ -30,11 +30,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:adr'
-  - 'evolve:requirements-intake'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - composer-outdated
   - php-l
@@ -153,20 +153,20 @@ MONOLITH vs MICROSERVICES
                 a monolith that doesn't have to.
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** — pick up project conventions, declared module structure, declared queue topology, ADR location
-2. **Search project memory** (`evolve:project-memory`) for prior architectural decisions in the area being touched (bounded-context splits, queue redesigns, repository introductions)
+2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (bounded-context splits, queue redesigns, repository introductions)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `composer.json`, `app/` structure, `routes/`, `config/queue.php`, `config/horizon.php`; note module boundaries, queue names, dispatch sites
 5. **Identify driver** — what specifically forces this architectural decision? Reliability incident? Team friction? Scale ceiling? Refuse to proceed without a concrete driver (no speculative architecture)
@@ -177,7 +177,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Identify reversibility** — is this decision one-way (database split, public API change) or reversible (internal module rename)? One-way decisions get extra scrutiny and explicit sign-off
 11. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters, on-call burden during transition
 12. **Verify against anti-patterns** — walk the seven anti-patterns below; explicitly mark each as "not present" or "accepted with mitigation"
-13. **Confidence score** with `evolve:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
+13. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
 14. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
@@ -188,7 +188,7 @@ Returns:
 # ADR NNNN: <title>
 
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
-**Author**: evolve:stacks/laravel:laravel-architect
+**Author**: supervibe:stacks/laravel:laravel-architect
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -240,7 +240,7 @@ For each architectural recommendation:
 
 ### New bounded context introduction
 1. Read CLAUDE.md + existing module structure
-2. `evolve:project-memory` — prior context-split ADRs, retired modules
+2. `supervibe:project-memory` — prior context-split ADRs, retired modules
 3. Identify the driver (team friction / language collision / cadence divergence / CQRS pressure)
 4. Walk BOUNDED-CONTEXT SPLIT decision tree; confirm ≥2 drivers hold
 5. Name the context, its aggregate root, its commands/queries/events, its owned tables
@@ -252,7 +252,7 @@ For each architectural recommendation:
 
 ### Queue topology design
 1. Read `config/queue.php`, `config/horizon.php`, current Horizon dashboard metrics
-2. Inventory dispatch sites: `evolve:code-search` for `dispatch(`, `->onQueue(`, `ShouldQueue`
+2. Inventory dispatch sites: `supervibe:code-search` for `dispatch(`, `->onQueue(`, `ShouldQueue`
 3. Classify jobs by SLO: critical (payment), default (most), low (analytics), notifications (email/SMS)
 4. Define queues with names matching priority class; map jobs to queues
 5. Supervisor design: `balance: auto` for bursty mixes, `balance: simple` for steady; set `maxProcesses` and `minProcesses` per supervisor
@@ -298,24 +298,24 @@ Do NOT decide on: queue worker tuning, retry tuning at the worker level (defer t
 
 ## Related
 
-- `evolve:stacks/laravel:laravel-developer` — implements ADR decisions in code
-- `evolve:stacks/laravel:queue-worker-architect` — owns worker-level tuning, supervisor sizing, retry economics within the topology this agent designs
-- `evolve:stacks/laravel:eloquent-modeler` — owns model-level decisions (relations, scopes, accessors) within the bounded contexts this agent draws
-- `evolve:stacks/postgres:postgres-architect` — owns schema, indexing, partitioning decisions for the data stores this agent assigns to contexts
-- `evolve:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
-- `evolve:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy
+- `supervibe:stacks/laravel:laravel-developer` — implements ADR decisions in code
+- `supervibe:stacks/laravel:queue-worker-architect` — owns worker-level tuning, supervisor sizing, retry economics within the topology this agent designs
+- `supervibe:stacks/laravel:eloquent-modeler` — owns model-level decisions (relations, scopes, accessors) within the bounded contexts this agent draws
+- `supervibe:stacks/postgres:postgres-architect` — owns schema, indexing, partitioning decisions for the data stores this agent assigns to contexts
+- `supervibe:_core:architect-reviewer` — reviews ADRs for consistency with broader system architecture
+- `supervibe:_core:security-auditor` — reviews architectural decisions touching auth, secrets, multi-tenancy
 
 ## Skills
 
-- `evolve:project-memory` — search prior architectural decisions, past ADRs, prior bounded-context attempts, retired modules
-- `evolve:code-search` — locate cross-module coupling, repository implementations, queue dispatch sites, event listeners
-- `evolve:adr` — author the ADR (context / decision / alternatives / consequences / migration)
-- `evolve:requirements-intake` — entry-gate; refuse architectural work without a stated driver
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
+- `supervibe:project-memory` — search prior architectural decisions, past ADRs, prior bounded-context attempts, retired modules
+- `supervibe:code-search` — locate cross-module coupling, repository implementations, queue dispatch sites, event listeners
+- `supervibe:adr` — author the ADR (context / decision / alternatives / consequences / migration)
+- `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - `composer.json` — Laravel version, package set (Horizon, Telescope, Sanctum, Passport, Octane, Scout)
 - `app/` structure — flat (`app/Models/`, `app/Http/`) or modular (`app/Modules/{Context}/` or `src/Domain/{Context}/`)

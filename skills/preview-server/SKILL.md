@@ -20,9 +20,9 @@ Spawn a local hot-reload preview server for freshly generated mockup files, hand
 
 Run this skill AFTER one of the following has produced concrete mockup files on disk:
 
-- `evolve:landing-page` — finished a landing page draft.
-- `evolve:prototype` — finished a clickable prototype.
-- `evolve:interaction-design-patterns` — emitted an interaction demo.
+- `supervibe:landing-page` — finished a landing page draft.
+- `supervibe:prototype` — finished a clickable prototype.
+- `supervibe:interaction-design-patterns` — emitted an interaction demo.
 - `agents/_design/prototype-builder` — produced HTML/CSS/JS scaffolds.
 
 Trigger phrases from the user: "show me what it would look like", "open it in the browser", "give me a link", "let me click around".
@@ -94,9 +94,9 @@ If any check fails, kill the PID and surface the error — do not return a half-
 
 ## Related
 
-- `evolve:prototype`
-- `evolve:landing-page`
-- `evolve:interaction-design-patterns`
-- `evolve:mcp-discovery`
+- `supervibe:prototype`
+- `supervibe:landing-page`
+- `supervibe:interaction-design-patterns`
+- `supervibe:mcp-discovery`
 - `agents/_design/prototype-builder`
 - `agents/_design/ux-ui-designer`

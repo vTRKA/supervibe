@@ -76,8 +76,8 @@ Why this is good: minimal, every line earns its place. When loyalty multiplier b
 
 - Pre-commit / CI: `npm run lint:dead-code` (knip / ts-prune / cargo-udeps / etc.)
 - Code review: reviewer flags any "added for future use" code
-- `evolve:audit` includes dead-code check
-- `evolve:executing-plans` enforces this when generating code
+- `supervibe:audit` includes dead-code check
+- `supervibe:executing-plans` enforces this when generating code
 
 ## Related rules
 

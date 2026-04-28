@@ -17,10 +17,10 @@ export async function injectOverlay(html, { prototypeSlug = 'unknown', viewport 
   const js = await loadAsset('overlay.js');
   const css = await loadAsset('overlay.css');
   const slug = JSON.stringify(prototypeSlug);
-  const vp = viewport ? `window.__evolveViewport=${JSON.stringify(viewport)};` : '';
+  const vp = viewport ? `window.__supervibeViewport=${JSON.stringify(viewport)};` : '';
   const tag = `
 <style>${css}</style>
-<script>window.__evolvePrototypeSlug=${slug};${vp}</script>
+<script>window.__supervibePrototypeSlug=${slug};${vp}</script>
 <script>${js}</script>
 `;
   return html.replace(/<\/body>/i, tag + '</body>');

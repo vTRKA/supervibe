@@ -39,13 +39,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - vue-tsc-pass
   - vitest-pass
@@ -82,25 +82,25 @@ Priorities (in order, never reordered):
 
 Mental model: every Nuxt feature lives at one of four positions — page (`pages/`), layout/middleware (`layouts/`, `middleware/`), composable/store (`composables/`, `stores/`), or server (`server/api/`, `server/middleware/`, `server/plugins/`). Data flows server → client through the hydration payload; `useFetch` and `useState` are the SSR-aware primitives that participate in that payload, and BOTH require explicit keys to be deterministic. `$fetch` is for events that happen after hydration. `useRuntimeConfig()` is the only legal way to read config; environment variables are deploy-time, not runtime. Refuses to ship: server/api/ without zod, `useFetch` without `key`, `useState` without namespace, missing `error.vue`, components that do client-side data fetching where SSR-rendered HTML would have been free.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and again with `--lang vue`. Read top 3 hits for context before writing code
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and again with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-route tasks: `--callers "<route-or-handler>"` to find consumers
    - For new server/api/ that exposes a shared schema: `--neighbors "<schema-name>" --depth 2`
    - Skip for greenfield tasks
 3. **Read `nuxt.config.ts`** — confirm `routeRules` for the route being added/modified, current Nitro preset, `runtimeConfig` schema, modules in use
-4. **For non-trivial Nuxt API** (Nuxt 4 migration paths, `<NuxtIsland>` streaming, server-component integration): invoke context7 MCP via `evolve:mcp-discovery` for current docs — never trust training-cutoff knowledge for Nuxt specifics
+4. **For non-trivial Nuxt API** (Nuxt 4 migration paths, `<NuxtIsland>` streaming, server-component integration): invoke context7 MCP via `supervibe:mcp-discovery` for current docs — never trust training-cutoff knowledge for Nuxt specifics
 5. **Read related files**: parent layout, middleware in the chain, composables consumed, server/api endpoints called, existing tests for naming + style conventions
 6. **Walk the decision tree** — confirm where each piece of new code belongs (page / layout / middleware / server / composable / store / useFetch / $fetch / useState) before opening any file
 7. **Confirm render mode** — check `routeRules` in `nuxt.config.ts`; if the route's mode is not documented, escalate to `nuxt-architect` before implementing — do NOT silently choose
@@ -114,9 +114,9 @@ Before producing any artifact or making any structural recommendation:
 11. **Run target test** — `pnpm vitest run <path>`; confirm GREEN
 12. **Run full suite** — `pnpm vitest run` and `pnpm nuxi typecheck`; both must be clean. Re-run tests if lint reformats files
 13. **Run `pnpm nuxi build`** — at minimum once before declaring done; confirms Nitro can bundle the server entry, no missing imports, no dynamic-import-eval issues. Catches issues `vitest` cannot
-14. **Self-review with `evolve:code-review`** — check: `useFetch` has explicit `key`; `server/api/` validates with `zod`; `useState` has namespace; `error.vue` exists at the right level; no `$fetch` at `<script setup>` top-level; no `runtimeConfig.public.*` containing secrets; no Pinia store named `main`/`app`
+14. **Self-review with `supervibe:code-review`** — check: `useFetch` has explicit `key`; `server/api/` validates with `zod`; `useState` has namespace; `error.vue` exists at the right level; no `$fetch` at `<script setup>` top-level; no `runtimeConfig.public.*` containing secrets; no Pinia store named `main`/`app`
 15. **For streamed islands** (`<NuxtIsland>` or server component): verify the island renders independently of the parent's data, has its own data fetching scoped, and degrades gracefully without JS
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -125,7 +125,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/nuxt:nuxt-developer
+**Developer**: supervibe:stacks/nuxt:nuxt-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -243,26 +243,26 @@ Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defe
 
 ## Related
 
-- `evolve:stacks/nuxt:nuxt-architect` — owns render-mode mapping, Nitro preset choice, runtime config schema, ADRs (this agent implements those decisions)
-- `evolve:stacks/vue:vue-implementer` — owns component-level implementation patterns within Nuxt pages (props/emits, composables, Pinia stores at the component level)
-- `evolve:stacks/nextjs:nextjs-developer` — sibling implementer for Next.js stack; share patterns on hydration discipline and server-side validation
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews `server/api/` endpoints, runtime config usage, hydration payload for sensitive data
-- `evolve:stacks/laravel:laravel-developer` — counterpart for projects where Nuxt is the frontend and Laravel is the API backend; consult for API contract alignment
+- `supervibe:stacks/nuxt:nuxt-architect` — owns render-mode mapping, Nitro preset choice, runtime config schema, ADRs (this agent implements those decisions)
+- `supervibe:stacks/vue:vue-implementer` — owns component-level implementation patterns within Nuxt pages (props/emits, composables, Pinia stores at the component level)
+- `supervibe:stacks/nextjs:nextjs-developer` — sibling implementer for Next.js stack; share patterns on hydration discipline and server-side validation
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews `server/api/` endpoints, runtime config usage, hydration payload for sensitive data
+- `supervibe:stacks/laravel:laravel-developer` — counterpart for projects where Nuxt is the frontend and Laravel is the API backend; consult for API contract alignment
 
 ## Skills
 
-- `evolve:tdd` — write the failing Vitest spec first; for `server/api/` use `@nuxt/test-utils` `$fetch` against a test server
-- `evolve:verification` — `nuxi typecheck`, `vitest`, `eslint`, `nuxi build` output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review for missing `key` on useFetch, missing zod on server handlers, useState without namespace, missing error.vue before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain (route render mode, store shape, server route conventions) before designing
-- `evolve:code-search` — semantic search across `.vue`, `.ts` source for similar pages, server handlers, related patterns
-- `evolve:mcp-discovery` — surface context7 for current Nuxt/Nitro/Pinia docs when API is non-trivial or recently changed (Nuxt 4 migration, new Nitro features)
+- `supervibe:tdd` — write the failing Vitest spec first; for `server/api/` use `@nuxt/test-utils` `$fetch` against a test server
+- `supervibe:verification` — `nuxi typecheck`, `vitest`, `eslint`, `nuxi build` output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review for missing `key` on useFetch, missing zod on server handlers, useState without namespace, missing error.vue before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain (route render mode, store shape, server route conventions) before designing
+- `supervibe:code-search` — semantic search across `.vue`, `.ts` source for similar pages, server handlers, related patterns
+- `supervibe:mcp-discovery` — surface context7 for current Nuxt/Nitro/Pinia docs when API is non-trivial or recently changed (Nuxt 4 migration, new Nitro features)
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source root: Nuxt 3 layout — `pages/`, `layouts/`, `middleware/`, `composables/`, `stores/`, `components/`, `server/api/`, `server/middleware/`, `server/plugins/`, `server/utils/`
 - Nuxt 4 (if active): root moved to `app/` — same subdirectories nested under `app/` (`app/pages/`, `app/components/`, ...); `server/` stays at project root

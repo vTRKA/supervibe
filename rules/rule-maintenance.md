@@ -33,7 +33,7 @@ Concrete consequence of NOT following: contradictory rules ("always commit per t
 4. If `mandatory: true`, reference in `CLAUDE.md` mandatory section
 5. If introduces ban, add to `.claude/settings.json` deny-list
 6. Cross-link from related rules
-7. `evolve:sync-rules` if multi-project setup
+7. `supervibe:sync-rules` if multi-project setup
 
 ### Modifying
 
@@ -51,12 +51,12 @@ Concrete consequence of NOT following: contradictory rules ("always commit per t
 
 ### Periodic audit (every 90 days)
 
-`evolve:audit` flags:
+`supervibe:audit` flags:
 - Rules with `last-verified` >90d → require re-verify
 - Rules referenced in code that don't exist (broken)
 - Code violating mandatory rules (Grep evidence)
 
-`evolve:strengthen` consults `best-practices-researcher` for stale `best-practices-*` rules; updates content + sources.
+`supervibe:strengthen` consults `best-practices-researcher` for stale `best-practices-*` rules; updates content + sources.
 
 ## Examples
 
@@ -88,7 +88,7 @@ Why this is good: complete, scored, enforced.
 ## Enforcement
 
 - `rules-curator` agent owns this rule's enforcement
-- `evolve:rule-audit` skill detects contradictions / staleness
+- `supervibe:rule-audit` skill detects contradictions / staleness
 - `validate-frontmatter.mjs` enforces required fields
 - Code review checks rule additions against `rule-quality.yaml`
 

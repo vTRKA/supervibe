@@ -20,7 +20,7 @@ BEFORE launching an A/B test, multivariate test, gradual rollout, or holdout tes
 
 NOT for: bug fixes (no need to test), forced rollouts (legal/compliance required).
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read existing experiments in `docs/experiments/` for format consistency
 2. Read analytics platform docs (statistical machinery available)
@@ -52,7 +52,7 @@ Success metric type?
 6. **Run duration** — based on sample size + traffic; minimum 1 week to capture weekly cycles
 7. **Analysis plan** — pre-register: which test, which subgroups, how to handle SRM (sample ratio mismatch)
 8. **Write experiment doc** at `docs/experiments/YYYY-MM-DD-<name>.md` with all above
-9. **Score** — `evolve:confidence-scoring` artifact-type=requirements-spec
+9. **Score** — `supervibe:confidence-scoring` artifact-type=requirements-spec
 10. **Implementation** — feature flag, instrumentation, dashboard
 
 ## Output contract
@@ -84,5 +84,5 @@ Returns experiment doc with:
 ## Related
 
 - Phase 3 `analytics-implementation` agent — instrumentation
-- `evolve:adr` — for permanent decisions resulting from experiment
-- `evolve:incident-response` — if guardrail metric degrades during run
+- `supervibe:adr` — for permanent decisions resulting from experiment
+- `supervibe:incident-response` — if guardrail metric degrades during run

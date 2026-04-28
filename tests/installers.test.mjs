@@ -33,7 +33,7 @@ test('install.sh has shebang, set -euo pipefail, idempotency markers', () => {
   const src = readFileSync(SH, 'utf8');
   assert.match(src, /^#!\/usr\/bin\/env bash/, 'must start with bash shebang');
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
-  assert.match(src, /evolve-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
+  assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /node -e/, 'must use node -e for JSON upsert (not heredoc string-interpolation)');
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate into source');
 });
@@ -59,7 +59,7 @@ test('install.ps1 writes all three Claude config files (regression: empty banner
 test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => {
   const src = readFileSync(PS1, 'utf8');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
-  assert.match(src, /evolve-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
+  assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate');
   assert.match(src, /SymbolicLink/, 'must prefer native PowerShell symlink before falling back to copy');
 });
@@ -117,7 +117,7 @@ test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
   assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
   assert.match(src, /git -C .* status --porcelain/, 'must check for uncommitted changes before updating');
-  assert.match(src, /npm run evolve:upgrade/, 'must delegate to the canonical upgrade script');
+  assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
 
 test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
@@ -125,7 +125,7 @@ test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
   assert.match(src, /no Evolve install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
   assert.match(src, /status --porcelain/, 'must check for uncommitted changes before updating');
-  assert.match(src, /npm run evolve:upgrade/, 'must delegate to the canonical upgrade script');
+  assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
 
 test('update scripts use the same plugin-marketplace path layout as install scripts', () => {
@@ -135,9 +135,9 @@ test('update scripts use the same plugin-marketplace path layout as install scri
   assert.match(ps1, /\.claude\\plugins\\marketplaces\\evolve-marketplace/);
 });
 
-test('update scripts honor EVOLVE_PLUGIN_ROOT env override', () => {
+test('update scripts honor SUPERVIBE_PLUGIN_ROOT env override', () => {
   const sh = readFileSync(UPD_SH, 'utf8');
   const ps1 = readFileSync(UPD_PS1, 'utf8');
-  assert.match(sh,  /EVOLVE_PLUGIN_ROOT/);
-  assert.match(ps1, /EVOLVE_PLUGIN_ROOT/);
+  assert.match(sh,  /SUPERVIBE_PLUGIN_ROOT/);
+  assert.match(ps1, /SUPERVIBE_PLUGIN_ROOT/);
 });

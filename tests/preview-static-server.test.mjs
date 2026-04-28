@@ -39,7 +39,7 @@ test('serves HTML with hot-reload script injected', async () => {
   assert.strictEqual(r.status, 200);
   assert.match(r.headers['content-type'], /text\/html/);
   assert.match(r.body, /Hello/);
-  assert.match(r.body, /__evolve_preview\/sse/);
+  assert.match(r.body, /__supervibe_preview\/sse/);
   assert.match(r.body, /EventSource/);
 });
 
@@ -76,7 +76,7 @@ test('rejects path traversal attempts', async () => {
 
 test('SSE endpoint sets correct headers', async () => {
   const r = await new Promise((resolve, reject) => {
-    const req = request({ host: '127.0.0.1', port, path: '/__evolve_preview/sse', method: 'GET' }, res => {
+    const req = request({ host: '127.0.0.1', port, path: '/__supervibe_preview/sse', method: 'GET' }, res => {
       resolve({ status: res.statusCode, headers: res.headers });
       req.destroy();
     });
@@ -89,7 +89,7 @@ test('SSE endpoint sets correct headers', async () => {
 
 test('server.broadcastReload pushes data to SSE clients', async () => {
   const messages = [];
-  const req = request({ host: '127.0.0.1', port, path: '/__evolve_preview/sse', method: 'GET' });
+  const req = request({ host: '127.0.0.1', port, path: '/__supervibe_preview/sse', method: 'GET' });
   req.end();
   const res = await new Promise(resolve => req.on('response', resolve));
   res.on('data', chunk => messages.push(chunk.toString()));

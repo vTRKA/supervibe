@@ -2,13 +2,13 @@
 description: "Health-check across project's agents, rules, memory entries, indexes, and CLAUDE.md routing — surfaces stale artifacts and inconsistencies."
 ---
 
-# /evolve-audit
+# /supervibe-audit
 
 Run a full plugin + project health check. No writes — only reports.
 
 ## Procedure
 
-1. **Index health.** Run `npm run evolve:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/evolve-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.
+1. **Index health.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.
 
 2. **Frontmatter validation.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/validate-frontmatter.mjs`. Flags any agent / skill / rule / rubric with malformed or missing required fields.
 
@@ -26,7 +26,7 @@ Run a full plugin + project health check. No writes — only reports.
 
 9. **Underperformer scan.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
 
-10. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/evolve-strengthen`, `/evolve-adapt`, or "looks good").
+10. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/supervibe-strengthen`, `/supervibe-adapt`, or "looks good").
 
 ## Output contract
 
@@ -48,11 +48,11 @@ Confidence: N/A  Rubric: read-only-research
 
 ## When NOT to invoke
 
-- You only want to score one artifact — use `/evolve-score`
-- You want to fix things — `/evolve-strengthen`, `/evolve-adapt`, or `/evolve-genesis`. Audit is read-only
+- You only want to score one artifact — use `/supervibe-score`
+- You want to fix things — `/supervibe-strengthen`, `/supervibe-adapt`, or `/supervibe-genesis`. Audit is read-only
 
 ## Related
 
-- `evolve:audit` skill — the underlying methodology document
-- `/evolve-strengthen` — fixes weak agents
-- `/evolve-adapt` — fixes drift between upstream and project copies
+- `supervibe:audit` skill — the underlying methodology document
+- `/supervibe-strengthen` — fixes weak agents
+- `/supervibe-adapt` — fixes drift between upstream and project copies

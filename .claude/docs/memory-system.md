@@ -14,6 +14,6 @@ Five categories, each markdown with frontmatter (`id`, `type`, `date`, `tags`, `
 
 **Indexing:** `memory.db` (SQLite FTS5 + e5 embeddings + per-chunk semantic). Hash-based incremental updates via `chokidar` watcher. **No truncation** — every word of every entry reachable by semantic search.
 
-**Skill:** `evolve:project-memory` — invoke BEFORE any non-trivial task. Returns ≤5 most-relevant prior entries with file:line refs.
+**Skill:** `supervibe:project-memory` — invoke BEFORE any non-trivial task. Returns ≤5 most-relevant prior entries with file:line refs.
 
-**Adding entries:** `evolve:add-memory` skill — writes markdown + auto-rebuilds index.
+**Adding entries:** `supervibe:add-memory` skill — writes markdown + auto-rebuilds index.

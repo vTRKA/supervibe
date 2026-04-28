@@ -8,7 +8,7 @@ import {
 } from '../scripts/lib/agent-invocation-logger.mjs';
 import { buildStrengthenSuggestions } from '../scripts/lib/auto-strengthen-trigger.mjs';
 
-const sandbox = join(tmpdir(), `evolve-strengthen-trig-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-strengthen-trig-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
@@ -28,7 +28,7 @@ test('buildStrengthenSuggestions: returns commands for flagged agents', async ()
   const suggestions = await buildStrengthenSuggestions();
   const found = suggestions.find(s => s.agent_id === 'weak-agent');
   assert.ok(found, 'should suggest strengthen for weak-agent');
-  assert.strictEqual(found.command, '/evolve-strengthen weak-agent');
+  assert.strictEqual(found.command, '/supervibe-strengthen weak-agent');
 });
 
 test('buildStrengthenSuggestions: returns array (empty or filled)', async () => {

@@ -39,12 +39,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - supertest-pass
   - eslint-clean
@@ -78,20 +78,20 @@ Priorities (never reordered): **correctness > security > observability > perform
 
 Mental model: every request flows through a fixed pipeline — `app.use(cors())` → `app.use(helmet())` → `app.use(express.json({ limit }))` → `app.use(requestContext)` → `app.use(pinoHttp)` → `app.use('/api/v1', router)` → `app.use(notFoundHandler)` → `app.use(errorHandler)`. Inside each route module: `router.post('/', validate(schema), authenticate, authorize, asyncHandler(controller))`. Controllers are thin: parse `req.validated`, call a service, return JSON. Services hold business logic and are HTTP-agnostic so they can be reused by jobs and CLIs.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar routes, middleware, validators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar routes, middleware, validators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-route tasks: also run `--callers "<controllerName>"` and `--callers "<serviceName>"`
    - For new-middleware touching shared pipeline: `--neighbors "errorHandler" --depth 2`
    - Skip for greenfield tasks
@@ -106,9 +106,9 @@ Before producing any artifact or making any structural recommendation:
 11. **Run target test** — `npm test -- --testPathPattern=<name>` (jest) or `node --test tests/integration/<name>.test.mjs`. Confirm GREEN
 12. **Run full integration suite** — catch regressions in adjacent routes that share middleware
 13. **Run lint + type-check** — `npm run lint && npm run typecheck` (or `tsc --noEmit`). Both must be clean
-14. **Self-review with `evolve:code-review`** — check missing-async-wrapper, validation-in-handler, console.log, error handler bypass, helmet placement, secret leak in logs
+14. **Self-review with `supervibe:code-review`** — check missing-async-wrapper, validation-in-handler, console.log, error handler bypass, helmet placement, secret leak in logs
 15. **Verify pino redaction** — boot the app in test mode, hit an authenticated route, confirm `authorization` and `cookie` appear as `[Redacted]` in captured log lines
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, identify the gap and address it
 
 ## Output contract
 
@@ -117,7 +117,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/express:express-developer
+**Developer**: supervibe:stacks/express:express-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -226,25 +226,25 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `evolve:stacks/express:express-architect` — owns ADRs, error-code taxonomy, middleware-pipeline contract
-- `evolve:stacks/express:api-security-specialist` — owns helmet/CORS policy, auth strategy, rate-limit posture
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, performance
-- `evolve:stacks/redis:redis-architect` — owns rate-limit storage, idempotency-key TTL strategy
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews auth/validation/error-handler changes for OWASP risk
+- `supervibe:stacks/express:express-architect` — owns ADRs, error-code taxonomy, middleware-pipeline contract
+- `supervibe:stacks/express:api-security-specialist` — owns helmet/CORS policy, auth strategy, rate-limit posture
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, performance
+- `supervibe:stacks/redis:redis-architect` — owns rate-limit storage, idempotency-key TTL strategy
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews auth/validation/error-handler changes for OWASP risk
 
 ## Skills
 
-- `evolve:tdd` — supertest-driven red-green-refactor; failing test before any handler code
-- `evolve:verification` — jest / supertest / eslint / tsc output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across TS/JS source for similar middleware, validators, error mappers
+- `supervibe:tdd` — supertest-driven red-green-refactor; failing test before any handler code
+- `supervibe:verification` — jest / supertest / eslint / tsc output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across TS/JS source for similar middleware, validators, error mappers
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source: `src/` — `src/app.ts` (express factory), `src/server.ts` (listen + graceful shutdown), `src/routes/`, `src/controllers/`, `src/services/`, `src/middleware/`, `src/validators/`, `src/errors/`
 - Tests: `tests/integration/` (supertest against the app factory, no real listen), `tests/unit/` (services, validators, error mapper). Jest or node:test depending on project.

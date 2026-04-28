@@ -23,12 +23,12 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:code-review'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
-  - 'evolve:requesting-code-review'
-  - 'evolve:receiving-code-review'
-  - 'evolve:code-search'
+  - 'supervibe:code-review'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:requesting-code-review'
+  - 'supervibe:receiving-code-review'
+  - 'supervibe:code-search'
 verification:
   - npm run check
   - git diff --stat
@@ -120,15 +120,15 @@ Need to know who/what depends on a symbol?
   NO  → continue with existing branches
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -157,8 +157,8 @@ Before producing any artifact or making any structural recommendation:
 6. **Aggregate findings** by severity
 7. **Decide verdict** (per decision tree)
 8. **Build report** (per Output contract below)
-9. **Score** with `evolve:confidence-scoring` — agent-output rubric ≥9
-10. **Submit report** via `evolve:requesting-code-review` if reviewing for another agent's work
+9. **Score** with `supervibe:confidence-scoring` — agent-output rubric ≥9
+10. **Submit report** via `supervibe:requesting-code-review` if reviewing for another agent's work
 
 ## Output contract
 
@@ -168,7 +168,7 @@ Returns Markdown report:
 # Code Review: <branch / PR title>
 
 **Verdict:** APPROVED | APPROVED WITH NOTES | BLOCKED
-**Reviewer:** evolve:_core:code-reviewer
+**Reviewer:** supervibe:_core:code-reviewer
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -213,7 +213,7 @@ Trigger: branch ready, author requests review, CI green.
 5. Walk all 8 dimensions per file in priority order; record each finding as `file:line + severity + suggested fix + reproducer`.
 6. Cross-file checks: layer boundaries, secrets/eval/raw-SQL scan, schema/query changes, public API shape changes. Delegate to specialist reviewers if any are non-trivial.
 7. Aggregate by severity, apply the verdict-mapping table.
-8. Score with `evolve:confidence-scoring` (must reach ≥9 or the review itself is BLOCKED) and emit the Output-contract report.
+8. Score with `supervibe:confidence-scoring` (must reach ≥9 or the review itself is BLOCKED) and emit the Output-contract report.
 
 ### mid-feature-review (early-signal review while feature is in flight)
 Trigger: author wants directional feedback before finishing; not a merge gate.
@@ -238,7 +238,7 @@ Trigger: production incident, paging on-call, change must ship fast.
 Trigger: PR explicitly described as refactor / cleanup / restructure with no intended behavior change.
 1. Read the PR description and confirm the **"no behavior change" claim** is explicit. If the author also bundled a feature or bug fix, BLOCK and ask for split.
 2. Run the full test suite on `<base>` and on `HEAD` — counts must match exactly (same passing count, same skipped count, same coverage within ±0.2%). Record both outputs.
-3. Spot-check any **deleted** code paths with `evolve:code-search` to confirm no remaining caller. A refactor that drops a still-referenced helper is CRITICAL.
+3. Spot-check any **deleted** code paths with `supervibe:code-search` to confirm no remaining caller. A refactor that drops a still-referenced helper is CRITICAL.
 4. Walk dimensions, but reweight: readability and naming move up (refactors live and die on these), perf and security still get priority-1 attention because subtle algorithmic shifts hide in restructures.
 5. Check that public API shape (exported types, function signatures, module boundaries) is byte-identical unless an explicit deprecation note is in the PR description.
 6. Findings about "this could be even cleaner" are SUGGESTION only — refactors don't get re-refactored in review.
@@ -253,25 +253,25 @@ Do NOT request changes outside diff scope (file follow-up issue instead).
 
 ## Related
 
-- `evolve:_core:architect-reviewer` — for architectural concerns (delegated)
-- `evolve:_core:security-auditor` — for security concerns (delegated)
-- `evolve:_ops:performance-reviewer` — for performance concerns (delegated)
-- `evolve:_ops:db-reviewer` — for schema/query concerns (delegated)
-- `evolve:_ops:api-contract-reviewer` — for API contract concerns (delegated)
-- `evolve:_core:quality-gate-reviewer` — invokes this agent as part of final gate
+- `supervibe:_core:architect-reviewer` — for architectural concerns (delegated)
+- `supervibe:_core:security-auditor` — for security concerns (delegated)
+- `supervibe:_ops:performance-reviewer` — for performance concerns (delegated)
+- `supervibe:_ops:db-reviewer` — for schema/query concerns (delegated)
+- `supervibe:_ops:api-contract-reviewer` — for API contract concerns (delegated)
+- `supervibe:_core:quality-gate-reviewer` — invokes this agent as part of final gate
 
 ## Skills
 
-- `evolve:code-review` — 8-dimensional review methodology
-- `evolve:verification` — bans claims without command output (used per dimension)
-- `evolve:confidence-scoring` — final scoring with agent-output rubric ≥9
-- `evolve:requesting-code-review` — used when delegating sub-review to specialist
-- `evolve:receiving-code-review` — used when responding to user's challenges to findings
-- `evolve:code-search` — locate callers/callees, sibling tests, prior art, and related rules/specs across the repository before making severity calls
+- `supervibe:code-review` — 8-dimensional review methodology
+- `supervibe:verification` — bans claims without command output (used per dimension)
+- `supervibe:confidence-scoring` — final scoring with agent-output rubric ≥9
+- `supervibe:requesting-code-review` — used when delegating sub-review to specialist
+- `supervibe:receiving-code-review` — used when responding to user's challenges to findings
+- `supervibe:code-search` — locate callers/callees, sibling tests, prior art, and related rules/specs across the repository before making severity calls
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Code conventions source: `CLAUDE.md`, `.claude/rules/`, language-specific style guides referenced therein
 - Test commands: read from `package.json`/`composer.json`/`Cargo.toml` scripts

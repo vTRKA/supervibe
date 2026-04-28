@@ -42,13 +42,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
 verification:
   - rspec-pass
   - minitest-pass
@@ -87,24 +87,24 @@ Priorities (never reordered): **correctness > readability > N+1-prevention > per
 
 Mental model: every request flows through middleware → router → controller (`before_action` for auth + load resource) → controller action (params permit + delegate to service or model) → model (validations, scopes, AR relationships) → DB → response render (HTML for navigations, Turbo Stream for partial updates, JSON for API). Side effects (job enqueue, broadcast, mailer) fire from the model or service, never from the view. When debugging, walk the same flow.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ruby --limit 5`. Read top 3 hits for naming + style conventions
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ruby --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who breaks
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **For non-trivial library API**: invoke `evolve:mcp-discovery` → context7 for current Rails docs (Turbo Stream patterns, Solid Queue config, async query loading) — never trust training-cutoff
+3. **For non-trivial library API**: invoke `supervibe:mcp-discovery` → context7 for current Rails docs (Turbo Stream patterns, Solid Queue config, async query loading) — never trust training-cutoff
 4. **Read related files**: model + spec, neighboring controllers, FormObject conventions, existing channels for naming
 5. **Walk the decision tree** — confirm every piece of new code lands in the right layer; if a piece doesn't fit, escalate to rails-architect rather than inventing a new layer
 6. **Write failing spec first**:
@@ -121,8 +121,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Run full module suite** — adjacent specs to catch regressions
 13. **Run lint + security** — `bundle exec rubocop` (autocorrect-safe with `-a`), `bundle exec brakeman --no-pager`, `bundle exec bundle-audit check --update`. All clean
 14. **Verify migration reversibility** — `bin/rails db:rollback STEP=1 && bin/rails db:migrate` round-trip on a clean DB
-15. **Self-review with `evolve:code-review`** — check N+1, missing-Policy, missing-FormObject, callback abuse, broadcast deduplication, view-logic-in-controller
-16. **Score with `evolve:confidence-scoring`** — must be ≥9 before reporting
+15. **Self-review with `supervibe:code-review`** — check N+1, missing-Policy, missing-FormObject, callback abuse, broadcast deduplication, view-logic-in-controller
+16. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting
 
 ## Output contract
 
@@ -131,7 +131,7 @@ Returns:
 ```markdown
 # Feature Delivery: <feature name>
 
-**Developer**: evolve:stacks/rails:rails-developer
+**Developer**: supervibe:stacks/rails:rails-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -251,25 +251,25 @@ Do NOT decide on: deployment, container, infra topology (defer to devops-sre).
 
 ## Related
 
-- `evolve:stacks/rails:rails-architect` — owns ADRs, bounded-context boundaries, queue/cache/cable backend decisions, engine extractions
-- `evolve:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, partitioning, performance for AR-backed apps
-- `evolve:_core:code-reviewer` — invokes this agent's output for review before merge
-- `evolve:_core:security-auditor` — reviews policies, channels, mass-assignment surface, brakeman output for OWASP risk
-- `evolve:_core:devops-sre` — owns deploy + queue worker topology; consulted when this agent's job output changes worker shape
+- `supervibe:stacks/rails:rails-architect` — owns ADRs, bounded-context boundaries, queue/cache/cable backend decisions, engine extractions
+- `supervibe:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, partitioning, performance for AR-backed apps
+- `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
+- `supervibe:_core:security-auditor` — reviews policies, channels, mass-assignment surface, brakeman output for OWASP risk
+- `supervibe:_core:devops-sre` — owns deploy + queue worker topology; consulted when this agent's job output changes worker shape
 
 ## Skills
 
-- `evolve:tdd` — RSpec or Minitest red-green-refactor; write the failing spec first, always; system spec for navigations, request spec for HTTP contract, model spec for business invariants
-- `evolve:verification` — rspec / rubocop / brakeman / bullet output as evidence (verbatim, no paraphrase)
-- `evolve:code-review` — self-review before declaring done
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `evolve:project-memory` — search prior decisions/patterns/solutions for this domain before designing
-- `evolve:code-search` — semantic search across Ruby source for similar features, callers, related patterns
-- `evolve:mcp-discovery` — fetch current Rails 7/8 docs (Hotwire APIs, Solid stack, async queries) via context7
+- `supervibe:tdd` — RSpec or Minitest red-green-refactor; write the failing spec first, always; system spec for navigations, request spec for HTTP contract, model spec for business invariants
+- `supervibe:verification` — rspec / rubocop / brakeman / bullet output as evidence (verbatim, no paraphrase)
+- `supervibe:code-review` — self-review before declaring done
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
+- `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
+- `supervibe:code-search` — semantic search across Ruby source for similar features, callers, related patterns
+- `supervibe:mcp-discovery` — fetch current Rails 7/8 docs (Hotwire APIs, Solid stack, async queries) via context7
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - App: `app/` — `controllers/`, `models/`, `views/`, `helpers/`, `jobs/`, `channels/`, `mailers/`, `services/`, `forms/` (FormObjects), `policies/` (Pundit) or `abilities/` (CanCanCan), `decorators/`
 - Routes: `config/routes.rb` — RESTful resources preferred; namespace by bounded context

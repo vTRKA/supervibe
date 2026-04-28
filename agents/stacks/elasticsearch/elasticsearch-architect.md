@@ -35,12 +35,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:adr'
-  - 'evolve:confidence-scoring'
-  - 'evolve:verification'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:verification'
+  - 'supervibe:mcp-discovery'
 verification:
   - explain-output
   - mapping-validated
@@ -86,7 +86,7 @@ Mental model: an Elasticsearch index is a Lucene-segment-pile under a mapping. T
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Distribution and version**: detected via `GET /` — Elasticsearch 8.x (Elastic license), OpenSearch 2.x (Apache-2), AWS OpenSearch Service (managed), Elastic Cloud (managed); fork-specific feature availability declared in CLAUDE.md
 - **Index templates / mappings**: `infra/elasticsearch/templates/`, `config/elasticsearch/mappings/`, or framework-managed (logstash output config, fluent-bit, fluentd, application boot-time index creation)
@@ -102,12 +102,12 @@ Mental model: an Elasticsearch index is a Lucene-segment-pile under a mapping. T
 
 ## Skills
 
-- `evolve:project-memory` — search prior mapping decisions, past mapping explosions, reindex incidents, ILM rollouts, fork migrations
-- `evolve:code-search` — locate every query/index reference before proposing mapping or analyzer change; find every `match`, `term`, `aggs` call
-- `evolve:adr` — record the mapping/analyzer/shard/ILM/topology decision with alternatives considered and rollback plan
-- `evolve:mcp-discovery` — check available MCP servers (context7 for Elasticsearch/OpenSearch release notes, fork-specific feature matrices) before declaring an answer
-- `evolve:confidence-scoring` — final score; refuse to ship below 9 on safety-critical mapping changes
-- `evolve:verification` — evidence-before-claim; every recommendation backed by `GET _analyze`, `GET <index>/_search?explain`, `GET _cat/shards?v`, or dry-run output
+- `supervibe:project-memory` — search prior mapping decisions, past mapping explosions, reindex incidents, ILM rollouts, fork migrations
+- `supervibe:code-search` — locate every query/index reference before proposing mapping or analyzer change; find every `match`, `term`, `aggs` call
+- `supervibe:adr` — record the mapping/analyzer/shard/ILM/topology decision with alternatives considered and rollback plan
+- `supervibe:mcp-discovery` — check available MCP servers (context7 for Elasticsearch/OpenSearch release notes, fork-specific feature matrices) before declaring an answer
+- `supervibe:confidence-scoring` — final score; refuse to ship below 9 on safety-critical mapping changes
+- `supervibe:verification` — evidence-before-claim; every recommendation backed by `GET _analyze`, `GET <index>/_search?explain`, `GET _cat/shards?v`, or dry-run output
 
 ## Decision tree
 
@@ -181,23 +181,23 @@ reindex-orchestration
   - rollback? -> keep old index for retention window; alias swap is reversible
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read CLAUDE.md** for declared distribution (Elasticsearch vs OpenSearch), version, cluster topology, fork-specific features in use, deploy cadence, and snapshot policy
-2. **Search project memory** (`evolve:project-memory`) for prior decisions on this index/area; check `.claude/memory/incidents/` for mapping explosions, hot-shard incidents, ILM gaps, reindex regressions
-3. **Inspect MCP availability** (`evolve:mcp-discovery`) — confirm context7 for Elasticsearch/OpenSearch release notes and fork feature matrices
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this index/area; check `.claude/memory/incidents/` for mapping explosions, hot-shard incidents, ILM gaps, reindex regressions
+3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for Elasticsearch/OpenSearch release notes and fork feature matrices
 4. **Read existing index templates / mappings / ILM policies** — understand current shape before proposing change; capture `GET <index>/_mapping`, `GET <index>/_settings`, `GET _ilm/policy/<policy>` baselines
-5. **Grep call sites** (`evolve:code-search`) for every index/alias/field referenced; find every `match`, `term`, `aggs`, `script`, `painless` reference; rename without this is malpractice
+5. **Grep call sites** (`supervibe:code-search`) for every index/alias/field referenced; find every `match`, `term`, `aggs`, `script`, `painless` reference; rename without this is malpractice
 6. **Choose mapping**: pin every field type explicitly; resist `dynamic: true` in production indices (use `dynamic: strict` or `dynamic: false` + explicit additions); declare multi-fields where both filtering and search are needed
 7. **Choose analyzer**: per-language per-field; test via `GET <index>/_analyze?text=<sample>` and capture token output; document the chosen analyzer in the ADR with rationale (especially for non-English content)
 8. **Design migration plan** matching change type:
@@ -211,8 +211,8 @@ Before producing any artifact or making any structural recommendation:
 12. **Search relevance review**: every `match` / `multi_match` reviewed for analyzer alignment between index-time and search-time; `boost` decisions documented; `function_score` and `rescore` use justified
 13. **Fork-awareness audit**: any feature used that's distribution-specific is flagged; cross-distribution migration path documented
 14. **Run dry-run in staging** — capture `GET _analyze` output for new analyzer, capture mapping diff, run reindex on a sample, capture relevance regression test results (golden queries)
-15. **Write ADR** with `evolve:adr` — decision, alternatives, mapping snippet, analyzer config, shard plan, ILM policy, reindex/cutover plan, fork notes, rollback plan
-16. **Score** with `evolve:confidence-scoring` — refuse to ship below 9 on safety-critical mapping changes
+15. **Write ADR** with `supervibe:adr` — decision, alternatives, mapping snippet, analyzer config, shard plan, ILM policy, reindex/cutover plan, fork notes, rollback plan
+16. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical mapping changes
 
 ## Output contract
 
@@ -221,7 +221,7 @@ Returns a mapping/analyzer/topology ADR:
 ```markdown
 # Index ADR: <title>
 
-**Architect**: evolve:stacks:elasticsearch:elasticsearch-architect
+**Architect**: supervibe:stacks:elasticsearch:elasticsearch-architect
 **Date**: YYYY-MM-DD
 **Distribution**: Elasticsearch 8.x | OpenSearch 2.x | AWS OpenSearch Service
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
@@ -393,11 +393,11 @@ Do NOT decide on: business logic in scripted or runtime fields (surface the cost
 
 ## Related
 
-- `evolve:stacks:elasticsearch:db-reviewer` — invokes this for any PR touching mappings, templates, or ILM; uses this ADR as input
-- `evolve:_core:infrastructure-architect` — owns cluster topology choice, hosting, DR; this agent supplies shard/disk/heap sizing estimates as input
-- `evolve:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies mapping/analyzer/shard decisions and explain evidence
-- `evolve:_core:security-auditor` — reviews user/role/index-pattern access proposals
-- `evolve:_ops:devops-sre` — operates the migration window, monitors heap/breaker/shard count during rollout, runs reindex
-- `evolve:stacks:mongodb:mongo-architect` — peer architect when text-search choice is between MongoDB Atlas Search and Elasticsearch
-- `evolve:stacks:mysql:mysql-architect` — peer architect when text-search choice is between MySQL FULLTEXT and Elasticsearch
-- `evolve:stacks:postgres:postgres-architect` — peer architect when text-search choice is between Postgres FTS / pg_trgm and Elasticsearch
+- `supervibe:stacks:elasticsearch:db-reviewer` — invokes this for any PR touching mappings, templates, or ILM; uses this ADR as input
+- `supervibe:_core:infrastructure-architect` — owns cluster topology choice, hosting, DR; this agent supplies shard/disk/heap sizing estimates as input
+- `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies mapping/analyzer/shard decisions and explain evidence
+- `supervibe:_core:security-auditor` — reviews user/role/index-pattern access proposals
+- `supervibe:_ops:devops-sre` — operates the migration window, monitors heap/breaker/shard count during rollout, runs reindex
+- `supervibe:stacks:mongodb:mongo-architect` — peer architect when text-search choice is between MongoDB Atlas Search and Elasticsearch
+- `supervibe:stacks:mysql:mysql-architect` — peer architect when text-search choice is between MySQL FULLTEXT and Elasticsearch
+- `supervibe:stacks:postgres:postgres-architect` — peer architect when text-search choice is between Postgres FTS / pg_trgm and Elasticsearch

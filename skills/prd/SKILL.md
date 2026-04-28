@@ -20,7 +20,7 @@ BEFORE building any user-facing feature with explicit business value. Use when p
 
 NOT for: internal refactors, infra changes, dev tooling.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project's `docs/prd/` for prior PRDs (numbering, format)
 2. Read existing user docs / marketing pages (vocabulary, positioning)
@@ -74,9 +74,9 @@ Feature scope?
    ## Open questions
    - <unresolved items, owner>
    ```
-3. **Score** — `evolve:confidence-scoring` artifact-type=requirements-spec
+3. **Score** — `supervibe:confidence-scoring` artifact-type=requirements-spec
 4. **Stakeholder review** — explicit approval before status → APPROVED
-5. **Handoff** — to `evolve:brainstorming` (technical design) once APPROVED
+5. **Handoff** — to `supervibe:brainstorming` (technical design) once APPROVED
 
 ## Output contract
 
@@ -100,9 +100,9 @@ Returns: PRD file with all sections filled, success metrics measurable, out-of-s
 
 ## Related
 
-- `evolve:brainstorming` — technical design after PRD approved
+- `supervibe:brainstorming` — technical design after PRD approved
 - Phase 3 `product-manager` agent — primary author
-- `evolve:adr` — for technical decisions referenced in Solution
+- `supervibe:adr` — for technical decisions referenced in Solution
 
 ## User research grounding
 
@@ -161,7 +161,7 @@ Before launch (Phase N+1 of plan), verify:
 
 ## Instrumentation plan
 
-What events do we emit? What dashboards do we add? Required input from `evolve:_product:analytics-implementation`:
+What events do we emit? What dashboards do we add? Required input from `supervibe:_product:analytics-implementation`:
 
 - **Tracked events**: <list with properties>
 - **Dashboards**: <which existing dashboards add this; which new ones create>
@@ -246,9 +246,9 @@ Required sections (in order):
 
 ## Related
 
-- `evolve:requirements-intake` — predecessor (intake → research → PRD)
-- `evolve:writing-plans` — consumer (PRD → implementation plan)
-- `evolve:adr` — design decisions called out separately from PRD
-- `evolve:_product:product-manager` — primary author
-- `evolve:_product:systems-analyst` — collaborator on ACs
-- `evolve:_product:analytics-implementation` — collaborator on instrumentation
+- `supervibe:requirements-intake` — predecessor (intake → research → PRD)
+- `supervibe:writing-plans` — consumer (PRD → implementation plan)
+- `supervibe:adr` — design decisions called out separately from PRD
+- `supervibe:_product:product-manager` — primary author
+- `supervibe:_product:systems-analyst` — collaborator on ACs
+- `supervibe:_product:analytics-implementation` — collaborator on instrumentation

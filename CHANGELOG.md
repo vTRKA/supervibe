@@ -16,18 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/lib/preview-static-server.mjs` — pure `node:http` static + SSE hot-reload injection
 - `scripts/lib/preview-hot-reload.mjs` — chokidar → SSE bridge with 150ms debounce
 - `scripts/preview-server.mjs` CLI: `--root --port --label --list --kill --kill-all --idle-timeout --force`
-- `skills/preview-server/SKILL.md` + `commands/evolve-preview.md`
+- `skills/preview-server/SKILL.md` + `commands/supervibe-preview.md`
 - Process hardening: idle-shutdown after 30min, max 10 concurrent (`--force` overrides), 127.0.0.1-only, path-traversal guard, SIGINT/SIGTERM cleanup
-- `evolve:status` reports running previews; SessionStart prunes stale registry entries
+- `supervibe:status` reports running previews; SessionStart prunes stale registry entries
 
 ### Added — Strengthened Planning Skills (Phase E2)
 
-- `evolve:brainstorming` (87 → 268 lines): first-principle decomp / stakeholder map / kill criteria / decision matrix
-- `evolve:writing-plans` (84 → 250): critical path / parallelization batches / rollback per task / risk register
-- `evolve:prd` (105 → 254): user research / Gherkin ACs / metrics / instrumentation / launch checklist
-- `evolve:adr` (108 → 253): alternatives matrix / NFRs / decision review trigger
-- `evolve:requirements-intake` (90 → 257): persona elicitation / constraint matrix / success criteria before solution
-- `evolve:explore-alternatives` (128 → 256): carbon-copy lookup / weighted matrix / sensitivity analysis
+- `supervibe:brainstorming` (87 → 268 lines): first-principle decomp / stakeholder map / kill criteria / decision matrix
+- `supervibe:writing-plans` (84 → 250): critical path / parallelization batches / rollback per task / risk register
+- `supervibe:prd` (105 → 254): user research / Gherkin ACs / metrics / instrumentation / launch checklist
+- `supervibe:adr` (108 → 253): alternatives matrix / NFRs / decision review trigger
+- `supervibe:requirements-intake` (90 → 257): persona elicitation / constraint matrix / success criteria before solution
+- `supervibe:explore-alternatives` (128 → 256): carbon-copy lookup / weighted matrix / sensitivity analysis
 
 ### Added — Reference Templates (Phase E3)
 
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `scripts/lib/mcp-registry.mjs` — discover/persist/query MCPs from user's Claude config; `pickMcp(preferenceList)` for graceful fallback
 - `scripts/discover-mcps.mjs` CLI; SessionStart auto-refreshes registry
-- `evolve:status` shows available MCPs
+- `supervibe:status` shows available MCPs
 
 ### Added — 22 New Stack Agents (Phase F2)
 
@@ -53,7 +53,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 ### Added — App Excellence (Phase F3 + F4)
 
 - 5 new agents: `api-designer`, `auth-architect`, `observability-architect`, `job-scheduler-architect`, `data-modeler`
-- 4 new skills: `evolve:test-strategy`, `evolve:feature-flag-rollout`, `evolve:error-envelope-design`, `evolve:auth-flow-design`
+- 4 new skills: `supervibe:test-strategy`, `supervibe:feature-flag-rollout`, `supervibe:error-envelope-design`, `supervibe:auth-flow-design`
 
 ### Added — README rewrite (Phase F5)
 
@@ -67,8 +67,8 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - `scripts/lib/underperformer-detector.mjs` — flags `avg-confidence < 8.5` OR rising override-rate trend Δ ≥ 40%
 - `scripts/hooks/post-tool-use-log.mjs` — PostToolUse hook auto-logs every `Task` (subagent) dispatch with confidence-score + override-marker extraction
 - `hooks.json` wired with PostToolUse `Task` matcher → invocation logger
-- `scripts/lib/auto-strengthen-trigger.mjs` + updated `commands/evolve-strengthen.md` — auto-trigger flow with mandatory user gate
-- `evolve:status` and SessionStart surface flagged agents
+- `scripts/lib/auto-strengthen-trigger.mjs` + updated `commands/supervibe-strengthen.md` — auto-trigger flow with mandatory user gate
+- `supervibe:status` and SessionStart surface flagged agents
 - E2E test (`tests/evolution-loop-e2e.test.mjs`) proves loop closes (log → aggregate → detect → suggest)
 - README + CLAUDE.md + getting-started document the evolution loop
 
@@ -100,7 +100,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **`search-code.mjs` flags**: `--callers`, `--callees`, `--neighbors --depth N`, `--top-symbols`, full-symbol-ID disambiguation
 - **`build-code-index.mjs --since=<git-rev>`** — lazy mode for huge monorepos (only files changed since rev)
 - **SessionStart hook**: auto-builds index if missing, prints status banner first 3 lines of every session
-- **`npm run evolve:status`** — comprehensive index health (RAG + graph + grammars + watcher + memory)
+- **`npm run supervibe:status`** — comprehensive index health (RAG + graph + grammars + watcher + memory)
 - **Watcher heartbeat file** (`.claude/memory/.watcher-heartbeat`) — status command shows running/stale/missing
 
 ### Added — Agent integration (closes "capability dark" gap)
@@ -150,7 +150,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **`scripts/lib/code-store.mjs`** — `CodeStore` with FTS5 + per-chunk embeddings + RRF hybrid search; hash-based dedup on re-index
 - **`scripts/build-code-index.mjs`** — full project indexer (`npm run code:index`)
 - **`scripts/search-code.mjs`** — CLI used by skill (`npm run code:search`)
-- **`skills/code-search/SKILL.md`** — `evolve:code-search` (agent-side semantic code lookup)
+- **`skills/code-search/SKILL.md`** — `supervibe:code-search` (agent-side semantic code lookup)
 - Wired into `laravel-developer`, `nextjs-developer`, `fastapi-developer`, `react-implementer` as a pre-task step
 - Indexes `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`; skips noise (node_modules, dist, .next, etc.)
 
@@ -168,7 +168,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 Every agent now has the full strengthen template:
 - Persona (3-4 paragraphs: 15+ yrs background / principle in quotes / ordered priorities / mental model)
 - Project Context (4-7 bullets of detected paths + tools)
-- Skills (≥3, including `evolve:project-memory` and `evolve:code-search` where relevant)
+- Skills (≥3, including `supervibe:project-memory` and `supervibe:code-search` where relevant)
 - Decision tree (ASCII covering main task variants)
 - Procedure (10+ numbered steps with sub-bullets, including pre-task memory + code search)
 - Output contract (Markdown deliverable template)
@@ -331,7 +331,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Known accepted limitations (v1.3)
 
 - **First memory search downloads ~25MB model** (one-time, cached). Affects first invocation only.
-- **35/46 agents still in compact form** (60-130 lines). Critical 7 are at spec (250+ lines): code-reviewer, evolve-orchestrator, 5 researchers + new strengthen pass on root-cause-debugger / repo-researcher / security-auditor. Periodic `evolve:strengthen` will expand others on first use.
+- **35/46 agents still in compact form** (60-130 lines). Critical 7 are at spec (250+ lines): code-reviewer, evolve-orchestrator, 5 researchers + new strengthen pass on root-cause-debugger / repo-researcher / security-auditor. Periodic `supervibe:strengthen` will expand others on first use.
 - **HF_TOKEN may be needed** for some restrictive networks. Most cases all-MiniLM-L6-v2 is open and accessible.
 
 ---
@@ -368,7 +368,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - 9 unit tests cover: index build, FTS5 search, tag filter, type filter, confidence filter, empty results, combined queries, limits, structure
 - Markdown files remain source-of-truth (`memory.db` is regenerable cache)
 
-### Added — `evolve:project-memory` skill upgraded
+### Added — `supervibe:project-memory` skill upgraded
 
 - Procedure now invokes single Bash call: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query ... --tags ... --type ... --min-confidence ... --limit N`
 - Decision tree updated with FTS5 query syntax
@@ -415,7 +415,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Known accepted limitations (v1.2)
 
 - **Node 22+ requirement** for SQLite memory. Documented in install docs. Fallback: markdown files remain source of truth; agents can use `Grep` skill manually if SQLite unavailable.
-- **Strengthen-pass** still on only 7/46 agents at 250+ lines. Periodic `evolve:strengthen` will expand others.
+- **Strengthen-pass** still on only 7/46 agents at 250+ lines. Periodic `supervibe:strengthen` will expand others.
 - **`recommended-mcps:` informational only** — doesn't auto-grant tools. User must add MCP tool to agent's `tools:` array AND have MCP installed.
 
 ---
@@ -426,8 +426,8 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — Project Memory v1 (LightRAG-inspired)
 
-- `evolve:project-memory` skill — search prior decisions/patterns/incidents/learnings/solutions before any non-trivial task
-- `evolve:add-memory` skill — write memory entries after significant work
+- `supervibe:project-memory` skill — search prior decisions/patterns/incidents/learnings/solutions before any non-trivial task
+- `supervibe:add-memory` skill — write memory entries after significant work
 - `agents/_meta/memory-curator` — maintains memory hygiene (deduplication, tag normalization, staleness)
 - `confidence-rubrics/memory-entry.yaml` — 5-dim quality bar for memory entries
 - `scripts/build-memory-index.mjs` — generates `.claude/memory/index.json` (tag→entries lookup)
@@ -437,7 +437,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — MCP Discovery & Awareness
 
-- `evolve:mcp-discovery` skill — detects available MCPs, maps to beneficiary agents
+- `supervibe:mcp-discovery` skill — detects available MCPs, maps to beneficiary agents
 - `recommended-mcps:` frontmatter field added to 9 key agents:
   - `context7` → laravel-developer, nextjs-developer, fastapi-developer, react-implementer
   - `figma` → creative-director, ux-ui-designer, prototype-builder
@@ -448,18 +448,18 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 - `rules/no-hardcode.md` — bans magic numbers, hardcoded strings/URLs/IDs/credentials/colors/spacing; requires named constants, env vars, design tokens
 - `rules/no-half-finished.md` — bans NotImplementedError stubs, placeholder returns, empty UI handlers, TODO without ticket, mock-returns-as-real, commented-out code
-- `evolve:explore-alternatives` skill — mandatory ≥2 alternatives comparison for complexity ≥5 decisions
+- `supervibe:explore-alternatives` skill — mandatory ≥2 alternatives comparison for complexity ≥5 decisions
 
 ### Added — Design System Enhancements
 
-- `evolve:interaction-design-patterns` skill — 5 timing tiers (50ms-800ms+), easing rules, 10 WOW-effect catalog, prefers-reduced-motion enforcement
-- `evolve:tokens-export` skill — exports brandbook tokens to Tailwind/MUI/Chakra/CSS-Vars/Style Dictionary; semantic naming preserved; roundtrip verification
+- `supervibe:interaction-design-patterns` skill — 5 timing tiers (50ms-800ms+), easing rules, 10 WOW-effect catalog, prefers-reduced-motion enforcement
+- `supervibe:tokens-export` skill — exports brandbook tokens to Tailwind/MUI/Chakra/CSS-Vars/Style Dictionary; semantic naming preserved; roundtrip verification
 
 ### Added — Stack Agent Wiring
 
-- All stack-developer agents now have `evolve:project-memory` in skills (consult before starting)
+- All stack-developer agents now have `supervibe:project-memory` in skills (consult before starting)
 - All stack-developer agents now invoke `best-practices-researcher` for non-trivial library APIs
-- Procedure step: "Pre-task: invoke `evolve:project-memory` — search prior decisions/patterns/solutions"
+- Procedure step: "Pre-task: invoke `supervibe:project-memory` — search prior decisions/patterns/solutions"
 
 ### Stats (v1.1.0)
 
@@ -489,7 +489,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Known accepted limitations (v1.1)
 
 - **Memory v1** uses tag-search + grep, not real semantic embeddings. v2 with sentence-transformers + ChromaDB planned but requires Python sidecar.
-- **Strengthen-pass not yet on all 46 agents** (currently 7 done). Periodic `evolve:strengthen` will expand others.
+- **Strengthen-pass not yet on all 46 agents** (currently 7 done). Periodic `supervibe:strengthen` will expand others.
 - **`recommended-mcps:` frontmatter is informational** — Claude Code doesn't auto-grant tools from this. Users must add to agent's `tools:` list AND have MCP installed.
 
 ---
@@ -506,8 +506,8 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - Plugin-dev `.claude/settings.json` with 27-entry deny-list
 - knip dead-code linter integrated into `npm run check`
 - 11 confidence rubrics: requirements, plan, agent-delivery, scaffold, framework, prototype, research-output, agent-quality, skill-quality, rule-quality, **brandbook**
-- 2 process skills (Phase 1): `evolve:confidence-scoring`, `evolve:verification`
-- 8 commands: `/evolve` dispatcher, `/evolve-score`, `/evolve-override`, plus 5 phase commands
+- 2 process skills (Phase 1): `supervibe:confidence-scoring`, `supervibe:verification`
+- 8 commands: `/evolve` dispatcher, `/supervibe-score`, `/supervibe-override`, plus 5 phase commands
 - Templates for agent/skill/rule authoring
 - Scripts: `build-registry.mjs` (Windows-safe POSIX paths), `validate-frontmatter.mjs`, `validate-plugin-json.mjs`, `lint-skill-descriptions.mjs`
 - 30 unit tests (rubric-schema, frontmatter, trigger-clarity, registry, override-log-flow, plugin-manifest)
@@ -538,7 +538,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — Phase 5: Discovery & Scaffolding (FULL)
 
-- 4 skills: `evolve:stack-discovery`, `evolve:genesis`, `evolve:prototype`, `evolve:brandbook`
+- 4 skills: `supervibe:stack-discovery`, `supervibe:genesis`, `supervibe:prototype`, `supervibe:brandbook`
 - **6 questionnaires**: 01-stack-foundation, 02-architecture, 03-infra, 04-design, 05-testing, 06-deployment
 - **Full reference stack-pack** `laravel-nextjs-postgres-redis/`:
   - manifest.yaml (32 agents-attach + 16 rules-attach)
@@ -564,7 +564,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
   - security-researcher (CVE / CISA KEV / exploit availability)
   - infra-pattern-researcher (vendor docs version-matched)
   - competitive-design-researcher (with attribution discipline)
-- `evolve:seo-audit` skill (uses best-practices-researcher)
+- `supervibe:seo-audit` skill (uses best-practices-researcher)
 
 ### Added — Phase 8: Polish & v1.0 Release (FULL)
 
@@ -577,8 +577,8 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Strengthen pass (selective)
 
-- `evolve:_core:code-reviewer` — expanded to 244 lines (full persona, decision tree, common workflows, output contract template, blast-radius mental check)
-- `evolve:_meta:evolve-orchestrator` — full decision tree, 161 lines
+- `supervibe:_core:code-reviewer` — expanded to 244 lines (full persona, decision tree, common workflows, output contract template, blast-radius mental check)
+- `supervibe:_meta:evolve-orchestrator` — full decision tree, 161 lines
 - All 5 researcher agents — full procedures with MCP integration paths
 
 ### Stats
@@ -597,7 +597,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Known accepted limitations
 
-- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `evolve-orchestrator` (161). Periodic `evolve:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-evolution loop.
+- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `evolve-orchestrator` (161). Periodic `supervibe:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-evolution loop.
 - Hook scripts: `effectiveness-tracker.mjs` is minimal placeholder. Future versions will add transcript analysis.
 - No git commits in this release session per user instruction; the working-tree is the deliverable.
 

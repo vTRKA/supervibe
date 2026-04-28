@@ -14,17 +14,17 @@ last-verified: 2026-04-28
 
 # Landing Page
 
-Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `evolve:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
+Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `supervibe:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
 
 ## When to invoke
 
 User asks for a landing page: "сделай лендинг", "build a landing", "посадочная для X", "marketing page". The brief usually specifies the audience (B2B / B2C / dev-tool / consumer) and a competitor reference ("в стиле Linear" / "как Stripe").
 
 NOT for:
-- In-product flows (login, dashboard, settings) — that's `evolve:prototype`
-- Brand work without a target page — that's `evolve:brandbook` first
+- In-product flows (login, dashboard, settings) — that's `supervibe:prototype`
+- Brand work without a target page — that's `supervibe:brandbook` first
 
-## Hard constraints (same as `evolve:prototype`)
+## Hard constraints (same as `supervibe:prototype`)
 
 1. **Native only.** No frameworks, no build step, no npm. Pure HTML + CSS + JS.
 2. **Design system is source of truth.** All visuals come through `prototypes/_design-system/tokens.css`.
@@ -38,12 +38,12 @@ Plus landing-specific:
 7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
-1. **Design system check** — same as `evolve:prototype`. Required: `prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
+1. **Design system check** — same as `supervibe:prototype`. Required: `prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
 2. **Brand direction check** — `prototypes/_brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
-3. **Memory check** — `evolve:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
-4. **Competitive reference** — if brief named a competitor, invoke `evolve:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
+3. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
+4. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
 
 ## Decision tree — landing structure
 
@@ -129,9 +129,9 @@ prototypes/landing-<topic>/
 
 ### Stage 4 — Live preview
 
-Same as `evolve:prototype` — `evolve:preview-server --root prototypes/landing-<topic>/`.
+Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/`.
 
-### Stage 5 — Feedback loop (MANDATORY)
+### Stage 5 — Feedback loop (required)
 
 After URL delivered:
 
@@ -173,7 +173,7 @@ When user says "утвердить":
    }
    ```
 2. Update `config.json`: `"approval": "approved"`.
-3. Stop here — handoff to ready-for-development handled by `/evolve-design` Stage 7.
+3. Stop here — handoff to ready-for-development handled by `/supervibe-design` Stage 7.
 
 ## Output contract
 
@@ -196,7 +196,7 @@ Rubric:     prototype
 
 ## Guard rails
 
-Same as `evolve:prototype`, plus:
+Same as `supervibe:prototype`, plus:
 - DO NOT skip SEO meta tags. Even on a draft, scaffolding must be present.
 - DO NOT inline analytics provider code. Just `data-analytics-event` attributes; provider wiring is downstream's job.
 - DO NOT use placeholder Lorem Ipsum past Stage 1. Actual copy from copywriter (or user-provided) must be in by Stage 3.
@@ -221,12 +221,12 @@ Same as `evolve:prototype`, plus:
 
 ## Related
 
-- `evolve:prototype` — sibling for in-product flows (no SEO/analytics concerns)
-- `evolve:brandbook` — produces the design system both consume
-- `evolve:preview-server` — auto-spawns the live URL
-- `evolve:tokens-export` — when approved, exports tokens to whichever framework downstream picks
+- `supervibe:prototype` — sibling for in-product flows (no SEO/analytics concerns)
+- `supervibe:brandbook` — produces the design system both consume
+- `supervibe:preview-server` — auto-spawns the live URL
+- `supervibe:tokens-export` — when approved, exports tokens to whichever framework downstream picks
 - `agents/_design/copywriter` — invoked at Stage 3 if user-provided copy is incomplete
 - `agents/_design/prototype-builder` — implements the HTML/CSS/JS
 - `agents/_design/ui-polish-reviewer` + `accessibility-reviewer` — Stage 5 reviews
 - `agents/_product/seo-specialist` — Stage 5 SEO audit
-- `commands/evolve-design.md` — full orchestrator
+- `commands/supervibe-design.md` — full orchestrator

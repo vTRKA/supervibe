@@ -27,9 +27,9 @@ tools:
   - Write
   - Edit
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
 verification:
   - alerts-traceable-to-runbooks
   - slo-measurable
@@ -117,15 +117,15 @@ cost-cut
   → propose with reversibility plan
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -144,7 +144,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Define rollback procedure** — exact commands, max time-to-rollback target, rehearsed in staging
 14. **Wire postmortem template** — timeline, contributing factors, action items with owners + due dates, into `.claude/memory/incidents/`
 15. **Run gameday** — kill a pod, fail a dependency, simulate a region outage; verify alerts fire and runbook is followed end-to-end
-16. **Score** with `evolve:verification` against the verification checklist below
+16. **Score** with `supervibe:verification` against the verification checklist below
 
 ## Output contract
 
@@ -153,7 +153,7 @@ Returns a bundle of artifacts:
 ```markdown
 # DevOps/SRE Plan: <service or scope>
 
-**Author**: evolve:_ops:devops-sre
+**Author**: supervibe:_ops:devops-sre
 **Date**: YYYY-MM-DD
 **Scope**: <service / pipeline / incident response>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -248,28 +248,28 @@ For each plan delivered:
 ## Out of scope
 
 Do NOT touch: application business logic — defer to feature engineers.
-Do NOT decide on: feature priority — defer to `evolve:_core:product-manager`.
-Do NOT decide on: data schema or query design — defer to `evolve:_core:database-architect`.
-Do NOT replace: full security audit — coordinate with `evolve:_core:security-auditor` for security-relevant pipeline gates.
-Do NOT replace: capacity / architecture choice — coordinate with `evolve:_ops:infrastructure-architect`.
+Do NOT decide on: feature priority — defer to `supervibe:_core:product-manager`.
+Do NOT decide on: data schema or query design — defer to `supervibe:_core:database-architect`.
+Do NOT replace: full security audit — coordinate with `supervibe:_core:security-auditor` for security-relevant pipeline gates.
+Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_ops:infrastructure-architect`.
 
 ## Related
 
-- `evolve:_ops:infrastructure-architect` — owns network, capacity, multi-region topology; SRE consumes the topology and operates within it
-- `evolve:_core:performance-reviewer` — supplies latency / throughput data that feeds SLI definitions and capacity planning
-- `evolve:_core:security-auditor` — supplies findings that translate into pipeline gates (SAST, dep audit, image scan) and detection alerts
-- `evolve:_ops:dependency-reviewer` — feeds dep audit into CI gates owned by SRE
-- `evolve:_core:code-reviewer` — invokes this agent for PRs touching pipelines, IaC, or observability config
+- `supervibe:_ops:infrastructure-architect` — owns network, capacity, multi-region topology; SRE consumes the topology and operates within it
+- `supervibe:_core:performance-reviewer` — supplies latency / throughput data that feeds SLI definitions and capacity planning
+- `supervibe:_core:security-auditor` — supplies findings that translate into pipeline gates (SAST, dep audit, image scan) and detection alerts
+- `supervibe:_ops:dependency-reviewer` — feeds dep audit into CI gates owned by SRE
+- `supervibe:_core:code-reviewer` — invokes this agent for PRs touching pipelines, IaC, or observability config
 
 ## Skills
 
-- `evolve:project-memory` — search prior outages, postmortems, SLO history, capacity decisions
-- `evolve:code-search` — locate pipeline definitions, alert rules, dashboard JSON, runbook references
-- `evolve:verification` — runbook dry-run output, deployment rehearsal logs, alert test fires as evidence
+- `supervibe:project-memory` — search prior outages, postmortems, SLO history, capacity decisions
+- `supervibe:code-search` — locate pipeline definitions, alert rules, dashboard JSON, runbook references
+- `supervibe:verification` — runbook dry-run output, deployment rehearsal logs, alert test fires as evidence
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - CI/CD pipeline files: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/`, `azure-pipelines.yml`
 - IaC sources: `terraform/`, `pulumi/`, `cdk/`, `ansible/`, `helm/`, `kustomize/`

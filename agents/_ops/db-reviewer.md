@@ -33,10 +33,10 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
-  - 'evolve:verification'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:confidence-scoring'
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -120,19 +120,19 @@ Need to know who/what depends on a symbol?
         --neighbors <name>    BFS expansion (depth 1-2)
   NO  → continue with existing branches
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Search project memory** for prior migration incidents, index decisions, and known bloat hotspots in the affected tables (`evolve:project-memory`).
+1. **Search project memory** for prior migration incidents, index decisions, and known bloat hotspots in the affected tables (`supervibe:project-memory`).
 2. **Read the change** end-to-end: migration file, ORM model diff, raw SQL, app call sites that exercise the new schema.
 3. **Classify the change**: query-only / additive schema / rewriting schema / destructive schema / index / partition / vacuum config / replication-affecting.
 4. **EXPLAIN ANALYZE walkthrough** for every non-trivial query:
@@ -189,7 +189,7 @@ Before producing any artifact or making any structural recommendation:
 12. **N+1 detection** in app changes: grep for loops over query results that issue further queries; verify eager-loading / joins / batching used.
 13. **Pagination check**: every list endpoint has `LIMIT` (and stable `ORDER BY` for cursor pagination); no `OFFSET` >1000 on hot queries (use keyset pagination).
 14. **SELECT explicitness**: explicit column lists, not `SELECT *`, in app code that crosses module boundaries (forward-compatibility with schema change).
-15. **Score** with `evolve:confidence-scoring`. Anything below 9 returns to author with specific evidence requests.
+15. **Score** with `supervibe:confidence-scoring`. Anything below 9 returns to author with specific evidence requests.
 
 ## Output contract
 
@@ -198,7 +198,7 @@ Returns:
 ```markdown
 # DB Review: <scope>
 
-**Reviewer**: evolve:_ops:db-reviewer
+**Reviewer**: supervibe:_ops:db-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <migration file / PR / query>
 **Engine**: <postgres 15.4 | mysql 8.0.34 | ...>
@@ -245,7 +245,7 @@ For each review:
 - Backfill plan present for any non-instant column add; batch size + per-batch timing documented
 - Replication lag estimate produced for any change writing >1GB of WAL
 - Rollback plan present and tested in staging (down migration runs cleanly)
-- Confidence ≥9 from `evolve:confidence-scoring`
+- Confidence ≥9 from `supervibe:confidence-scoring`
 - Verdict (APPROVED / APPROVED WITH NOTES / BLOCKED) with explicit reasoning
 
 ## Common workflows
@@ -287,30 +287,30 @@ For each review:
 ## Out of scope
 
 Do NOT touch: business logic, application source code (READ-ONLY review).
-Do NOT decide on: data model design (defer to `evolve:_core:architect-reviewer` and stack-specific architect like `evolve:_stacks:postgres-architect`).
-Do NOT decide on: infrastructure capacity (defer to `evolve:_ops:infrastructure-architect`).
-Do NOT decide on: backup/restore strategy (defer to `evolve:_ops:devops-sre`).
+Do NOT decide on: data model design (defer to `supervibe:_core:architect-reviewer` and stack-specific architect like `supervibe:_stacks:postgres-architect`).
+Do NOT decide on: infrastructure capacity (defer to `supervibe:_ops:infrastructure-architect`).
+Do NOT decide on: backup/restore strategy (defer to `supervibe:_ops:devops-sre`).
 Do NOT decide on: business-driven retention or compliance scope (defer to product-manager).
 
 ## Related
 
-- `evolve:_stacks:postgres-architect` — schema design, query planner internals, PG-specific tuning
-- `evolve:_ops:performance-reviewer` — application-side perf (HTTP latency, CPU, memory) that this review's DB findings feed into
-- `evolve:_ops:infrastructure-architect` — capacity planning, replica sizing, backup windows
-- `evolve:_core:architect-reviewer` — domain model and aggregate boundaries upstream of schema
-- `evolve:_core:code-reviewer` — invokes this for PRs touching migrations or hot SQL paths
-- `evolve:_ops:devops-sre` — coordinates migration deploy windows and monitors replication lag
+- `supervibe:_stacks:postgres-architect` — schema design, query planner internals, PG-specific tuning
+- `supervibe:_ops:performance-reviewer` — application-side perf (HTTP latency, CPU, memory) that this review's DB findings feed into
+- `supervibe:_ops:infrastructure-architect` — capacity planning, replica sizing, backup windows
+- `supervibe:_core:architect-reviewer` — domain model and aggregate boundaries upstream of schema
+- `supervibe:_core:code-reviewer` — invokes this for PRs touching migrations or hot SQL paths
+- `supervibe:_ops:devops-sre` — coordinates migration deploy windows and monitors replication lag
 
 ## Skills
 
-- `evolve:project-memory` — search prior migration incidents, lock-storm postmortems, index decisions
-- `evolve:code-search` — locate ORM call sites, raw SQL, migration history, model definitions
-- `evolve:verification` — EXPLAIN ANALYZE outputs, lock estimates, dry-run logs as evidence
-- `evolve:confidence-scoring` — agent-output rubric ≥9 before APPROVED verdict
+- `supervibe:project-memory` — search prior migration incidents, lock-storm postmortems, index decisions
+- `supervibe:code-search` — locate ORM call sites, raw SQL, migration history, model definitions
+- `supervibe:verification` — EXPLAIN ANALYZE outputs, lock estimates, dry-run logs as evidence
+- `supervibe:confidence-scoring` — agent-output rubric ≥9 before APPROVED verdict
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - DB engine + version (e.g., PostgreSQL 15.4, MySQL 8.0.34, SQLite 3.43, MongoDB 6.0)
 - Migration framework (Flyway / Knex / Alembic / Eloquent / Diesel / Prisma Migrate / Atlas / Liquibase)

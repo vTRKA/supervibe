@@ -20,7 +20,7 @@ BEFORE merging the first commit that gates new behaviour behind a flag. BEFORE e
 
 This skill picks the rollout *shape* (kill-switch, percentage, cohort), defines the *rollback contract*, and locks in a *cleanup deadline*. Without all three, a flag is a long-lived branch in production and accrues debt.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read product spec / PRD: identify the blast radius and the success metric.
 2. Read the flag platform docs (LaunchDarkly, Unleash, Statsig, ConfigCat, or in-house) for the project — capabilities differ.
@@ -57,7 +57,7 @@ Is this a long-lived config switch (not a release gate)?
 7. **Cleanup deadline**: open a tracking issue with a hard date (typically 2-6 weeks post-100%). Owner = author. Deletion PR removes both branches of code and the flag definition.
 8. **Storage**: flags must live in the flag platform or a versioned config artifact, never in environment variables (no audit trail, no per-user targeting, no instant flip).
 9. **Output**: the rollout plan (see Output contract) lives next to the PR description and is referenced from the on-call runbook.
-10. **Score** — invoke `evolve:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
+10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
 
 ## Output contract
 
@@ -94,7 +94,7 @@ Storage backend: <platform / repo path> (NOT env vars)
 
 ## Related
 
-- `evolve:test-strategy` — defines the contract test pinned to the OFF branch.
-- `evolve:incident-response` — consumes the kill-switch + runbook designed here.
-- `evolve:adr` — capture the rollout decision as an architecture decision record.
-- `evolve:audit` — periodic flag-debt sweep.
+- `supervibe:test-strategy` — defines the contract test pinned to the OFF branch.
+- `supervibe:incident-response` — consumes the kill-switch + runbook designed here.
+- `supervibe:adr` — capture the rollout decision as an architecture decision record.
+- `supervibe:audit` — periodic flag-debt sweep.

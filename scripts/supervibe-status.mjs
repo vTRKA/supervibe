@@ -146,7 +146,7 @@ async function main() {
     if (flagged.length === 0) {
       console.log(color(`✓ Agent telemetry: ${allInv.length} invocations, no underperformers`, 'green'));
     } else {
-      console.log(color(`⚠ Agent telemetry: ${flagged.length} underperformers detected (run /evolve-strengthen)`, 'yellow'));
+      console.log(color(`⚠ Agent telemetry: ${flagged.length} underperformers detected (run /supervibe-strengthen)`, 'yellow'));
       for (const f of flagged) {
         console.log(color(`  - ${f.agent_id}: ${f.reason} (${f.value})`, 'dim'));
       }
@@ -154,4 +154,4 @@ async function main() {
   }
 }
 
-main().catch(err => { console.error('evolve-status error:', err); process.exit(1); });
+main().catch(err => { console.error('supervibe-status error:', err); process.exit(1); });

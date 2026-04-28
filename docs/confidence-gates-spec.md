@@ -7,10 +7,10 @@
 ## Why this exists
 
 Pre-spec, gates varied widely:
-- `/evolve-execute-plan` — explicit 10/10 dual gates (Stage A + Stage B)
-- `/evolve-design` — implicit gates via per-stage feedback loops
-- `/evolve-score` — gate at ≥9 with fuzzy override path
-- `/evolve-strengthen` — gate at ≥8.5 average per quantitative metric
+- `/supervibe-execute-plan` — explicit 10/10 dual gates (Stage A + Stage B)
+- `/supervibe-design` — implicit gates via per-stage feedback loops
+- `/supervibe-score` — gate at ≥9 with fuzzy override path
+- `/supervibe-strengthen` — gate at ≥8.5 average per quantitative metric
 - Various skills — `gate-on-exit: true` boolean with no threshold semantics
 
 Result: users + agents couldn't predict gate behavior. This spec unifies the model so every gate has the same semantics, the same override path, the same telemetry.
@@ -25,7 +25,7 @@ Every confidence-gated artifact lands in exactly one of three states:
 |---|---|---|---|
 | `pass` | score ≥ `block-below`+1 (typically ≥10) | Quality target met | Continue without intervention |
 | `warn` | `block-below` ≤ score < `warn-below`+1 (typically 9.0-9.99) | Acceptable but flagged | Continue + log warning to telemetry; user can act |
-| `block` | score < `block-below` (typically <9.0) | Below quality threshold | Halt; require fix OR `/evolve-override` |
+| `block` | score < `block-below` (typically <9.0) | Below quality threshold | Halt; require fix OR `/supervibe-override` |
 
 **Default thresholds** (set in `confidence-rubrics/<artifact>.yaml`):
 ```yaml
@@ -46,7 +46,7 @@ Loose `block-below: 8` allowed only with explicit rationale in rubric file.
 
 When score = `block`, the artifact's owner can override IF:
 
-1. **Justification is captured** as text (≥10 chars per `evolve:_core:quality-gate-reviewer` enforcement).
+1. **Justification is captured** as text (≥10 chars per `supervibe:_core:quality-gate-reviewer` enforcement).
 2. **Logged to `.claude/confidence-log.jsonl`** with structured record:
    ```jsonl
    {
@@ -61,10 +61,10 @@ When score = `block`, the artifact's owner can override IF:
      "agent": "<agent-id-if-applicable>"
    }
    ```
-3. **Override-rate budget enforced**: if override rate >5% over last 100 entries → SessionStart emits warning + recommends `/evolve-audit`.
-4. **Reviewable by `evolve:_core:quality-gate-reviewer`** — it can dispute the override; user has final say.
+3. **Override-rate budget enforced**: if override rate >5% over last 100 entries → SessionStart emits warning + recommends `/supervibe-audit`.
+4. **Reviewable by `supervibe:_core:quality-gate-reviewer`** — it can dispute the override; user has final say.
 
-If override would break this 5%-budget → command stops with: "Override budget exceeded; investigate via `/evolve-audit` first."
+If override would break this 5%-budget → command stops with: "Override budget exceeded; investigate via `/supervibe-audit` first."
 
 ---
 
@@ -100,30 +100,30 @@ Every user-facing command in `commands/` declares which rubric it uses + how it 
 
 ### Two-stage commands (rare, high-stakes)
 
-`/evolve-execute-plan` — Stage A readiness + Stage B completion. Both must `pass` independently. Override possible per stage; logged separately.
+`/supervibe-execute-plan` — Stage A readiness + Stage B completion. Both must `pass` independently. Override possible per stage; logged separately.
 
 ### Single-stage commands (most)
 
 | Command | Rubric | block-below | Auto-fix? |
 |---|---|---|---|
-| `/evolve-brainstorm` | `requirements.yaml` | 9 | yes (add missing sections) |
-| `/evolve-plan` | `plan.yaml` | 9 | yes (split fat tasks) |
-| `/evolve-design` | implicit per stage; final scored against `prototype.yaml` or `brandbook.yaml` | 9 | no (design is human judgment) |
-| `/evolve-genesis` | `scaffold.yaml` | 9 | yes (regenerate missing files) |
-| `/evolve-execute-plan` | `execute-plan.yaml` (Stage A) + per-rubric (Stage B) | 9 | partial (Stage A: yes, Stage B: case-by-case) |
-| `/evolve-deploy` | `execute-plan.yaml` (delegated) | 9 | partial |
-| `/evolve-evaluate` | matches artifact-type rubric | 9 | yes |
-| `/evolve-score` | matches artifact-type rubric | 9 | yes |
-| `/evolve-strengthen` | `agent-quality.yaml` | 9 | no (changes shape every output; user must approve) |
-| `/evolve-audit` | n/a (read-only inspection) | — | — |
-| `/evolve-test` | n/a (test runner) | — | — |
-| `/evolve-debug` | n/a (diagnostic) | — | — |
-| `/evolve-memory-gc` | n/a (utility) | — | — |
-| `/evolve-changelog` | n/a (display) | — | — |
-| `/evolve-update` | n/a (infrastructure) | — | — |
-| `/evolve-override` | `override.yaml` (rationale quality) | n/a (override IS the gate) | n/a |
-| `/evolve-preview` | n/a (server) | — | — |
-| `/evolve-adapt` | propagates per-artifact gates | 9 | yes (per-file diff gate) |
+| `/supervibe-brainstorm` | `requirements.yaml` | 9 | yes (add missing sections) |
+| `/supervibe-plan` | `plan.yaml` | 9 | yes (split fat tasks) |
+| `/supervibe-design` | implicit per stage; final scored against `prototype.yaml` or `brandbook.yaml` | 9 | no (design is human judgment) |
+| `/supervibe-genesis` | `scaffold.yaml` | 9 | yes (regenerate missing files) |
+| `/supervibe-execute-plan` | `execute-plan.yaml` (Stage A) + per-rubric (Stage B) | 9 | partial (Stage A: yes, Stage B: case-by-case) |
+| `/supervibe-deploy` | `execute-plan.yaml` (delegated) | 9 | partial |
+| `/supervibe-evaluate` | matches artifact-type rubric | 9 | yes |
+| `/supervibe-score` | matches artifact-type rubric | 9 | yes |
+| `/supervibe-strengthen` | `agent-quality.yaml` | 9 | no (changes shape every output; user must approve) |
+| `/supervibe-audit` | n/a (read-only inspection) | — | — |
+| `/supervibe-test` | n/a (test runner) | — | — |
+| `/supervibe-debug` | n/a (diagnostic) | — | — |
+| `/supervibe-memory-gc` | n/a (utility) | — | — |
+| `/supervibe-changelog` | n/a (display) | — | — |
+| `/supervibe-update` | n/a (infrastructure) | — | — |
+| `/supervibe-override` | `override.yaml` (rationale quality) | n/a (override IS the gate) | n/a |
+| `/supervibe-preview` | n/a (server) | — | — |
+| `/supervibe-adapt` | propagates per-artifact gates | 9 | yes (per-file diff gate) |
 
 ### Skills
 
@@ -186,17 +186,17 @@ const matches = await preflight({
 ```
 
 **Commands that call pre-flight:**
-- `/evolve-brainstorm` — find similar specs (avoids re-deriving)
-- `/evolve-plan` — find similar plans (adapt vs re-plan)
-- `/evolve-design` — find similar brand directions
-- `/evolve-execute-plan` — find prior executions of similar plan
-- `/evolve-debug` — find prior failures of same agent on same task type
-- `/evolve-strengthen` — find prior strengthen attempts on same agent
-- `/evolve-deploy` — find prior deploys of similar prototype
+- `/supervibe-brainstorm` — find similar specs (avoids re-deriving)
+- `/supervibe-plan` — find similar plans (adapt vs re-plan)
+- `/supervibe-design` — find similar brand directions
+- `/supervibe-execute-plan` — find prior executions of similar plan
+- `/supervibe-debug` — find prior failures of same agent on same task type
+- `/supervibe-strengthen` — find prior strengthen attempts on same agent
+- `/supervibe-deploy` — find prior deploys of similar prototype
 
 **Commands that DON'T call pre-flight:**
-- Pure utility: `/evolve-test`, `/evolve-update`, `/evolve-changelog`, `/evolve-memory-gc`, `/evolve-preview`
-- Read-only inspection: `/evolve-audit`, `/evolve-score --dry-run`
+- Pure utility: `/supervibe-test`, `/supervibe-update`, `/supervibe-changelog`, `/supervibe-memory-gc`, `/supervibe-preview`
+- Read-only inspection: `/supervibe-audit`, `/supervibe-score --dry-run`
 
 This makes memory integration **uniform**: any command that produces a new artifact must first ask "what does the project already know about this?".
 
@@ -206,7 +206,7 @@ This makes memory integration **uniform**: any command that produces a new artif
 
 - **Implicit gates** — every command must declare its gate in this spec.
 - **Silent override** — every override hits `.claude/confidence-log.jsonl`.
-- **Override creep** — 5% budget hard-gated; `/evolve-audit` flags violators.
+- **Override creep** — 5% budget hard-gated; `/supervibe-audit` flags violators.
 - **Vague remediation** — every dimension in every rubric must have an `evidence-required` field that names the specific evidence (file:line / artifact / output) the score depended on.
 - **Inconsistent thresholds** — defaults are 9 / 10 unless rubric has explicit reason to deviate (documented in rubric YAML).
 - **No memory pre-flight** — commands that produce artifacts MUST query memory first; reduces re-derivation.
@@ -230,9 +230,9 @@ Validator `validate-confidence-gates.mjs` (TODO) will enforce this on every comm
 
 - `confidence-rubrics/_schema.json` — rubric file format
 - `confidence-rubrics/*.yaml` — rubric instances (12 currently)
-- `evolve:confidence-scoring` skill — the universal scoring mechanism
+- `supervibe:confidence-scoring` skill — the universal scoring mechanism
 - `scripts/lib/load-rubrics.mjs` — programmatic rubric access
 - `scripts/lib/append-override-log.mjs` — override telemetry writer
 - `.claude/memory/score-log.jsonl` — unified gate telemetry
 - `.claude/confidence-log.jsonl` — override-specific log (subset of score-log)
-- `/evolve-override` — the formal override-with-rationale flow
+- `/supervibe-override` — the formal override-with-rationale flow

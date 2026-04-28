@@ -29,7 +29,7 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 
 ### Prototype phase
 
-1. Build HTML prototype with `evolve:prototype` skill
+1. Build HTML prototype with `supervibe:prototype` skill
 2. Use ONLY brandbook tokens (`prototypes/_brandbook/tokens.css`)
 3. Render all 8 standard states (resting/hover/active/focus/disabled/loading/empty/error)
 4. Get stakeholder approval (creative-director + user)
@@ -84,7 +84,7 @@ Why this is good: 1:1 token reference; brand change = single token swap.
 
 - `prototype.yaml` rubric (Phase 0+1) — `token-discipline` dim
 - `ui-polish-reviewer` agent runs drift check
-- `evolve:prototype` skill Step 7 enforces post-transfer drift check
+- `supervibe:prototype` skill Step 7 enforces post-transfer drift check
 
 ## Related rules
 

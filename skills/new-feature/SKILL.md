@@ -20,7 +20,7 @@ WHEN user says "let's build feature X" and X is non-trivial (estimated complexit
 
 NOT for: bug fixes (use systematic-debugging), refactors (use refactoring-specialist), config-only changes.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read project state (stack, conventions, existing patterns)
 2. Read recent PRDs / specs / plans for context
@@ -30,11 +30,11 @@ NOT for: bug fixes (use systematic-debugging), refactors (use refactoring-specia
 
 ```
 Feature has clear product framing?
-├─ NO → start with evolve:prd (product-manager agent)
+├─ NO → start with supervibe:prd (product-manager agent)
 └─ YES → skip PRD
 
 Feature visual / UI?
-├─ YES → after design phase, evolve:prototype + brandbook check
+├─ YES → after design phase, supervibe:prototype + brandbook check
 └─ NO → straight to plan + execute
 
 Feature backend-heavy?
@@ -44,18 +44,18 @@ Feature backend-heavy?
 
 ## Procedure (orchestration chain)
 
-1. **PRD** (optional): `evolve:prd` if no clear product framing
-2. **Requirements intake**: `evolve:requirements-intake` to set complexity routing
-3. **Brainstorming**: `evolve:brainstorming` if complexity ≥7 (else skip)
-4. **Design (UI features)**: `evolve:brandbook` if no brandbook exists, then `evolve:prototype`
-5. **Plan**: `evolve:writing-plans`
-6. **Worktree**: `evolve:using-git-worktrees` for isolation
-7. **Execute**: `evolve:executing-plans` (or `evolve:subagent-driven-development`)
-8. **Pre-PR**: `evolve:pre-pr-check`
-9. **Review**: `evolve:requesting-code-review` → `code-reviewer` agent → `evolve:receiving-code-review`
+1. **PRD** (optional): `supervibe:prd` if no clear product framing
+2. **Requirements intake**: `supervibe:requirements-intake` to set complexity routing
+3. **Brainstorming**: `supervibe:brainstorming` if complexity ≥7 (else skip)
+4. **Design (UI features)**: `supervibe:brandbook` if no brandbook exists, then `supervibe:prototype`
+5. **Plan**: `supervibe:writing-plans`
+6. **Worktree**: `supervibe:using-git-worktrees` for isolation
+7. **Execute**: `supervibe:executing-plans` (or `supervibe:subagent-driven-development`)
+8. **Pre-PR**: `supervibe:pre-pr-check`
+9. **Review**: `supervibe:requesting-code-review` → `code-reviewer` agent → `supervibe:receiving-code-review`
 10. **Quality gate**: `quality-gate-reviewer` agent
-11. **Finish**: `evolve:finishing-a-development-branch`
-12. **Score** — `evolve:confidence-scoring` agent-output for entire feature; ≥9 required to mark done
+11. **Finish**: `supervibe:finishing-a-development-branch`
+12. **Score** — `supervibe:confidence-scoring` agent-output for entire feature; ≥9 required to mark done
 
 ## Output contract
 
@@ -63,7 +63,7 @@ Returns:
 - Feature delivered (commits / PR / merged code)
 - Per-stage confidence scores
 - Final aggregate score
-- Effectiveness signals for `evolve:evaluate` (Phase 6)
+- Effectiveness signals for `supervibe:evaluate` (Phase 6)
 
 ## Guard rails
 

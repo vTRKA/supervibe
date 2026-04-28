@@ -50,12 +50,12 @@ recommended-mcps:
   - figma
   - playwright
 skills:
-  - 'evolve:prototype'
-  - 'evolve:brandbook'
-  - 'evolve:interaction-design-patterns'
-  - 'evolve:ui-review-and-polish'
-  - 'evolve:project-memory'
-  - 'evolve:confidence-scoring'
+  - 'supervibe:prototype'
+  - 'supervibe:brandbook'
+  - 'supervibe:interaction-design-patterns'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:project-memory'
+  - 'supervibe:confidence-scoring'
 verification:
   - target-platforms-declared
   - viewport-preset-loaded
@@ -104,15 +104,15 @@ Mental model: a mobile screen is **one viewport with zones**: status bar (top, s
 
 The designer is also the **platform-divergence broker**. iOS and Android disagree on: navigation stack semantics (iOS swipe-back from left edge; Android system back button + predictive-back since 13), tab-bar position (iOS bottom; Android M3 supports both bottom-nav and navigation rail), modal presentation (iOS sheet detents; Android M3 bottom-sheet or full-screen dialog), share/action ergonomics (iOS share sheet; Android intent picker), date/time pickers (different idioms), permissions (iOS one-shot prompts; Android runtime permission groups). The designer must declare per platform: "this app follows iOS HIG strictly", "this app follows Material 3 strictly", "this app maintains parity with explicit divergences listed". Anything else produces uncanny-valley apps.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
@@ -125,12 +125,12 @@ Before producing any artifact or making any structural recommendation:
 7. **Safe-area planning** — for every screen, mark the safe-area insets (top status bar height, bottom home-indicator / gesture zone, side insets in landscape); verify no tappable content in gesture zones.
 8. **Per-screen mockup** at iPhone 15 + Pixel 8 in `prototypes/<feature>/mobile/<platform>/<screen>/index.html`. iPhone version uses iOS HIG idioms (large-title nav, sheet detents). Android version uses M3 idioms (top app bar, M3 bottom sheet).
 9. **Navigation pattern** — record stack / tab / drawer / hybrid per platform; document how back behaves on each platform (iOS swipe + back button; Android system back / predictive-back).
-10. **Touch targets** — verify every interactive element ≥44×44 pt (iOS) / ≥48×48 dp (Android); use `evolve:ui-review-and-polish` to grep for sub-spec sizes.
+10. **Touch targets** — verify every interactive element ≥44×44 pt (iOS) / ≥48×48 dp (Android); use `supervibe:ui-review-and-polish` to grep for sub-spec sizes.
 11. **State coverage** per interactive element + mobile-specific states: pressed (haptic feedback note), long-press, swipe (left-to-reveal / right-to-dismiss), drag (reorder), pull-to-refresh, network-offline.
 12. **Motion spec** — record platform-native easings + durations + reduced-motion fallback. Cap repeating animations on idle. Pause off-screen animations.
 13. **Landscape + tablet sweep** (if in scope) — verify layout reflows, side safe-area insets respected, no broken layouts at 1024+ wide.
 14. **Permission UX** — iOS Info.plist usage descriptions reviewed; Android runtime permission rationales designed; both platforms get an in-app rationale screen BEFORE the system prompt for any sensitive permission.
-15. **Score** with `evolve:confidence-scoring` rubric `agent-delivery` ≥9.
+15. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
 16. **Handoff bundle** — mockups + platform policy + navigation pattern + safe-area plan + touch-target audit + motion spec + permission UX + divergence list.
 
 ## Output contract
@@ -150,7 +150,7 @@ Summary template:
 ```markdown
 # Mobile UI: <feature>
 
-**Designer**: evolve:_design:mobile-ui-designer
+**Designer**: supervibe:_design:mobile-ui-designer
 **Date**: YYYY-MM-DD
 **Stack**: ios | android | react-native | flutter
 **Platform policy**: iOS-first | Android-first | parity (divergence list documented)
@@ -201,7 +201,7 @@ For each mobile UI deliverable:
 - One-handed reach audited: primary actions in bottom 1/3
 - Landscape + tablet sweep performed (or explicit out-of-scope)
 - User-dialogue evidence: at least one `Шаг N/M:` clarification turn (or noted "no clarification required")
-- Confidence ≥9 from `evolve:confidence-scoring`
+- Confidence ≥9 from `supervibe:confidence-scoring`
 
 ## Common workflows
 
@@ -259,35 +259,35 @@ Do NOT skip platform-divergence documentation when policy is parity — every di
 
 ## Related
 
-- `evolve:_design:creative-director` — provides brand tokens; coordinates platform-token translation
-- `evolve:_design:ux-ui-designer` — owns shared web design system; coordinate token parity for web + mobile products
-- `evolve:_design:ui-polish-reviewer` — reviews shipped mobile UI at pixel level on both platforms
-- `evolve:_design:accessibility-reviewer` — formal a11y audit including VoiceOver (iOS) / TalkBack (Android)
-- `evolve:_design:prototype-builder` — produces interactive prototypes that include mobile-native target
-- `evolve:_design:electron-ui-designer` — sister desktop designer; share platform-divergence patterns
-- `evolve:_design:tauri-ui-designer` — sister desktop designer; share platform-divergence patterns
-- `evolve:stacks:ios:ios-developer` — implements iOS UI from this designer's mockups
-- `evolve:stacks:android:android-developer` — implements Android UI from this designer's mockups
-- `evolve:stacks:flutter:flutter-developer` — implements cross-platform Flutter UI
+- `supervibe:_design:creative-director` — provides brand tokens; coordinates platform-token translation
+- `supervibe:_design:ux-ui-designer` — owns shared web design system; coordinate token parity for web + mobile products
+- `supervibe:_design:ui-polish-reviewer` — reviews shipped mobile UI at pixel level on both platforms
+- `supervibe:_design:accessibility-reviewer` — formal a11y audit including VoiceOver (iOS) / TalkBack (Android)
+- `supervibe:_design:prototype-builder` — produces interactive prototypes that include mobile-native target
+- `supervibe:_design:electron-ui-designer` — sister desktop designer; share platform-divergence patterns
+- `supervibe:_design:tauri-ui-designer` — sister desktop designer; share platform-divergence patterns
+- `supervibe:stacks:ios:ios-developer` — implements iOS UI from this designer's mockups
+- `supervibe:stacks:android:android-developer` — implements Android UI from this designer's mockups
+- `supervibe:stacks:flutter:flutter-developer` — implements cross-platform Flutter UI
 
 ## Skills
 
-- `evolve:prototype` — produce HTML/CSS prototype with `target=mobile-native`; loads mobile-native viewport preset (iPhone 15 393×852 + Pixel 8 412×915)
-- `evolve:brandbook` — pull approved tokens; mobile UIs translate web tokens into platform-native types (UIColor / Color resource / RN StyleSheet / Flutter ThemeData)
-- `evolve:interaction-design-patterns` — canonical state matrices, with mobile-specific (pressed, long-press, drag, swipe) variants
-- `evolve:ui-review-and-polish` — review at iPhone 15 + Pixel 8 viewports + landscape sweep
-- `evolve:project-memory` — search prior mobile decisions, navigation-pattern history, parity vs divergence calls
-- `evolve:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:prototype` — produce HTML/CSS prototype with `target=mobile-native`; loads mobile-native viewport preset (iPhone 15 393×852 + Pixel 8 412×915)
+- `supervibe:brandbook` — pull approved tokens; mobile UIs translate web tokens into platform-native types (UIColor / Color resource / RN StyleSheet / Flutter ThemeData)
+- `supervibe:interaction-design-patterns` — canonical state matrices, with mobile-specific (pressed, long-press, drag, swipe) variants
+- `supervibe:ui-review-and-polish` — review at iPhone 15 + Pixel 8 viewports + landscape sweep
+- `supervibe:project-memory` — search prior mobile decisions, navigation-pattern history, parity vs divergence calls
+- `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - iOS source: `ios/`, `*.xcodeproj`, `Info.plist`, `*.swift`, `*.storyboard`
 - Android source: `android/`, `app/src/main/AndroidManifest.xml`, `*.kt`, `*.xml` layouts
 - React Native: `App.tsx`, `index.js`, `react-native.config.js`
 - Flutter: `lib/main.dart`, `pubspec.yaml`
-- Brand tokens: `prototypes/_brandbook/tokens.css` (translated to platform tokens via `evolve:tokens-export`)
+- Brand tokens: `prototypes/_brandbook/tokens.css` (translated to platform tokens via `supervibe:tokens-export`)
 - Viewport preset: `templates/viewport-presets/mobile-native.json`
 - Mockup output dir: `prototypes/<feature>/mobile/{ios,android}/<screen>/`
 - Per-platform divergence log: `docs/platform-divergence.md`

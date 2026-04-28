@@ -29,7 +29,7 @@ NOT for:
 - Implementing popup / content-script logic — that is `chrome-extension-developer`.
 - Brand / visual direction — that is `creative-director` + `ux-ui-designer`.
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read the project's `manifest.json` (or `manifest.json.tpl` if generated). If absent → STOP and tell the user to run `chrome-extension-architect` first.
 2. Read `package.json` for current scripts + devDependencies (which bundler is wired, if any).
@@ -56,7 +56,7 @@ When changing bundler on an existing project, write the migration ADR FIRST. Doc
    # Vite + CRXJS path:
    npm i -D vite @crxjs/vite-plugin @types/chrome typescript
    ```
-   Other paths analogous — install per chosen bundler's docs (verify versions via `evolve:mcp-discovery` → context7 if available).
+   Other paths analogous — install per chosen bundler's docs (verify versions via `supervibe:mcp-discovery` → context7 if available).
 
 3. **Wire `vite.config.ts`** (CRXJS path):
    ```ts
@@ -147,6 +147,6 @@ After running:
 
 - `agents/stacks/chrome-extension/chrome-extension-architect.md` — owns the manifest and permissions strategy
 - `agents/stacks/chrome-extension/chrome-extension-developer.md` — implements features on top of this build pipeline
-- `evolve:mcp-discovery` — fetch current docs for chosen bundler
+- `supervibe:mcp-discovery` — fetch current docs for chosen bundler
 - `confidence-rubrics/scaffold.yaml` — the scoring rubric for this output
 - `stack-packs/chrome-extension-mv3/manifest.yaml` — full project scaffold including this skill

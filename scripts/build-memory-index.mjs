@@ -12,7 +12,7 @@ async function main() {
   console.log(`Memory index built (SQLite FTS5): ${result.entriesIndexed} entries indexed`);
 
   if (result.entriesIndexed === 0) {
-    console.log('Memory directory is empty. Add entries via evolve:add-memory skill.');
+    console.log('Memory directory is empty. Add entries via supervibe:add-memory skill.');
   }
 }
 

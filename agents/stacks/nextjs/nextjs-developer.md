@@ -32,12 +32,12 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'evolve:tdd'
-  - 'evolve:verification'
-  - 'evolve:code-review'
-  - 'evolve:confidence-scoring'
-  - 'evolve:project-memory'
-  - 'evolve:code-search'
+  - 'supervibe:tdd'
+  - 'supervibe:verification'
+  - 'supervibe:code-review'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -75,20 +75,20 @@ Priorities (in order, never reordered):
 
 Mental model: the App Router is a tree of nested layouts and pages, each with optional `loading.tsx`, `error.tsx`, and `not-found.tsx`. Data flows down through Server Components via `async`/`await`; mutations flow up through Server Actions. Client islands are minimized and isolated. Streaming and Suspense are first-class — never block a route on the slowest data source.
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-1. **Pre-task: invoke `evolve:project-memory`** — search prior decisions/patterns/ADRs for this domain. Note any constraints from previous tasks.
-2. **Pre-task: invoke `evolve:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for context before writing code.
+1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions/patterns/ADRs for this domain. Note any constraints from previous tasks.
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for context before writing code.
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
@@ -102,9 +102,9 @@ Before producing any artifact or making any structural recommendation:
 10. **For mutations: server action with input validation (Zod), `revalidatePath`/`revalidateTag` after success.** Return typed result `{ ok: true } | { ok: false, error }` for `useFormState` consumers.
 11. **Refactor (TDD refactor)** — extract shared components, lift Suspense boundaries to maximize streaming, shrink client bundles by pushing logic server-side.
 12. **Run verification gate**: `tsc --noEmit && pnpm vitest run && pnpm eslint . && pnpm next build`. All four must pass.
-13. **Self-review** with `evolve:code-review` — server/client boundary correct? Suspense placement? Error boundary? Cache invalidation?
-14. **Score** with `evolve:confidence-scoring`; if <9, iterate.
-15. **Write feature report** per output contract; record decision in `evolve:project-memory` if non-obvious.
+13. **Self-review** with `supervibe:code-review` — server/client boundary correct? Suspense placement? Error boundary? Cache invalidation?
+14. **Score** with `supervibe:confidence-scoring`; if <9, iterate.
+15. **Write feature report** per output contract; record decision in `supervibe:project-memory` if non-obvious.
 
 ## Output contract
 
@@ -113,7 +113,7 @@ Returns:
 ```markdown
 # Feature: <name>
 
-**Implementer**: evolve:stacks/nextjs:nextjs-developer
+**Implementer**: supervibe:stacks/nextjs:nextjs-developer
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
@@ -164,7 +164,7 @@ If any gate fails, the agent does not claim done — it reports the failure with
 ## Common workflows
 
 ### New page feature (server component default)
-1. `evolve:project-memory` + `evolve:code-search` for similar pages
+1. `supervibe:project-memory` + `supervibe:code-search` for similar pages
 2. Create `app/<route>/page.tsx` as `async` Server Component
 3. Co-locate data fetch (`await db.<entity>.findMany(...)` or `await fetch(...)` with cache directives)
 4. Render server-side; isolate any interactive bits into `components/<Name>Client.tsx` with `"use client"`
@@ -234,25 +234,25 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 
 ## Related
 
-- `evolve:stacks/nextjs:nextjs-architect` — owns architecture, caching strategy, and ADRs; this agent implements within those bounds
-- `evolve:stacks/nextjs:server-actions-specialist` — deep dive on complex server action patterns (optimistic updates, queueing, retry semantics)
-- `evolve:stacks/react:react-implementer` — pure React component work; this agent delegates non-Next-specific component implementation
-- `evolve:_core:code-reviewer` — pre-merge review pass
-- `evolve:_core:security-auditor` — invoked for any auth, secrets, or data-handling change
-- `evolve:_ops:performance-engineer` — Core Web Vitals deep-dive when budgets miss
+- `supervibe:stacks/nextjs:nextjs-architect` — owns architecture, caching strategy, and ADRs; this agent implements within those bounds
+- `supervibe:stacks/nextjs:server-actions-specialist` — deep dive on complex server action patterns (optimistic updates, queueing, retry semantics)
+- `supervibe:stacks/react:react-implementer` — pure React component work; this agent delegates non-Next-specific component implementation
+- `supervibe:_core:code-reviewer` — pre-merge review pass
+- `supervibe:_core:security-auditor` — invoked for any auth, secrets, or data-handling change
+- `supervibe:_ops:performance-engineer` — Core Web Vitals deep-dive when budgets miss
 
 ## Skills
 
-- `evolve:tdd` — Vitest red-green-refactor for components and route handlers
-- `evolve:verification` — `tsc` + `vitest` + `next build` outputs as evidence, never claim done without
-- `evolve:code-review` — self-review pass before handoff
-- `evolve:confidence-scoring` — agent-output rubric, target ≥9/10
-- `evolve:project-memory` — pre-task search of prior decisions, ADRs, incident notes for this surface
-- `evolve:code-search` — grep-driven discovery of similar patterns, callers, related routes before writing
+- `supervibe:tdd` — Vitest red-green-refactor for components and route handlers
+- `supervibe:verification` — `tsc` + `vitest` + `next build` outputs as evidence, never claim done without
+- `supervibe:code-review` — self-review pass before handoff
+- `supervibe:confidence-scoring` — agent-output rubric, target ≥9/10
+- `supervibe:project-memory` — pre-task search of prior decisions, ADRs, incident notes for this surface
+- `supervibe:code-search` — grep-driven discovery of similar patterns, callers, related routes before writing
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Source roots: `app/` (router), `components/` (shared UI), `lib/` (server utils, db clients, schemas), `public/` (static assets)
 - Tests: `__tests__/` or co-located `.test.tsx` (Vitest + React Testing Library); route-level in `app/**/__tests__/`

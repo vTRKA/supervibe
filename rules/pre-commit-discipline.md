@@ -100,7 +100,7 @@ Why this is good: full pipeline, enforced from `npm install` (via `prepare`).
 
 ## Enforcement
 
-- `evolve:genesis` (Phase 5) generates all 6 config files automatically
+- `supervibe:genesis` (Phase 5) generates all 6 config files automatically
 - `scaffold-bundle.yaml` rubric `pre-commit-active` dim (weight 2) requires this
 - Code review checks for `.husky/` directory existence in PR's project structure
 

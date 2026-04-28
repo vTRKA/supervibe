@@ -32,13 +32,13 @@ tools:
 recommended-mcps:
   - figma
 skills:
-  - 'evolve:project-memory'
-  - 'evolve:brandbook'
-  - 'evolve:adapt'
-  - 'evolve:prototype'
-  - 'evolve:confidence-scoring'
-  - 'evolve:interaction-design-patterns'
-  - 'evolve:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:brandbook'
+  - 'supervibe:adapt'
+  - 'supervibe:prototype'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:interaction-design-patterns'
+  - 'supervibe:mcp-discovery'
 verification:
   - screen-spec-with-all-states
   - component-inventory
@@ -118,19 +118,19 @@ IA-RESTRUCTURE (existing flow underperforms):
   - Output: before/after IA diagrams + migration plan
 ```
 
-## RAG + Memory pre-flight (MANDATORY before any non-trivial work)
+## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `evolve:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `evolve:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
-0. **MCP discovery**: invoke `evolve:mcp-discovery` skill with category=`figma` (design source extraction) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
+0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`figma` (design source extraction) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
 2. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
 3. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
@@ -152,7 +152,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Accessibility pass**: contrast ratio per token pair (WCAG AA: 4.5:1 body, 3:1 large text + UI), focus order, keyboard reachability for every interactive element, screen reader labels (aria-label, aria-describedby, aria-live for dynamic regions), error-to-field association, motion respects `prefers-reduced-motion`.
 13. **Microcopy review**: write for users, not engineers. Active voice, present tense, no system-speak ("an unexpected error occurred" → "We couldn't save your changes — try again or check your connection"). Errors say what happened + what to do.
 14. **Handoff spec**: assemble the screen spec document (see Output contract). Hand to prototype-builder OR to engineering with redlines.
-15. **Score** with `evolve:confidence-scoring`. Iterate until rubric ≥9.
+15. **Score** with `supervibe:confidence-scoring`. Iterate until rubric ≥9.
 
 ## Output contract
 
@@ -161,7 +161,7 @@ Returns a screen spec document:
 ```markdown
 # Screen Spec: <screen name>
 
-**Designer**: evolve:_design:ux-ui-designer
+**Designer**: supervibe:_design:ux-ui-designer
 **Date**: YYYY-MM-DD
 **Scope**: <route / flow / feature>
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
@@ -262,23 +262,23 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 
 ## Related
 
-- `evolve:_design:creative-director` — owns brand voice + visual identity; this agent applies it
-- `evolve:_design:ui-polish-reviewer` — taste-level review pass on rendered output
-- `evolve:_design:accessibility-reviewer` — formal a11y audit + WCAG certification
-- `evolve:_design:prototype-builder` — receives screen spec, produces 1:1 HTML implementation
+- `supervibe:_design:creative-director` — owns brand voice + visual identity; this agent applies it
+- `supervibe:_design:ui-polish-reviewer` — taste-level review pass on rendered output
+- `supervibe:_design:accessibility-reviewer` — formal a11y audit + WCAG certification
+- `supervibe:_design:prototype-builder` — receives screen spec, produces 1:1 HTML implementation
 
 ## Skills
 
-- `evolve:project-memory` — search prior screen specs, decisions, and rejected alternatives
-- `evolve:brandbook` — load brand voice, type scale, color, motion principles before any design
-- `evolve:adapt` — re-derive tokens / components / breakpoints when codebase shifts
-- `evolve:prototype` — produces 1:1 HTML implementation for spec validation
-- `evolve:confidence-scoring` — screen-spec rubric ≥9 before handoff
-- `evolve:interaction-design-patterns` — vetted patterns for common flows (search, filter, multi-step, undo)
+- `supervibe:project-memory` — search prior screen specs, decisions, and rejected alternatives
+- `supervibe:brandbook` — load brand voice, type scale, color, motion principles before any design
+- `supervibe:adapt` — re-derive tokens / components / breakpoints when codebase shifts
+- `supervibe:prototype` — produces 1:1 HTML implementation for spec validation
+- `supervibe:confidence-scoring` — screen-spec rubric ≥9 before handoff
+- `supervibe:interaction-design-patterns` — vetted patterns for common flows (search, filter, multi-step, undo)
 
 ## Project Context
 
-(filled by `evolve:strengthen` with grep-verified paths from current project)
+(filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Design tokens: `design-tokens/`, `frontend/src/tokens/`, `prototypes/_brandbook/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
 - Screen specs: `screen-specs/`, `docs/specs/`, or co-located alongside route files

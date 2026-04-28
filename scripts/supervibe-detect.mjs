@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// CLI for the /evolve auto-router. Runs the deterministic state detector
+// CLI for the /supervibe auto-router. Runs the deterministic state detector
 // and prints a human-readable banner + JSON-structured report so the AI
 // can both display findings and machine-read the proposed next command.
 //
-// Usage from /evolve slash command:
-//   node $CLAUDE_PLUGIN_ROOT/scripts/evolve-detect.mjs
+// Usage from /supervibe slash command:
+//   node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-detect.mjs
 //
 // Flags:
 //   --json            print only the JSON, no banner (for scripting)
 //   --project=<path>  override project root (defaults to cwd)
 
-import { detectNextPhase } from './lib/evolve-state-detector.mjs';
+import { detectNextPhase } from './lib/supervibe-state-detector.mjs';
 
 const args = process.argv.slice(2);
 const jsonOnly = args.includes('--json');

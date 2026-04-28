@@ -17,10 +17,10 @@ last-verified: 2026-04-27
 ## When to invoke
 
 - After adding/modifying any rule
-- After `evolve:sync-rules` completes
-- Periodic (every 90 days as part of `evolve:audit`)
+- After `supervibe:sync-rules` completes
+- Periodic (every 90 days as part of `supervibe:audit`)
 
-## Step 0 — Read source of truth (MANDATORY)
+## Step 0 — Read source of truth (required)
 
 1. Read all `.claude/rules/*.md`
 2. Read MEMORY.md for prior incidents
@@ -52,4 +52,4 @@ Returns:
 ## Related
 
 - `agents/_meta/rules-curator` — primary user
-- `evolve:audit` — periodic invocation
+- `supervibe:audit` — periodic invocation

@@ -2,11 +2,11 @@
 # Evolve universal installer — macOS + Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
 #
 # Override defaults:
-#   EVOLVE_REF=v1.7.0           # tag, branch, or commit
-#   EVOLVE_REPO=git@github.com:my-fork/evolve.git
+#   SUPERVIBE_REF=v1.7.0           # tag, branch, or commit
+#   SUPERVIBE_REPO=git@github.com:my-fork/evolve.git
 #
 # What it does (idempotent — safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
@@ -20,9 +20,9 @@
 
 set -euo pipefail
 
-REPO_URL="${EVOLVE_REPO:-https://github.com/vTRKA/evolve-agent.git}"
-REF="${EVOLVE_REF:-main}"
-PLUGIN_NAME="evolve"
+REPO_URL="${SUPERVIBE_REPO:-https://github.com/vTRKA/supervibe.git}"
+REF="${SUPERVIBE_REF:-main}"
+PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="evolve-marketplace"
 LOG_DIR="${TMPDIR:-/tmp}/evolve-install.$$"
 mkdir -p "$LOG_DIR"
@@ -164,14 +164,14 @@ register_claude() {
   EVOLVE_SJ="$settings_json" \
   EVOLVE_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
   EVOLVE_MARKETPLACE="$MARKETPLACE_NAME" \
-  EVOLVE_REPO_SLUG="${REPO_URL#https://github.com/}" \
+  SUPERVIBE_REPO_SLUG="${REPO_URL#https://github.com/}" \
   EVOLVE_INSTALL_PATH="$TARGET" \
   EVOLVE_VERSION="$INSTALLED_VERSION" \
   EVOLVE_COMMIT_SHA="$commit_sha" \
   node -e '
     const fs = require("fs");
     const now = new Date().toISOString();
-    const repoSlug = (process.env.EVOLVE_REPO_SLUG || "").replace(/\.git$/, "");
+    const repoSlug = (process.env.SUPERVIBE_REPO_SLUG || "").replace(/\.git$/, "");
 
     // 1. installed_plugins.json
     const pjPath = process.env.EVOLVE_PJ;
@@ -237,7 +237,7 @@ register_codex() {
 register_gemini() {
   mkdir -p "$GEMINI_DIR"
   local gemini_md="$GEMINI_DIR/GEMINI.md"
-  local marker="<!-- evolve-plugin-include: do-not-edit -->"
+  local marker="<!-- supervibe-plugin-include: do-not-edit -->"
   local include_line="@$TARGET/GEMINI.md"
 
   # Idempotent: replace existing marker block; otherwise append
@@ -278,12 +278,12 @@ ${C_GREEN}=================================================================${C_R
     1. Restart your AI CLI so it picks up the plugin
     2. Open any project — you should see [evolve] banner lines on session start
     3. /evolve-genesis (in Claude Code) for first-time project scaffolding
-    4. npm run evolve:status (from $TARGET) for index health any time
+    4. npm run supervibe:status (from $TARGET) for index health any time
 
-  Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/evolve-agent/main/install.sh | bash
-  Manual:      cd "$TARGET" && npm run evolve:upgrade
+  Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
+  Manual:      cd "$TARGET" && npm run supervibe:upgrade
   Uninstall:   rm -rf "$TARGET" + remove "$PLUGIN_NAME@$MARKETPLACE_NAME" from
                ~/.claude/plugins/installed_plugins.json
 
-  Docs: https://github.com/vTRKA/evolve-agent#readme
+  Docs: https://github.com/vTRKA/supervibe#readme
 EOF

@@ -3,10 +3,10 @@ description: >-
   Run plugin's test + validator suite with structured output. Wraps `npm run
   check` with per-validator status, regression detection vs baseline, and quick
   re-run modes for failing subset. Triggers: 'run tests', 'прогони тесты',
-  'check plugin', '/evolve-test'.
+  'check plugin', '/supervibe-test'.
 ---
 
-# /evolve-test
+# /supervibe-test
 
 User-facing entry-point for the plugin's full quality-assurance suite. Wraps `npm run check` (253+ tests + 8 validators) with structured output, per-validator status, and the ability to re-run only failing subsets.
 
@@ -14,37 +14,37 @@ This command exists because `npm run check` is hidden in `package.json` and not 
 
 ## Invocation forms
 
-### `/evolve-test` — full suite
+### `/supervibe-test` — full suite
 
 Runs everything: `npm run check`. Reports per-validator + per-test-file status.
 
-### `/evolve-test --validators` — validators only (fast)
+### `/supervibe-test --validators` — validators only (fast)
 
 Runs only the 8 validators (no node:test). Used for quick frontmatter / footer / discipline checks.
 
-### `/evolve-test --tests` — tests only
+### `/supervibe-test --tests` — tests only
 
 Runs `npm test` (skips validators). Used when user just edited test files and wants quick feedback.
 
-### `/evolve-test --watch` — watch mode
+### `/supervibe-test --watch` — watch mode
 
 Runs `npm run test:watch`. Stays running, re-runs tests on file change.
 
-### `/evolve-test --failing` — re-run only previously-failing items
+### `/supervibe-test --failing` — re-run only previously-failing items
 
 Reads `.claude/memory/.test-results.json` (last run state). Re-runs only what was failing. Useful in tight iteration loops.
 
-### `/evolve-test --validator <name>` — single validator
+### `/supervibe-test --validator <name>` — single validator
 
 Examples:
-- `/evolve-test --validator design-skills` → runs only `validate-design-skills.mjs`
-- `/evolve-test --validator question-discipline` → runs only `validate-question-discipline.mjs`
+- `/supervibe-test --validator design-skills` → runs only `validate-design-skills.mjs`
+- `/supervibe-test --validator question-discipline` → runs only `validate-question-discipline.mjs`
 
-### `/evolve-test --file <path>` — single test file
+### `/supervibe-test --file <path>` — single test file
 
-Example: `/evolve-test --file tests/feedback-channel.test.mjs`
+Example: `/supervibe-test --file tests/feedback-channel.test.mjs`
 
-### `/evolve-test --regression` — diff against baseline
+### `/supervibe-test --regression` — diff against baseline
 
 Compares current `npm run check` output against `.claude/memory/.test-baseline.json` (saved by previous green run). Reports:
 - New failures
@@ -77,7 +77,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 
 2. **Pre-flight:**
    - Check `package.json` `scripts.check` exists. If missing → print actionable error + exit.
-   - If `--regression`: check `.claude/memory/.test-baseline.json` exists. If not, suggest running full `/evolve-test` to establish baseline first.
+   - If `--regression`: check `.claude/memory/.test-baseline.json` exists. If not, suggest running full `/supervibe-test` to establish baseline first.
 
 3. **Run the appropriate command:**
    ```bash
@@ -142,12 +142,12 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
    Duration: 17.5s
    Baseline NOT updated (failures present).
 
-   Re-run only failing items: /evolve-test --failing
+   Re-run only failing items: /supervibe-test --failing
    ```
 
 7. **Suggest follow-ups:**
    - If validators fail → point at the specific source file with file:line.
-   - If tests fail → suggest `/evolve-debug` if it's an agent test, otherwise read test output.
+   - If tests fail → suggest `/supervibe-debug` if it's an agent test, otherwise read test output.
    - If `--regression` shows new failures → suggest `git stash` + re-run to confirm caused by user's edit.
 
 ## Error recovery
@@ -155,7 +155,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 | Failure | Recovery action |
 |---|---|
 | `npm run check` doesn't exist | Print which scripts exist; suggest re-running the installer |
-| Tests fail | Per-test error excerpt + suggested next step (`/evolve-debug`, read source, etc.) |
+| Tests fail | Per-test error excerpt + suggested next step (`/supervibe-debug`, read source, etc.) |
 | Validator fails | Parse the validator's stdout for file:line; print actionable hint |
 | `knip` reports unused | List unused files/exports; suggest `knip` config edit OR removal |
 | Watch mode dies | Auto-restart once; second crash → exit with error |
@@ -171,14 +171,14 @@ See "Format output" above. Key invariants:
 
 - For your project's own tests (not the plugin's) — use your stack's test runner directly.
 - During an active agent dispatch — agent uses validators internally as needed.
-- For a single source-file lint (e.g., just one agent's frontmatter) — use `/evolve-score agent-quality <path>` for richer feedback.
+- For a single source-file lint (e.g., just one agent's frontmatter) — use `/supervibe-score agent-quality <path>` for richer feedback.
 
 ## Related
 
 - `npm run check` — the underlying script
 - `package.json` `scripts:` — source of truth for what `check` composes
-- `/evolve-score` — per-artifact scoring (complementary)
-- `/evolve-execute-plan` — runs `/evolve-test` as part of Stage B completion audit
+- `/supervibe-score` — per-artifact scoring (complementary)
+- `/supervibe-execute-plan` — runs `/supervibe-test` as part of Stage B completion audit
 - `.claude/memory/.test-baseline.json` — regression baseline (auto-managed)
 - `.claude/memory/.test-results.json` — last-run state (auto-managed)
 - `confidence-rubrics/*.yaml` — what `validate:*` checks against

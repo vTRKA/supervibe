@@ -2,12 +2,12 @@
 name: use-codegraph-before-refactor
 id: use-codegraph-before-refactor
 title: Use code graph to assess blast radius before refactor
-description: "Before any refactor / rename / extract / move / inline / delete that touches a public symbol, run evolve:code-search graph queries to enumerate the blast radius and cite caller evidence. RU: BEFORE rename / move / extract / delete на public symbol — обязателен --callers первым для оценки blast radius. Trigger phrases: 'переименуй', 'rename', 'refactor'."
+description: "Before any refactor / rename / extract / move / inline / delete that touches a public symbol, run supervibe:code-search graph queries to enumerate the blast radius and cite caller evidence. RU: BEFORE rename / move / extract / delete на public symbol — обязателен --callers первым для оценки blast radius. Trigger phrases: 'переименуй', 'rename', 'refactor'."
 applies-to: [refactor, rename, extract-method, move-file, inline, delete-public-symbol, rename-symbol]
 applies-when: ["refactor", "rename", "extract-method", "move-file", "inline", "delete-public-symbol", "rename-symbol"]
 mandatory: true
 severity: critical
-trigger-skills: [evolve:code-search]
+trigger-skills: [supervibe:code-search]
 created: 2026-04-27
 last-verified: 2026-04-27
 last-fired: null
@@ -21,7 +21,7 @@ related-rules: [anti-hallucination, no-dead-code, confidence-discipline]
 
 ## What
 
-For ANY change that modifies the public surface of code (rename, extract, move, inline, delete) — first run `evolve:code-search` graph queries to enumerate the blast radius.
+For ANY change that modifies the public surface of code (rename, extract, move, inline, delete) — first run `supervibe:code-search` graph queries to enumerate the blast radius.
 
 ## Why
 
@@ -59,6 +59,6 @@ Override: if graph query genuinely doesn't apply (e.g., adding new endpoint, no 
 
 ## Related
 
-- skill: `evolve:code-search`
+- skill: `supervibe:code-search`
 - agent: `refactoring-specialist`, `code-reviewer`, `architect-reviewer`
 - rubric: `agent-delivery` evidence dimension
