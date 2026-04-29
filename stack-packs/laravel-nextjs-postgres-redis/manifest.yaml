@@ -45,6 +45,8 @@ agents-attach:
   - supervibe:_design:ui-polish-reviewer
   - supervibe:_design:accessibility-reviewer
   - supervibe:_design:copywriter
+  - supervibe:_design:presentation-director
+  - supervibe:_design:presentation-deck-builder
   - supervibe:_design:prototype-builder
   # Stack-specific
   - supervibe:stacks/laravel:laravel-architect
@@ -57,12 +59,49 @@ agents-attach:
   - supervibe:stacks/postgres:postgres-architect
   - supervibe:stacks/redis:redis-architect
 
+agent-profiles:
+  minimal:
+    description: "Small default install: routing, research, review, quality gate, and stack implementation agents."
+    agents:
+      - supervibe:_meta:supervibe-orchestrator
+      - supervibe:_core:repo-researcher
+      - supervibe:_core:code-reviewer
+      - supervibe:_core:quality-gate-reviewer
+      - supervibe:_core:root-cause-debugger
+      - supervibe:_core:refactoring-specialist
+      - supervibe:stacks/laravel:laravel-architect
+      - supervibe:stacks/laravel:laravel-developer
+      - supervibe:stacks/nextjs:nextjs-architect
+      - supervibe:stacks/nextjs:nextjs-developer
+      - supervibe:stacks/postgres:postgres-architect
+      - supervibe:stacks/redis:redis-architect
+  product-design:
+    description: "Minimal plus product and design pipeline agents."
+    extends: minimal
+    agents:
+      - supervibe:_product:product-manager
+      - supervibe:_product:systems-analyst
+      - supervibe:_product:qa-test-engineer
+      - supervibe:_design:creative-director
+      - supervibe:_design:ux-ui-designer
+      - supervibe:_design:prototype-builder
+      - supervibe:_design:presentation-director
+      - supervibe:_design:presentation-deck-builder
+      - supervibe:_design:copywriter
+      - supervibe:_design:ui-polish-reviewer
+      - supervibe:_design:accessibility-reviewer
+  full-stack:
+    description: "All agents listed in agents-attach. Use for larger teams or complex projects."
+    agents: all
+
 rules-attach:
   - best-practices-2026
   - git-discipline
   - commit-discipline
   - no-dead-code
   - confidence-discipline
+  - design-system-governance
+  - agent-install-profiles
   - anti-hallucination
   - rule-maintenance
   - pre-commit-discipline

@@ -30,7 +30,7 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 ### Prototype phase
 
 1. Build HTML prototype with `supervibe:prototype` skill
-2. Use ONLY brandbook tokens (`prototypes/_brandbook/tokens.css`)
+2. Use ONLY approved design-system tokens (`prototypes/_design-system/tokens.css`)
 3. Render all 8 standard states (resting/hover/active/focus/disabled/loading/empty/error)
 4. Get stakeholder approval (creative-director + user)
 
@@ -59,7 +59,7 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 ### Bad
 
 ```css
-/* prototype CSS uses brandbook tokens */
+/* prototype CSS uses design-system tokens */
 .button { background: var(--brand-primary); padding: var(--space-3); }
 
 /* production code uses arbitrary values */

@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
-  "version": "1.7.0",
-  "description": "AI coding agent framework: 73 specialist agents · 10-language code graph + multilingual semantic RAG · project memory · 12 confidence rubrics · live preview-server.",
+  "version": "1.8.0",
+  "description": "AI coding agent framework: 81 specialist agents · 10-language code graph + multilingual semantic RAG · project memory · 14 confidence rubrics · live preview-server.",
   "author": {
     "name": "vTRKA",
     "url": "https://github.com/vTRKA"
@@ -23,7 +23,7 @@
   ],
   "interface": {
     "displayName": "Supervibe",
-    "shortDescription": "73 specialist agents + code graph + semantic RAG + project memory + confidence gates.",
+    "shortDescription": "81 specialist agents + code graph + semantic RAG + project memory + confidence gates.",
     "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes a code graph (10 languages) for refactor blast-radius checks, multilingual semantic RAG over your codebase, persistent project memory (decisions / patterns / incidents / learnings / solutions), and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
     "developerName": "vTRKA",
     "category": "Developer Tools",

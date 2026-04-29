@@ -42,6 +42,8 @@ agents-attach:
   - supervibe:_design:ui-polish-reviewer
   - supervibe:_design:accessibility-reviewer
   - supervibe:_design:copywriter
+  - supervibe:_design:presentation-director
+  - supervibe:_design:presentation-deck-builder
   - supervibe:_design:prototype-builder
   # Stack-specific
   - supervibe:stacks/chrome-extension:chrome-extension-architect

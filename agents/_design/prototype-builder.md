@@ -14,6 +14,7 @@ capabilities:
   - motion-prototyping
   - drift-checking
   - keyboard-interactivity
+  - media-capability-aware-output
 stacks:
   - any
 requires-stacks: []
@@ -60,6 +61,7 @@ anti-patterns:
   - npm-import-in-prototype
   - silent-extra-viewport
   - building-before-system-approved
+  - promising-video-without-capability-check
   - asking-multiple-questions-at-once
   - advancing-without-feedback-prompt
   - marking-approved-without-marker
@@ -131,6 +133,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
 12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
+12a. **Media capability gate** — read `config.json.mediaCapabilities`; if missing, run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` and write the result to config. If `video=false`, do not create or promise rendered video files. Use CSS/WAAPI motion in the preview, static storyboards, SVG/Lottie specs from existing assets, or poster frames instead.
 13. **Token-discipline grep (CI gate)**:
     - `grep -rE '#[0-9a-fA-F]{3,8}|rgb\(|rgba\(' prototypes/<feature>/styles/pages.css` → 0 hits
     - `grep -rE '\\b[0-9]+px\\b' prototypes/<feature>/styles/pages.css` → audit each (1px borders OK, layout px NOT OK)

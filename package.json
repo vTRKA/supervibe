@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -17,6 +17,9 @@
     "supervibe:upgrade-check": "node scripts/supervibe-upgrade-check.mjs",
     "supervibe:detect": "node scripts/supervibe-detect.mjs",
     "supervibe:preview": "node scripts/preview-server.mjs",
+    "media:capabilities": "node scripts/detect-media-capabilities.mjs",
+    "feedback:status": "node scripts/feedback-status.mjs --list",
+    "presentation:build": "node scripts/build-presentation.mjs",
     "memory:watch": "node scripts/watch-memory.mjs",
     "registry:build": "node scripts/build-registry.mjs",
     "validate:frontmatter": "node scripts/validate-frontmatter.mjs",
@@ -25,6 +28,8 @@
     "validate:agent-footers": "node scripts/validate-agent-output-contract.mjs",
     "validate:design-skills": "node scripts/validate-design-skills.mjs",
     "validate:question-discipline": "node scripts/validate-question-discipline.mjs",
+    "validate:spec-artifacts": "node scripts/validate-spec-artifacts.mjs --all",
+    "validate:plan-artifacts": "node scripts/validate-plan-artifacts.mjs --all",
     "migrate:prototype-configs": "node scripts/migrate-prototype-configs.mjs",
     "memory:preflight": "node scripts/lib/memory-preflight.mjs",
     "measure:tokens": "node scripts/measure-token-footprint.mjs",
@@ -35,7 +40,7 @@
     "audit:evidence": "node scripts/audit-evidence-citations.mjs",
     "rollout:rag-procedure": "node scripts/apply-rag-memory-procedure.mjs",
     "lint:dead-code": "knip --no-progress",
-    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -51,6 +56,7 @@
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "chokidar": "^5.0.0",
+    "pptxgenjs": "^4.0.1",
     "web-tree-sitter": "^0.26.8"
   }
 }

@@ -29,6 +29,15 @@ const HOT_RELOAD_SCRIPT = `
 </script>
 `;
 
+export function derivePreviewArtifactSlug(filePath) {
+  const norm = filePath.split(sep).join('/');
+  const prototype = norm.match(/\/prototypes\/([^/]+)/);
+  if (prototype) return prototype[1];
+  const presentation = norm.match(/\/presentations\/([^/]+)/);
+  if (presentation) return `presentation:${presentation[1]}`;
+  return 'unknown';
+}
+
 /**
  * Start a static server.
  */
@@ -44,12 +53,6 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
 
   const feedbackQueuePath = join(projectRoot, '.claude', 'memory', 'feedback-queue.jsonl');
   const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath }) : null;
-
-  function derivePrototypeSlug(filePath) {
-    const norm = filePath.split(sep).join('/');
-    const m = norm.match(/\/prototypes\/([^/]+)/);
-    return m ? m[1] : 'unknown';
-  }
 
   const httpServer = createHttpServer(async (req, res) => {
     touch();
@@ -121,7 +124,7 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
           : content + HOT_RELOAD_SCRIPT;
         if (feedback) {
           injected = await injectOverlay(injected, {
-            prototypeSlug: derivePrototypeSlug(path),
+            prototypeSlug: derivePreviewArtifactSlug(path),
           });
         }
         const buf = Buffer.from(injected, 'utf8');

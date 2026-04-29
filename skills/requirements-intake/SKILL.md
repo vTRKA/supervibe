@@ -54,10 +54,11 @@ Complexity signals:
 4. **Ask one question at a time** — multiple-choice when possible
 5. **Build requirements-spec** with: objective, scope (in/out), acceptance criteria, edge cases, stakeholders, complexity score
 6. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
-7. **If <9** → continue questioning to fill gaps; loop until ≥9
-8. **Compute complexity** using signals table above
-9. **Decide handoff**: brainstorming / writing-plans / executing-plans
-10. **Announce decision** to user with reasoning
+7. **Machine-validate intake artifact** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
+8. **If <9** → continue questioning to fill gaps; loop until ≥9
+9. **Compute complexity** using signals table above
+10. **Decide handoff**: brainstorming / writing-plans / executing-plans
+11. **Announce decision** to user with reasoning
 
 ## Output contract
 
@@ -79,6 +80,7 @@ Returns:
 ## Verification
 
 - Spec file exists with complexity score
+- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
 - Score ≥9 recorded
 - Next-skill recommendation is one of: brainstorming, writing-plans, executing-plans
 
@@ -219,6 +221,7 @@ Required sections:
 - Success criteria: ≥3 measurable items
 - Open questions: ≥3
 - Confidence rubric: `requirements`; score ≥ 9
+- Machine validator: `validate-spec-artifacts.mjs --file <spec>` exits 0
 
 ## Related
 

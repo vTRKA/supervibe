@@ -2,9 +2,9 @@
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 79 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
-**v1.7.0** · MIT · Windows / macOS / Linux
+**v1.8.0** · MIT · Windows / macOS / Linux
 
 ---
 
@@ -12,12 +12,12 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 79 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 79 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| 81 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
 | Confidence engine | Twelve rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
-| 21 discipline rules | `use-codegraph-before-refactor`, `single-question-discipline`, `anti-hallucination`, `commit-attribution`, `no-half-finished`, and more |
+| 23 discipline rules | `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
@@ -82,7 +82,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v1.7.0 initialized for this project
+[supervibe] welcome — plugin v1.8.0 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -197,10 +197,11 @@ Slash commands (run inside an AI CLI session):
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates: Stage A readiness audit BEFORE + Stage B completion audit AFTER. Supports `--dry-run` (audit only) and `--resume` (continue partially-executed plan) |
 | `/supervibe-debug [<invocation-id\|agent-id>]` | Debug a failed invocation: replays task with root-cause analysis, classifies blocker (stale-context\|missing-skill\|wrong-approach\|environment\|prompt-bloat\|ambiguous-task), proposes fix |
-| `/supervibe-test [--validators\|--tests\|--watch\|--failing\|--regression]` | Run plugin's full QA suite (258 tests + 8 validators) with structured per-validator output, regression detection vs baseline, re-run only failing items |
+| `/supervibe-test [--validators\|--tests\|--watch\|--failing\|--regression]` | Run plugin's full QA suite (320 tests + 10 validators) with structured per-validator output, regression detection vs baseline, re-run only failing items |
 | `/supervibe-deploy [<slug>\|--plan\|--rollback]` | Promote approved prototype handoff bundle to production stack via stack-developer. 6-invariant pre-deploy gate + plan generation + rollback procedure |
 | `/supervibe-memory-gc [<category>\|--dry-run\|--restore\|--stats]` | Archive (never delete) old/superseded memory entries per retention policy. Reversible via `--restore`. Reads frontmatter `superseded-by:` for explicit replacement chains |
 | `/supervibe-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview |
+| `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
 | `/supervibe-genesis` | First-time scaffold of `.claude/` for your stack |
 | `/supervibe-audit` | Health check across agents, rules, memory |
 | `/supervibe-strengthen [agent_id]` | Strengthen a weak agent. Without arguments — auto-trigger from telemetry |
@@ -222,9 +223,10 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run code:index` | Full reindex |
 | `npm run code:search -- --query "..."` | Semantic search |
 | `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
+| `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Optional watcher daemon |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
-| `npm run check` | All 253 tests plus manifest, frontmatter, design-skill, question-discipline, agent-footer, knip, and trigger-clarity validation |
+| `npm run check` | All 320 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, and trigger-clarity validation |
 
 ---
 

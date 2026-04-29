@@ -16,27 +16,36 @@ Set up Supervibe for a fresh project (or one without `.claude/agents/`).
 
 3. **Confirm intent.** Show the user the detected fingerprint plus 1-2 clarifying questions (e.g. "is this monorepo or single-app?", "which environments does this deploy to?"). Wait for answers.
 
-4. **Match a stack-pack.** Invoke the `supervibe:genesis` skill with the fingerprint. The skill:
+4. **Choose agent install profile.** Before writing `.claude/agents/`, present profile choices and wait for explicit selection:
+   - `minimal` — core router, repo research, code review, quality gate, stack developer(s). Fastest install; recommended default.
+   - `product-design` — minimal + product manager, systems analyst, UX/UI designer, prototype builder, presentation agents, copywriter, accessibility/polish reviewers.
+   - `full-stack` — product-design + ops/security/data/performance specialists for larger teams.
+   - `custom` — show grouped agent list and let the user add/remove groups.
+
+   Do not silently install every agent in the stack-pack. The stack-pack is a catalog; the selected profile is the install plan.
+
+5. **Match a stack-pack.** Invoke the `supervibe:genesis` skill with the fingerprint + selected profile. The skill:
    - Looks for an exact pack in `$CLAUDE_PLUGIN_ROOT/stack-packs/` (e.g. `laravel-nextjs-postgres-redis`).
    - If no exact match — composes from `stack-packs/_atomic/` per its decision tree, scoring the composition against `confidence-rubrics/scaffold.yaml`.
 
-5. **Apply scaffold (with diff gate).** Before any write, present a file-by-file diff:
-   - `.claude/agents/` — copies of stack-relevant agents
+6. **Apply scaffold (with diff gate).** Before any write, present a file-by-file diff:
+   - `.claude/agents/` — copies of profile-selected agents only
    - `.claude/rules/` — project-applicable rules
    - `.claude/memory/` — empty category dirs (`decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/`)
    - `CLAUDE.md` — generated from `templates/claude-md/_base.md.tpl` filled with the fingerprint
    - `.claude/settings.json` — permissions + enabledPlugins entry mirroring the global one
    Wait for user "yes" before writing.
 
-6. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
+7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
-7. **Verify.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
+8. **Verify.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
 
 ## Output contract
 
 ```
 Detected stack:    <fingerprint summary>
 Pack chosen:       <pack name>  (composition score: X.X/10)
+Install profile:   <minimal | product-design | full-stack | custom>
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
 Next:              open the project, restart your AI CLI, watch for [evolve] welcome banner

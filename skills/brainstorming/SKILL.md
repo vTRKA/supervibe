@@ -56,9 +56,10 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 6. **Present design** in sections scaled to complexity (architecture, components, data flow, error handling, testing). Get approval per section.
 7. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, sections, accepted limitations, out-of-scope list.
 8. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check. Fix inline.
-9. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
-10. **User review of written spec** — explicit approval required.
-11. **Handoff** to `supervibe:writing-plans`.
+9. **Machine-validate spec** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
+10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
+11. **User review of written spec** — explicit approval required.
+12. **Handoff** to `supervibe:writing-plans`.
 
 ## Output contract
 
@@ -85,6 +86,7 @@ Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md  (for complexity 3+
 
 This skill's correct application is verifiable by:
 - A spec file exists at the documented path
+- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
 - Spec frontmatter contains date and topic
 - User approval is quoted in the conversation immediately before transition to writing-plans
 - Confidence-scoring result ≥9 is recorded
@@ -227,6 +229,7 @@ Required sections (in order):
 - Kill criteria has at least 1 quantitative threshold
 - Open questions is non-empty
 - Confidence rubric: `requirements` or custom; score ≥ 9
+- Machine validator: `validate-spec-artifacts.mjs --file <spec>` exits 0
 
 ## Related
 

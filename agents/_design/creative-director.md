@@ -25,6 +25,8 @@ capabilities:
   - graphics-medium-decision
   - component-library-decision
   - variant-generation
+  - media-capability-detection
+  - reference-research
 stacks:
   - any
 requires-stacks: []
@@ -40,6 +42,7 @@ tools:
   - mcp__mcp-server-figma__download_figma_images
   - mcp__mcp-server-firecrawl__firecrawl_scrape
   - mcp__mcp-server-firecrawl__firecrawl_search
+  - WebSearch
 recommended-mcps:
   - figma
   - firecrawl
@@ -73,6 +76,8 @@ anti-patterns:
   - hidden-inconsistencies-between-alternatives
   - library-choice-without-measured-need
   - ignoring-reduced-motion
+  - promising-video-without-capability-check
+  - designing-without-reference-scan
   - asking-multiple-questions-at-once
   - random-regen-instead-of-tradeoff-alternatives
 version: 1.2
@@ -118,8 +123,10 @@ Before producing any artifact or making any structural recommendation:
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".
 2. **Read PRD / vision / audience docs** — a direction without an audience is decoration; capture primary persona, primary moment, primary emotion target.
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason.
-4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch and explicitly note `MCP unavailable; competitor scan limited to manually fetched URLs`.
-5. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
+4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch/WebSearch and explicitly note `MCP unavailable; competitor scan limited to manually fetched/searchable URLs`.
+5. **Reference scan** — use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Never copy a brand wholesale; extract patterns.
+5a. **Media capability check** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
+6. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.
 7. **Define emotional anchors** per primary user moment (first-launch, daily-use, error-state, success-moment, payment, etc.) — what should the user feel in their body during each.
 8. **Build mood-board with per-image rationale** — collect 30-60 images across 3 candidate directions; for each image record: source, what to extract (light? composition? type? color? texture? mood?), what to ignore; cull to 15-20 strongest with narrative threading the selections.

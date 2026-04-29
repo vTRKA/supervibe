@@ -29,8 +29,13 @@ tools:
   - Glob
   - Write
   - Edit
+  - WebFetch
+  - WebSearch
+  - mcp__mcp-server-firecrawl__firecrawl_search
+  - mcp__mcp-server-firecrawl__firecrawl_scrape
 recommended-mcps:
   - figma
+  - firecrawl
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:brandbook'
@@ -58,6 +63,8 @@ anti-patterns:
   - decoration-without-purpose
   - duplicate-components
   - jargon-instead-of-microcopy
+  - no-reference-scan
+  - video-assumption-without-capability-check
 version: 1.1
 last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
@@ -130,10 +137,11 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`figma` (design source extraction) — use returned tool name in subsequent steps. Fall back to WebFetch / manual asset import if no suitable MCP available.
+0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
 2. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
-3. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
+3. **Reference scan**: collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
+4. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
 4. **Map information architecture**: list every piece of information the screen owes the user; rank primary / secondary / tertiary by JTBD priority, not by what the API returns.
 5. **Wireframe** at low fidelity: blocks-and-arrows. Validate hierarchy reads correctly without color, type weight, or imagery.
 6. **Component inventory**: list every UI element required; mark EXISTS (link to component) or NEW (with justification — why no existing component fits). Reuse before create.

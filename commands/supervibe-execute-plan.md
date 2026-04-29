@@ -43,7 +43,7 @@ This command does NOT trust a plan blindly. Both stages must score **10/10** OR 
 
 ### Stage A — Readiness audit (BEFORE execution)
 
-Score the plan against 10 readiness dimensions. Each is binary (1 if pass, 0 if fail). Sum = readiness score.
+First run `node scripts/validate-plan-artifacts.mjs --file <plan>`. If it fails, Stage A cannot exceed 8/10 until every machine-detected gap is fixed. Then score the plan against 10 readiness dimensions. Each is binary (1 if pass, 0 if fail). Sum = readiness score.
 
 | # | Dimension | Pass criteria |
 |---|---|---|
@@ -132,6 +132,7 @@ Plan: docs/plans/<file>.md
 [10/10] Quality gates per phase           ✗ (Phase 5 lacks explicit pass criteria)
 
 Readiness score: 8/10
+Machine validator: FAIL (`validate-plan-artifacts`)
 
 Failures:
   • [3] line 451: 'similar to Task 4' — placeholder forbidden

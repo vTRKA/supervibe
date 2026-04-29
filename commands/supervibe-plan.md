@@ -44,9 +44,11 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
 
 5. **Save the plan.** Output goes to `docs/plans/YYYY-MM-DD-<topic-slug>.md`.
 
-6. **Score against `plan.yaml` rubric.** Gate ≥9. <9 → iterate.
+6. **Machine-validate the plan.** Run `node scripts/validate-plan-artifacts.mjs --file <plan>`. Any failure blocks execution handoff.
 
-7. **Hand off with execution choice.** Print:
+7. **Score against `plan.yaml` rubric.** Gate ≥9. <9 → iterate.
+
+8. **Hand off with execution choice.** Print:
    ```
    Plan saved to <path>. Two execution paths:
 
@@ -68,6 +70,7 @@ Phases:      <count>
 Tasks:       <count>  (parallelizable batches: <count>)
 Critical path: <N> tasks
 Score:       <N>/10  Rubric: plan
+Validator:   validate-plan-artifacts PASS
 
 Next:        choose execution path (subagent-driven | inline)
 ```

@@ -38,9 +38,11 @@ Treat the most recent user message as the topic.
 
 4. **Save the spec.** The skill emits `docs/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
-5. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.claude/confidence-log.jsonl`.
+5. **Machine-validate the spec.** Run `node scripts/validate-spec-artifacts.mjs --file <spec>`. Any failure blocks handoff.
 
-6. **Hand off.** Print the spec path + the recommended next step:
+6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.claude/confidence-log.jsonl`.
+
+7. **Hand off.** Print the spec path + the recommended next step:
    - Complexity 1-2 → just implement directly
    - Complexity 3-6 → `/supervibe-plan <spec-path>`
    - Complexity 7+ → `/supervibe-plan <spec-path>` plus parallelization analysis
@@ -54,6 +56,7 @@ Spec:      docs/specs/YYYY-MM-DD-<slug>-design.md
 Lines:     <count>
 Approaches: <count>  (chosen: <name>)
 Score:     <N>/10  Rubric: requirements
+Validator: validate-spec-artifacts PASS
 
 Next:      /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
 ```

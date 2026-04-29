@@ -26,6 +26,7 @@ WHEN building UI that involves:
 - Modal/dialog enter/exit
 - Hero/landing animations and graphics treatments
 - "WOW moment" interactions (signature differentiators)
+- Video, GIF, Lottie, storyboard, or animated hero decisions
 
 NOT for: pure static layout, content-only screens.
 
@@ -35,6 +36,7 @@ NOT for: pure static layout, content-only screens.
 2. Read `prototypes/_brandbook/components/` for component-specific transitions
 3. Check `prefers-reduced-motion` policy (mandatory respect)
 4. Check target browser matrix — modern features (View Transitions API, scroll-driven animations) need fallbacks for Safari < 17 / Firefox
+5. Run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` before promising video/GIF output. If video is unavailable, select CSS/WAAPI, SVG/Lottie spec, storyboard frames, or static poster alternatives.
 
 ## Decision tree — pattern selection
 
@@ -406,6 +408,19 @@ document.querySelectorAll('.below-fold').forEach(el => io.observe(el));
 ```
 
 ## Graphics + visual approaches
+
+### Video capability gate
+
+Rendered video is optional, not assumed. Before choosing video/WebM/GIF as a deliverable:
+
+1. Run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json`.
+2. If `video=true`, record encoding plan, poster frame, file budget, autoplay policy, captions if content-bearing, and reduced-motion fallback.
+3. If `video=false`, choose one of:
+   - live CSS/WAAPI motion inside the prototype
+   - static storyboard frames in `assets/storyboard/`
+   - SVG or Lottie spec when the source asset already exists
+   - poster frame plus motion notes for later production
+4. Do not block prototype delivery waiting for video tooling unless the user explicitly chose video as the core deliverable.
 
 ### CSS gradients
 

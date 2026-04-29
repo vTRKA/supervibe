@@ -112,7 +112,8 @@ async function loadStackPacks() {
       packs[data.id || entry.name] = {
         manifest: toRepoRelative(manifestPath),
         stacks: Object.values(data.matches?.required || {}).flat(),
-        architectures: data.matches?.optional?.architecture || []
+        architectures: data.matches?.optional?.architecture || [],
+        'agent-profiles': Object.keys(data['agent-profiles'] || {})
       };
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;

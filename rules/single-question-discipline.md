@@ -21,6 +21,8 @@ related-rules:
 ## What
 Any agent that engages the user in clarification, requirements gathering, design dialogue, or branching decisions MUST present **one question at a time**, formatted as markdown with a `Шаг N/M:` (or `Step N/M:`) progress indicator. Choices must be a list. The agent must wait for an explicit user reply before asking the next question.
 
+Questions must be easy to answer. Prefer 2-4 choices, put the recommended/default choice first, and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
+
 ## Why
 Multi-question dumps overwhelm users, cause partial answers, and produce ambiguous state. Designers learned this first — the design-pipeline rollout in commit `2a16afc` proved one-at-a-time dialogues raise approval rates and reduce rework. The discipline must extend to product, ops, stack, and meta agents — not only design.
 
@@ -48,6 +50,8 @@ The agent's `## Anti-patterns` section MUST list:
 - `asking-multiple-questions-at-once`
 - `silent-progress` — advancing without reflecting `Шаг N/M:` so the user knows depth.
 - `dumping-options-without-rationale` — listing 6 choices with no one-line trade-off.
+- `too-many-options` — presenting a menu so large the user must design the system themselves; split into follow-up questions.
+- `hidden-default` — asking a question without naming the recommended/default path.
 
 ## When NOT to apply
 - Pure-output agents that don't ask the user anything (e.g., `code-reviewer` produces a verdict and exits — no questions).

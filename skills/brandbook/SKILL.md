@@ -16,6 +16,8 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 Materialize a brand into an **explicit, approved, machine-readable design system** at `prototypes/_design-system/`. The system is the ONLY source of visual truth — every prototype, every component, every animation downstream consumes it. The user approves the system FIRST, before any pixel of UI is built.
 
+The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.
+
 This skill replaces "vibes-based" brand work with a contract: tokens are explicit values in versioned files, components are named with documented states + variants, motion has named keyframes / easings / durations, voice has DO/DON'T examples. Adding a hue or radius or font weight that isn't in the system requires a system extension dialogue, not a one-off.
 
 ## When to invoke
@@ -42,6 +44,9 @@ NOT for:
 
 1. Read `prototypes/_brandbook/direction.md` if exists (creative-director's moodboard + intent doc).
 2. Read `prototypes/_design-system/` if exists — discover what's already approved vs what needs work.
+   - If `manifest.json.status === "approved"`, enter **reuse/extension mode** by default.
+   - In reuse/extension mode, print a short system summary and ask only about the missing token/component/asset capability needed for the current brief.
+   - Full rebuild is allowed only when the user says rebrand, major reset, or explicitly approves replacing the system.
 3. Read `supervibe:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
 4. Read user's brief / requirements doc if pointed at one.
 
@@ -66,6 +71,8 @@ For `target: mixed`, load `web.md` as primary and surface-specific deltas from t
 What's the user asking for?
 ├─ "I have a brand, materialize it as a system"
 │   → tokens + components + motion + voice (full pass, ~8 sections, 1-2 hour dialogue)
+├─ "Make another mockup/prototype in this project"
+│   → reuse approved system; add an extension only if the system lacks a required token/component
 ├─ "I want to explore brand directions"
 │   → defer to creative-director agent first; come back here when direction approved
 ├─ "Just tokens, I have components covered"
@@ -105,6 +112,11 @@ After user answers each: write to `prototypes/_design-system/tokens.css`:
 
 Plus accessibility check per pair (WCAG AA contrast ≥4.5:1 for body, ≥3:1 for UI components). Show the user any pair that fails.
 
+Minimum token coverage:
+- color ramps: primary, secondary, accent, neutral, success, warning, danger, info, surface, overlay
+- semantic aliases: background, foreground, muted, border, ring, focus, link, selection, chart-1..chart-8
+- theme modes: light, dark, high-contrast if target requires it
+
 ### Section 2 — Typography intent
 
 Similar dialogue: display family, body family, mono family, weight strategy (variable axis vs static), language coverage (Cyrillic? CJK? RTL?), fallback chain, license. Output to `tokens.css`:
@@ -129,6 +141,13 @@ Base unit (4 / 8 px), scale logic (geometric / arithmetic / hybrid), radius tier
 }
 ```
 
+Minimum token coverage:
+- spacing: `--space-0` through `--space-32`, plus layout aliases (`--layout-gutter`, `--layout-section`, `--layout-sidebar`)
+- sizing: controls, avatars, icons, hit targets, max content widths
+- radius: none/sm/md/lg/xl/pill plus component aliases
+- elevation: shadow and border treatments for flat, raised, floating, overlay
+- z-index: base, sticky, dropdown, modal, toast, feedback-overlay
+
 ### Section 4 — Motion (interactive in interaction-design-patterns)
 
 Timing tiers, easing curves, named keyframes for common animations. Output to `motion.css`:
@@ -149,6 +168,8 @@ Timing tiers, easing curves, named keyframes for common animations. Output to `m
 ```
 
 Reference `supervibe:interaction-design-patterns` for the full menu of approaches. The system declares which timings + easings ARE the brand's vocabulary; prototypes don't author new ones.
+
+Before adding video or animated media, run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json`. If `video=false`, document non-video alternatives in the motion section: live CSS/WAAPI prototype, storyboard frames, static poster, SVG/Lottie spec if an existing asset is available. Do not promise rendered video without this capability.
 
 ### Section 5 — Voice (copy)
 
@@ -179,6 +200,17 @@ Define the components every UI needs. ONE component per dialogue round. For each
 
 Starter set (templates pre-shipped at `templates/design-system/components/<name>.md.tpl`):
 button, input, select, textarea, checkbox, radio, toggle, card, modal, toast, tabs, nav, badge.
+
+Expanded catalog to consider before declaring the system "complete enough":
+- Navigation: breadcrumb, sidebar, topbar, command palette, dropdown menu, context menu, pagination, stepper
+- Disclosure: accordion, popover, tooltip, drawer, sheet, hover card
+- Data display: data table, metric card, chart shell, timeline, activity feed, empty state, skeleton, progress, status indicator
+- Forms: slider, date picker, file upload, search box, combobox, segmented control, validation summary
+- Feedback: alert, banner, inline error, confirmation dialog, loading overlay
+- Media: avatar, image frame, video/poster block, gallery, before/after compare
+- Layout: split pane, resizable panel, dashboard grid, page shell, settings shell
+
+If the project picks a component library, map which items are inherited from the library and which are Supervibe-owned overrides. Do not leave "library default" components visually ungoverned.
 
 This list is a **starting point — open, not closed.** Add or remove components as the project requires (data table, tree, kbd, popover, tooltip, accordion, drawer, command palette, splitter, etc.). If user picks a component library in Section 6.5, the spec list becomes the set of components for which our spec is authoritative; the rest are inherited from the library.
 
@@ -238,6 +270,17 @@ Final output: `prototypes/_design-system/manifest.json`:
 ### Approval markers per section
 
 After each section dialogue completes, write a per-section approval to `prototypes/_design-system/.approvals/<section>.json` so partial work survives session restarts and the next session knows what's left.
+
+### Extension mode (fast path for later mockups)
+
+When an approved system already exists:
+
+1. Read current system files and manifest.
+2. Identify the smallest missing unit: token, component variant, motion recipe, copy pattern, asset treatment, or target-specific override.
+3. Write `prototypes/_design-system/extensions/<yyyy-mm-dd>-<slug>.md`.
+4. Ask one approval question for that extension only.
+5. On approval, update the relevant token/component file and append the extension id to `manifest.json.extensions`.
+6. Continue prototype work without replaying Sections 1-8.
 
 ## Alternatives generation
 

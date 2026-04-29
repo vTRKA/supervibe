@@ -1,0 +1,35 @@
+{
+  "title": "Deck title",
+  "author": "Supervibe",
+  "layout": "LAYOUT_WIDE",
+  "theme": {
+    "headFontFace": "Aptos Display",
+    "bodyFontFace": "Aptos",
+    "lang": "en-US",
+    "colors": {
+      "background": "FFFFFF",
+      "foreground": "111827",
+      "muted": "64748B",
+      "accent": "2563EB",
+      "accentText": "FFFFFF"
+    }
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "Main promise",
+      "subtitle": "Audience-specific reason to listen",
+      "notes": "Speaker note for the opener."
+    },
+    {
+      "type": "bullets",
+      "title": "Why now",
+      "bullets": [
+        "Evidence point one",
+        "Evidence point two",
+        "Decision implication"
+      ],
+      "notes": "Speaker note for the argument."
+    }
+  ]
+}

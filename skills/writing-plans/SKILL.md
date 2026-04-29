@@ -54,9 +54,10 @@ Per task: TDD applicable?
    - Verification command + expected output
    - Commit step (or note if commits suppressed)
 4. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix.
-5. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
-6. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
-7. **Handoff** to `supervibe:executing-plans` (or subagent-driven-development if independent tasks).
+5. **Machine-validate plan** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
+6. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
+7. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
+8. **Handoff** to `supervibe:executing-plans` (or subagent-driven-development if independent tasks).
 
 ## Output contract
 
@@ -74,6 +75,7 @@ Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure se
 ## Verification
 
 - Plan file exists at documented path
+- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0
 - Spec coverage matrix maps every spec section to ≥1 task
 - Confidence-scoring(implementation-plan) ≥9 recorded
 
@@ -239,6 +241,7 @@ Required at end:
 - Parallelization batches in Handoff section
 - Rollback plan per task
 - Self-Review section completed before saving
+- Machine validator: `validate-plan-artifacts.mjs --file <plan>` exits 0
 
 ## Related
 

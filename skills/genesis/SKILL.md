@@ -42,20 +42,26 @@ Match exact pack?
 
 1. Resolve stack-pack from fingerprint
 2. Compose if no exact match
-3. For each `agents-attach` → copy agent file to `<target>/.claude/agents/<namespace>/<name>.md`
-4. For each `rules-attach` → copy rule file to `<target>/.claude/rules/<name>.md`
-5. Generate `<target>/.claude/settings.json` from `templates/settings/_base.json` + per-stack additions
-6. Generate `<target>/CLAUDE.md` from `templates/claude-md/<pack>.md.tpl` filled with discovery data
-7. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
-8. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
-9. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
-10. Confidence-score(scaffold-bundle) ≥9
-11. If <9 → list gaps, ask user to confirm or remediate
+3. Resolve install profile before copying agents:
+   - `minimal` (recommended): orchestrator, repo-researcher, code-reviewer, quality-gate-reviewer, root-cause-debugger, selected stack developer(s), selected stack architect(s)
+   - `product-design`: minimal + product, UX, copy, prototype, presentation, accessibility, polish
+   - `full-stack`: all stack-pack groups
+   - `custom`: user explicitly selects groups or individual agents
+4. For each profile-selected `agents-attach` → copy agent file to `<target>/.claude/agents/<namespace>/<name>.md`
+5. For each `rules-attach` → copy rule file to `<target>/.claude/rules/<name>.md`
+6. Generate `<target>/.claude/settings.json` from `templates/settings/_base.json` + per-stack additions
+7. Generate `<target>/CLAUDE.md` from `templates/claude-md/<pack>.md.tpl` filled with discovery data and the selected profile
+8. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
+9. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
+10. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
+11. Confidence-score(scaffold-bundle) ≥9
+12. If <9 → list gaps, ask user to confirm or remediate
 
 ## Output contract
 
 Returns:
 - Generated `.claude/agents/`, `.claude/rules/`, `.claude/settings.json`, `CLAUDE.md`
+- Selected install profile and final agent list
 - Husky + commitlint + lint-staged configs
 - Project skeleton dirs
 - Confidence score

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { existsSync, statSync, readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const ROOT = process.cwd();
@@ -9,6 +9,22 @@ const SH = join(ROOT, 'install.sh');
 const PS1 = join(ROOT, 'install.ps1');
 const UPD_SH = join(ROOT, 'update.sh');
 const UPD_PS1 = join(ROOT, 'update.ps1');
+
+function bashSyntaxCheck(filePath) {
+  try {
+    execFileSync('bash', ['-n', filePath], { stdio: 'pipe' });
+    return;
+  } catch (firstErr) {
+    if (process.platform !== 'win32') throw firstErr;
+    try {
+      const wslPath = execFileSync('wsl', ['wslpath', '-a', filePath], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+      execFileSync('bash', ['-n', wslPath], { stdio: 'pipe' });
+      return;
+    } catch {
+      throw firstErr;
+    }
+  }
+}
 
 test('install.sh exists and is non-empty', () => {
   assert.ok(existsSync(SH));
@@ -23,7 +39,7 @@ test('install.ps1 exists and is non-empty', () => {
 test('install.sh is syntactically valid bash', () => {
   // bash -n parses without executing. Available on macOS / Linux / Git Bash.
   try {
-    execSync(`bash -n "${SH}"`, { stdio: 'pipe' });
+    bashSyntaxCheck(SH);
   } catch (err) {
     assert.fail(`install.sh syntax error:\n${err.stderr?.toString() || err.message}`);
   }
@@ -105,7 +121,7 @@ test('update.sh and update.ps1 exist and are non-empty', () => {
 
 test('update.sh is syntactically valid bash', () => {
   try {
-    execSync(`bash -n "${UPD_SH}"`, { stdio: 'pipe' });
+    bashSyntaxCheck(UPD_SH);
   } catch (err) {
     assert.fail(`update.sh syntax error:\n${err.stderr?.toString() || err.message}`);
   }

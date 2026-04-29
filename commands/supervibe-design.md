@@ -16,6 +16,7 @@ Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 d
 2. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user upfront if they want different, but never silently expand.
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
 4. **Design system is source of truth.** Approved FIRST, before any prototype. Every visual decision references it.
+4a. **Design system is project-level, not per-mockup.** Build it once at `prototypes/_design-system/`, then reuse it for every future mockup. New work may extend the system through an explicit extension request; it must not rebuild palette/type/components from scratch unless the user asked for a rebrand.
 5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks state in `.approval.json` artifacts; it knows when something is ready for backend/frontend integration.
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
@@ -60,12 +61,23 @@ Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as s
 **Шаг 0b/N: Triage.** Then determine:
 - Is this a marketing landing page → uses `supervibe:landing-page` skill
 - Is this an in-product flow → uses `supervibe:prototype` skill
-- Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes skip Stage 1
-- Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes skip Stage 2
+- Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes reuse it by default and skip Stage 1
+- Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes enter **system-reuse mode** and skip the full Stage 2 dialogue
+- Does the brief require a token/component not present in the existing system → create a narrow extension request instead of rebuilding the system
 - For non-web targets dispatch the corresponding specialist designer (`extension-ui-designer` / `electron-ui-designer` / `tauri-ui-designer` / `mobile-ui-designer`) instead of `ux-ui-designer` for spec/review.
 - Multi-language UI? Reduced-motion sensitive? Touch / pointer device target? Save to brief metadata.
 
 ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prototypes/<slug>/config.json` before stage advance.
+
+**Stage 0c — Media capability check (required for motion/video-heavy briefs).**
+
+Run:
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json
+```
+
+Persist the result in `prototypes/<slug>/config.json.mediaCapabilities`. If `video=false`, designers MUST NOT promise rendered video output. They may still create CSS/WAAPI motion in the live prototype, static storyboard frames, SVG/Lottie specs when assets already exist, or poster-frame + interaction notes. If `video=true`, video is allowed but still requires a performance + reduced-motion fallback plan.
 
 ### Stage 1 — Brand direction (conditional)
 
@@ -81,9 +93,9 @@ If brand direction missing OR brief asks for "new brand / rebrand":
    - ✎ refine — user describes one specific change
    - 🛑 stop
 
-### Stage 2 — Design system (conditional)
+### Stage 2 — Design system (conditional, project-level)
 
-If design system missing OR Stage 1 just produced a new direction:
+If design system missing OR Stage 1 just produced a new direction OR the user explicitly asked for rebrand:
 
 1. Invoke `supervibe:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
 2. Each sub-section is a separate dialogue (one question at a time, markdown with "Шаг N/8" progress).
@@ -91,6 +103,19 @@ If design system missing OR Stage 1 just produced a new direction:
 4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with `manifest.json.status === 'approved'`.
 
 After completion: design system is the **source of truth** for all downstream stages. No prototype invents tokens.
+
+If `prototypes/_design-system/manifest.json` exists with `status: approved`:
+
+1. Read `manifest.json`, `tokens.css`, `motion.css`, `voice.md`, `components/*.md`, and any `extensions/*.md`.
+2. Print a short reuse summary: system version, approved sections, component count, token families, last extension.
+3. Continue without asking the user to approve palette/type/spacing again.
+4. If the requested mockup needs something missing, create `prototypes/_design-system/extensions/<yyyy-mm-dd>-<slug>.md` with:
+   - requested addition
+   - why existing tokens/components do not cover it
+   - affected prototypes
+   - proposed token/component contract
+   - approval status
+5. Ask exactly one approval question for that extension. Do not reopen the entire design system.
 
 ### Stage 3 — UX spec
 
@@ -102,6 +127,7 @@ Output: `prototypes/<slug>/spec.md` with:
 - Component inventory (every component referenced from `prototypes/_design-system/components/`)
 - States matrix per screen (loading / empty / error / success / partial)
 - Interaction notes (which animations from `motion.css`, which microcopy from `voice.md`)
+- Reference scan: 5-8 external references when web/search tools are available, with source URLs and what to borrow vs avoid. If no search tool is available, explicitly write `reference scan skipped: no web/search MCP or WebFetch available`.
 
 **Feedback gate:** approve spec / refine / try alternative / stop.
 
@@ -124,6 +150,7 @@ Both skills enforce:
 - Default viewports `[375, 1440]` — agent asks once if user wants different
 - All visuals through `prototypes/_design-system/tokens.css` (no raw hex / magic px)
 - All animations from `prototypes/_design-system/motion.css` (no inline cubic-beziers)
+- Video only if `config.json.mediaCapabilities.video === true`; otherwise use CSS/WAAPI, SVG/Lottie specs, storyboard frames, or static poster alternatives.
 - One question at a time when clarification needed
 
 Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `approval: 'draft'`.

@@ -4,7 +4,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { request } from 'node:http';
-import { startStaticServer } from '../scripts/lib/preview-static-server.mjs';
+import { derivePreviewArtifactSlug, startStaticServer } from '../scripts/lib/preview-static-server.mjs';
 
 const sandbox = join(tmpdir(), `evolve-preview-srv-${Date.now()}`);
 let server;
@@ -114,4 +114,10 @@ test('server reports active SSE clients count', async () => {
   // Count starts at whatever; just verify boolean works
   const initial = server.hasActiveSseClients();
   assert.strictEqual(typeof initial, 'boolean');
+});
+
+test('derivePreviewArtifactSlug supports prototypes and presentations', () => {
+  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/prototypes/checkout/index.html'), 'checkout');
+  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/presentations/investor/preview/index.html'), 'presentation:investor');
+  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/public/index.html'), 'unknown');
 });
