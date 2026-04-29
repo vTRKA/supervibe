@@ -14,6 +14,7 @@ const PUBLIC_COMMANDS = new Set([
   "supervibe-design.md",
   "supervibe-execute-plan.md",
   "supervibe-genesis.md",
+  "supervibe-loop.md",
   "supervibe-plan.md",
   "supervibe-presentation.md",
   "supervibe-preview.md",

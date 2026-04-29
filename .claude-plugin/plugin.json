@@ -16,6 +16,9 @@
     "claude-code",
     "framework"
   ],
+  "skills": "./skills",
+  "commands": "./commands",
+  "hooks": "./hooks/hooks.json",
   "agents": [
     "./agents/_core/architect-reviewer.md",
     "./agents/_core/auth-architect.md",

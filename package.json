@@ -13,6 +13,8 @@
     "code:index": "node scripts/build-code-index.mjs",
     "code:search": "node scripts/search-code.mjs",
     "supervibe:status": "node scripts/supervibe-status.mjs",
+    "supervibe:loop": "node scripts/supervibe-loop.mjs",
+    "supervibe:loop:status": "node scripts/supervibe-loop.mjs --status",
     "supervibe:upgrade": "node scripts/supervibe-upgrade.mjs",
     "supervibe:upgrade-check": "node scripts/supervibe-upgrade-check.mjs",
     "supervibe:detect": "node scripts/supervibe-detect.mjs",

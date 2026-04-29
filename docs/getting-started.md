@@ -1,5 +1,21 @@
 # Getting Started with Supervibe
 
+## Autonomous Loop
+
+Use `/supervibe-loop` when you want a bounded agent loop over an existing plan
+or an open validation request.
+
+```bash
+npm run supervibe:loop -- --dry-run --request "validate integrations"
+npm run supervibe:loop -- --plan docs/plans/payment-integration.md
+```
+
+The loop runs preflight first, asks for missing server or access references
+when needed, records state under `.claude/memory/loops/<run-id>/`, and only
+completes tasks at score `>= 9.0`. Production deploy, destructive migration,
+credential mutation, billing, account, DNS, and remote server mutations require
+explicit approval.
+
 Supervise is a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding — backed by SQLite.
 
 ## Requirements

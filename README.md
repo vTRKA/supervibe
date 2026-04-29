@@ -21,6 +21,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist 
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
+| Autonomous loop | `/supervibe-loop` turns a plan or validation request into a bounded, visible, cancellable agent loop with preflight, policy gates, side-effect ledger, and 9/10 confidence completion |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
 | Design pipeline (5 targets) | web · chrome-extension · electron · tauri · mobile-native — specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |

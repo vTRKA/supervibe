@@ -1,0 +1,38 @@
+artifact: autonomous-loop
+max-score: 10
+dimensions:
+  - id: acceptance
+    weight: 2
+    question: "Are task acceptance criteria complete and satisfied with evidence?"
+    evidence-required: "Task acceptance criteria plus completion evidence."
+  - id: verification
+    weight: 2
+    question: "Are required verification commands or checks recorded and passing?"
+    evidence-required: "Command output, fixture result, or accepted test-gap rationale."
+  - id: policy
+    weight: 1
+    question: "Did policy, approval, secret, and provider-safety gates pass?"
+    evidence-required: "Policy guard output and approval lease evidence when needed."
+  - id: context
+    weight: 1
+    question: "Was minimal context selected through memory, Code RAG, CodeGraph, and targeted reads?"
+    evidence-required: "Context pack with retrieval and token-economy evidence."
+  - id: handoff
+    weight: 1
+    question: "Did agent handoffs preserve risks, decisions, verification, and next action?"
+    evidence-required: "Validated handoff JSONL entry."
+  - id: sdlc
+    weight: 1
+    question: "Do SDLC gates pass for the task risk level and environment?"
+    evidence-required: "SDLC gate result including tests, rollback, security/privacy, and deployment evidence."
+  - id: runtime
+    weight: 1
+    question: "Are runtime, platform, server, Docker, MCP, and side effects handled safely?"
+    evidence-required: "Runtime classifier, platform-rendered commands, and side-effect ledger."
+  - id: audit
+    weight: 1
+    question: "Is the final claim traceable through audit, retention, and provenance artifacts?"
+    evidence-required: "Audit trail, retention policy, and final report provenance."
+gates:
+  block-below: 9
+  warn-below: 10

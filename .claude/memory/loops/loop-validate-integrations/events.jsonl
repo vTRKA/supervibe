@@ -1,0 +1,1 @@
+{"schema_version":1,"command_version":1,"rubric_version":1,"at":"2026-04-29T12:49:05.879Z","type":"run_started","payload":{"runId":"loop-validate-integrations","dryRun":true,"runtime":{"targets":["docker","ci","staging","production","remote","database"],"riskClass":"high"}}}
