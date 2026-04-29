@@ -11,9 +11,9 @@
 // Every check is independent and failure-tolerant: a check that throws
 // returns {triggered: false, error: '<msg>'}, never propagating.
 
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFile, readdir, stat } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 const STALE_DAYS = 30;
 const OVERRIDE_RATE_THRESHOLD = 0.05;
@@ -23,17 +23,19 @@ const OVERRIDE_RATE_WINDOW = 100;
 
 async function checkUpstreamBehind(pluginRoot) {
   try {
-    const cachePath = join(pluginRoot, '.claude-plugin', '.upgrade-check.json');
-    if (!existsSync(cachePath)) return { triggered: false, evidence: 'no upstream-check cache yet' };
-    const cache = JSON.parse(await readFile(cachePath, 'utf8'));
-    if (cache.error) return { triggered: false, evidence: `last check error: ${cache.error}` };
+    const cachePath = join(pluginRoot, ".claude-plugin", ".upgrade-check.json");
+    if (!existsSync(cachePath))
+      return { triggered: false, evidence: "no upstream-check cache yet" };
+    const cache = JSON.parse(await readFile(cachePath, "utf8"));
+    if (cache.error)
+      return { triggered: false, evidence: `last check error: ${cache.error}` };
     if ((cache.behind || 0) > 0) {
       return {
         triggered: true,
-        evidence: `${cache.behind} commit(s) behind upstream${cache.latestTag ? ' (latest tag: ' + cache.latestTag + ')' : ''}`,
+        evidence: `${cache.behind} commit(s) behind upstream${cache.latestTag ? " (latest tag: " + cache.latestTag + ")" : ""}`,
       };
     }
-    return { triggered: false, evidence: 'plugin is up to date with upstream' };
+    return { triggered: false, evidence: "plugin is up to date with upstream" };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -41,20 +43,34 @@ async function checkUpstreamBehind(pluginRoot) {
 
 async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
   try {
-    const versionPath = join(projectRoot, '.claude', 'memory', '.supervibe-version');
-    if (!existsSync(versionPath)) return { triggered: false, evidence: 'project has not seen any plugin version yet' };
-    const lastSeen = (await readFile(versionPath, 'utf8')).trim();
-    const manifestPath = join(pluginRoot, '.claude-plugin', 'plugin.json');
-    if (!existsSync(manifestPath)) return { triggered: false, error: 'plugin manifest missing' };
-    const current = JSON.parse(await readFile(manifestPath, 'utf8')).version;
+    const versionPath = join(
+      projectRoot,
+      ".claude",
+      "memory",
+      ".supervibe-version",
+    );
+    if (!existsSync(versionPath))
+      return {
+        triggered: false,
+        evidence: "project has not seen any plugin version yet",
+      };
+    const lastSeen = (await readFile(versionPath, "utf8")).trim();
+    const manifestPath = join(pluginRoot, ".claude-plugin", "plugin.json");
+    if (!existsSync(manifestPath))
+      return { triggered: false, error: "plugin manifest missing" };
+    const current = JSON.parse(await readFile(manifestPath, "utf8")).version;
     if (lastSeen && lastSeen !== current) {
       return {
         triggered: true,
         evidence: `project seen ${lastSeen}, plugin now ${current} — adapt to pull upstream agent changes`,
-        lastSeen, current,
+        lastSeen,
+        current,
       };
     }
-    return { triggered: false, evidence: `project + plugin both on ${current}` };
+    return {
+      triggered: false,
+      evidence: `project + plugin both on ${current}`,
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -62,12 +78,15 @@ async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
 
 async function checkProjectScaffolded(projectRoot) {
   try {
-    const claudeAgentsDir = join(projectRoot, '.claude', 'agents');
-    const claudeMd = join(projectRoot, 'CLAUDE.md');
+    const claudeAgentsDir = join(projectRoot, ".claude", "agents");
+    const claudeMd = join(projectRoot, "CLAUDE.md");
     if (!existsSync(claudeAgentsDir) && !existsSync(claudeMd)) {
-      return { triggered: true, evidence: 'no .claude/agents/ and no CLAUDE.md — run genesis first' };
+      return {
+        triggered: true,
+        evidence: "no .claude/agents/ and no CLAUDE.md — run genesis first",
+      };
     }
-    return { triggered: false, evidence: 'project has Supervibe scaffolding' };
+    return { triggered: false, evidence: "project has Supervibe scaffolding" };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -75,24 +94,38 @@ async function checkProjectScaffolded(projectRoot) {
 
 async function checkUnderperformers(projectRoot) {
   try {
-    const logPath = join(projectRoot, '.claude', 'memory', 'agent-invocations.jsonl');
-    if (!existsSync(logPath)) return { triggered: false, evidence: 'no telemetry log yet' };
-    const { readInvocations } = await import('./agent-invocation-logger.mjs');
-    const { detectUnderperformers } = await import('./underperformer-detector.mjs');
-    process.env.SUPERVIBE_INVOCATION_LOG = logPath;
+    const logPath = join(
+      projectRoot,
+      ".claude",
+      "memory",
+      "agent-invocations.jsonl",
+    );
+    if (!existsSync(logPath))
+      return { triggered: false, evidence: "no telemetry log yet" };
+    const { readInvocations, INVOCATION_LOG_PATH_FOR_TEST } =
+      await import("./agent-invocation-logger.mjs");
+    const { detectUnderperformers } =
+      await import("./underperformer-detector.mjs");
+    INVOCATION_LOG_PATH_FOR_TEST(logPath);
     const all = await readInvocations({ limit: 10000 });
     if (all.length < 10) {
-      return { triggered: false, evidence: `only ${all.length} invocations logged (need ≥10 for analysis)` };
+      return {
+        triggered: false,
+        evidence: `only ${all.length} invocations logged (need ≥10 for analysis)`,
+      };
     }
     const flagged = detectUnderperformers(all);
     if (flagged.length > 0) {
       return {
         triggered: true,
-        evidence: `${flagged.length} agent(s) underperforming: ${flagged.map(f => f.agent_id).join(', ')}`,
+        evidence: `${flagged.length} agent(s) underperforming: ${flagged.map((f) => f.agent_id).join(", ")}`,
         flagged,
       };
     }
-    return { triggered: false, evidence: `${all.length} invocations, no underperformers` };
+    return {
+      triggered: false,
+      evidence: `${all.length} invocations, no underperformers`,
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -100,19 +133,22 @@ async function checkUnderperformers(projectRoot) {
 
 async function checkStaleArtifacts(pluginRoot) {
   try {
-    const dirs = ['agents', 'rules', 'skills'].map(d => join(pluginRoot, d));
+    const dirs = ["agents", "rules", "skills"].map((d) => join(pluginRoot, d));
     const cutoff = Date.now() - STALE_DAYS * 86400000;
     const stale = [];
     for (const dir of dirs) {
       if (!existsSync(dir)) continue;
       let entries;
-      try { entries = await readdir(dir, { recursive: true, withFileTypes: true }); }
-      catch { continue; }
+      try {
+        entries = await readdir(dir, { recursive: true, withFileTypes: true });
+      } catch {
+        continue;
+      }
       for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
         const filePath = join(entry.parentPath || dir, entry.name);
         try {
-          const content = await readFile(filePath, 'utf8');
+          const content = await readFile(filePath, "utf8");
           const m = content.match(/last-verified:\s*(\S+)/);
           if (!m) continue;
           if (Date.parse(m[1]) < cutoff) stale.push(filePath);
@@ -126,7 +162,10 @@ async function checkStaleArtifacts(pluginRoot) {
         sample: stale.slice(0, 5),
       };
     }
-    return { triggered: false, evidence: `${stale.length} stale artifact(s) (under 3-threshold)` };
+    return {
+      triggered: false,
+      evidence: `${stale.length} stale artifact(s) (under 3-threshold)`,
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -134,14 +173,22 @@ async function checkStaleArtifacts(pluginRoot) {
 
 async function checkOverrideRate(projectRoot) {
   try {
-    const logPath = join(projectRoot, '.claude', 'confidence-log.jsonl');
-    if (!existsSync(logPath)) return { triggered: false, evidence: 'no override log yet' };
-    const raw = await readFile(logPath, 'utf8');
-    const lines = raw.split('\n').filter(Boolean).slice(-OVERRIDE_RATE_WINDOW);
-    if (lines.length < 10) return { triggered: false, evidence: `only ${lines.length} entries (need ≥10)` };
-    const overrides = lines.filter(l => {
-      try { return JSON.parse(l).override === true; }
-      catch { return false; }
+    const logPath = join(projectRoot, ".claude", "confidence-log.jsonl");
+    if (!existsSync(logPath))
+      return { triggered: false, evidence: "no override log yet" };
+    const raw = await readFile(logPath, "utf8");
+    const lines = raw.split("\n").filter(Boolean).slice(-OVERRIDE_RATE_WINDOW);
+    if (lines.length < 10)
+      return {
+        triggered: false,
+        evidence: `only ${lines.length} entries (need ≥10)`,
+      };
+    const overrides = lines.filter((l) => {
+      try {
+        return JSON.parse(l).override === true;
+      } catch {
+        return false;
+      }
     });
     const rate = overrides.length / lines.length;
     if (rate > OVERRIDE_RATE_THRESHOLD) {
@@ -151,7 +198,10 @@ async function checkOverrideRate(projectRoot) {
         rate,
       };
     }
-    return { triggered: false, evidence: `override rate ${(rate * 100).toFixed(1)}% (under threshold)` };
+    return {
+      triggered: false,
+      evidence: `override rate ${(rate * 100).toFixed(1)}% (under threshold)`,
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -159,11 +209,18 @@ async function checkOverrideRate(projectRoot) {
 
 async function checkPendingEvaluation(projectRoot) {
   try {
-    const logPath = join(projectRoot, '.claude', 'memory', 'agent-invocations.jsonl');
-    if (!existsSync(logPath)) return { triggered: false, evidence: 'no invocation log yet' };
-    const raw = await readFile(logPath, 'utf8');
-    const lines = raw.split('\n').filter(Boolean);
-    if (lines.length === 0) return { triggered: false, evidence: 'invocation log empty' };
+    const logPath = join(
+      projectRoot,
+      ".claude",
+      "memory",
+      "agent-invocations.jsonl",
+    );
+    if (!existsSync(logPath))
+      return { triggered: false, evidence: "no invocation log yet" };
+    const raw = await readFile(logPath, "utf8");
+    const lines = raw.split("\n").filter(Boolean);
+    if (lines.length === 0)
+      return { triggered: false, evidence: "invocation log empty" };
     const last = JSON.parse(lines[lines.length - 1]);
     if (!last.outcome && !last.user_feedback) {
       return {
@@ -172,7 +229,10 @@ async function checkPendingEvaluation(projectRoot) {
         last,
       };
     }
-    return { triggered: false, evidence: 'latest invocation already has outcome' };
+    return {
+      triggered: false,
+      evidence: "latest invocation already has outcome",
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -186,13 +246,41 @@ async function checkPendingEvaluation(projectRoot) {
  */
 export async function detectNextPhase(projectRoot, pluginRoot) {
   const checks = [
-    { name: 'upstream-behind',       run: () => checkUpstreamBehind(pluginRoot),               recommend: '/supervibe-update' },
-    { name: 'version-bump-unacked',  run: () => checkVersionBumpUnacked(projectRoot, pluginRoot), recommend: '/supervibe-adapt' },
-    { name: 'project-not-scaffolded', run: () => checkProjectScaffolded(projectRoot),           recommend: '/supervibe-genesis' },
-    { name: 'underperformers',       run: () => checkUnderperformers(projectRoot),             recommend: '/supervibe-strengthen' },
-    { name: 'stale-artifacts',       run: () => checkStaleArtifacts(pluginRoot),               recommend: '/supervibe-audit' },
-    { name: 'override-rate-high',    run: () => checkOverrideRate(projectRoot),                recommend: '/supervibe-audit' },
-    { name: 'pending-evaluation',    run: () => checkPendingEvaluation(projectRoot),           recommend: '/supervibe-evaluate' },
+    {
+      name: "upstream-behind",
+      run: () => checkUpstreamBehind(pluginRoot),
+      recommend: "/supervibe-update",
+    },
+    {
+      name: "version-bump-unacked",
+      run: () => checkVersionBumpUnacked(projectRoot, pluginRoot),
+      recommend: "/supervibe-adapt",
+    },
+    {
+      name: "project-not-scaffolded",
+      run: () => checkProjectScaffolded(projectRoot),
+      recommend: "/supervibe-genesis",
+    },
+    {
+      name: "underperformers",
+      run: () => checkUnderperformers(projectRoot),
+      recommend: "/supervibe-strengthen",
+    },
+    {
+      name: "stale-artifacts",
+      run: () => checkStaleArtifacts(pluginRoot),
+      recommend: "/supervibe-audit",
+    },
+    {
+      name: "override-rate-high",
+      run: () => checkOverrideRate(projectRoot),
+      recommend: "/supervibe-audit",
+    },
+    {
+      name: "pending-evaluation",
+      run: () => checkPendingEvaluation(projectRoot),
+      recommend: "/supervibe-evaluate",
+    },
   ];
 
   const report = [];
@@ -202,12 +290,20 @@ export async function detectNextPhase(projectRoot, pluginRoot) {
     const result = await c.run();
     report.push({ name: c.name, recommend: c.recommend, ...result });
     if (!proposed && result.triggered) {
-      proposed = { command: c.recommend, reason: result.evidence, signal: c.name };
+      proposed = {
+        command: c.recommend,
+        reason: result.evidence,
+        signal: c.name,
+      };
     }
   }
 
   return {
-    proposed: proposed || { command: null, reason: 'system healthy — nothing to do', signal: 'all-green' },
+    proposed: proposed || {
+      command: null,
+      reason: "system healthy — nothing to do",
+      signal: "all-green",
+    },
     checks: report,
   };
 }
