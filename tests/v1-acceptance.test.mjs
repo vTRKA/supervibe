@@ -25,7 +25,7 @@ test("LICENSE present", async () => {
   assert.ok(existsSync(join(ROOT, "LICENSE")));
 });
 
-test("all 11 confidence rubrics present and validate", async () => {
+test("all 14 confidence rubrics present and validate", async () => {
   const dir = join(ROOT, "confidence-rubrics");
   const files = (await readdir(dir)).filter((f) => f.endsWith(".yaml"));
   const expected = [

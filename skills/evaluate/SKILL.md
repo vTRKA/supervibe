@@ -18,7 +18,7 @@ last-verified: 2026-04-27
 
 - After agent claims task complete
 - After user corrects agent output (signal of partial success)
-- User runs `/supervibe-evaluate`
+- User runs `/supervibe-score --record`
 
 ## Step 0 — Read source of truth (required)
 

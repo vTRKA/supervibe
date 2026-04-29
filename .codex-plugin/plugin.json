@@ -1,6 +1,6 @@
 {
   "name": "supervibe",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "AI coding agent framework: 81 specialist agents · 10-language code graph + multilingual semantic RAG · project memory · 14 confidence rubrics · live preview-server.",
   "author": {
     "name": "vTRKA",

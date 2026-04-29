@@ -164,7 +164,7 @@ Debug record saved: .claude/memory/incidents/debug-<id>-<date>.md
 - `supervibe:_core:root-cause-debugger` agent — invoked for ambiguous classifications
 - `supervibe:systematic-debugging` skill — methodology
 - `/supervibe-strengthen <agent>` — applies fix proposed by debug
-- `/supervibe-evaluate` — closes loop after fix verified
+- `/supervibe-score --record` — closes loop after fix verified
 - `/supervibe-adapt` — fix for `stale-context` blockers
 - `.claude/memory/agent-invocations.jsonl` — telemetry source
 - `.claude/memory/incidents/debug-*.md` — debug record persistence

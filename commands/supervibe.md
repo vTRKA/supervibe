@@ -1,10 +1,10 @@
 ---
 description: >-
-  Auto-detect which evolve phase to run (genesis / audit / strengthen / adapt /
-  evaluate / update) based on the current project state.
+  Auto-detect which Supervibe phase to run (genesis / audit / strengthen / adapt /
+  score / update) based on the current project state.
 ---
 
-# /evolve
+# /supervibe
 
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.
 
@@ -20,7 +20,7 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 | 4 | `underperformers` | `auto-strengthen-trigger` returns ≥1 flagged agent (needs ≥10 invocations to trigger) | `/supervibe-strengthen` |
 | 5 | `stale-artifacts` | ≥3 files in `agents/` `rules/` `skills/` with `last-verified` >30 days old | `/supervibe-audit` |
 | 6 | `override-rate-high` | `.claude/confidence-log.jsonl` shows >5% overrides over last 100 entries | `/supervibe-audit` |
-| 7 | `pending-evaluation` | Latest invocation in `agent-invocations.jsonl` has no `outcome` field | `/supervibe-evaluate` |
+| 7 | `pending-evaluation` | Latest invocation in `agent-invocations.jsonl` has no `outcome` field | `/supervibe-score --record` |
 | (none) | — | All 7 checks pass | "System healthy. No action needed." |
 
 ## Procedure
@@ -31,7 +31,7 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 
 3. **Stop at first triggered check.** Do not chain phases automatically — propose ONE next command and wait for user confirmation. The user might want to skip an audit and go straight to update, etc.
 
-4. **Ask for confirmation** before running anything destructive. `/supervibe-update` and `/supervibe-adapt` modify files — explicit "yes" required. `/supervibe-audit` and `/supervibe-evaluate` are read-only and can run immediately if the user agrees.
+4. **Ask for confirmation** before running anything destructive. `/supervibe-update` and `/supervibe-adapt` modify files — explicit "yes" required. `/supervibe-audit` and `/supervibe-score --record` are read-only scoring/persistence flows and can run immediately if the user agrees.
 
 ## Output contract
 
@@ -43,7 +43,7 @@ Project:  <path>
 Plugin:   <path>
 
   ✓ upstream-behind             → plugin is up to date with upstream
-  ✓ version-bump-unacked        → project + plugin both on 1.7.0
+  ✓ version-bump-unacked        → project + plugin both on 1.8.1
   ⚠ project-not-scaffolded      → no .claude/agents/ and no CLAUDE.md — run genesis first
   ✓ underperformers             → 12 invocations, no underperformers
   ✓ stale-artifacts             → 0 stale artifact(s) (under 3-threshold)

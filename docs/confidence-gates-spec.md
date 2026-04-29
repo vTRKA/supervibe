@@ -25,7 +25,7 @@ Every confidence-gated artifact lands in exactly one of three states:
 |---|---|---|---|
 | `pass` | score ≥ `block-below`+1 (typically ≥10) | Quality target met | Continue without intervention |
 | `warn` | `block-below` ≤ score < `warn-below`+1 (typically 9.0-9.99) | Acceptable but flagged | Continue + log warning to telemetry; user can act |
-| `block` | score < `block-below` (typically <9.0) | Below quality threshold | Halt; require fix OR `/supervibe-override` |
+| `block` | score < `block-below` (typically <9.0) | Below quality threshold | Halt; require fix OR explicit override reason recorded by the caller |
 
 **Default thresholds** (set in `confidence-rubrics/<artifact>.yaml`):
 ```yaml
@@ -111,19 +111,14 @@ Every user-facing command in `commands/` declares which rubric it uses + how it 
 | `/supervibe-design` | implicit per stage; final scored against `prototype.yaml` or `brandbook.yaml` | 9 | no (design is human judgment) |
 | `/supervibe-genesis` | `scaffold.yaml` | 9 | yes (regenerate missing files) |
 | `/supervibe-execute-plan` | `execute-plan.yaml` (Stage A) + per-rubric (Stage B) | 9 | partial (Stage A: yes, Stage B: case-by-case) |
-| `/supervibe-deploy` | `execute-plan.yaml` (delegated) | 9 | partial |
-| `/supervibe-evaluate` | matches artifact-type rubric | 9 | yes |
 | `/supervibe-score` | matches artifact-type rubric | 9 | yes |
 | `/supervibe-strengthen` | `agent-quality.yaml` | 9 | no (changes shape every output; user must approve) |
 | `/supervibe-audit` | n/a (read-only inspection) | — | — |
-| `/supervibe-test` | n/a (test runner) | — | — |
-| `/supervibe-debug` | n/a (diagnostic) | — | — |
-| `/supervibe-memory-gc` | n/a (utility) | — | — |
-| `/supervibe-changelog` | n/a (display) | — | — |
 | `/supervibe-update` | n/a (infrastructure) | — | — |
-| `/supervibe-override` | `override.yaml` (rationale quality) | n/a (override IS the gate) | n/a |
 | `/supervibe-preview` | n/a (server) | — | — |
 | `/supervibe-adapt` | propagates per-artifact gates | 9 | yes (per-file diff gate) |
+
+Internal specs for legacy aliases, plugin QA, memory GC, changelog display, deployment integration, and override logging live in `docs/internal-commands/`. They are intentionally outside the published slash-command directory.
 
 ### Skills
 
@@ -190,12 +185,10 @@ const matches = await preflight({
 - `/supervibe-plan` — find similar plans (adapt vs re-plan)
 - `/supervibe-design` — find similar brand directions
 - `/supervibe-execute-plan` — find prior executions of similar plan
-- `/supervibe-debug` — find prior failures of same agent on same task type
 - `/supervibe-strengthen` — find prior strengthen attempts on same agent
-- `/supervibe-deploy` — find prior deploys of similar prototype
 
 **Commands that DON'T call pre-flight:**
-- Pure utility: `/supervibe-test`, `/supervibe-update`, `/supervibe-changelog`, `/supervibe-memory-gc`, `/supervibe-preview`
+- Pure utility: `/supervibe-update`, `/supervibe-preview`
 - Read-only inspection: `/supervibe-audit`, `/supervibe-score --dry-run`
 
 This makes memory integration **uniform**: any command that produces a new artifact must first ask "what does the project already know about this?".
@@ -229,10 +222,10 @@ Validator `validate-confidence-gates.mjs` (TODO) will enforce this on every comm
 ## Related
 
 - `confidence-rubrics/_schema.json` — rubric file format
-- `confidence-rubrics/*.yaml` — rubric instances (12 currently)
+- `confidence-rubrics/*.yaml` — rubric instances (14 currently)
 - `supervibe:confidence-scoring` skill — the universal scoring mechanism
 - `scripts/lib/load-rubrics.mjs` — programmatic rubric access
 - `scripts/lib/append-override-log.mjs` — override telemetry writer
 - `.claude/memory/score-log.jsonl` — unified gate telemetry
 - `.claude/confidence-log.jsonl` — override-specific log (subset of score-log)
-- `/supervibe-override` — the formal override-with-rationale flow
+- `docs/internal-commands/supervibe-override.md` — internal override-with-rationale spec

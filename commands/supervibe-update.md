@@ -120,7 +120,7 @@ Print: current version, target version, changelog summary between them, breaking
    - Restart the AI CLI to pick up new plugin code.
    - Each project sees `[evolve] ⬆ plugin upgraded ...` on next session.
    - If project has `.claude/` overrides → run `/supervibe-adapt`.
-   - To see what changed → run `/supervibe-changelog`.
+   - To see what changed → read `CHANGELOG.md` or use `/supervibe-update --dry-run`.
 
 ## Error recovery
 
@@ -155,16 +155,16 @@ Successful upgrade:
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         v1.6.0
-After:          v1.7.0
-Tests:          253 / 253 passed
-Validators:     8 / 8 clean
+After:          v1.8.1
+Tests:          320 / 320 passed
+Validators:     10 / 10 clean (+ knip)
 LFS:            pulled (or: skipped — lazy-fetch fallback)
 
 Rollback anchor: cleaned up (no longer needed)
 
 Next:
   1. Restart your AI CLI
-  2. Read changelog: /supervibe-changelog
+   2. Read changelog: `CHANGELOG.md`
   3. (if project has overrides) /supervibe-adapt
 ```
 
@@ -174,7 +174,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v1.7.0
+Target:         v1.8.1
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -197,8 +197,8 @@ Dry-run:
 ```
 === Supervibe Update — DRY RUN ===
 Current:        v1.6.0
-Latest:         v1.7.0
-Changelog summary: [see /supervibe-changelog --since v1.6.0]
+Latest:         v1.8.1
+Changelog summary: [from CHANGELOG.md since v1.6.0]
 
 Breaking changes detected: 2
   - Removed: supervibe:legacy-prompt-quality
@@ -219,7 +219,7 @@ Run `/supervibe-update` to apply (auto-rollback on failure).
 - `npm run supervibe:upgrade` — the underlying script (called by this command)
 - `npm run supervibe:upgrade-check` — non-mutating probe
 - `/supervibe-update --rollback` — explicit revert to last good state
-- `/supervibe-changelog` — what changed
+- `CHANGELOG.md` — what changed
 - `/supervibe-adapt` — propagate upstream changes into a specific project
 - `.claude/memory/.evolve-update-state.json` — rollback anchor (transient)
 - `.claude/memory/incidents/upgrade-failure-*.md` — failure forensics

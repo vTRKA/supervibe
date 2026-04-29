@@ -1,17 +1,17 @@
 ---
 description: >-
   Score an artifact against its confidence rubric with explicit gap analysis and
-  remediation actions. Supports auto-detect of artifact type from file
-  path/extension, batch scoring, dry-run, and override flow. Поддерживает
+  remediation actions. Primary scoring command; use --record when telemetry
+  should be updated. Supports auto-detect, batch, dry-run, and override flow. Поддерживает
   auto-detect типа артефакта, batch-режим, dry-run и override. Triggers:
   'оцени', 'score', 'evaluate confidence', 'gap analysis', '/supervibe-score'.
 ---
 
 # /supervibe-score
 
-Score one or more artifacts against their confidence rubrics. Returns structured score + per-dimension verdicts + concrete remediation actions. Inspection-only by default — does NOT modify artifacts.
+Score one or more artifacts against their confidence rubrics. Returns structured score + per-dimension verdicts + concrete remediation actions. Inspection-only by default; with `--record`, it also persists the outcome into telemetry.
 
-For inline scoring during agent execution, agents use `supervibe:confidence-scoring` skill directly. This command is the user-facing entry point for explicit, on-demand scoring.
+For inline scoring during agent execution, agents use `supervibe:confidence-scoring` skill directly. This command is the user-facing entry point for explicit, on-demand scoring and replaces the old user-facing split between one-off scoring and telemetry evaluation.
 
 ## Invocation forms
 
@@ -53,6 +53,10 @@ Returns: aggregate table + worst-3 detail.
 ### `/supervibe-score --dry-run <artifact-type> <path>` — show rubric only
 
 Print the rubric dimensions + evidence requirements WITHOUT actually scoring. Useful for understanding what scoring will check before running.
+
+### `/supervibe-score --record [<artifact-type>] [<path>]` — score and persist
+
+Scores the artifact, then writes the accepted/review/rejected outcome to `.claude/memory/agent-invocations.jsonl` via the telemetry logger. This is the mode `/supervibe` proposes when it detects `pending-evaluation`.
 
 ## Valid artifact types
 
@@ -110,16 +114,17 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 
 6. **Persistence:**
    - DO NOT modify the artifact.
-   - DO append the score to `.claude/memory/score-log.jsonl` for telemetry trends:
+   - Always append the score to `.claude/memory/score-log.jsonl` for score trends:
      ```jsonl
      {"id":"<uuid>","timestamp":"<ISO>","path":"<path>","type":"<type>","score":N,"gate":"<verdict>","dimensions":{...}}
      ```
+   - If `--record` is present, also update the latest matching invocation outcome in `.claude/memory/agent-invocations.jsonl`.
 
 7. **Offer follow-up actions** based on verdict:
    - If `block` (score < gate): offer `/supervibe-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
    - If `warn`: print warning + suggest single targeted improvement.
    - If `pass`: print confirmation + suggest `/schedule` if natural follow-up exists.
-   - If user wants to override the gate → redirect to `/supervibe-override` with score context.
+   - If user wants to override the gate → collect an explicit reason and append the override record internally with score context.
 
 ## Error recovery
 
@@ -129,7 +134,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 | Artifact path missing | Suggest `find` command to locate; offer `--batch` if user meant glob |
 | Artifact >2 MB | Warn + ask confirmation (loading large file costs tokens) |
 | Skill returns error | Print error + suggest re-running with `--dry-run` to see expected format |
-| Score below threshold | Offer 3 paths: fix inline / `/supervibe-strengthen` / `/supervibe-override` |
+| Score below threshold | Offer 3 paths: fix inline / `/supervibe-strengthen` / record explicit override reason |
 | Score-log write fails | Score returned to user; log attempt logged separately; user not blocked |
 
 ## Output contract
@@ -209,8 +214,8 @@ Dimensions:
 ## Related
 
 - `supervibe:confidence-scoring` skill — the underlying methodology
-- `confidence-rubrics/*.yaml` — the 13 rubrics this command scores against
-- `/supervibe-evaluate` — closes the evolution loop after scoring (writes outcome to invocation telemetry)
+- `confidence-rubrics/*.yaml` — the 14 rubrics this command scores against
+- `docs/internal-commands/supervibe-evaluate.md` — legacy telemetry alias spec
 - `/supervibe-strengthen` — if score is `block`, this is the agent-improvement path
-- `/supervibe-override` — if score is `block` but user has justification to ship anyway
+- `docs/internal-commands/supervibe-override.md` — internal override logging spec
 - `.claude/memory/score-log.jsonl` — telemetry trail for score trends over time

@@ -1,6 +1,6 @@
 ---
 name: confidence-discipline
-description: "Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric before claiming done; <9 requires explicit /supervibe-override with reason. RU: Скоринг каждой работы рубрикой; гейт ≥9; override логируется с обоснованием. Trigger phrases: 'confidence', 'оценка', 'rubric'."
+description: "Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric before claiming done; <9 requires an explicit override reason recorded by the confidence gate. RU: Скоринг каждой работы рубрикой; гейт ≥9; override логируется с обоснованием. Trigger phrases: 'confidence', 'оценка', 'rubric'."
 applies-to: [any]
 mandatory: true
 version: 1.0
@@ -27,13 +27,13 @@ Concrete consequence of NOT following: shipped half-done features, plans skippin
   - research-output (after research agents)
   - brandbook (after brandbook skill)
 
-This rule does NOT apply when: explicit `/supervibe-override "<reason>"` was issued AND recorded in `.claude/confidence-log.jsonl`.
+This rule does NOT apply when: an explicit override reason was recorded in `.claude/confidence-log.jsonl`.
 
 ## What to do
 
 1. Every skill marked `gate-on-exit: true` MUST invoke `supervibe:confidence-scoring` before exit
 2. If score <9 → loop back, identify gaps, address, re-score
-3. If user issues `/supervibe-override`:
+3. If a confidence gate offers an override path and the user explicitly accepts:
    - Reason ≥10 chars REQUIRED
    - Entry appended to `.claude/confidence-log.jsonl`
    - User-confirmed flag set
@@ -70,7 +70,7 @@ Why this is good: gate invoked, score recorded, gaps disclosed.
 ```
 Agent completes prototype implementation.
 Score: 7/10 (state coverage 1/2 — missing error state for offline scenario).
-User: /supervibe-override "shipping prototype for stakeholder review; offline state deferred to v2"
+User: override because "shipping prototype for stakeholder review; offline state deferred to v2"
 Confidence-log entry appended.
 Status: DONE WITH OVERRIDE.
 ```
@@ -81,7 +81,7 @@ Why this is good: override recorded with reason ≥10 chars, traceable in audit.
 
 - `supervibe:confidence-scoring` skill performs the scoring
 - Skills with `gate-on-exit: true` cannot exit without invoking it
-- `/supervibe-override` command requires reason ≥10 chars
+- Internal override logging requires reason ≥10 chars
 - `.claude/confidence-log.jsonl` is append-only (rule itself + git commits)
 - `supervibe:audit` periodically checks override rate
 
@@ -93,6 +93,6 @@ Why this is good: override recorded with reason ≥10 chars, traceable in audit.
 
 ## See also
 
-- `confidence-rubrics/` — all 11 rubrics
+- `confidence-rubrics/` — all 14 rubrics
 - `skills/confidence-scoring/SKILL.md`
-- `commands/supervibe-override.md`
+- `docs/internal-commands/supervibe-override.md`

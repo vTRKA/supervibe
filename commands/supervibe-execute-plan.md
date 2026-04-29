@@ -180,7 +180,7 @@ After all phases done, score against 10 completion dimensions:
 
 [1/10] All checkboxes ticked              ✓ (147/147)
 [2/10] All verifications ran              ✓
-[3/10] All tests pass                     ✓ (253/253 + 8 validators)
+[3/10] All tests pass                     ✓ (320/320 + 10 validators + knip)
 [4/10] No regressions                     ✓ (Phase 7 baseline diff clean)
 [5/10] Memory updated                     ✓ (3 decisions, 2 learnings added)
 [6/10] Files created exist                ✓ (87/87)
@@ -285,6 +285,6 @@ Sum = 10. Gate at ≥9 for non-blocking; override allowed once-per-plan.
 - `/supervibe-plan` — what produces the plan input
 - `/supervibe-brainstorm` — what produces the spec input to /supervibe-plan
 - `/supervibe-score` — score a single artifact (this command auto-scores final delivery)
-- `superpowers:executing-plans` — comparable upstream pattern
+- `supervibe:executing-plans` — inline execution methodology
 - `docs/templates/plan-template.md` — the plan format this command parses
 - `confidence-rubrics/execute-plan.yaml` — scoring rubric (created when this command ships)

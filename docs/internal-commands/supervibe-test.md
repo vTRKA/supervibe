@@ -1,16 +1,16 @@
 ---
 description: >-
-  Run plugin's test + validator suite with structured output. Wraps `npm run
+  Advanced plugin-developer command. Run the plugin's test + validator suite with structured output. Wraps `npm run
   check` with per-validator status, regression detection vs baseline, and quick
-  re-run modes for failing subset. Triggers: 'run tests', 'прогони тесты',
-  'check plugin', '/supervibe-test'.
+  re-run modes for failing subset. Triggers: 'plugin tests', 'check plugin',
+  'supervibe qa', '/supervibe-test'.
 ---
 
 # /supervibe-test
 
-User-facing entry-point for the plugin's full quality-assurance suite. Wraps `npm run check` (253+ tests + 8 validators) with structured output, per-validator status, and the ability to re-run only failing subsets.
+Advanced plugin-developer entry-point for the plugin's full quality-assurance suite. Wraps `npm run check` (320 tests + 10 validators + knip) with structured output, per-validator status, and the ability to re-run only failing subsets.
 
-This command exists because `npm run check` is hidden in `package.json` and not always obvious to users. Plugin developers + project users running CI-style checks need a clear entry-point.
+This command exists because `npm run check` is hidden in `package.json` and not always obvious to plugin maintainers. For an application's own test suite, use the project's native test command instead.
 
 ## Invocation forms
 
@@ -20,7 +20,7 @@ Runs everything: `npm run check`. Reports per-validator + per-test-file status.
 
 ### `/supervibe-test --validators` — validators only (fast)
 
-Runs only the 8 validators (no node:test). Used for quick frontmatter / footer / discipline checks.
+Runs only the validator scripts (no node:test). Used for quick frontmatter / footer / discipline checks.
 
 ### `/supervibe-test --tests` — tests only
 
@@ -56,7 +56,7 @@ Useful before commit: did my change introduce a regression?
 
 ## What `npm run check` covers
 
-Auto-discovered from `package.json` — current composition (253 tests + 8 validators):
+Auto-discovered from `package.json` — current composition (320 tests + 10 validators + knip):
 
 | Step | Source | Purpose |
 |---|---|---|
@@ -66,8 +66,12 @@ Auto-discovered from `package.json` — current composition (253 tests + 8 valid
 | 4 | `validate:agent-footers` | Every agent's Output contract has Confidence + Rubric |
 | 5 | `validate:design-skills` | Design skill bodies have feedback prompt + anti-patterns |
 | 6 | `validate:question-discipline` | Interactive agents have dialogue discipline + anti-pattern |
-| 7 | `lint:dead-code` | knip clean (no orphan exports/files) |
-| 8 | `test` | 253 tests in `tests/*.test.mjs` |
+| 7 | `validate:spec-artifacts` | Specs in `docs/specs/` meet the 10/10 requirements artifact contract |
+| 8 | `validate:plan-artifacts` | Plans in `docs/plans/` meet the 10/10 execution-readiness contract |
+| 9 | `validate:no-deep-refs` | Reference files stay one level deep |
+| 10 | `validate:agent-section-order` | Agent files keep cache-friendly section ordering |
+| 11 | `lint:dead-code` | knip clean (no orphan exports/files) |
+| 12 | `test` | 320 tests in `tests/*.test.mjs` |
 
 If the user adds new validators (Phase 6 in token-economy plan etc.), this command auto-picks them up via package.json.
 
@@ -109,8 +113,8 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
    Success:
    ```
    === Supervibe Test — full suite ===
-   Validators:    8 / 8 ✓
-   Tests:         253 / 253 ✓
+   Validators:    10 / 10 ✓  (+ knip)
+   Tests:         320 / 320 ✓
    Duration:      17.3s
 
    ✓ All checks pass.
@@ -120,7 +124,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
    Failure:
    ```
    === Supervibe Test — full suite ===
-   Validators:    7 / 8 ✓
+   Validators:    9 / 10 ✓
      ✓ plugin-json
      ✓ frontmatter
      ✗ design-skills        — 1 issue
@@ -178,7 +182,7 @@ See "Format output" above. Key invariants:
 - `npm run check` — the underlying script
 - `package.json` `scripts:` — source of truth for what `check` composes
 - `/supervibe-score` — per-artifact scoring (complementary)
-- `/supervibe-execute-plan` — runs `/supervibe-test` as part of Stage B completion audit
+- `/supervibe-execute-plan` — runs plugin QA only when the plan touches Supervibe itself; otherwise it should use the target project's test runner
 - `.claude/memory/.test-baseline.json` — regression baseline (auto-managed)
 - `.claude/memory/.test-results.json` — last-run state (auto-managed)
 - `confidence-rubrics/*.yaml` — what `validate:*` checks against

@@ -142,7 +142,7 @@ Type `y`. The framework chains:
 8. **`supervibe:_core:quality-gate-reviewer`** → final ≥9 gate
 9. **`supervibe:add-memory`** → records this decision for future
 
-Every artifact confidence-scored ≥9 before progression. Override with `/supervibe-override "<reason>"` if needed.
+Every artifact confidence-scored ≥9 before progression. If a gate blocks and the user accepts the risk, the caller records an explicit override reason.
 
 ## Command reference
 
@@ -153,9 +153,8 @@ Every artifact confidence-scored ≥9 before progression. Override with `/superv
 | `/supervibe-audit` | Health-check artifacts (stale/weak/coverage) |
 | `/supervibe-strengthen` | Deepen weak agents/skills/rules |
 | `/supervibe-adapt` | Sync to stack changes (new modules/deps) |
-| `/supervibe-evaluate` | Track effectiveness in journal |
 | `/supervibe-score <type> [path]` | Score artifact against rubric |
-| `/supervibe-override "<reason>"` | Escape-hatch past BLOCK gate (logged) |
+| `/supervibe-score --record <type> [path]` | Score artifact and update telemetry |
 
 ## MCP integration (optional but recommended)
 

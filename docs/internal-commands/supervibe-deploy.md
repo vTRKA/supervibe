@@ -1,15 +1,17 @@
 ---
 description: >-
-  Promote approved prototype handoff bundle to production stack. Reads
+  Advanced integration command. Promote approved prototype handoff bundle to production stack. Reads
   prototypes/<slug>/handoff/, dispatches stack-developer to wire up tokens +
   components into the chosen framework. Includes pre-deploy validation +
-  rollback. Triggers: 'deploy prototype', 'промоут в прод', 'wire to stack',
-  'production handoff', '/supervibe-deploy'.
+  rollback. Triggers: 'integrate prototype handoff', 'promote approved prototype',
+  'wire prototype to stack', 'production handoff', '/supervibe-deploy'.
 ---
 
 # /supervibe-deploy
 
-Promote an approved prototype's handoff bundle into the project's production stack. Closes the design-pipeline loop: `/supervibe-design` → approval → handoff/ → **`/supervibe-deploy`** → production code in your framework.
+Advanced integration command. Promote an approved prototype's handoff bundle into the project's production stack. Closes the design-pipeline loop: `/supervibe-design` → approval → handoff/ → **`/supervibe-deploy`** → production code in your framework.
+
+Despite the name, this does **not** deploy to hosting, push to servers, or touch cloud infrastructure. It integrates approved design output into the local production codebase through a stack developer and an execution plan.
 
 This command does NOT replace the stack-developer's work — it dispatches the right developer with the right context (tokens, components, viewport spec, adapter hints). The developer integrates into the actual codebase.
 
@@ -145,8 +147,8 @@ Status: success | partial | reverted
 
 ### 7. Suggest follow-ups
 
-- Run `/supervibe-test` to verify production tests still pass.
-- Run `/supervibe-evaluate` on the deployed work for telemetry.
+- Run the project's native test command to verify production tests still pass.
+- Run `/supervibe-score --record` on the integrated work for telemetry.
 - Schedule a post-deploy review via `/schedule` (e.g., "in 1 week, audit if production matches design").
 
 ## Rollback procedure
@@ -156,7 +158,7 @@ When user runs `/supervibe-deploy --rollback <slug>`:
 1. Read `prototypes/<slug>/.deployed.json` for the commit SHAs.
 2. Verify SHAs are still in git history (not garbage-collected).
 3. Run: `git revert <sha-1> <sha-2> ...` (in reverse order, each as separate commit).
-4. Verify production tests still pass: `/supervibe-test`.
+4. Verify production tests still pass with the project's native test command.
 5. Update `.deployed.json`:
    ```json
    { "rolledBackAt": "<ISO>", "rollbackReason": "<text>", "originalDeploy": { ... } }
@@ -202,8 +204,8 @@ Deployment record: prototypes/landing-fintech-2026/.deployed.json
 Memory: .claude/memory/decisions/deployments.md (appended)
 
 Follow-ups:
-  • /supervibe-test (production tests)
-  • /supervibe-evaluate (telemetry)
+  • Project test command (production tests)
+  • /supervibe-score --record (telemetry)
   • /schedule "audit deploy match in 1 week"
   • /supervibe-deploy --rollback landing-fintech-2026 (if needed)
 ```
@@ -222,7 +224,7 @@ Follow-ups:
 - `supervibe:prototype-handoff` skill — produces the handoff bundle
 - `supervibe:writing-plans` skill — generates deployment plan
 - `/supervibe-execute-plan` — runs the deployment with 10/10 gates
-- `/supervibe-evaluate` — telemetry after deploy
+- `/supervibe-score --record` — telemetry after deploy
 - `/supervibe-genesis` — if production codebase missing
 - `agents/stacks/<stack>/<stack>-developer.md` — the developer dispatched
 - `prototypes/<slug>/.deployed.json` — deployment record (this command writes)

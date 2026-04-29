@@ -1,15 +1,18 @@
 ---
-description: "Score a finished artifact against its confidence rubric and record the outcome into agent telemetry. Use after a Task completes to lock in feedback."
+description: "Advanced compatibility alias for /supervibe-score --record. Scores a finished artifact and records the outcome into agent telemetry."
 ---
 
 # /supervibe-evaluate
 
-Apply the matching confidence rubric to a finished artifact (agent output, document, scaffold, etc.) and persist the score so the evolution loop can learn from it.
+Advanced compatibility alias for `/supervibe-score --record`. Apply the matching confidence rubric to a finished artifact (agent output, document, scaffold, etc.) and persist the score so the evolution loop can learn from it.
 
-## Difference from `/supervibe-score`
+## Preferred command
 
-- `/supervibe-score` scores once, prints a number, no persistence.
-- `/supervibe-evaluate` scores **and** writes the outcome into `.claude/memory/agent-invocations.jsonl` (via `updateLatestInvocation`) so the effectiveness tracker, underperformer detector, and re-dispatch suggester all see it.
+Use `/supervibe-score --record` for new user-facing workflows. This command remains for backward compatibility and automation that already calls `/supervibe-evaluate`.
+
+Difference:
+- `/supervibe-score` scores once and prints a number.
+- `/supervibe-score --record` and `/supervibe-evaluate` score **and** write the outcome into `.claude/memory/agent-invocations.jsonl` (via `updateLatestInvocation`) so the effectiveness tracker, underperformer detector, and re-dispatch suggester all see it.
 
 ## Invocation forms
 
@@ -68,7 +71,7 @@ Rubric:       <rubric-id>
 
 ## When NOT to invoke
 
-- One-off "is this thing OK?" check — `/supervibe-score` is faster, no persistence.
+- One-off "is this thing OK?" check — `/supervibe-score` is faster, no telemetry persistence.
 - You already have a low score and want to fix the agent — go to `/supervibe-strengthen`.
 - The artifact is half-done — wait until it is finished; rubrics don't make sense on partial work.
 
@@ -76,5 +79,5 @@ Rubric:       <rubric-id>
 
 - `supervibe:evaluate` skill — methodology for picking rubrics + applying them
 - `supervibe:confidence-scoring` skill — does the actual rubric application
-- `/supervibe-score` — scoring without persistence
+- `/supervibe-score --record` — preferred user-facing scoring + telemetry command
 - `/supervibe-override` — record an explicit override when accepting <9

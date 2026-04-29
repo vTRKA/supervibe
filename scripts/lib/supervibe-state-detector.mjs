@@ -1,6 +1,6 @@
 // Deterministic state detector for the /supervibe auto-router.
 //
-// Runs the 8 detection checks documented in commands/supervibe.md as actual
+// Runs the 7 detection checks documented in commands/supervibe.md as actual
 // code instead of relying on the AI to interpret a procedure. Returns the
 // recommended next phase command + structured evidence for each signal.
 //
@@ -225,7 +225,7 @@ async function checkPendingEvaluation(projectRoot) {
     if (!last.outcome && !last.user_feedback) {
       return {
         triggered: true,
-        evidence: `latest invocation (${last.agent_id}) has no outcome — run /supervibe-evaluate to lock feedback`,
+        evidence: `latest invocation (${last.agent_id}) has no outcome — run /supervibe-score --record to lock feedback`,
         last,
       };
     }
@@ -279,7 +279,7 @@ export async function detectNextPhase(projectRoot, pluginRoot) {
     {
       name: "pending-evaluation",
       run: () => checkPendingEvaluation(projectRoot),
-      recommend: "/supervibe-evaluate",
+      recommend: "/supervibe-score --record",
     },
   ];
 

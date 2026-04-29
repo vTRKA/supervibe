@@ -156,7 +156,7 @@ test("detector: pending-evaluation fires when latest invocation has no outcome",
   });
   const plugin = await makePlugin("plugin-pending", { version: "1.7.0" });
   const r = await detectNextPhase(project, plugin);
-  assert.strictEqual(r.proposed.command, "/supervibe-evaluate");
+  assert.strictEqual(r.proposed.command, "/supervibe-score --record");
   assert.strictEqual(r.proposed.signal, "pending-evaluation");
 });
 

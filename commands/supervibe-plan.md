@@ -86,5 +86,5 @@ Next:        choose execution path (subagent-driven | inline)
 - `supervibe:writing-plans` skill — the methodology
 - `supervibe:project-memory` — pre-flight similarity check
 - `/supervibe-brainstorm` — what produces the spec
-- `superpowers:executing-plans` / `superpowers:subagent-driven-development` — execution skills
+- `supervibe:executing-plans` / `supervibe:subagent-driven-development` — execution skills
 - `docs/templates/plan-template.md` — plan format

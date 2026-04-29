@@ -154,7 +154,7 @@ async function reportVersionBump() {
       );
     } else {
       console.log(
-        `[supervibe] ⬆ plugin upgraded ${r.lastSeen} → ${r.current}. See CHANGELOG.md or run /supervibe-changelog for what's new.`,
+        `[supervibe] ⬆ plugin upgraded ${r.lastSeen} → ${r.current}. See CHANGELOG.md for what's new.`,
       );
     }
     await setLastSeenVersion(PROJECT_ROOT, r.current);

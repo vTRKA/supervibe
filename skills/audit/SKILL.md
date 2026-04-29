@@ -38,7 +38,7 @@ last-verified: 2026-04-27
 6. **Override-rate** — compute over last 100 entries; >5% → flag systemic
 7. **Effectiveness signals** — agents with `failed/partial` outcome 2+ times → flag
 8. Output structured health report
-9. Recommend: `/supervibe-strengthen` for weak, `/supervibe-adapt` for stale refs, `/supervibe-evaluate` for effectiveness
+9. Recommend: `/supervibe-strengthen` for weak, `/supervibe-adapt` for stale refs, `/supervibe-score --record` for effectiveness
 
 ## Output contract
 

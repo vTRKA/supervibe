@@ -1,6 +1,6 @@
 # <Feature> Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use supervibe:subagent-driven-development (recommended) or supervibe:executing-plans.
 
 **Goal:** <one sentence>
 

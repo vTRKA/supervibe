@@ -86,20 +86,20 @@ Returns JSON-shaped object:
 }
 ```
 
-If status is BLOCK and the user did NOT issue `/supervibe-override`, the calling skill MUST loop back rather than claim completion.
+If status is BLOCK and no explicit override was recorded by the calling command, the calling skill MUST loop back rather than claim completion.
 
 ## Guard rails
 
 - DO NOT: invent evidence that isn't in the artifact (anti-hallucination).
 - DO NOT: round scores up — always round down for partial credit.
 - DO NOT: change rubric on the fly — if rubric needs updating, that's a separate `supervibe:strengthen` job.
-- DO NOT: persist scores anywhere — scoring is stateless. Override decisions are persisted by `/supervibe-override`, not by this skill.
+- DO NOT: persist scores anywhere — scoring is stateless. Score/override decisions are persisted by the caller command, not by this skill.
 - ALWAYS: include `evidence-found` per dimension so the user can audit the score.
 - ALWAYS: if `block-below = warn-below = 10`, the only PASS is exactly 10/10.
 
 ## Override interaction
 
-If a user invokes `/supervibe-override "<reason>"`, that command appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
+If a confidence gate accepts an explicit override reason, the caller appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
 
 The append-only log allows `/supervibe-audit` to compute override-rate later.
 

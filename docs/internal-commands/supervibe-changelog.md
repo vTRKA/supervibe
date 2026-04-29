@@ -21,7 +21,7 @@ Reads `.claude/memory/.evolve-version` (last seen) and `plugin.json.version` (cu
 ### `/supervibe-changelog <from> <to>` — explicit version range
 
 Examples:
-- `/supervibe-changelog 1.5.0 1.7.0` — show 1.6.0 + 1.7.0
+- `/supervibe-changelog 1.8.0 1.8.1` — show 1.8.1
 - `/supervibe-changelog 1.6.0 latest` — show everything since 1.6.0
 
 ### `/supervibe-changelog --since <version>` — open-ended forward
@@ -130,10 +130,10 @@ Default mode:
 ```
 === What changed since v1.6.0 in this project ===
 
-Range: v1.6.0 → v1.7.0  (3 versions)
+Range: v1.8.0 → v1.8.1  (1 version)
 
 ⚠ BREAKING CHANGES:
-## [v1.7.0] — 2026-04-28
+## [v1.8.1] — 2026-04-29
   - Removed deprecated `supervibe:legacy-prompt-quality` skill
   - Schema change: confidence-rubrics top-level field `id:` renamed to `artifact:`
   - hooks.json structure: `Stop` matcher field is now required
@@ -158,7 +158,7 @@ Breaking-only mode:
 Migrate mode:
 
 ```
-=== Migration plan: v1.6.0 → v1.7.0 ===
+=== Migration plan: v1.8.0 → v1.8.1 ===
 
 3 breaking changes detected.
 

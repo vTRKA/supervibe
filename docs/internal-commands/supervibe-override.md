@@ -1,10 +1,12 @@
 ---
-description: "Escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Usage: /supervibe-override \"reason text\""
+description: "Internal escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Prefer fixing score gaps first."
 ---
 
 # /supervibe-override
 
-Allow continuing past a confidence-scoring BLOCK status by recording the override decision in an append-only audit log.
+Internal escape hatch for continuing past a confidence-scoring BLOCK status by recording the override decision in an append-only audit log.
+
+This command is intentionally not part of the normal user path. It should be suggested only by `/supervibe-score`, `/supervibe-execute-plan`, or another confidence gate after the user has seen the gaps and explicitly accepts the risk.
 
 ## Path resolution for the audit log
 

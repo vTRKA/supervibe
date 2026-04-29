@@ -175,5 +175,5 @@ Apply? [y / n / modify]
 - `scripts/lib/auto-strengthen-trigger.mjs` — flagged-list builder
 - `tests/underperformer-detector.test.mjs` — threshold tests
 - `.claude/memory/agent-invocations.jsonl` — telemetry source
-- `/supervibe-evaluate` — closes the loop after strengthen by re-scoring
+- `/supervibe-score --record` — closes the loop after strengthen by re-scoring
 - `/supervibe-score agent-quality <path>` — score agent file quality independently

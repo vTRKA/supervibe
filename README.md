@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
-**v1.8.0** · MIT · Windows / macOS / Linux
+**v1.8.1** · MIT · Windows / macOS / Linux
 
 ---
 
@@ -16,7 +16,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist 
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
-| Confidence engine | Twelve rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
+| Confidence engine | Fourteen rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
 | 23 discipline rules | `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
@@ -82,7 +82,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v1.8.0 initialized for this project
+[supervibe] welcome — plugin v1.8.1 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -188,30 +188,32 @@ This flow has no slash command — you trigger it by asking the question. The gr
 
 ## Commands
 
-Slash commands (run inside an AI CLI session):
+Slash commands (run inside an AI CLI session). The normal user path is intentionally short; advanced commands stay available for diagnostics and plugin maintenance.
+
+### Primary
 
 | Command | What it does |
 |---------|--------------|
-| `/supervibe` | Auto-router: picks genesis, audit, strengthen, adapt, evaluate, or update |
-| `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow — produces an approved spec |
-| `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
-| `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates: Stage A readiness audit BEFORE + Stage B completion audit AFTER. Supports `--dry-run` (audit only) and `--resume` (continue partially-executed plan) |
-| `/supervibe-debug [<invocation-id\|agent-id>]` | Debug a failed invocation: replays task with root-cause analysis, classifies blocker (stale-context\|missing-skill\|wrong-approach\|environment\|prompt-bloat\|ambiguous-task), proposes fix |
-| `/supervibe-test [--validators\|--tests\|--watch\|--failing\|--regression]` | Run plugin's full QA suite (320 tests + 10 validators) with structured per-validator output, regression detection vs baseline, re-run only failing items |
-| `/supervibe-deploy [<slug>\|--plan\|--rollback]` | Promote approved prototype handoff bundle to production stack via stack-developer. 6-invariant pre-deploy gate + plan generation + rollback procedure |
-| `/supervibe-memory-gc [<category>\|--dry-run\|--restore\|--stats]` | Archive (never delete) old/superseded memory entries per retention policy. Reversible via `--restore`. Reads frontmatter `superseded-by:` for explicit replacement chains |
-| `/supervibe-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview |
-| `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
+| `/supervibe` | Auto-router: picks genesis, audit, strengthen, adapt, score, or update based on project state |
 | `/supervibe-genesis` | First-time scaffold of `.claude/` for your stack |
-| `/supervibe-audit` | Health check across agents, rules, memory |
-| `/supervibe-strengthen [agent_id]` | Strengthen a weak agent. Without arguments — auto-trigger from telemetry |
-| `/supervibe-adapt` | Pull upstream agent improvements into the project |
-| `/supervibe-evaluate` | Score a finished artifact against its rubric |
+| `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow; produces an approved spec |
+| `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
+| `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
+| `/supervibe-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview → approval |
+| `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
 | `/supervibe-preview` | Manage live preview servers |
-| `/supervibe-changelog` | What changed since the last version this project saw |
-| `/supervibe-update` | Update the plugin itself (git pull + lfs + install + tests). Idempotent |
-| `/supervibe-score` | Score one artifact against its rubric without persisting |
-| `/supervibe-override` | Record an explicit override when accepting a result below the gate |
+| `/supervibe-update` | Update the plugin itself. Idempotent, with rollback on failed checks |
+| `/supervibe-adapt` | Pull upstream agent/rule/skill improvements into the current project after plugin updates |
+
+### Advanced
+
+| Command | What it does |
+|---------|--------------|
+| `/supervibe-audit` | Read-only health check across agents, rules, memory, indexes, and project overrides |
+| `/supervibe-strengthen [agent_id]` | Strengthen a weak agent from telemetry; without arguments auto-detects flagged agents |
+| `/supervibe-score [--record] <artifact>` | Score an artifact against its rubric; `--record` also updates telemetry. This is the preferred scoring/evaluation command |
+
+Internal command specs for diagnostics, plugin QA, memory GC, legacy aliases, and override logging live in `docs/internal-commands/`. They are intentionally outside the published `commands/` directory so they do not add slash-command noise.
 
 Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/supervibe-marketplace/`):
 
