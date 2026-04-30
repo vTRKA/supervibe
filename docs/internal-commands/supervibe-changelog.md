@@ -21,8 +21,8 @@ Reads `.claude/memory/.evolve-version` (last seen) and `plugin.json.version` (cu
 ### `/supervibe-changelog <from> <to>` — explicit version range
 
 Examples:
-- `/supervibe-changelog 1.8.0 1.9.0` — show 1.9.0
-- `/supervibe-changelog 1.6.0 latest` — show everything since 1.6.0
+- `/supervibe-changelog <from> 2.0.0` — show 2.0.0
+- `/supervibe-changelog <from> latest` — show everything since `<from>`
 
 ### `/supervibe-changelog --since <version>` — open-ended forward
 
@@ -128,12 +128,12 @@ Pages: 1/N (if paginated)
 Default mode:
 
 ```
-=== What changed since v1.6.0 in this project ===
+=== What changed since vX.Y.Z in this project ===
 
-Range: v1.8.0 → v1.9.0  (1 version)
+Range: vX.Y.Z → v2.0.0  (1 version)
 
 ⚠ BREAKING CHANGES:
-## [v1.9.0] — 2026-04-30
+## [v2.0.0] — 2026-04-30
   - Removed deprecated `supervibe:legacy-prompt-quality` skill
   - Schema change: confidence-rubrics top-level field `id:` renamed to `artifact:`
   - hooks.json structure: `Stop` matcher field is now required
@@ -150,7 +150,7 @@ Tip: Run `/supervibe-changelog --migrate` for action items.
 Breaking-only mode:
 
 ```
-=== Breaking changes since v1.6.0 ===
+=== Breaking changes since vX.Y.Z ===
 
 [ALL breaking-change blocks verbatim, even if 20K chars]
 ```
@@ -158,7 +158,7 @@ Breaking-only mode:
 Migrate mode:
 
 ```
-=== Migration plan: v1.8.0 → v1.9.0 ===
+=== Migration plan: vX.Y.Z → v2.0.0 ===
 
 3 breaking changes detected.
 

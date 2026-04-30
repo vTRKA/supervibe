@@ -34,7 +34,7 @@ Roll back to the previous commit on the plugin checkout. Useful after a failed u
 ### `/supervibe-update --to <ref>` — pin to specific version
 
 Examples:
-- `/supervibe-update --to v1.6.0` — checkout tag
+- `/supervibe-update --to v2.0.0` — checkout tag
 - `/supervibe-update --to abc123` — checkout commit SHA
 
 After pin: same install + test cycle. Use to test a specific candidate before adopting.
@@ -154,9 +154,9 @@ Successful upgrade:
 ```
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
-Before:         v1.6.0
-After:          v1.9.0
-Tests:          642 / 642 passed
+Before:         vX.Y.Z
+After:          v2.0.0
+Tests:          679 / 679 passed
 Validators:     10 / 10 clean (+ knip)
 LFS:            pulled (or: skipped — lazy-fetch fallback)
 
@@ -174,7 +174,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v1.9.0
+Target:         v2.0.0
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -184,21 +184,21 @@ Error excerpt: [first 500 chars]
   - Dependencies reinstalled
   - LFS restored
 
-Plugin remains on v1.6.0.
+Plugin remains on vX.Y.Z.
 Failure log: .claude/memory/incidents/upgrade-failure-2026-04-28T15-30-00.md
 
 Next:
   1. File issue: https://github.com/vTRKA/supervibe/issues
-  2. Or pin to safer version: /supervibe-update --to v1.6.5
+  2. Or pin to safer version: /supervibe-update --to <version>
 ```
 
 Dry-run:
 
 ```
 === Supervibe Update — DRY RUN ===
-Current:        v1.6.0
-Latest:         v1.9.0
-Changelog summary: [from CHANGELOG.md since v1.6.0]
+Current:        vX.Y.Z
+Latest:         v2.0.0
+Changelog summary: [from CHANGELOG.md since vX.Y.Z]
 
 Breaking changes detected: 2
   - Removed: supervibe:legacy-prompt-quality

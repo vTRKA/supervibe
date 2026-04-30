@@ -41,3 +41,25 @@ test("README keeps existing main install/update URLs and unpinned plugin example
   assert.doesNotMatch(readme, /supervibe\.git#v2\.0\.0/);
   assert.doesNotMatch(readme, /github\.com\/vTRKA\/supervibe#v2\.0\.0/);
 });
+
+test("tracked release docs and command examples do not advertise stale 1.9.0 targets", async () => {
+  const files = [
+    ".claude/memory/loops/loop-docs-plans-2026-04-29-autonomous-agent-loop-md/state.json",
+    "commands/supervibe-adapt.md",
+    "commands/supervibe-update.md",
+    "commands/supervibe.md",
+    "docs/internal-commands/supervibe-changelog.md",
+  ];
+
+  for (const file of files) {
+    const text = await readFile(file, "utf8");
+    assert.doesNotMatch(text, /(?:^|[^\d])v?1\.9\.0(?:[^\d]|$)/, `${file} still contains a stale 1.9.0 release target`);
+  }
+});
+
+test("getting-started local install examples use the current 2.0.0 cache path", async () => {
+  const text = await readFile("docs/getting-started.md", "utf8");
+  assert.match(text, /plugins\/cache\/local\/supervibe\/2\.0\.0/);
+  assert.doesNotMatch(text, /plugins[\\/]+cache[\\/]+local[\\/]+supervibe[\\/]+1\.2\.0/);
+  assert.doesNotMatch(text, /v1\.2\.0 dir/);
+});
