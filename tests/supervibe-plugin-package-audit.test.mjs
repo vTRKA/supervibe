@@ -29,7 +29,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
     packageJson: { version: "1.8.1" },
     manifests: {
       claude: { name: "supervibe", version: "1.7.0", description: "old", commands: "../commands", skills: "./missing-skills" },
-      codex: { name: "wrong", version: "1.8.1", description: "worktree loop", commands: "./commands", skills: "./skills" },
+      codex: { name: "wrong", version: "1.8.1", description: "worktree loop", commands: "./commands", skills: "./skills", hooks: "./hooks/hooks.json" },
     },
     marketplace: { name: "bad", metadata: { version: "1.7.0" }, plugins: [{ name: "supervibe", version: "1.7.0", source: "../outside" }] },
     geminiExtension: { version: "1.7.0" },
@@ -64,6 +64,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "version-mismatch"));
   assert.ok(audit.issues.some((issue) => issue.code === "manifest-path-escapes-package"));
   assert.ok(audit.issues.some((issue) => issue.code === "missing-command-doc"));
+  assert.ok(audit.issues.some((issue) => issue.code === "codex-unsupported-manifest-field"));
   assert.ok(audit.issues.some((issue) => issue.code === "install-smoke-missing-check"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-claude-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-supervibe-state"));

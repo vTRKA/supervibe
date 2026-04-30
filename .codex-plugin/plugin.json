@@ -1,6 +1,6 @@
 {
   "name": "supervibe",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "AI coding agent framework: 83 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, 10-language code graph, multilingual semantic RAG, project memory, and confidence rubrics.",
   "author": {
     "name": "vTRKA",
@@ -39,8 +39,5 @@
       "Find prior decisions on idempotency in this repo's memory."
     ]
   },
-  "agents": "./agents",
-  "skills": "./skills",
-  "commands": "./commands",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills"
 }

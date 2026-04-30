@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync, lstatSync, readlinkSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { auditPluginPackage } from "./supervibe-plugin-package-audit.mjs";
 
@@ -157,34 +157,83 @@ async function inspectClaudeRegistration({ rootDir, homeDir, required }) {
 }
 
 function inspectCodexRegistration({ rootDir, homeDir, required }) {
-  const link = join(homeDir, ".codex", "plugins", "supervibe");
-  let ok = false;
+  const pluginKey = "supervibe@supervibe-marketplace";
+  const link = join(homeDir, ".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local");
+  const legacyLink = join(homeDir, ".codex", "plugins", "supervibe");
+  const skillsLink = join(homeDir, ".agents", "skills", "supervibe");
+  const configPath = join(homeDir, ".codex", "config.toml");
+  let pluginOk = false;
+  let legacyPluginOk = false;
+  let configOk = false;
+  let skillsOk = false;
   let mode = "missing";
   let target = null;
+  let legacyMode = "missing";
+  let legacyTarget = null;
+  let skillsMode = "missing";
+  let skillsTarget = null;
   try {
     if (existsSync(link)) {
       const stat = lstatSync(link);
       mode = stat.isSymbolicLink() ? "symlink" : "copy";
       if (stat.isSymbolicLink()) {
         target = resolve(dirname(link), readlinkSync(link));
-        ok = sameRealPath(target, rootDir);
+        pluginOk = sameRealPath(target, rootDir);
       } else {
-        ok = existsSync(join(link, ".codex-plugin", "plugin.json"));
+        pluginOk = existsSync(join(link, ".codex-plugin", "plugin.json"));
+      }
+    }
+    if (existsSync(legacyLink)) {
+      const stat = lstatSync(legacyLink);
+      legacyMode = stat.isSymbolicLink() ? "symlink" : "copy";
+      if (stat.isSymbolicLink()) {
+        legacyTarget = resolve(dirname(legacyLink), readlinkSync(legacyLink));
+        legacyPluginOk = sameRealPath(legacyTarget, rootDir);
+      } else {
+        legacyPluginOk = existsSync(join(legacyLink, ".codex-plugin", "plugin.json"));
+      }
+    }
+    if (existsSync(configPath)) {
+      configOk = codexConfigEnablesPlugin(readFileSync(configPath, "utf8"), pluginKey);
+    }
+    if (existsSync(skillsLink)) {
+      const stat = lstatSync(skillsLink);
+      skillsMode = stat.isSymbolicLink() ? "symlink" : "copy";
+      if (stat.isSymbolicLink()) {
+        skillsTarget = resolve(dirname(skillsLink), readlinkSync(skillsLink));
+        skillsOk = sameRealPath(skillsTarget, join(rootDir, "skills"));
+      } else {
+        skillsOk = existsSync(join(skillsLink, "genesis", "SKILL.md"));
       }
     }
   } catch {
-    ok = false;
+    pluginOk = false;
+    legacyPluginOk = false;
+    configOk = false;
+    skillsOk = false;
   }
+  const ok = pluginOk && configOk && skillsOk;
 
   return {
     required,
     ok,
+    pluginOk,
+    configOk,
+    legacyPluginOk,
+    skillsOk,
     mode,
     path: link,
     target,
+    configPath,
+    legacyMode,
+    legacyPath: legacyLink,
+    legacyTarget,
+    skillsMode,
+    skillsPath: skillsLink,
+    skillsTarget,
     rootDir,
-    message: ok ? "Codex registration is present" : "Codex plugin entry is missing after install",
-    nextAction: "Re-run install.sh/install.ps1; on Windows enable Developer Mode for symlinks or let the installer use its copy fallback.",
+    message: ok ? "Codex official plugin cache/config and native skills registration are present" : "Codex official plugin cache/config or native skills registration is incomplete after install",
+    nextAction: "Re-run install.sh/install.ps1; Codex needs ~/.codex/plugins/cache plus config.toml, while Zed/Codex ACP needs native skills in ~/.agents/skills because plugin slash commands are not advertised by codex-acp.",
   };
 }
 
@@ -230,6 +279,31 @@ function sameRealPath(a, b) {
   } catch {
     return normalizePath(resolve(a)) === normalizePath(resolve(b));
   }
+}
+
+function codexConfigEnablesPlugin(config = "", pluginKey = "") {
+  const features = tomlSection(config, "features");
+  const plugin = tomlSection(config, `plugins."${pluginKey}"`);
+  return tomlBoolean(features, "plugins") === true && tomlBoolean(plugin, "enabled") === true;
+}
+
+function tomlSection(source = "", section = "") {
+  if (!source || !section) return "";
+  const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headerRe = new RegExp(`^\\[${escaped}\\][ \\t]*$`, "m");
+  const match = headerRe.exec(source);
+  if (!match) return "";
+  const bodyStart = match.index + match[0].length;
+  const rest = source.slice(bodyStart);
+  const nextRel = rest.search(/^\s*\[/m);
+  const bodyEnd = nextRel === -1 ? source.length : bodyStart + nextRel;
+  return source.slice(bodyStart, bodyEnd);
+}
+
+function tomlBoolean(section = "", key = "") {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^\\s*${escaped}\\s*=\\s*(true|false)\\s*(?:#.*)?$`, "im").exec(section);
+  return match ? match[1].toLowerCase() === "true" : null;
 }
 
 async function readJsonOptional(path) {

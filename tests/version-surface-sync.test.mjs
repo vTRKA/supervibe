@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const TARGET_VERSION = "2.0.11";
+const TARGET_VERSION = "2.0.12";
 
-test("release-facing version surfaces are synchronized to 2.0.11", async () => {
+test("release-facing version surfaces are synchronized to 2.0.12", async () => {
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   const packageLock = JSON.parse(await readFile("package-lock.json", "utf8"));
   const codex = JSON.parse(await readFile(".codex-plugin/plugin.json", "utf8"));
@@ -25,10 +25,19 @@ test("release-facing version surfaces are synchronized to 2.0.11", async () => {
   assert.equal(marketplace.plugins.find((plugin) => plugin.name === "supervibe").version, TARGET_VERSION);
   assert.equal(cursor.version, TARGET_VERSION);
   assert.equal(gemini.version, TARGET_VERSION);
-  assert.match(opencode, /version:\s*"2\.0\.11"/);
+  assert.match(opencode, /version:\s*"2\.0\.12"/);
   assert.match(readme, /\*\*v2\.0\*\*/);
-  assert.match(readme, /plugin v2\.0\.11 initialized/);
-  assert.match(changelog, /## \[2\.0\.11\] - 2026-05-01/);
+  assert.match(readme, /plugin v2\.0\.12 initialized/);
+  assert.match(changelog, /## \[2\.0\.12\] - 2026-05-01/);
+});
+
+test("Codex plugin manifest stays on supported skills surface", async () => {
+  const codex = JSON.parse(await readFile(".codex-plugin/plugin.json", "utf8"));
+
+  assert.equal(codex.skills, "./skills");
+  assert.equal(codex.commands, undefined);
+  assert.equal(codex.agents, undefined);
+  assert.equal(codex.hooks, undefined);
 });
 
 test("README keeps existing main install/update URLs and unpinned plugin examples", async () => {
@@ -86,9 +95,9 @@ test("tracked release docs and command examples do not advertise stale 1.9.0 tar
   }
 });
 
-test("getting-started local install examples use the current 2.0.11 cache path", async () => {
+test("getting-started local install examples use the current 2.0.12 cache path", async () => {
   const text = await readFile("docs/getting-started.md", "utf8");
-  assert.match(text, /plugins\/cache\/local\/supervibe\/2\.0\.11/);
+  assert.match(text, /plugins\/cache\/local\/supervibe\/2\.0\.12/);
   assert.doesNotMatch(text, /plugins[\\/]+cache[\\/]+local[\\/]+supervibe[\\/]+1\.2\.0/);
   assert.doesNotMatch(text, /v1\.2\.0 dir/);
 });

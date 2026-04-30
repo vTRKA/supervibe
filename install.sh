@@ -19,7 +19,10 @@
 #   6. Runs npm ci + registry build + npm run check so SQLite/RAG/CodeGraph are available
 #   7. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
-#        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
+#        - Codex:   ~/.codex/plugins/cache/supervibe-marketplace/supervibe/local
+#                   ~/.codex/config.toml [plugins."supervibe@supervibe-marketplace"]
+#                   ~/.codex/plugins/supervibe  (legacy symlink for older Codex builds)
+#                   ~/.agents/skills/supervibe  (native skill discovery for Codex/Zed ACP)
 #        - Gemini:  ~/.gemini/GEMINI.md      (idempotent include via marker)
 #   8. Runs install lifecycle doctor and prints next steps
 
@@ -288,7 +291,7 @@ fi
 TARGET="$CLAUDE_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
 validate_safe_path "$TARGET"
 say "plan: will install or update checkout at $TARGET"
-say "plan: will modify Claude config under $CLAUDE_DIR, Codex plugin link under $CODEX_DIR, and Gemini include under $GEMINI_DIR when those CLIs are detected"
+say "plan: will modify Claude config under $CLAUDE_DIR, Codex plugin cache/config + native skill links under $CODEX_DIR and ~/.agents, and Gemini include under $GEMINI_DIR when those CLIs are detected"
 say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 if [ -d "$TARGET/.git" ]; then
@@ -446,12 +449,74 @@ register_codex() {
   mkdir -p "$codex_plugins"
   local link="$codex_plugins/$PLUGIN_NAME"
 
-  # Replace any existing entry (file, dir, symlink, broken symlink)
+  # Legacy compatibility path used by older Codex builds and external-agent wrappers.
   if [ -L "$link" ] || [ -e "$link" ]; then
     rm -rf "$link"
   fi
   ln -s "$TARGET" "$link"
-  ok "registered with Codex CLI (symlink: $link -> $TARGET)"
+
+  # Native Codex plugin store path. Current Codex reads enabled plugins from
+  # ~/.codex/config.toml and resolves them under plugins/cache/<marketplace>/<name>/<version>.
+  local codex_cache_parent="$CODEX_DIR/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME"
+  mkdir -p "$codex_cache_parent"
+  local cache_link="$codex_cache_parent/local"
+  if [ -L "$cache_link" ] || [ -e "$cache_link" ]; then
+    rm -rf "$cache_link"
+  fi
+  ln -s "$TARGET" "$cache_link"
+
+  local codex_config="$CODEX_DIR/config.toml"
+  EVOLVE_CODEX_CONFIG="$codex_config" \
+  EVOLVE_CODEX_PLUGIN_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
+  node -e '
+    const fs = require("fs");
+    const configPath = process.env.EVOLVE_CODEX_CONFIG;
+    const pluginKey = process.env.EVOLVE_CODEX_PLUGIN_KEY;
+    const pluginHeader = `[plugins."${pluginKey}"]`;
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function upsertSectionSetting(text, sectionHeader, settingKey, settingLine) {
+      const headerRe = new RegExp(`^${escapeRegExp(sectionHeader)}[ \t]*$`, "m");
+      const match = headerRe.exec(text);
+      if (!match) {
+        return `${text.trimEnd()}\n\n${sectionHeader}\n${settingLine}\n`;
+      }
+      const bodyStart = match.index + match[0].length;
+      const rest = text.slice(bodyStart);
+      const nextRel = rest.search(/^\s*\[/m);
+      const bodyEnd = nextRel === -1 ? text.length : bodyStart + nextRel;
+      let body = text.slice(bodyStart, bodyEnd);
+      const settingRe = new RegExp(`^\\s*${escapeRegExp(settingKey)}\\s*=.*$`, "m");
+      if (settingRe.test(body)) {
+        body = body.replace(settingRe, settingLine);
+      } else {
+        body = body.endsWith("\n") || body === "" ? `${body}${settingLine}\n` : `${body}\n${settingLine}\n`;
+      }
+      return text.slice(0, bodyStart) + body + text.slice(bodyEnd);
+    }
+
+    let text = "";
+    try {
+      text = fs.readFileSync(configPath, "utf8").replace(/^\uFEFF/, "");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    text = upsertSectionSetting(text, "[features]", "plugins", "plugins = true");
+    text = upsertSectionSetting(text, pluginHeader, "enabled", "enabled = true");
+    fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
+  '
+
+  local agents_skills="$HOME/.agents/skills"
+  mkdir -p "$agents_skills"
+  local skill_link="$agents_skills/$PLUGIN_NAME"
+  if [ -L "$skill_link" ] || [ -e "$skill_link" ]; then
+    rm -rf "$skill_link"
+  fi
+  ln -s "$TARGET/skills" "$skill_link"
+  ok "registered with Codex CLI (cache: $cache_link -> $TARGET; config: $codex_config; legacy plugin: $link -> $TARGET; skills: $skill_link -> $TARGET/skills)"
 }
 
 register_gemini() {

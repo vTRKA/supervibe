@@ -172,7 +172,7 @@ if ($ClisFound.Count -eq 0) {
 $Target = Join-Path $ClaudeDir "plugins\marketplaces\$MarketplaceName"
 Assert-SafePluginPath $Target
 Say "plan: will install or update checkout at $Target"
-Say "plan: will modify Claude config under $ClaudeDir, Codex plugin link under $CodexDir, and Gemini include under $GeminiDir when those CLIs are detected"
+Say "plan: will modify Claude config under $ClaudeDir, Codex plugin cache/config + native skill links under $CodexDir and ~/.agents, and Gemini include under $GeminiDir when those CLIs are detected"
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
@@ -409,29 +409,99 @@ fs.writeFileSync(sjPath, JSON.stringify(sj, null, 2) + "\n");
   Ok 'registered with Claude Code: installed_plugins + known_marketplaces + settings.enabledPlugins'
 }
 
+function Register-CodexPath {
+  param([string]$Path, [string]$TargetPath, [string]$Label)
+
+  $existing = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+  if ($existing) { Remove-Item -Recurse -Force -LiteralPath $Path }
+
+  try {
+    New-Item -ItemType SymbolicLink -Path $Path -Target $TargetPath -ErrorAction Stop | Out-Null
+    Ok "$Label registered (symlink: $Path)"
+  } catch {
+    Warn "$Label symlink failed (no admin / Developer Mode) - trying junction"
+    Warn 'enable Developer Mode for symlinks: Settings > For Developers > Developer Mode'
+    try {
+      New-Item -ItemType Junction -Path $Path -Target $TargetPath -ErrorAction Stop | Out-Null
+      Ok "$Label registered (junction: $Path)"
+    } catch {
+      Warn "$Label junction failed - falling back to copy"
+      Copy-Item -Recurse -Path $TargetPath -Destination $Path
+      Ok "$Label registered (copy: $Path)"
+    }
+  }
+}
+
+function Update-CodexConfig {
+  $configPath = Join-Path $CodexDir 'config.toml'
+  New-Item -ItemType Directory -Force -Path $CodexDir | Out-Null
+
+  $env:EVOLVE_CODEX_CONFIG = $configPath
+  $env:EVOLVE_CODEX_PLUGIN_KEY = "$PluginName@$MarketplaceName"
+  $script = @'
+const fs = require("fs");
+const configPath = process.env.EVOLVE_CODEX_CONFIG;
+const pluginKey = process.env.EVOLVE_CODEX_PLUGIN_KEY;
+const pluginHeader = `[plugins."${pluginKey}"]`;
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function upsertSectionSetting(text, sectionHeader, settingKey, settingLine) {
+  const headerRe = new RegExp(`^${escapeRegExp(sectionHeader)}[ \t]*$`, "m");
+  const match = headerRe.exec(text);
+  if (!match) {
+    return `${text.trimEnd()}\n\n${sectionHeader}\n${settingLine}\n`;
+  }
+  const bodyStart = match.index + match[0].length;
+  const rest = text.slice(bodyStart);
+  const nextRel = rest.search(/^\s*\[/m);
+  const bodyEnd = nextRel === -1 ? text.length : bodyStart + nextRel;
+  let body = text.slice(bodyStart, bodyEnd);
+  const settingRe = new RegExp(`^\\s*${escapeRegExp(settingKey)}\\s*=.*$`, "m");
+  if (settingRe.test(body)) {
+    body = body.replace(settingRe, settingLine);
+  } else {
+    body = body.endsWith("\n") || body === "" ? `${body}${settingLine}\n` : `${body}\n${settingLine}\n`;
+  }
+  return text.slice(0, bodyStart) + body + text.slice(bodyEnd);
+}
+
+let text = "";
+try {
+  text = fs.readFileSync(configPath, "utf8").replace(/^\uFEFF/, "");
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+text = upsertSectionSetting(text, "[features]", "plugins", "plugins = true");
+text = upsertSectionSetting(text, pluginHeader, "enabled", "enabled = true");
+fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
+'@
+
+  $script | & node -
+  if ($LASTEXITCODE -ne 0) { Die 'Failed to update Codex config.toml plugin registration' }
+  Remove-Item Env:EVOLVE_CODEX_CONFIG, Env:EVOLVE_CODEX_PLUGIN_KEY -ErrorAction SilentlyContinue
+  Ok "enabled Codex plugin config ($PluginName@$MarketplaceName)"
+}
+
 function Register-Codex {
   $codexPlugins = Join-Path $CodexDir 'plugins'
   New-Item -ItemType Directory -Force -Path $codexPlugins | Out-Null
   $link = Join-Path $codexPlugins $PluginName
+  Register-CodexPath -Path $link -TargetPath $Target -Label 'Codex legacy plugin'
 
-  if (Test-Path $link) { Remove-Item -Recurse -Force $link }
+  $cacheRoot = Join-Path $CodexDir "plugins\cache\$MarketplaceName\$PluginName"
+  New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+  $cacheLink = Join-Path $cacheRoot 'local'
+  Register-CodexPath -Path $cacheLink -TargetPath $Target -Label 'Codex official plugin cache'
+  Update-CodexConfig
 
-  # Try native PowerShell symlink (cleaner than mklink)
-  try {
-    New-Item -ItemType SymbolicLink -Path $link -Target $Target -ErrorAction Stop | Out-Null
-    Ok "registered with Codex CLI (symlink: $link)"
-  } catch {
-    Warn 'symlink failed (no admin / Developer Mode) - trying junction'
-    Warn 'enable Developer Mode for symlinks: Settings > For Developers > Developer Mode'
-    try {
-      New-Item -ItemType Junction -Path $link -Target $Target -ErrorAction Stop | Out-Null
-      Ok "registered with Codex CLI (junction: $link)"
-    } catch {
-      Warn 'junction failed - falling back to copy'
-      Copy-Item -Recurse -Path $Target -Destination $link
-      Ok "registered with Codex CLI (copy: $link)"
-    }
-  }
+  $agentsSkills = Join-Path $HOME '.agents\skills'
+  New-Item -ItemType Directory -Force -Path $agentsSkills | Out-Null
+  $skillLink = Join-Path $agentsSkills $PluginName
+  $skillTarget = Join-Path $Target 'skills'
+  Register-CodexPath -Path $skillLink -TargetPath $skillTarget -Label 'Codex native skills'
 }
 
 function Register-Gemini {

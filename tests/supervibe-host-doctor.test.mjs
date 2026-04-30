@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -26,13 +26,20 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.0.11");
+  assert.equal(result.packageVersion, "2.0.12");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 
   const codex = result.hosts.find((host) => host.host === "codex");
   assert.ok(codex.checks.some((check) => check.id === "manifest-version" && check.status === "pass"));
+  assert.ok(codex.checks.some((check) => check.id === "manifest-commands-unsupported" && check.status === "pass"));
+  assert.ok(codex.checks.some((check) => check.id === "manifest-agents-unsupported" && check.status === "pass"));
+  assert.ok(codex.checks.some((check) => check.id === "manifest-hooks-unsupported" && check.status === "pass"));
   assert.ok(codex.checks.some((check) => check.id === "local-registration" && check.status === "warn"));
+  assert.ok(codex.checks.some((check) => check.id === "codex-plugin-config" && check.status === "warn"));
+  assert.ok(codex.checks.some((check) => check.id === "codex-legacy-plugin-link" && check.status === "info"));
+  assert.ok(codex.checks.some((check) => check.id === "codex-native-skills" && check.status === "warn"));
+  assert.ok(codex.checks.some((check) => check.id === "codex-acp-slash-palette" && check.status === "info"));
 
   const opencode = result.hosts.find((host) => host.host === "opencode");
   assert.ok(opencode.checks.some((check) => check.id === "opencode-skills-hook" && check.status === "pass"));
@@ -56,6 +63,36 @@ test("strict host doctor fails when Codex CLI and registration are absent", asyn
   const checks = result.hosts[0].checks;
   assert.ok(checks.some((check) => check.id === "cli-command" && check.status === "fail"));
   assert.ok(checks.some((check) => check.id === "local-registration" && check.status === "fail"));
+  assert.ok(checks.some((check) => check.id === "codex-plugin-config" && check.status === "fail"));
+  assert.ok(checks.some((check) => check.id === "codex-native-skills" && check.status === "fail"));
+});
+
+test("strict host doctor accepts complete Codex cache/config/native skill registration", async () => {
+  const homeDir = await mkdtemp(join(tmpdir(), "supervibe-host-home-"));
+  await mkdir(join(homeDir, ".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local"), { recursive: true });
+  await mkdir(join(homeDir, ".agents", "skills", "supervibe"), { recursive: true });
+  await writeFile(join(homeDir, ".codex", "config.toml"), [
+    "[features]",
+    "plugins = true",
+    "",
+    "[plugins.\"supervibe@supervibe-marketplace\"]",
+    "enabled = true",
+    "",
+  ].join("\n"), "utf8");
+
+  const result = await diagnoseHosts({
+    rootDir: ROOT,
+    homeDir,
+    host: "codex",
+    strict: true,
+    commandExists: async () => true,
+  });
+
+  assert.equal(result.pass, true);
+  const checks = result.hosts[0].checks;
+  assert.ok(checks.some((check) => check.id === "local-registration" && check.status === "pass"));
+  assert.ok(checks.some((check) => check.id === "codex-plugin-config" && check.status === "pass"));
+  assert.ok(checks.some((check) => check.id === "codex-native-skills" && check.status === "pass"));
 });
 
 test("host doctor accepts Claude manifest agents as path arrays", async () => {

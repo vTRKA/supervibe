@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   auditInstallLifecycleData,
   classifyStaleFiles,
+  runInstallLifecycleAudit,
 } from "../scripts/lib/supervibe-install-lifecycle-audit.mjs";
 
 test("install lifecycle audit passes clean generated install state", () => {
   const audit = auditInstallLifecycleData({
-    version: "2.0.11",
+    version: "2.0.12",
     packageAudit: { pass: true, score: 10, issues: [], warnings: [] },
     registryPresent: true,
     gitStatusLines: [],
@@ -45,6 +48,36 @@ test("install lifecycle audit fails stale files, missing registry, and required 
   assert.ok(audit.issues.some((issue) => issue.code === "registry-missing-after-install"));
   assert.ok(audit.issues.some((issue) => issue.code === "stale-files-left-in-checkout"));
   assert.ok(audit.issues.some((issue) => issue.code === "claude-registration-missing"));
+});
+
+test("install lifecycle audit accepts Codex official cache/config/native skills", async () => {
+  const homeDir = await mkdtemp(join(tmpdir(), "supervibe-install-home-"));
+  const codexPlugin = join(homeDir, ".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local");
+  const codexSkills = join(homeDir, ".agents", "skills", "supervibe");
+  await mkdir(join(codexPlugin, ".codex-plugin"), { recursive: true });
+  await writeFile(join(codexPlugin, ".codex-plugin", "plugin.json"), "{}", "utf8");
+  await mkdir(join(codexSkills, "genesis"), { recursive: true });
+  await writeFile(join(codexSkills, "genesis", "SKILL.md"), "# Genesis\n", "utf8");
+  await writeFile(join(homeDir, ".codex", "config.toml"), [
+    "[features]",
+    "plugins = true",
+    "",
+    "[plugins.\"supervibe@supervibe-marketplace\"]",
+    "enabled = true",
+    "",
+  ].join("\n"), "utf8");
+
+  const audit = await runInstallLifecycleAudit({
+    rootDir: process.cwd(),
+    homeDir,
+    expectedHosts: ["codex"],
+    writeReport: false,
+  });
+
+  assert.equal(audit.hostRegistrations.codex.ok, true);
+  assert.equal(audit.hostRegistrations.codex.pluginOk, true);
+  assert.equal(audit.hostRegistrations.codex.configOk, true);
+  assert.equal(audit.hostRegistrations.codex.skillsOk, true);
 });
 
 test("stale classifier only treats untracked files as install leftovers", () => {

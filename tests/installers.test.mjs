@@ -106,6 +106,22 @@ test('install.sh and install.ps1 reference the same plugin name', () => {
   assert.strictEqual(shName, psName, `plugin name mismatch: bash=${shName} ps1=${psName}`);
 });
 
+test('Codex installer registration includes native skills for Zed ACP sessions', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+
+  assert.match(sh, /\.codex\/plugins/, 'bash installer must keep Codex plugin registration');
+  assert.match(sh, /plugins\/cache\/\$MARKETPLACE_NAME\/\$PLUGIN_NAME/, 'bash installer must write the Codex official plugin cache');
+  assert.match(sh, /EVOLVE_CODEX_CONFIG/, 'bash installer must update Codex config.toml through env-based node script');
+  assert.match(sh, /\[plugins\."\$\{pluginKey\}"\]/, 'bash installer must enable the plugin key in Codex config.toml');
+  assert.match(sh, /\.agents\/skills/, 'bash installer must link native skills for Codex/Zed ACP');
+  assert.match(ps1, /Join-Path \$CodexDir 'plugins'/, 'PowerShell installer must keep Codex plugin registration');
+  assert.match(ps1, /plugins\\cache\\\$MarketplaceName\\\$PluginName/, 'PowerShell installer must write the Codex official plugin cache');
+  assert.match(ps1, /EVOLVE_CODEX_CONFIG/, 'PowerShell installer must update Codex config.toml through env-based node script');
+  assert.match(ps1, /\[plugins\."\$\{pluginKey\}"\]/, 'PowerShell installer must enable the plugin key in Codex config.toml');
+  assert.match(ps1, /Join-Path \$HOME '\.agents\\skills'/, 'PowerShell installer must link native skills for Codex/Zed ACP');
+});
+
 test('installers require Node 22.5+ and offer consent-based bootstrap before registration', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');

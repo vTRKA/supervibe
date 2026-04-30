@@ -68,17 +68,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.11
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.12
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.11
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.11"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.12
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.12"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.11
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.12
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.11" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.12" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -102,9 +102,11 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.11/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.12/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
+
+For Zed sessions that use Codex ACP, the `/` palette is controlled by `codex-acp`, not by Supervibe's command docs. Re-run the installer so Codex has `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local`, `[plugins."supervibe@supervibe-marketplace"]` in `~/.codex/config.toml`, the legacy `~/.codex/plugins/supervibe` link, and `~/.agents/skills/supervibe`; restart the Zed external-agent session, then run `npm run supervibe:doctor -- --host codex --strict` from the plugin checkout if prompts still do not route.
 
 ## Your First Project (5 minutes)
 
@@ -381,10 +383,22 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.11/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.12/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
+
+### Zed/Codex ACP slash palette does not list Supervibe
+
+This is a Codex ACP command-advertising limitation, not a missing local Zed setting. Codex currently supports Supervibe through plugin cache/config plus native skills, while `codex-acp` sends Zed a fixed built-in slash-command list. Supervibe's installer therefore also enables `supervibe@supervibe-marketplace` in `~/.codex/config.toml` and links native skills into `~/.agents/skills/supervibe`.
+
+Verify the Codex side:
+
+```bash
+npm run supervibe:doctor -- --host codex --strict
+```
+
+Expected Codex checks include `local-registration`, `codex-plugin-config`, `codex-native-skills`, and an informational `codex-acp-slash-palette` note.
 
 ### Agents not loading
 
@@ -444,13 +458,13 @@ rm -rf <project>/.claude/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.11
+  - Manifest auto-updated; ensure your install path has v2.0.12
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.11 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.12 dir, restart Claude Code
 
 ## Where to next
 

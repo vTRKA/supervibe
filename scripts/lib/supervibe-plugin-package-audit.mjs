@@ -19,6 +19,14 @@ const CORE_COMMAND_DOCS = [
   "supervibe-execute-plan.md",
 ];
 
+const MANIFEST_PATH_FIELDS = {
+  claude: ["commands", "skills"],
+  codex: ["skills"],
+  cursor: ["commands", "skills"],
+};
+
+const UNSUPPORTED_CODEX_FIELDS = ["commands", "agents", "hooks"];
+
 export async function auditPluginPackage({ rootDir = process.cwd() } = {}) {
   const root = resolve(rootDir);
   const data = await loadPluginPackageData(root);
@@ -168,7 +176,7 @@ function validateManifest(name, manifest, data, issues) {
   if (!description.includes("loop") || !description.includes("worktree")) {
     addIssue(issues, "manifest-description-stale", `${name} manifest description does not mention loop/worktree capability`, `Update ${name} manifest description.`);
   }
-  for (const field of ["commands", "skills"]) {
+  for (const field of MANIFEST_PATH_FIELDS[name] || ["commands", "skills"]) {
     const pathRef = manifest[field];
     if (!pathRef) {
       addIssue(issues, "manifest-path-missing", `${name} manifest is missing ${field}`, `Add ${field} path to ${name} manifest.`);
@@ -180,6 +188,18 @@ function validateManifest(name, manifest, data, issues) {
     }
     if (pathEscapesPackage(pathRef)) {
       addIssue(issues, "manifest-path-escapes-package", `${name} ${field} path escapes package: ${pathRef}`, `Keep ${field} inside the plugin package.`);
+    }
+  }
+  if (name === "codex") {
+    for (const field of UNSUPPORTED_CODEX_FIELDS) {
+      if (manifest[field]) {
+        addIssue(
+          issues,
+          "codex-unsupported-manifest-field",
+          `codex manifest includes unsupported ${field} field`,
+          "Remove Codex commands/agents/hooks manifest fields; Codex currently contributes Supervibe through plugin skills/config, while codex-acp advertises only its own slash commands."
+        );
+      }
     }
   }
 }
@@ -275,7 +295,7 @@ function validateRegistry(registryYaml, issues, warnings) {
 async function collectPathStatus(root, manifests) {
   const status = {};
   for (const [name, manifest] of Object.entries(manifests || {})) {
-    for (const field of ["commands", "skills"]) {
+    for (const field of MANIFEST_PATH_FIELDS[name] || ["commands", "skills"]) {
       if (!manifest?.[field]) continue;
       const normalized = normalizeManifestPath(manifest[field]);
       status[`${name}:${field}:${normalized}`] = await exists(join(root, normalized));

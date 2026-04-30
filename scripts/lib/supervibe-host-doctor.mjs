@@ -18,8 +18,13 @@ const HOST_DEFINITIONS = {
     label: "Codex CLI",
     command: "codex",
     manifestPath: ".codex-plugin/plugin.json",
-    requiredManifestPaths: ["commands", "skills", "agents", "hooks"],
-    registrationPath: [".codex", "plugins", "supervibe"],
+    requiredManifestPaths: ["skills"],
+    unsupportedManifestPaths: ["commands", "agents", "hooks"],
+    registrationPath: [".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local"],
+    legacyRegistrationPath: [".codex", "plugins", "supervibe"],
+    configPath: [".codex", "config.toml"],
+    pluginConfigKey: "supervibe@supervibe-marketplace",
+    skillsRegistrationPath: [".agents", "skills", "supervibe"],
   },
   cursor: {
     label: "Cursor",
@@ -215,6 +220,18 @@ async function checkJsonManifest(hostId, definition, context, checks) {
       checks.push(pass(`manifest-${field}`, `${field} path exists: ${suffix}`));
     }
   }
+
+  for (const field of definition.unsupportedManifestPaths || []) {
+    if (manifest[field]) {
+      checks.push(warn(
+        `manifest-${field}-unsupported`,
+        `${definition.manifestPath} includes unsupported Codex field ${field}`,
+        "Codex currently loads Supervibe through skills and plugin config; command, agent, and hook manifest fields are not advertised to Zed via codex-acp."
+      ));
+    } else {
+      checks.push(pass(`manifest-${field}-unsupported`, `Codex manifest does not publish unsupported ${field} path`));
+    }
+  }
 }
 
 async function checkOpencodeSource(context, checks) {
@@ -299,6 +316,10 @@ async function checkLocalRegistration(hostId, definition, context, checks) {
     }
     return;
   }
+  if (hostId === "codex") {
+    await checkCodexRegistration(definition, context, checks);
+    return;
+  }
   if (!definition.registrationPath) return;
 
   const registrationPath = join(context.homeDir, ...definition.registrationPath);
@@ -310,10 +331,8 @@ async function checkLocalRegistration(hostId, definition, context, checks) {
     checks.push(context.strict
       ? fail("local-registration", `${registrationPath} was not found`, action)
       : warn("local-registration", `${registrationPath} was not found`, action));
-    return;
-  }
-
-  if (hostId === "gemini") {
+    if (hostId !== "codex") return;
+  } else if (hostId === "gemini") {
     const content = await readOptional(registrationPath);
     if (!content.includes("supervibe-plugin-include: do-not-edit")) {
       checks.push(context.strict
@@ -323,10 +342,63 @@ async function checkLocalRegistration(hostId, definition, context, checks) {
       checks.push(pass("local-registration", "Gemini registration marker exists"));
     }
     return;
+  } else {
+    const stat = await lstat(registrationPath).catch(() => null);
+    checks.push(pass("local-registration", stat?.isSymbolicLink() ? `${registrationPath} is a symlink` : `${registrationPath} exists`));
   }
 
-  const stat = await lstat(registrationPath).catch(() => null);
-  checks.push(pass("local-registration", stat?.isSymbolicLink() ? `${registrationPath} is a symlink` : `${registrationPath} exists`));
+}
+
+async function checkCodexRegistration(definition, context, checks) {
+  const registrationPath = join(context.homeDir, ...definition.registrationPath);
+  const registered = await pathExists(registrationPath);
+  if (!registered) {
+    checks.push(context.strict
+      ? fail("local-registration", `${registrationPath} was not found`, "Re-run install.sh/install.ps1 so Codex gets the official plugin cache entry.")
+      : warn("local-registration", `${registrationPath} was not found`, "Re-run install.sh/install.ps1 so Codex gets the official plugin cache entry."));
+  } else {
+    const stat = await lstat(registrationPath).catch(() => null);
+    checks.push(pass("local-registration", stat?.isSymbolicLink() ? `${registrationPath} is the official cache symlink` : `${registrationPath} exists in the official cache`));
+  }
+
+  const configPath = join(context.homeDir, ...definition.configPath);
+  const config = await readOptional(configPath);
+  if (!codexConfigEnablesPlugin(config, definition.pluginConfigKey)) {
+    checks.push(context.strict
+      ? fail("codex-plugin-config", `${configPath} does not enable ${definition.pluginConfigKey}`, "Re-run install.sh/install.ps1 so Codex config.toml enables the plugin.")
+      : warn("codex-plugin-config", `${configPath} does not enable ${definition.pluginConfigKey}`, "Re-run install.sh/install.ps1 so Codex config.toml enables the plugin."));
+  } else {
+    checks.push(pass("codex-plugin-config", `Codex config enables ${definition.pluginConfigKey}`));
+  }
+
+  if (definition.legacyRegistrationPath) {
+    const legacyPath = join(context.homeDir, ...definition.legacyRegistrationPath);
+    const legacyRegistered = await pathExists(legacyPath);
+    if (legacyRegistered) {
+      const stat = await lstat(legacyPath).catch(() => null);
+      checks.push(pass("codex-legacy-plugin-link", stat?.isSymbolicLink() ? `${legacyPath} is a symlink` : `${legacyPath} exists`));
+    } else {
+      checks.push(info("codex-legacy-plugin-link", `${legacyPath} was not found; this is only needed for older Codex builds and wrappers`));
+    }
+  }
+
+  if (definition.skillsRegistrationPath) {
+    const skillsPath = join(context.homeDir, ...definition.skillsRegistrationPath);
+    const skillsRegistered = await pathExists(skillsPath);
+    if (!skillsRegistered) {
+      checks.push(context.strict
+        ? fail("codex-native-skills", `${skillsPath} was not found`, "Re-run install.sh/install.ps1 so Supervibe skills are linked into ~/.agents/skills.")
+        : warn("codex-native-skills", `${skillsPath} was not found`, "Re-run install.sh/install.ps1 so Supervibe skills are linked into ~/.agents/skills."));
+    } else {
+      const skillsStat = await lstat(skillsPath).catch(() => null);
+      checks.push(pass("codex-native-skills", skillsStat?.isSymbolicLink() ? `${skillsPath} is a symlink` : `${skillsPath} exists`));
+    }
+  }
+
+  checks.push(info(
+    "codex-acp-slash-palette",
+    "Zed/Codex ACP currently advertises only codex-acp built-in slash commands; Supervibe routes through native Codex skills until codex-acp supports plugin command discovery."
+  ));
 }
 
 async function checkHostDocs(hostId, context, checks) {
@@ -410,6 +482,31 @@ function statusGlyph(status, color) {
   if (!color) return glyph;
   const codes = { pass: 32, warn: 33, fail: 31, info: 36 };
   return `\x1b[${codes[status] || 0}m${glyph}\x1b[0m`;
+}
+
+function codexConfigEnablesPlugin(config = "", pluginKey = "") {
+  const features = tomlSection(config, "features");
+  const plugin = tomlSection(config, `plugins."${pluginKey}"`);
+  return tomlBoolean(features, "plugins") === true && tomlBoolean(plugin, "enabled") === true;
+}
+
+function tomlSection(source = "", section = "") {
+  if (!source || !section) return "";
+  const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headerRe = new RegExp(`^\\[${escaped}\\][ \\t]*$`, "m");
+  const match = headerRe.exec(source);
+  if (!match) return "";
+  const bodyStart = match.index + match[0].length;
+  const rest = source.slice(bodyStart);
+  const nextRel = rest.search(/^\s*\[/m);
+  const bodyEnd = nextRel === -1 ? source.length : bodyStart + nextRel;
+  return source.slice(bodyStart, bodyEnd);
+}
+
+function tomlBoolean(section = "", key = "") {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^\\s*${escaped}\\s*=\\s*(true|false)\\s*(?:#.*)?$`, "im").exec(section);
+  return match ? match[1].toLowerCase() === "true" : null;
 }
 
 async function readJsonOptional(path) {

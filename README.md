@@ -82,12 +82,12 @@ gemini extensions install https://github.com/vTRKA/supervibe
 ```
 
 **Codex CLI:**
-Open the plugin search interface (`/plugins`) and search for "supervibe".
+Use the one-line installer above. For Codex it registers the official plugin cache at `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local`, enables `[plugins."supervibe@supervibe-marketplace"]` in `~/.codex/config.toml`, keeps a legacy `~/.codex/plugins/supervibe` link for older wrappers, and links `~/.agents/skills/supervibe` for native skill discovery in Codex/Zed ACP sessions. Current Codex supports this skills/config surface; plugin slash-command, agent, and hook manifest fields are not advertised to Zed by `codex-acp`.
 
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.11 initialized for this project
+[supervibe] welcome — plugin v2.0.12 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -137,7 +137,7 @@ SUPERVIBE_AUTO_UPDATE=check  npm run supervibe:auto-update -- --refresh
 SUPERVIBE_AUTO_UPDATE=off    npm run supervibe:auto-update -- --status
 ```
 
-Host coverage: Claude Code gets host `autoUpdate` registration plus the SessionStart background check/apply path; OpenCode follows the git source on restart; Codex/Gemini symlink/include installs follow the managed checkout after it updates; Cursor and other IDE/manual installs rely on their host marketplace where available and `npm run supervibe:doctor -- --host all` to surface drift.
+Host coverage: Claude Code gets host `autoUpdate` registration plus the SessionStart background check/apply path; OpenCode follows the git source on restart; Codex gets official plugin cache/config registration plus native skill links for Zed ACP sessions; Gemini symlink/include installs follow the managed checkout after it updates; Cursor and other IDE/manual installs rely on their host marketplace where available and `npm run supervibe:doctor -- --host all` to surface drift.
 
 **Manually from the plugin checkout:**
 ```bash
@@ -407,7 +407,9 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 
 The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if the banner is still absent, check that report for stale files or missing host registration.
 
-**Not visible in VS Code or Zed.** Those IDEs read the same `~/.claude/` as the terminal. If the banner appears in the terminal, restart the IDE. If still nothing, re-run the installer.
+**Not visible in VS Code or Zed.** Claude-backed IDE sessions read the same `~/.claude/` as the terminal. If the banner appears in the terminal, restart the IDE. If still nothing, re-run the installer.
+
+**Zed with Codex ACP does not show Supervibe after typing `/`.** Current `codex-acp` advertises only its own built-in commands to Zed. Supervibe follows the Codex-supported route instead: Codex sees the plugin through `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local` plus `~/.codex/config.toml`, and Zed/Codex ACP sessions get Supervibe behavior through native skills linked at `~/.agents/skills/supervibe`. Re-run the installer, restart the Zed external-agent session, then check `npm run supervibe:doctor -- --host codex --strict`.
 
 **`Protobuf parsing failed`.** The embedding model is missing or still an LFS pointer. Re-run the current installer; it verifies the ONNX file, tries bounded Git LFS, then downloads the model directly from HuggingFace before registration.
 
@@ -428,7 +430,10 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 ```bash
 # macOS / Linux
 rm -rf ~/.claude/plugins/marketplaces/supervibe-marketplace
+rm -rf ~/.codex/plugins/cache/supervibe-marketplace/supervibe
 rm -f  ~/.codex/plugins/supervibe
+rm -rf ~/.agents/skills/supervibe
+# Also remove [plugins."supervibe@supervibe-marketplace"] from ~/.codex/config.toml if present.
 
 node -e "
 const fs=require('fs'),p=process.env.HOME+'/.claude/plugins/installed_plugins.json';

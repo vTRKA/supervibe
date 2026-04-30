@@ -1,6 +1,6 @@
 {
   "name": "supervibe",
   "description": "Specialist agents (83), trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, semantic RAG, project memory, confidence gates, design pipeline, preview server.",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "contextFileName": "GEMINI.md"
 }

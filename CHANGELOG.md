@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.12] - 2026-05-01
+
+### Fixed
+
+- Aligned the Codex plugin manifest with the current Codex-supported surface:
+  skills stay published, while unsupported command, agent, and hook fields stay
+  out of `.codex-plugin/plugin.json`.
+- Updated the installers to register Codex through the official plugin
+  cache/config path, keep the legacy plugin link for older wrappers, and link
+  native skills for Zed/Codex ACP sessions.
+- Added doctor/audit coverage for Codex `config.toml`, native skill links, and
+  the current `codex-acp` slash-command advertisement limitation.
+
 ## [2.0.11] - 2026-05-01
 
 ### Fixed
