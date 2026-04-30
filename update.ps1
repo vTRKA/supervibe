@@ -1,4 +1,4 @@
-﻿# Evolve standalone updater вЂ” Windows.
+# Evolve standalone updater вЂ” Windows.
 #
 # Usage (PowerShell):
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
@@ -78,20 +78,11 @@ function Test-NodeRuntime {
 }
 
 function Confirm-NodeInstall {
-  switch ($env:SUPERVIBE_INSTALL_NODE) {
-    '1' { return $true }
-    'true' { return $true }
-    'yes' { return $true }
-    'y' { return $true }
-    'РґР°' { return $true }
-    '0' { return $false }
-    'false' { return $false }
-    'no' { return $false }
-    'n' { return $false }
-    'РЅРµС‚' { return $false }
-  }
+  $consent = if ($env:SUPERVIBE_INSTALL_NODE) { $env:SUPERVIBE_INSTALL_NODE.ToLowerInvariant() } else { '' }
+  if (@('1', 'true', 'yes', 'y') -contains $consent) { return $true }
+  if (@('0', 'false', 'no', 'n') -contains $consent) { return $false }
   $answer = Read-Host "Node.js $MinNodeVersion+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N]"
-  return ($answer -match '^(y|yes|РґР°)$')
+  return ($answer -match '^(y|yes)$')
 }
 
 function Install-NodeRuntime {

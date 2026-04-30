@@ -125,6 +125,26 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
 });
 
+test('installers skip Git LFS smudge during clone and checkout', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+
+  assert.match(sh, /GIT_LFS_SKIP_SMUDGE=1/, 'bash installer must not let LFS smudge block clone');
+  assert.match(sh, /git_no_lfs_smudge clone/, 'bash installer must clone with LFS smudge disabled');
+  assert.match(sh, /git_no_lfs_smudge -C "\$TARGET" checkout/, 'bash installer must checkout with LFS smudge disabled');
+  assert.match(ps1, /GIT_LFS_SKIP_SMUDGE/, 'PowerShell installer must not let LFS smudge block clone');
+  assert.match(ps1, /SkipLfsSmudge/, 'PowerShell installer must expose LFS-smudge-free git operations');
+  assert.match(ps1, /Run-Git @\('clone'.*\) 'clone' -SkipLfsSmudge/, 'PowerShell installer must clone with LFS smudge disabled');
+});
+
+test('install.sh refuses accidental WSL install unless explicitly allowed', () => {
+  const sh = readFileSync(SH, 'utf8');
+
+  assert.match(sh, /SUPERVIBE_ALLOW_WSL_INSTALL/, 'bash installer must provide an explicit WSL opt-in');
+  assert.match(sh, /WSL detected/, 'bash installer must explain WSL/Windows profile split');
+  assert.match(sh, /install\.ps1/, 'bash installer must direct Windows users to the PowerShell installer');
+});
+
 test('marketplace name in installers matches marketplace.json file', () => {
   const sh = readFileSync(SH, 'utf8');
   const shName = sh.match(/MARKETPLACE_NAME="([^"]+)"/)?.[1];

@@ -125,6 +125,20 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 /supervibe-update
 ```
 
+**Auto-update policy:**
+
+Supervibe checks upstream in the background from Claude Code SessionStart when the plugin root is available. The default mode is `managed`: managed installer checkouts under `~/.claude/plugins/marketplaces/supervibe-marketplace` auto-apply safe git updates in the background, while dev/manual/IDE checkouts stay notify-only so local work is not pulled unexpectedly.
+
+Override with:
+
+```bash
+SUPERVIBE_AUTO_UPDATE=apply npm run supervibe:auto-update -- --refresh
+SUPERVIBE_AUTO_UPDATE=check  npm run supervibe:auto-update -- --refresh
+SUPERVIBE_AUTO_UPDATE=off    npm run supervibe:auto-update -- --status
+```
+
+Host coverage: Claude Code gets host `autoUpdate` registration plus the SessionStart background check/apply path; OpenCode follows the git source on restart; Codex/Gemini symlink/include installs follow the managed checkout after it updates; Cursor and other IDE/manual installs rely on their host marketplace where available and `npm run supervibe:doctor -- --host all` to surface drift.
+
 **Manually from the plugin checkout:**
 ```bash
 cd ~/.claude/plugins/marketplaces/supervibe-marketplace
@@ -396,6 +410,10 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 **Not visible in VS Code or Zed.** Those IDEs read the same `~/.claude/` as the terminal. If the banner appears in the terminal, restart the IDE. If still nothing, re-run the installer.
 
 **`Protobuf parsing failed`.** The embedding model is an LFS pointer. Run `git lfs pull` inside `~/.claude/plugins/marketplaces/supervibe-marketplace`, or just trigger a code search — the model downloads from HuggingFace (~118 MB).
+
+**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge and only attempts `git lfs pull` after the checkout is complete; if LFS still fails, the model lazy-fetches from HuggingFace on first semantic search.
+
+**Windows install starts in WSL.** If `install.sh` runs under `C:\Windows\System32\bash.exe`, it uses WSL `$HOME` and WSL Node, not the Windows Codex/Claude/Gemini profile. Use PowerShell `install.ps1` for Windows, or set `SUPERVIBE_ALLOW_WSL_INSTALL=1` only when you intentionally want a separate WSL install.
 
 **SQLite errors.** Node.js 22.5+ is required for the built-in `node:sqlite` used by semantic RAG, code graph, project memory, and agent task memory. Re-run the installer and approve the Node upgrade prompt, or install Node.js 22.5+ manually and then re-run.
 

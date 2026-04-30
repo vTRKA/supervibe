@@ -168,10 +168,41 @@ async function reportUpstreamUpdates() {
     const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
     if (!pluginRoot) return;
     const { readUpgradeCache } = await import("./lib/upgrade-check.mjs");
+    const {
+      createAutoUpdatePlan,
+      readAutoUpdateState,
+      spawnDetachedAutoUpdate,
+    } = await import("./lib/supervibe-auto-update.mjs");
 
     // Show cached result if available — never performs git fetch during session.
     const cache = await readUpgradeCache(pluginRoot);
-    if (cache && !cache.error && cache.behind > 0) {
+    const plan = createAutoUpdatePlan({
+      pluginRoot,
+      cache,
+      env: process.env,
+    });
+    const priorState = await readAutoUpdateState(pluginRoot);
+
+    if (plan.check || plan.apply) {
+      spawnDetachedAutoUpdate(pluginRoot);
+    }
+
+    if (priorState?.status === "updated") {
+      console.log(
+        "[supervibe] plugin auto-update completed in the background. Restart your AI CLI to load the new code.",
+      );
+    } else if (priorState?.status === "failed") {
+      console.log(
+        "[supervibe] plugin auto-update failed in the background. Run `npm run supervibe:auto-update -- --status` from the plugin checkout for details.",
+      );
+    }
+    if (cache && !cache.error && cache.behind > 0 && plan.apply) {
+      const tag = cache.latestTag ? ` (latest tag: ${cache.latestTag})` : "";
+      console.log(
+        `[supervibe] upstream has ${cache.behind} new commit(s)${tag}; auto-update queued in background. Restart after it completes.`,
+      );
+    }
+    if (cache && !cache.error && cache.behind > 0 && !plan.apply) {
       const tag = cache.latestTag ? ` (latest tag: ${cache.latestTag})` : "";
       console.log(
         `[supervibe] ⬆ upstream has ${cache.behind} new commit(s)${tag} — run \`npm run supervibe:upgrade\``,

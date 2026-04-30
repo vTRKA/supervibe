@@ -27,6 +27,10 @@ Standard procedure: pull, install, test, refresh cache.
 
 Equivalent to `npm run supervibe:upgrade-check`. Reports whether a newer version exists without applying.
 
+### Auto-update background policy
+
+Claude Code SessionStart runs `npm run supervibe:auto-update` in the background when the plugin root is available. Default mode is `managed`: apply automatically only for the installer-managed git checkout, and stay notify-only for dev/manual/IDE paths. Operators can force behavior with `SUPERVIBE_AUTO_UPDATE=apply|check|off`.
+
 ### `/supervibe-update --rollback` — explicit rollback
 
 Roll back to the previous commit on the plugin checkout. Useful after a failed upgrade left a partially-installed state, or after discovering a new release introduced regression.

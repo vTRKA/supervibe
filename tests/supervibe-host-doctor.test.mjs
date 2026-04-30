@@ -36,6 +36,7 @@ test("host doctor validates current multi-host package surfaces without local ho
 
   const opencode = result.hosts.find((host) => host.host === "opencode");
   assert.ok(opencode.checks.some((check) => check.id === "opencode-skills-hook" && check.status === "pass"));
+  assert.ok(opencode.checks.some((check) => check.id === "auto-update" && check.status === "info"));
 
   const copilot = result.hosts.find((host) => host.host === "copilot");
   assert.ok(copilot.checks.some((check) => check.id === "fresh-context-adapter" && check.status === "info"));

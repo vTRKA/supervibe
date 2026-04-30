@@ -41,6 +41,21 @@ function run(cmd, args, opts = {}) {
   return r.status === 0;
 }
 
+function runGitNoLfsSmudge(args) {
+  return run('git', [
+    '-c',
+    'filter.lfs.smudge=',
+    '-c',
+    'filter.lfs.required=false',
+    ...args,
+  ], {
+    env: {
+      ...process.env,
+      GIT_LFS_SKIP_SMUDGE: '1',
+    },
+  });
+}
+
 function runQuiet(cmd, args) {
   const r = spawnSync(cmd, args, { cwd: PLUGIN_ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
   return { ok: r.status === 0, stdout: (r.stdout || '').trim(), stderr: (r.stderr || '').trim() };
@@ -84,11 +99,18 @@ if (untrackedDirty.length > 0) {
 }
 
 console.log('[supervibe:upgrade] clean managed checkout (git clean -ffdx) ...');
-if (!run('git', ['clean', '-ffdx'])) fail('git clean failed');
+if (!run('git', [
+  'clean',
+  '-ffdx',
+  '-e',
+  '.claude-plugin/.auto-update.json',
+  '-e',
+  '.claude-plugin/.auto-update.lock',
+])) fail('git clean failed');
 
 console.log('[supervibe:upgrade] git fetch + pull --ff-only ...');
-if (!run('git', ['fetch', '--tags', '--prune'])) fail('git fetch failed');
-if (!run('git', ['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
+if (!runGitNoLfsSmudge(['fetch', '--tags', '--prune'])) fail('git fetch failed');
+if (!runGitNoLfsSmudge(['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
 
 const lfsCheck = runQuiet('git', ['lfs', 'version']);
 if (lfsCheck.ok) {

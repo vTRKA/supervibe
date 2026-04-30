@@ -2,6 +2,7 @@ import { access, lstat, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
+import { describeHostAutoUpdateStrategies } from "./supervibe-auto-update.mjs";
 
 export const HOST_IDS = Object.freeze(["claude", "codex", "cursor", "gemini", "opencode", "copilot"]);
 const ADAPTER_HOSTS = new Set(["claude", "codex", "gemini", "opencode"]);
@@ -144,6 +145,7 @@ async function diagnoseHost(hostId, context) {
   await checkCliAvailability(hostId, definition, context, checks);
   await checkLocalRegistration(hostId, definition, context, checks);
   await checkHostDocs(hostId, context, checks);
+  checkAutoUpdateStrategy(hostId, checks);
   checkFreshContextAdapter(hostId, checks);
 
   const failCount = checks.filter((check) => check.status === "fail").length;
@@ -362,6 +364,11 @@ function checkFreshContextAdapter(hostId, checks) {
   } else {
     checks.push(info("fresh-context-adapter", `${hostId} has package/install support but no fresh-context execution adapter yet`));
   }
+}
+
+function checkAutoUpdateStrategy(hostId, checks) {
+  const strategy = describeHostAutoUpdateStrategies()[hostId];
+  checks.push(info("auto-update", strategy || "No auto-update strategy is documented for this host yet"));
 }
 
 async function defaultCommandExists(command, env = process.env) {

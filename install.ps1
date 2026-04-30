@@ -1,4 +1,4 @@
-# Supervibe universal installer — Windows.
+# Supervibe universal installer - Windows.
 #
 # Usage (PowerShell):
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
@@ -9,7 +9,7 @@
 #   $env:SUPERVIBE_EXPECTED_COMMIT = "<sha>"          # optional release provenance pin
 #   $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256 = "<sha>"  # optional git-archive checksum pin
 #
-# Idempotent — safe to re-run for upgrades.
+# Idempotent - safe to re-run for upgrades.
 
 # Existing managed checkouts are cleaned before reinstall so stale files from
 # older plugin versions cannot stay active.
@@ -82,20 +82,11 @@ function Test-NodeRuntime {
 }
 
 function Confirm-NodeInstall {
-  switch ($env:SUPERVIBE_INSTALL_NODE) {
-    '1' { return $true }
-    'true' { return $true }
-    'yes' { return $true }
-    'y' { return $true }
-    'да' { return $true }
-    '0' { return $false }
-    'false' { return $false }
-    'no' { return $false }
-    'n' { return $false }
-    'нет' { return $false }
-  }
+  $consent = if ($env:SUPERVIBE_INSTALL_NODE) { $env:SUPERVIBE_INSTALL_NODE.ToLowerInvariant() } else { '' }
+  if (@('1', 'true', 'yes', 'y') -contains $consent) { return $true }
+  if (@('0', 'false', 'no', 'n') -contains $consent) { return $false }
   $answer = Read-Host "Node.js $MinNodeVersion+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N]"
-  return ($answer -match '^(y|yes|да)$')
+  return ($answer -match '^(y|yes)$')
 }
 
 function Install-NodeRuntime {
@@ -163,7 +154,7 @@ if (Get-Command copilot -ErrorAction SilentlyContinue)  { $ClisFound += 'copilot
 if (Get-Command opencode -ErrorAction SilentlyContinue) { $ClisFound += 'opencode' }
 
 if ($ClisFound.Count -eq 0) {
-  Warn 'No AI CLI detected. Installing under ~/.claude/ — register manually if needed.'
+  Warn 'No AI CLI detected. Installing under ~/.claude/ - register manually if needed.'
   New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeDir 'plugins\marketplaces') | Out-Null
   $ClisFound = @('claude')
 } else {
@@ -179,14 +170,27 @@ Say "plan: will modify Claude config under $ClaudeDir, Codex plugin link under $
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
-  param([string[]]$Args, [string]$LogName, [switch]$AllowFail)
+  param([string[]]$Args, [string]$LogName, [switch]$AllowFail, [switch]$SkipLfsSmudge)
   $log = Join-Path $LogDir "$LogName.log"
-  & git @Args 2>&1 | Tee-Object -FilePath $log | Out-Null
-  if ($LASTEXITCODE -ne 0 -and -not $AllowFail) {
-    Get-Content $log | Write-Host
-    Die "git $($Args -join ' ') failed. Log: $log"
+  $gitArgs = $Args
+  $oldSkip = $env:GIT_LFS_SKIP_SMUDGE
+  if ($SkipLfsSmudge) {
+    $gitArgs = @('-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.required=false') + $Args
+    $env:GIT_LFS_SKIP_SMUDGE = '1'
   }
-  return ($LASTEXITCODE -eq 0)
+  try {
+    & git @gitArgs 2>&1 | Tee-Object -FilePath $log | Out-Null
+    if ($LASTEXITCODE -ne 0 -and -not $AllowFail) {
+      Get-Content $log | Write-Host
+      Die "git $($Args -join ' ') failed. Log: $log"
+    }
+    return ($LASTEXITCODE -eq 0)
+  } finally {
+    if ($SkipLfsSmudge) {
+      if ($null -eq $oldSkip) { Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue }
+      else { $env:GIT_LFS_SKIP_SMUDGE = $oldSkip }
+    }
+  }
 }
 
 function Invoke-CleanManagedCheckout {
@@ -218,10 +222,10 @@ function Move-NonGitTargetAside {
 
 if (Test-Path (Join-Path $Target '.git')) {
   Invoke-CleanManagedCheckout $Target
-  Say "found existing checkout at $Target — updating to $Ref"
-  Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch'
-  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
-  if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail)) {
+  Say "found existing checkout at $Target - updating to $Ref"
+  Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch' -SkipLfsSmudge
+  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
+  if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail -SkipLfsSmudge)) {
     Warn 'pull --ff-only failed (local diverged or detached head); leaving checkout at current commit'
   }
 } else {
@@ -230,15 +234,15 @@ if (Test-Path (Join-Path $Target '.git')) {
     Move-NonGitTargetAside $Target
   }
   New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
-  Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone'
-  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
+  Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone' -SkipLfsSmudge
+  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
 }
 
 Test-CheckoutIntegrity
 
 # Optional LFS pull
 if (Get-Command git-lfs -ErrorAction SilentlyContinue) {
-  Say 'git-lfs detected — pulling embedding model'
+  Say 'git-lfs detected - pulling embedding model'
   if (-not (Run-Git @('-C', $Target, 'lfs', 'pull') 'lfs' -AllowFail)) {
     Warn 'git lfs pull failed; model will lazy-fetch from HuggingFace on first use'
   }
@@ -347,7 +351,7 @@ mp[mpName] = {
 };
 fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
 
-// 3. settings.json — enabledPlugins + extraKnownMarketplaces
+// 3. settings.json - enabledPlugins + extraKnownMarketplaces
 const sjPath = process.env.EVOLVE_SJ;
 const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
 sj.enabledPlugins = sj.enabledPlugins || {};
@@ -380,8 +384,8 @@ function Register-Codex {
     New-Item -ItemType SymbolicLink -Path $link -Target $Target -ErrorAction Stop | Out-Null
     Ok "registered with Codex CLI (symlink: $link)"
   } catch {
-    Warn 'symlink failed (no admin / Developer Mode) — falling back to copy'
-    Warn 'enable Developer Mode for symlinks: Settings → For Developers → Developer Mode'
+    Warn 'symlink failed (no admin / Developer Mode) - falling back to copy'
+    Warn 'enable Developer Mode for symlinks: Settings > For Developers > Developer Mode'
     Copy-Item -Recurse -Path $Target -Destination $link
     Ok "registered with Codex CLI (copy: $link)"
   }
@@ -436,7 +440,7 @@ Write-Host "  Install audit: .supervibe/audits/install-lifecycle/latest.json"
 Write-Host ''
 Write-Host '  Next steps:'
 Write-Host '    1. Restart your AI CLI so it picks up the plugin'
-Write-Host '    2. Open any project — you should see [supervibe] banner lines on session start'
+Write-Host '    2. Open any project - you should see [supervibe] banner lines on session start'
 Write-Host '    3. /supervibe-genesis (in Claude Code) for first-time project scaffolding'
 Write-Host "    4. npm run supervibe:status (from $Target) for index health any time"
 Write-Host ''
@@ -447,3 +451,4 @@ Write-Host '               from ~/.claude/plugins/installed_plugins.json'
 Write-Host ''
 Write-Host '  Docs: https://github.com/vTRKA/supervibe#readme'
 Write-Host ''
+

@@ -48,6 +48,26 @@ ok()  { printf '%b[supervibe-install]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[supervibe-install]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[supervibe-install]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 
+is_wsl() {
+  [ -r /proc/version ] && grep -qiE 'microsoft|wsl' /proc/version
+}
+
+guard_wsl_windows_install() {
+  if ! is_wsl; then return; fi
+  if [ "${SUPERVIBE_ALLOW_WSL_INSTALL:-}" = "1" ]; then
+    warn "WSL install explicitly allowed by SUPERVIBE_ALLOW_WSL_INSTALL=1"
+    return
+  fi
+  die "WSL detected. This installer would use WSL HOME=$HOME and WSL Node, not your Windows Codex/Claude/Gemini profile. For Windows install, run PowerShell: irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex. To intentionally install inside WSL, set SUPERVIBE_ALLOW_WSL_INSTALL=1."
+}
+
+git_no_lfs_smudge() {
+  GIT_LFS_SKIP_SMUDGE=1 git \
+    -c filter.lfs.smudge= \
+    -c filter.lfs.required=false \
+    "$@"
+}
+
 validate_safe_path() {
   local path="$1"
   [ -n "$path" ] || die "unsafe empty plugin target path"
@@ -212,6 +232,7 @@ ensure_node_runtime() {
 
 # ---- preflight ----
 
+guard_wsl_windows_install
 command -v git  >/dev/null || die "git not found. Install git first."
 ensure_node_runtime
 command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall Node.js $MIN_NODE_VERSION+ and re-run."
@@ -251,15 +272,15 @@ say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} p
 if [ -d "$TARGET/.git" ]; then
   clean_managed_checkout "$TARGET"
   say "found existing checkout at $TARGET — updating to $REF"
-  if ! git -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
+  if ! git_no_lfs_smudge -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
     cat "$LOG_DIR/fetch.log" >&2
     die "git fetch failed. Inspect: $TARGET"
   fi
-  git -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
+  git_no_lfs_smudge -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
     cat "$LOG_DIR/checkout.log" >&2
     die "git checkout $REF failed. Make sure the ref exists upstream."
   }
-  if ! git -C "$TARGET" pull --ff-only --quiet 2>"$LOG_DIR/pull.log"; then
+  if ! git_no_lfs_smudge -C "$TARGET" pull --ff-only --quiet 2>"$LOG_DIR/pull.log"; then
     warn "pull --ff-only failed (local diverged or detached head); leaving checkout at current commit"
   fi
 else
@@ -268,11 +289,11 @@ else
     quarantine_non_git_target "$TARGET"
   fi
   mkdir -p "$(dirname "$TARGET")"
-  git clone --quiet "$REPO_URL" "$TARGET" 2>"$LOG_DIR/clone.log" || {
+  git_no_lfs_smudge clone --quiet "$REPO_URL" "$TARGET" 2>"$LOG_DIR/clone.log" || {
     cat "$LOG_DIR/clone.log" >&2
     die "git clone failed. Check network / repo access."
   }
-  git -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
+  git_no_lfs_smudge -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
     cat "$LOG_DIR/checkout.log" >&2
     die "git checkout $REF failed inside fresh clone."
   }

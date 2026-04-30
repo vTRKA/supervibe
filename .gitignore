@@ -4,6 +4,8 @@ node_modules/
 .env.local
 registry.yaml
 .DS_Store
+.claude-plugin/.auto-update.json
+.claude-plugin/.auto-update.lock
 .worktrees/
 worktrees/
 
