@@ -38,6 +38,14 @@ test("plugin package audit reports version, path, command, and smoke-check drift
     changelog: "# Changelog",
     registryYaml: "agents:\n",
     commandFiles: ["supervibe.md"],
+    trackedFiles: [
+      ".claude/memory/code.db",
+      ".claude/settings.json",
+      ".supervibe/audits/latest.json",
+      "registry.yaml",
+      ".worktrees/task-a/README.md",
+      ".env.local",
+    ],
     pathExists: {
       "claude:commands:../commands": false,
       "claude:skills:missing-skills": false,
@@ -57,6 +65,11 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "manifest-path-escapes-package"));
   assert.ok(audit.issues.some((issue) => issue.code === "missing-command-doc"));
   assert.ok(audit.issues.some((issue) => issue.code === "install-smoke-missing-check"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-claude-state"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-supervibe-state"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-generated-registry"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-worktree-state"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-runtime-artifact"));
   assert.ok(audit.nextActions.every(Boolean));
 });
 

@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-04-30
+
 ### Added
 
 - Added agent-facing CodeGraph modes: `--context`, `--symbol-search`,
   `--impact`, and `--files`, combining RAG chunks, graph neighborhoods,
   semantic anchors, and related files for lower-token code exploration.
+- Added package audit protection against tracked local/generated state,
+  including `.claude/`, `.supervibe/`, generated registry files, worktrees,
+  runtime DBs, logs, env files, and build output.
 
 ### Changed
 
 - Made CodeGraph edge resolution import-aware and ambiguity-safe so same-name
   symbols are resolved by local/import context or left unresolved instead of
   being guessed.
+- Removed local Claude project state from the release package and moved agent
+  deep-dive pointers to tracked plugin sources.
 
 ## [2.0.3] - 2026-04-30
 

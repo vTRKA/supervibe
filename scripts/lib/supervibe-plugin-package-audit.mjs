@@ -1,5 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const MANIFEST_PATHS = {
   claude: ".claude-plugin/plugin.json",
@@ -47,6 +51,7 @@ export function auditPluginPackageData(data = {}) {
   validateCommandDocs(data, issues);
   validatePublicDocs(data, packageVersion, issues);
   validateInstallUpdateSmoke(data.scripts || {}, issues);
+  validateNoTrackedLocalDevFiles(data.trackedFiles || [], issues);
   validateRegistry(data.registryYaml, issues, warnings);
 
   return {
@@ -86,6 +91,7 @@ async function loadPluginPackageData(root) {
     registryYaml: await readOptional(join(root, "registry.yaml")),
     commandFiles,
     pathExists: await collectPathStatus(root, manifests),
+    trackedFiles: await collectTrackedFiles(root),
     scripts: {
       installSh: await readOptional(join(root, "install.sh")),
       installPs1: await readOptional(join(root, "install.ps1")),
@@ -93,6 +99,48 @@ async function loadPluginPackageData(root) {
       updatePs1: await readOptional(join(root, "update.ps1")),
     },
   };
+}
+
+function validateNoTrackedLocalDevFiles(trackedFiles, issues) {
+  const files = (trackedFiles || []).map((file) => normalizeManifestPath(file));
+  const checks = [
+    {
+      code: "tracked-local-claude-state",
+      match: (file) => /^\.claude\//.test(file),
+      nextAction: "Remove .claude/* from git and keep it ignored; plugin runtime files live in top-level agents/skills/commands/hooks.",
+    },
+    {
+      code: "tracked-local-supervibe-state",
+      match: (file) => /^\.supervibe\//.test(file),
+      nextAction: "Remove .supervibe/* from git; it contains generated local audit/UI/IDE state.",
+    },
+    {
+      code: "tracked-generated-registry",
+      match: (file) => file === "registry.yaml",
+      nextAction: "Keep registry.yaml generated locally by npm run registry:build, not tracked in git.",
+    },
+    {
+      code: "tracked-worktree-state",
+      match: (file) => /^(\.worktrees|worktrees)\//.test(file),
+      nextAction: "Remove local worktree directories from git and keep them ignored.",
+    },
+    {
+      code: "tracked-runtime-artifact",
+      match: (file) => /(^|\/)(node_modules|dist|coverage)\//.test(file) || /\.(db|db-journal|db-wal|db-shm|log)$/i.test(file) || /(^|\/)\.env(\.|$)/.test(file),
+      nextAction: "Remove runtime artifacts, logs, databases, env files, and build outputs from git.",
+    },
+  ];
+
+  for (const check of checks) {
+    const matches = files.filter(check.match);
+    if (matches.length === 0) continue;
+    addIssue(
+      issues,
+      check.code,
+      `${matches.length} local/generated file(s) are tracked: ${matches.slice(0, 5).join(", ")}${matches.length > 5 ? ", ..." : ""}`,
+      check.nextAction
+    );
+  }
 }
 
 function collectVersions(data) {
@@ -277,6 +325,18 @@ async function listFilesOptional(path) {
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
+  }
+}
+
+async function collectTrackedFiles(root) {
+  try {
+    const { stdout } = await execFileAsync("git", ["ls-files"], {
+      cwd: root,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return stdout.split(/\r?\n/).filter(Boolean);
+  } catch {
+    return [];
   }
 }
 

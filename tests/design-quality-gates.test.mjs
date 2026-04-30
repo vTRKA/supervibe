@@ -15,9 +15,10 @@ test("design intelligence rubric blocks weak evidence", async () => {
 });
 
 test("design docs require memory, lookup, citations, and token precedence", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   const docs = await readFile("docs/design-intelligence.md", "utf8");
   assert.match(docs, /project memory/i);
   assert.match(docs, /cited rows/i);
   assert.match(docs, /Approved design system/);
-  assert.match(docs, /2\.0\.3/);
+  assert.match(docs, new RegExp(packageJson.version.replaceAll(".", "\\.")));
 });

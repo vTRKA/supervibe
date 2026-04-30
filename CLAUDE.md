@@ -4,28 +4,22 @@
 
 This is the **Supervibe Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22.5+ with node:sqlite is required. Pure JS. No Docker. No native compilation.**
 
-For deep dives, agents read on demand from `.claude/docs/`:
+For deep dives, agents read on demand from tracked plugin sources, not local
+`.claude/` state:
 
 | Topic | File |
 |---|---|
-| Memory system + 5 categories + indexing | `.claude/docs/memory-system.md` |
-| Code Search (semantic + FTS5) | `.claude/docs/code-search.md` |
-| Code Graph (symbols + edges + caller queries) | `.claude/docs/code-graph.md` |
-| Preview Server | `.claude/docs/preview-server.md` |
-| Confidence Engine (12 rubrics, gates) | `.claude/docs/confidence-engine.md` |
-| Agent Evolution Loop (telemetry, strengthen) | `.claude/docs/agent-evolution-loop.md` |
-| Canonical agent output footer | `.claude/docs/agent-output-footer.md` |
-| Agent system (81 agents, namespace registry) | `.claude/docs/agent-system-registry.md` |
-| Skill system (51 skills, phase registry) | `.claude/docs/skill-system-registry.md` |
-| Rules / discipline (23 rules) | `.claude/docs/rules-registry.md` |
-| MCP integrations | `.claude/docs/mcp-integrations.md` |
-| Browser Feedback Channel | `.claude/docs/browser-feedback-channel.md` |
-| Non-web design surfaces | `.claude/docs/non-web-design.md` |
-| Pre-write prototype guard | `.claude/docs/pre-write-prototype-guard.md` |
-| Plugin development workflow | `.claude/docs/plugin-development.md` |
-| Validation & checks | `.claude/docs/validation-and-checks.md` |
-| Anti-patterns specific to THIS codebase | `.claude/docs/anti-patterns-codebase.md` |
-| Reference document templates (PRD/ADR/RFC/...) | `.claude/docs/reference-templates.md` |
+| User-facing setup and feature usage | `docs/getting-started.md` |
+| Install/update integrity | `docs/install-integrity.md` |
+| Release security | `docs/release-security.md` |
+| Confidence Engine / gates | `docs/confidence-gates-spec.md` |
+| Multi-agent orchestration | `docs/multi-agent-orchestration.md` |
+| Semantic anchors | `docs/semantic-anchors.md` |
+| Design intelligence | `docs/design-intelligence.md` |
+| Agent authoring | `docs/agent-authoring.md` |
+| Skill authoring | `docs/skill-authoring.md` |
+| Rule authoring | `docs/rule-authoring.md` |
+| Runtime behavior | `scripts/lib/`, `commands/`, `skills/`, `agents/`, `rules/` |
 | Unified confidence gates spec | `docs/confidence-gates-spec.md` |
 
 ---
@@ -61,8 +55,7 @@ supervibe/
 ├── docs/                          specs/, plans/, audits/, getting-started.md, ...
 │   └── confidence-gates-spec.md     Unified gate semantics
 ├── hooks/hooks.json               SessionStart, PreToolUse, UserPromptSubmit, PostToolUse, Stop
-├── .claude/docs/                  Relocated reference sections (loaded on demand)
-└── .claude/memory/                (gitignored binaries) SQLite stores: code.db + memory.db
+└── .claude/                       Local-only generated state (gitignored; never shipped)
 ```
 
 ---
@@ -128,8 +121,8 @@ For consistent quality, agents are encouraged to follow this order:
 
 ## When in doubt
 
-1. **Re-read this file** — likely answer is the routing table or a `.claude/docs/` pointer above
-2. **Read the specific `.claude/docs/<topic>.md`** — they encode the discipline (relocated from earlier monolithic CLAUDE.md)
+1. **Re-read this file** — likely answer is the routing table or a tracked docs/source pointer above
+2. **Read the specific `docs/<topic>.md` or source module** — they encode the discipline without shipping local `.claude/` state
 3. **Run `npm run supervibe:status`** — see real index state
 4. **Read the specific agent** from `agents/<namespace>/`
 5. **Read the relevant rule** from `rules/`

@@ -7,27 +7,12 @@ registry.yaml
 .worktrees/
 worktrees/
 
-# Local-only Claude Code settings (per-machine permissions etc.)
-.claude/settings.local.json
+# Local Claude Code project state is user/generated. Plugin runtime files live
+# in ./agents, ./skills, ./commands, ./hooks, ./rules, ./scripts, etc.
+.claude/
 
-# Project-local Claude skills are user/generated state; plugin skills live in ./skills.
-.claude/skills/
-
-# Generated SQLite indexes (rebuilt from filesystem source-of-truth)
-.claude/memory/*.db
-.claude/memory/*.db-journal
-.claude/memory/*.db-wal
-.claude/memory/*.db-shm
-
-# Local invocation logs (test artifacts, not for git)
-.claude/memory/*.jsonl
-.claude/memory/worktree-sessions/
-
-# Local Supervibe generated reports and IDE bridge descriptors
-.supervibe/audits/
-.supervibe/evals/
-.supervibe/ide-bridge.json
-.supervibe/policy-derived-defaults.json
+# Local Supervibe generated reports, descriptors, and derived defaults.
+.supervibe/
 
 # Models: track quantized only, ignore full + tmp downloads
 models/**/onnx/model.onnx
