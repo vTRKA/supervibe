@@ -9,6 +9,9 @@
 (class
   name: (constant) @name) @symbol.class
 
+(class
+  superclass: (superclass (constant) @target)) @edge.extends
+
 (module
   name: (constant) @name) @symbol.class
 

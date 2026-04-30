@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Evolve standalone updater — macOS + Linux.
+# Evolve standalone updater вЂ” macOS + Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
-#   2. Refuses to clobber local edits (uncommitted changes → stop)
+#   2. Refuses to clobber local edits (uncommitted changes в†’ stop)
 #   3. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
-#      git fetch → ff-only pull → lfs pull (if available) → npm install →
-#      npm run check → refresh upstream-check cache
+#      git fetch в†’ ff-only pull в†’ lfs pull (if available) в†’ npm install в†’
+#      npm run check в†’ refresh upstream-check cache
 #
-# To install for the first time, use install.sh instead — this script does
+# To install for the first time, use install.sh instead вЂ” this script does
 # not bootstrap a missing install (by design: update should be predictable,
 # install needs CLI registration).
 
@@ -81,15 +81,15 @@ has_required_node_runtime() {
 
 confirm_node_install() {
   case "${SUPERVIBE_INSTALL_NODE:-}" in
-    1|true|TRUE|yes|YES|y|Y|да|ДА) return 0 ;;
-    0|false|FALSE|no|NO|n|N|нет|НЕТ) return 1 ;;
+    1|true|TRUE|yes|YES|y|Y|РґР°|Р”Рђ) return 0 ;;
+    0|false|FALSE|no|NO|n|N|РЅРµС‚|РќР•Рў) return 1 ;;
   esac
   if [ -r /dev/tty ] && [ -w /dev/tty ]; then
     printf '%b[evolve-update]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
     local answer
     IFS= read -r answer < /dev/tty || return 1
     case "$answer" in
-      y|Y|yes|YES|да|ДА) return 0 ;;
+      y|Y|yes|YES|РґР°|Р”Рђ) return 0 ;;
     esac
   fi
   return 1
@@ -165,7 +165,7 @@ command -v git  >/dev/null || die "git not found."
 ensure_node_runtime
 command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall Node.js $MIN_NODE_VERSION+ and re-run."
 validate_safe_path "$PLUGIN_ROOT"
-say "plan: will update existing checkout at $PLUGIN_ROOT and will not modify local edits"
+say "plan: will update existing checkout at $PLUGIN_ROOT, preserve tracked local edits, and clean stale untracked files"
 say "plan: integrity pins expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 # ---- locate install ----
@@ -186,10 +186,15 @@ ok "found checkout at $PLUGIN_ROOT"
 
 # ---- safety: refuse to clobber local edits ----
 
-dirty=$(git -C "$PLUGIN_ROOT" status --porcelain 2>/dev/null | head -n 5)
-if [ -n "$dirty" ]; then
-  echo "$dirty" >&2
-  die "uncommitted changes in $PLUGIN_ROOT — commit or stash before updating."
+status=$(git -C "$PLUGIN_ROOT" status --porcelain 2>/dev/null || true)
+tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' | head -n 5 || true)
+untracked_count=$(printf '%s\n' "$status" | grep -c -E '^\?\? ' || true)
+if [ -n "$tracked_dirty" ]; then
+  echo "$tracked_dirty" >&2
+  die "tracked local edits in $PLUGIN_ROOT; commit or stash before updating. Untracked stale files are cleaned automatically."
+fi
+if [ "$untracked_count" -gt 0 ]; then
+  warn "$untracked_count untracked stale file(s) will be removed by npm run supervibe:upgrade"
 fi
 
 # ---- delegate to npm run supervibe:upgrade ----

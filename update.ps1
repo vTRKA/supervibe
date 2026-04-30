@@ -1,14 +1,14 @@
-# Evolve standalone updater — Windows.
+﻿# Evolve standalone updater вЂ” Windows.
 #
 # Usage (PowerShell):
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
-#   2. Refuses to clobber local edits (uncommitted changes → stop)
+#   2. Refuses to clobber local edits (uncommitted changes в†’ stop)
 #   3. Delegates to `npm run supervibe:upgrade` inside the checkout
 #
-# For first-time install, use install.ps1 — this script does not bootstrap.
+# For first-time install, use install.ps1 вЂ” this script does not bootstrap.
 
 $ErrorActionPreference = 'Stop'
 
@@ -83,15 +83,15 @@ function Confirm-NodeInstall {
     'true' { return $true }
     'yes' { return $true }
     'y' { return $true }
-    'да' { return $true }
+    'РґР°' { return $true }
     '0' { return $false }
     'false' { return $false }
     'no' { return $false }
     'n' { return $false }
-    'нет' { return $false }
+    'РЅРµС‚' { return $false }
   }
   $answer = Read-Host "Node.js $MinNodeVersion+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N]"
-  return ($answer -match '^(y|yes|да)$')
+  return ($answer -match '^(y|yes|РґР°)$')
 }
 
 function Install-NodeRuntime {
@@ -144,7 +144,7 @@ if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.
 Ensure-NodeRuntime
 if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
 Assert-SafePluginPath $PluginRoot
-Say "plan: will update existing checkout at $PluginRoot and will not modify local edits"
+Say "plan: will update existing checkout at $PluginRoot, preserve tracked local edits, and clean stale untracked files"
 Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 # ---- locate install ----
@@ -163,10 +163,15 @@ Ok "found checkout at $PluginRoot"
 
 # ---- safety: refuse to clobber local edits ----
 
-$dirty = git -C $PluginRoot status --porcelain 2>$null
-if ($dirty) {
-  Write-Host $dirty
-  Die "uncommitted changes in $PluginRoot — commit or stash before updating."
+$status = @(git -C $PluginRoot status --porcelain 2>$null)
+$trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
+$untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
+if ($trackedDirty.Count -gt 0) {
+  $trackedDirty | Write-Host
+  Die "tracked local edits in $PluginRoot; commit or stash before updating. Untracked stale files are cleaned automatically."
+}
+if ($untrackedDirty.Count -gt 0) {
+  Warn "$($untrackedDirty.Count) untracked stale file(s) will be removed by npm run supervibe:upgrade"
 }
 
 # ---- delegate to npm run supervibe:upgrade ----

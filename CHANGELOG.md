@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added agent-facing CodeGraph modes: `--context`, `--symbol-search`,
+  `--impact`, and `--files`, combining RAG chunks, graph neighborhoods,
+  semantic anchors, and related files for lower-token code exploration.
+
+### Changed
+
+- Made CodeGraph edge resolution import-aware and ambiguity-safe so same-name
+  symbols are resolved by local/import context or left unresolved instead of
+  being guessed.
+
+## [2.0.3] - 2026-04-30
+
+### Changed
+
+- Removed the local Supervibe UI token flow and kept mutations preview-first
+  with explicit local apply confirmation.
+- Refined the Supervibe UI into an IDE-friendly localhost control plane with
+  clearer work, loop, RAG, memory, and CodeGraph tabs.
+- Made plugin upgrades clean stale untracked checkout files before reinstalling
+  and rebuilding generated registry metadata.
+- Added a post-install lifecycle doctor that audits package metadata,
+  generated registry state, stale checkout files, and required host registration.
+
+### Fixed
+
+- Fixed host doctor validation for Claude manifests where `agents` is a valid
+  array of agent file paths.
+
 ## [2.0.2] - 2026-04-30
 
 ### Added

@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { CodeStore } from '../scripts/lib/code-store.mjs';
+import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION } from '../scripts/lib/code-store.mjs';
 
 const sandbox = join(tmpdir(), `supervibe-code-store-test-${Date.now()}`);
 let store;
@@ -98,6 +98,32 @@ test('CodeStore: indexFile populates code_symbols + code_edges', async () => {
   assert.ok(edgeCount >= 1, `expected ≥1 edge from auth.ts symbols, got ${edgeCount}`);
 });
 
+test('CodeStore: reindexes graph when extractor version changes even if file hash is unchanged', async () => {
+  const absPath = join(sandbox, 'src', 'IdeasPage.tsx');
+  await writeFile(absPath, `
+import type { FC } from 'react';
+
+const OrgControls = () => null;
+
+export const IdeasPage: FC = () => {
+  useUserVPNConfigQuery();
+  return <OrgControls />;
+};
+`);
+  const relPath = store.toRel(absPath);
+  await store.indexFile(absPath);
+  store.db.prepare('UPDATE code_files SET graph_version = 0 WHERE path = ?').run(relPath);
+  store.db.prepare('DELETE FROM code_symbols WHERE path = ?').run(relPath);
+
+  const result = await store.indexFile(absPath);
+  assert.strictEqual(result.skipped, 'unchanged-graph-reindexed');
+  const row = store.db.prepare('SELECT graph_version FROM code_files WHERE path = ?').get(relPath);
+  assert.strictEqual(row.graph_version, CODE_GRAPH_EXTRACTOR_VERSION);
+  const symbols = store.db.prepare('SELECT name FROM code_symbols WHERE path = ? ORDER BY name').all(relPath).map(r => r.name);
+  assert.ok(symbols.includes('IdeasPage'), `expected IdeasPage after graph reindex; got ${symbols.join(',')}`);
+  assert.ok(symbols.includes('OrgControls'), `expected OrgControls after graph reindex; got ${symbols.join(',')}`);
+});
+
 test('CodeStore.resolveAllEdges: links cross-file calls to known symbols', async () => {
   await store.indexAll(sandbox);
   const before = store.db.prepare('SELECT COUNT(*) AS n FROM code_edges WHERE to_id IS NOT NULL').get().n;
@@ -106,6 +132,49 @@ test('CodeStore.resolveAllEdges: links cross-file calls to known symbols', async
   assert.ok(typeof resolved === 'number');
   // After indexAll, resolveAllEdges runs internally — calling again is idempotent
   assert.ok(after >= before);
+});
+
+test('CodeStore.resolveAllEdges: prefers imported symbol over same-name duplicates', async () => {
+  await mkdir(join(sandbox, 'src', 'hooks'), { recursive: true });
+  await mkdir(join(sandbox, 'src', 'legacy'), { recursive: true });
+  await writeFile(join(sandbox, 'src', 'hooks', 'vpn.ts'), `
+export const useUserVPNConfigQuery = () => ({ enabled: true });
+`);
+  await writeFile(join(sandbox, 'src', 'legacy', 'vpn.ts'), `
+export const useUserVPNConfigQuery = () => ({ enabled: false });
+`);
+  await writeFile(join(sandbox, 'src', 'IdeasPage.tsx'), `
+import { useUserVPNConfigQuery } from './hooks/vpn';
+
+export const IdeasPage = () => {
+  useUserVPNConfigQuery();
+  return null;
+};
+`);
+
+  await store.indexAll(sandbox);
+  const caller = store.db.prepare("SELECT id FROM code_symbols WHERE path = ? AND name = ?").get('src/IdeasPage.tsx', 'IdeasPage');
+  assert.ok(caller?.id, 'precondition: IdeasPage symbol exists');
+  const edge = store.db.prepare("SELECT to_id AS toId FROM code_edges WHERE from_id = ? AND to_name = ?").get(caller.id, 'useUserVPNConfigQuery');
+  assert.ok(edge?.toId, 'expected imported hook call to resolve');
+  assert.match(edge.toId, /src\/hooks\/vpn\.ts:function:useUserVPNConfigQuery:/);
+});
+
+test('CodeStore.resolveAllEdges: leaves ambiguous same-name calls unresolved', async () => {
+  await writeFile(join(sandbox, 'src', 'ambiguous-a.ts'), `export function sharedHelper() { return 'a'; }\n`);
+  await writeFile(join(sandbox, 'src', 'ambiguous-b.ts'), `export function sharedHelper() { return 'b'; }\n`);
+  await writeFile(join(sandbox, 'src', 'ambiguous-caller.ts'), `
+export function runAmbiguous() {
+  return sharedHelper();
+}
+`);
+
+  await store.indexAll(sandbox);
+  const caller = store.db.prepare("SELECT id FROM code_symbols WHERE path = ? AND name = ?").get('src/ambiguous-caller.ts', 'runAmbiguous');
+  assert.ok(caller?.id, 'precondition: runAmbiguous symbol exists');
+  const edge = store.db.prepare("SELECT to_id AS toId FROM code_edges WHERE from_id = ? AND to_name = ?").get(caller.id, 'sharedHelper');
+  assert.ok(edge, 'precondition: sharedHelper call edge exists');
+  assert.equal(edge.toId, null);
 });
 
 test('CodeStore.stats: returns symbol + edge counts', () => {

@@ -37,13 +37,7 @@ test('evolve-status: reports Code Graph state', () => {
 
 test('evolve-status: reports grammar / language coverage', () => {
   const out = runStatus();
-  // Either green checkmark for languages OR explicit broken / NOT INITIALIZED
-  assert.ok(
-    /active language/.test(out)
-    || /Grammar queries broken/.test(out)
-    || /NOT INITIALIZED/.test(out),
-    `expected language status line; got: ${out.split('\n').slice(0,15).join('|')}`
-  );
+  assert.match(out, /Language coverage:/);
 });
 
 test('evolve-status: reports Memory state', () => {

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -10,6 +9,7 @@ import {
   loadDesignIntelligenceData,
   parseCsv,
   searchDesignIntelligence,
+  stableDesignDataHash,
 } from "../scripts/lib/design-intelligence-search.mjs";
 
 test("design intelligence manifest covers required domains and provenance", async () => {
@@ -17,6 +17,7 @@ test("design intelligence manifest covers required domains and provenance", asyn
   assert.equal(data.manifest.sourceCommitShort, "b7e3af8");
   assert.equal(data.manifest.license, "MIT");
   assert.equal(data.manifest.runtime, "node-only");
+  assert.match(data.manifest.checksumMode, /CRLF\/CR normalized to LF/);
 
   for (const domain of [
     "product",
@@ -55,7 +56,7 @@ test("manifest row counts and checksums match imported design data", async () =>
   for (const domain of data.manifest.domains) {
     const text = await readFile(domain.importedPath, "utf8");
     const rows = parseCsv(text).length;
-    const sha256 = createHash("sha256").update(text).digest("hex");
+    const sha256 = stableDesignDataHash(text);
     if (rows !== domain.rows || sha256 !== domain.sha256) {
       mismatches.push({
         id: domain.id,
@@ -66,6 +67,11 @@ test("manifest row counts and checksums match imported design data", async () =>
   }
 
   assert.deepEqual(mismatches, []);
+});
+
+test("design intelligence checksum is stable across CRLF checkouts", () => {
+  const text = "id,name,notes\n1,Alpha,ok\n";
+  assert.equal(stableDesignDataHash(text.replace(/\n/g, "\r\n")), stableDesignDataHash(text));
 });
 
 test("csv parser handles quoted commas and newlines", () => {

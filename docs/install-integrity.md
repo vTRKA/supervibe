@@ -73,7 +73,10 @@ Installers print the checkout path, config areas they will modify, and integrity
 - live-main defaults with optional `SUPERVIBE_REF` tag/commit pinning
 - optional commit verification
 - optional package checksum verification
-- dirty checkout refusal for updates
+- tracked checkout edit refusal for updates and reinstalls
+- stale untracked/ignored files are cleaned from the managed plugin checkout before reinstall so removed commands, routes, generated leftovers, or old files cannot stay active
+- `registry.yaml` is regenerated before final checks
+- `npm run supervibe:install-doctor` writes `.supervibe/audits/install-lifecycle/latest.json` and fails install/update success if package metadata, registry generation, stale-file cleanup, or required host registration is incomplete
 - path-safety checks before writes
 - Node.js 22.5+ with `node:sqlite` is required before installation or update continues
 - when Node is missing or too old, installers ask for explicit consent before attempting a user-level Node bootstrap; `SUPERVIBE_INSTALL_NODE=1` allows unattended bootstrap and `SUPERVIBE_INSTALL_NODE=0` fails fast

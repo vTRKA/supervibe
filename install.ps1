@@ -11,6 +11,8 @@
 #
 # Idempotent — safe to re-run for upgrades.
 
+# Existing managed checkouts are cleaned before reinstall so stale files from
+# older plugin versions cannot stay active.
 $ErrorActionPreference = 'Stop'
 
 $RepoUrl         = if ($env:SUPERVIBE_REPO) { $env:SUPERVIBE_REPO } else { 'https://github.com/vTRKA/supervibe.git' }
@@ -187,7 +189,35 @@ function Run-Git {
   return ($LASTEXITCODE -eq 0)
 }
 
+function Invoke-CleanManagedCheckout {
+  param([string]$Path)
+  $status = @(git -C $Path status --porcelain 2>$null)
+  $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
+  if ($trackedDirty.Count -gt 0) {
+    $trackedDirty | Write-Host
+    Die "tracked local edits in $Path; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
+  }
+  $untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
+  if ($untrackedDirty.Count -gt 0) {
+    Warn "removing $($untrackedDirty.Count) untracked stale file(s) from managed plugin checkout"
+  }
+  Say 'cleaning managed checkout (git clean -ffdx)'
+  Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
+}
+
+function Move-NonGitTargetAside {
+  param([string]$Path)
+  $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+  $backupDir = Join-Path (Join-Path $ClaudeDir 'plugins') '.supervibe-install-backups'
+  $backup = Join-Path $backupDir "$MarketplaceName.non-git.$stamp"
+  New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+  Warn "found non-git plugin target at $Path; moving it aside before clean reinstall"
+  Move-Item -LiteralPath $Path -Destination $backup
+  Ok "old non-git target quarantined at $backup"
+}
+
 if (Test-Path (Join-Path $Target '.git')) {
+  Invoke-CleanManagedCheckout $Target
   Say "found existing checkout at $Target — updating to $Ref"
   Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch'
   Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
@@ -196,6 +226,9 @@ if (Test-Path (Join-Path $Target '.git')) {
   }
 } else {
   Say "cloning $RepoUrl ($Ref) -> $Target"
+  if (Test-Path $Target) {
+    Move-NonGitTargetAside $Target
+  }
   New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
   Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone'
   Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
@@ -217,7 +250,8 @@ if (Get-Command git-lfs -ErrorAction SilentlyContinue) {
 
 function Run-NpmStep {
   param([string]$ScriptName, [string[]]$NpmArgs)
-  $log = Join-Path $LogDir "$ScriptName.log"
+  $safeLogName = $ScriptName -replace '[\\/:*?"<>|\s]+', '-'
+  $log = Join-Path $LogDir "$safeLogName.log"
   Say "running $ScriptName (log: $log)"
   Push-Location $Target
   try {
@@ -233,6 +267,7 @@ function Run-NpmStep {
 }
 
 Run-NpmStep 'npm install' @('install', '--no-audit', '--no-fund')
+Run-NpmStep 'npm run registry:build' @('run', 'registry:build')
 Run-NpmStep 'npm run check' @('run', 'check')
 Ok 'all checks passed'
 
@@ -370,13 +405,19 @@ function Register-Gemini {
   Ok "registered with Gemini CLI (sourced via $geminiMd)"
 }
 
+$RegisteredHosts = @()
 foreach ($cli in $ClisFound) {
   switch ($cli) {
-    'claude' { Register-Claude }
-    'codex'  { Register-Codex  }
-    'gemini' { Register-Gemini }
+    'claude' { Register-Claude; $RegisteredHosts += 'claude' }
+    'codex'  { Register-Codex;  $RegisteredHosts += 'codex'  }
+    'gemini' { Register-Gemini; $RegisteredHosts += 'gemini' }
   }
 }
+
+$env:SUPERVIBE_INSTALL_HOSTS = ($RegisteredHosts -join ' ')
+Run-NpmStep 'npm run supervibe:install-doctor' @('run', 'supervibe:install-doctor')
+Remove-Item Env:SUPERVIBE_INSTALL_HOSTS -ErrorAction SilentlyContinue
+Ok 'install lifecycle doctor passed'
 
 # Cleanup logs on success
 Remove-Item -Recurse -Force $LogDir -ErrorAction SilentlyContinue
@@ -391,6 +432,7 @@ Write-Host ''
 Write-Host "  Location:    $Target"
 Write-Host "  CLIs wired:  $($ClisFound -join ', ')"
 Write-Host "  Runtime:     Node $(node --version) with node:sqlite"
+Write-Host "  Install audit: .supervibe/audits/install-lifecycle/latest.json"
 Write-Host ''
 Write-Host '  Next steps:'
 Write-Host '    1. Restart your AI CLI so it picks up the plugin'

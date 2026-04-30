@@ -26,7 +26,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.0.2");
+  assert.equal(result.packageVersion, "2.0.3");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 
@@ -56,6 +56,20 @@ test("strict host doctor fails when Codex CLI and registration are absent", asyn
   assert.ok(checks.some((check) => check.id === "cli-command" && check.status === "fail"));
   assert.ok(checks.some((check) => check.id === "local-registration" && check.status === "fail"));
 });
+
+test("host doctor accepts Claude manifest agents as path arrays", async () => {
+  const homeDir = await mkdtemp(join(tmpdir(), "supervibe-host-home-"));
+  const result = await diagnoseHosts({
+    rootDir: ROOT,
+    homeDir,
+    host: "claude",
+    commandExists: async () => false,
+  });
+
+  const checks = result.hosts[0].checks;
+  assert.ok(checks.some((check) => check.id === "manifest-agents" && check.status === "pass" && /paths/.test(check.message)));
+});
+
 
 test("host doctor text report is stable and actionable", async () => {
   const homeDir = await mkdtemp(join(tmpdir(), "supervibe-host-home-"));

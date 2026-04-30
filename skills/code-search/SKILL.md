@@ -60,6 +60,16 @@ What's the search intent?
 8. **Disambiguation**: if a name has multiple definitions, the CLI prints all candidates. Re-run with full ID `path:kind:name:line` to pin down one
 9. If hits stale (file changed since index): re-run `npm run code:index` (or wait for watcher), then retry
 
+## Additional agent modes
+
+Use these before broad file reads:
+- `--context "<task or symbols>"` builds an agent-ready pack from RAG chunks, entry symbols, graph neighborhood, impact radius, related files, and semantic anchors.
+- `--symbol-search "<query>"` returns ranked definitions/locations only.
+- `--impact "<symbol>" --depth 2` traces inbound blast radius for refactors and public API changes.
+- `--files "src/app"` lists indexed files with language and symbol counts.
+
+For refactors, prefer `--impact` plus `--neighbors` over raw grep. The graph resolver is import-aware and intentionally leaves ambiguous same-name edges unresolved instead of guessing.
+
 ## Output contract
 
 Returns:

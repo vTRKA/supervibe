@@ -5,7 +5,7 @@ import { deferWorkItemInGraph } from "./supervibe-work-item-scheduler.mjs";
 const DONE_STATUSES = new Set(["done", "complete", "completed", "closed"]);
 
 export async function mutateWorkItemGraphFile(graphPath, action = {}) {
-  const graph = JSON.parse(await readFile(graphPath, "utf8"));
+  const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
   const result = mutateWorkItemGraph(graph, action);
   if (!action.dryRun) {
     await mkdir(dirname(graphPath), { recursive: true });

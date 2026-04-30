@@ -11,23 +11,24 @@ if (args.help) {
     "  npm run supervibe:ui -- --file .claude/memory/work-items/<epic>/graph.json",
     "  npm run supervibe:ui -- --port 3057",
     "",
-    "The server binds to 127.0.0.1 and uses a per-run token for mutating POST actions.",
+    "The server binds to 127.0.0.1. Local mutating actions require preview plus explicit apply.",
   ].join("\n"));
   process.exit(0);
 }
 
 const port = Number(args.port || 3057);
-const { server, token } = createSupervibeUiServer({
+const { server } = createSupervibeUiServer({
   rootDir: args.root || process.cwd(),
   graphPath: args.file || "",
 });
 
 server.listen(port, "127.0.0.1", () => {
-  const url = `http://127.0.0.1:${port}/?token=${token}`;
+  const url = `http://127.0.0.1:${port}/`;
   console.log("SUPERVIBE_UI");
   console.log(`URL: ${url}`);
-  console.log(`TOKEN: ${token}`);
   console.log("BIND: 127.0.0.1");
+  console.log("AUTH: localhost-only");
+  console.log(`IDE_WIDGET: npm run supervibe:ide-bridge -- --port ${port}${args.file ? ` --file ${args.file}` : ""} --out .supervibe/ide-bridge.json`);
 });
 
 function parseArgs(argv) {

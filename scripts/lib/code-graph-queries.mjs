@@ -9,6 +9,38 @@ function isFullId(s) {
   return typeof s === 'string' && /^[^:]*:[^:]+:[^:]+:\d+$/.test(s);
 }
 
+const DEFAULT_GRAPH_EDGE_KINDS = ['calls', 'references', 'imports', 'extends', 'implements'];
+
+export function searchSymbols(db, query, { limit = 20, kinds = [] } = {}) {
+  const terms = String(query || '').split(/[^A-Za-z0-9_$-]+/).filter((term) => term.length >= 2);
+  if (terms.length === 0) return [];
+  const rows = db.prepare(`
+    SELECT id, path, kind, name, start_line AS startLine, end_line AS endLine, signature
+    FROM code_symbols
+    ${kinds.length ? `WHERE kind IN (${kinds.map(() => '?').join(',')})` : ''}
+  `).all(...kinds);
+  return rows
+    .map((row) => ({ ...row, score: scoreSymbol(row, terms) }))
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path) || a.startLine - b.startLine)
+    .slice(0, limit);
+}
+
+function scoreSymbol(row, terms) {
+  const name = String(row.name || '').toLowerCase();
+  const qualified = `${row.path || ''} ${row.kind || ''} ${row.signature || ''}`.toLowerCase();
+  let score = 0;
+  for (const term of terms) {
+    const lower = term.toLowerCase();
+    if (name === lower) score += 100;
+    else if (name.startsWith(lower)) score += 70;
+    else if (name.includes(lower)) score += 45;
+    if (qualified.includes(lower)) score += 10;
+  }
+  if (['function', 'method', 'class', 'component'].includes(row.kind)) score += 5;
+  return score;
+}
+
 /**
  * Find symbols that call (or import / extend / reference) a given target.
  * @param db        better-sqlite3 / node:sqlite DatabaseSync handle
@@ -66,7 +98,7 @@ export function findCallees(db, source, { kinds = ['calls'] } = {}) {
  */
 export function neighborhood(db, start, {
   depth = 1,
-  kinds = ['calls', 'imports', 'extends', 'implements']
+  kinds = ['calls', 'references', 'imports', 'extends', 'implements']
 } = {}) {
   const visited = new Map();
 
@@ -107,6 +139,87 @@ export function neighborhood(db, start, {
       startLine: sym.start_line, endLine: sym.end_line, distance: dist
     }))
     .sort((a, b) => a.distance - b.distance || a.path.localeCompare(b.path));
+}
+
+export function impactRadius(db, target, {
+  depth = 2,
+  kinds = DEFAULT_GRAPH_EDGE_KINDS,
+  limit = 80
+} = {}) {
+  const startSyms = isFullId(target)
+    ? db.prepare('SELECT * FROM code_symbols WHERE id = ?').all(target)
+    : db.prepare('SELECT * FROM code_symbols WHERE name = ? ORDER BY path, start_line').all(target);
+  if (startSyms.length === 0) return { roots: [], nodes: [], edges: [] };
+
+  const kindPh = kinds.map(() => '?').join(',');
+  const visited = new Map();
+  const edges = [];
+  const queue = startSyms.map((sym) => ({ sym, dist: 0, via: null }));
+
+  while (queue.length > 0 && visited.size < limit) {
+    const { sym, dist, via } = queue.shift();
+    if (visited.has(sym.id)) continue;
+    visited.set(sym.id, { sym, distance: dist, via });
+    if (dist >= depth) continue;
+
+    const incoming = db.prepare(`
+      SELECT e.kind, e.to_name AS toName, s.*
+      FROM code_edges e
+      JOIN code_symbols s ON s.id = e.from_id
+      WHERE e.to_id = ? AND e.kind IN (${kindPh})
+      ORDER BY s.path, s.start_line
+    `).all(sym.id, ...kinds);
+
+    for (const row of incoming) {
+      edges.push({ fromId: row.id, toId: sym.id, kind: row.kind, toName: row.toName, distance: dist + 1 });
+      queue.push({ sym: row, dist: dist + 1, via: row.kind });
+    }
+  }
+
+  return {
+    roots: startSyms.map((sym) => normalizeSymbolRow(sym, 0, 'root')),
+    nodes: [...visited.values()]
+      .map(({ sym, distance, via }) => normalizeSymbolRow(sym, distance, via))
+      .sort((a, b) => a.distance - b.distance || a.path.localeCompare(b.path) || a.startLine - b.startLine),
+    edges,
+  };
+}
+
+export function listIndexedFiles(db, { pathPrefix = '', language = '', limit = 200 } = {}) {
+  const params = [];
+  let where = 'WHERE 1 = 1';
+  if (pathPrefix && pathPrefix !== '.') {
+    where += ' AND cf.path LIKE ?';
+    params.push(`${pathPrefix.replace(/\\/g, '/').replace(/\/?$/, '/')}%`);
+  }
+  if (language) {
+    where += ' AND cf.language = ?';
+    params.push(language);
+  }
+  params.push(Number(limit) || 200);
+  return db.prepare(`
+    SELECT cf.path, cf.language, cf.line_count AS lineCount,
+           COUNT(s.id) AS symbolCount
+    FROM code_files cf
+    LEFT JOIN code_symbols s ON s.path = cf.path
+    ${where}
+    GROUP BY cf.path, cf.language, cf.line_count
+    ORDER BY cf.path
+    LIMIT ?
+  `).all(...params);
+}
+
+function normalizeSymbolRow(row, distance = 0, via = null) {
+  return {
+    id: row.id,
+    path: row.path,
+    kind: row.kind,
+    name: row.name,
+    startLine: row.startLine ?? row.start_line,
+    endLine: row.endLine ?? row.end_line,
+    distance,
+    via,
+  };
 }
 
 /**

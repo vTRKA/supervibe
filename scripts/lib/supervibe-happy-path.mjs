@@ -32,7 +32,7 @@ export function createHappyPathPlan({
     guardrails: [
       "Atomization writes require plan review unless running dry-run.",
       "Execution is bounded and provider-safe; no permission bypass is implied.",
-      "UI mutations are preview-first and token-protected.",
+      "UI mutations are preview-first and require explicit local apply confirmation.",
       "GC archives, never deletes, and restore remains available.",
     ],
   };

@@ -16,7 +16,7 @@ if (args.help) {
     "  npm run supervibe:ide-bridge -- --file .claude/memory/work-items/<epic>/graph.json",
     "  npm run supervibe:ide-bridge -- --state .claude/memory/loops/<run-id>/state.json --out .supervibe/ide-bridge.json",
     "",
-    "Creates a JSON descriptor for wrapping /supervibe-ui in any IDE webview.",
+    "Creates a JSON descriptor for wrapping /supervibe-ui as a localhost IDE webview/widget.",
   ].join("\n"));
   process.exit(0);
 }
@@ -26,7 +26,6 @@ const descriptor = createIdeBridgeDescriptor({
   graphPath: args.file || args.graph || ".claude/memory/work-items/<epic-id>/graph.json",
   statePath: args.state || ".claude/memory/loops/<run-id>/state.json",
   port: args.port || 3057,
-  token: args.token || "<runtime-token>",
 });
 const out = args.out
   ? await writeIdeBridgeDescriptor(resolve(process.cwd(), args.out), descriptor)

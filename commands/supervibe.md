@@ -81,7 +81,7 @@ Project:  <path>
 Plugin:   <path>
 
   ✓ upstream-behind             → plugin is up to date with upstream
-  ✓ version-bump-unacked        → project + plugin both on 2.0.2
+  ✓ version-bump-unacked        → project + plugin both on 2.0.3
   ⚠ project-not-scaffolded      → no .claude/agents/ and no CLAUDE.md — run genesis first
   ✓ underperformers             → 12 invocations, no underperformers
   ✓ stale-artifacts             → 0 stale artifact(s) (under 3-threshold)

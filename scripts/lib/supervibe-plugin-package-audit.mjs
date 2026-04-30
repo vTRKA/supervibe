@@ -182,6 +182,15 @@ function validateInstallUpdateSmoke(scripts, issues) {
   if (!/npm run check/.test(scripts.installSh || "") || !/npm run check/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-smoke-missing-check", "install scripts must run npm run check", "Keep install scripts on the static local check path.");
   }
+  if (!/registry:build/.test(scripts.installSh || "") || !/registry:build/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "install-registry-build-missing", "install scripts must generate registry.yaml before final checks", "Run npm run registry:build before npm run check.");
+  }
+  if (!/supervibe:install-doctor/.test(scripts.installSh || "") || !/supervibe:install-doctor/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "install-doctor-missing", "install scripts must run the install lifecycle doctor", "Run npm run supervibe:install-doctor after host registration.");
+  }
+  if (!/git clean -ffdx/.test(scripts.installSh || "") || !/clean', '-ffdx/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "install-clean-reinstall-missing", "install scripts must clean stale managed checkout files before reinstall", "Clean untracked and ignored files from the managed checkout before npm install.");
+  }
   if (!/SUPERVIBE_INSTALL_NODE/.test(scripts.installSh || "") || !/SUPERVIBE_INSTALL_NODE/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-node-bootstrap-consent-missing", "install scripts must ask for explicit consent before bootstrapping Node", "Keep Node upgrades explicit while requiring the full SQLite runtime.");
   }
@@ -190,6 +199,12 @@ function validateInstallUpdateSmoke(scripts, issues) {
   }
   if (!/status --porcelain/.test(scripts.updateSh || "") || !/status --porcelain/.test(scripts.updatePs1 || "")) {
     addIssue(issues, "update-smoke-missing-dirty-check", "update scripts must refuse dirty checkouts", "Check git status --porcelain before updating.");
+  }
+  if (!/tracked_dirty/.test(scripts.updateSh || "") || !/\$trackedDirty/.test(scripts.updatePs1 || "")) {
+    addIssue(issues, "update-tracked-dirty-filter-missing", "update scripts must distinguish tracked edits from stale untracked files", "Refuse tracked local edits but allow the managed upgrader to clean untracked stale files.");
+  }
+  if (!/untracked/.test(scripts.updateSh || "") || !/untrackedDirty/.test(scripts.updatePs1 || "")) {
+    addIssue(issues, "update-stale-file-warning-missing", "update scripts must warn that stale untracked files will be cleaned", "Warn before delegating stale cleanup to npm run supervibe:upgrade.");
   }
   if (!/npm run supervibe:upgrade/.test(scripts.updateSh || "") || !/npm run supervibe:upgrade/.test(scripts.updatePs1 || "")) {
     addIssue(issues, "update-smoke-missing-delegation", "update scripts must delegate to npm run supervibe:upgrade", "Delegate update flow to the canonical upgrade script.");

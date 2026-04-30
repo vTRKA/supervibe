@@ -85,6 +85,7 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate');
   assert.match(src, /SymbolicLink/, 'must prefer native PowerShell symlink before falling back to copy');
+  assert.match(src, /\$safeLogName/, 'must sanitize npm script names before using them as Windows log filenames');
 });
 
 test('install.sh and install.ps1 reference the same marketplace name', () => {
@@ -116,6 +117,8 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   }
   for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
     assert.match(src, /npm run check/, `${name} must keep the full check path`);
+    assert.match(src, /registry:build/, `${name} must generate registry.yaml before checks`);
+    assert.match(src, /supervibe:install-doctor/, `${name} must run the install lifecycle doctor`);
     assert.doesNotMatch(src, /supervibe:install-check/, `${name} must not install a reduced runtime`);
   }
   assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
@@ -159,6 +162,8 @@ test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
   assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
   assert.match(src, /git -C .* status --porcelain/, 'must check for uncommitted changes before updating');
+  assert.match(src, /tracked_dirty/, 'must refuse tracked edits specifically');
+  assert.match(src, /untracked stale file/, 'must allow stale untracked cleanup through canonical upgrader');
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
 
@@ -167,6 +172,8 @@ test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
   assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
   assert.match(src, /status --porcelain/, 'must check for uncommitted changes before updating');
+  assert.match(src, /\$trackedDirty/, 'must refuse tracked edits specifically');
+  assert.match(src, /untracked stale file/, 'must allow stale untracked cleanup through canonical upgrader');
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
 

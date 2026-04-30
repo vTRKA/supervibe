@@ -14,12 +14,13 @@
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
 #   2. Clones the Supervibe repo (LFS optional — model lazy-fetches from HuggingFace)
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
-#   4. Runs npm install + npm run check so SQLite/RAG/CodeGraph are available
-#   5. Registers the plugin in every detected CLI:
+#   4. Cleans stale files from the managed checkout before reinstalling
+#   5. Runs npm install + registry build + npm run check so SQLite/RAG/CodeGraph are available
+#   6. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
 #        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
 #        - Gemini:  ~/.gemini/GEMINI.md      (idempotent include via marker)
-#   5. Prints next steps
+#   7. Runs install lifecycle doctor and prints next steps
 
 set -euo pipefail
 
@@ -81,6 +82,38 @@ verify_checkout_integrity() {
     [ "$actual_sha" = "$EXPECTED_PACKAGE_SHA256" ] || die "package checksum mismatch: expected $EXPECTED_PACKAGE_SHA256 got $actual_sha"
     ok "package checksum verified: $EXPECTED_PACKAGE_SHA256"
   fi
+}
+
+clean_managed_checkout() {
+  local root="$1"
+  local status tracked_dirty untracked_count
+  status=$(git -C "$root" status --porcelain 2>/dev/null || true)
+  tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
+  if [ -n "$tracked_dirty" ]; then
+    printf '%s\n' "$tracked_dirty" >&2
+    die "tracked local edits in $root; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
+  fi
+  untracked_count=$(printf '%s\n' "$status" | grep -c -E '^\?\? ' || true)
+  if [ "$untracked_count" -gt 0 ]; then
+    warn "removing $untracked_count untracked stale file(s) from managed plugin checkout"
+  fi
+  say "cleaning managed checkout (git clean -ffdx)"
+  git -C "$root" clean -ffdx >/dev/null 2>"$LOG_DIR/git-clean.log" || {
+    cat "$LOG_DIR/git-clean.log" >&2
+    die "git clean failed. Inspect: $root"
+  }
+}
+
+quarantine_non_git_target() {
+  local root="$1"
+  local stamp backup_dir backup
+  stamp=$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null || date +%Y%m%dT%H%M%S)
+  backup_dir="$CLAUDE_DIR/plugins/.supervibe-install-backups"
+  backup="$backup_dir/$MARKETPLACE_NAME.non-git.$stamp"
+  mkdir -p "$backup_dir"
+  warn "found non-git plugin target at $root; moving it aside before clean reinstall"
+  mv "$root" "$backup" || die "failed to move non-git target to $backup"
+  ok "old non-git target quarantined at $backup"
 }
 
 node_version_ge() {
@@ -216,6 +249,7 @@ say "plan: will modify Claude config under $CLAUDE_DIR, Codex plugin link under 
 say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 if [ -d "$TARGET/.git" ]; then
+  clean_managed_checkout "$TARGET"
   say "found existing checkout at $TARGET — updating to $REF"
   if ! git -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
     cat "$LOG_DIR/fetch.log" >&2
@@ -230,6 +264,9 @@ if [ -d "$TARGET/.git" ]; then
   fi
 else
   say "cloning $REPO_URL ($REF) → $TARGET"
+  if [ -e "$TARGET" ]; then
+    quarantine_non_git_target "$TARGET"
+  fi
   mkdir -p "$(dirname "$TARGET")"
   git clone --quiet "$REPO_URL" "$TARGET" 2>"$LOG_DIR/clone.log" || {
     cat "$LOG_DIR/clone.log" >&2
@@ -261,6 +298,13 @@ say "running npm install (logs at $LOG_DIR/npm-install.log)"
   die "npm install failed. Full log: $LOG_DIR/npm-install.log"
 }
 
+say "running npm run registry:build"
+( cd "$TARGET" && npm run registry:build >"$LOG_DIR/npm-registry-build.log" 2>&1 ) || {
+  echo "--- last 40 lines of npm run registry:build ---" >&2
+  tail -n 40 "$LOG_DIR/npm-registry-build.log" >&2
+  die "npm run registry:build failed. Full log: $LOG_DIR/npm-registry-build.log"
+}
+
 say "running npm run check"
 ( cd "$TARGET" && npm run check >"$LOG_DIR/npm-check.log" 2>&1 ) || {
   echo "--- last 40 lines of npm run check ---" >&2
@@ -274,6 +318,8 @@ INSTALLED_VERSION=$(EVOLVE_TARGET="$TARGET" node -e \
   'console.log(require(process.env.EVOLVE_TARGET + "/.claude-plugin/plugin.json").version)')
 
 # ---- register with each detected CLI ----
+
+REGISTERED_HOSTS=()
 
 register_claude() {
   # Claude Code requires three coordinated files for a plugin to be loaded
@@ -395,11 +441,19 @@ register_gemini() {
 
 for cli in "${CLIS_FOUND[@]}"; do
   case "$cli" in
-    claude) register_claude ;;
-    codex)  register_codex  ;;
-    gemini) register_gemini ;;
+    claude) register_claude; REGISTERED_HOSTS+=("claude") ;;
+    codex)  register_codex;  REGISTERED_HOSTS+=("codex")  ;;
+    gemini) register_gemini; REGISTERED_HOSTS+=("gemini") ;;
   esac
 done
+
+say "running install lifecycle doctor"
+( cd "$TARGET" && SUPERVIBE_INSTALL_HOSTS="${REGISTERED_HOSTS[*]}" npm run supervibe:install-doctor >"$LOG_DIR/install-doctor.log" 2>&1 ) || {
+  echo "--- install lifecycle doctor ---" >&2
+  tail -n 80 "$LOG_DIR/install-doctor.log" >&2
+  die "install lifecycle doctor failed. Full log: $LOG_DIR/install-doctor.log"
+}
+ok "install lifecycle doctor passed"
 
 # ---- final report ----
 
@@ -412,6 +466,7 @@ ${C_GREEN}=================================================================${C_R
   Location:    $TARGET
   CLIs wired:  ${CLIS_FOUND[*]}
   Runtime:     Node $(node --version) with node:sqlite
+  Install audit: .supervibe/audits/install-lifecycle/latest.json
 
   Next steps:
     1. Restart your AI CLI so it picks up the plugin

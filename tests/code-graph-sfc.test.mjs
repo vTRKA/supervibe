@@ -32,9 +32,9 @@ const handleClick = () => {
 </script>`;
   const { symbols, edges } = await extractGraph(sfc, 'Foo.vue');
   // Should have symbols extracted from script (handleClick exists at original line ~8)
-  // Symbol detection depends on grammar query; at minimum should not error
   assert.ok(Array.isArray(symbols));
   assert.ok(Array.isArray(edges));
+  assert.ok(symbols.some(s => s.name === 'handleClick' && s.kind === 'function'), 'expected script arrow function symbol for handleClick');
   // Template-side ref edge should exist
   const templateRef = edges.find(e => e.toName === 'handleClick' && e.kind === 'references');
   assert.ok(templateRef, 'expected template-side reference edge for handleClick');

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packageVersionTarget": "2.0.2",
+  "packageVersionTarget": "2.0.3",
   "sourceRepository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
   "sourceCommit": "b7e3af80f6e331f6fb456667b82b12cade7c9d35",
   "sourceCommitShort": "b7e3af8",
@@ -8,6 +8,7 @@
   "importedAt": "2026-04-30",
   "runtime": "node-only",
   "commandPolicy": "internal lookup only; no new slash command or package script",
+  "checksumMode": "sha256 over UTF-8 CSV with optional BOM stripped and CRLF/CR normalized to LF",
   "precedence": [
     "approved design system",
     "project memory",
@@ -25,7 +26,7 @@
       "packagedAssetPath": "cli/assets/data/products.csv",
       "importedPath": "skills/design-intelligence/data/products.csv",
       "rows": 161,
-      "sha256": "6ea44a7725d708a25f80626369eb011ec202809b5dfcc8ca7fce2402b5489cf1",
+      "sha256": "9fd9e776ba847cf44c1ea78f95fe5e33b2c56bb7e186e3cfff9c49bc7fcb691b",
       "originalHeaders": [
         "No",
         "Product Type",
@@ -73,7 +74,7 @@
       "packagedAssetPath": "cli/assets/data/styles.csv",
       "importedPath": "skills/design-intelligence/data/styles.csv",
       "rows": 76,
-      "sha256": "9b5089dcde8999333b36878252a255cc3bacbb2fe7b836c76cc7f7aa2abb643d",
+      "sha256": "f37eb20e7403a715d440efd45ce6952ea6a445d6143fd130c52e219a4bec9911",
       "originalHeaders": [
         "No",
         "Style Category",
@@ -142,7 +143,7 @@
       "packagedAssetPath": "cli/assets/data/colors.csv",
       "importedPath": "skills/design-intelligence/data/colors.csv",
       "rows": 161,
-      "sha256": "69ee8c1147b269599d20ca418bdd6f32563a9aa2d962fb9a9b8dec66bf7b1ba4",
+      "sha256": "5a6cb6c5d6f19b5f5e51865ae1e643e4baa05d04304d0bab976f064632149a6a",
       "originalHeaders": [
         "No",
         "Product Type",
@@ -200,7 +201,7 @@
       "packagedAssetPath": "cli/assets/data/typography.csv",
       "importedPath": "skills/design-intelligence/data/typography.csv",
       "rows": 73,
-      "sha256": "a393558b7acc79193744954b93e8e878b2d7b0a4901e3433995b66a219935d3a",
+      "sha256": "dbea262a54e3bfa2e6c3b15989a365d5ef4c43349316aff46635e82ca825adce",
       "originalHeaders": [
         "No",
         "Font Pairing Name",
@@ -255,7 +256,7 @@
       "packagedAssetPath": "cli/assets/data/ux-guidelines.csv",
       "importedPath": "skills/design-intelligence/data/ux-guidelines.csv",
       "rows": 99,
-      "sha256": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d",
+      "sha256": "e01943c433b2cad3040f19389b3b0455673758a569b7a927b5bedf65c989cb96",
       "originalHeaders": [
         "No",
         "Category",
@@ -311,7 +312,7 @@
       "packagedAssetPath": "cli/assets/data/app-interface.csv",
       "importedPath": "skills/design-intelligence/data/app-interface.csv",
       "rows": 30,
-      "sha256": "a276e55817958075a8dffeb5f5d7be16703b1611e9f0a3527525e1a44df25c46",
+      "sha256": "2a17ef810dab715ce1f339861817a8fbe3ccc38142b70517301e874803e838ac",
       "originalHeaders": [
         "No",
         "Category",
@@ -370,7 +371,7 @@
       "packagedAssetPath": "cli/assets/data/charts.csv",
       "importedPath": "skills/design-intelligence/data/charts.csv",
       "rows": 25,
-      "sha256": "ebb565308115f955791b0431797a89d9b3587c25d5babb9428d10712c4924817",
+      "sha256": "a70ef7460b0eaaea8614f86a0d09a4bc38b467804179762464b5ca45b491baac",
       "originalHeaders": [
         "No",
         "Data Type",
@@ -427,7 +428,7 @@
       "packagedAssetPath": "cli/assets/data/icons.csv",
       "importedPath": "skills/design-intelligence/data/icons.csv",
       "rows": 105,
-      "sha256": "9da693f818d43e2110e28d949905c85baad1650d383ae9e1568f58c766b0e016",
+      "sha256": "f376c29fb4df37b4bdb366a5aa70cb211ba3dd8b435390aaa03152a64b07d2e8",
       "originalHeaders": [
         "No",
         "Category",
@@ -475,7 +476,7 @@
       "packagedAssetPath": "cli/assets/data/landing.csv",
       "importedPath": "skills/design-intelligence/data/landing.csv",
       "rows": 34,
-      "sha256": "080cedbcd61ff8ec9520f33929baa76bee9589e783f83b2f8d824a466b6a46d7",
+      "sha256": "121a2cac7cf21050234b5f80e7b4e182f10123536032e0f9ad862ad3aec9677d",
       "originalHeaders": [
         "No",
         "Pattern Name",
@@ -520,7 +521,7 @@
       "packagedAssetPath": "cli/assets/data/google-fonts.csv",
       "importedPath": "skills/design-intelligence/data/google-fonts.csv",
       "rows": 1923,
-      "sha256": "2c03a3cd134d126bd9d6a7dc2a6360dc5272219ad6df3eb9315b031f806e1487",
+      "sha256": "3fd2898fb0fdd31ba758bf05cfcd2b58cd0f038a20cf08e417d09e5a8a4a509e",
       "originalHeaders": [
         "Family",
         "Category",
@@ -575,7 +576,7 @@
       "packagedAssetPath": "cli/assets/data/react-performance.csv",
       "importedPath": "skills/design-intelligence/data/react-performance.csv",
       "rows": 44,
-      "sha256": "47c0a454cb73bf32378c55eb781dea4c44440ec6a1b52039119afc354315c17e",
+      "sha256": "904c8afcda229629545912dde0e8ac37503757131f0169f80b016f1f58c4fd3f",
       "originalHeaders": [
         "No",
         "Category",
@@ -634,7 +635,7 @@
       "packagedAssetPath": "cli/assets/data/ui-reasoning.csv",
       "importedPath": "skills/design-intelligence/data/ui-reasoning.csv",
       "rows": 161,
-      "sha256": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11",
+      "sha256": "06e4369445388ba9b7a57347510b125b7a2145bbf8546a327ba50292503b204a",
       "originalHeaders": [
         "No",
         "UI_Category",
@@ -689,7 +690,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/angular.csv",
       "importedPath": "skills/design-intelligence/data/stacks/angular.csv",
       "rows": 50,
-      "sha256": "0c37794e6b6e3d0e3a0bb90eb619608faaa5ce703afe34c27ef6e3c1ac583258",
+      "sha256": "dd7cc2a2b34cd8f0508bd05b067545e7a44f7724440c432d491d92a61a8fb6c1",
       "originalHeaders": [
         "No",
         "Category",
@@ -747,7 +748,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/astro.csv",
       "importedPath": "skills/design-intelligence/data/stacks/astro.csv",
       "rows": 53,
-      "sha256": "ff7fa30b41464fbe907a99499a32b4395210ef57f3674bef628aeadf767f40a8",
+      "sha256": "ad18dae3ab6d148d37d144592df80dc1825b6c9e86d9d2d68fdda77434206a37",
       "originalHeaders": [
         "No",
         "Category",
@@ -805,7 +806,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/flutter.csv",
       "importedPath": "skills/design-intelligence/data/stacks/flutter.csv",
       "rows": 52,
-      "sha256": "e470e6bc2bcd8562667cc764d1e1afb0be0a30ca4dc9ec12fa18b19d46f156bd",
+      "sha256": "fe36d404c799781e8ba6e9a8179b45799ed5126a545528550cd2eb0f2346e8c5",
       "originalHeaders": [
         "No",
         "Category",
@@ -863,7 +864,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/html-tailwind.csv",
       "importedPath": "skills/design-intelligence/data/stacks/html-tailwind.csv",
       "rows": 55,
-      "sha256": "1f004891dd189f6bc2a7717401e3100244326e7e2f3963a79bf7b2349d85e091",
+      "sha256": "7aef38e75c53559470afcfa91580a9917ca8b7dbf8b92110389e23e93703ac52",
       "originalHeaders": [
         "No",
         "Category",
@@ -921,7 +922,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/jetpack-compose.csv",
       "importedPath": "skills/design-intelligence/data/stacks/jetpack-compose.csv",
       "rows": 52,
-      "sha256": "8e1995b93414e9d50f8d450bdd15853ff138ca3b8c9d6529cd3171729fa5fa7f",
+      "sha256": "6c8fd4b0391c342c12b0af15610cd5becbeccaef0bbe8dcfc01d928c3195d93e",
       "originalHeaders": [
         "No",
         "Category",
@@ -979,7 +980,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/laravel.csv",
       "importedPath": "skills/design-intelligence/data/stacks/laravel.csv",
       "rows": 50,
-      "sha256": "0f523354dec42df92fc570a408cd1128fd1efc879874ad9163ced4f2b179d2b1",
+      "sha256": "50e11e60a64b30f329af25ae71f4b8bbdb43bafc1865451b74f9f540a88964d5",
       "originalHeaders": [
         "No",
         "Category",
@@ -1037,7 +1038,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/nextjs.csv",
       "importedPath": "skills/design-intelligence/data/stacks/nextjs.csv",
       "rows": 52,
-      "sha256": "06a8e8c13bd44696c6ebb4cb6c4d8dea440e3de8cce77616512529ed29258f0c",
+      "sha256": "e828ccc04843742f52f545a068e8a9ab0d2b97c0e771f7e93bf0cef74da05554",
       "originalHeaders": [
         "No",
         "Category",
@@ -1095,7 +1096,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/nuxt-ui.csv",
       "importedPath": "skills/design-intelligence/data/stacks/nuxt-ui.csv",
       "rows": 50,
-      "sha256": "c1f3c9e438ab89f806a0c2e0be4c37cb34d9370c16207353aa9c972d548f710e",
+      "sha256": "05d6e74501b2b6a636faed32450622759f49a5bcafad971f5f4e7eba0eb7be71",
       "originalHeaders": [
         "No",
         "Category",
@@ -1153,7 +1154,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/nuxtjs.csv",
       "importedPath": "skills/design-intelligence/data/stacks/nuxtjs.csv",
       "rows": 58,
-      "sha256": "696ec6df0e5971cd8b69080ee6abea2e9748fb2de47acb2bcc748302684f2030",
+      "sha256": "f7a3f2d9542856d00199f85c6c023b7c284cc698e2e6e12d61afce2edacb24d6",
       "originalHeaders": [
         "No",
         "Category",
@@ -1211,7 +1212,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/react-native.csv",
       "importedPath": "skills/design-intelligence/data/stacks/react-native.csv",
       "rows": 51,
-      "sha256": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085",
+      "sha256": "077aefc81d194895ecf7936b3ed298b978e36961f183e3a275f8acda19b5f621",
       "originalHeaders": [
         "No",
         "Category",
@@ -1269,7 +1270,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/react.csv",
       "importedPath": "skills/design-intelligence/data/stacks/react.csv",
       "rows": 53,
-      "sha256": "b6e3eb0e4c9c01bd00ffb951d5ca224a19d488b4544c75436f48cf92ff12bf45",
+      "sha256": "e5624ab41d33427d88e41d07581ce4eca59b37b36ab72a6ad43a9c8e2d0a1c72",
       "originalHeaders": [
         "No",
         "Category",
@@ -1327,7 +1328,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/shadcn.csv",
       "importedPath": "skills/design-intelligence/data/stacks/shadcn.csv",
       "rows": 60,
-      "sha256": "0f9cc6fbfebea8026950c422808bb3aae239185bad770726b331f827f8e1a6de",
+      "sha256": "395c2e415ef6f48a474acccdc8eb2c7258a6ed751a5037ba171a2d8823e02ded",
       "originalHeaders": [
         "No",
         "Category",
@@ -1385,7 +1386,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/svelte.csv",
       "importedPath": "skills/design-intelligence/data/stacks/svelte.csv",
       "rows": 53,
-      "sha256": "bc8d158994a8bdf412830a9dd5e5a5534edd2f367a6e50e0ebd4d76f592dfa3f",
+      "sha256": "71af52d64f266c88070b91dbbaa900c2f8074b6baae9f35eaea6ba9cec6fd803",
       "originalHeaders": [
         "No",
         "Category",
@@ -1443,7 +1444,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/swiftui.csv",
       "importedPath": "skills/design-intelligence/data/stacks/swiftui.csv",
       "rows": 50,
-      "sha256": "e87cb9eee208bb753bdab96d4a261c7f830c4317ee90ec098316b248fc32be85",
+      "sha256": "c9c2d2510f8e66281a2514e8dd0125a6b653b9ef53a71281b5e7dfe003d5b569",
       "originalHeaders": [
         "No",
         "Category",
@@ -1501,7 +1502,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/threejs.csv",
       "importedPath": "skills/design-intelligence/data/stacks/threejs.csv",
       "rows": 53,
-      "sha256": "c182b38b30fa11531796e018d9fa87d63a5a85bee35c1bfb9baf480df098d270",
+      "sha256": "f1c05f8f269fc4784170c837f4ff43b50042f00bbd6ba7dbef2896081a052544",
       "originalHeaders": [
         "Category",
         "Guideline",
@@ -1557,7 +1558,7 @@
       "packagedAssetPath": "cli/assets/data/stacks/vue.csv",
       "importedPath": "skills/design-intelligence/data/stacks/vue.csv",
       "rows": 49,
-      "sha256": "9b793c3f4eec85f77a758c09322f2b62f3b3ca549bb713ccf0849ef885934395",
+      "sha256": "c2724915d3c11cd67263f25896cff721f787a0fdd8326002d31e9f5806dfd8f8",
       "originalHeaders": [
         "No",
         "Category",
@@ -1614,7 +1615,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-backgrounds.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-backgrounds.csv",
       "rows": 10,
-      "sha256": "c4fcaa0f389c94330b41838732ba740bc09aab250cc84c0b993efe729cc30bd7",
+      "sha256": "d1bb701b87bef493d72974d6fac1087c8ba4e2df14185fe3e0c36a13fe35f3d1",
       "originalHeaders": [
         "slide_type",
         "image_category",
@@ -1651,7 +1652,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-charts.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-charts.csv",
       "rows": 25,
-      "sha256": "3a5b358c54b73b97995df585ba987bec434eb2b84759b285c9c6b9db92a39d2f",
+      "sha256": "12ef876cd76e67a6553444bfa2ebf1d5d4d6216289d34db052a6e87421135033",
       "originalHeaders": [
         "id",
         "chart_type",
@@ -1705,7 +1706,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-color-logic.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-color-logic.csv",
       "rows": 13,
-      "sha256": "1cbe070ff570b8f9df08cb1e0dcf17f93138bf4eb563f9438e19a5931d7d5183",
+      "sha256": "ea68c737075f1615b2a7e461e2878c06bfe8f803dcabfbcc2977ffe5f9ec9ded",
       "originalHeaders": [
         "emotion",
         "background",
@@ -1742,7 +1743,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-copy.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-copy.csv",
       "rows": 25,
-      "sha256": "848dcc6968a0ae0ac500363240036ca3be6927fd74e8bc64e20e9deb3d987f50",
+      "sha256": "43152937a0e598b3fbfdd418684311c105d44e3c5b333703ddb0b8cb28e40658",
       "originalHeaders": [
         "id",
         "formula_name",
@@ -1788,7 +1789,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-layout-logic.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-layout-logic.csv",
       "rows": 15,
-      "sha256": "f5a8fd3f51825a24cdd585a13fa6c2d66ed3bec781e4da904f998dc5c7abf707",
+      "sha256": "26b5b75782d5aba89836c0479acd3111cc69b67853db9c2259b30ac1e966bc62",
       "originalHeaders": [
         "goal",
         "emotion",
@@ -1828,7 +1829,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-layouts.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-layouts.csv",
       "rows": 25,
-      "sha256": "e6236fad256a84a811f0b2a85873d43774206fbaf7de2a50a3b4a5dad639b7f5",
+      "sha256": "95d558c1b7d2552d7a75402dc68facbd16125e574985851db5729d1145e14896",
       "originalHeaders": [
         "id",
         "layout_name",
@@ -1887,7 +1888,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-strategies.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-strategies.csv",
       "rows": 15,
-      "sha256": "b3d0c7b4ea3e615679156477f993c33e35640207fd9a74299e1e3cf0f2e9722c",
+      "sha256": "f656be0ab0b3a85fa7fc74202e9701a7236220412d67d5f63eb6dbb100bb2639",
       "originalHeaders": [
         "id",
         "strategy_name",
@@ -1943,7 +1944,7 @@
       "sourcePath": ".claude/skills/design-system/data/slide-typography.csv",
       "importedPath": "skills/design-intelligence/data/slides/slide-typography.csv",
       "rows": 14,
-      "sha256": "61a5a3d66ce270e9145457a80bf12fb5090a4629ba96176d6e79e0b365bdf54a",
+      "sha256": "b96cd11dd4ff1dea8a9454b0b9e898e7f82f9243182f8f237af1f2c9b8824ce5",
       "originalHeaders": [
         "content_type",
         "primary_size",
@@ -1979,7 +1980,7 @@
       "sourcePath": ".claude/skills/design/data/cip/deliverables.csv",
       "importedPath": "skills/design-intelligence/data/collateral/cip-deliverables.csv",
       "rows": 50,
-      "sha256": "25737b44915a3945491bf6447a181fdd9ed085dcd6ba15d05f851100a1f38c65",
+      "sha256": "229912f35c2f5a790508ddd62270cc7a92a84694027025ea5a30f1fb5ba84b70",
       "originalHeaders": [
         "No",
         "Deliverable",
@@ -2040,7 +2041,7 @@
       "sourcePath": ".claude/skills/design/data/cip/industries.csv",
       "importedPath": "skills/design-intelligence/data/collateral/cip-industries.csv",
       "rows": 20,
-      "sha256": "ea9863ddb16dd60b77287d41d2eacc81029e639ca65250cf6f80218399f6cf17",
+      "sha256": "729b1dea6d6f39b0bc22a1e659584e7ca5cead75841146d599c9f8dc00d4da46",
       "originalHeaders": [
         "No",
         "Industry",
@@ -2095,7 +2096,7 @@
       "sourcePath": ".claude/skills/design/data/cip/mockup-contexts.csv",
       "importedPath": "skills/design-intelligence/data/collateral/cip-mockup-contexts.csv",
       "rows": 20,
-      "sha256": "ce78e3e42528b4541342da5ffe7d6cd1f347ca5b3aabc719d075e97fc28dcbc8",
+      "sha256": "15d61cef16e6746d5aa665976f4de8074fedb64bfc5c7313a40eec1112a1d499",
       "originalHeaders": [
         "No",
         "Context Name",
@@ -2150,7 +2151,7 @@
       "sourcePath": ".claude/skills/design/data/cip/styles.csv",
       "importedPath": "skills/design-intelligence/data/collateral/cip-styles.csv",
       "rows": 20,
-      "sha256": "83c8a0c9ca90074f9c7816b6c13c4cedf50e230dc6a25837b391097fd16540d2",
+      "sha256": "4e7f9e209bc90b60df62fd9843a1a73b365e54161dbd820b82817a8e512af4c4",
       "originalHeaders": [
         "No",
         "Style Name",
@@ -2209,7 +2210,7 @@
       "sourcePath": ".claude/skills/design/data/icon/styles.csv",
       "importedPath": "skills/design-intelligence/data/collateral/icon-styles.csv",
       "rows": 15,
-      "sha256": "bd5529115f0f9d918efb27ca7fed9af80be20c8cb1486d6e453550e6af23d748",
+      "sha256": "a4aa7d326ffe1e50961eb70e25a6351f45c0247cd245461fa1a27cdc72f903b4",
       "originalHeaders": [
         "id",
         "name",
@@ -2247,7 +2248,7 @@
       "sourcePath": ".claude/skills/design/data/logo/colors.csv",
       "importedPath": "skills/design-intelligence/data/collateral/logo-colors.csv",
       "rows": 55,
-      "sha256": "d0497eb72e2d0342c50af72d64c969174e5fd37cb7756de2474f4eca371150de",
+      "sha256": "d60218f0705bb0f0b892a10468a5c8d9a44eef3d0262ef8df8970ba3fbab567a",
       "originalHeaders": [
         "No",
         "Palette Name",
@@ -2296,7 +2297,7 @@
       "sourcePath": ".claude/skills/design/data/logo/industries.csv",
       "importedPath": "skills/design-intelligence/data/collateral/logo-industries.csv",
       "rows": 55,
-      "sha256": "3cfaf75aace538e66ffd2274c4ffb07b6ca5e95d022f46b8ee4abe148fd10bee",
+      "sha256": "e58dda4b9d28851f70914f82c1d2a2cff626a991ca41076f64122f33cc8a6525",
       "originalHeaders": [
         "No",
         "Industry",
@@ -2346,7 +2347,7 @@
       "sourcePath": ".claude/skills/design/data/logo/styles.csv",
       "importedPath": "skills/design-intelligence/data/collateral/logo-styles.csv",
       "rows": 55,
-      "sha256": "4a71e11a77bf16f57f33f22bcd24396c5a7815a87f76d4734c7af049c0d657e2",
+      "sha256": "ea08bdfb7aa557f08d1b6299222423f948700f8e4029321acb58c8f83197bdf2",
       "originalHeaders": [
         "No",
         "Style Name",

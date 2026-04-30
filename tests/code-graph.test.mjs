@@ -43,6 +43,69 @@ function validate(s: string) {
   assert.ok(imports.some(i => i.includes('crypto')), `expected crypto in imports; got: ${imports.join(',')}`);
 });
 
+test('TypeScript: extracts arrow-const hooks and attributes calls to them', async () => {
+  const code = `
+export const useUserVPNConfigQuery = (userId: string) => {
+  return fetchConfig(userId);
+};
+
+function fetchConfig(userId: string) {
+  return userId;
+}
+`;
+  const { symbols, edges } = await extractGraph(code, 'src/hooks/useUserVPNConfigQuery.ts');
+
+  const hook = symbols.find(s => s.kind === 'function' && s.name === 'useUserVPNConfigQuery');
+  assert.ok(hook, `expected hook symbol; got: ${symbols.map(s => `${s.kind}:${s.name}`).join(',')}`);
+
+  const fetchEdge = edges.find(e => e.kind === 'calls' && e.toName === 'fetchConfig');
+  assert.ok(fetchEdge, `expected fetchConfig call; got: ${edges.map(e => `${e.kind}:${e.toName}`).join(',')}`);
+  assert.strictEqual(fetchEdge.fromId, hook.id);
+});
+
+test('TSX: extracts typed React arrow components and JSX references', async () => {
+  const code = `
+import type { FC } from 'react';
+
+const OrgControls = () => {
+  return null;
+};
+
+export const IdeasPage: FC = () => {
+  useUserVPNConfigQuery();
+  return <OrgControls />;
+};
+`;
+  const { symbols, edges } = await extractGraph(code, 'src/pages/IdeasPage.tsx');
+
+  const names = symbols.filter(s => s.kind === 'function').map(s => s.name);
+  assert.ok(names.includes('IdeasPage'), `IdeasPage should be a symbol; got: ${names.join(',')}`);
+  assert.ok(names.includes('OrgControls'), `OrgControls should be a symbol; got: ${names.join(',')}`);
+
+  const ideasPage = symbols.find(s => s.name === 'IdeasPage');
+  assert.ok(edges.some(e => e.kind === 'calls' && e.toName === 'useUserVPNConfigQuery' && e.fromId === ideasPage.id),
+    `expected hook call from IdeasPage; got: ${edges.map(e => `${e.kind}:${e.toName}:${e.fromId}`).join(',')}`);
+  assert.ok(edges.some(e => e.kind === 'references' && e.toName === 'OrgControls' && e.fromId === ideasPage.id),
+    `expected JSX reference from IdeasPage to OrgControls; got: ${edges.map(e => `${e.kind}:${e.toName}:${e.fromId}`).join(',')}`);
+});
+
+test('JSX: extracts arrow components and JSX references', async () => {
+  const code = `
+const Button = () => <button />;
+const Card = () => <Button />;
+`;
+  const { symbols, edges } = await extractGraph(code, 'src/Card.jsx');
+
+  const names = symbols.filter(s => s.kind === 'function').map(s => s.name);
+  assert.ok(names.includes('Button'), `Button should be a symbol; got: ${names.join(',')}`);
+  assert.ok(names.includes('Card'), `Card should be a symbol; got: ${names.join(',')}`);
+  const card = symbols.find(s => s.name === 'Card');
+  assert.ok(edges.some(e => e.kind === 'references' && e.toName === 'Button' && e.fromId === card.id),
+    `expected JSX reference from Card to Button; got: ${edges.map(e => `${e.kind}:${e.toName}:${e.fromId}`).join(',')}`);
+  assert.ok(!edges.some(e => e.kind === 'references' && e.toName === 'button'),
+    `lowercase JSX intrinsic tags should not pollute references; got: ${edges.map(e => `${e.kind}:${e.toName}`).join(',')}`);
+});
+
 test('Python: extracts class + method + inheritance', async () => {
   const code = `
 class Animal:

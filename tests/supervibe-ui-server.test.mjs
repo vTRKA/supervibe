@@ -8,6 +8,8 @@ import {
   createSupervibeUiServer,
   renderSupervibeUiHtml,
 } from "../scripts/lib/supervibe-ui-server.mjs";
+import { CodeStore } from "../scripts/lib/code-store.mjs";
+import { MemoryStore } from "../scripts/lib/memory-store.mjs";
 import { mutateWorkItemGraph } from "../scripts/lib/supervibe-work-item-actions.mjs";
 
 test("UI server renders local control plane and keeps actions preview-first", async () => {
@@ -18,15 +20,29 @@ test("UI server renders local control plane and keeps actions preview-first", as
   const statePath = join(root, stateRel);
   await writeGraph(graphPath);
   await writeState(statePath);
-  const { server, token } = createSupervibeUiServer({ rootDir: root, graphPath: graphRel, token: "test-token" });
+  await writeIndexes(root);
+  const { server } = createSupervibeUiServer({ rootDir: root, graphPath: graphRel });
   await listen(server);
   try {
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
     const html = await (await fetch(`${baseUrl}/`)).text();
     assert.match(html, /Supervibe Control Plane/);
-    assert.match(html, /Next Action/);
-    assert.match(html, /Confidence/);
-    assert.match(renderSupervibeUiHtml({ token, graphPath: graphRel }), /api\/action/);
+    assert.match(html, /CodeGraph/);
+    assert.match(html, /selectMapNode/);
+    assert.match(html, /map-wrap/);
+    assert.match(html, /Auth: local only/);
+    assert.doesNotMatch(html, /x-supervibe-ui-token|\?token=|TOKEN:/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /api\/action/);
+
+    const indexStatus = await (await fetch(`${baseUrl}/api/index-status`)).json();
+    assert.equal(indexStatus.overall.total, 3);
+    assert.ok(indexStatus.codeRag);
+    assert.ok(indexStatus.memory);
+    assert.ok(indexStatus.codeGraph);
+    assert.ok(indexStatus.codeRag.map.nodes.length >= 2);
+    assert.ok(indexStatus.codeRag.map.edges.length >= 1);
+    assert.ok(indexStatus.memory.map.nodes.some((node) => node.type === "entry"));
+    assert.ok(indexStatus.codeGraph.map.nodes.some((node) => node.type === "symbol"));
 
     const graph = await (await fetch(`${baseUrl}/api/graph?file=${encodeURIComponent(graphRel)}`)).json();
     assert.equal(graph.graphId, "epic-ui");
@@ -51,11 +67,11 @@ test("UI server renders local control plane and keeps actions preview-first", as
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "T1", type: "close", apply: true }),
     })).json();
-    assert.match(rejected.error, /token/);
+    assert.match(rejected.error, /confirm=apply-local/);
 
     const preview = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-supervibe-ui-token": token },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "T1", type: "close", apply: false }),
     })).json();
     assert.equal(preview.dryRun, true);
@@ -63,8 +79,8 @@ test("UI server renders local control plane and keeps actions preview-first", as
 
     const applied = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-supervibe-ui-token": token },
-      body: JSON.stringify({ file: graphRel, itemId: "T1", type: "close", apply: true }),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: graphRel, itemId: "T1", type: "close", apply: true, confirm: "apply-local" }),
     })).json();
     assert.equal(applied.dryRun, false);
     assert.equal(JSON.parse(await readFile(graphPath, "utf8")).items[1].status, "closed");
@@ -102,6 +118,42 @@ async function writeState(statePath) {
     gates: [{ gateId: "G1", taskId: "T1", status: "open" }],
   };
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+async function writeIndexes(root) {
+  const sourcePath = join(root, "src", "ui.js");
+  await mkdir(join(root, "src"), { recursive: true });
+  await writeFile(sourcePath, [
+    "export function formatTitle(value) {",
+    "  return helper(value).trim();",
+    "}",
+    "function helper(value) {",
+    "  return String(value || 'Untitled');",
+    "}",
+  ].join("\n"), "utf8");
+  const codeStore = new CodeStore(root, { useEmbeddings: false });
+  await codeStore.init();
+  await codeStore.indexFile(sourcePath);
+  codeStore.resolveAllEdges();
+  codeStore.close();
+
+  const memoryDir = join(root, ".claude", "memory", "decisions");
+  await mkdir(memoryDir, { recursive: true });
+  await writeFile(join(memoryDir, "ui-map.md"), [
+    "---",
+    "id: ui-map",
+    "type: decision",
+    "date: 2026-04-30",
+    "tags: [ui, graph]",
+    "agent: test",
+    "confidence: 9",
+    "---",
+    "Render RAG and CodeGraph as visible relationship maps.",
+  ].join("\n"), "utf8");
+  const memoryStore = new MemoryStore(root, { useEmbeddings: false });
+  await memoryStore.init();
+  await memoryStore.rebuildIndex();
+  memoryStore.close();
 }
 
 async function listen(server) {

@@ -3,8 +3,8 @@
 // Hash-based change detection skips unchanged files on re-index.
 
 import { readdir, readFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { hashFile } from './file-hash.mjs';
 import { chunkCode, detectLanguage } from './code-chunker.mjs';
 import { embed, cosineSimilarity, vectorToBuffer, bufferToVector } from './embeddings.mjs';
@@ -29,6 +29,185 @@ const SKIP_DIRS = new Set([
 ]);
 const SKIP_FILE_PATTERNS = [/\.min\.(js|css)$/, /\.bundle\./, /\.test\./, /\.spec\./, /\.d\.ts$/];
 
+export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
+
+const EXTENSION_RESOLUTION = {
+  typescript: ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'],
+  tsx: ['.tsx', '.ts', '.d.ts', '.js', '.jsx', '/index.tsx', '/index.ts', '/index.js', '/index.jsx'],
+  javascript: ['.js', '.jsx', '.mjs', '.cjs', '/index.js', '/index.jsx'],
+  jsx: ['.jsx', '.js', '/index.jsx', '/index.js'],
+  python: ['.py', '/__init__.py'],
+  go: ['.go'],
+  php: ['.php'],
+  ruby: ['.rb'],
+  java: ['.java'],
+  rust: ['.rs', '/mod.rs'],
+};
+
+const JS_LIKE_LANGUAGES = new Set(['typescript', 'tsx', 'javascript', 'jsx']);
+
+function normalizeRelPath(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function resolveImportSource(importSource, fromRelPath, language, fileSet) {
+  if (!importSource || isExternalImportSource(importSource, language)) return null;
+  const candidates = [];
+  const fromDir = dirname(fromRelPath);
+  const base = importSource.startsWith('.')
+    ? normalizeRelPath(relative('.', resolve(fromDir, importSource)))
+    : resolveAliasedImportSource(importSource);
+  if (!base) return null;
+
+  candidates.push(base);
+  for (const suffix of EXTENSION_RESOLUTION[language] || []) {
+    candidates.push(`${base}${suffix}`);
+  }
+  for (const candidate of candidates.map(normalizeRelPath)) {
+    if (fileSet.has(candidate)) return candidate;
+  }
+  return null;
+}
+
+function resolveAliasedImportSource(importSource) {
+  const aliases = [
+    ['@/', 'src/'],
+    ['~/', 'src/'],
+    ['@src/', 'src/'],
+    ['src/', 'src/'],
+    ['@app/', 'app/'],
+    ['app/', 'app/'],
+  ];
+  for (const [prefix, replacement] of aliases) {
+    if (importSource.startsWith(prefix)) return importSource.replace(prefix, replacement);
+  }
+  return importSource.includes('/') ? importSource : null;
+}
+
+function isExternalImportSource(importSource, language) {
+  if (importSource.startsWith('.')) return false;
+  if (JS_LIKE_LANGUAGES.has(language)) {
+    if (importSource.startsWith('@/') || importSource.startsWith('~/') || importSource.startsWith('@src/') || importSource.startsWith('src/') || importSource.startsWith('@app/') || importSource.startsWith('app/')) {
+      return false;
+    }
+    return true;
+  }
+  if (language === 'python') {
+    return !importSource.startsWith('.') && !importSource.includes('.');
+  }
+  return false;
+}
+
+function buildImportMapForFile({ content, relPath, language, fileSet }) {
+  const mappings = new Map();
+  if (!content) return mappings;
+  const add = ({ localName, exportedName = localName, source }) => {
+    if (!localName || !source) return;
+    const sourceFile = resolveImportSource(source, relPath, language, fileSet);
+    if (!sourceFile) return;
+    const existing = mappings.get(localName) || [];
+    existing.push({ localName, exportedName, source, sourceFile });
+    mappings.set(localName, existing);
+  };
+
+  if (JS_LIKE_LANGUAGES.has(language)) {
+    const importRe = /import\s+(?:type\s+)?(?:(\w+)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:\*\s+as\s+(\w+)\s*)?from\s*['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = importRe.exec(content)) !== null) {
+      const [, defaultImport, namedImports, namespaceImport, source] = match;
+      if (defaultImport) add({ localName: defaultImport, exportedName: 'default', source });
+      if (namespaceImport) add({ localName: namespaceImport, exportedName: '*', source });
+      if (namedImports) {
+        for (const rawName of namedImports.split(',')) {
+          const part = rawName.trim().replace(/^type\s+/, '');
+          if (!part) continue;
+          const alias = part.match(/^(\w+)\s+as\s+(\w+)$/);
+          add({
+            localName: alias ? alias[2] : part,
+            exportedName: alias ? alias[1] : part,
+            source,
+          });
+        }
+      }
+    }
+    const requireRe = /(?:const|let|var)\s+(\w+)\s*=\s*require\(['"]([^'"]+)['"]\)/g;
+    while ((match = requireRe.exec(content)) !== null) {
+      add({ localName: match[1], exportedName: 'default', source: match[2] });
+    }
+  } else if (language === 'python') {
+    const fromImportRe = /^\s*from\s+([.\w]+)\s+import\s+(.+)$/gm;
+    let match;
+    while ((match = fromImportRe.exec(content)) !== null) {
+      const [, moduleName, names] = match;
+      for (const rawName of names.split(',')) {
+        const part = rawName.trim();
+        const alias = part.match(/^(\w+)\s+as\s+(\w+)$/);
+        add({
+          localName: alias ? alias[2] : part,
+          exportedName: alias ? alias[1] : part,
+          source: pythonModuleToPath(moduleName, relPath),
+        });
+      }
+    }
+  } else if (language === 'php') {
+    const useRe = /^\s*use\s+([^;]+);/gm;
+    let match;
+    while ((match = useRe.exec(content)) !== null) {
+      const full = match[1].trim();
+      const alias = full.match(/\s+as\s+(\w+)$/i);
+      const clean = full.replace(/\s+as\s+\w+$/i, '');
+      const localName = alias ? alias[1] : clean.split('\\').pop();
+      const source = clean.replace(/\\/g, '/');
+      add({ localName, exportedName: localName, source: `${source}.php` });
+    }
+  }
+
+  return mappings;
+}
+
+function pythonModuleToPath(moduleName, fromRelPath) {
+  const dots = moduleName.match(/^\.+/)?.[0]?.length || 0;
+  const clean = moduleName.replace(/^\.+/, '').replace(/\./g, '/');
+  if (dots === 0) return clean;
+  let base = dirname(fromRelPath);
+  for (let i = 1; i < dots; i++) base = dirname(base);
+  return clean ? `${base}/${clean}` : base;
+}
+
+function selectBestEdgeTarget({ edge, candidates, importMap, fromLanguage, langByFile }) {
+  if (candidates.length === 1) return candidates[0];
+  const imports = importMap.get(edge.toName) || [];
+  const fromDir = dirname(edge.fromPath);
+  const scored = candidates.map((candidate) => {
+    let score = 0;
+    if (candidate.path === edge.fromPath) score += 100;
+    const imported = imports.find((entry) =>
+      entry.sourceFile === candidate.path &&
+      (entry.exportedName === candidate.name || entry.localName === candidate.name || entry.exportedName === 'default' || entry.exportedName === '*')
+    );
+    if (imported) score += 90;
+    if (dirname(candidate.path) === fromDir) score += 25;
+    if (langByFile.get(candidate.path) === fromLanguage) score += 10;
+    if (edge.edgeKind === 'calls' && ['function', 'method'].includes(candidate.kind)) score += 20;
+    if (edge.edgeKind === 'references' && ['component', 'function', 'class'].includes(candidate.kind)) score += 20;
+    if (['extends', 'implements'].includes(edge.edgeKind) && ['class', 'interface', 'type', 'trait', 'struct'].includes(candidate.kind)) score += 20;
+    return { candidate, score };
+  }).sort((a, b) => b.score - a.score || a.candidate.path.localeCompare(b.candidate.path));
+
+  const [best, second] = scored;
+  if (!best) return null;
+  if (best.score >= 80 && (!second || best.score > second.score)) return best.candidate;
+  if (best.score >= 45 && (!second || best.score - second.score >= 20)) return best.candidate;
+  return null;
+}
+
+function ensureColumn(db, table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((row) => row.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 export class CodeStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
@@ -52,7 +231,8 @@ export class CodeStore {
         language TEXT NOT NULL,
         content_hash TEXT NOT NULL,
         line_count INTEGER NOT NULL,
-        indexed_at TEXT NOT NULL
+        indexed_at TEXT NOT NULL,
+        graph_version INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS idx_code_files_lang ON code_files(language);
 
@@ -128,6 +308,7 @@ export class CodeStore {
       CREATE INDEX IF NOT EXISTS idx_anchor_path ON code_semantic_anchors(path);
       CREATE INDEX IF NOT EXISTS idx_anchor_symbol ON code_semantic_anchors(symbol_name);
     `);
+    ensureColumn(this.db, "code_files", "graph_version", "INTEGER NOT NULL DEFAULT 0");
     return this;
   }
 
@@ -156,17 +337,21 @@ export class CodeStore {
     }
 
     const hash = await hashFile(absPath);
-    const existing = this.db.prepare('SELECT content_hash FROM code_files WHERE path = ?').get(relPath);
+    const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
     if (existing && existing.content_hash === hash) {
-      // Hash unchanged, but the file may have been indexed before code graph existed.
-      // Heal-on-skip: if no symbols exist for this file, run graph extraction.
-      const symCount = this.db.prepare('SELECT COUNT(*) AS n FROM code_symbols WHERE path = ?').get(relPath).n;
-      if (symCount === 0) {
+      // Hash unchanged, but extractor/query semantics may have changed across
+      // plugin versions. Rebuild only graph rows while preserving expensive RAG
+      // chunks and embeddings.
+      if (Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
         try {
-          const c = await readFile(absPath, 'utf8');
-          await this.indexGraphFor(absPath, c);
-          return { skipped: 'unchanged-graph-healed' };
-        } catch {}
+          const result = await this.indexGraphFor(absPath, content);
+          this.markGraphCurrent(relPath);
+          return { skipped: 'unchanged-graph-reindexed', ...result };
+        } catch (err) {
+          if (process.env.SUPERVIBE_VERBOSE === '1') {
+            console.warn(`[code-graph] failed to reindex unchanged ${relPath}: ${err.message}`);
+          }
+        }
       }
       return { skipped: 'unchanged' };
     }
@@ -178,8 +363,8 @@ export class CodeStore {
     const lines = content.split('\n').length;
 
     this.db.prepare(`
-      INSERT OR REPLACE INTO code_files (path, language, content_hash, line_count, indexed_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
+      INSERT OR REPLACE INTO code_files (path, language, content_hash, line_count, indexed_at, graph_version)
+      VALUES (?, ?, ?, ?, datetime('now'), 0)
     `).run(relPath, lang, hash, lines);
 
     const insertChunk = this.db.prepare(`
@@ -207,6 +392,7 @@ export class CodeStore {
     // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
     try {
       await this.indexGraphFor(absPath, content);
+      this.markGraphCurrent(relPath);
     } catch (err) {
       if (process.env.SUPERVIBE_VERBOSE === '1') {
         console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
@@ -214,6 +400,11 @@ export class CodeStore {
     }
 
     return { indexed: true, chunks: chunks.length };
+  }
+
+  markGraphCurrent(relPath) {
+    this.db.prepare('UPDATE code_files SET graph_version = ? WHERE path = ?')
+      .run(CODE_GRAPH_EXTRACTOR_VERSION, relPath);
   }
 
   /**
@@ -293,22 +484,66 @@ export class CodeStore {
   }
 
   /**
-   * Resolve toId for unresolved edges by name lookup across whole project.
-   * Run once at end of indexAll() for consistent picture.
+   * Resolve toId for unresolved edges with file/import-aware scoring.
+   *
+   * This deliberately leaves ambiguous edges unresolved instead of linking to
+   * the first same-name symbol. False graph confidence is worse than a missing
+   * edge for agents doing impact analysis.
+   *
    * @returns number of edges that became resolved
    */
   resolveAllEdges() {
-    const result = this.db.prepare(`
-      UPDATE code_edges
-      SET to_id = (
-        SELECT id FROM code_symbols
-        WHERE name = code_edges.to_name
-        ORDER BY id
-        LIMIT 1
-      )
-      WHERE to_id IS NULL
-    `).run();
-    return result.changes;
+    const files = this.db.prepare('SELECT path, language FROM code_files').all();
+    const fileSet = new Set(files.map((f) => f.path));
+    const langByFile = new Map(files.map((f) => [f.path, f.language]));
+    const importMapCache = new Map();
+    const symbolLookup = this.db.prepare(`
+      SELECT id, path, kind, name, start_line AS startLine
+      FROM code_symbols
+      WHERE name = ?
+      ORDER BY path, start_line
+    `);
+    const edgeRows = this.db.prepare(`
+      SELECT e.rowid AS rowid, e.from_id AS fromId, e.to_name AS toName, e.kind AS edgeKind,
+             s.path AS fromPath
+      FROM code_edges e
+      JOIN code_symbols s ON s.id = e.from_id
+      WHERE e.to_id IS NULL
+    `).all();
+    const update = this.db.prepare('UPDATE code_edges SET to_id = ? WHERE rowid = ?');
+    let resolved = 0;
+
+    const getImportMap = (relPath) => {
+      if (importMapCache.has(relPath)) return importMapCache.get(relPath);
+      const language = langByFile.get(relPath) || detectLanguage(relPath);
+      const absPath = join(this.projectRoot, relPath);
+      let content = '';
+      try { content = readFileSync(absPath, 'utf8'); } catch {}
+      const map = buildImportMapForFile({
+        content,
+        relPath,
+        language,
+        fileSet,
+      });
+      importMapCache.set(relPath, map);
+      return map;
+    };
+
+    for (const edge of edgeRows) {
+      const candidates = symbolLookup.all(edge.toName);
+      if (candidates.length === 0) continue;
+      const target = selectBestEdgeTarget({
+        edge,
+        candidates,
+        importMap: getImportMap(edge.fromPath),
+        fromLanguage: langByFile.get(edge.fromPath),
+        langByFile,
+      });
+      if (!target) continue;
+      update.run(target.id, edge.rowid);
+      resolved++;
+    }
+    return resolved;
   }
 
   /** Walk project directory, index all supported files. */

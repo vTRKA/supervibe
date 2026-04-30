@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | b
 irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 ```
 
-The installer auto-detects every supported AI CLI on your machine and registers the plugin.
+The installer auto-detects every supported AI CLI on your machine and registers the plugin. Re-running it is a clean managed reinstall: tracked local edits stop the install, while stale untracked/ignored files from older plugin versions are removed before dependencies and generated registries are rebuilt.
 
 **Claude Code (auto-detect):**
 ```bash
@@ -84,7 +84,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.2 initialized for this project
+[supervibe] welcome — plugin v2.0.3 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -128,7 +128,7 @@ cd ~/.claude/plugins/marketplaces/supervibe-marketplace
 npm run supervibe:upgrade
 ```
 
-All three do the same thing: refuse if you have uncommitted edits to the plugin checkout, then `git pull --ff-only` + LFS pull + `npm install` + run all tests + refresh the upstream-check cache. Restart the AI CLI afterwards.
+All three do the same thing: refuse tracked edits in the plugin checkout, clean stale untracked/ignored files, then `git pull --ff-only` + LFS pull + `npm install` + rebuild generated `registry.yaml` + run all tests + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
 
 ---
 
@@ -206,8 +206,9 @@ under `.claude/memory/work-items/`, external tracker mappings in
 The localhost UI is universal across IDEs: run `/supervibe-ui` or
 `npm run supervibe:ui -- --file <graph.json>`, then open the printed
 `127.0.0.1` URL in a browser or IDE webview. It shows epics, tasks, selected
-context packs, loop `state.json`, waves, gates, SLA reports, and GC previews.
-Mutating actions are local-only and require an explicit token-protected apply.
+context packs, loop `state.json`, waves, gates, SLA reports, GC previews, and
+RAG/memory/codegraph health tabs. Mutating actions are local-only and require a
+preview plus explicit apply confirmation.
 `npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` writes a
 portable descriptor that IDE webviews can consume without becoming a separate
 task store.
@@ -351,28 +352,35 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 |---------|--------------|
 | `npm run supervibe:status` | Health check across every index |
 | `npm run supervibe:loop -- --help` | Local no-tty help for loop status, graph, doctor, prime, export/import, and execution modes |
-| `npm run supervibe:ui -- --file <graph.json>` | Local visual control plane for work items, loop state, reports, context packs, and safe actions |
+| `npm run supervibe:ui -- --file <graph.json>` | Local visual control plane for work items, loop state, RAG/memory/codegraph health, reports, context packs, and safe actions |
 | `npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` | Webview descriptor for wrapping the local UI in any IDE |
 | `npm run supervibe:gc -- --all --dry-run` | Reversible cleanup preview for work-item graphs and memory |
 | `npm run supervibe:context-pack -- --file <graph.json> --item T1` | Compact high-signal context pack for one active task |
 | `npm run supervibe:context-eval -- --case-file <cases.json>` | Retrieval/context-pack evals for required memory, evidence, anchors, and token budgets |
 | `npm run supervibe:happy-path -- --plan <plan.md>` | Ralph-style happy path: PRD/plan -> atomize -> execute -> verify -> archive |
 | `npm run supervibe:docs-audit` | User-facing docs relevance audit; flags internal dev files if they drift into `docs/` |
-| `npm run supervibe:upgrade` | git pull, lfs pull, npm install, run all tests |
+| `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
+| `npm run supervibe:upgrade` | clean checkout, git pull, lfs pull, npm install, rebuild registry, run all tests, run install doctor |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
 | `npm run code:index` | Full reindex |
 | `npm run code:search -- --query "..."` | Semantic search |
+| `npm run code:search -- --context "..."` | Agent-ready RAG + graph + anchor context |
+| `npm run code:search -- --symbol-search "Symbol"` | Graph: ranked symbol lookup |
 | `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
+| `npm run code:search -- --impact "Symbol" --depth 2` | Graph: inbound blast radius before refactor |
+| `npm run code:search -- --files "src"` | Graph: indexed files with language and symbol counts |
 | `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Optional watcher daemon |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
-| `npm run check` | All 724 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
+| `npm run check` | All 751 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
 
 ---
 
 ## Troubleshooting
 
 **No banner after install.** Re-run the installer — it is idempotent and refreshes the three Claude config files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).
+
+The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if the banner is still absent, check that report for stale files or missing host registration.
 
 **Not visible in VS Code or Zed.** Those IDEs read the same `~/.claude/` as the terminal. If the banner appears in the terminal, restart the IDE. If still nothing, re-run the installer.
 

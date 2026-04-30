@@ -191,19 +191,26 @@ async function checkJsonManifest(hostId, definition, context, checks) {
 
   for (const field of definition.requiredManifestPaths || []) {
     const ref = manifest[field];
-    if (!ref) {
+    const refs = normalizeManifestRefs(ref);
+    if (refs.length === 0) {
       checks.push(fail(`manifest-${field}`, `manifest is missing ${field}`, `Add ${field}: "./${field}" to ${definition.manifestPath}.`));
       continue;
     }
-    if (pathEscapesPackage(ref)) {
-      checks.push(fail(`manifest-${field}`, `${field} path escapes package: ${ref}`, `Keep ${field} inside the plugin package.`));
+    const escaping = refs.find((entry) => pathEscapesPackage(entry));
+    if (escaping) {
+      checks.push(fail(`manifest-${field}`, `${field} path escapes package: ${escaping}`, `Keep ${field} inside the plugin package.`));
       continue;
     }
-    const exists = await pathExists(join(context.root, normalizeManifestPath(ref)));
-    if (!exists) {
-      checks.push(fail(`manifest-${field}`, `${field} path does not exist: ${ref}`, `Restore ${ref}.`));
+    const missing = [];
+    for (const entry of refs) {
+      const exists = await pathExists(join(context.root, normalizeManifestPath(entry)));
+      if (!exists) missing.push(entry);
+    }
+    if (missing.length > 0) {
+      checks.push(fail(`manifest-${field}`, `${field} path does not exist: ${missing.slice(0, 3).join(", ")}${missing.length > 3 ? ` (+${missing.length - 3} more)` : ""}`, `Restore missing ${field} path(s).`));
     } else {
-      checks.push(pass(`manifest-${field}`, `${field} path exists: ${ref}`));
+      const suffix = refs.length === 1 ? refs[0] : `${refs.length} paths`;
+      checks.push(pass(`manifest-${field}`, `${field} path exists: ${suffix}`));
     }
   }
 }
@@ -438,6 +445,17 @@ async function pathExecutable(path) {
 function pathEscapesPackage(pathRef) {
   const normalized = normalizeManifestPath(pathRef);
   return normalized.startsWith("../") || /^[A-Za-z]:/.test(normalized) || normalized.startsWith("/");
+}
+
+function normalizeManifestRefs(ref) {
+  if (Array.isArray(ref)) {
+    return ref.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  if (typeof ref === "string") {
+    const value = ref.trim();
+    return value ? [value] : [];
+  }
+  return [];
 }
 
 function normalizeManifestPath(pathRef) {

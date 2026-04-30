@@ -32,8 +32,9 @@ project memory, confidence gates, and stack-aware scaffolding backed by SQLite.
 ## Install (verified)
 
 The maintained install path is the repo installer. It detects supported AI CLIs,
-checks Node.js before registration, and wires the plugin into the available
-targets.
+checks Node.js before registration, cleans stale files from an existing managed
+checkout, rebuilds `registry.yaml`, runs the full validation path, and wires the
+plugin into the available targets.
 
 ### Option A — Installer (recommended for users)
 
@@ -67,17 +68,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.2
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.3
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.2
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.2"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.3
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.3"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.2
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.3
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.2" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.3" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -94,8 +95,14 @@ After restart, in a Claude Code session:
 
 Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/supervibe-genesis if `.claude/agents/` empty").
 
+From the plugin checkout, the lifecycle audit should also be green:
+
+```bash
+npm run supervibe:install-doctor
+```
+
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.2/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.3/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -232,6 +239,9 @@ node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs
 
 # Manual semantic search (optional — agents auto-invoke this)
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication is handled"
+
+# Agent-ready context pack (RAG chunks + graph + anchors)
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --context "auth login flow" --limit 8
 ```
 
 **What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `dist/`, `.next/`, `__pycache__/`, etc.
@@ -263,7 +273,10 @@ npm run supervibe:status
 # Manual graph queries (agents auto-invoke these)
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "loginHandler"
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callees "BillingService"
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --impact "BillingService" --depth 2
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --neighbors "AuthMiddleware" --depth 2
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --symbol-search "AuthMiddleware"
+node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --files "src/app"
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --top-symbols 20
 ```
 
@@ -271,7 +284,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --top-symbols 20
 
 **Languages:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby, Vue, and Svelte.
 
-**Coverage realism:** ~80% of cross-file calls are resolved (industry baseline for non-LSP graph extractors). Unresolved targets still appear with `to_name` and `kind=external` — useful for "imports from third-party X".
+**Coverage realism:** same-file, import-map, same-directory, and unique-symbol scoring resolve cross-file calls. Ambiguous same-name edges stay unresolved instead of being guessed, so impact analysis favors lower false confidence over noisy links.
 
 **Large monorepos:** for 10k+ files, use lazy mode:
 ```bash
@@ -368,7 +381,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.2/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.3/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -431,13 +444,13 @@ rm -rf <project>/.claude/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.2
+  - Manifest auto-updated; ensure your install path has v2.0.3
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.2 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.3 dir, restart Claude Code
 
 ## Where to next
 

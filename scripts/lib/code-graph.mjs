@@ -42,9 +42,18 @@ export function isSfcFile(filePath) {
 }
 
 const _queryTextCache = new Map();
+function queryKeyForLang(lang) {
+  const exactQueryFile = join(QUERY_DIR, `${lang}.scm`);
+  if (existsSync(exactQueryFile)) return lang;
+  // TSX can safely use the TypeScript base query when no TSX-specific query
+  // exists. A dedicated tsx.scm may add JSX-only node types that plain
+  // TypeScript cannot compile.
+  return lang === 'tsx' ? 'typescript' : lang;
+}
+
 function loadQueryText(lang) {
-  // tsx reuses typescript query; .jsx reuses javascript (already in EXT_TO_GRAMMAR mapping)
-  const key = lang === 'tsx' ? 'typescript' : lang;
+  // .jsx reuses javascript (already in EXT_TO_GRAMMAR mapping).
+  const key = queryKeyForLang(lang);
   if (_queryTextCache.has(key)) return _queryTextCache.get(key);
   const queryFile = join(QUERY_DIR, `${key}.scm`);
   if (!existsSync(queryFile)) {
@@ -58,7 +67,7 @@ function loadQueryText(lang) {
 
 const _queryObjectCache = new Map();
 async function getCompiledQuery(lang) {
-  const key = lang === 'tsx' ? 'typescript' : lang;
+  const key = queryKeyForLang(lang);
   if (_queryObjectCache.has(key)) return _queryObjectCache.get(key);
   const text = loadQueryText(lang);
   if (!text) return null;
@@ -75,6 +84,20 @@ async function getCompiledQuery(lang) {
 
 function makeId(path, kind, name, startLine) {
   return `${path}:${kind}:${name}:${startLine}`;
+}
+
+function normalizeSymbolKind(kind, name) {
+  if (kind === 'wrapped_function') {
+    return isLikelyCallableBinding(name) ? 'function' : null;
+  }
+  if (kind === 'field_function') return 'method';
+  return kind;
+}
+
+function isLikelyCallableBinding(name) {
+  return /^[A-Z]/.test(name)
+    || /^use[A-Z0-9_]/.test(name)
+    || /^(handle|on|load|fetch|create|update|delete|remove|save|submit|render|build|make|map|parse|format|validate|resolve|transform|process|run|execute|send|sync|open|close|toggle|select|search|filter|sort|compute|calculate|debounced|throttled)[A-Z0-9_]/.test(name);
 }
 
 /**
@@ -137,9 +160,10 @@ export async function extractGraph(code, filePath) {
       const captureName = cap.name;
       if (!captureName.startsWith('symbol.')) continue;
 
-      const kind = captureName.slice('symbol.'.length);
       const nameCap = match.captures.find(c => c.name === 'name');
       const name = nameCap ? nameCap.node.text : '<anonymous>';
+      const kind = normalizeSymbolKind(captureName.slice('symbol.'.length), name);
+      if (!kind) continue;
       const node = cap.node;
       const startLine = node.startPosition.row + 1;
       const endLine = node.endPosition.row + 1;
@@ -180,9 +204,10 @@ export async function extractGraph(code, filePath) {
     for (const cap of match.captures) {
       if (!cap.name.startsWith('symbol.')) continue;
       const node = cap.node;
-      const kind = cap.name.slice('symbol.'.length);
       const nameCap = match.captures.find(c => c.name === 'name');
       const name = nameCap ? nameCap.node.text : '<anonymous>';
+      const kind = normalizeSymbolKind(cap.name.slice('symbol.'.length), name);
+      if (!kind) continue;
       const startLine = node.startPosition.row + 1;
       symStartIndex.set(node.startIndex, makeId(filePath, kind, name, startLine));
     }
@@ -204,9 +229,10 @@ export async function extractGraph(code, filePath) {
       while (symbolStack.length > 0 && symbolStack[symbolStack.length - 1].endByte <= node.startIndex) {
         symbolStack.pop();
       }
-      const kind = cap.name.slice('symbol.'.length);
       const nameCap = match.captures.find(c => c.name === 'name');
       const name = nameCap ? nameCap.node.text : '<anonymous>';
+      const kind = normalizeSymbolKind(cap.name.slice('symbol.'.length), name);
+      if (!kind) continue;
       const startLine = node.startPosition.row + 1;
       symbolStack.push({
         id: makeId(filePath, kind, name, startLine),
@@ -218,10 +244,14 @@ export async function extractGraph(code, filePath) {
     // Then process edges in this match
     for (const cap of match.captures) {
       if (!cap.name.startsWith('edge.')) continue;
-      const kind = cap.name.slice('edge.'.length);
+      let kind = cap.name.slice('edge.'.length);
       const targetCap = match.captures.find(c => c.name === 'target' || c.name === 'import-target');
       if (!targetCap) continue;
       const toName = targetCap.node.text.replace(/^["'`]|["'`]$/g, '');
+      if (kind === 'jsx_reference') {
+        if (!/^[A-Z]/.test(toName)) continue;
+        kind = 'references';
+      }
 
       // Drop stack entries that ended before this edge
       while (symbolStack.length > 0 && symbolStack[symbolStack.length - 1].endByte <= cap.node.startIndex) {

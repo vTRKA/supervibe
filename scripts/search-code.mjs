@@ -8,13 +8,19 @@
 //   --callees "<symbol>"       what does this symbol call (graph)
 //   --neighbors "<symbol>"     BFS neighborhood (graph), use --depth N
 //   --top-symbols N            most-connected symbols (centrality)
+//   --symbol-search "<query>"  ranked symbol lookup (locations only)
+//   --impact "<symbol>"        inbound impact radius for a symbol
+//   --files "."                indexed file tree/list with symbol counts
+//   --context "<task>"         graph-aware context pack for agents
 //
 // Symbol arg accepts bare name OR full ID "path:kind:name:line" for disambiguation.
 
 import { CodeStore } from './lib/code-store.mjs';
 import {
-  findCallers, findCallees, neighborhood, topSymbolsByDegree, disambiguate
+  findCallers, findCallees, neighborhood, topSymbolsByDegree, disambiguate,
+  impactRadius, listIndexedFiles, searchSymbols
 } from './lib/code-graph-queries.mjs';
+import { buildCodeGraphContext } from './lib/supervibe-codegraph-context.mjs';
 import { parseArgs } from 'node:util';
 
 const PROJECT_ROOT = process.cwd();
@@ -25,22 +31,32 @@ const { values } = parseArgs({
     callees: { type: 'string', default: '' },
     neighbors: { type: 'string', default: '' },
     'top-symbols': { type: 'string', default: '' },
+    'symbol-search': { type: 'string', default: '' },
+    impact: { type: 'string', default: '' },
+    files: { type: 'string', default: '' },
+    context: { type: 'string', default: '' },
     depth: { type: 'string', default: '1' },
+    format: { type: 'string', default: 'flat' },
     lang: { type: 'string', default: '' },
     kind: { type: 'string', default: '' },
     limit: { type: 'string', short: 'n', default: '10' },
-    'no-semantic': { type: 'boolean', default: false }
+    'no-semantic': { type: 'boolean', default: false },
+    json: { type: 'boolean', default: false }
   },
   strict: false
 });
 
-if (!values.query && !values.callers && !values.callees && !values.neighbors && !values['top-symbols']) {
+if (!values.query && !values.callers && !values.callees && !values.neighbors && !values['top-symbols'] && !values['symbol-search'] && !values.impact && !values.files && !values.context) {
   console.error('Usage:');
   console.error('  search-code.mjs --query "<text>" [--lang ...] [--kind ...] [--limit N]');
   console.error('  search-code.mjs --callers "<symbol-name-or-id>"');
   console.error('  search-code.mjs --callees "<symbol-name-or-id>"');
   console.error('  search-code.mjs --neighbors "<symbol-name-or-id>" --depth 2');
   console.error('  search-code.mjs --top-symbols 20 [--kind class]');
+  console.error('  search-code.mjs --symbol-search "<query>" [--kind function]');
+  console.error('  search-code.mjs --impact "<symbol-name-or-id>" --depth 2');
+  console.error('  search-code.mjs --files "." [--lang typescript] [--format flat]');
+  console.error('  search-code.mjs --context "<task or symbol>" [--no-semantic]');
   process.exit(1);
 }
 
@@ -79,6 +95,38 @@ if (values.callers) {
     limit: parseInt(values['top-symbols'], 10),
     kind: values.kind || null
   });
+} else if (values['symbol-search']) {
+  mode = 'symbol-search';
+  results = searchSymbols(store.db, values['symbol-search'], {
+    limit,
+    kinds: values.kind ? [values.kind] : []
+  });
+} else if (values.impact) {
+  mode = 'impact';
+  results = impactRadius(store.db, values.impact, {
+    depth: parseInt(values.depth, 10),
+    limit
+  }).nodes;
+} else if (values.files) {
+  mode = 'files';
+  results = listIndexedFiles(store.db, {
+    pathPrefix: values.files,
+    language: values.lang || '',
+    limit
+  });
+} else if (values.context) {
+  mode = 'context';
+  store.close();
+  const context = await buildCodeGraphContext({
+    rootDir: PROJECT_ROOT,
+    query: values.context,
+    limit,
+    graphDepth: parseInt(values.depth, 10),
+    useEmbeddings: !values['no-semantic'],
+  });
+  if (values.json) console.log(JSON.stringify(context, null, 2));
+  else console.log(context.markdown);
+  process.exit(0);
 } else {
   mode = 'semantic';
   results = await store.search({
@@ -91,6 +139,11 @@ if (values.callers) {
 }
 
 store.close();
+
+if (values.json) {
+  console.log(JSON.stringify({ mode, results }, null, 2));
+  process.exit(0);
+}
 
 if (results.length === 0) {
   console.log(`No matches (mode: ${mode}).`);
@@ -111,5 +164,15 @@ for (const [i, r] of results.entries()) {
     console.log(`${i + 1}. [d=${r.distance}] ${r.path}:${r.startLine}  [${r.kind}: ${r.name}]`);
   } else if (mode === 'top-symbols') {
     console.log(`${i + 1}. ${r.path}  [${r.kind}: ${r.name}]  in=${r.inDegree} out=${r.outDegree} total=${r.totalDegree}`);
+  } else if (mode === 'symbol-search') {
+    console.log(`${i + 1}. ${r.path}:${r.startLine}-${r.endLine}  [${r.kind}: ${r.name}]  score=${r.score}`);
+  } else if (mode === 'impact') {
+    console.log(`${i + 1}. [d=${r.distance}] ${r.path}:${r.startLine}  [${r.kind}: ${r.name}]  via=${r.via || 'graph'}`);
+  } else if (mode === 'files') {
+    if (values.format === 'grouped') {
+      console.log(`${i + 1}. [${r.language}] ${r.path} (${r.symbolCount} symbols, ${r.lineCount} lines)`);
+    } else {
+      console.log(`${i + 1}. ${r.path}  [${r.language}, symbols=${r.symbolCount}, lines=${r.lineCount}]`);
+    }
   }
 }

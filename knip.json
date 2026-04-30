@@ -37,7 +37,8 @@
     "scripts/audit-evidence-citations.mjs",
     "scripts/apply-rag-memory-procedure.mjs",
     "scripts/hooks/user-prompt-submit-memory-preflight.mjs",
-    "scripts/hooks/pre-tool-use-refactor-advisory.mjs"
+    "scripts/hooks/pre-tool-use-refactor-advisory.mjs",
+    "scripts/supervibe-install-doctor.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
   "ignoreIssues": {

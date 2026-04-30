@@ -1,6 +1,5 @@
-; TypeScript / TSX symbol + edge queries.
-; Captures: @symbol.<kind> for symbol declarations, @name for names,
-;           @edge.<kind> for edges, @target for edge targets.
+; TSX symbol + edge queries.
+; Extends TypeScript with JSX component references.
 
 ; Function declarations
 (function_declaration
@@ -69,6 +68,13 @@
 (call_expression
   function: (member_expression
     property: (property_identifier) @target)) @edge.calls
+
+; JSX component references
+(jsx_self_closing_element
+  name: (identifier) @target) @edge.jsx_reference
+
+(jsx_opening_element
+  name: (identifier) @target) @edge.jsx_reference
 
 ; Imports
 (import_statement

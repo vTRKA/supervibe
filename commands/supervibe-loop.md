@@ -121,7 +121,7 @@ status, dashboard, report, or scheduler check runs.
 For visual inspection, `/supervibe-ui` can open the same `graph.json` and loop
 `state.json` in a localhost control plane. It previews context packs, waves,
 reports, GC candidates, and safe local actions without changing the canonical
-JSON graph unless the user applies a token-protected mutation.
+JSON graph unless the user previews and explicitly applies a local mutation.
 
 Interactive mode is opt-in. `/supervibe-loop --create-work-item --interactive`
 uses guided terminal forms when a real TTY exists; otherwise it prints a

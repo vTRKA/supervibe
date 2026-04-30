@@ -39,6 +39,15 @@ export function auditInstallIntegrityData(data = {}) {
   requirePattern(scripts.updateSh, /validate_safe_path/, "update.sh", "missing path safety check", issues);
   requirePattern(scripts.updatePs1, /Assert-SafePluginPath/, "update.ps1", "missing path safety check", issues);
 
+  requirePattern(scripts.installSh, /git clean -ffdx/, "install.sh", "missing clean reinstall guard", issues);
+  requirePattern(scripts.installPs1, /clean', '-ffdx/, "install.ps1", "missing clean reinstall guard", issues);
+  requirePattern(scripts.installSh, /registry:build/, "install.sh", "missing generated registry build", issues);
+  requirePattern(scripts.installPs1, /registry:build/, "install.ps1", "missing generated registry build", issues);
+  requirePattern(scripts.installSh, /supervibe:install-doctor/, "install.sh", "missing install lifecycle doctor", issues);
+  requirePattern(scripts.installPs1, /supervibe:install-doctor/, "install.ps1", "missing install lifecycle doctor", issues);
+  requirePattern(scripts.updateSh, /tracked_dirty/, "update.sh", "must distinguish tracked edits from untracked stale files", issues);
+  requirePattern(scripts.updatePs1, /\$trackedDirty/, "update.ps1", "must distinguish tracked edits from untracked stale files", issues);
+
   requirePattern(scripts.installSh, /will modify/i, "install.sh", "must explain modifications before writing", issues);
   requirePattern(scripts.installPs1, /will modify/i, "install.ps1", "must explain modifications before writing", issues);
 

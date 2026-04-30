@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -246,6 +247,11 @@ export function parseCsv(text) {
   return rows
     .filter((cells) => cells.some((value) => String(value).trim() !== ""))
     .map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""])));
+}
+
+export function stableDesignDataHash(text = "") {
+  const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  return createHash("sha256").update(normalized).digest("hex");
 }
 
 function normalizeRow({ domain, fields, index }) {

@@ -3,6 +3,9 @@
 (function_item
   name: (identifier) @name) @symbol.function
 
+(function_signature_item
+  name: (identifier) @name) @symbol.method
+
 (struct_item
   name: (type_identifier) @name) @symbol.class
 

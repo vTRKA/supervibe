@@ -10,6 +10,9 @@ worktrees/
 # Local-only Claude Code settings (per-machine permissions etc.)
 .claude/settings.local.json
 
+# Project-local Claude skills are user/generated state; plugin skills live in ./skills.
+.claude/skills/
+
 # Generated SQLite indexes (rebuilt from filesystem source-of-truth)
 .claude/memory/*.db
 .claude/memory/*.db-journal

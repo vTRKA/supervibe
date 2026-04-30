@@ -232,9 +232,11 @@ async function main() {
   if (!existsSync(codeDbPath)) {
     console.log(color('✗ Code RAG + Graph: NOT INITIALIZED', 'red'));
     console.log(color('  Run: npm run code:index', 'dim'));
+    console.log(color('  Language coverage: NOT INITIALIZED', 'dim'));
   } else if (!sqliteAvailable) {
     console.log(color(`! Code RAG + Graph: requires Node.js ${SQLITE_NODE_MIN_VERSION}+ for node:sqlite`, 'yellow'));
     console.log(color(`  Current runtime: ${process.version}. Upgrade Node to read ${codeDbPath}`, 'dim'));
+    console.log(color('  Language coverage: unavailable until Code RAG can be read', 'dim'));
   } else {
     const store = new CodeStore(PROJECT_ROOT, { useEmbeddings: false });
     await store.init();
@@ -259,6 +261,7 @@ async function main() {
     } else if (health.length > 0) {
       console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
     }
+    console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
     const lowCoverage = health.filter(h => h.coverage < 0.5 && h.files > 5);
     for (const lc of lowCoverage) {
       console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
