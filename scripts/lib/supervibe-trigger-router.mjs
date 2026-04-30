@@ -98,6 +98,30 @@ const ROUTES = {
     nextQuestionEn: "Next step - sync README and acceptance coverage. Proceed?",
     prerequisites: ["accepted-change-summary"],
   },
+  security_audit: {
+    phase: "audit",
+    command: "/supervibe-security-audit",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Следующий шаг - запустить read-only security audit с приоритизацией уязвимостей. Переходим?",
+    nextQuestionEn: "Next step - run the read-only security audit with prioritized findings. Proceed?",
+    prerequisites: [],
+  },
+  network_ops: {
+    phase: "diagnostics",
+    command: "/supervibe --agent network-router-engineer --read-only",
+    skill: "supervibe:incident-response",
+    nextQuestionRu: "Следующий шаг - начать read-only диагностику сети/роутера без изменений конфигурации. Переходим?",
+    nextQuestionEn: "Next step - start read-only network/router diagnostics without config changes. Proceed?",
+    prerequisites: ["user-request"],
+  },
+  prompt_ai_engineering: {
+    phase: "design",
+    command: "/supervibe --agent prompt-ai-engineer",
+    skill: "supervibe:test-strategy",
+    nextQuestionRu: "Следующий шаг - проверить prompt/agent/router contract, evals и safety boundaries. Переходим?",
+    nextQuestionEn: "Next step - review the prompt, agent, or router contract with evals and safety boundaries. Proceed?",
+    prerequisites: ["user-request"],
+  },
   design_new: {
     phase: "design",
     command: "/supervibe-design",
@@ -277,6 +301,26 @@ const RULES = [
     intent: "readme_update",
     confidence: 0.84,
     test: (text) => hasAny(text, ["readme", "ридми"]) && hasAny(text, ["обнови", "update", "sync"]),
+  },
+  {
+    intent: "security_audit",
+    confidence: 0.93,
+    test: (text) => hasAny(text, ["security", "appsec", "vulnerability", "vulnerabilities", "owasp", "cve", "secret", "секьюрити", "безопасность", "уязвимость", "уязвимости"]) && hasAny(text, ["audit", "scan", "review", "check", "провер", "аудит"]),
+  },
+  {
+    intent: "network_ops",
+    confidence: 0.92,
+    test: (text) => hasAny(text, ["router", "network", "wifi", "wi-fi", "vpn", "firewall", "nat", "dhcp", "dns", "роутер", "маршрутизатор", "вайфай", "сеть"]) && hasAny(text, ["diagnose", "configure", "stabilize", "fix", "setup", "не работает", "падает", "настро", "стабил"]),
+  },
+  {
+    intent: "prompt_ai_engineering",
+    confidence: 0.92,
+    test: (text) => hasAny(text, ["prompt", "system prompt", "agent prompt", "instructions", "intent", "router", "промпт", "интент"]) && hasAny(text, ["engineer", "improve", "harden", "debug", "eval", "injection", "усиль", "улучши", "проверь"]),
+  },
+  {
+    intent: "work_control_ui",
+    confidence: 0.91,
+    test: (text) => hasAny(text, ["kanban", "board", "канбан", "доска"]) && hasAny(text, ["task", "tasks", "epic", "epics", "agent", "agents", "задач", "эпик", "агент"]),
   },
   {
     intent: "presentation_deck",
@@ -466,7 +510,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
-  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "figma_source_of_truth"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -476,6 +520,9 @@ function requiredSafetyFor(intent) {
     return [...base, "bounded-runtime", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
   }
   if (intent === "execute_plan") return [...base, "readiness-gate", "completion-gate"];
+  if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
+  if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];
+  if (intent === "prompt_ai_engineering") return [...base, "eval-before-claim", "tool-boundary-review"];
   return base;
 }
 

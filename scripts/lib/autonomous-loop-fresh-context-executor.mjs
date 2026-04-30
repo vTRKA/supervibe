@@ -408,6 +408,7 @@ function sanitizeContextPack(contextPack) {
     directFilesRead: contextPack.directFilesRead || [],
     rulesLoaded: contextPack.rulesLoaded || [],
     mcpPlan: contextPack.mcpPlan || null,
+    workflowSignal: contextPack.workflowSignal || null,
   };
   return allowed;
 }

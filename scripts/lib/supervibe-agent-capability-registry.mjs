@@ -30,6 +30,14 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     reviewer: true,
     worktree: false,
   }),
+  profile("prompt-ai-engineer", {
+    moduleTypes: ["AI_PROMPT", "INTEGRATION", "DOCUMENTATION"],
+    riskLevels: ["low", "medium", "high"],
+    testTypes: ["eval", "security", "trace"],
+    integration: true,
+    reviewer: false,
+    worktree: true,
+  }),
   profile("ux-ui-designer", {
     moduleTypes: ["UI_COMPONENT"],
     riskLevels: ["low", "medium"],
@@ -47,6 +55,15 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     releasePrep: true,
     reviewer: false,
     worktree: true,
+  }),
+  profile("network-router-engineer", {
+    moduleTypes: ["NETWORK", "INFRASTRUCTURE"],
+    riskLevels: ["medium", "high"],
+    testTypes: ["read-only", "runtime"],
+    integration: true,
+    releasePrep: false,
+    reviewer: false,
+    worktree: false,
   }),
   profile("repo-researcher", {
     moduleTypes: ["DOCUMENTATION", "CORE_LOGIC"],
@@ -141,6 +158,8 @@ function scoreAgent(agent, task, priorOutcomes = []) {
   if (includes(cap.stacks, stack)) { score += 1.5; reasons.push(`stack=${stack}`); }
   if (includes(cap.testTypes, testType)) { score += 1; reasons.push(`test=${testType}`); }
   if (/integration|api|mcp/i.test(`${task.category} ${task.goal}`) && cap.integration) { score += 1; reasons.push("integration capable"); }
+  if (/prompt|intent|router|agent instruction|system instruction|eval/i.test(`${task.category} ${task.goal}`) && cap.moduleTypes?.includes("AI_PROMPT")) { score += 2; reasons.push("prompt capable"); }
+  if (/router|vpn|wifi|wi-fi|network|firewall|dns|dhcp/i.test(`${task.category} ${task.goal}`) && cap.moduleTypes?.includes("NETWORK")) { score += 2; reasons.push("network capable"); }
   if (/ui|browser|component|design/i.test(`${task.category} ${task.goal}`) && (cap.ui || cap.browser)) { score += 1; reasons.push("ui/browser capable"); }
   if (/refactor|rename|move/i.test(`${task.category} ${task.goal}`) && cap.refactorScope?.length) { score += 1; reasons.push("refactor capable"); }
   if (task.worktreeRequired && cap.worktree) { score += 0.5; reasons.push("worktree capable"); }
@@ -191,6 +210,8 @@ function redactOutcome(outcome = {}) {
 function inferModuleType(task = {}) {
   const text = `${task.category || ""} ${task.goal || ""}`.toLowerCase();
   if (/ui|browser|component|design/.test(text)) return "UI_COMPONENT";
+  if (/prompt|intent|agent instruction|system instruction|eval|llm/.test(text)) return "AI_PROMPT";
+  if (/router|vpn|wifi|wi-fi|network|firewall|dns|dhcp/.test(text)) return "NETWORK";
   if (/integration|api|mcp|external/.test(text)) return "INTEGRATION";
   if (/doc|readme/.test(text)) return "DOCUMENTATION";
   if (/infra|deploy|runtime|docker/.test(text)) return "INFRASTRUCTURE";
@@ -203,6 +224,8 @@ function inferTestType(task = {}) {
   if (/browser|playwright|preview/.test(text)) return "browser";
   if (/integration|api|mcp/.test(text)) return "integration";
   if (/security/.test(text)) return "security";
+  if (/prompt|intent|eval|red-team/.test(text)) return "eval";
+  if (/router|vpn|wifi|wi-fi|network|firewall|dns|dhcp|diagnostic/.test(text)) return "read-only";
   if (/runtime|docker/.test(text)) return "runtime";
   if (/trace|refactor|caller|callee/.test(text)) return "trace";
   return "unit";

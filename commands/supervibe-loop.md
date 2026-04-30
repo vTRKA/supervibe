@@ -223,6 +223,9 @@ Execution modes:
 - Dispatch specialist chains by task type.
 - Keep structured handoffs, scores, audit events, side-effect ledger entries,
   and a final report under `.claude/memory/loops/<run-id>/`.
+- Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
+  so the worker and reviewer see the current project/epic/task phase, claim,
+  gate, and next action before acting.
 - Treat task score below 9.0 as incomplete.
 - Stop for policy, budget, missing access, production approval, cancellation,
   state migration, or side-effect reconciliation.

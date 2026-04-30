@@ -54,9 +54,11 @@ Confidence: N/A  Rubric: read-only-research
 
 - You only want to score one artifact — use `/supervibe-score`
 - You want to fix things — `/supervibe-strengthen`, `/supervibe-adapt`, or `/supervibe-genesis`. Audit is read-only
+- You want an AppSec / vulnerability remediation loop — use `/supervibe-security-audit`
 
 ## Related
 
 - `supervibe:audit` skill — the underlying methodology document
 - `/supervibe-strengthen` — fixes weak agents
 - `/supervibe-adapt` — fixes drift between upstream and project copies
+- `/supervibe-security-audit` — read-only multi-agent vulnerability audit plus optional remediation/re-audit loop

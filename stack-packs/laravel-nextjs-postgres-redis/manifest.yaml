@@ -94,9 +94,29 @@ agent-profiles:
     description: "All agents listed in agents-attach. Use for larger teams or complex projects."
     agents: all
 
+agent-addons:
+  security-audit:
+    description: "Opt-in multi-agent security audit chain for /supervibe-security-audit."
+    agents:
+      - supervibe:_core:security-auditor
+      - supervibe:_ops:dependency-reviewer
+      - supervibe:_ops:security-researcher
+      - supervibe:_ops:devops-sre
+      - supervibe:_ops:ai-integration-architect
+  ai-prompting:
+    description: "Opt-in prompt AI engineer for prompts, agent instructions, intent routing, evals, and prompt-injection hardening."
+    agents:
+      - supervibe:_ops:prompt-ai-engineer
+  network-ops:
+    description: "Opt-in network/router engineer. Never installed by default because it may touch real infrastructure."
+    agents:
+      - supervibe:_ops:network-router-engineer
+
 rules-attach:
   - best-practices-2026
+  - agent-excellence-baseline
   - git-discipline
+  - operational-safety
   - commit-discipline
   - no-dead-code
   - confidence-discipline

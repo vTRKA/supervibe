@@ -58,3 +58,20 @@ test("prior outcome signals affect ranking without storing raw prompts", () => {
   assert.equal(match.agent.agentId, "stack-developer");
   assert.ok(match.score > 0);
 });
+
+test("capability registry recognizes prompt and network specialists", () => {
+  const registry = createAgentCapabilityRegistry();
+  const prompt = matchAgentForTask({
+    category: "prompt eval",
+    goal: "strengthen agent instruction and intent router",
+    policyRiskLevel: "medium",
+  }, { registry });
+  assert.equal(prompt.agent.agentId, "prompt-ai-engineer");
+
+  const network = matchAgentForTask({
+    category: "network diagnostics",
+    goal: "diagnose router vpn wifi stability",
+    policyRiskLevel: "high",
+  }, { registry });
+  assert.equal(network.agent.agentId, "network-router-engineer");
+});

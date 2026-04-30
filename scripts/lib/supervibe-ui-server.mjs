@@ -8,10 +8,13 @@ import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from "./node-sqlite-run
 import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
 import { mutateWorkItemGraphFile } from "./supervibe-work-item-actions.mjs";
 import { buildContextPack } from "./supervibe-context-pack.mjs";
+import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
 import { buildExecutionWaves } from "./supervibe-wave-controller.mjs";
 import { buildRunDashboardModel } from "./supervibe-run-dashboard.mjs";
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown } from "./supervibe-work-item-sla-reports.mjs";
+
+export { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
 export function createSupervibeUiServer({
   rootDir = process.cwd(),
@@ -32,7 +35,10 @@ export function createSupervibeUiServer({
         const file = resolveSafe(rootDir, url.searchParams.get("file") || graphPath);
         const graph = await readJsonFile(file);
         const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
-        return sendJson(res, { graphPath: file, graphId: graph.graph_id || graph.graphId || graph.epicId, title: graph.title, grouped: groupWorkItemsByStatus(index), items: index });
+        const grouped = groupWorkItemsByStatus(index);
+        const kanban = createKanbanModel({ graph, index });
+        const flow = createWorkflowFlowModel({ graph, index, grouped });
+        return sendJson(res, { graphPath: file, graphId: graph.graph_id || graph.graphId || graph.epicId, title: graph.title, grouped, items: index, kanban, flow });
       }
       if (url.pathname === "/api/context-pack") {
         const file = resolveSafe(rootDir, url.searchParams.get("file") || graphPath);
@@ -62,6 +68,7 @@ export function createSupervibeUiServer({
           evidence: state.evidence || [],
           generatedAt: new Date().toISOString(),
         });
+        const flow = createWorkflowFlowModel({ run: state, index, waves, dashboard });
         return sendJson(res, {
           runPath: file,
           runId: state.run_id || state.runId || "unknown",
@@ -75,6 +82,7 @@ export function createSupervibeUiServer({
           tasks: state.tasks || [],
           gates: state.gates || [],
           reports: dashboard.reports || [],
+          flow,
         });
       }
       if (url.pathname === "/api/report") {
@@ -129,7 +137,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     .topbar h1{margin:0;font-size:18px;letter-spacing:0;font-weight:720}
     .topbar small{display:block;color:var(--muted);margin-top:3px}
     .topbar-meta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--line);padding:5px 9px;font-size:12px;background:#f8fafb;white-space:nowrap;color:#344453}
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--line);padding:5px 9px;font-size:12px;background:#f8fafb;color:#344453;min-width:0;max-width:100%;overflow-wrap:anywhere}
     main{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:14px;padding:14px;max-width:1500px;margin:0 auto}
     .panel,.workspace{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
     .panel{padding:12px;margin-bottom:12px}
@@ -164,14 +172,38 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     .metric.error{border-left:4px solid var(--red)}
     .metric.info{border-left:4px solid var(--blue)}
     .metric.claimed{border-left:4px solid var(--blue)}
-    .flow{display:grid;grid-template-columns:repeat(6,minmax(86px,1fr));gap:6px;margin-bottom:12px}
-    .flow span{border:1px solid var(--line);border-radius:6px;padding:7px 5px;font-size:12px;text-align:center;background:#f8fafb;color:#51606c}
-    .flow span.active{border-color:var(--teal);background:var(--soft);color:#123c3a;font-weight:700}
+    .flow{display:grid;grid-template-columns:repeat(6,minmax(118px,1fr));gap:6px;margin:14px 14px 0}
+    .flow-step{border:1px solid var(--line);border-radius:6px;padding:8px;background:#f8fafb;color:#51606c;min-width:0}
+    .flow-step strong{display:block;font-size:12px;line-height:1.2;text-transform:uppercase;color:#3f4c58}
+    .flow-step small{display:block;margin-top:4px;font-size:11px;line-height:1.25;color:var(--muted);overflow-wrap:anywhere}
+    .flow-step.complete{border-color:#b7dec9;background:#eef8f2}
+    .flow-step.complete strong{color:#145c38}
+    .flow-step.current{border-color:var(--teal);background:var(--soft);box-shadow:inset 0 0 0 1px rgba(23,97,93,.14)}
+    .flow-step.current strong{color:#123c3a}
+    .flow-step.blocked{border-color:#efb4ad;background:#fff1f0}
+    .flow-step.blocked strong{color:#8a1f16}
     .list{display:grid;gap:8px}
     .item{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff}
     .item-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+    .kanban-shell{display:grid;gap:12px}
+    .kanban-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;background:#f8fafb;padding:10px}
+    .kanban-title{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+    .kanban-title strong{font-size:16px;min-width:0;overflow-wrap:anywhere;word-break:break-word}
+    .kanban-board{display:grid;grid-template-columns:repeat(7,minmax(210px,1fr));gap:10px;overflow:auto;padding-bottom:4px}
+    .kanban-column{min-width:210px;border:1px solid var(--line);border-radius:8px;background:#f8fafb;display:flex;flex-direction:column;max-height:calc(100vh - 260px)}
+    .kanban-column-head{position:sticky;top:0;z-index:1;background:#fff;border-bottom:1px solid var(--line);border-radius:8px 8px 0 0;padding:9px 10px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .kanban-column-head strong{font-size:13px;text-transform:uppercase;color:#3f4c58}
+    .kanban-cards{display:grid;gap:8px;padding:8px;overflow-y:auto;overflow-x:hidden}
+    .kanban-card{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;background:#fff;padding:9px;min-height:132px;display:grid;gap:7px;min-width:0;max-width:100%;width:100%}
+    .kanban-card.ready{border-left-color:var(--green)}.kanban-card.blocked,.kanban-card.gate,.kanban-card.stale{border-left-color:var(--red)}.kanban-card.claimed{border-left-color:var(--blue)}.kanban-card.deferred{border-left-color:var(--amber)}.kanban-card.done{border-left-color:var(--teal)}
+    .kanban-card-title{font-weight:700;line-height:1.25;overflow-wrap:anywhere;word-break:break-word}
+    .kanban-card-subrow{min-height:16px;font-size:11px}
+    .kanban-meta{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+    .kanban-meta .tag{margin:0}
+    .kanban-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+    .kanban-card-foot button{padding:5px 8px;font-size:12px}
     .status{font-size:11px;text-transform:uppercase;color:#5f6b76;letter-spacing:0}
-    .tag{display:inline-block;border-radius:999px;padding:3px 7px;font-size:11px;background:#edf2f7;color:#384858;margin:2px 4px 2px 0}
+    .tag{display:inline-block;border-radius:999px;padding:3px 7px;font-size:11px;background:#edf2f7;color:#384858;margin:2px 4px 2px 0;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
     .tag.ready{background:#e9f7ef;color:#145c38}.tag.blocked,.tag.error{background:#fff1f0;color:#8a1f16}.tag.claimed{background:#eaf1ff;color:#173f80}.tag.deferred,.tag.warn{background:#fff8e8;color:#704300}.tag.done{background:#edf8f4;color:#17615d}
     table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
     th,td{text-align:left;border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
@@ -205,7 +237,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     .legend-dot.system::before{background:#17615d}.legend-dot.language::before,.legend-dot.type::before{background:#2457a6}.legend-dot.file::before,.legend-dot.entry::before{background:#7b5e1f}.legend-dot.symbol::before{background:#8b3d67}.legend-dot.tag::before{background:#60713c}
     .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px}
     .section-title h3{margin:0}
-    @media (max-width:900px){main{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.topbar-meta{justify-content:flex-start}.flow{grid-template-columns:repeat(2,1fr)}.split,.index-layout{grid-template-columns:1fr}}
+    @media (max-width:900px){main{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.topbar-meta{justify-content:flex-start}.flow{grid-template-columns:repeat(2,1fr)}.split,.index-layout{grid-template-columns:1fr}.kanban-toolbar{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(7,230px)}.kanban-column{max-height:none}}
     @media (max-width:900px){.map-canvas{max-height:420px}}
   </style>
 </head>
@@ -243,6 +275,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     <section class="workspace">
       <nav class="tabs" id="tabs">
         <button class="tab-button active" data-tab="overview">Overview</button>
+        <button class="tab-button" data-tab="kanban">Kanban</button>
         <button class="tab-button" data-tab="items">Work items</button>
         <button class="tab-button" data-tab="run">Loop run</button>
         <button class="tab-button" data-tab="rag">RAG</button>
@@ -251,12 +284,13 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
         <button class="tab-button" data-tab="raw">Raw</button>
       </nav>
       <div id="banner" class="banner">Open a graph or refresh indexes.</div>
+      <div class="flow" id="flow"></div>
       <div class="tab active" id="tab-overview">
-        <div class="flow" id="flow"></div>
         <div id="indexCards" class="grid"></div>
         <h3>Work summary</h3>
         <div id="summary" class="grid"></div>
       </div>
+      <div class="tab" id="tab-kanban"><div id="kanban"></div></div>
       <div class="tab" id="tab-items"><div id="items"></div></div>
       <div class="tab" id="tab-run"><div id="runCards" class="grid"></div><div id="runDetails" class="list" style="margin-top:10px"></div></div>
       <div class="tab" id="tab-rag"><div id="ragPanel"></div></div>
@@ -266,8 +300,8 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     </section>
   </main>
 <script>
-const state = { graph: null, run: null, index: null, selectedItem: null, lastPreviewKey: null, maps: {} };
-const statusOrder = ['ready','blocked','claimed','deferred','review','done'];
+const state = { graph: null, run: null, index: null, selectedItem: null, lastPreviewKey: null, maps: {}, kanban: null, flow: null };
+const statusOrder = ['ready','claimed','blocked','delegated','deferred','review','done'];
 document.querySelectorAll('.tab-button').forEach(function(btn){ btn.addEventListener('click', function(){ setTab(btn.dataset.tab); }); });
 document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
 document.getElementById('refreshStatusBtn').addEventListener('click', loadIndexStatus);
@@ -277,7 +311,7 @@ document.getElementById('loadGcBtn').addEventListener('click', loadGc);
 document.getElementById('loadContextBtn').addEventListener('click', loadContext);
 document.getElementById('previewActionBtn').addEventListener('click', function(){ sendAction(false); });
 document.getElementById('applyActionBtn').addEventListener('click', function(){ sendAction(true); });
-setFlow('Plan');
+setFlow(defaultFlowModel());
 loadIndexStatus().then(function(){ if (graphFile()) loadGraph(); });
 
 function graphFile(){ return document.getElementById('graphPath').value.trim(); }
@@ -311,7 +345,7 @@ async function loadGraph(){
     const data = await requestJson('/api/graph?file=' + encodeURIComponent(graphFile()));
     state.graph = data;
     setRaw(data);
-    setFlow('Atomize');
+    setFlow(data.flow);
     renderGraph(data);
     setTab('overview');
   } catch (err) { setRaw({ error: err.message }); }
@@ -339,7 +373,7 @@ async function loadRun(){
     const data = await requestJson('/api/run?file=' + encodeURIComponent(file));
     state.run = data;
     setRaw(data);
-    setFlow(String(data.status || '').toUpperCase() === 'COMPLETE' ? 'Close' : 'Execute');
+    setFlow(data.flow);
     renderRun(data);
     setTab('run');
   } catch (err) { setRaw({ error: err.message }); }
@@ -390,18 +424,47 @@ function actionBody(apply){
 function actionKey(body){ return [body.file, body.itemId, body.type, body.until, body.reason].join('|'); }
 function renderGraph(data){
   const grouped = data.grouped || {};
+  state.kanban = data.kanban || null;
   document.getElementById('summary').innerHTML = statusOrder.map(function(k){
     const count = (grouped[k] || []).length;
     return metric(k, count, 'work items', count > 0 ? (k === 'blocked' ? 'error' : k === 'deferred' ? 'warn' : 'ready') : 'info');
   }).join('');
+  renderKanban(data.kanban);
   const items = data.items || [];
   document.getElementById('items').innerHTML = items.length ? '<div class="list">' + items.map(renderItem).join('') + '</div>' : empty('No work items loaded');
+}
+function renderKanban(model){
+  const el = document.getElementById('kanban');
+  if (!el) return;
+  if (!model || !model.columns) { el.innerHTML = empty('No kanban data loaded'); return; }
+  const project = model.project || {};
+  const epicChips = (model.epics || []).map(function(epic){
+    return '<span class="tag">'+escapeHtmlJs(truncateLabel(epic.title || epic.id, 32))+' <span class="muted">ID '+escapeHtmlJs(epic.id)+'</span></span>';
+  }).join('');
+  const agentChips = (model.agents || []).map(function(agent){
+    return '<span class="tag claimed">'+escapeHtmlJs(agent.agent)+' '+escapeHtmlJs(agent.count)+'</span>';
+  }).join('');
+  const columns = model.columns.map(function(column){
+    const cards = column.items.length ? column.items.map(renderKanbanCard).join('') : empty('No tasks');
+    return '<section class="kanban-column"><div class="kanban-column-head"><strong>'+escapeHtmlJs(column.label)+'</strong><span class="tag '+toneClass(column.id)+'">'+escapeHtmlJs(column.items.length)+'</span></div><div class="kanban-cards">'+cards+'</div></section>';
+  }).join('');
+  el.innerHTML = '<div class="kanban-shell"><div class="kanban-toolbar"><div><div class="kanban-title"><strong>'+escapeHtmlJs(project.title || 'Work board')+'</strong><span class="pill">'+escapeHtmlJs(project.graphId || 'graph')+'</span><span class="pill">'+escapeHtmlJs(project.totalTasks || 0)+' task(s)</span></div><div class="kanban-meta" style="margin-top:8px">'+(epicChips || '<span class="tag">no epic</span>')+'</div></div><div class="kanban-meta">'+(agentChips || '<span class="tag">unassigned</span>')+'</div></div><div class="kanban-board">'+columns+'</div></div>';
+}
+function renderKanbanCard(card){
+  const blockerLabels = card.blockedByLabels || card.blockedBy || [];
+  const blocker = blockerLabels.length ? '<span class="tag blocked">blocked by '+escapeHtmlJs(blockerLabels.join(', '))+'</span>' : '';
+  const verification = card.verificationCount ? '<span class="tag ready">'+escapeHtmlJs(card.verificationCount)+' check(s)</span>' : '';
+  const scope = card.writeScopeCount ? '<span class="tag">'+escapeHtmlJs(card.writeScopeCount)+' file(s)</span>' : '';
+  const title = displayWorkTitle(card.title, card.id);
+  const technicalId = card.id && title !== card.id ? '<span class="muted">ID '+escapeHtmlJs(card.id)+'</span>' : '';
+  return '<article class="kanban-card '+toneClass(card.status)+'"><div><div class="kanban-card-title">'+escapeHtmlJs(title)+'</div><div class="kanban-card-subrow">'+technicalId+'</div></div><div class="kanban-meta"><span class="tag">'+escapeHtmlJs(card.epicTitle || card.epicId || 'epic')+'</span><span class="tag claimed">'+escapeHtmlJs(card.agent || 'unassigned')+'</span><span class="tag">'+escapeHtmlJs(card.priority || 'normal')+'</span>'+blocker+verification+scope+'</div><div class="kanban-card-foot"><span class="muted">'+escapeHtmlJs(card.type || 'task')+'</span><button data-id="'+escapeHtmlJs(card.id)+'" onclick="selectItem(this.dataset.id)">Select</button></div></article>';
 }
 function renderItem(item){
   const id = item.itemId || item.id || 'unknown';
   const status = item.effectiveStatus || item.status || 'unknown';
-  const title = item.title || item.goal || '';
-  return '<article class="item"><div class="item-head"><div><span class="tag '+toneClass(status)+'">'+escapeHtmlJs(status)+'</span><strong>'+escapeHtmlJs(id)+'</strong> '+escapeHtmlJs(title)+'</div><button data-id="'+escapeHtmlJs(id)+'" onclick="selectItem(this.dataset.id)">Select</button></div><div class="muted">'+escapeHtmlJs((item.type || 'task') + formatOwner(item))+'</div></article>';
+  const title = displayWorkTitle(item.title || item.goal, id);
+  const technicalId = title !== id ? '<span class="tag">ID '+escapeHtmlJs(id)+'</span>' : '';
+  return '<article class="item"><div class="item-head"><div><span class="tag '+toneClass(status)+'">'+escapeHtmlJs(status)+'</span><strong>'+escapeHtmlJs(title)+'</strong> '+technicalId+'</div><button data-id="'+escapeHtmlJs(id)+'" onclick="selectItem(this.dataset.id)">Select</button></div><div class="muted">'+escapeHtmlJs((item.type || 'task') + formatOwner(item))+'</div></article>';
 }
 function selectItem(id){
   state.selectedItem = id;
@@ -548,6 +611,17 @@ function formatOwner(item){ return item.owner ? ' - owner: ' + item.owner : ''; 
 function labelize(value){ return String(value).replace(/([A-Z])/g, ' $1').replace(/^./, function(ch){ return ch.toUpperCase(); }); }
 function truncateLabel(value, max){ const s = String(value || ''); return s.length > max ? s.slice(0, max - 1) + '...' : s; }
 function compactValue(value){ return typeof value === 'number' ? value.toLocaleString() : value; }
+function displayWorkTitle(title, id){
+  const value = String(title || '').trim();
+  if (value) return value;
+  return humanizeWorkId(id);
+}
+function humanizeWorkId(id){
+  return String(id || 'work item')
+    .replace(/^[A-Z]+[-_]/, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\\b\\w/g, function(ch){ return ch.toUpperCase(); });
+}
 function escapeJs(value){
   const slash = String.fromCharCode(92);
   return String(value)
@@ -557,9 +631,47 @@ function escapeJs(value){
     .split(String.fromCharCode(13)).join("");
 }
 function empty(text){ return '<div class="empty">'+escapeHtmlJs(text)+'</div>'; }
-function setFlow(active){
-  const labels = ['Plan','Atomize','Execute','Verify','Close','Archive'];
-  document.getElementById('flow').innerHTML = labels.map(function(label){ return '<span class="'+(label===active?'active':'')+'">'+label+'</span>'; }).join('');
+function defaultFlowModel(){
+  return {
+    activeId: 'plan',
+    steps: [
+      { id: 'plan', label: 'Plan', state: 'current', active: true, hint: 'No graph loaded' },
+      { id: 'atomize', label: 'Atomize', state: 'pending', hint: 'Waiting for graph' },
+      { id: 'execute', label: 'Execute', state: 'pending', hint: 'Waiting for tasks' },
+      { id: 'verify', label: 'Verify', state: 'pending', hint: 'Waiting for execution' },
+      { id: 'close', label: 'Close', state: 'pending', hint: 'Waiting for verification' },
+      { id: 'archive', label: 'Archive', state: 'pending', hint: 'Waiting for close' },
+    ],
+  };
+}
+function setFlow(model){
+  const el = document.getElementById('flow');
+  if (!el) return;
+  const safeModel = normalizeFlowModel(model);
+  state.flow = safeModel;
+  el.innerHTML = safeModel.steps.map(renderFlowStep).join('');
+}
+function normalizeFlowModel(model){
+  if (!model || !Array.isArray(model.steps)) return defaultFlowModel();
+  const activeId = model.activeId || (model.steps.find(function(step){ return step.active; }) || {}).id || 'plan';
+  return {
+    activeId: activeId,
+    steps: model.steps.map(function(step){
+      const id = step.id || labelize(step.label || 'phase').toLowerCase();
+      return {
+        id: id,
+        label: step.label || labelize(id),
+        state: ['complete','current','pending','blocked'].includes(step.state) ? step.state : 'pending',
+        active: Boolean(step.active || id === activeId),
+        hint: step.hint || '',
+      };
+    }),
+  };
+}
+function renderFlowStep(step){
+  const classes = ['flow-step', step.state];
+  const current = step.active ? ' aria-current="step"' : '';
+  return '<div class="'+classes.join(' ')+'" data-phase="'+escapeHtmlJs(step.id)+'"'+current+'><strong>'+escapeHtmlJs(step.label)+'</strong><small>'+escapeHtmlJs(step.hint || step.state)+'</small></div>';
 }
 function setBanner(kind, message){
   const el = document.getElementById('banner');
@@ -573,6 +685,109 @@ function escapeHtmlJs(value){ return String(value).replace(/[&<>"']/g, function(
 </script>
 </body>
 </html>`;
+}
+
+export function createKanbanModel({ graph = {}, index = [] } = {}) {
+  const graphId = graph.graph_id || graph.graphId || graph.epicId || "work";
+  const epicItems = index.filter((item) => item.type === "epic");
+  const fallbackEpic = epicItems[0] || {
+    itemId: graph.epicId || graphId,
+    title: graph.title || graphId,
+  };
+  const epicById = new Map(epicItems.map((item) => [item.itemId || item.id, item]));
+  const titleById = new Map(index.map((item) => {
+    const id = item.itemId || item.id;
+    return [id, workItemDisplayTitle(item, id)];
+  }).filter(([id]) => id));
+  if (!epicById.has(fallbackEpic.itemId)) epicById.set(fallbackEpic.itemId, fallbackEpic);
+  const taskCards = index
+    .filter((item) => item.type !== "epic")
+    .map((item) => workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById));
+  const columns = KANBAN_COLUMNS.map((column) => ({
+    ...column,
+    items: taskCards.filter((card) => card.column === column.id),
+  }));
+  const agents = [...taskCards.reduce((acc, card) => {
+    const key = card.agent || "unassigned";
+    acc.set(key, (acc.get(key) || 0) + 1);
+    return acc;
+  }, new Map()).entries()]
+    .map(([agent, count]) => ({ agent, count }))
+    .sort((a, b) => b.count - a.count || a.agent.localeCompare(b.agent));
+
+  return {
+    project: {
+      graphId,
+      title: graph.title || fallbackEpic.title || graphId,
+      source: graph.source?.path || graph.sourcePath || null,
+      totalTasks: taskCards.length,
+    },
+    epics: [...epicById.values()].map((epic) => ({
+      id: epic.itemId || epic.id,
+      title: epic.title || epic.goal || epic.itemId || epic.id,
+      status: epic.effectiveStatus || epic.status || "summary",
+    })),
+    agents,
+    columns,
+  };
+}
+
+const KANBAN_COLUMNS = Object.freeze([
+  { id: "ready", label: "Ready" },
+  { id: "claimed", label: "In progress" },
+  { id: "blocked", label: "Blocked" },
+  { id: "delegated", label: "Delegated" },
+  { id: "deferred", label: "Deferred" },
+  { id: "review", label: "Review" },
+  { id: "done", label: "Done" },
+]);
+
+function workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById) {
+  const id = item.itemId || item.id || "unknown";
+  const epicId = item.epicId || item.parentEpicId || graph.epicId || graph.graph_id || graph.graphId || fallbackEpic.itemId;
+  const epic = epicById.get(epicId) || fallbackEpic;
+  const status = item.effectiveStatus || item.status || "ready";
+  const blockedBy = normalizeBlockers(item.blockedBy || item.blocked_by || item.task?.dependencies || item.dependencies || []);
+  return {
+    id,
+    title: workItemDisplayTitle(item, id),
+    type: item.type || "task",
+    status,
+    column: kanbanColumnFor(item, status),
+    epicId,
+    epicTitle: epic?.title || epic?.goal || epicId,
+    agent: item.owner || item.assignee || item.claims?.[0]?.agentId || item.task?.owner || null,
+    priority: item.priority || item.severity || item.risk || "normal",
+    blockedBy,
+    blockedByLabels: blockedBy.map((blockedId) => titleById.get(blockedId) || humanizeWorkId(blockedId)),
+    verificationCount: (item.verificationCommands || item.task?.verificationCommands || []).length,
+    writeScopeCount: (item.writeScope || item.task?.writeScope || []).length,
+  };
+}
+
+function workItemDisplayTitle(item, id) {
+  return item?.title || item?.goal || item?.summary || humanizeWorkId(id);
+}
+
+function normalizeBlockers(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value.map(String) : [String(value)];
+}
+
+function humanizeWorkId(id) {
+  return String(id || "work item")
+    .replace(/^[A-Z]+[-_]/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function kanbanColumnFor(item, status) {
+  if (item.type === "review" || item.type === "gate") return "review";
+  if (status === "gate" || status === "stale") return "blocked";
+  if (KANBAN_COLUMNS.some((column) => column.id === status)) return status;
+  if (["complete", "completed", "closed"].includes(String(status).toLowerCase())) return "done";
+  if (["open", "todo", "pending"].includes(String(status).toLowerCase())) return "ready";
+  return "ready";
 }
 
 async function buildIndexStatus({ rootDir = process.cwd() } = {}) {

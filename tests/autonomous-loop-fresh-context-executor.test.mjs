@@ -9,7 +9,7 @@ import {
   createAttemptRecord,
   runFreshContextAttempt,
 } from "../scripts/lib/autonomous-loop-fresh-context-executor.mjs";
-import { createShellStubAdapter } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
+import { createShellStubAdapter, renderFreshContextPrompt } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
 
 const task = {
   id: "T7.1",
@@ -38,6 +38,7 @@ test("fresh-context packet contains only scoped execution fields", () => {
     contextPack: {
       memoryEntries: [{ id: "m1" }],
       codeRagChunks: [{ file: "scripts/a.mjs" }],
+      workflowSignal: { taskId: "T7.1", phase: "execute", phaseStatus: "current", epicId: "epic-7" },
       conversationHistory: ["old chat"],
     },
     progressNotes: { nextAction: "execute" },
@@ -60,6 +61,8 @@ test("fresh-context packet contains only scoped execution fields", () => {
     "verificationMatrix",
   ].sort());
   assert.equal(packet.contextPack.conversationHistory, undefined);
+  assert.equal(packet.contextPack.workflowSignal.phase, "execute");
+  assert.match(renderFreshContextPrompt(packet), /contextPack\.workflowSignal first/);
 });
 
 test("fresh-context attempt completes with stub adapter and writes attempt output", async () => {

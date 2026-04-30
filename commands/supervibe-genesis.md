@@ -24,6 +24,14 @@ Set up Supervibe for a fresh project (or one without `.claude/agents/`).
 
    Do not silently install every agent in the stack-pack. The stack-pack is a catalog; the selected profile is the install plan.
 
+4a. **Choose optional add-ons.** After the base profile, ask one explicit add-on question. Default is `none`.
+   - `ai-prompting` - installs `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
+   - `security-audit` — installs the multi-agent security audit chain used by `/supervibe-security-audit`.
+   - `network-ops` — installs `network-router-engineer`; never default because router/server mutations require scoped approval.
+   - `none` — keep the base profile only.
+
+   New high-risk or specialized agents are never copied into a project silently. They must be selected through an add-on or `custom`.
+
 5. **Match a stack-pack.** Invoke the `supervibe:genesis` skill with the fingerprint + selected profile. The skill:
    - Looks for an exact pack in `$CLAUDE_PLUGIN_ROOT/stack-packs/` (e.g. `laravel-nextjs-postgres-redis`).
    - If no exact match — composes from `stack-packs/_atomic/` per its decision tree, scoring the composition against `confidence-rubrics/scaffold.yaml`.
@@ -46,6 +54,7 @@ Set up Supervibe for a fresh project (or one without `.claude/agents/`).
 Detected stack:    <fingerprint summary>
 Pack chosen:       <pack name>  (composition score: X.X/10)
 Install profile:   <minimal | product-design | full-stack | custom>
+Add-ons:           <none | security-audit | ai-prompting | network-ops | custom list>
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
 Next:              open the project, restart your AI CLI, watch for [evolve] welcome banner

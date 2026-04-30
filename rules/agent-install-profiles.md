@@ -5,7 +5,7 @@ applies-to: [any]
 mandatory: true
 version: 1.0
 last-verified: 2026-04-29
-related-rules: [single-question-discipline, rule-maintenance]
+related-rules: [single-question-discipline, rule-maintenance, agent-excellence-baseline]
 ---
 
 # Agent Install Profiles
@@ -28,14 +28,20 @@ This rule does NOT apply to the plugin marketplace checkout itself; the marketpl
 
 - Present a single profile choice before writing agents:
   - `minimal`
-  - `product-design`
-  - `full-stack`
-  - `custom`
+- `product-design`
+- `full-stack`
+- `custom`
 - Recommend `minimal` by default.
 - Show how many agents each profile installs.
 - For `custom`, group choices by core, product, design, presentation, ops, data, and stack.
+- After profile selection, ask one explicit add-on question. Default: `none`.
+- Add-ons must be opt-in:
+  - `security-audit` — multi-agent vulnerability audit chain for `/supervibe-security-audit`
+  - `ai-prompting` — prompt AI engineer for system prompts, agent prompts, tool-use policies, intent routing, prompt evals, and prompt-injection tests
+  - `network-ops` — router/network engineer for real network devices and routing stability
 - Write only selected agents into the target project.
 - Record the selected profile in generated `CLAUDE.md`.
+- Record selected add-ons in generated `CLAUDE.md`. Never install high-risk network/server agents silently.
 
 ## Examples
 
@@ -51,6 +57,7 @@ Why this is bad: the installed project has a noisy roster and hidden maintenance
 
 ```text
 Genesis asks "Install profile?" and defaults to minimal: orchestrator, repo-researcher, code-reviewer, quality-gate, root-cause-debugger, nextjs-developer, nextjs-architect.
+Then it asks "Optional add-ons?" and defaults to none. User can select `security-audit`, `ai-prompting`, or `network-ops` explicitly.
 ```
 
 Why this is good: users start with the agents they need and add more intentionally.
@@ -60,7 +67,9 @@ For design-heavy projects, `product-design` may add presentation agents as part 
 ## Enforcement
 
 - `commands/supervibe-genesis.md` requires profile selection.
+- `commands/supervibe-genesis.md` requires add-on selection for new specialized agents.
 - Stack-pack manifests may define `agent-profiles`.
+- Stack-pack manifests may define `agent-addons`.
 - Genesis output contract includes selected profile and final agent list.
 
 ## Related rules

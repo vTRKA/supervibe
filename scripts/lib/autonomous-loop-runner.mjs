@@ -33,6 +33,7 @@ import { generateContracts, scoreAutonomyReadiness, summarizeContracts } from ".
 import { createVerificationMatrix, validateEvidenceCoverage } from "./autonomous-loop-verification-matrix.mjs";
 import { runFreshContextAttempt } from "./autonomous-loop-fresh-context-executor.mjs";
 import { createToolAdapter, normalizeExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
+import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
@@ -293,6 +294,16 @@ export async function runAutonomousLoop(options = {}) {
 
     const mcpPlan = planMcpUse(task, options.mcpToolsAllowed || preflight.mcp_tools_allowed || []);
     mcpPlans.push({ taskId: task.id, ...mcpPlan });
+    const workflowFlow = createWorkflowFlowModel({
+      run: {
+        run_id: runId,
+        status: stopReason ? "BLOCKED" : "IN_PROGRESS",
+        tasks,
+        gates,
+        claims,
+        active_task: task.id,
+      },
+    });
     const contextPack = buildContextPlan(task, {
       memoryEntries: options.dryRun ? [{ id: "dry-run-memory", summary: "dry-run context" }] : [],
       codeRagChunks: options.dryRun ? [{ file: "dry-run", summary: "dry-run code search" }] : [],
@@ -300,6 +311,20 @@ export async function runAutonomousLoop(options = {}) {
       directFilesRead: [],
       rulesLoaded: selectRulesForTask(task),
       mcpPlan,
+      workflowFlow,
+      runId,
+      graphId: taskGraph.graph_id,
+      epicId: taskGraph.graph_id,
+      projectId: taskGraph.graph_id,
+      claims,
+      claim: activeClaim,
+      gates,
+      dispatch,
+      nextAction: task.resumeNotes?.nextAction,
+      triggerSignal: {
+        source: taskGraph.source?.type || null,
+        request: taskGraph.source?.request || options.request || null,
+      },
     });
 
     if (executionMode !== "dry-run") {

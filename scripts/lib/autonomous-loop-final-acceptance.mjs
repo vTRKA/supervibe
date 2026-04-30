@@ -87,6 +87,9 @@ export function evaluateFinalAcceptance({
       }
       if (!handoff.contextPack?.rulesLoaded?.length) missing.push(`handoff ${task.id} rule context`);
       if (!handoff.contextPack?.mcpPlan) missing.push(`handoff ${task.id} MCP plan`);
+      if (!handoff.contextPack?.workflowSignal?.phase || handoff.contextPack.workflowSignal.taskId !== task.id) {
+        missing.push(`handoff ${task.id} workflow signal`);
+      }
       if (requiresIndependentReview(task) && !handoff.reviewerEvidence?.independent) {
         missing.push(`task ${task.id} independent reviewer evidence`);
       }

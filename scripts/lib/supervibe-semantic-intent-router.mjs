@@ -45,6 +45,39 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     pain: ["without losing quality", "token waste", "без потери качества", "без рисков отупления"],
   },
   {
+    intent: "security_audit",
+    baseConfidence: 0.88,
+    minGroups: 2,
+    concepts: [
+      ["security", "sec", "appsec", "vulnerability", "vulnerabilities", "owasp", "cve", "secret", "secrets", "секьюрити", "безопасность", "уязвимость", "уязвимости"],
+      ["audit", "scan", "review", "check", "проверить", "аудит", "проверка", "просканировать"],
+      ["priority", "severity", "remediation", "fix plan", "10/10", "приоритет", "критичность", "план исправлений", "исправить"],
+    ],
+    pain: ["safe to ship", "find vulnerabilities", "security gate", "проверить уязвимости", "оценка безопасности"],
+  },
+  {
+    intent: "network_ops",
+    baseConfidence: 0.87,
+    minGroups: 2,
+    concepts: [
+      ["router", "route", "routing", "network", "wifi", "wi-fi", "vpn", "firewall", "nat", "dhcp", "dns", "роутер", "маршрутизатор", "сеть", "вайфай"],
+      ["diagnose", "diagnostic", "diagnostics", "configure", "stabilize", "stability", "setup", "fix", "review config", "диагностика", "настроить", "стабилизировать", "не работает", "падает"],
+      ["read-only", "read only", "approval", "rollback", "backup", "безопасно", "только чтение", "подтверждение", "откат"],
+    ],
+    pain: ["vpn does not work", "wi-fi drops", "router unstable", "интернет падает", "vpn не работает", "роутер нестабилен"],
+  },
+  {
+    intent: "prompt_ai_engineering",
+    baseConfidence: 0.88,
+    minGroups: 2,
+    concepts: [
+      ["prompt", "prompts", "system prompt", "agent prompt", "instructions", "intent", "router", "промпт", "промты", "инструкции", "интент"],
+      ["engineer", "improve", "harden", "debug", "eval", "red-team", "injection", "усилить", "улучшить", "проверить", "инъекция"],
+      ["structured output", "tool policy", "agent", "llm", "ai", "schema", "evals", "агент", "схема", "оценка"],
+    ],
+    pain: ["agent prompt is weak", "model misunderstands users", "prompt injection risk", "агент тупит", "плагин не понимает интент"],
+  },
+  {
     intent: "docs_audit",
     baseConfidence: 0.85,
     minGroups: 2,

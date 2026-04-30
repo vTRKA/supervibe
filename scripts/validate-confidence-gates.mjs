@@ -20,6 +20,7 @@ const COMMAND_GATE_MAP = {
   'supervibe-presentation.md': { rubric: 'prototype' },
   'supervibe-preview.md': { rubric: null },
   'supervibe-score.md': { rubric: 'dynamic' },
+  'supervibe-security-audit.md': { rubric: 'agent-delivery' },
   'supervibe-status.md': { rubric: null },
   'supervibe-strengthen.md': { rubric: 'agent-quality' },
   'supervibe-ui.md': { rubric: null },

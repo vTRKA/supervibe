@@ -47,21 +47,26 @@ Match exact pack?
    - `product-design`: minimal + product, UX, copy, prototype, presentation, accessibility, polish
    - `full-stack`: all stack-pack groups
    - `custom`: user explicitly selects groups or individual agents
-4. For each profile-selected `agents-attach` → copy agent file to `<target>/.claude/agents/<namespace>/<name>.md`
-5. For each `rules-attach` → copy rule file to `<target>/.claude/rules/<name>.md`
-6. Generate `<target>/.claude/settings.json` from `templates/settings/_base.json` + per-stack additions
-7. Generate `<target>/CLAUDE.md` from `templates/claude-md/<pack>.md.tpl` filled with discovery data and the selected profile
-8. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
-9. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
-10. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
-11. Confidence-score(scaffold-bundle) ≥9
-12. If <9 → list gaps, ask user to confirm or remediate
+4. Resolve optional add-ons before copying agents. Default: `none`.
+   - `security-audit`: adds the `/supervibe-security-audit` chain agents.
+   - `ai-prompting`: adds `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
+   - `network-ops`: adds `network-router-engineer`; high-risk and never default.
+   - `custom`: user explicitly selects add-on agents.
+5. For each profile-selected and add-on-selected `agents-attach` / `agent-addons` entry → copy agent file to `<target>/.claude/agents/<namespace>/<name>.md`
+6. For each `rules-attach` → copy rule file to `<target>/.claude/rules/<name>.md`
+7. Generate `<target>/.claude/settings.json` from `templates/settings/_base.json` + per-stack additions
+8. Generate `<target>/CLAUDE.md` from `templates/claude-md/<pack>.md.tpl` filled with discovery data and the selected profile/add-ons
+9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
+10. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
+11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
+12. Confidence-score(scaffold-bundle) ≥9
+13. If <9 → list gaps, ask user to confirm or remediate
 
 ## Output contract
 
 Returns:
 - Generated `.claude/agents/`, `.claude/rules/`, `.claude/settings.json`, `CLAUDE.md`
-- Selected install profile and final agent list
+- Selected install profile, selected add-ons, and final agent list
 - Husky + commitlint + lint-staged configs
 - Project skeleton dirs
 - Confidence score

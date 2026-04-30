@@ -247,9 +247,12 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - `supervibe:_core:refactor-specialist` — invoked for refactor-pass workflow
 - `supervibe:_core:performance-engineer` — invoked for perf-related requests
 - `supervibe:_ops:devops-sre` — invoked for deploy/CI/infra requests
+- `supervibe:_ops:network-router-engineer` — invoked for authorized router/network diagnostics, read-only first
 - `supervibe:_ops:dependency-reviewer` — invoked when manifest changes
 - `supervibe:_ops:docs-curator` — invoked when docs go stale relative to code
 - `supervibe:_stack:*` — language/framework specialists; invoked once stack-fingerprint resolves
+
+- `supervibe:_ops:prompt-ai-engineer` - invoked for prompt, agent instruction, structured output, eval, and intent-router requests
 
 ## Skills
 
@@ -332,9 +335,18 @@ REQUEST TYPE             → PHASE             → SKILL                       �
 "fix bug in module Y"    → triage            → supervibe:project-memory       → debugging-detective → <stack-specialist>
 "refactor old code"      → review            → supervibe:code-review          → refactor-specialist → architect-reviewer
 "speed it up / perf"     → review            → supervibe:performance          → performance-engineer
-"is this secure?"        → review            → supervibe:code-review          → security-auditor
+"is this secure?"        → review            → /supervibe-security-audit      → security-auditor → dependency-reviewer → security-researcher
+"fix vulnerabilities"    → security loop     → /supervibe-security-audit      → audit chain → plan → execute → re-audit
 "deploy / CI broken"     → ops               → supervibe:ops                  → devops-sre
+"router/VPN/Wi-Fi issue" → ops-readonly      → supervibe:verification         → network-router-engineer
 "docs are wrong"         → adapt             → supervibe:adapt                → docs-curator
 "agents feel stale"      → audit             → supervibe:audit                → evolve-orchestrator (self) → strengthen
 "stack manifest changed" → adapt             → supervibe:adapt                → stack-detective → adapt-runner
 ```
+
+Security and network routes are consent-sensitive:
+
+- `/supervibe-security-audit` starts read-only and may only hand off to fixes after explicit user approval.
+- `prompt-ai-engineer` owns prompt, system-instruction, agent-instruction, tool-policy, structured-output, eval, and intent-router hardening requests.
+- `/supervibe-ui` owns Kanban task/epic/project visibility with task-to-epic links, agent claims, blockers, and status movement.
+- `network-router-engineer` starts read-only; config mode, admin sessions, router saves, server writes, DNS/firewall/VPN edits, and privilege elevation require scoped approval per `rules/operational-safety.md`.

@@ -42,10 +42,10 @@ These six principles override defaults whenever they conflict with general pract
 ```
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
-├── agents/                        81 agents (_core/_meta/_design/_ops/_product + stacks/)
+├── agents/                        83 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        51 process skills
-├── commands/                      19 slash commands (/evolve, /supervibe-design, /supervibe-execute-plan, /supervibe-debug, ...)
-├── rules/                         23 project rules
+├── commands/                      20 slash commands (/evolve, /supervibe-design, /supervibe-security-audit, /supervibe-execute-plan, ...)
+├── rules/                         25 project rules
 ├── confidence-rubrics/            16 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars (LFS)
 ├── models/Xenova/...              Embedding model (LFS)
@@ -71,6 +71,10 @@ When user asks X, route as follows:
 | "Refactor X" / "rename Y" | `supervibe:code-search --callers` → `refactoring-specialist` |
 | "Why does X happen?" / debug | `root-cause-debugger` (uses `supervibe:systematic-debugging`) |
 | "Review this code" / "is it safe?" | `code-reviewer` + `security-auditor` |
+| "Security audit" / "проверь уязвимости" | `/supervibe-security-audit` — read-only multi-agent audit → prioritized findings → optional plan/execute/re-audit to 10/10 |
+| "Router/VPN/Wi-Fi/firewall issue" | `network-router-engineer` — read-only diagnostics first; scoped approval before mutations |
+| "Prompt/system prompt/agent instruction issue" | `prompt-ai-engineer` — prompt contract, intent routing, structured output, eval, tool-policy, and prompt-injection hardening |
+| "Show tasks/epics/projects in Kanban" | `/supervibe-ui` — local Kanban board with task-to-epic links, agent claims, blockers, verification, and status movement |
 | "Design X" / "what should the UI look like?" | `ux-ui-designer` then `prototype-builder` |
 | "Brand for X" / new product | `creative-director` then `ux-ui-designer` |
 | "Architecture for X" / system design | `architect-reviewer` (or stack-architect for known stack) |

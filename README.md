@@ -2,7 +2,7 @@
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 83 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
 **v2.0** · MIT · Windows / macOS / Linux
 
@@ -12,16 +12,19 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 81 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| 83 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
 | Confidence engine | Seventeen rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
-| 23 discipline rules | `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
+| 25 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
 | Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
+| Security audit loop | `/supervibe-security-audit` runs read-only multi-agent AppSec/dependency/ops/AI security review, ranks vulnerabilities, then optionally plans, executes, and re-audits remediation to a 10/10 gate |
+| Prompt AI engineering | Optional `prompt-ai-engineer` add-on strengthens prompts, agent instructions, intent routing, structured outputs, tool policies, evals, and prompt-injection defenses |
+| Network/router agent | Optional `network-router-engineer` add-on handles routers, VPN, firewall, Wi-Fi, DNS/DHCP, and routing stability with read-only diagnostics first and scoped approval before mutations |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
 | Design pipeline (5 targets) | web · chrome-extension · electron · tauri · mobile-native — specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
@@ -84,7 +87,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.4 initialized for this project
+[supervibe] welcome — plugin v2.0.5 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -207,8 +210,15 @@ The localhost UI is universal across IDEs: run `/supervibe-ui` or
 `npm run supervibe:ui -- --file <graph.json>`, then open the printed
 `127.0.0.1` URL in a browser or IDE webview. It shows epics, tasks, selected
 context packs, loop `state.json`, waves, gates, SLA reports, GC previews, and
-RAG/memory/codegraph health tabs. Mutating actions are local-only and require a
-preview plus explicit apply confirmation.
+RAG/memory/codegraph health tabs. The Overview phase rail is derived from real
+graph/run state and marks plan, atomize, execute, verify, close, and archive as
+complete/current/blocked/pending from task status, gates, waves, and archive
+markers. The Kanban view groups real work items by ready/claimed/blocked/
+deferred/review/done and shows each task's epic, agent, blockers, verification
+count, and write scope. Context packs and fresh-context loop prompts include a
+compact `workflowSignal` with the same phase, epic, task, claim, gate, and next
+action signal, so agents act from the same state that the UI shows. Mutating
+actions are local-only and require a preview plus explicit apply confirmation.
 `npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` writes a
 portable descriptor that IDE webviews can consume without becoming a separate
 task store.
@@ -319,13 +329,14 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 
 | Command | What it does |
 |---------|--------------|
-| `/supervibe` | Auto-router: picks genesis, design routes, audit, strengthen, adapt, score, or update based on project state |
+| `/supervibe` | Auto-router: picks genesis, design, security audit, network diagnostics, audit, strengthen, adapt, score, or update based on project state |
 | `/supervibe-genesis` | First-time scaffold of `.claude/` for your stack |
 | `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow; produces an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
 | `/supervibe-loop --request/--plan/--from-prd` | Bounded autonomous loop with graph scheduler, status/resume/stop, doctor, graph export, and policy gates |
-| `/supervibe-ui` | Local browser/IDE-webview control plane for epics, tasks, loop state, waves, context packs, reports, and safe local actions |
+| `/supervibe-security-audit` | Read-only multi-agent security audit, prioritized vulnerability backlog, optional remediation plan, execute, and re-audit loop to 10/10 |
+| `/supervibe-ui` | Local browser/IDE-webview control plane with Kanban for epics, tasks, agent claims, loop state, waves, context packs, reports, and safe local actions |
 | `/supervibe-gc` | Reversible dry-run-first cleanup for completed work-item graphs and stale/superseded memory |
 | `/supervibe-design <brief>` | End-to-end design pipeline with memory/code/design-intelligence preflight: brand → spec → prototype → live preview → approval |
 | `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |

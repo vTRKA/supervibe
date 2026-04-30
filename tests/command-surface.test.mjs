@@ -24,6 +24,7 @@ const PUBLIC_COMMANDS = new Set([
   "supervibe-presentation.md",
   "supervibe-preview.md",
   "supervibe-score.md",
+  "supervibe-security-audit.md",
   "supervibe-status.md",
   "supervibe-strengthen.md",
   "supervibe-ui.md",
@@ -104,6 +105,7 @@ test("doctor command documents multi-host diagnostics", async () => {
 test("ui and gc commands document local work control plane", async () => {
   const ui = await readFile(join(ROOT, "commands", "supervibe-ui.md"), "utf8");
   assert.match(ui, /127\.0\.0\.1/);
+  assert.match(ui, /Kanban/);
   assert.match(ui, /Context Pack/);
   assert.match(ui, /claim/);
   assert.match(ui, /preview/i);

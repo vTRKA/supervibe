@@ -59,6 +59,9 @@
         "agent_strengthen",
         "memory_audit",
         "docs_audit",
+        "security_audit",
+        "network_ops",
+        "prompt_ai_engineering",
         "figma_source_of_truth"
       ]
     },

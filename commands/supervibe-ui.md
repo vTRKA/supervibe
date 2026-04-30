@@ -28,6 +28,11 @@ npm run supervibe:ide-bridge -- --file .claude/memory/work-items/<epic-id>/graph
 ## What It Shows
 
 - Epic/work-item status groups: ready, blocked, claimed, deferred, review, done.
+- Workflow phase rail derived from real graph/run state: plan, atomize, execute,
+  verify, close, archive. It marks completed phases, current phase, and blocked
+  execution/verification instead of using decorative static labels.
+- Kanban board for epics, tasks, projects, active agent claims, blockers,
+  verification counts, and task movement across ready/claimed/blocked/review/done.
 - Individual work items with quick selection.
 - Context Pack preview for the selected work item.
 - Loop `state.json` summary with current wave, gates, tasks, reports, and
@@ -56,9 +61,19 @@ deployment targets, or external APIs.
 ## Local JSON Endpoints
 
 - `GET /api/graph?file=<graph.json>`
+  - Includes `kanban.project`, `kanban.epics`, `kanban.agents`, and
+    `kanban.columns[]` so IDEs can show task movement and epic ownership.
+  - Includes `flow.steps[]`, `flow.activeId`, `flow.status`, and `flow.metrics`
+    so IDEs can show phase progress from graph status, task status, gates, and
+    archive markers.
 - `GET /api/index-status`
 - `GET /api/context-pack?file=<graph.json>&item=<item-id>`
+  - Includes `workflowSignal` and `flow` so the selected task's context pack
+    carries the same phase, epic, gate, claim, and next-action signal that the
+    UI shows.
 - `GET /api/run?file=<state.json>`
+  - Includes the same `flow` model derived from loop status, waves, gates,
+    reports, and task completion.
 - `GET /api/report?file=<graph.json>&type=sla`
 - `GET /api/gc`
 - `POST /api/action` with preview-first body; apply uses `confirm=apply-local`

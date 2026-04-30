@@ -59,7 +59,7 @@ Overall: PASS|FAIL (<score>/10)
 
 CODEX - Codex CLI: PASS (9.5/10)
   OK manifest: .codex-plugin/plugin.json is valid JSON
-  OK manifest-version: manifest version matches package 2.0.4
+  OK manifest-version: manifest version matches package 2.0.5
   WARN local-registration: ~/.codex/plugins/supervibe was not found
      next: Run install.sh/install.ps1 or link the repo to ~/.codex/plugins/supervibe.
 ```

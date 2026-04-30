@@ -4,6 +4,8 @@ import { basename, join } from "node:path";
 import matter from "gray-matter";
 import { createWorkItemIndex } from "./supervibe-work-item-query.mjs";
 import { parseSemanticAnchors } from "./supervibe-semantic-anchor-index.mjs";
+import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
+import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
 const MEMORY_CATEGORIES = ["decisions", "patterns", "incidents", "learnings", "solutions"];
 
@@ -35,6 +37,22 @@ export async function buildContextPack({
   const memory = (await findRelevantMemory({ rootDir, terms, limit: memoryLimit, now })).slice(0, memoryLimit);
   const evidence = collectEvidence(graph, activeItem, evidenceLimit);
   const semanticAnchors = await collectSemanticAnchors({ rootDir, activeItem, limit: 8 });
+  const workflowFlow = createWorkflowFlowModel({ graph, index });
+  const workflowSignal = buildWorkflowSignal(activeItem || {}, {
+    signalSource: "supervibe-context-pack",
+    workflowFlow,
+    graphId: graph.graph_id || graph.graphId || graph.epicId || null,
+    epicId: graph.graph_id || graph.graphId || graph.epicId || null,
+    projectId: graph.graph_id || graph.graphId || graph.epicId || null,
+    claims: graph.claims || [],
+    gates: graph.gates || [],
+    blockers,
+    nextAction: activeItem ? `continue ${activeItem.itemId || activeItem.id}` : "select an active work item",
+    triggerSignal: {
+      source: "work-item-graph",
+      intent: "context-pack",
+    },
+  });
 
   const pack = {
     schemaVersion: 1,
@@ -43,6 +61,8 @@ export async function buildContextPack({
     graphId: graph.graph_id || graph.graphId || graph.epicId || null,
     epicTitle: graph.title || null,
     activeItem,
+    workflowSignal,
+    flow: workflowFlow,
     dependencies,
     blockers,
     evidence,
@@ -80,6 +100,9 @@ export function formatContextPackMarkdown(pack = {}) {
     `Graph: ${pack.graphId || "unknown"} (${pack.graphPath || "unknown"})`,
     `Epic: ${pack.epicTitle || "unknown"}`,
     "",
+    "## Workflow Signal",
+    formatWorkflowSignal(pack.workflowSignal, pack.flow),
+    "",
     "## Active Work",
     `- ID: ${item.itemId || item.id || "none"}`,
     `- Status: ${item.effectiveStatus || item.status || "unknown"}`,
@@ -115,9 +138,9 @@ export function formatContextPackMarkdown(pack = {}) {
     formatList(pack.omitted || []),
     "",
     "## Pack Metrics",
-    `- Estimated tokens: ${pack.summary?.estimatedTokens || estimateTokens(JSON.stringify(pack))}`,
-    `- Total work items: ${pack.summary?.totalItems || 0}`,
-    `- Omitted items: ${pack.summary?.omittedItems || 0}`,
+    `- Estimated tokens: ${pack.summary?.estimatedTokens ?? estimateTokens(JSON.stringify(pack))}`,
+    `- Total work items: ${pack.summary?.totalItems ?? 0}`,
+    `- Omitted items: ${pack.summary?.omittedItems ?? 0}`,
     "",
   ].join("\n");
 }
@@ -209,6 +232,22 @@ async function collectSemanticAnchors({ rootDir, activeItem, limit }) {
     if (anchors.length >= limit) break;
   }
   return anchors.slice(0, limit);
+}
+
+function formatWorkflowSignal(signal = null, flow = null) {
+  if (!signal) return "- none";
+  const steps = (flow?.steps || signal.flowSteps || [])
+    .map((step) => `${step.label || step.id}:${step.state}${step.active ? "*" : ""}`)
+    .join(" -> ");
+  return [
+    `- Phase: ${signal.phase || "unknown"} (${signal.phaseStatus || "unknown"})`,
+    `- Hint: ${signal.phaseHint || "none"}`,
+    `- Task: ${signal.taskId || "none"} / ${signal.taskStatus || "unknown"}`,
+    `- Epic: ${signal.epicId || "unknown"}`,
+    `- Next action: ${signal.nextAction || "none"}`,
+    `- Open gates: ${signal.metrics?.openGates ?? signal.gates?.length ?? 0}`,
+    `- Flow: ${steps || "none"}`,
+  ].join("\n");
 }
 
 function formatList(items) {

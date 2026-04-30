@@ -193,16 +193,16 @@ test("registry generates and includes all artifact types", async () => {
     await readFile(join(ROOT, "registry.yaml"), "utf8"),
   );
   assert.ok(
-    Object.keys(registry.agents).length >= 81,
-    "registry should have >=81 agents",
+    Object.keys(registry.agents).length >= 83,
+    "registry should have >=83 agents",
   );
   assert.ok(
     Object.keys(registry.skills).length >= 51,
     "registry should have >=51 skills",
   );
   assert.ok(
-    Object.keys(registry.rules).length >= 23,
-    "registry should have >=23 rules",
+    Object.keys(registry.rules).length >= 25,
+    "registry should have >=25 rules",
   );
   assert.ok(
     Object.keys(registry["stack-packs"]).length >= 1,

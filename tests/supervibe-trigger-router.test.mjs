@@ -54,4 +54,30 @@ describe("supervibe trigger router", () => {
     assert.equal(route.intent, "trigger_diagnostics");
     assert.equal(route.command, "/supervibe --diagnose-trigger");
   });
+  it("routes security, network, prompt, and kanban requests through specialized flows", () => {
+    const security = routeTriggerRequest("security audit should scan vulnerabilities and prioritize remediation", {
+      artifacts: { userRequest: true },
+    });
+    assert.equal(security.intent, "security_audit");
+    assert.equal(security.command, "/supervibe-security-audit");
+    assert.equal(security.requiredSafety.includes("read-only-audit"), true);
+
+    const network = routeTriggerRequest("diagnose router vpn wifi network stability", {
+      artifacts: { userRequest: true },
+    });
+    assert.equal(network.intent, "network_ops");
+    assert.equal(network.command, "/supervibe --agent network-router-engineer --read-only");
+    assert.equal(network.requiredSafety.includes("read-only-diagnostics"), true);
+
+    const prompt = routeTriggerRequest("strengthen the prompt agent instructions and intent router evals", {
+      artifacts: { userRequest: true, confirmedMutation: true },
+    });
+    assert.equal(prompt.intent, "prompt_ai_engineering");
+    assert.equal(prompt.command, "/supervibe --agent prompt-ai-engineer");
+    assert.equal(prompt.requiredSafety.includes("eval-before-claim"), true);
+
+    const kanban = routeTriggerRequest("show tasks epics projects and agents on a kanban board");
+    assert.equal(kanban.intent, "work_control_ui");
+    assert.equal(kanban.command, "/supervibe-ui");
+  });
 });

@@ -25,6 +25,9 @@ test("semantic router catches cleanup, agent, docs, and Figma pain without slash
     ["agents feel weak and do not use tools memory rag or codegraph", "agent_strengthen", "/supervibe-strengthen"],
     ["docs folder has internal todo garbage and stale documentation", "docs_audit", "/supervibe-audit --docs"],
     ["Figma variables components tokens and Code Connect drift from code", "figma_source_of_truth", "/supervibe-design --figma-source-of-truth"],
+    ["security audit should scan vulnerabilities and prioritize remediation", "security_audit", "/supervibe-security-audit"],
+    ["router vpn wifi network stability needs read only diagnostics", "network_ops", "/supervibe --agent network-router-engineer --read-only"],
+    ["strengthen the prompt agent instructions and intent router evals", "prompt_ai_engineering", "/supervibe --agent prompt-ai-engineer"],
   ];
 
   for (const [phrase, intent, command] of cases) {

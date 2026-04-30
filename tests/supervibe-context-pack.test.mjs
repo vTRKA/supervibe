@@ -61,6 +61,9 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
     assert.equal(pack.memory[0].id, "checkout-payment-decision");
     assert.equal(pack.memory[0].freshness, "fresh");
     assert.equal(pack.semanticAnchors[0].anchorId, "checkout-context");
+    assert.equal(pack.workflowSignal.phase, "execute");
+    assert.equal(pack.workflowSignal.epicId, "epic-context");
+    assert.match(pack.markdown, /Workflow Signal/);
     assert.match(pack.markdown, /Omitted Context/);
     assert.match(pack.markdown, /Semantic Anchors/);
     assert.ok(pack.summary.estimatedTokens > 0);

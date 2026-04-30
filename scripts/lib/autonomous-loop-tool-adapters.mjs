@@ -228,6 +228,7 @@ export function renderFreshContextPrompt(packet) {
   return [
     "SUPERVIBE_FRESH_CONTEXT_TASK",
     "Execute only the task described in this packet. Do not rely on prior conversation history.",
+    "Read contextPack.workflowSignal first; it is the current project/epic/task phase signal from the trigger and loop state.",
     "Respect policy boundaries and side-effect rules. Stop if approval is required.",
     "Return the required completion signal only after verification evidence exists.",
     "",

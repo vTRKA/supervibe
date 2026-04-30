@@ -59,6 +59,8 @@ test("runner pins dry-run artifact contract for validate integrations", async ()
   assert.ok(Array.isArray(state.tasks));
   assert.ok(Array.isArray(state.scores));
   assert.ok(Array.isArray(state.handoffs));
+  assert.ok(state.handoffs.every((handoff) => handoff.contextPack?.workflowSignal?.phase));
+  assert.ok(state.handoffs.every((handoff) => handoff.contextPack.workflowSignal.taskId === handoff.taskId));
   assert.equal(state.preflight.request, "validate integrations");
 
   const tasks = (await readFile(join(loopDir, "tasks.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);

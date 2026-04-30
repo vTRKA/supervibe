@@ -45,7 +45,7 @@ test("final acceptance passes when release evidence is complete", () => {
       targetAgent: "quality-gate-reviewer",
       confidenceScore: 10,
       sideEffectId: "s1",
-      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" } },
+      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" }, workflowSignal: { taskId: "t1", phase: "execute" } },
       reviewerEvidence: { independent: true, evidencePaths: ["test"] },
     }],
     sideEffects: [{
@@ -101,7 +101,7 @@ test("final acceptance tolerates unknown future compatibility fields", () => {
       targetAgent: "quality-gate-reviewer",
       confidenceScore: 10,
       sideEffectId: "s1",
-      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" } },
+      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" }, workflowSignal: { taskId: "t1", phase: "execute" } },
       reviewerEvidence: { independent: true, evidencePaths: ["test"] },
     }],
     sideEffects: [{
@@ -155,7 +155,7 @@ test("final acceptance fails on missing verification matrix evidence for complet
       targetAgent: "quality-gate-reviewer",
       confidenceScore: 10,
       sideEffectId: "s1",
-      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" } },
+      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" }, workflowSignal: { taskId: "t1", phase: "execute" } },
     }],
     sideEffects: [{
       actionId: "s1",

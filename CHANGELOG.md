@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-04-30
+
+### Added
+
+- Added a dedicated `prompt-ai-engineer` agent for prompt architecture, agent
+  instructions, structured outputs, tool-use policy, prompt evals, and
+  prompt-injection hardening.
+- Added an explicit agent excellence baseline rule for the whole catalog.
+- Added Kanban work visualization to the local Supervibe UI, including epic,
+  task, agent claim, blocker, verification, and status-column data.
+
+### Changed
+
+- Strengthened semantic intent routing for security audits, network/router
+  diagnostics, prompt AI engineering, and Kanban work-control requests.
+- Removed external security-tool references from the security audit command so
+  the command describes only Supervibe-native behavior.
+
 ## [2.0.4] - 2026-04-30
 
 ### Added
