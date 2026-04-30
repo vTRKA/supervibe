@@ -52,26 +52,32 @@ test("supervibe-upgrade preserves auto-update lock and state during git clean", 
   assert.match(source, /\.claude-plugin\/\.auto-update\.lock/);
 });
 
-test("supervibe-upgrade skips Git LFS smudge before optional lfs pull", async () => {
+test("supervibe-upgrade skips Git LFS smudge before required ONNX setup", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
   const noSmudge = source.indexOf("runGitNoLfsSmudge(['fetch'");
-  const optionalPull = source.indexOf("console.log(`[supervibe:upgrade] git lfs pull");
+  const modelSetup = source.indexOf("scripts/ensure-onnx-model.mjs");
 
   assert.notEqual(noSmudge, -1, "upgrade should have an LFS-smudge-free git path");
-  assert.notEqual(optionalPull, -1, "upgrade should keep optional git lfs pull");
-  assert.ok(noSmudge < optionalPull, "fetch/pull must skip LFS smudge before optional LFS pull");
+  assert.notEqual(modelSetup, -1, "upgrade should run required ONNX model setup");
+  assert.ok(noSmudge < modelSetup, "fetch/pull must skip LFS smudge before required model setup");
   assert.match(source, /GIT_LFS_SKIP_SMUDGE/);
 });
 
-test("supervibe-upgrade makes optional Git LFS pull bounded and skippable", async () => {
+test("supervibe-upgrade requires ONNX model setup before npm ci", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+  const modelScript = await readFile("scripts/ensure-onnx-model.mjs", "utf8");
+  const modelSetup = source.indexOf("[supervibe:upgrade] ensuring required ONNX embedding model");
+  const npmCi = source.indexOf("[supervibe:upgrade] npm ci");
 
-  assert.match(source, /SUPERVIBE_SKIP_LFS/, "upgrade should support skipping optional LFS prefetch");
-  assert.match(source, /SUPERVIBE_PREFETCH_LFS/, "upgrade should require explicit opt-in before LFS prefetch");
-  assert.match(source, /SUPERVIBE_LFS_TIMEOUT_MS/, "upgrade should support a millisecond LFS timeout override");
-  assert.match(source, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, "upgrade should support a seconds-based LFS timeout override");
-  assert.match(source, /timeout,/, "upgrade should pass a timeout to spawnSync");
-  assert.match(source, /ETIMEDOUT/, "upgrade should detect LFS timeout failures");
-  assert.match(source, /join\(PLUGIN_ROOT, '\.git', 'lfs', 'incomplete'\)/, "upgrade should clean incomplete LFS downloads");
-  assert.match(source, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, "upgrade should remove incomplete LFS downloads safely");
+  assert.notEqual(modelSetup, -1, "upgrade should announce required ONNX setup");
+  assert.notEqual(npmCi, -1, "upgrade should still run npm ci");
+  assert.ok(modelSetup < npmCi, "upgrade must prepare the required model before npm ci/check declares success");
+  assert.doesNotMatch(source, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS/, "upgrade must not let users skip the required ONNX model");
+  assert.match(modelScript, /SUPERVIBE_LFS_TIMEOUT_MS/, "shared setup should support a millisecond LFS timeout override");
+  assert.match(modelScript, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, "shared setup should support a seconds-based LFS timeout override");
+  assert.match(modelScript, /SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS/, "shared setup should support a direct download timeout override");
+  assert.match(modelScript, /timeout,/, "shared setup should pass a timeout to spawnSync");
+  assert.match(modelScript, /ETIMEDOUT/, "shared setup should detect LFS timeout failures");
+  assert.match(modelScript, /join\(rootDir, "\.git", "lfs", "incomplete"\)/, "shared setup should clean incomplete LFS downloads");
+  assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, "shared setup should remove incomplete LFS downloads safely");
 });

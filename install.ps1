@@ -203,81 +203,6 @@ function Run-Git {
   }
 }
 
-function Test-TruthyEnv {
-  param([string]$Value)
-  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
-  return @('1', 'true', 'yes', 'y') -contains $Value.ToLowerInvariant()
-}
-
-function Get-LfsTimeoutSeconds {
-  $timeoutSeconds = 45
-  $parsedTimeout = 0
-  if ($env:SUPERVIBE_LFS_TIMEOUT_MS -and [int]::TryParse($env:SUPERVIBE_LFS_TIMEOUT_MS, [ref]$parsedTimeout) -and $parsedTimeout -gt 0) {
-    return [Math]::Max(1, [int][Math]::Ceiling($parsedTimeout / 1000))
-  }
-  if ($env:SUPERVIBE_LFS_TIMEOUT_SECONDS -and [int]::TryParse($env:SUPERVIBE_LFS_TIMEOUT_SECONDS, [ref]$parsedTimeout) -and $parsedTimeout -gt 0) {
-    return $parsedTimeout
-  }
-  return $timeoutSeconds
-}
-
-function Join-NativeArguments {
-  param([string[]]$Values)
-  return ($Values | ForEach-Object {
-    $value = [string]$_
-    if ($value -match '[\s"]') { '"' + ($value -replace '"', '\"') + '"' }
-    else { $value }
-  }) -join ' '
-}
-
-function Clear-GitLfsIncomplete {
-  param([string]$Path)
-  $incomplete = Join-Path $Path '.git\lfs\incomplete'
-  if (Test-Path $incomplete) {
-    Warn "removing incomplete Git LFS downloads at $incomplete"
-    Remove-Item -Recurse -Force -LiteralPath $incomplete -ErrorAction SilentlyContinue
-  }
-}
-
-function Stop-ProcessTree {
-  param([int]$ProcessId)
-  if (Get-Command taskkill -ErrorAction SilentlyContinue) {
-    & taskkill /PID $ProcessId /T /F *> $null
-  } else {
-    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
-  }
-}
-
-function Invoke-GitLfsPull {
-  param([string]$Path)
-  $timeoutSeconds = Get-LfsTimeoutSeconds
-  $stdoutLog = Join-Path $LogDir 'lfs.stdout.log'
-  $stderrLog = Join-Path $LogDir 'lfs.stderr.log'
-  $process = $null
-  try {
-    $gitExe = (Get-Command git -ErrorAction Stop).Source
-    $gitArgs = Join-NativeArguments @('-C', $Path, 'lfs', 'pull')
-    $process = Start-Process -FilePath $gitExe -ArgumentList $gitArgs -PassThru -NoNewWindow -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
-    if (-not $process.WaitForExit([int]($timeoutSeconds * 1000))) {
-      Stop-ProcessTree $process.Id
-      Clear-GitLfsIncomplete $Path
-      Warn "git lfs pull timed out after ${timeoutSeconds}s; model will lazy-fetch from HuggingFace on first use"
-      return $false
-    }
-    if ($process.ExitCode -ne 0) {
-      if (Test-Path $stderrLog) { Get-Content $stderrLog -Tail 40 | Write-Host }
-      Clear-GitLfsIncomplete $Path
-      return $false
-    }
-    return $true
-  } catch {
-    if ($process -and -not $process.HasExited) { Stop-ProcessTree $process.Id }
-    Clear-GitLfsIncomplete $Path
-    Warn "git lfs pull could not start cleanly: $($_.Exception.Message)"
-    return $false
-  }
-}
-
 function Invoke-CleanManagedCheckout {
   param([string]$Path)
   $status = @(git -C $Path status --porcelain 2>$null)
@@ -298,6 +223,27 @@ function Invoke-CleanManagedCheckout {
   }
   Say 'cleaning managed checkout (git clean -ffdx)'
   $null = Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
+}
+
+function Invoke-RequiredOnnxModelSetup {
+  $log = Join-Path $LogDir 'onnx-model.log'
+  Say "ensuring required ONNX embedding model (log: $log)"
+  Push-Location $Target
+  $oldErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    & node (Join-Path 'scripts' 'ensure-onnx-model.mjs') *>&1 | Tee-Object -FilePath $log | Out-Null
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      Write-Host '--- last 80 lines of ONNX model setup ---'
+      Get-Content $log -Tail 80 | Write-Host
+      Die 'required ONNX model setup failed. Check Git LFS or network access to HuggingFace, then re-run.'
+    }
+  } finally {
+    $ErrorActionPreference = $oldErrorActionPreference
+    Pop-Location
+  }
+  Ok 'required ONNX embedding model is ready'
 }
 
 function Move-NonGitTargetAside {
@@ -331,17 +277,7 @@ if (Test-Path (Join-Path $Target '.git')) {
 
 Test-CheckoutIntegrity
 
-# Optional LFS pull. Default is lazy-fetch so model downloads never block install.
-if ((Test-TruthyEnv $env:SUPERVIBE_SKIP_LFS) -or -not (Test-TruthyEnv $env:SUPERVIBE_PREFETCH_LFS)) {
-  Say 'skipping optional Git LFS model prefetch; model will lazy-fetch from HuggingFace on first semantic search'
-} elseif (Get-Command git-lfs -ErrorAction SilentlyContinue) {
-  Say "git-lfs detected - pulling embedding model (timeout: $(Get-LfsTimeoutSeconds)s)"
-  if (-not (Invoke-GitLfsPull $Target)) {
-    Warn 'git lfs pull failed; model will lazy-fetch from HuggingFace on first use'
-  }
-} else {
-  Warn 'git-lfs not installed; embedding model will lazy-fetch from HuggingFace (~118 MB on first semantic search)'
-}
+Invoke-RequiredOnnxModelSetup
 
 # ---- install deps + verify ----
 

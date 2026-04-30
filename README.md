@@ -87,7 +87,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.9 initialized for this project
+[supervibe] welcome — plugin v2.0.10 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -98,7 +98,7 @@ Check multi-host readiness at any time:
 npm run supervibe:doctor -- --host all
 ```
 
-**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
+**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional, but the ONNX embedding model is not: the installer prepares it before registration, using Git LFS when available and a direct HuggingFace download fallback otherwise. No Docker, no Python, no native compile step.
 
 For unattended installs, set `SUPERVIBE_INSTALL_NODE=1` to allow Node bootstrap or `SUPERVIBE_INSTALL_NODE=0` to fail fast with manual instructions.
 
@@ -397,7 +397,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Optional watcher daemon |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
-| `npm run check` | All 751 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
+| `npm run check` | All 773 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
 
 ---
 
@@ -409,9 +409,9 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **Not visible in VS Code or Zed.** Those IDEs read the same `~/.claude/` as the terminal. If the banner appears in the terminal, restart the IDE. If still nothing, re-run the installer.
 
-**`Protobuf parsing failed`.** The embedding model is an LFS pointer. Run `git lfs pull` inside `~/.claude/plugins/marketplaces/supervibe-marketplace`, or just trigger a code search — the model downloads from HuggingFace (~118 MB).
+**`Protobuf parsing failed`.** The embedding model is missing or still an LFS pointer. Re-run the current installer; it verifies the ONNX file, tries bounded Git LFS, then downloads the model directly from HuggingFace before registration.
 
-**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge and only attempts `git lfs pull` after the checkout is complete; if LFS still fails, the model lazy-fetches from HuggingFace on first semantic search.
+**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge, and the required ONNX setup uses bounded Git LFS plus direct HuggingFace fallback so the plugin is not registered until the model is ready.
 
 **Windows install starts in WSL.** If `install.sh` runs under `C:\Windows\System32\bash.exe`, it uses WSL `$HOME` and WSL Node, not the Windows Codex/Claude/Gemini profile. Use PowerShell `install.ps1` for Windows, or set `SUPERVIBE_ALLOW_WSL_INSTALL=1` only when you intentionally want a separate WSL install.
 

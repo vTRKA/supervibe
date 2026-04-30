@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.10] - 2026-05-01
+
+### Fixed
+
+- Made ONNX model setup mandatory during install and upgrade: installers now
+  stop before registration unless the bundled embedding model is usable.
+- Added a shared ONNX preparation step with bounded Git LFS, cleanup of
+  incomplete LFS downloads, and direct HuggingFace retry fallback for
+  Windows, macOS, and Linux.
+- Updated install/update documentation so model readiness is treated as part
+  of a complete plugin install, not a first-use lazy fetch.
+
 ## [2.0.9] - 2026-05-01
 
 ### Fixed

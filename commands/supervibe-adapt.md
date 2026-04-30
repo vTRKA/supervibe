@@ -8,7 +8,7 @@ Pull upstream improvements from the installed plugin into the project's `.claude
 
 ## When to invoke
 
-- After `npm run supervibe:upgrade` reports a version bump (e.g. `previous → 2.0.9`).
+- After `npm run supervibe:upgrade` reports a version bump (e.g. `previous → 2.0.10`).
 - The SessionStart banner shows `[evolve] ⬆ plugin upgraded N → M`.
 - An audit (`/supervibe-audit`) flagged drift between upstream and project copies.
 - The project has been on the same plugin version for >90 days and you want to refresh.

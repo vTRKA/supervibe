@@ -157,22 +157,29 @@ test('installers skip Git LFS smudge during clone and checkout', () => {
   assert.match(ps1, /Run-Git @\('clone'.*\) 'clone' -SkipLfsSmudge/, 'PowerShell installer must clone with LFS smudge disabled');
 });
 
-test('installers make optional Git LFS pull bounded and skippable', () => {
+test('installers require the ONNX embedding model before registration', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
+  const modelScript = readFileSync(join(ROOT, 'scripts', 'ensure-onnx-model.mjs'), 'utf8');
+  const shModelSetup = sh.indexOf('scripts/ensure-onnx-model.mjs');
+  const ps1ModelSetup = ps1.indexOf('ensure-onnx-model.mjs');
+  const shRegistration = sh.indexOf('# ---- register with each detected CLI ----');
+  const ps1Registration = ps1.indexOf('# ---- register with each detected CLI ----');
 
   for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
-    assert.match(src, /SUPERVIBE_SKIP_LFS/, `${name} must allow users to skip optional LFS prefetch`);
-    assert.match(src, /SUPERVIBE_PREFETCH_LFS/, `${name} must require explicit opt-in before LFS prefetch`);
-    assert.match(src, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, `${name} must expose an LFS timeout override`);
-    assert.match(src, /\.git[\\/]lfs[\\/]incomplete|\.git\\lfs\\incomplete/, `${name} must clean incomplete LFS downloads after failure`);
+    assert.match(src, /required ONNX embedding model/, `${name} must treat the ONNX model as required`);
+    assert.match(src, /ensure-onnx-model\.mjs/, `${name} must use the shared ONNX model setup`);
+    assert.doesNotMatch(src, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS/, `${name} must not let users skip the required ONNX model`);
+    assert.doesNotMatch(src, /lazy-fetch/, `${name} must not complete install with lazy model fetch`);
   }
-  assert.match(sh, /model downloads never block install/, 'bash installer must default to lazy model fetch');
-  assert.match(ps1, /model downloads never block install/, 'PowerShell installer must default to lazy model fetch');
-  assert.match(sh, /timeout "\$timeout_seconds" git -C "\$TARGET" lfs pull/, 'bash installer must bound git lfs pull when timeout is available');
-  assert.match(ps1, /Invoke-GitLfsPull/, 'PowerShell installer must use a bounded LFS pull helper');
-  assert.match(ps1, /WaitForExit\(\[int\]\(\$timeoutSeconds \* 1000\)\)/, 'PowerShell installer must enforce the LFS timeout');
-  assert.match(ps1, /taskkill \/PID \$ProcessId \/T \/F/, 'PowerShell installer must kill hung git-lfs child processes');
+  assert.notEqual(shModelSetup, -1, 'bash installer must call model setup');
+  assert.notEqual(ps1ModelSetup, -1, 'PowerShell installer must call model setup');
+  assert.ok(shModelSetup < shRegistration, 'bash installer must prepare model before CLI registration');
+  assert.ok(ps1ModelSetup < ps1Registration, 'PowerShell installer must prepare model before CLI registration');
+  assert.match(modelScript, /MODEL_DOWNLOAD_URL/, 'shared model setup must have a direct HuggingFace fallback');
+  assert.match(modelScript, /SUPERVIBE_LFS_TIMEOUT_MS/, 'shared model setup must bound Git LFS');
+  assert.match(modelScript, /SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS/, 'shared model setup must bound direct downloads');
+  assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, 'shared model setup must remove incomplete LFS downloads safely');
 });
 
 test('install.sh refuses accidental WSL install unless explicitly allowed', () => {

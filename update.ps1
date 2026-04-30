@@ -8,6 +8,7 @@
 #   2. If missing, delegates to install.ps1 for first-time install
 #   3. Refuses to clobber local edits (uncommitted changes stop)
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout
+#      (fetch + pull --ff-only + required ONNX model setup + install + tests)
 #
 # Safe as the user-facing "install or update" entrypoint.
 $ErrorActionPreference = 'Stop'
@@ -177,7 +178,7 @@ if ($untrackedDirty.Count -gt 0) {
 
 # ---- delegate to npm run supervibe:upgrade ----
 
-Say 'running npm run supervibe:upgrade (fetch + pull --ff-only + lfs pull + install + tests)'
+Say 'running npm run supervibe:upgrade (fetch + pull --ff-only + required ONNX model setup + install + tests)'
 Push-Location $PluginRoot
 try {
   npm run supervibe:upgrade

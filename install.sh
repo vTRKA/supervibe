@@ -12,15 +12,16 @@
 #
 # What it does (idempotent - safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
-#   2. Clones the Supervibe repo (LFS optional - model lazy-fetches from HuggingFace)
+#   2. Clones the Supervibe repo (LFS smudge disabled so clone cannot hang)
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
 #   4. Cleans stale files from the managed checkout before reinstalling
-#   5. Runs npm ci + registry build + npm run check so SQLite/RAG/CodeGraph are available
-#   6. Registers the plugin in every detected CLI:
+#   5. Downloads the required ONNX embedding model before registration
+#   6. Runs npm ci + registry build + npm run check so SQLite/RAG/CodeGraph are available
+#   7. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
 #        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
 #        - Gemini:  ~/.gemini/GEMINI.md      (idempotent include via marker)
-#   7. Runs install lifecycle doctor and prints next steps
+#   8. Runs install lifecycle doctor and prints next steps
 
 set -euo pipefail
 
@@ -68,40 +69,6 @@ git_no_lfs_smudge() {
     "$@"
 }
 
-truthy_env() {
-  case "${1:-}" in
-    1|true|TRUE|yes|YES|y|Y) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-cleanup_git_lfs_incomplete() {
-  local root="$1"
-  local incomplete="$root/.git/lfs/incomplete"
-  if [ -d "$incomplete" ]; then
-    warn "removing incomplete Git LFS downloads at $incomplete"
-    rm -rf "$incomplete"
-  fi
-}
-
-git_lfs_timeout_seconds() {
-  local timeout_seconds="${SUPERVIBE_LFS_TIMEOUT_SECONDS:-45}"
-  case "$timeout_seconds" in
-    ''|*[!0-9]*|0) timeout_seconds=45 ;;
-  esac
-  printf '%s' "$timeout_seconds"
-}
-
-git_lfs_pull_optional() {
-  local timeout_seconds
-  timeout_seconds="$(git_lfs_timeout_seconds)"
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "$timeout_seconds" git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log"
-  else
-    git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log"
-  fi
-}
-
 validate_safe_path() {
   local path="$1"
   [ -n "$path" ] || die "unsafe empty plugin target path"
@@ -136,6 +103,16 @@ verify_checkout_integrity() {
     [ "$actual_sha" = "$EXPECTED_PACKAGE_SHA256" ] || die "package checksum mismatch: expected $EXPECTED_PACKAGE_SHA256 got $actual_sha"
     ok "package checksum verified: $EXPECTED_PACKAGE_SHA256"
   fi
+}
+
+ensure_required_onnx_model() {
+  say "ensuring required ONNX embedding model (log: $LOG_DIR/onnx-model.log)"
+  ( cd "$TARGET" && node scripts/ensure-onnx-model.mjs >"$LOG_DIR/onnx-model.log" 2>&1 ) || {
+    echo "--- last 80 lines of ONNX model setup ---" >&2
+    tail -n 80 "$LOG_DIR/onnx-model.log" >&2
+    die "required ONNX model setup failed. Check Git LFS or network access to HuggingFace, then re-run."
+  }
+  ok "required ONNX embedding model is ready"
 }
 
 clean_managed_checkout() {
@@ -346,18 +323,7 @@ fi
 
 verify_checkout_integrity
 
-# Optional LFS pull. Default is lazy-fetch so model downloads never block install.
-if truthy_env "${SUPERVIBE_SKIP_LFS:-}" || ! truthy_env "${SUPERVIBE_PREFETCH_LFS:-}"; then
-  say "skipping optional Git LFS model prefetch; model will lazy-fetch from HuggingFace on first semantic search"
-elif command -v git-lfs >/dev/null 2>&1; then
-  say "git-lfs detected - pulling embedding model (timeout: $(git_lfs_timeout_seconds)s)"
-  if ! git_lfs_pull_optional; then
-    cleanup_git_lfs_incomplete "$TARGET"
-    warn "git lfs pull failed or timed out; model will lazy-fetch from HuggingFace on first use"
-  fi
-else
-  warn "git-lfs not installed; embedding model will lazy-fetch from HuggingFace (~118 MB on first semantic search)"
-fi
+ensure_required_onnx_model
 
 # ---- install deps + verify ----
 

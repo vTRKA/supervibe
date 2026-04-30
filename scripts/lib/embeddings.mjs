@@ -17,12 +17,14 @@ const PLUGIN_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const LOCAL_MODEL_DIR = join(PLUGIN_ROOT, 'models');
 
 // Detect whether the bundled model is actually present and usable.
+// Official installers should guarantee this before registration; the remote
+// fallback remains for manual clones, corrupted checkouts, and older installs.
 // Three failure modes we must handle:
 //   1. models/ dir missing entirely (dev clone with --depth 0 / shallow)
 //   2. config.json missing (incomplete checkout)
 //   3. model_quantized.onnx is a Git LFS pointer file (~134 bytes) because
-//      the user's machine has no git-lfs installed → ONNX runtime would
-//      throw "Protobuf parsing failed" at first use.
+//      the user's machine has no git-lfs installed -> ONNX runtime would
+//      throw "Protobuf parsing failed" at runtime.
 // In any of those cases, transparently fall back to HuggingFace remote download
 // (~118MB one-time, cached in node_modules/@huggingface/.cache/).
 const MODEL_DIR = join(LOCAL_MODEL_DIR, 'Xenova', 'multilingual-e5-small');

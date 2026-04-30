@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -23,6 +23,7 @@
     "supervibe:loop:completion": "node scripts/supervibe-loop.mjs --completion bash",
     "supervibe:upgrade": "node scripts/supervibe-upgrade.mjs",
     "supervibe:auto-update": "node scripts/supervibe-auto-update.mjs",
+    "ensure:onnx-model": "node scripts/ensure-onnx-model.mjs",
     "supervibe:install-doctor": "node scripts/supervibe-install-doctor.mjs",
     "supervibe:upgrade-check": "node scripts/supervibe-upgrade-check.mjs",
     "supervibe:detect": "node scripts/supervibe-detect.mjs",

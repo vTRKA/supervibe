@@ -38,7 +38,7 @@ Roll back to the previous commit on the plugin checkout. Useful after a failed u
 ### `/supervibe-update --to <ref>` — pin to specific version
 
 Examples:
-- `/supervibe-update --to v2.0.9` — checkout tag
+- `/supervibe-update --to v2.0.10` — checkout tag
 - `/supervibe-update --to abc123` — checkout commit SHA
 
 After pin: same install + test cycle. Use to test a specific candidate before adopting.
@@ -136,7 +136,7 @@ npm ci                       # restore old node_modules from package-lock.json
 | Network failure during `git pull` | Print message; preserve pre-state; exit (no rollback needed — nothing changed yet) |
 | `npm ci` fails | Auto-rollback (step 5) — restore old node_modules from `package-lock.json` |
 | `npm run check` fails (tests, validators, knip) | Auto-rollback; save failure log; suggest `--to <prev-version>` to pin |
-| LFS fetch fails | Continue (LFS is non-critical; lazy-fetch on first use); print warning |
+| ONNX model fetch fails | Stop before declaring success; keep checkout for retry; print Git LFS/HuggingFace recovery hint |
 | Rollback itself fails | Last-resort guidance: `git reflog` to find pre-state SHA; manual `git reset --hard <sha>`; print exact commands |
 
 ## Manual rollback (if auto-rollback unreachable)
@@ -160,10 +160,10 @@ Successful upgrade:
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         vX.Y.Z
-After:          v2.0.9
-Tests:          679 / 679 passed
+After:          v2.0.10
+Tests:          773 / 773 passed
 Validators:     10 / 10 clean (+ knip)
-LFS:            pulled (or: skipped — lazy-fetch fallback)
+ONNX model:     ready before registration
 
 Rollback anchor: cleaned up (no longer needed)
 
@@ -179,7 +179,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v2.0.9
+Target:         v2.0.10
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -202,7 +202,7 @@ Dry-run:
 ```
 === Supervibe Update — DRY RUN ===
 Current:        vX.Y.Z
-Latest:         v2.0.9
+Latest:         v2.0.10
 Changelog summary: [from CHANGELOG.md since vX.Y.Z]
 
 Breaking changes detected: 2

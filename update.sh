@@ -9,7 +9,7 @@
 #   2. If missing, delegates to install.sh for first-time install
 #   3. Refuses to clobber local edits (uncommitted changes -> stop)
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
-#      git fetch -> ff-only pull -> lfs pull (if available) -> npm ci ->
+#      git fetch -> ff-only pull -> required ONNX model setup -> npm ci ->
 #      npm run check -> refresh upstream-check cache
 #
 # Safe as the user-facing "install or update" entrypoint.
@@ -201,7 +201,7 @@ fi
 
 # ---- delegate to npm run supervibe:upgrade ----
 
-say "running npm run supervibe:upgrade (does fetch + pull --ff-only + lfs pull + install + tests)"
+say "running npm run supervibe:upgrade (does fetch + pull --ff-only + required ONNX model setup + install + tests)"
 ( cd "$PLUGIN_ROOT" && npm run supervibe:upgrade ) || die "upgrade failed; see output above."
 verify_checkout_integrity
 
