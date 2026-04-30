@@ -34,6 +34,7 @@ skills:
   - 'supervibe:preview-server'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:design-intelligence'
   - 'supervibe:confidence-scoring'
 verification:
   - deck-json-valid
@@ -74,6 +75,10 @@ Before producing any artifact:
 2. Search the repo for source content and existing brand assets: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>"`.
 3. Read open browser feedback with `npm run feedback:status`.
 4. When changing shared preview/export helpers, run code graph caller/callee checks before claiming blast radius is safe.
+
+## Design Intelligence Evidence
+
+Use `supervibe:design-intelligence` after memory and code search for slide layout, chart, typography, color, copy, token, and brand evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` for every slide-level pattern that came from lookup.
 
 ## Procedure
 

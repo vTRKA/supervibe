@@ -2,13 +2,25 @@
 description: >-
   Use WHEN the user asks what to do next, says brainstorm/брейншторм or
   plan/план is ready, asks review/ревью, atomic task split, epic/эпик creation,
-  autonomous run, worktree isolation, status, stop/resume, or diagnose/why-trigger
-  TO route to the next safe Supervibe workflow command without mutating first.
+  autonomous run, design/UI/deck requests, worktree isolation, status,
+  stop/resume, or diagnose/why-trigger TO route to the next safe Supervibe
+  workflow command without mutating first.
 ---
 
 # /supervibe
 
 Trigger router for the full workflow chain: brainstorm -> plan -> review -> atomic work items -> epic -> provider-safe worktree run. It also handles work-item questions, status, dashboard output, integration readiness, saved views, structured queries, local reports, autonomous replay evals, deferred work, guided forms, interactive command palette, sync bundle export/import, notifications, stop/resume, and trigger diagnostics (`--diagnose-trigger`, `--why-trigger`) before any mutating action.
+
+Design requests route to existing commands only:
+- new UI, prototype, mockup, professional polish request -> `/supervibe-design`
+- design review, UI polish, token drift, accessibility review -> `/supervibe-audit --design`
+- mobile UI -> `/supervibe-design --target mobile-native`
+- chart UX -> `/supervibe-design --chart-ux`
+- presentation/deck design -> `/supervibe-design --presentation`
+- brand/collateral asset work -> `/supervibe-design --brand-collateral`
+- stack-aware UI handoff -> `/supervibe-design --handoff`
+
+The internal design intelligence lookup never appears as its own slash command.
 
 For workflow handoffs, ask the concrete next-step question instead of stopping at the previous phase:
 - Brainstorm ready: `Следующий шаг - написать план. Переходим?`

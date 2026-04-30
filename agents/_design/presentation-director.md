@@ -38,6 +38,7 @@ skills:
   - 'supervibe:brandbook'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:design-intelligence'
   - 'supervibe:confidence-scoring'
   - 'supervibe:mcp-discovery'
 verification:
@@ -79,6 +80,10 @@ Before producing any artifact:
 2. Search current repo/docs for source materials with `supervibe:code-search` or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>"`.
 3. If the request needs current examples, invoke `supervibe:mcp-discovery` for search/web-crawl tools and use Firecrawl/WebSearch/WebFetch.
 4. When direction touches shared preview/export code or design-system contracts, require code graph caller/callee checks before accepting blast-radius claims.
+
+## Design Intelligence Evidence
+
+Use `supervibe:design-intelligence` after memory and code search for slide strategy, narrative arc, audience, copy formula, brand, and memory evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows shape the storyline.
 
 ## Procedure
 

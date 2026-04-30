@@ -14,6 +14,10 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 # Brandbook
 
+## Design Intelligence Preflight
+
+Before brand direction, palette, typography, or collateral recommendations, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use product, style, color, typography, brand, logo, icon, and CIP rows as advisory evidence only; approved memory and user feedback take precedence.
+
 Materialize a brand into an **explicit, approved, machine-readable design system** at `prototypes/_design-system/`. The system is the ONLY source of visual truth — every prototype, every component, every animation downstream consumes it. The user approves the system FIRST, before any pixel of UI is built.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.

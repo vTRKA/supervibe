@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-Package: supervibe-framework v1.9.0
+Package: supervibe-framework v2.0.0
 Source: package-lock.json
 Scope: direct runtime and development dependencies plus lockfile license counts.
 
@@ -20,6 +20,14 @@ Scope: direct runtime and development dependencies plus lockfile license counts.
 | knip | devDependencies | 5.88.1 | ISC | yes |
 | lint-staged | devDependencies | 15.5.2 | MIT | yes |
 | yaml | devDependencies | 2.8.3 | ISC | yes |
+
+## Bundled Design Intelligence Data
+
+| Asset | Scope | Source commit | License | Runtime |
+| --- | --- | --- | --- | --- |
+| Adapted design intelligence CSV data pack | bundled data | b7e3af8 | MIT | Node-only lookup |
+
+The data pack is documented in `docs/third-party-design-intelligence.md`. Original Python/CJS scripts, font binaries, screenshots, previews, CI workflows, and installer behavior are not bundled as runtime dependencies.
 
 ## Lockfile License Counts
 

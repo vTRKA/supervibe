@@ -16,6 +16,10 @@ last-verified: 2026-04-29
 
 Build a presentation deck through the same visible review loop as design prototypes: brief, storyboard, HTML preview, browser feedback, approval, `.pptx` export, and Google Drive handoff.
 
+## Design Intelligence Preflight
+
+Before storyboard or visual direction, run project memory, code search, and internal `supervibe:design-intelligence` lookup for slide strategy, layout, copy, chart, typography, color, background, brand, and token evidence. Presentation-director owns narrative; presentation-deck-builder owns implementation.
+
 ## When to invoke
 
 Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, report deck, product demo deck, sales deck, training deck, or a `.pptx` deliverable. This skill is for presentation artifacts, not production UI.

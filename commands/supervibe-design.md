@@ -1,14 +1,24 @@
 ---
 description: >-
-  End-to-end design pipeline with explicit lifecycle: design-system → spec →
-  native HTML/CSS/JS prototype → live preview → review → feedback loop →
-  approval → ready-for-development handoff. Pure native, two viewports default
-  (375 + 1440), one question at a time.
+  End-to-end design pipeline with memory/code/design-intelligence preflight:
+  design-system → spec → native HTML/CSS/JS prototype → live preview → review
+  → feedback loop → approval → ready-for-development handoff. Pure native,
+  two viewports default (375 + 1440), one question at a time.
 ---
 
 # /supervibe-design
 
 Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 design skills through 8 explicit stages, ending with an **approved, ready-for-development** prototype that any stack-developer agent can pick up.
+
+## Design Intelligence Integration
+
+Design intelligence is an internal evidence source for this existing command, not a new workflow surface. Before style, palette, typography, chart, icon, presentation, collateral, mobile, or stack handoff decisions, design agents must run:
+
+1. project memory preflight for accepted and rejected design decisions
+2. code search over tokens, components, prototypes, and brand assets
+3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup
+
+The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but approved design-system tokens, project memory, codebase patterns, and accessibility constraints take precedence.
 
 ## Hard rules (the user feedback that drives this command)
 

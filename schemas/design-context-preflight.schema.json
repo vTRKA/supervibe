@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/design-context-preflight.schema.json",
+  "title": "Design Context Preflight",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "memory", "code", "designLookup", "conflicts", "missingSources", "recommendedNextQueries"],
+  "properties": {
+    "query": { "type": "string" },
+    "memory": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "code": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "designLookup": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "conflicts": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "missingSources": { "type": "array", "items": { "type": "string" } },
+    "recommendedNextQueries": { "type": "array", "items": { "type": "string" } }
+  }
+}

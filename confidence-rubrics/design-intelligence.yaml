@@ -1,0 +1,26 @@
+artifact: design-intelligence
+max-score: 10
+dimensions:
+  - id: source-quality
+    weight: 2
+    question: "Are retrieved rows relevant, cited by id, and drawn from the correct domain?"
+    evidence-required: "Design Intelligence Evidence lists query, domain, id, score, and source path"
+  - id: memory-integration
+    weight: 2
+    question: "Did the agent search project memory and respect accepted/rejected decisions?"
+    evidence-required: "Memory preflight results or explicit no-match statement"
+  - id: conflict-handling
+    weight: 2
+    question: "Did the agent apply approved design system > memory > code > accessibility > lookup precedence?"
+    evidence-required: "Conflict note or explicit no-conflict statement"
+  - id: token-discipline
+    weight: 2
+    question: "Does the recommendation avoid overriding approved tokens without an extension approval?"
+    evidence-required: "Token or extension reference"
+  - id: synthesis
+    weight: 2
+    question: "Did the agent synthesize evidence into a concrete design decision instead of dumping lookup rows?"
+    evidence-required: "Accepted, rejected, or candidate decision with rationale"
+gates:
+  block-below: 9
+  warn-below: 10

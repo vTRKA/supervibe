@@ -52,3 +52,17 @@ test('brandbook requires only ALL antipatterns, not prototype-specific ones', ()
   const issues = validateDesignSkill('brandbook', body);
   assert.equal(issues.length, 0);
 });
+
+test('design-intelligence requires lookup-specific anti-patterns', () => {
+  const body = `
+- asking-multiple-questions-at-once
+- advancing-without-feedback-prompt
+- random-regen-instead-of-tradeoff-alternatives
+- lookup-as-authority
+- memory-bypass
+- approved-system-overwrite
+- uncited-design-claim
+`;
+  const issues = validateDesignSkill('design-intelligence', body);
+  assert.equal(issues.length, 0);
+});

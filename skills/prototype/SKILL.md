@@ -16,6 +16,10 @@ last-verified: 2026-04-28
 
 Build a **native HTML / CSS / JS** prototype that materializes an approved design system into a clickable, viewport-correct mockup. The prototype is for design approval and stack-agnostic handoff — never for production deployment.
 
+## Design Intelligence Preflight
+
+Before prototype structure or visual decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use retrieved rows for style, UX, chart, icon, app-interface, and stack evidence, but never override approved `prototypes/_design-system/` tokens without an explicit extension approval.
+
 ## When to invoke
 
 AFTER `supervibe:brandbook` has produced an approved design system at `prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".

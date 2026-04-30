@@ -97,6 +97,70 @@ const ROUTES = {
     nextQuestionEn: "Next step - sync README and acceptance coverage. Proceed?",
     prerequisites: ["accepted-change-summary"],
   },
+  design_new: {
+    phase: "design",
+    command: "/supervibe-design",
+    skill: "supervibe:prototype",
+    nextQuestionRu: "Следующий шаг - запустить дизайн-пайплайн с memory, code и design lookup preflight. Переходим?",
+    nextQuestionEn: "Next step - run the design pipeline with memory, code, and design lookup preflight. Proceed?",
+    prerequisites: ["design-brief"],
+  },
+  design_review: {
+    phase: "audit",
+    command: "/supervibe-audit --design",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Следующий шаг - провести дизайн-аудит с evidence, token и accessibility checks. Переходим?",
+    nextQuestionEn: "Next step - run design audit with evidence, token, and accessibility checks. Proceed?",
+    prerequisites: ["design-artifact"],
+  },
+  design_system_extension: {
+    phase: "design",
+    command: "/supervibe-design --extend-system",
+    skill: "supervibe:brandbook",
+    nextQuestionRu: "Следующий шаг - подготовить узкое расширение дизайн-системы без ребренда. Переходим?",
+    nextQuestionEn: "Next step - prepare a narrow design-system extension without rebrand. Proceed?",
+    prerequisites: ["approved-design-system", "design-brief"],
+  },
+  mobile_ui: {
+    phase: "design",
+    command: "/supervibe-design --target mobile-native",
+    skill: "supervibe:prototype",
+    nextQuestionRu: "Следующий шаг - запустить мобильный UI flow с platform и touch constraints. Переходим?",
+    nextQuestionEn: "Next step - run the mobile UI flow with platform and touch constraints. Proceed?",
+    prerequisites: ["design-brief"],
+  },
+  chart_ux: {
+    phase: "design",
+    command: "/supervibe-design --chart-ux",
+    skill: "supervibe:prototype",
+    nextQuestionRu: "Следующий шаг - проработать chart UX с fallback и accessibility evidence. Переходим?",
+    nextQuestionEn: "Next step - work through chart UX with fallback and accessibility evidence. Proceed?",
+    prerequisites: ["design-brief"],
+  },
+  presentation_deck: {
+    phase: "design",
+    command: "/supervibe-design --presentation",
+    skill: "supervibe:presentation-deck",
+    nextQuestionRu: "Следующий шаг - запустить deck flow с narrative, slide и brand evidence. Переходим?",
+    nextQuestionEn: "Next step - run deck flow with narrative, slide, and brand evidence. Proceed?",
+    prerequisites: ["design-brief"],
+  },
+  brand_collateral: {
+    phase: "design",
+    command: "/supervibe-design --brand-collateral",
+    skill: "supervibe:brandbook",
+    nextQuestionRu: "Следующий шаг - проработать brand/collateral assets через существующий дизайн-пайплайн. Переходим?",
+    nextQuestionEn: "Next step - work through brand/collateral assets via the existing design pipeline. Proceed?",
+    prerequisites: ["design-brief"],
+  },
+  stack_ui_guidance: {
+    phase: "design",
+    command: "/supervibe-design --handoff",
+    skill: "supervibe:component-library-integration",
+    nextQuestionRu: "Следующий шаг - подготовить stack-aware UI handoff на базе утвержденных tokens. Переходим?",
+    nextQuestionEn: "Next step - prepare stack-aware UI handoff from approved tokens. Proceed?",
+    prerequisites: ["approved-design-system", "design-artifact"],
+  },
 };
 
 const RULES = [
@@ -164,6 +228,46 @@ const RULES = [
     intent: "readme_update",
     confidence: 0.84,
     test: (text) => hasAny(text, ["readme", "ридми"]) && hasAny(text, ["обнови", "update", "sync"]),
+  },
+  {
+    intent: "presentation_deck",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["deck", "presentation", "слайд", "презентац"]) && hasAny(text, ["design", "дизайн", "make", "сделай", "build"]),
+  },
+  {
+    intent: "brand_collateral",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["logo", "collateral", "cip", "brand asset", "логотип", "фирстиль"]) && hasAny(text, ["design", "дизайн", "сделай", "asset", "mockup"]),
+  },
+  {
+    intent: "chart_ux",
+    confidence: 0.89,
+    test: (text) => hasAny(text, ["chart", "graph", "data viz", "график", "диаграм"]) && hasAny(text, ["ux", "design", "дизайн", "a11y", "accessibility"]),
+  },
+  {
+    intent: "mobile_ui",
+    confidence: 0.88,
+    test: (text) => hasAny(text, ["mobile", "ios", "android", "touch", "мобиль"]) && hasAny(text, ["ui", "дизайн", "interface", "экран"]),
+  },
+  {
+    intent: "design_system_extension",
+    confidence: 0.88,
+    test: (text) => hasAny(text, ["extend design system", "design-system extension", "расшир", "дизайн-систем"]) && hasAny(text, ["token", "component", "tokens", "компонент"]),
+  },
+  {
+    intent: "design_review",
+    confidence: 0.87,
+    test: (text) => hasAny(text, ["ui review", "design audit", "проверь дизайн", "аудит дизайна", "полиш", "polish"]),
+  },
+  {
+    intent: "stack_ui_guidance",
+    confidence: 0.86,
+    test: (text) => hasAny(text, ["shadcn", "tailwind", "next.js", "react", "vue", "svelte"]) && hasAny(text, ["ui", "handoff", "design", "tokens", "дизайн"]),
+  },
+  {
+    intent: "design_new",
+    confidence: 0.85,
+    test: (text) => hasDesignSurface(text) && hasAny(text, ["make", "build", "create", "сделай", "нарисуй", "улучши"]),
   },
 ];
 
@@ -250,6 +354,9 @@ function artifactSatisfied(name, artifacts) {
     "duration-budget": ["durationBudget", "maxDuration"],
     "readiness-audit": ["readinessAudit", "planReviewPassed"],
     "accepted-change-summary": ["changeSummary", "acceptedChangeSummary"],
+    "design-brief": ["designBrief", "brief", "request", "userRequest"],
+    "design-artifact": ["prototype", "prototypePath", "designArtifact", "screenshot", "figmaFile"],
+    "approved-design-system": ["approvedDesignSystem", "designSystemApproved", "designSystem"],
     "user-request": ["request", "userRequest"],
     "last-route": ["lastRoute"],
   };
@@ -292,7 +399,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
-  if (["brainstorm_to_plan", "readme_update"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -311,6 +418,12 @@ function detectLocale(text) {
 
 function hasAny(text, phrases) {
   return phrases.some((phrase) => text.includes(normalize(phrase)));
+}
+
+function hasDesignSurface(text) {
+  return hasAny(text, ["design", "mockup", "prototype", "user interface", "дизайн", "макет", "мокап", "прототип"]) ||
+    /(^| )ui( |$)/.test(text) ||
+    /(^| )(look|looks|visual|screen|layout|polish|professional)( |$)/.test(text);
 }
 
 function normalize(value) {

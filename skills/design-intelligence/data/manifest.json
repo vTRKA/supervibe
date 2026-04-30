@@ -1,0 +1,2429 @@
+{
+  "schemaVersion": 1,
+  "packageVersionTarget": "2.0.0",
+  "sourceRepository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "sourceCommit": "b7e3af80f6e331f6fb456667b82b12cade7c9d35",
+  "sourceCommitShort": "b7e3af8",
+  "license": "MIT",
+  "importedAt": "2026-04-30",
+  "runtime": "node-only",
+  "commandPolicy": "internal lookup only; no new slash command or package script",
+  "precedence": [
+    "approved design system",
+    "project memory",
+    "codebase patterns",
+    "accessibility law",
+    "external lookup"
+  ],
+  "domains": [
+    {
+      "id": "product",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/products.csv",
+      "packagedAssetPath": "cli/assets/data/products.csv",
+      "importedPath": "skills/design-intelligence/data/products.csv",
+      "rows": 161,
+      "sha256": "6ea44a7725d708a25f80626369eb011ec202809b5dfcc8ca7fce2402b5489cf1",
+      "originalHeaders": [
+        "No",
+        "Product Type",
+        "Keywords",
+        "Primary Style Recommendation",
+        "Secondary Styles",
+        "Landing Page Pattern",
+        "Dashboard Style (if applicable)",
+        "Color Palette Focus",
+        "Key Considerations"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Product Type",
+        "Keywords",
+        "Primary Style Recommendation",
+        "Secondary Styles",
+        "Landing Page Pattern",
+        "Dashboard Style (if applicable)"
+      ],
+      "displayFields": [
+        "No",
+        "Product Type",
+        "Keywords",
+        "Primary Style Recommendation",
+        "Secondary Styles",
+        "Landing Page Pattern",
+        "Dashboard Style (if applicable)",
+        "Color Palette Focus",
+        "Key Considerations"
+      ],
+      "criticalFields": [],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "6ea44a7725d708a25f80626369eb011ec202809b5dfcc8ca7fce2402b5489cf1",
+        "cliAssets": "6ea44a7725d708a25f80626369eb011ec202809b5dfcc8ca7fce2402b5489cf1"
+      }
+    },
+    {
+      "id": "style",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/styles.csv",
+      "packagedAssetPath": "cli/assets/data/styles.csv",
+      "importedPath": "skills/design-intelligence/data/styles.csv",
+      "rows": 75,
+      "sha256": "9b5089dcde8999333b36878252a255cc3bacbb2fe7b836c76cc7f7aa2abb643d",
+      "originalHeaders": [
+        "No",
+        "Style Category",
+        "Type",
+        "Keywords",
+        "Primary Colors",
+        "Secondary Colors",
+        "Effects & Animation",
+        "Best For",
+        "Do Not Use For",
+        "Light Mode ✓",
+        "Dark Mode ✓",
+        "Performance",
+        "Accessibility",
+        "Mobile-Friendly",
+        "Conversion-Focused",
+        "Framework Compatibility",
+        "Era/Origin",
+        "Complexity",
+        "AI Prompt Keywords",
+        "CSS/Technical Keywords",
+        "Implementation Checklist",
+        "Design System Variables"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Style Category",
+        "Type",
+        "Keywords",
+        "Best For",
+        "AI Prompt Keywords",
+        "CSS/Technical Keywords"
+      ],
+      "displayFields": [
+        "No",
+        "Style Category",
+        "Type",
+        "Keywords",
+        "Primary Colors",
+        "Secondary Colors",
+        "Effects & Animation",
+        "Best For",
+        "Do Not Use For",
+        "Light Mode ✓",
+        "Dark Mode ✓",
+        "Performance"
+      ],
+      "criticalFields": [
+        "Do Not Use For",
+        "Accessibility",
+        "Implementation Checklist",
+        "Design System Variables"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "9b5089dcde8999333b36878252a255cc3bacbb2fe7b836c76cc7f7aa2abb643d",
+        "cliAssets": "9b5089dcde8999333b36878252a255cc3bacbb2fe7b836c76cc7f7aa2abb643d"
+      }
+    },
+    {
+      "id": "color",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/colors.csv",
+      "packagedAssetPath": "cli/assets/data/colors.csv",
+      "importedPath": "skills/design-intelligence/data/colors.csv",
+      "rows": 161,
+      "sha256": "69ee8c1147b269599d20ca418bdd6f32563a9aa2d962fb9a9b8dec66bf7b1ba4",
+      "originalHeaders": [
+        "No",
+        "Product Type",
+        "Primary",
+        "On Primary",
+        "Secondary",
+        "On Secondary",
+        "Accent",
+        "On Accent",
+        "Background",
+        "Foreground",
+        "Card",
+        "Card Foreground",
+        "Muted",
+        "Muted Foreground",
+        "Border",
+        "Destructive",
+        "On Destructive",
+        "Ring",
+        "Notes"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Product Type"
+      ],
+      "displayFields": [
+        "No",
+        "Product Type",
+        "Primary",
+        "On Primary",
+        "Secondary",
+        "On Secondary",
+        "Accent",
+        "On Accent",
+        "Background",
+        "Foreground",
+        "Card",
+        "Card Foreground"
+      ],
+      "criticalFields": [
+        "Notes"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "69ee8c1147b269599d20ca418bdd6f32563a9aa2d962fb9a9b8dec66bf7b1ba4",
+        "cliAssets": "74307c60a493b393d5b7192c48c6870b8d38c241f1c21ae0ef2637ebf6c13628"
+      }
+    },
+    {
+      "id": "typography",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/typography.csv",
+      "packagedAssetPath": "cli/assets/data/typography.csv",
+      "importedPath": "skills/design-intelligence/data/typography.csv",
+      "rows": 73,
+      "sha256": "a393558b7acc79193744954b93e8e878b2d7b0a4901e3433995b66a219935d3a",
+      "originalHeaders": [
+        "No",
+        "Font Pairing Name",
+        "Category",
+        "Heading Font",
+        "Body Font",
+        "Mood/Style Keywords",
+        "Best For",
+        "Google Fonts URL",
+        "CSS Import",
+        "Tailwind Config",
+        "Notes"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Font Pairing Name",
+        "Category",
+        "Heading Font",
+        "Body Font",
+        "Mood/Style Keywords",
+        "Best For",
+        "Google Fonts URL"
+      ],
+      "displayFields": [
+        "No",
+        "Font Pairing Name",
+        "Category",
+        "Heading Font",
+        "Body Font",
+        "Mood/Style Keywords",
+        "Best For",
+        "Google Fonts URL",
+        "CSS Import",
+        "Tailwind Config",
+        "Notes"
+      ],
+      "criticalFields": [
+        "Notes"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "a393558b7acc79193744954b93e8e878b2d7b0a4901e3433995b66a219935d3a",
+        "cliAssets": "a393558b7acc79193744954b93e8e878b2d7b0a4901e3433995b66a219935d3a"
+      }
+    },
+    {
+      "id": "ux",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/ux-guidelines.csv",
+      "packagedAssetPath": "cli/assets/data/ux-guidelines.csv",
+      "importedPath": "skills/design-intelligence/data/ux-guidelines.csv",
+      "rows": 99,
+      "sha256": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Issue",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Category",
+        "Issue",
+        "Platform",
+        "Description",
+        "Severity"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Issue",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "criticalFields": [
+        "Platform",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d",
+        "cliAssets": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d"
+      }
+    },
+    {
+      "id": "app-interface",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/app-interface.csv",
+      "packagedAssetPath": "cli/assets/data/app-interface.csv",
+      "importedPath": "skills/design-intelligence/data/app-interface.csv",
+      "rows": 30,
+      "sha256": "a276e55817958075a8dffeb5f5d7be16703b1611e9f0a3527525e1a44df25c46",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Severity"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "criticalFields": [
+        "Platform",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "a276e55817958075a8dffeb5f5d7be16703b1611e9f0a3527525e1a44df25c46",
+        "cliAssets": "972dcb21247b59685bf7ca3921f62adbe329ffeea773f21d082ed310d98ce743"
+      }
+    },
+    {
+      "id": "charts",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/charts.csv",
+      "packagedAssetPath": "cli/assets/data/charts.csv",
+      "importedPath": "skills/design-intelligence/data/charts.csv",
+      "rows": 25,
+      "sha256": "ebb565308115f955791b0431797a89d9b3587c25d5babb9428d10712c4924817",
+      "originalHeaders": [
+        "No",
+        "Data Type",
+        "Keywords",
+        "Best Chart Type",
+        "Secondary Options",
+        "When to Use",
+        "When NOT to Use",
+        "Data Volume Threshold",
+        "Color Guidance",
+        "Accessibility Grade",
+        "Accessibility Notes",
+        "A11y Fallback",
+        "Library Recommendation",
+        "Interactive Level"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Data Type",
+        "Keywords",
+        "Best Chart Type"
+      ],
+      "displayFields": [
+        "No",
+        "Data Type",
+        "Keywords",
+        "Best Chart Type",
+        "Secondary Options",
+        "When to Use",
+        "When NOT to Use",
+        "Data Volume Threshold",
+        "Color Guidance",
+        "Accessibility Grade",
+        "Accessibility Notes",
+        "A11y Fallback"
+      ],
+      "criticalFields": [
+        "Accessibility Grade",
+        "Accessibility Notes",
+        "A11y Fallback"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "ebb565308115f955791b0431797a89d9b3587c25d5babb9428d10712c4924817",
+        "cliAssets": "ebb565308115f955791b0431797a89d9b3587c25d5babb9428d10712c4924817"
+      }
+    },
+    {
+      "id": "icons",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/icons.csv",
+      "packagedAssetPath": "cli/assets/data/icons.csv",
+      "importedPath": "skills/design-intelligence/data/icons.csv",
+      "rows": 105,
+      "sha256": "9da693f818d43e2110e28d949905c85baad1650d383ae9e1568f58c766b0e016",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Icon Name",
+        "Keywords",
+        "Library",
+        "Import Code",
+        "Usage",
+        "Best For",
+        "Style"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Category",
+        "Keywords",
+        "Best For",
+        "Style"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Icon Name",
+        "Keywords",
+        "Library",
+        "Import Code",
+        "Usage",
+        "Best For",
+        "Style"
+      ],
+      "criticalFields": [
+        "Import Code"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "9da693f818d43e2110e28d949905c85baad1650d383ae9e1568f58c766b0e016",
+        "cliAssets": "4dc7901b922da3adbd6e96d3629df82de850ff133f4f4e66ecb93e2c8e7ee3fa"
+      }
+    },
+    {
+      "id": "landing",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/landing.csv",
+      "packagedAssetPath": "cli/assets/data/landing.csv",
+      "importedPath": "skills/design-intelligence/data/landing.csv",
+      "rows": 34,
+      "sha256": "080cedbcd61ff8ec9520f33929baa76bee9589e783f83b2f8d824a466b6a46d7",
+      "originalHeaders": [
+        "No",
+        "Pattern Name",
+        "Keywords",
+        "Section Order",
+        "Primary CTA Placement",
+        "Color Strategy",
+        "Recommended Effects",
+        "Conversion Optimization"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Pattern Name",
+        "Keywords",
+        "Recommended Effects"
+      ],
+      "displayFields": [
+        "No",
+        "Pattern Name",
+        "Keywords",
+        "Section Order",
+        "Primary CTA Placement",
+        "Color Strategy",
+        "Recommended Effects",
+        "Conversion Optimization"
+      ],
+      "criticalFields": [
+        "Recommended Effects"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "080cedbcd61ff8ec9520f33929baa76bee9589e783f83b2f8d824a466b6a46d7",
+        "cliAssets": "010e1e46db271b94e0af6f18973bea86ddba62feeccd62aeeaa6ed40e2ae2db1"
+      }
+    },
+    {
+      "id": "google-fonts",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/google-fonts.csv",
+      "packagedAssetPath": "cli/assets/data/google-fonts.csv",
+      "importedPath": "skills/design-intelligence/data/google-fonts.csv",
+      "rows": 1923,
+      "sha256": "2c03a3cd134d126bd9d6a7dc2a6360dc5272219ad6df3eb9315b031f806e1487",
+      "originalHeaders": [
+        "Family",
+        "Category",
+        "Stroke",
+        "Classifications",
+        "Keywords",
+        "Styles",
+        "Variable Axes",
+        "Subsets",
+        "Designers",
+        "Popularity Rank",
+        "Trending Rank",
+        "Is Noto",
+        "Date Added",
+        "Last Modified",
+        "Google Fonts URL"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Category",
+        "Keywords",
+        "Styles",
+        "Google Fonts URL"
+      ],
+      "displayFields": [
+        "Family",
+        "Category",
+        "Stroke",
+        "Classifications",
+        "Keywords",
+        "Styles",
+        "Variable Axes",
+        "Subsets",
+        "Designers",
+        "Popularity Rank",
+        "Trending Rank",
+        "Is Noto"
+      ],
+      "criticalFields": [],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "2c03a3cd134d126bd9d6a7dc2a6360dc5272219ad6df3eb9315b031f806e1487",
+        "cliAssets": "2c03a3cd134d126bd9d6a7dc2a6360dc5272219ad6df3eb9315b031f806e1487"
+      }
+    },
+    {
+      "id": "react-performance",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/react-performance.csv",
+      "packagedAssetPath": "cli/assets/data/react-performance.csv",
+      "importedPath": "skills/design-intelligence/data/react-performance.csv",
+      "rows": 44,
+      "sha256": "47c0a454cb73bf32378c55eb781dea4c44440ec6a1b52039119afc354315c17e",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Severity"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Issue",
+        "Keywords",
+        "Platform",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "criticalFields": [
+        "Platform",
+        "Do",
+        "Don't",
+        "Code Example Good",
+        "Code Example Bad",
+        "Severity"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "47c0a454cb73bf32378c55eb781dea4c44440ec6a1b52039119afc354315c17e",
+        "cliAssets": "47c0a454cb73bf32378c55eb781dea4c44440ec6a1b52039119afc354315c17e"
+      }
+    },
+    {
+      "id": "ui-reasoning",
+      "kind": "core",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data",
+      "sourcePath": "src/ui-ux-pro-max/data/ui-reasoning.csv",
+      "packagedAssetPath": "cli/assets/data/ui-reasoning.csv",
+      "importedPath": "skills/design-intelligence/data/ui-reasoning.csv",
+      "rows": 161,
+      "sha256": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11",
+      "originalHeaders": [
+        "No",
+        "UI_Category",
+        "Recommended_Pattern",
+        "Style_Priority",
+        "Color_Mood",
+        "Typography_Mood",
+        "Key_Effects",
+        "Decision_Rules",
+        "Anti_Patterns",
+        "Severity"
+      ],
+      "generatedIdStrategy": "source path + row index + primary label",
+      "searchFields": [
+        "UI_Category",
+        "Recommended_Pattern",
+        "Style_Priority",
+        "Color_Mood",
+        "Typography_Mood",
+        "Anti_Patterns",
+        "Severity"
+      ],
+      "displayFields": [
+        "No",
+        "UI_Category",
+        "Recommended_Pattern",
+        "Style_Priority",
+        "Color_Mood",
+        "Typography_Mood",
+        "Key_Effects",
+        "Decision_Rules",
+        "Anti_Patterns",
+        "Severity"
+      ],
+      "criticalFields": [
+        "Recommended_Pattern",
+        "Anti_Patterns",
+        "Severity"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11",
+        "cliAssets": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11"
+      }
+    },
+    {
+      "id": "stack:angular",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/angular.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/angular.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/angular.csv",
+      "rows": 50,
+      "sha256": "0c37794e6b6e3d0e3a0bb90eb619608faaa5ce703afe34c27ef6e3c1ac583258",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "0c37794e6b6e3d0e3a0bb90eb619608faaa5ce703afe34c27ef6e3c1ac583258",
+        "cliAssets": "0c37794e6b6e3d0e3a0bb90eb619608faaa5ce703afe34c27ef6e3c1ac583258"
+      }
+    },
+    {
+      "id": "stack:astro",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/astro.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/astro.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/astro.csv",
+      "rows": 53,
+      "sha256": "ff7fa30b41464fbe907a99499a32b4395210ef57f3674bef628aeadf767f40a8",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "ff7fa30b41464fbe907a99499a32b4395210ef57f3674bef628aeadf767f40a8",
+        "cliAssets": "ff7fa30b41464fbe907a99499a32b4395210ef57f3674bef628aeadf767f40a8"
+      }
+    },
+    {
+      "id": "stack:flutter",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/flutter.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/flutter.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/flutter.csv",
+      "rows": 52,
+      "sha256": "e470e6bc2bcd8562667cc764d1e1afb0be0a30ca4dc9ec12fa18b19d46f156bd",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "e470e6bc2bcd8562667cc764d1e1afb0be0a30ca4dc9ec12fa18b19d46f156bd",
+        "cliAssets": "e470e6bc2bcd8562667cc764d1e1afb0be0a30ca4dc9ec12fa18b19d46f156bd"
+      }
+    },
+    {
+      "id": "stack:html-tailwind",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/html-tailwind.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/html-tailwind.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/html-tailwind.csv",
+      "rows": 55,
+      "sha256": "1f004891dd189f6bc2a7717401e3100244326e7e2f3963a79bf7b2349d85e091",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "1f004891dd189f6bc2a7717401e3100244326e7e2f3963a79bf7b2349d85e091",
+        "cliAssets": "1f004891dd189f6bc2a7717401e3100244326e7e2f3963a79bf7b2349d85e091"
+      }
+    },
+    {
+      "id": "stack:jetpack-compose",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/jetpack-compose.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/jetpack-compose.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/jetpack-compose.csv",
+      "rows": 52,
+      "sha256": "8e1995b93414e9d50f8d450bdd15853ff138ca3b8c9d6529cd3171729fa5fa7f",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "8e1995b93414e9d50f8d450bdd15853ff138ca3b8c9d6529cd3171729fa5fa7f",
+        "cliAssets": "8e1995b93414e9d50f8d450bdd15853ff138ca3b8c9d6529cd3171729fa5fa7f"
+      }
+    },
+    {
+      "id": "stack:laravel",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/laravel.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/laravel.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/laravel.csv",
+      "rows": 50,
+      "sha256": "0f523354dec42df92fc570a408cd1128fd1efc879874ad9163ced4f2b179d2b1",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "0f523354dec42df92fc570a408cd1128fd1efc879874ad9163ced4f2b179d2b1",
+        "cliAssets": "0f523354dec42df92fc570a408cd1128fd1efc879874ad9163ced4f2b179d2b1"
+      }
+    },
+    {
+      "id": "stack:nextjs",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/nextjs.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/nextjs.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/nextjs.csv",
+      "rows": 52,
+      "sha256": "06a8e8c13bd44696c6ebb4cb6c4d8dea440e3de8cce77616512529ed29258f0c",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "06a8e8c13bd44696c6ebb4cb6c4d8dea440e3de8cce77616512529ed29258f0c",
+        "cliAssets": "06a8e8c13bd44696c6ebb4cb6c4d8dea440e3de8cce77616512529ed29258f0c"
+      }
+    },
+    {
+      "id": "stack:nuxt-ui",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/nuxt-ui.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/nuxt-ui.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/nuxt-ui.csv",
+      "rows": 50,
+      "sha256": "c1f3c9e438ab89f806a0c2e0be4c37cb34d9370c16207353aa9c972d548f710e",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "c1f3c9e438ab89f806a0c2e0be4c37cb34d9370c16207353aa9c972d548f710e",
+        "cliAssets": "c1f3c9e438ab89f806a0c2e0be4c37cb34d9370c16207353aa9c972d548f710e"
+      }
+    },
+    {
+      "id": "stack:nuxtjs",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/nuxtjs.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/nuxtjs.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/nuxtjs.csv",
+      "rows": 58,
+      "sha256": "696ec6df0e5971cd8b69080ee6abea2e9748fb2de47acb2bcc748302684f2030",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "696ec6df0e5971cd8b69080ee6abea2e9748fb2de47acb2bcc748302684f2030",
+        "cliAssets": "696ec6df0e5971cd8b69080ee6abea2e9748fb2de47acb2bcc748302684f2030"
+      }
+    },
+    {
+      "id": "stack:react-native",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/react-native.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/react-native.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/react-native.csv",
+      "rows": 51,
+      "sha256": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085",
+        "cliAssets": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085"
+      }
+    },
+    {
+      "id": "stack:react",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/react.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/react.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/react.csv",
+      "rows": 53,
+      "sha256": "b6e3eb0e4c9c01bd00ffb951d5ca224a19d488b4544c75436f48cf92ff12bf45",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "b6e3eb0e4c9c01bd00ffb951d5ca224a19d488b4544c75436f48cf92ff12bf45",
+        "cliAssets": "b6e3eb0e4c9c01bd00ffb951d5ca224a19d488b4544c75436f48cf92ff12bf45"
+      }
+    },
+    {
+      "id": "stack:shadcn",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/shadcn.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/shadcn.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/shadcn.csv",
+      "rows": 60,
+      "sha256": "0f9cc6fbfebea8026950c422808bb3aae239185bad770726b331f827f8e1a6de",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "0f9cc6fbfebea8026950c422808bb3aae239185bad770726b331f827f8e1a6de",
+        "cliAssets": "0f9cc6fbfebea8026950c422808bb3aae239185bad770726b331f827f8e1a6de"
+      }
+    },
+    {
+      "id": "stack:svelte",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/svelte.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/svelte.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/svelte.csv",
+      "rows": 53,
+      "sha256": "bc8d158994a8bdf412830a9dd5e5a5534edd2f367a6e50e0ebd4d76f592dfa3f",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "bc8d158994a8bdf412830a9dd5e5a5534edd2f367a6e50e0ebd4d76f592dfa3f",
+        "cliAssets": "bc8d158994a8bdf412830a9dd5e5a5534edd2f367a6e50e0ebd4d76f592dfa3f"
+      }
+    },
+    {
+      "id": "stack:swiftui",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/swiftui.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/swiftui.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/swiftui.csv",
+      "rows": 50,
+      "sha256": "e87cb9eee208bb753bdab96d4a261c7f830c4317ee90ec098316b248fc32be85",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "e87cb9eee208bb753bdab96d4a261c7f830c4317ee90ec098316b248fc32be85",
+        "cliAssets": "e87cb9eee208bb753bdab96d4a261c7f830c4317ee90ec098316b248fc32be85"
+      }
+    },
+    {
+      "id": "stack:threejs",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/threejs.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/threejs.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/threejs.csv",
+      "rows": 53,
+      "sha256": "c182b38b30fa11531796e018d9fa87d63a5a85bee35c1bfb9baf480df098d270",
+      "originalHeaders": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "c182b38b30fa11531796e018d9fa87d63a5a85bee35c1bfb9baf480df098d270",
+        "cliAssets": "c182b38b30fa11531796e018d9fa87d63a5a85bee35c1bfb9baf480df098d270"
+      }
+    },
+    {
+      "id": "stack:vue",
+      "kind": "stack",
+      "status": "adapted",
+      "canonicalSourceTree": "src/ui-ux-pro-max/data/stacks",
+      "sourcePath": "src/ui-ux-pro-max/data/stacks/vue.csv",
+      "packagedAssetPath": "cli/assets/data/stacks/vue.csv",
+      "importedPath": "skills/design-intelligence/data/stacks/vue.csv",
+      "rows": 49,
+      "sha256": "9b793c3f4eec85f77a758c09322f2b62f3b3ca549bb713ccf0849ef885934395",
+      "originalHeaders": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "generatedIdStrategy": "stack id + row index + guideline label",
+      "searchFields": [
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Severity",
+        "Docs URL"
+      ],
+      "displayFields": [
+        "No",
+        "Category",
+        "Guideline",
+        "Description",
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "criticalFields": [
+        "Do",
+        "Don't",
+        "Code Good",
+        "Code Bad",
+        "Severity",
+        "Docs URL"
+      ],
+      "excludedFields": [],
+      "duplicateSources": {
+        "src": "9b793c3f4eec85f77a758c09322f2b62f3b3ca549bb713ccf0849ef885934395",
+        "cliAssets": "9b793c3f4eec85f77a758c09322f2b62f3b3ca549bb713ccf0849ef885934395"
+      }
+    },
+    {
+      "id": "slides:backgrounds",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-backgrounds.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-backgrounds.csv",
+      "rows": 10,
+      "sha256": "c4fcaa0f389c94330b41838732ba740bc09aab250cc84c0b993efe729cc30bd7",
+      "originalHeaders": [
+        "slide_type",
+        "image_category",
+        "overlay_style",
+        "text_placement",
+        "image_sources",
+        "search_keywords"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "slide_type",
+        "image_sources",
+        "search_keywords"
+      ],
+      "displayFields": [
+        "slide_type",
+        "image_category",
+        "overlay_style",
+        "text_placement",
+        "image_sources",
+        "search_keywords"
+      ],
+      "criticalFields": [
+        "image_sources",
+        "search_keywords"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:charts",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-charts.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-charts.csv",
+      "rows": 25,
+      "sha256": "3a5b358c54b73b97995df585ba987bec434eb2b84759b285c9c6b9db92a39d2f",
+      "originalHeaders": [
+        "id",
+        "chart_type",
+        "keywords",
+        "best_for",
+        "data_type",
+        "when_to_use",
+        "when_to_avoid",
+        "max_categories",
+        "slide_context",
+        "css_implementation",
+        "accessibility_notes",
+        "sources"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "chart_type",
+        "keywords",
+        "data_type",
+        "when_to_use",
+        "slide_context",
+        "sources"
+      ],
+      "displayFields": [
+        "id",
+        "chart_type",
+        "keywords",
+        "best_for",
+        "data_type",
+        "when_to_use",
+        "when_to_avoid",
+        "max_categories",
+        "slide_context",
+        "css_implementation",
+        "accessibility_notes",
+        "sources"
+      ],
+      "criticalFields": [
+        "when_to_avoid",
+        "css_implementation",
+        "accessibility_notes",
+        "sources"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:color-logic",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-color-logic.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-color-logic.csv",
+      "rows": 13,
+      "sha256": "1cbe070ff570b8f9df08cb1e0dcf17f93138bf4eb563f9438e19a5931d7d5183",
+      "originalHeaders": [
+        "emotion",
+        "background",
+        "text_color",
+        "accent_usage",
+        "use_full_bleed",
+        "gradient",
+        "card_style"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "emotion",
+        "use_full_bleed"
+      ],
+      "displayFields": [
+        "emotion",
+        "background",
+        "text_color",
+        "accent_usage",
+        "use_full_bleed",
+        "gradient",
+        "card_style"
+      ],
+      "criticalFields": [
+        "emotion"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:copy",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-copy.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-copy.csv",
+      "rows": 25,
+      "sha256": "848dcc6968a0ae0ac500363240036ca3be6927fd74e8bc64e20e9deb3d987f50",
+      "originalHeaders": [
+        "id",
+        "formula_name",
+        "keywords",
+        "components",
+        "use_case",
+        "example_template",
+        "emotion_trigger",
+        "slide_type",
+        "source"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "formula_name",
+        "keywords",
+        "use_case",
+        "emotion_trigger",
+        "slide_type",
+        "source"
+      ],
+      "displayFields": [
+        "id",
+        "formula_name",
+        "keywords",
+        "components",
+        "use_case",
+        "example_template",
+        "emotion_trigger",
+        "slide_type",
+        "source"
+      ],
+      "criticalFields": [
+        "emotion_trigger",
+        "source"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:layout-logic",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-layout-logic.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-layout-logic.csv",
+      "rows": 15,
+      "sha256": "f5a8fd3f51825a24cdd585a13fa6c2d66ed3bec781e4da904f998dc5c7abf707",
+      "originalHeaders": [
+        "goal",
+        "emotion",
+        "layout_pattern",
+        "direction",
+        "visual_weight",
+        "break_pattern",
+        "use_bg_image"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "goal",
+        "emotion",
+        "layout_pattern",
+        "use_bg_image"
+      ],
+      "displayFields": [
+        "goal",
+        "emotion",
+        "layout_pattern",
+        "direction",
+        "visual_weight",
+        "break_pattern",
+        "use_bg_image"
+      ],
+      "criticalFields": [
+        "emotion",
+        "visual_weight"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:layouts",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-layouts.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-layouts.csv",
+      "rows": 25,
+      "sha256": "e6236fad256a84a811f0b2a85873d43774206fbaf7de2a50a3b4a5dad639b7f5",
+      "originalHeaders": [
+        "id",
+        "layout_name",
+        "keywords",
+        "use_case",
+        "content_zones",
+        "visual_weight",
+        "cta_placement",
+        "recommended_for",
+        "avoid_for",
+        "css_structure",
+        "card_variant",
+        "metric_style",
+        "quote_style",
+        "grid_columns",
+        "visual_treatment",
+        "animation_class"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "layout_name",
+        "keywords",
+        "use_case"
+      ],
+      "displayFields": [
+        "id",
+        "layout_name",
+        "keywords",
+        "use_case",
+        "content_zones",
+        "visual_weight",
+        "cta_placement",
+        "recommended_for",
+        "avoid_for",
+        "css_structure",
+        "card_variant",
+        "metric_style",
+        "quote_style",
+        "grid_columns",
+        "visual_treatment",
+        "animation_class"
+      ],
+      "criticalFields": [
+        "visual_weight",
+        "cta_placement",
+        "avoid_for",
+        "css_structure"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:strategies",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-strategies.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-strategies.csv",
+      "rows": 15,
+      "sha256": "b3d0c7b4ea3e615679156477f993c33e35640207fd9a74299e1e3cf0f2e9722c",
+      "originalHeaders": [
+        "id",
+        "strategy_name",
+        "keywords",
+        "slide_count",
+        "structure",
+        "goal",
+        "audience",
+        "tone",
+        "narrative_arc",
+        "key_metrics",
+        "sources",
+        "emotion_arc",
+        "sparkline_beats"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "strategy_name",
+        "keywords",
+        "goal",
+        "audience",
+        "tone",
+        "sources",
+        "emotion_arc"
+      ],
+      "displayFields": [
+        "id",
+        "strategy_name",
+        "keywords",
+        "slide_count",
+        "structure",
+        "goal",
+        "audience",
+        "tone",
+        "narrative_arc",
+        "key_metrics",
+        "sources",
+        "emotion_arc",
+        "sparkline_beats"
+      ],
+      "criticalFields": [
+        "narrative_arc",
+        "sources",
+        "emotion_arc"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "slides:typography",
+      "kind": "slides",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design-system/data",
+      "sourcePath": ".claude/skills/design-system/data/slide-typography.csv",
+      "importedPath": "skills/design-intelligence/data/slides/slide-typography.csv",
+      "rows": 14,
+      "sha256": "61a5a3d66ce270e9145457a80bf12fb5090a4629ba96176d6e79e0b365bdf54a",
+      "originalHeaders": [
+        "content_type",
+        "primary_size",
+        "secondary_size",
+        "accent_size",
+        "weight_contrast",
+        "letter_spacing",
+        "line_height"
+      ],
+      "generatedIdStrategy": "slide domain + row index + id/name field",
+      "searchFields": [
+        "content_type"
+      ],
+      "displayFields": [
+        "content_type",
+        "primary_size",
+        "secondary_size",
+        "accent_size",
+        "weight_contrast",
+        "letter_spacing",
+        "line_height"
+      ],
+      "criticalFields": [
+        "weight_contrast"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:cip-deliverables",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/cip/deliverables.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/cip-deliverables.csv",
+      "rows": 50,
+      "sha256": "25737b44915a3945491bf6447a181fdd9ed085dcd6ba15d05f851100a1f38c65",
+      "originalHeaders": [
+        "No",
+        "Deliverable",
+        "Category",
+        "Keywords",
+        "Description",
+        "Dimensions",
+        "File Format",
+        "Logo Placement",
+        "Color Usage",
+        "Typography Notes",
+        "Mockup Context",
+        "Best Practices",
+        "Avoid"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Deliverable",
+        "Category",
+        "Keywords",
+        "Description",
+        "Color Usage",
+        "Mockup Context",
+        "Best Practices"
+      ],
+      "displayFields": [
+        "No",
+        "Deliverable",
+        "Category",
+        "Keywords",
+        "Description",
+        "Dimensions",
+        "File Format",
+        "Logo Placement",
+        "Color Usage",
+        "Typography Notes",
+        "Mockup Context",
+        "Best Practices",
+        "Avoid"
+      ],
+      "criticalFields": [
+        "Dimensions",
+        "File Format",
+        "Logo Placement",
+        "Color Usage",
+        "Typography Notes",
+        "Mockup Context",
+        "Best Practices",
+        "Avoid"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:cip-industries",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/cip/industries.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/cip-industries.csv",
+      "rows": 20,
+      "sha256": "ea9863ddb16dd60b77287d41d2eacc81029e639ca65250cf6f80218399f6cf17",
+      "originalHeaders": [
+        "No",
+        "Industry",
+        "Keywords",
+        "CIP Style",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Key Deliverables",
+        "Mood",
+        "Best Practices",
+        "Avoid"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Industry",
+        "Keywords",
+        "CIP Style",
+        "Primary Colors",
+        "Secondary Colors",
+        "Key Deliverables",
+        "Mood",
+        "Best Practices"
+      ],
+      "displayFields": [
+        "No",
+        "Industry",
+        "Keywords",
+        "CIP Style",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Key Deliverables",
+        "Mood",
+        "Best Practices",
+        "Avoid"
+      ],
+      "criticalFields": [
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Best Practices",
+        "Avoid"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:cip-mockup-contexts",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/cip/mockup-contexts.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/cip-mockup-contexts.csv",
+      "rows": 20,
+      "sha256": "ce78e3e42528b4541342da5ffe7d6cd1f347ca5b3aabc719d075e97fc28dcbc8",
+      "originalHeaders": [
+        "No",
+        "Context Name",
+        "Category",
+        "Keywords",
+        "Scene Description",
+        "Lighting",
+        "Environment",
+        "Props",
+        "Camera Angle",
+        "Background",
+        "Style Notes",
+        "Best For",
+        "Prompt Modifiers"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Context Name",
+        "Category",
+        "Keywords",
+        "Scene Description",
+        "Style Notes",
+        "Best For"
+      ],
+      "displayFields": [
+        "No",
+        "Context Name",
+        "Category",
+        "Keywords",
+        "Scene Description",
+        "Lighting",
+        "Environment",
+        "Props",
+        "Camera Angle",
+        "Background",
+        "Style Notes",
+        "Best For",
+        "Prompt Modifiers"
+      ],
+      "criticalFields": [
+        "Context Name",
+        "Best For",
+        "Prompt Modifiers"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:cip-styles",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/cip/styles.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/cip-styles.csv",
+      "rows": 20,
+      "sha256": "83c8a0c9ca90074f9c7816b6c13c4cedf50e230dc6a25837b391097fd16540d2",
+      "originalHeaders": [
+        "No",
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Description",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Materials",
+        "Finishes",
+        "Mood",
+        "Best For",
+        "Avoid For"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Description",
+        "Primary Colors",
+        "Secondary Colors",
+        "Mood",
+        "Best For"
+      ],
+      "displayFields": [
+        "No",
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Description",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Materials",
+        "Finishes",
+        "Mood",
+        "Best For",
+        "Avoid For"
+      ],
+      "criticalFields": [
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Best For",
+        "Avoid For"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:icon-styles",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/icon/styles.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/icon-styles.csv",
+      "rows": 15,
+      "sha256": "bd5529115f0f9d918efb27ca7fed9af80be20c8cb1486d6e453550e6af23d748",
+      "originalHeaders": [
+        "id",
+        "name",
+        "description",
+        "stroke_width",
+        "fill",
+        "best_for",
+        "keywords"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "description",
+        "best_for",
+        "keywords"
+      ],
+      "displayFields": [
+        "id",
+        "name",
+        "description",
+        "stroke_width",
+        "fill",
+        "best_for",
+        "keywords"
+      ],
+      "criticalFields": [
+        "best_for"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:logo-colors",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/logo/colors.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/logo-colors.csv",
+      "rows": 55,
+      "sha256": "d0497eb72e2d0342c50af72d64c969174e5fd37cb7756de2474f4eca371150de",
+      "originalHeaders": [
+        "No",
+        "Palette Name",
+        "Category",
+        "Keywords",
+        "Primary Hex",
+        "Secondary Hex",
+        "Accent Hex",
+        "Background Hex",
+        "Text Hex",
+        "Psychology",
+        "Best For",
+        "Avoid For"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Category",
+        "Keywords",
+        "Best For"
+      ],
+      "displayFields": [
+        "No",
+        "Palette Name",
+        "Category",
+        "Keywords",
+        "Primary Hex",
+        "Secondary Hex",
+        "Accent Hex",
+        "Background Hex",
+        "Text Hex",
+        "Psychology",
+        "Best For",
+        "Avoid For"
+      ],
+      "criticalFields": [
+        "Best For",
+        "Avoid For"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:logo-industries",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/logo/industries.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/logo-industries.csv",
+      "rows": 55,
+      "sha256": "3cfaf75aace538e66ffd2274c4ffb07b6ca5e95d022f46b8ee4abe148fd10bee",
+      "originalHeaders": [
+        "No",
+        "Industry",
+        "Keywords",
+        "Recommended Styles",
+        "Primary Colors",
+        "Typography",
+        "Common Symbols",
+        "Mood",
+        "Best Practices",
+        "Avoid"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Industry",
+        "Keywords",
+        "Recommended Styles",
+        "Primary Colors",
+        "Mood",
+        "Best Practices"
+      ],
+      "displayFields": [
+        "No",
+        "Industry",
+        "Keywords",
+        "Recommended Styles",
+        "Primary Colors",
+        "Typography",
+        "Common Symbols",
+        "Mood",
+        "Best Practices",
+        "Avoid"
+      ],
+      "criticalFields": [
+        "Primary Colors",
+        "Typography",
+        "Best Practices",
+        "Avoid"
+      ],
+      "excludedFields": []
+    },
+    {
+      "id": "collateral:logo-styles",
+      "kind": "collateral",
+      "status": "adapted",
+      "canonicalSourceTree": ".claude/skills/design/data",
+      "sourcePath": ".claude/skills/design/data/logo/styles.csv",
+      "importedPath": "skills/design-intelligence/data/collateral/logo-styles.csv",
+      "rows": 55,
+      "sha256": "4a71e11a77bf16f57f33f22bcd24396c5a7815a87f76d4734c7af049c0d657e2",
+      "originalHeaders": [
+        "No",
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Effects",
+        "Best For",
+        "Avoid For",
+        "Complexity",
+        "Era"
+      ],
+      "generatedIdStrategy": "collateral family + row index + style/name field",
+      "searchFields": [
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Primary Colors",
+        "Secondary Colors",
+        "Best For"
+      ],
+      "displayFields": [
+        "No",
+        "Style Name",
+        "Category",
+        "Keywords",
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Effects",
+        "Best For",
+        "Avoid For",
+        "Complexity",
+        "Era"
+      ],
+      "criticalFields": [
+        "Primary Colors",
+        "Secondary Colors",
+        "Typography",
+        "Best For",
+        "Avoid For"
+      ],
+      "excludedFields": []
+    }
+  ],
+  "excludedAssets": [
+    {
+      "path": "src/ui-ux-pro-max/data/design.csv",
+      "status": "experimental-skipped",
+      "rationale": "Low-signal backup-style data; excluded from default lookup to reduce noise."
+    },
+    {
+      "path": "src/ui-ux-pro-max/data/draft.csv",
+      "status": "experimental-skipped",
+      "rationale": "Draft note data; excluded from default lookup."
+    },
+    {
+      "path": ".claude/skills/ui-styling/canvas-fonts/*",
+      "status": "skipped",
+      "rationale": "Font binaries and sidecar licenses require separate asset-pack approval."
+    },
+    {
+      "path": ".claude/skills/*/scripts/*",
+      "status": "skipped-runtime",
+      "rationale": "Script behavior is ported selectively to Node validators; original scripts are not runtime dependencies."
+    },
+    {
+      "path": "cli/src/**/*.ts",
+      "status": "reference-only",
+      "rationale": "CLI detection/template lessons only; installer/update command behavior is not imported."
+    },
+    {
+      "path": "preview/*, screenshots/*, .github/workflows/*",
+      "status": "skipped",
+      "rationale": "Demo, screenshots, and CI do not belong in plugin runtime."
+    }
+  ]
+}

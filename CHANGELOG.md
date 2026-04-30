@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.9.0] - 2026-04-30
+## [2.0.0] - 2026-04-30
+
+### Added - Design intelligence scale-up
+
+- Internal Node-only design intelligence lookup for designer agents with
+  normalized data for product type, style, color, typography, UX, charts, icons,
+  landing patterns, app interfaces, Google Fonts, React performance, slide
+  strategy, collateral, and stack-specific UI guidance.
+- Design context preflight now combines project memory, code search, and
+  retrieval-backed design evidence before design-facing artifacts are produced.
+- Design memory writeback records accepted decisions, rejected alternatives,
+  review findings, and learned design patterns in the existing memory categories.
+- Existing `/supervibe-design`, `/supervibe-audit`, `/supervibe-strengthen`, and
+  `/supervibe` routes now expose design intelligence behavior without adding a
+  new slash command or package script.
+- Design-agent cognitive guardrails enforce the hierarchy: approved design
+  system > project memory > codebase patterns > accessibility law > external
+  lookup.
+- Brand asset, palette drift, brand-to-token sync, slide/deck, chart
+  accessibility, stack UI handoff, and upstream coverage checks are documented
+  and covered by tests.
 
 ### Added - Autonomous loop 10/10 upgrade
 

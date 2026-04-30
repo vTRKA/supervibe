@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/design-memory-entry.schema.json",
+  "title": "Design Memory Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "category", "tags", "fileName", "content"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^design-" },
+    "type": {
+      "type": "string",
+      "enum": ["accepted-decision", "rejected-alternative", "review-finding", "learned-pattern"]
+    },
+    "category": {
+      "type": "string",
+      "enum": ["decisions", "patterns", "learnings"]
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "fileName": { "type": "string", "pattern": "\\.md$" },
+    "content": { "type": "string", "minLength": 20 }
+  }
+}

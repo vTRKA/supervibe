@@ -14,6 +14,10 @@ last-verified: 2026-04-27
 
 # Project Memory
 
+## Design Memory Taxonomy
+
+Design intelligence writes only accepted, rejected, or learned decisions into existing memory categories. Use tags such as `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, `collateral`, and `rejected`. Do not create a separate design memory root.
+
 ## When to invoke
 
 BEFORE starting any non-trivial task — feature, bug fix, refactor, design decision. Especially BEFORE invoking `supervibe:brainstorming` or `supervibe:writing-plans`.

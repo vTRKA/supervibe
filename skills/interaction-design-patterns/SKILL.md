@@ -14,6 +14,10 @@ last-verified: 2026-04-28
 
 # Interaction Design Patterns
 
+## Design Intelligence Preflight
+
+Before selecting interaction patterns, run project memory, code search, and internal `supervibe:design-intelligence` lookup for app-interface, UX, stack, accessibility, and performance guidance. Lookup is advisory and must respect approved motion tokens and reduced-motion rules.
+
 ## When to invoke
 
 WHEN building UI that involves:

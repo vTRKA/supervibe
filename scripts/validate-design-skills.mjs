@@ -21,6 +21,16 @@ const SKILLS = {
   'landing-page': { needsFeedback: true, antipatterns: REQUIRED_ANTIPATTERNS_PROTOTYPE },
   brandbook: { needsFeedback: true, antipatterns: REQUIRED_ANTIPATTERNS_ALL },
   'interaction-design-patterns': { needsFeedback: false, antipatterns: REQUIRED_ANTIPATTERNS_ALL },
+  'design-intelligence': {
+    needsFeedback: false,
+    antipatterns: [
+      ...REQUIRED_ANTIPATTERNS_ALL,
+      'lookup-as-authority',
+      'memory-bypass',
+      'approved-system-overwrite',
+      'uncited-design-claim',
+    ],
+  },
 };
 
 export function validateDesignSkill(skillName, body) {

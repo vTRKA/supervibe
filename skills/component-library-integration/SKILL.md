@@ -15,6 +15,10 @@ last-verified: 2026-04-28
 
 # Component Library Integration
 
+## Design Intelligence Preflight
+
+Before choosing or bridging a component library, run project memory, code search, and internal `supervibe:design-intelligence` lookup for stack-specific UI guidance. Do not install or switch libraries from lookup alone; use existing stack facts and user approval.
+
 ## When to invoke
 - AFTER `brandbook` skill produces `manifest.json` with `status: approved`.
 - BEFORE `prototype-handoff` runs, IF the target stack uses a component library.

@@ -55,6 +55,7 @@ skills:
   - 'supervibe:interaction-design-patterns'
   - 'supervibe:ui-review-and-polish'
   - 'supervibe:project-memory'
+  - 'supervibe:design-intelligence'
   - 'supervibe:confidence-scoring'
 verification:
   - target-platforms-declared
@@ -113,6 +114,10 @@ Before producing any artifact or making any structural recommendation:
 **Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
 **Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+
+## Design Intelligence Evidence
+
+Use `supervibe:design-intelligence` after memory and code search for app-interface, mobile stack, touch, navigation, and accessibility evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows influence platform conventions or safe-area decisions.
 
 ## Procedure
 

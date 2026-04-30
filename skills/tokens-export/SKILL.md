@@ -14,6 +14,10 @@ last-verified: 2026-04-27
 
 # Tokens Export
 
+## Design Intelligence Preflight
+
+Before exporting or auditing tokens, run project memory, code search, and internal `supervibe:design-intelligence` lookup for brand-to-token sync, token drift, component states, and stack handoff evidence. Approved design-system tokens remain source of truth.
+
 ## When to invoke
 
 WHEN:

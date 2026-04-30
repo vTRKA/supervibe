@@ -11,6 +11,8 @@ description: >-
 
 Strengthens an agent (or all flagged agents) by analyzing invocation telemetry, identifying failure modes via **quantitative thresholds**, and proposing concrete edits with diff-gate.
 
+Design-agent strengthening may use internal design intelligence evidence, but it must not add new command files or package scripts. Repeated missing citations, memory bypass, token drift, generic visual advice, or role-boundary confusion are treated as concrete failure modes for `_design` agents.
+
 ## Quantitative metric definitions
 
 All thresholds documented for reproducibility — no AI heuristics.

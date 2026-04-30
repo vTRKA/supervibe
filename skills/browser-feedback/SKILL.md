@@ -14,6 +14,10 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 # Browser Feedback
 
+## Design Intelligence Preflight
+
+When feedback affects design quality, run project memory, code search, and internal `supervibe:design-intelligence` lookup before proposing fixes. Findings should cite token, UX, accessibility, chart, or stack evidence when lookup influenced the recommendation.
+
 ## When to invoke
 Trigger source: `<system-reminder>` containing `[evolve] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id.
 

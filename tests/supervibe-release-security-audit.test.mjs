@@ -14,7 +14,7 @@ test("release security audit passes current repo and produces redacted provenanc
 
   assert.equal(audit.pass, true);
   assert.equal(audit.score, 10);
-  assert.equal(audit.report.packageVersion, "1.9.0");
+  assert.equal(audit.report.packageVersion, "2.0.0");
   assert.ok(audit.report.verificationCommands.includes("npm run audit:release-security"));
   assert.doesNotMatch(audit.reportText, /D:\\ggsel projects\\evolve/);
 });

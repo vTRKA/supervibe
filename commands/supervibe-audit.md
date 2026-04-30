@@ -1,10 +1,12 @@
 ---
-description: "Health-check across project's agents, rules, memory entries, indexes, and CLAUDE.md routing — surfaces stale artifacts and inconsistencies."
+description: "Health-check across project's agents, rules, memory entries, indexes, design-intelligence evidence, and CLAUDE.md routing — surfaces stale artifacts and inconsistencies."
 ---
 
 # /supervibe-audit
 
 Run a full plugin + project health check. No writes — only reports.
+
+Design audit mode uses the same command surface: `/supervibe-audit --design`. It reads design artifacts and reports missing memory preflight, missing design intelligence citations, token drift, brand/collateral asset drift, slide/deck quality gaps, chart accessibility gaps, and UI polish regressions.
 
 ## Procedure
 
@@ -26,7 +28,9 @@ Run a full plugin + project health check. No writes — only reports.
 
 9. **Underperformer scan.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
 
-10. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/supervibe-strengthen`, `/supervibe-adapt`, or "looks good").
+10. **Design intelligence audit.** If design artifacts are in scope, verify that the agent output includes `Design Intelligence Evidence`, memory/code preflight, token compliance, brand asset audit, and the precedence hierarchy `approved design system > project memory > codebase patterns > accessibility law > external lookup`.
+
+11. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/supervibe-strengthen`, `/supervibe-adapt`, or "looks good").
 
 ## Output contract
 

@@ -2,8 +2,8 @@
 // Auto-registers skills directory and injects bootstrap context.
 {
   name: "supervibe",
-  version: "1.9.0",
-  description: "Specialist agents (81), trigger-safe workflow routing, worktree-ready autonomous loops, code graph, semantic RAG, project memory, confidence gates.",
+  version: "2.0.0",
+  description: "Specialist agents (81), trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, semantic RAG, project memory, confidence gates.",
   hooks: {
     config: async (context) => {
       // Register skills directory for OpenCode discovery
@@ -18,7 +18,7 @@
       return {
         messages: [{
           role: "user",
-          content: "I have Supervibe skills available. Use the trigger-safe workflow: brainstorm -> plan -> review -> atomize -> epic -> provider-safe worktree execution when relevant."
+          content: "I have Supervibe skills available. Use the trigger-safe workflow: brainstorm -> plan -> review -> atomize -> epic -> provider-safe worktree execution when relevant. For design work, route through existing design/audit commands with memory, code, and design-intelligence evidence."
         }]
       };
     }

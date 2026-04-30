@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/design-recommendation.schema.json",
+  "title": "Design Recommendation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "precedence", "recommendation", "evidence", "conflicts", "missingDomains", "checklist"],
+  "properties": {
+    "query": { "type": "string" },
+    "sourceCommit": { "type": "string" },
+    "precedence": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "type": "string" }
+    },
+    "recommendation": { "type": "string" },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "design-intelligence-result.schema.json" }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "missingDomains": { "type": "array", "items": { "type": "string" } },
+    "checklist": { "type": "array", "items": { "type": "string" } }
+  }
+}

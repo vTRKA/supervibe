@@ -14,6 +14,10 @@ last-verified: 2026-04-28
 
 # Landing Page
 
+## Design Intelligence Preflight
+
+Before section order, CTA, style, typography, conversion, or visual treatment decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup for product, landing, style, color, typography, UX, and stack evidence.
+
 Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `supervibe:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
 
 ## When to invoke

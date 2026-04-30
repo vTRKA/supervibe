@@ -45,7 +45,15 @@
         "blocked_query",
         "trigger_diagnostics",
         "why_trigger",
-        "readme_update"
+        "readme_update",
+        "design_new",
+        "design_review",
+        "design_system_extension",
+        "mobile_ui",
+        "chart_ux",
+        "presentation_deck",
+        "brand_collateral",
+        "stack_ui_guidance"
       ]
     },
     "phase": {
