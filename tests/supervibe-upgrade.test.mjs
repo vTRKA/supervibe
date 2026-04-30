@@ -55,10 +55,22 @@ test("supervibe-upgrade preserves auto-update lock and state during git clean", 
 test("supervibe-upgrade skips Git LFS smudge before optional lfs pull", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
   const noSmudge = source.indexOf("runGitNoLfsSmudge(['fetch'");
-  const optionalPull = source.indexOf("console.log('[supervibe:upgrade] git lfs pull");
+  const optionalPull = source.indexOf("console.log(`[supervibe:upgrade] git lfs pull");
 
   assert.notEqual(noSmudge, -1, "upgrade should have an LFS-smudge-free git path");
   assert.notEqual(optionalPull, -1, "upgrade should keep optional git lfs pull");
   assert.ok(noSmudge < optionalPull, "fetch/pull must skip LFS smudge before optional LFS pull");
   assert.match(source, /GIT_LFS_SKIP_SMUDGE/);
+});
+
+test("supervibe-upgrade makes optional Git LFS pull bounded and skippable", async () => {
+  const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+
+  assert.match(source, /SUPERVIBE_SKIP_LFS/, "upgrade should support skipping optional LFS prefetch");
+  assert.match(source, /SUPERVIBE_LFS_TIMEOUT_MS/, "upgrade should support a millisecond LFS timeout override");
+  assert.match(source, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, "upgrade should support a seconds-based LFS timeout override");
+  assert.match(source, /timeout,/, "upgrade should pass a timeout to spawnSync");
+  assert.match(source, /ETIMEDOUT/, "upgrade should detect LFS timeout failures");
+  assert.match(source, /join\(PLUGIN_ROOT, '\.git', 'lfs', 'incomplete'\)/, "upgrade should clean incomplete LFS downloads");
+  assert.match(source, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, "upgrade should remove incomplete LFS downloads safely");
 });

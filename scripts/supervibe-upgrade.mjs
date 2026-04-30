@@ -14,7 +14,7 @@
 //   9. Read new version, print diff banner
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   SQLITE_NODE_MIN_VERSION,
@@ -24,6 +24,7 @@ import {
 
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT
   || process.cwd();
+const DEFAULT_LFS_TIMEOUT_MS = 120_000;
 
 function manifestVersion(root) {
   try {
@@ -64,6 +65,44 @@ function runGitNoLfsSmudge(args) {
 function runQuiet(cmd, args) {
   const r = spawnSync(commandForPlatform(cmd), args, { cwd: PLUGIN_ROOT, encoding: 'utf8' });
   return { ok: r.status === 0, stdout: (r.stdout || '').trim(), stderr: (r.stderr || '').trim() };
+}
+
+function isTruthyEnv(value) {
+  return /^(1|true|yes|y)$/i.test(String(value || ''));
+}
+
+function gitLfsTimeoutMs() {
+  const milliseconds = Number(process.env.SUPERVIBE_LFS_TIMEOUT_MS);
+  if (Number.isFinite(milliseconds) && milliseconds > 0) return Math.trunc(milliseconds);
+  const seconds = Number(process.env.SUPERVIBE_LFS_TIMEOUT_SECONDS);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.trunc(seconds * 1000);
+  return DEFAULT_LFS_TIMEOUT_MS;
+}
+
+function cleanupGitLfsIncomplete() {
+  const incomplete = join(PLUGIN_ROOT, '.git', 'lfs', 'incomplete');
+  if (!existsSync(incomplete)) return;
+  console.warn(`[supervibe:upgrade] removing incomplete Git LFS downloads at ${incomplete}`);
+  try {
+    rmSync(incomplete, { recursive: true, force: true });
+  } catch (err) {
+    console.warn(`[supervibe:upgrade] failed to remove incomplete Git LFS downloads: ${err.message}`);
+  }
+}
+
+function runGitLfsPull() {
+  const timeout = gitLfsTimeoutMs();
+  const r = spawnSync(commandForPlatform('git'), ['lfs', 'pull'], {
+    cwd: PLUGIN_ROOT,
+    stdio: 'inherit',
+    timeout,
+  });
+  if (r.status === 0) return true;
+  if (r.error?.code === 'ETIMEDOUT' || r.signal) {
+    console.warn(`[supervibe:upgrade] git lfs pull timed out after ${timeout}ms`);
+  }
+  cleanupGitLfsIncomplete();
+  return false;
 }
 
 function statusLines(stdout) {
@@ -130,9 +169,13 @@ if (!runGitNoLfsSmudge(['fetch', '--tags', '--prune'])) fail('git fetch failed')
 if (!runGitNoLfsSmudge(['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
 
 const lfsCheck = runQuiet('git', ['lfs', 'version']);
-if (lfsCheck.ok) {
-  console.log('[supervibe:upgrade] git lfs pull ...');
-  run('git', ['lfs', 'pull']);
+if (isTruthyEnv(process.env.SUPERVIBE_SKIP_LFS)) {
+  console.log('[supervibe:upgrade] SUPERVIBE_SKIP_LFS=1; skipping git lfs pull (model will lazy-fetch from HF on first use)');
+} else if (lfsCheck.ok) {
+  console.log(`[supervibe:upgrade] git lfs pull (timeout: ${gitLfsTimeoutMs()}ms) ...`);
+  if (!runGitLfsPull()) {
+    console.warn('[supervibe:upgrade] git lfs pull failed or timed out; model will lazy-fetch from HF on first use');
+  }
 } else {
   console.log('[supervibe:upgrade] git-lfs not installed; skipping (model will lazy-fetch from HF on first use)');
 }

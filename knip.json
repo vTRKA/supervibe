@@ -1,46 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
-    "scripts/build-registry.mjs",
-    "scripts/validate-frontmatter.mjs",
-    "scripts/validate-plugin-json.mjs",
-    "scripts/lint-skill-descriptions.mjs",
     "scripts/session-start-check.mjs",
     "scripts/post-edit-stack-watch.mjs",
     "scripts/effectiveness-tracker.mjs",
     "scripts/build-memory-index.mjs",
     "scripts/search-memory.mjs",
-    "scripts/build-code-index.mjs",
-    "scripts/search-code.mjs",
-    "scripts/watch-memory.mjs",
-    "scripts/supervibe-status.mjs",
-    "scripts/preview-server.mjs",
     "scripts/discover-mcps.mjs",
-    "scripts/validate-agent-output-contract.mjs",
-    "scripts/hooks/post-tool-use-log.mjs",
-    "scripts/hooks/pre-write-prototype-guard.mjs",
-    "scripts/hooks/user-prompt-submit-feedback.mjs",
-    "scripts/supervibe-upgrade.mjs",
-    "scripts/supervibe-upgrade-check.mjs",
-    "scripts/supervibe-detect.mjs",
-    "scripts/validate-design-skills.mjs",
-    "scripts/validate-question-discipline.mjs",
-    "scripts/migrate-prototype-configs.mjs",
     "scripts/apply-question-discipline.mjs",
-    "scripts/lib/memory-preflight.mjs",
-    "scripts/measure-token-footprint.mjs",
-    "scripts/validate-no-deep-refs.mjs",
-    "scripts/validate-agent-section-order.mjs",
-    "scripts/audit-plugin-package.mjs",
-    "scripts/regression-suite.mjs",
-    "scripts/lib/regression-scorer.mjs",
-    "scripts/audit-evidence-citations.mjs",
-    "scripts/apply-rag-memory-procedure.mjs",
-    "scripts/hooks/user-prompt-submit-memory-preflight.mjs",
-    "scripts/hooks/pre-tool-use-refactor-advisory.mjs",
-    "scripts/supervibe-install-doctor.mjs"
+    "scripts/hooks/*.mjs"
   ],
-  "ignoreUnresolved": ["node:sqlite"],
   "ignoreIssues": {
     "scripts/lib/autonomous-loop-provider-policy-guard.mjs": ["exports"],
     "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": ["exports"],
@@ -49,7 +18,5 @@
     "scripts/lib/supervibe-work-item-template-catalog.mjs": ["exports"],
     "scripts/lib/supervibe-worktree-session-manager.mjs": ["exports"]
   },
-  "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],
-  "ignore": ["node_modules/**", "**/*.md"],
-  "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli", "@commitlint/config-conventional"]
+  "project": ["scripts/**/*.mjs", "tests/**/*.mjs"]
 }

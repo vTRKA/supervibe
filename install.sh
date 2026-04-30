@@ -68,6 +68,40 @@ git_no_lfs_smudge() {
     "$@"
 }
 
+truthy_env() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|y|Y) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+cleanup_git_lfs_incomplete() {
+  local root="$1"
+  local incomplete="$root/.git/lfs/incomplete"
+  if [ -d "$incomplete" ]; then
+    warn "removing incomplete Git LFS downloads at $incomplete"
+    rm -rf "$incomplete"
+  fi
+}
+
+git_lfs_timeout_seconds() {
+  local timeout_seconds="${SUPERVIBE_LFS_TIMEOUT_SECONDS:-120}"
+  case "$timeout_seconds" in
+    ''|*[!0-9]*|0) timeout_seconds=120 ;;
+  esac
+  printf '%s' "$timeout_seconds"
+}
+
+git_lfs_pull_optional() {
+  local timeout_seconds
+  timeout_seconds="$(git_lfs_timeout_seconds)"
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$timeout_seconds" git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log"
+  else
+    git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log"
+  fi
+}
+
 validate_safe_path() {
   local path="$1"
   [ -n "$path" ] || die "unsafe empty plugin target path"
@@ -313,10 +347,14 @@ fi
 verify_checkout_integrity
 
 # Optional LFS pull. Failure is non-fatal - runtime falls back to HF lazy-fetch.
-if command -v git-lfs >/dev/null 2>&1; then
-  say "git-lfs detected - pulling embedding model"
-  git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log" \
-    || warn "git lfs pull failed; model will lazy-fetch from HuggingFace on first use"
+if truthy_env "${SUPERVIBE_SKIP_LFS:-}"; then
+  warn "SUPERVIBE_SKIP_LFS=1; skipping Git LFS pull. Model will lazy-fetch from HuggingFace on first use."
+elif command -v git-lfs >/dev/null 2>&1; then
+  say "git-lfs detected - pulling embedding model (timeout: $(git_lfs_timeout_seconds)s)"
+  if ! git_lfs_pull_optional; then
+    cleanup_git_lfs_incomplete "$TARGET"
+    warn "git lfs pull failed or timed out; model will lazy-fetch from HuggingFace on first use"
+  fi
 else
   warn "git-lfs not installed; embedding model will lazy-fetch from HuggingFace (~118 MB on first semantic search)"
 fi

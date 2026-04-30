@@ -75,6 +75,7 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate');
   assert.match(src, /SymbolicLink/, 'must prefer native PowerShell symlink before falling back to copy');
+  assert.match(src, /Junction/, 'must try a Windows junction before copying the whole checkout');
   assert.match(src, /\$safeLogName/, 'must sanitize npm script names before using them as Windows log filenames');
   assert.match(src, /Write-Utf8NoBom/, 'must write Claude JSON files without UTF-8 BOM');
   assert.match(src, /replace\(\/\^\\uFEFF\//, 'must tolerate existing BOM-prefixed JSON files');
@@ -133,6 +134,21 @@ test('installers skip Git LFS smudge during clone and checkout', () => {
   assert.match(ps1, /GIT_LFS_SKIP_SMUDGE/, 'PowerShell installer must not let LFS smudge block clone');
   assert.match(ps1, /SkipLfsSmudge/, 'PowerShell installer must expose LFS-smudge-free git operations');
   assert.match(ps1, /Run-Git @\('clone'.*\) 'clone' -SkipLfsSmudge/, 'PowerShell installer must clone with LFS smudge disabled');
+});
+
+test('installers make optional Git LFS pull bounded and skippable', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+
+  for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
+    assert.match(src, /SUPERVIBE_SKIP_LFS/, `${name} must allow users to skip optional LFS prefetch`);
+    assert.match(src, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, `${name} must expose an LFS timeout override`);
+    assert.match(src, /\.git[\\/]lfs[\\/]incomplete|\.git\\lfs\\incomplete/, `${name} must clean incomplete LFS downloads after failure`);
+  }
+  assert.match(sh, /timeout "\$timeout_seconds" git -C "\$TARGET" lfs pull/, 'bash installer must bound git lfs pull when timeout is available');
+  assert.match(ps1, /Invoke-GitLfsPull/, 'PowerShell installer must use a bounded LFS pull helper');
+  assert.match(ps1, /WaitForExit\(\[int\]\(\$timeoutSeconds \* 1000\)\)/, 'PowerShell installer must enforce the LFS timeout');
+  assert.match(ps1, /taskkill \/PID \$ProcessId \/T \/F/, 'PowerShell installer must kill hung git-lfs child processes');
 });
 
 test('install.sh refuses accidental WSL install unless explicitly allowed', () => {

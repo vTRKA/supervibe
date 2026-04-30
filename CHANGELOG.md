@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.7] - 2026-05-01
+
+### Fixed
+
+- Bounded optional Git LFS prefetch during install and upgrade with
+  `SUPERVIBE_SKIP_LFS`, timeout overrides, and cleanup of incomplete downloads.
+- Synced `package-lock.json` for deterministic `npm ci` installs.
+- Cleaned Knip configuration so `npm run check` no longer emits stale
+  dead-code config hints.
+- Made Windows Codex registration try a junction before falling back to a full
+  checkout copy, and suppressed PowerShell `Run-Git` boolean output.
+
 ## [2.0.6] - 2026-05-01
 
 ### Fixed

@@ -203,13 +203,88 @@ function Run-Git {
   }
 }
 
+function Test-TruthyEnv {
+  param([string]$Value)
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  return @('1', 'true', 'yes', 'y') -contains $Value.ToLowerInvariant()
+}
+
+function Get-LfsTimeoutSeconds {
+  $timeoutSeconds = 120
+  $parsedTimeout = 0
+  if ($env:SUPERVIBE_LFS_TIMEOUT_MS -and [int]::TryParse($env:SUPERVIBE_LFS_TIMEOUT_MS, [ref]$parsedTimeout) -and $parsedTimeout -gt 0) {
+    return [Math]::Max(1, [int][Math]::Ceiling($parsedTimeout / 1000))
+  }
+  if ($env:SUPERVIBE_LFS_TIMEOUT_SECONDS -and [int]::TryParse($env:SUPERVIBE_LFS_TIMEOUT_SECONDS, [ref]$parsedTimeout) -and $parsedTimeout -gt 0) {
+    return $parsedTimeout
+  }
+  return $timeoutSeconds
+}
+
+function Join-NativeArguments {
+  param([string[]]$Values)
+  return ($Values | ForEach-Object {
+    $value = [string]$_
+    if ($value -match '[\s"]') { '"' + ($value -replace '"', '\"') + '"' }
+    else { $value }
+  }) -join ' '
+}
+
+function Clear-GitLfsIncomplete {
+  param([string]$Path)
+  $incomplete = Join-Path $Path '.git\lfs\incomplete'
+  if (Test-Path $incomplete) {
+    Warn "removing incomplete Git LFS downloads at $incomplete"
+    Remove-Item -Recurse -Force -LiteralPath $incomplete -ErrorAction SilentlyContinue
+  }
+}
+
+function Stop-ProcessTree {
+  param([int]$ProcessId)
+  if (Get-Command taskkill -ErrorAction SilentlyContinue) {
+    & taskkill /PID $ProcessId /T /F *> $null
+  } else {
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Invoke-GitLfsPull {
+  param([string]$Path)
+  $timeoutSeconds = Get-LfsTimeoutSeconds
+  $stdoutLog = Join-Path $LogDir 'lfs.stdout.log'
+  $stderrLog = Join-Path $LogDir 'lfs.stderr.log'
+  $process = $null
+  try {
+    $gitExe = (Get-Command git -ErrorAction Stop).Source
+    $gitArgs = Join-NativeArguments @('-C', $Path, 'lfs', 'pull')
+    $process = Start-Process -FilePath $gitExe -ArgumentList $gitArgs -PassThru -NoNewWindow -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
+    if (-not $process.WaitForExit([int]($timeoutSeconds * 1000))) {
+      Stop-ProcessTree $process.Id
+      Clear-GitLfsIncomplete $Path
+      Warn "git lfs pull timed out after ${timeoutSeconds}s; model will lazy-fetch from HuggingFace on first use"
+      return $false
+    }
+    if ($process.ExitCode -ne 0) {
+      if (Test-Path $stderrLog) { Get-Content $stderrLog -Tail 40 | Write-Host }
+      Clear-GitLfsIncomplete $Path
+      return $false
+    }
+    return $true
+  } catch {
+    if ($process -and -not $process.HasExited) { Stop-ProcessTree $process.Id }
+    Clear-GitLfsIncomplete $Path
+    Warn "git lfs pull could not start cleanly: $($_.Exception.Message)"
+    return $false
+  }
+}
+
 function Invoke-CleanManagedCheckout {
   param([string]$Path)
   $status = @(git -C $Path status --porcelain 2>$null)
   $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
   if ($trackedDirty.Count -eq 1 -and $trackedDirty[0] -match '^[ MARCUD?!]{2} package-lock\.json$') {
     Warn "restoring package-lock.json drift from previous installer npm install"
-    Run-Git @('-C', $Path, 'checkout', '--', 'package-lock.json') 'restore-package-lock'
+    $null = Run-Git @('-C', $Path, 'checkout', '--', 'package-lock.json') 'restore-package-lock'
     $status = @(git -C $Path status --porcelain 2>$null)
     $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
   }
@@ -222,7 +297,7 @@ function Invoke-CleanManagedCheckout {
     Warn "removing $($untrackedDirty.Count) untracked stale file(s) from managed plugin checkout"
   }
   Say 'cleaning managed checkout (git clean -ffdx)'
-  Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
+  $null = Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
 }
 
 function Move-NonGitTargetAside {
@@ -239,8 +314,8 @@ function Move-NonGitTargetAside {
 if (Test-Path (Join-Path $Target '.git')) {
   Invoke-CleanManagedCheckout $Target
   Say "found existing checkout at $Target - updating to $Ref"
-  Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch' -SkipLfsSmudge
-  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
+  $null = Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch' -SkipLfsSmudge
+  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
   if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail -SkipLfsSmudge)) {
     Warn 'pull --ff-only failed (local diverged or detached head); leaving checkout at current commit'
   }
@@ -250,16 +325,18 @@ if (Test-Path (Join-Path $Target '.git')) {
     Move-NonGitTargetAside $Target
   }
   New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
-  Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone' -SkipLfsSmudge
-  Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
+  $null = Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone' -SkipLfsSmudge
+  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
 }
 
 Test-CheckoutIntegrity
 
 # Optional LFS pull
-if (Get-Command git-lfs -ErrorAction SilentlyContinue) {
-  Say 'git-lfs detected - pulling embedding model'
-  if (-not (Run-Git @('-C', $Target, 'lfs', 'pull') 'lfs' -AllowFail)) {
+if (Test-TruthyEnv $env:SUPERVIBE_SKIP_LFS) {
+  Warn 'SUPERVIBE_SKIP_LFS=1; skipping Git LFS pull. Model will lazy-fetch from HuggingFace on first use.'
+} elseif (Get-Command git-lfs -ErrorAction SilentlyContinue) {
+  Say "git-lfs detected - pulling embedding model (timeout: $(Get-LfsTimeoutSeconds)s)"
+  if (-not (Invoke-GitLfsPull $Target)) {
     Warn 'git lfs pull failed; model will lazy-fetch from HuggingFace on first use'
   }
 } else {
@@ -408,10 +485,16 @@ function Register-Codex {
     New-Item -ItemType SymbolicLink -Path $link -Target $Target -ErrorAction Stop | Out-Null
     Ok "registered with Codex CLI (symlink: $link)"
   } catch {
-    Warn 'symlink failed (no admin / Developer Mode) - falling back to copy'
+    Warn 'symlink failed (no admin / Developer Mode) - trying junction'
     Warn 'enable Developer Mode for symlinks: Settings > For Developers > Developer Mode'
-    Copy-Item -Recurse -Path $Target -Destination $link
-    Ok "registered with Codex CLI (copy: $link)"
+    try {
+      New-Item -ItemType Junction -Path $link -Target $Target -ErrorAction Stop | Out-Null
+      Ok "registered with Codex CLI (junction: $link)"
+    } catch {
+      Warn 'junction failed - falling back to copy'
+      Copy-Item -Recurse -Path $Target -Destination $link
+      Ok "registered with Codex CLI (copy: $link)"
+    }
   }
 }
 
