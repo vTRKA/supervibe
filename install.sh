@@ -5,8 +5,10 @@
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
 #
 # Override defaults:
-#   SUPERVIBE_REF=v1.7.0           # tag, branch, or commit
+#   SUPERVIBE_REF=main             # tag, branch, or commit
 #   SUPERVIBE_REPO=git@github.com:my-fork/supervibe.git
+#   SUPERVIBE_EXPECTED_COMMIT=<sha>          # optional release provenance pin
+#   SUPERVIBE_EXPECTED_PACKAGE_SHA256=<sha>  # optional git-archive checksum pin
 #
 # What it does (idempotent — safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
@@ -22,6 +24,8 @@ set -euo pipefail
 
 REPO_URL="${SUPERVIBE_REPO:-https://github.com/vTRKA/supervibe.git}"
 REF="${SUPERVIBE_REF:-main}"
+EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
+EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="supervibe-marketplace"
 LOG_DIR="${TMPDIR:-/tmp}/evolve-install.$$"
@@ -40,6 +44,42 @@ say() { printf '%b[supervibe-install]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
 ok()  { printf '%b[supervibe-install]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[supervibe-install]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[supervibe-install]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
+
+validate_safe_path() {
+  local path="$1"
+  [ -n "$path" ] || die "unsafe empty plugin target path"
+  case "$path" in
+    "/"|"$HOME"|"$HOME/"|*"/../"*|*".."*) die "unsafe plugin target path: $path" ;;
+  esac
+  case "$path" in
+    "$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME") ;;
+    *) die "unexpected package root: $path" ;;
+  esac
+}
+
+compute_package_sha256() {
+  git -C "$TARGET" archive --format=tar HEAD | node -e '
+    const crypto = require("crypto");
+    const hash = crypto.createHash("sha256");
+    process.stdin.on("data", (chunk) => hash.update(chunk));
+    process.stdin.on("end", () => console.log(hash.digest("hex")));
+  '
+}
+
+verify_checkout_integrity() {
+  if [ -n "$EXPECTED_COMMIT" ]; then
+    local actual_commit
+    actual_commit=$(git -C "$TARGET" rev-parse HEAD)
+    [ "$actual_commit" = "$EXPECTED_COMMIT" ] || die "commit integrity mismatch: expected $EXPECTED_COMMIT got $actual_commit"
+    ok "commit integrity verified: $EXPECTED_COMMIT"
+  fi
+  if [ -n "$EXPECTED_PACKAGE_SHA256" ]; then
+    local actual_sha
+    actual_sha=$(compute_package_sha256)
+    [ "$actual_sha" = "$EXPECTED_PACKAGE_SHA256" ] || die "package checksum mismatch: expected $EXPECTED_PACKAGE_SHA256 got $actual_sha"
+    ok "package checksum verified: $EXPECTED_PACKAGE_SHA256"
+  fi
+}
 
 # ---- preflight ----
 
@@ -80,6 +120,10 @@ fi
 # All CLIs reference one on-disk checkout. Claude Code reads it via marketplace
 # layout; Codex via symlink; Gemini via GEMINI.md @-include.
 TARGET="$CLAUDE_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
+validate_safe_path "$TARGET"
+say "plan: will install or update checkout at $TARGET"
+say "plan: will modify Claude config under $CLAUDE_DIR, Codex plugin link under $CODEX_DIR, and Gemini include under $GEMINI_DIR when those CLIs are detected"
+say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 if [ -d "$TARGET/.git" ]; then
   say "found existing checkout at $TARGET — updating to $REF"
@@ -106,6 +150,8 @@ else
     die "git checkout $REF failed inside fresh clone."
   }
 fi
+
+verify_checkout_integrity
 
 # Optional LFS pull. Failure is non-fatal — runtime falls back to HF lazy-fetch.
 if command -v git-lfs >/dev/null 2>&1; then

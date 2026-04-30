@@ -1,7 +1,8 @@
 ---
 description: >-
-  Explicit entry-point for the writing-plans skill — turns an approved spec into
-  a phased implementation plan with bite-sized TDD tasks.
+  Use AFTER approved spec or when plan/план is ready TO write a phased plan,
+  require review/ревью loop, then atomic task split and epic/эпик handoff before
+  execution; triggers include "сделал план", "review plan", and "atomize".
 ---
 
 # /supervibe-plan
@@ -48,17 +49,35 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
 
 7. **Score against `plan.yaml` rubric.** Gate ≥9. <9 → iterate.
 
-8. **Hand off with execution choice.** Print:
+8. **Mandatory review handoff before execution.** Print:
    ```
-   Plan saved to <path>. Two execution paths:
-
-   1. Subagent-driven (recommended for ≥3 tasks)
-      - I dispatch a fresh subagent per task with two-stage review
-   2. Inline execution (faster for <3 tasks)
-      - Walk tasks sequentially with checkpoint between each
-
-   Which?
+   Plan saved to <path>.
+   Следующий шаг - review loop по плану. Переходим?
    ```
+
+8a. **Machine-readable review handoff.** Include:
+
+   ```text
+   NEXT_STEP_HANDOFF
+   Current phase: plan
+   Artifact: <plan-path>
+   Next phase: plan-review
+   Next command: /supervibe-plan --review <plan-path>
+   Next skill: supervibe:requesting-code-review
+   Stop condition: ask-before-plan-review
+   Why: Execution and atomization are blocked until plan review passes.
+   Question: Next step is the plan review loop. Proceed?
+   END_NEXT_STEP_HANDOFF
+   ```
+
+9. **After review passes.** Hand off to atomization and epic creation:
+   ```
+   Следующий шаг - разбить план на атомарные work items и epic. Переходим?
+   ```
+
+After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`.
+External tracker sync is optional after atomization: `/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/<epic-id>/graph.json`. The native work-item graph remains canonical if no tracker adapter is available.
+Atomized items are templated by work type and preserve labels, severity, owner/component/stack, required gates, verification hints, comments, and repo/package/workspace/subproject routing metadata for status queries.
 
 ## Output contract
 
@@ -72,7 +91,8 @@ Critical path: <N> tasks
 Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS
 
-Next:        choose execution path (subagent-driven | inline)
+Next:        review loop -> atomic work items -> epic -> provider-safe execution preflight
+Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>`
 ```
 
 ## When NOT to invoke

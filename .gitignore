@@ -4,6 +4,8 @@ node_modules/
 .env.local
 registry.yaml
 .DS_Store
+.worktrees/
+worktrees/
 
 # Local-only Claude Code settings (per-machine permissions etc.)
 .claude/settings.local.json
@@ -16,6 +18,7 @@ registry.yaml
 
 # Local invocation logs (test artifacts, not for git)
 .claude/memory/*.jsonl
+.claude/memory/worktree-sessions/
 
 # Models: track quantized only, ignore full + tmp downloads
 models/**/onnx/model.onnx

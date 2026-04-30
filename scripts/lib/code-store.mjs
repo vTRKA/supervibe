@@ -9,6 +9,7 @@ import { join, relative, sep } from 'node:path';
 import { hashFile } from './file-hash.mjs';
 import { chunkCode, detectLanguage } from './code-chunker.mjs';
 import { embed, cosineSimilarity, vectorToBuffer, bufferToVector } from './embeddings.mjs';
+import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
 
 const SUPPORTED_EXTENSIONS = new Set([
   '.ts', '.tsx', '.mts', '.cts',
@@ -109,6 +110,22 @@ export class CodeStore {
       CREATE INDEX IF NOT EXISTS idx_edge_to_name ON code_edges(to_name);
       CREATE INDEX IF NOT EXISTS idx_edge_to_id ON code_edges(to_id);
       CREATE INDEX IF NOT EXISTS idx_edge_kind ON code_edges(kind);
+
+      CREATE TABLE IF NOT EXISTS code_semantic_anchors (
+        anchor_id TEXT PRIMARY KEY,
+        path TEXT NOT NULL,
+        symbol_name TEXT,
+        visibility TEXT NOT NULL,
+        responsibility TEXT,
+        invariants_json TEXT NOT NULL,
+        verification_refs_json TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        source TEXT NOT NULL,
+        FOREIGN KEY(path) REFERENCES code_files(path) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_anchor_path ON code_semantic_anchors(path);
+      CREATE INDEX IF NOT EXISTS idx_anchor_symbol ON code_semantic_anchors(symbol_name);
     `);
     return this;
   }
@@ -211,7 +228,8 @@ export class CodeStore {
 
     const { symbols, edges } = await extractGraph(content, relPath);
     if (symbols.length === 0 && edges.length === 0) {
-      return { symbolsAdded: 0, edgesAdded: 0 };
+      const anchors = this.indexSemanticAnchorsFor(relPath, content);
+      return { symbolsAdded: 0, edgesAdded: 0, anchorsAdded: anchors.anchorsAdded };
     }
 
     const insSym = this.db.prepare(`
@@ -241,7 +259,36 @@ export class CodeStore {
       } catch {}
     }
 
-    return { symbolsAdded: symbols.length, edgesAdded: edges.length };
+    const anchorResult = this.indexSemanticAnchorsFor(relPath, content);
+
+    return { symbolsAdded: symbols.length, edgesAdded: edges.length, anchorsAdded: anchorResult.anchorsAdded };
+  }
+
+  indexSemanticAnchorsFor(relPath, content) {
+    this.db.prepare('DELETE FROM code_semantic_anchors WHERE path = ?').run(relPath);
+    const anchors = parseSemanticAnchors(content, { filePath: relPath });
+    if (anchors.length === 0) return { anchorsAdded: 0 };
+    const insert = this.db.prepare(`
+      INSERT OR REPLACE INTO code_semantic_anchors (
+        anchor_id, path, symbol_name, visibility, responsibility, invariants_json,
+        verification_refs_json, start_line, end_line, source
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const anchor of anchors) {
+      insert.run(
+        anchor.anchorId,
+        anchor.filePath,
+        anchor.symbolName || null,
+        anchor.visibility,
+        anchor.responsibility || null,
+        JSON.stringify(anchor.invariants || []),
+        JSON.stringify(anchor.verificationRefs || []),
+        anchor.startLine,
+        anchor.endLine,
+        anchor.source || 'comment',
+      );
+    }
+    return { anchorsAdded: anchors.length };
   }
 
   /**

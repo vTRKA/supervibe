@@ -1,4 +1,4 @@
-# Agent system (79 agents)
+# Agent system (81 agents)
 
 > Relocated from CLAUDE.md as part of Phase 1 token-economy plan. Content byte-identical.
 
@@ -8,7 +8,7 @@ Routing by `namespace` in frontmatter:
 |-----------|-------|----------|----------------|
 | `_core` | 8 | `code-reviewer`, `refactoring-specialist`, `repo-researcher`, `architect-reviewer`, `root-cause-debugger`, `security-auditor`, `quality-gate-reviewer`, `auth-architect` | Cross-cutting reviews and analyses |
 | `_meta` | 3 | `supervibe-orchestrator`, `memory-curator`, `rules-curator` | Maintenance + dispatch |
-| `_design` | 10 | `ux-ui-designer`, `creative-director`, `ui-polish-reviewer`, `accessibility-reviewer`, `copywriter`, `prototype-builder`, `extension-ui-designer`, `electron-ui-designer`, `tauri-ui-designer`, `mobile-ui-designer` | Design surface (web + extensions + desktop + mobile) |
+| `_design` | 12 | `ux-ui-designer`, `creative-director`, `ui-polish-reviewer`, `accessibility-reviewer`, `copywriter`, `prototype-builder`, `extension-ui-designer`, `electron-ui-designer`, `tauri-ui-designer`, `mobile-ui-designer`, plus presentation specialists | Design surface (web + extensions + desktop + mobile + decks) |
 | `_ops` | 16 | `devops-sre`, `infrastructure-architect`, `db-reviewer`, `ai-integration-architect`, plus researchers + reviewers | Ops + research |
 | `_product` | 6 | `product-manager`, `systems-analyst`, `qa-test-engineer`, `analytics-implementation`, `seo-specialist`, `email-lifecycle` | Product surface |
 | `stacks/laravel` | 4 | `laravel-architect`, `laravel-developer`, `eloquent-modeler`, `queue-worker-architect` | Laravel projects |

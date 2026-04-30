@@ -1,4 +1,4 @@
-# Rules / discipline (20 rules)
+# Rules / discipline (23 rules)
 
 > Relocated from CLAUDE.md as part of Phase 1 token-economy plan. Content byte-identical.
 
@@ -27,3 +27,5 @@ Files in `rules/`. Each enforced by `supervibe:rule-audit` skill and applies-whe
 | `prototype-to-production` | medium | Hardening checklist before promote |
 | `fsd` | medium | Feature-Sliced Design for frontend (when stack matches) |
 | `single-question-discipline` | high | Interactive agents ask one question at a time with markdown + Шаг N/M progress |
+| `agent-install-profiles` | medium | Agent/rule/skill install profiles stay explicit and auditable |
+| `design-system-governance` | high | Design-system changes require token and governance discipline |

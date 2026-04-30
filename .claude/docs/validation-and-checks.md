@@ -18,7 +18,7 @@ This composes:
 7. `validate:no-deep-refs` — skill `references/` files are 1-deep (no transitive nesting)
 8. `validate:agent-section-order` — agents have cache-friendly section order (Persona before Project Context)
 9. `lint:dead-code` — knip clean
-10. `test` — 258+ tests in `tests/*.test.mjs`
+10. `test` — full `node --test tests/*.test.mjs` suite
 
 Individual scripts:
 - `npm run code:index` — full code index rebuild

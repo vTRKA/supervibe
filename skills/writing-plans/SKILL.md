@@ -1,7 +1,7 @@
 ---
 name: writing-plans
 namespace: process
-description: "Use AFTER an approved requirements-spec exists to produce a phased implementation plan with bite-sized tasks, verification commands, and per-phase confidence gates. RU: используется ПОСЛЕ того как есть утверждённая спецификация требований — производит фазированный план реализации с короткими задачами, командами верификации и confidence-гейтами по фазам. Trigger phrases: 'составь план', 'распиши план', 'спланируй реализацию', 'разбей на задачи', 'как мы это будем делать'."
+description: "Use AFTER an approved spec or WHEN plan/план is ready TO produce a phased implementation plan, require review/ревью loop, then split into atomic tasks and epic/эпик before execution. Trigger phrases: составь план, сделал план, review plan, ревью луп, atomic, атомарные задачи, epic."
 allowed-tools: [Read, Grep, Glob, Write, Edit]
 phase: plan
 prerequisites: [requirements-spec]
@@ -57,11 +57,28 @@ Per task: TDD applicable?
 5. **Machine-validate plan** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
 6. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
 7. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
-8. **Handoff** to `supervibe:executing-plans` (or subagent-driven-development if independent tasks).
+7a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
+8. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Следующий шаг - review loop по плану. Переходим?`.
+9. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`.
 
 ## Output contract
 
-Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure section, numbered Tasks with bite-sized steps, Self-Review section, Execution Handoff with subagent vs inline choice.
+Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure section, numbered Tasks with bite-sized steps, Self-Review section, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
+
+Required handoff block after saving the plan:
+
+```text
+NEXT_STEP_HANDOFF
+Current phase: plan
+Artifact: docs/plans/YYYY-MM-DD-<slug>.md
+Next phase: plan-review
+Next command: /supervibe-plan --review docs/plans/YYYY-MM-DD-<slug>.md
+Next skill: supervibe:requesting-code-review
+Stop condition: ask-before-plan-review
+Why: Execution and atomization are blocked until plan review passes.
+Question: Next step is the plan review loop. Proceed?
+END_NEXT_STEP_HANDOFF
+```
 
 ## Guard rails
 
@@ -69,6 +86,8 @@ Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure se
 - DO NOT: skip verification commands — every task ends with one
 - DO NOT: bundle multiple unrelated changes in one task
 - DO NOT: call types/functions not defined elsewhere in the plan
+- DO NOT: offer `/supervibe-execute-plan` before review passes and atomic work items exist
+- DO NOT: finish without `NEXT_STEP_HANDOFF`
 - ALWAYS: show exact code for code steps (engineer reads tasks out of order)
 - ALWAYS: include rollback safety (commit per task or per green test)
 

@@ -1,20 +1,23 @@
 {
   "name": "supervibe-framework",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "test:loop": "node --test tests/autonomous-loop-*.test.mjs tests/command-surface.test.mjs",
     "test:watch": "node --test --watch tests/*.test.mjs",
     "code:index": "node scripts/build-code-index.mjs",
     "code:search": "node scripts/search-code.mjs",
     "supervibe:status": "node scripts/supervibe-status.mjs",
     "supervibe:loop": "node scripts/supervibe-loop.mjs",
+    "supervibe:eval": "node scripts/supervibe-loop.mjs --eval",
     "supervibe:loop:status": "node scripts/supervibe-loop.mjs --status",
+    "supervibe:loop:completion": "node scripts/supervibe-loop.mjs --completion bash",
     "supervibe:upgrade": "node scripts/supervibe-upgrade.mjs",
     "supervibe:upgrade-check": "node scripts/supervibe-upgrade-check.mjs",
     "supervibe:detect": "node scripts/supervibe-detect.mjs",
@@ -37,12 +40,16 @@
     "measure:tokens": "node scripts/measure-token-footprint.mjs",
     "validate:no-deep-refs": "node scripts/validate-no-deep-refs.mjs",
     "validate:agent-section-order": "node scripts/validate-agent-section-order.mjs",
+    "validate:trigger-metadata": "node scripts/validate-trigger-metadata.mjs",
+    "validate:trigger-replay": "node scripts/validate-trigger-replay.mjs",
+    "audit:plugin-package": "node scripts/audit-plugin-package.mjs",
+    "audit:release-security": "node scripts/audit-release-security.mjs",
     "regression:run": "node scripts/regression-suite.mjs",
     "regression:diff": "node scripts/lib/regression-scorer.mjs",
     "audit:evidence": "node scripts/audit-evidence-citations.mjs",
     "rollout:rag-procedure": "node scripts/apply-rag-memory-procedure.mjs",
     "lint:dead-code": "knip --no-progress",
-    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {

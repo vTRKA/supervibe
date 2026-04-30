@@ -26,6 +26,119 @@
     "last_progress_at": { "type": "string" },
     "stop_reason": {},
     "next_action": { "type": "string" },
-    "tasks": { "type": "array" }
+    "tasks": { "type": "array" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["taskId", "agentId", "claimId", "claimedAt", "expiresAt", "status", "attemptId"],
+        "properties": {
+          "taskId": { "type": "string" },
+          "agentId": { "type": "string" },
+          "claimId": { "type": "string" },
+          "claimedAt": { "type": "string" },
+          "expiresAt": { "type": "string" },
+          "status": { "enum": ["active", "released", "completed", "expired", "cancelled", "failed"] },
+          "attemptId": { "type": "string" }
+        }
+      }
+    },
+    "progress_summary": {
+      "type": ["object", "null"],
+      "properties": {
+        "completed": { "type": "integer" },
+        "in_progress": { "type": "integer" },
+        "blockers": { "type": "integer" },
+        "evidence": { "type": "integer" }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["gateId", "taskId", "type", "awaitSpec", "title", "createdAt", "status"],
+        "properties": {
+          "gateId": { "type": "string" },
+          "taskId": { "type": ["string", "null"] },
+          "type": { "enum": ["human", "ci", "pr", "timer", "manual", "custom"] },
+          "awaitSpec": { "type": "string" },
+          "title": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "timeoutAt": { "type": ["string", "null"] },
+          "status": { "enum": ["open", "waiting", "blocked", "approved", "closed", "expired"] },
+          "approvedBy": { "type": ["string", "null"] },
+          "result": { "type": ["string", "null"] },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "gate_summary": {
+      "type": ["object", "null"],
+      "properties": {
+        "open": { "type": "integer" },
+        "approved": { "type": "integer" },
+        "closed": { "type": "integer" },
+        "expired": { "type": "integer" }
+      }
+    },
+    "tool_adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "available", "configured"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "command": { "type": "string" },
+          "available": { "type": "boolean" },
+          "configured": { "type": "boolean" },
+          "safeDefault": { "type": "boolean" },
+          "executionModes": { "type": "array", "items": { "type": "string" } },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "execution_mode": {
+      "enum": ["dry-run", "guided", "fresh-context", "manual"]
+    },
+    "commit_per_task": { "type": "boolean" },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["attemptId", "taskId", "executionMode", "status"],
+        "properties": {
+          "attemptId": { "type": "string" },
+          "taskId": { "type": "string" },
+          "executionMode": { "enum": ["dry-run", "guided", "fresh-context", "manual"] },
+          "status": { "enum": ["started", "tool_failed", "verification_failed", "requeued", "completed", "blocked", "cancelled"] },
+          "outputPath": { "type": ["string", "null"] },
+          "changedFiles": { "type": "array", "items": { "type": "string" } },
+          "verificationEvidence": { "type": "array", "items": { "type": "string" } },
+          "score": { "type": ["object", "null"] },
+          "failurePacket": { "type": ["object", "null"] },
+          "sideEffectId": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "task_graph": { "type": ["object", "null"] },
+    "scheduler": { "type": ["object", "null"] },
+    "ready_summary": {
+      "type": ["object", "null"],
+      "properties": {
+        "ready": { "type": "integer" },
+        "blocked": { "type": "integer" },
+        "claimed": { "type": "integer" },
+        "complete": { "type": "integer" },
+        "open": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "cancelled": { "type": "integer" }
+      }
+    },
+    "requeue_summary": { "type": ["object", "null"] },
+    "failure_packets": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
   }
 }

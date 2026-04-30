@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/autonomous-loop-graph.schema.json",
+  "title": "Autonomous Loop Task Graph",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "graph_id", "tasks"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "graph_id": { "type": "string", "minLength": 1 },
+    "source": {},
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "title",
+        "goal",
+        "category",
+        "status",
+        "priority",
+        "dependencies",
+        "dependents",
+        "relations",
+        "source",
+        "acceptanceCriteria",
+        "verificationCommands",
+        "policyRiskLevel",
+        "stopConditions"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "goal": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": [
+            "open",
+            "ready",
+            "claimed",
+            "in_progress",
+            "blocked",
+            "deferred",
+            "failed",
+            "complete",
+            "cancelled",
+            "policy_stopped",
+            "budget_stopped"
+          ]
+        },
+        "priority": {},
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "dependents": { "type": "array", "items": { "type": "string" } },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "targetId"],
+            "properties": {
+              "type": {
+                "enum": [
+                  "blocks",
+                  "related",
+                  "duplicates",
+                  "supersedes",
+                  "replies_to",
+                  "discovered_from",
+                  "parent_child"
+                ]
+              },
+              "targetId": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "parentId": { "type": ["string", "null"] },
+        "epicId": { "type": ["string", "null"] },
+        "source": {},
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+        "verificationCommands": { "type": "array", "items": { "type": "string" } },
+        "policyRiskLevel": { "enum": ["none", "low", "medium", "high"] },
+        "stopConditions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

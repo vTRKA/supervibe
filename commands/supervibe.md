@@ -1,10 +1,21 @@
 ---
 description: >-
-  Auto-detect which Supervibe phase to run (genesis / audit / strengthen / adapt /
-  score / update) based on the current project state.
+  Use WHEN the user asks what to do next, says brainstorm/брейншторм or
+  plan/план is ready, asks review/ревью, atomic task split, epic/эпик creation,
+  autonomous run, worktree isolation, status, stop/resume, or diagnose/why-trigger
+  TO route to the next safe Supervibe workflow command without mutating first.
 ---
 
 # /supervibe
+
+Trigger router for the full workflow chain: brainstorm -> plan -> review -> atomic work items -> epic -> provider-safe worktree run. It also handles work-item questions, status, dashboard output, integration readiness, saved views, structured queries, local reports, autonomous replay evals, deferred work, guided forms, interactive command palette, sync bundle export/import, notifications, stop/resume, and trigger diagnostics (`--diagnose-trigger`, `--why-trigger`) before any mutating action.
+
+For workflow handoffs, ask the concrete next-step question instead of stopping at the previous phase:
+- Brainstorm ready: `Следующий шаг - написать план. Переходим?`
+- Plan ready: `Следующий шаг - review loop по плану. Переходим?`
+- Review passed: `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`
+- Epic run requested: `Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?`
+- Work status question: route "what is ready?", "what is blocked?", "who owns this?", "what changed?", and "what should I run next?" to the work-item query layer.
 
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.
 
@@ -29,7 +40,9 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 
 2. **Show the user the report.** Print every check's status (✓ pass / ⚠ triggered) with one-line evidence. Do not paraphrase — the detector's wording is precise.
 
-3. **Stop at first triggered check.** Do not chain phases automatically — propose ONE next command and wait for user confirmation. The user might want to skip an audit and go straight to update, etc.
+3. **Return the next safe route.** Producer phases must include the chain handoff question; status questions should use the work-item query layer for ready, blocked, claimed, stale, orphan, delegated inbox, duplicate, drift, and integration views. Ask before mutation.
+
+Advanced loop helpers are direct routes: `/supervibe-loop --quickstart` creates safe local folders, `/supervibe-loop --onboard` reports readiness, `/supervibe-loop --watch` writes a read-only heartbeat snapshot, `/supervibe-loop --defer <item> --until <timestamp>` defers local graph work, `/supervibe-loop --notify terminal,inbox` routes bounded run events, `/supervibe-loop --export-sync-bundle` creates a redacted portable bundle, `/supervibe-loop --import-sync-bundle --dry-run` validates incoming bundles without remote mutation, `/supervibe-loop --eval` runs local replay evals and scorecards, `/supervibe-loop --eval-live` is opt-in and budget-gated, `/supervibe-status --eval-report` prints local eval summaries, `/supervibe-status --dashboard` writes a static run dashboard, `/supervibe-status --integrations` reports optional external integrations, `/supervibe-status --view|--query` filters large work-item graphs, `/supervibe-status --save-view` stores portable local views, `/supervibe-status --report daily|weekly|sla` renders redacted markdown reports, `/supervibe --interactive` and `/supervibe-status --interactive` open the optional command palette when a TTY exists, `/supervibe-loop --create-work-item --interactive` opens guided local forms with no-tty fallback, `/supervibe-loop --atomize-plan <plan> --preview` shows a redacted dry-run preview, and `/supervibe-loop --completion <shell>` prints shell completions.
 
 4. **Ask for confirmation** before running anything destructive. `/supervibe-update` and `/supervibe-adapt` modify files — explicit "yes" required. `/supervibe-audit` and `/supervibe-score --record` are read-only scoring/persistence flows and can run immediately if the user agrees.
 
@@ -43,7 +56,7 @@ Project:  <path>
 Plugin:   <path>
 
   ✓ upstream-behind             → plugin is up to date with upstream
-  ✓ version-bump-unacked        → project + plugin both on 1.8.1
+  ✓ version-bump-unacked        → project + plugin both on 1.9.0
   ⚠ project-not-scaffolded      → no .claude/agents/ and no CLAUDE.md — run genesis first
   ✓ underperformers             → 12 invocations, no underperformers
   ✓ stale-artifacts             → 0 stale artifact(s) (under 3-threshold)

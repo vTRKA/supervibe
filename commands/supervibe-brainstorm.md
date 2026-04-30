@@ -1,19 +1,20 @@
 ---
 description: >-
-  Explicit entry-point for the brainstorming skill — collaborative dialogue that
-  ends with an approved spec at docs/specs/. Use to remove ambiguity before any
-  creative work.
+  Use WHEN starting brainstorm/брейншторм, clarifying a feature, or the user
+  says "я сделал брейншторм" and needs the next plan/план step TO produce an
+  approved spec and hand off with "Next: /supervibe-plan" instead of stopping.
 ---
 
 # /supervibe-brainstorm
 
-Direct trigger for the `supervibe:brainstorming` skill. Use this when you want to be explicit about entering brainstorm mode rather than relying on the AI to detect it from the phrasing of your request.
+Direct trigger for the `supervibe:brainstorming` skill. Use this when you want to be explicit about entering brainstorm mode rather than relying on the AI to detect it from the phrasing of your request. After the spec is approved, always hand off to planning with the exact next-step question.
 
 ## Invocation forms
 
 ### `/supervibe-brainstorm <topic>`
 
 Examples:
+- `/supervibe-brainstorm "idea"`
 - `/supervibe-brainstorm payment idempotency`
 - `/supervibe-brainstorm rebuilding the dashboard for editor users`
 - `/supervibe-brainstorm моки для preview-server`  *(Russian topics work — the skill is bilingual)*
@@ -38,14 +39,28 @@ Treat the most recent user message as the topic.
 
 4. **Save the spec.** The skill emits `docs/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
+5. **Mandatory handoff.** Print `Следующий шаг - написать план. Переходим?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
+
+5a. **Machine-readable handoff.** Include:
+
+   ```text
+   NEXT_STEP_HANDOFF
+   Current phase: brainstorm
+   Artifact: <spec-path>
+   Next phase: plan
+   Next command: /supervibe-plan <spec-path>
+   Next skill: supervibe:writing-plans
+   Stop condition: ask-before-plan
+   Why: Brainstorm output must become a reviewed implementation plan before execution.
+   Question: Next step is writing the implementation plan. Proceed?
+   END_NEXT_STEP_HANDOFF
+   ```
+
 5. **Machine-validate the spec.** Run `node scripts/validate-spec-artifacts.mjs --file <spec>`. Any failure blocks handoff.
 
 6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.claude/confidence-log.jsonl`.
 
-7. **Hand off.** Print the spec path + the recommended next step:
-   - Complexity 1-2 → just implement directly
-   - Complexity 3-6 → `/supervibe-plan <spec-path>`
-   - Complexity 7+ → `/supervibe-plan <spec-path>` plus parallelization analysis
+7. **Hand off.** Print the spec path + `/supervibe-plan <spec-path>` for every completed brainstorm unless the user explicitly cancels planning. Small changes may get a compact plan, but brainstorm must not silently jump to implementation.
 
 ## Output contract
 
@@ -59,6 +74,7 @@ Score:     <N>/10  Rubric: requirements
 Validator: validate-spec-artifacts PASS
 
 Next:      /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan <spec-path>`
 ```
 
 ## When NOT to invoke

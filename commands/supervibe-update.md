@@ -155,8 +155,8 @@ Successful upgrade:
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         v1.6.0
-After:          v1.8.1
-Tests:          320 / 320 passed
+After:          v1.9.0
+Tests:          642 / 642 passed
 Validators:     10 / 10 clean (+ knip)
 LFS:            pulled (or: skipped — lazy-fetch fallback)
 
@@ -174,7 +174,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v1.8.1
+Target:         v1.9.0
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -197,7 +197,7 @@ Dry-run:
 ```
 === Supervibe Update — DRY RUN ===
 Current:        v1.6.0
-Latest:         v1.8.1
+Latest:         v1.9.0
 Changelog summary: [from CHANGELOG.md since v1.6.0]
 
 Breaking changes detected: 2

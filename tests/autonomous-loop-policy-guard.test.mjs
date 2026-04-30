@@ -9,6 +9,15 @@ test("production deployment requires approval", () => {
   assert.equal(approvalLeaseAllows({ environment: "staging" }, action), false);
 });
 
+test("production deployment can create a blocked human gate", () => {
+  const result = guardAction({ taskId: "deploy-1", type: "production deploy", environment: "production" }, null, { createGate: true });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.status, "deployment_approval_required");
+  assert.equal(result.gate.type, "human");
+  assert.equal(result.gate.taskId, "deploy-1");
+});
+
 test("disallowed bypass request is blocked", () => {
   assert.equal(guardAction({ description: "rate-limit bypass" }).status, "policy_stopped");
 });

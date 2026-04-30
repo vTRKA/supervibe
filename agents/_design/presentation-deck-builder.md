@@ -33,6 +33,7 @@ skills:
   - 'supervibe:prototype'
   - 'supervibe:preview-server'
   - 'supervibe:project-memory'
+  - 'supervibe:code-search'
   - 'supervibe:confidence-scoring'
 verification:
   - deck-json-valid
@@ -72,6 +73,7 @@ Before producing any artifact:
 1. Search memory for prior deck decisions: `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<deck topic>"`.
 2. Search the repo for source content and existing brand assets: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>"`.
 3. Read open browser feedback with `npm run feedback:status`.
+4. When changing shared preview/export helpers, run code graph caller/callee checks before claiming blast radius is safe.
 
 ## Procedure
 

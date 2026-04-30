@@ -54,5 +54,17 @@
     "Create a chrome-extension popup prototype at 360x600 respecting MV3 CSP.",
     "Wire the feedback overlay to a fresh preview; verify config.json gate.",
     "Build a Tauri main-window prototype noting webview compat constraints."
+  ],
+  "autonomous-loop": [
+    { "id": "linear-graph", "kind": "graph", "goal": "Complete a three-task dependency chain with deterministic ready-front ordering." },
+    { "id": "parallel-ready-front", "kind": "graph", "goal": "Select two highest-priority independent tasks within concurrency budget." },
+    { "id": "cycle-failure", "kind": "graph", "goal": "Detect a dependency cycle and block before execution." },
+    { "id": "human-gate", "kind": "gate", "goal": "Create and list a human gate for high-risk approval." },
+    { "id": "timer-gate", "kind": "gate", "goal": "Represent an async timer gate without hidden background work." },
+    { "id": "ui-story-browser-evidence", "kind": "verification", "goal": "Require browser or preview evidence for a UI story." },
+    { "id": "missing-credential-block", "kind": "policy", "goal": "Block missing credentials without storing raw secrets." },
+    { "id": "repeated-failure-circuit", "kind": "failure", "goal": "Open a no-progress circuit after repeated failure signatures." },
+    { "id": "production-prep-stop", "kind": "policy", "goal": "Complete production-prep while keeping production mutation gated." },
+    { "id": "fresh-context-stub-success", "kind": "execution", "goal": "Run a fresh-context stub attempt with completion signal and evidence summary." }
   ]
 }

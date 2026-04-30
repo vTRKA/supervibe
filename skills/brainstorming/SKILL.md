@@ -1,7 +1,7 @@
 ---
 name: brainstorming
 namespace: process
-description: "Use BEFORE any creative work (new feature, component, behavior change) to explore user intent, requirements, and design through collaborative dialogue, ending with an approved spec — gates implementation behind explicit design approval. RU: используется ПЕРЕД любой творческой работой (новая фича, компонент, изменение поведения) — диалог проясняющий намерение, требования, дизайн до утверждённой спецификации; блокирует реализацию до явного утверждения. Trigger phrases: 'давай добавим', 'давай придумаем', 'хочу сделать', 'как подойти к', 'спроектируй', 'обсудим'."
+description: "Use BEFORE any creative work or WHEN the user says brainstorm/брейншторм, 'я сделал брейншторм', or asks for the next plan/план step TO clarify intent, produce an approved spec, and hand off with Next: /supervibe-plan. Trigger phrases: brainstorm, брейншторм готов, не останавливайся после brainstorm, next step, план."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: brainstorm
 prerequisites: []
@@ -60,6 +60,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
 11. **User review of written spec** — explicit approval required.
 12. **Handoff** to `supervibe:writing-plans`.
+13. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
 
 ## Output contract
 
@@ -69,13 +70,30 @@ After saving the spec, ALWAYS print a one-line hand-off so the user knows the ne
 
 ```
 Spec saved to docs/specs/YYYY-MM-DD-<slug>-design.md
-Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md  (for complexity 3+)
-      or implement directly (for complexity 1-2)
+Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Следующий шаг - написать план. Переходим?
+```
+
+Also include the machine-readable handoff block:
+
+```text
+NEXT_STEP_HANDOFF
+Current phase: brainstorm
+Artifact: docs/specs/YYYY-MM-DD-<slug>-design.md
+Next phase: plan
+Next command: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Next skill: supervibe:writing-plans
+Stop condition: ask-before-plan
+Why: Brainstorm output must become a reviewed implementation plan before execution.
+Question: Next step is writing the implementation plan. Proceed?
+END_NEXT_STEP_HANDOFF
 ```
 
 ## Guard rails
 
 - DO NOT: implement, scaffold, write code before design approved
+- DO NOT: offer direct implementation after brainstorm unless the user explicitly cancels planning
+- DO NOT: finish without `NEXT_STEP_HANDOFF`
 - DO NOT: ask multi-part questions (one at a time)
 - DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
 - DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension

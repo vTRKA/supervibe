@@ -18,13 +18,15 @@ After install, ask: "Tell me about your skills" or just start working — skills
 
 Supervibe updates automatically when you restart OpenCode (re-installed from git on each launch).
 
-To pin a specific version:
+To follow the same live channel explicitly:
 
 ```json
 {
-  "plugin": ["supervibe@git+https://github.com/vTRKA/supervibe.git#v1.7.0"]
+  "plugin": ["supervibe@git+https://github.com/vTRKA/supervibe.git#main"]
 }
 ```
+
+For reproducible installs, pin a specific commit SHA instead of a release tag.
 
 ## How it works
 

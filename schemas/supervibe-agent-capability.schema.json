@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Supervibe Agent Capability Profile",
+  "type": "object",
+  "required": ["agentId", "capabilities"],
+  "additionalProperties": true,
+  "properties": {
+    "agentId": { "type": "string", "minLength": 1 },
+    "source": { "type": "string" },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "stacks": { "type": "array", "items": { "type": "string" } },
+        "moduleTypes": { "type": "array", "items": { "type": "string" } },
+        "riskLevels": { "type": "array", "items": { "type": "string" } },
+        "testTypes": { "type": "array", "items": { "type": "string" } },
+        "ui": { "type": "boolean" },
+        "browser": { "type": "boolean" },
+        "integration": { "type": "boolean" },
+        "refactorScope": { "type": "array", "items": { "type": "string" } },
+        "docs": { "type": "boolean" },
+        "releasePrep": { "type": "boolean" },
+        "reviewer": { "type": "boolean" },
+        "worktree": { "type": "boolean" }
+      }
+    }
+  }
+}

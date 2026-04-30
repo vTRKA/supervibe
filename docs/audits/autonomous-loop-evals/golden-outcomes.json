@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-04-30T00:00:00.000Z",
+  "outcomes": {
+    "plan-execution": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review final report", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "brainstorm-to-plan": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "write plan", "stopReason": "handoff_required", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "plan-review-loop": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "run plan review", "stopReason": "review_required", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "atomization": { "status": "COMPLETE", "readyFrontCount": 1, "blockedCount": 1, "nextAction": "claim ready work", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "worktree-run": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "archive worktree session", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "blocked-credentials": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "request credential reference", "stopReason": "missing_access", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "flaky-tests": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "requeue flaky check", "stopReason": "flaky_check", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "ui-verification": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review screenshot evidence", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "integration-repair": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review integration evidence", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "refactor": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review blast radius", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "docs-only-change": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review docs", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "release-prep": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "run release security audit", "finalAcceptancePass": true, "qualityMinScore": 8 },
+    "policy-stop": { "status": "POLICY_STOPPED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "remove unsafe flag", "stopReason": "policy_gate", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "resume-after-compaction": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "resume with handoff packet", "stopReason": "context_budget", "finalAcceptancePass": false, "qualityMinScore": 7 }
+  }
+}

@@ -4,12 +4,16 @@
 
 Every agent output is scored against an applicable rubric (0–10). Gate threshold: **≥9** for non-blocking acceptance, **≥8** with override allowed once-per-task with logged rationale.
 
-**12 rubrics** (in `confidence-rubrics/*.yaml`):
+**16 rubrics** (in `confidence-rubrics/*.yaml`):
 
 | Rubric | Applies to |
 |--------|-----------|
 | `agent-delivery` | Any agent's task output (most common) |
 | `agent-quality` | Newly authored / strengthened agent files |
+| `agent-quality-ab` | A/B comparison of agent quality improvements |
+| `autonomous-loop` | Autonomous loop state, evidence, safety, and completion quality |
+| `autonomy-readiness` | Preflight readiness for long-running autonomous execution |
+| `execute-plan` | Plan execution readiness and completion gates |
 | `skill-quality` | Skill markdown files |
 | `rule-quality` | Rule markdown files |
 | `requirements` | Requirements docs from systems-analyst |

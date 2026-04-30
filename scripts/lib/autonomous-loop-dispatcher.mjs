@@ -1,5 +1,8 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
+import { createAgentCapabilityRegistry, matchAgentForTask } from "./supervibe-agent-capability-registry.mjs";
+import { explainAssignment } from "./supervibe-assignment-explainer.mjs";
+import { selectReviewerPreset, selectWorkerPreset } from "./supervibe-worker-reviewer-presets.mjs";
 
 const DEFAULT_CHAINS = {
   design: ["creative-director", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer", "stack-developer"],
@@ -16,8 +19,16 @@ export function dispatchTask(task, options = {}) {
   const category = task.category || "implementation";
   const chain = DEFAULT_CHAINS[category] || DEFAULT_CHAINS.implementation;
   const underperformers = new Set(options.underperformers || []);
-  const primary = chain.find((agent) => !underperformers.has(agent)) || chain[0];
-  const reviewer = chain.find((agent) => agent !== primary && /reviewer|auditor|engineer|gate/.test(agent))
+  const anchorOwner = selectAnchorOwner(task, options.anchorOwnership || {});
+  const registry = options.capabilityRegistry || createAgentCapabilityRegistry();
+  const useCapabilityRegistry = Boolean(options.capabilityRegistry || options.useCapabilityRegistry);
+  const capabilityMatch = anchorOwner || !useCapabilityRegistry ? null : matchAgentForTask(task, { registry });
+  const workerPreset = selectWorkerPreset(task);
+  const primaryCandidate = anchorOwner || (capabilityMatch?.status === "matched" ? capabilityMatch.agent.agentId : chain[0]);
+  const preferredChain = primaryCandidate ? [primaryCandidate, ...chain.filter((agent) => agent !== primaryCandidate)] : chain;
+  const primary = preferredChain.find((agent) => !underperformers.has(agent)) || preferredChain[0];
+  const reviewerPreset = selectReviewerPreset({ task, workerAgentId: primary });
+  const reviewer = reviewerPreset.agentId || chain.find((agent) => agent !== primary && /reviewer|auditor|engineer|gate/.test(agent))
     || "quality-gate-reviewer";
   const availability = checkAvailabilitySync(primary, reviewer, options.availableAgents);
   const capabilityGaps = availability.available ? [] : availability.missing;
@@ -26,16 +37,27 @@ export function dispatchTask(task, options = {}) {
     taskId: task.id,
     primaryAgentId: primary,
     reviewerAgentId: reviewer,
-    fallbackAgents: chain.filter((agent) => agent !== primary),
-    chain,
-    reason: `category=${category}; risk=${task.policyRiskLevel || "low"}`,
+    fallbackAgents: preferredChain.filter((agent) => agent !== primary),
+    chain: preferredChain,
+    reason: `category=${category}; risk=${task.policyRiskLevel || "low"}${anchorOwner ? `; anchorOwner=${anchorOwner}` : ""}${capabilityMatch?.status === "matched" ? `; capability=${capabilityMatch.score}` : ""}`,
     routingSignals: {
       category,
       stack: options.stack || task.stack || "unknown",
       fileImpact: task.fileImpact || task.filesTouched || [],
+      semanticAnchors: (task.semanticAnchors || []).map((anchor) => anchor.anchorId || anchor.id),
+      fileLocalContractRefs: task.fileLocalContractRefs || [],
       previousResults: options.previousResults || [],
       policyRisk: task.policyRiskLevel || "low",
+      workerPreset: workerPreset.name,
+      reviewerPreset: reviewerPreset.name,
     },
+    assignmentExplanation: explainAssignment({
+      task,
+      worker: { agentId: primary, reasons: capabilityMatch?.reasons || [`preset=${workerPreset.name}`], requiredEvidence: workerPreset.requiredEvidence },
+      reviewer: { agentId: reviewer, preset: reviewerPreset.name, requiredEvidence: reviewerPreset.requiredEvidence },
+      alternatives: capabilityMatch?.alternatives || [],
+      requiredEvidence: [...(workerPreset.requiredEvidence || []), ...(reviewerPreset.requiredEvidence || [])],
+    }),
     availabilityStatus: availability.available ? "available" : "missing",
     availabilityChecks: {
       primary: !availability.missing.includes(primary),
@@ -47,6 +69,17 @@ export function dispatchTask(task, options = {}) {
     capabilityGaps,
     requiredHandoffContract: ["summary", "decisions", "filesTouched", "openRisks", "verificationEvidence", "confidenceScore"],
   };
+}
+
+function selectAnchorOwner(task = {}, ownership = {}) {
+  const anchorRefs = [
+    ...(task.anchorRefs || []),
+    ...(task.semanticAnchors || []).map((anchor) => anchor.anchorId || anchor.id),
+  ].filter(Boolean);
+  for (const anchorRef of anchorRefs) {
+    if (ownership[anchorRef]) return ownership[anchorRef];
+  }
+  return null;
 }
 
 export async function loadAvailableAgents(rootDir) {

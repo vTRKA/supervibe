@@ -1,4 +1,4 @@
-# Skill system (40 skills)
+# Skill system (51 skills)
 
 > Relocated from CLAUDE.md as part of Phase 1 token-economy plan. Content byte-identical.
 
@@ -27,6 +27,12 @@ Key skills by phase:
 | Score | `supervibe:confidence-scoring` | Apply rubric to artifact |
 | Debug | `supervibe:systematic-debugging` | Root-cause methodology |
 | Debug | `supervibe:incident-response` | Postmortem template |
+| Build | `supervibe:chrome-extension-build` | Chrome extension build/release workflow |
+| Build | `supervibe:component-library-integration` | Component library adoption workflow |
+| Build | `supervibe:error-envelope-design` | Error envelope and API error consistency |
+| Build | `supervibe:feature-flag-rollout` | Feature flag rollout and rollback discipline |
+| Build | `supervibe:auth-flow-design` | Auth flow and identity-provider planning |
+| Loop | `supervibe:autonomous-agent-loop` | Bounded autonomous loop planning/execution discipline |
 | Maintain | `supervibe:strengthen` | Bring weak artifact to spec |
 | Maintain | `supervibe:adapt` | Adapt artifact to new context |
 | Maintain | `supervibe:audit` | Health check of artifacts |
@@ -39,7 +45,11 @@ Key skills by phase:
 | Design | `supervibe:landing-page` | Landing page from brief |
 | Design | `supervibe:interaction-design-patterns` | Interaction patterns |
 | Design | `supervibe:prototype` | HTML/CSS prototypes |
+| Design | `supervibe:prototype-handoff` | Prototype-to-implementation handoff |
+| Design | `supervibe:presentation-deck` | Storyboard and deck production workflow |
 | Design | `supervibe:experiment` | A/B test scaffolding |
+| Preview | `supervibe:preview-server` | Live preview server workflow |
+| Preview | `supervibe:browser-feedback` | Browser feedback capture workflow |
 | Genesis | `supervibe:genesis` | Initial scaffold |
 | Genesis | `supervibe:new-feature` | Per-feature scaffold |
 | SEO | `supervibe:seo-audit` | SEO checklist |
@@ -48,5 +58,6 @@ Key skills by phase:
 | Misc | `supervibe:requesting-code-review` | Open code review |
 | Misc | `supervibe:receiving-code-review` | Process review feedback |
 | Misc | `supervibe:finishing-a-development-branch` | Wrap-up checklist |
+| Test | `supervibe:test-strategy` | Test plan and coverage strategy |
 
-Total: 40. **Every skill** has `name`, `namespace`, `description`, `allowed-tools`, `phase`, `prerequisites`, `emits-artifact`, `confidence-rubric`, `gate-on-exit`, `version`, `last-verified` in frontmatter.
+Total: 51. **Every skill** has `name`, `namespace`, `description`, `allowed-tools`, `phase`, `prerequisites`, `emits-artifact`, `confidence-rubric`, `gate-on-exit`, `version`, `last-verified` in frontmatter.

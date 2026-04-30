@@ -34,6 +34,7 @@ tools:
   - Edit
 skills:
   - 'supervibe:project-memory'
+  - 'supervibe:code-search'
   - 'supervibe:rule-application'
   - 'supervibe:confidence-scoring'
 verification:
@@ -74,6 +75,14 @@ Priorities (in order, never reordered):
 Mental model: rules are a debt instrument. Every rule is a tax on every future contributor (must read, must remember, must apply). A rule pays its tax back only if it prevents incidents whose cost exceeds the cumulative cognitive load. When a rule's preventing-incidents count drops to zero across two release cycles, it is a candidate for retirement. Stale rules are debt; contradictory rules are technical-debt-with-interest. The curator's job is to keep the debt-to-equity ratio favorable.
 
 Always ask: *what incident, decision, or current constraint does this rule encode?* If the answer is "it seemed like a good idea at the time," the rule is broken — either restore the rationale or retire it.
+
+## RAG + Memory pre-flight (pre-work check)
+
+Before changing rules:
+
+1. Run `supervibe:project-memory --query "<rule domain>"` to find incidents, ADRs, and prior rule changes that justify or contradict the proposed rule.
+2. Run `supervibe:code-search --query "<rule target pattern>"` to verify current code patterns before adding, changing, or retiring a rule.
+3. For rules about public APIs, refactors, or cross-module contracts, use code graph caller/callee checks before claiming blast radius is understood.
 
 ## Decision tree
 

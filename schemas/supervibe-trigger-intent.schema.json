@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/supervibe-trigger-intent.schema.json",
+  "title": "Supervibe Trigger Intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "phrase",
+    "locale",
+    "intent",
+    "phase",
+    "command",
+    "skill",
+    "confidenceFloor",
+    "mutationRisk",
+    "prerequisites",
+    "nextQuestionIncludes",
+    "requiredSafety"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "phrase": {
+      "type": "string",
+      "minLength": 3
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["ru", "en"]
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "brainstorm_to_plan",
+        "plan_review",
+        "atomize_plan",
+        "create_epic",
+        "autonomous_epic_run",
+        "worktree_autonomous_run",
+        "execute_plan",
+        "ready_query",
+        "blocked_query",
+        "trigger_diagnostics",
+        "why_trigger",
+        "readme_update"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 2
+    },
+    "command": {
+      "type": "string",
+      "pattern": "^/supervibe"
+    },
+    "skill": {
+      "type": "string",
+      "pattern": "^supervibe:"
+    },
+    "confidenceFloor": {
+      "type": "number",
+      "minimum": 0.8,
+      "maximum": 1
+    },
+    "mutationRisk": {
+      "type": "string",
+      "enum": ["none", "writes-docs", "writes-tracker", "creates-worktree", "executes-code"]
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "nextQuestionIncludes": {
+      "type": "string",
+      "minLength": 8
+    },
+    "requiredSafety": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    }
+  }
+}

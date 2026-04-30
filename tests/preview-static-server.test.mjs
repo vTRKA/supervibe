@@ -117,7 +117,7 @@ test('server reports active SSE clients count', async () => {
 });
 
 test('derivePreviewArtifactSlug supports prototypes and presentations', () => {
-  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/prototypes/checkout/index.html'), 'checkout');
-  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/presentations/investor/preview/index.html'), 'presentation:investor');
-  assert.strictEqual(derivePreviewArtifactSlug('D:/repo/public/index.html'), 'unknown');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/prototypes/checkout/index.html'), 'checkout');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/presentations/investor/preview/index.html'), 'presentation:investor');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/public/index.html'), 'unknown');
 });

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/autonomous-loop-failure-packet.schema.json",
+  "title": "Autonomous Loop Failure Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taskId",
+    "attemptId",
+    "contractRef",
+    "failedScenario",
+    "expectedEvidence",
+    "observedEvidence",
+    "firstDivergentModule",
+    "firstDivergentMarker",
+    "suggestedNextAction",
+    "requeueReason",
+    "confidenceCap"
+  ],
+  "properties": {
+    "taskId": { "type": "string", "minLength": 1 },
+    "attemptId": { "type": "string", "minLength": 1 },
+    "contractRef": { "type": "string", "minLength": 1 },
+    "failedScenario": { "type": "string", "minLength": 1 },
+    "expectedEvidence": {},
+    "observedEvidence": {},
+    "firstDivergentModule": { "type": ["string", "null"] },
+    "firstDivergentMarker": { "type": ["string", "null"] },
+    "suggestedNextAction": { "type": "string", "minLength": 1 },
+    "requeueReason": {
+      "enum": ["flaky_check", "missing_access", "contract_drift", "implementation_bug", "policy_block", "missing_evidence"]
+    },
+    "confidenceCap": { "type": "number", "minimum": 0, "maximum": 8 }
+  }
+}

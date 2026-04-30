@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
-  "description": "Claude Code plugin: specialist agents with explicit decision trees + output contracts, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
-  "version": "1.8.1",
+  "description": "Claude Code plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
+  "version": "1.9.0",
   "author": {
     "name": "vTRKA"
   },
@@ -11,6 +11,9 @@
     "plugin",
     "agents",
     "skills",
+    "workflow",
+    "trigger-routing",
+    "worktree",
     "scaffolding",
     "confidence-engine",
     "claude-code",

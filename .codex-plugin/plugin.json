@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
-  "version": "1.8.1",
-  "description": "AI coding agent framework: 81 specialist agents · 10-language code graph + multilingual semantic RAG · project memory · 14 confidence rubrics · live preview-server.",
+  "version": "1.9.0",
+  "description": "AI coding agent framework: 81 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, 10-language code graph, multilingual semantic RAG, project memory, and confidence rubrics.",
   "author": {
     "name": "vTRKA",
     "url": "https://github.com/vTRKA"
@@ -15,6 +15,9 @@
     "plugin",
     "agents",
     "skills",
+    "workflow",
+    "trigger-routing",
+    "worktree",
     "code-graph",
     "semantic-rag",
     "scaffolding",
@@ -23,14 +26,15 @@
   ],
   "interface": {
     "displayName": "Supervibe",
-    "shortDescription": "81 specialist agents + code graph + semantic RAG + project memory + confidence gates.",
-    "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes a code graph (10 languages) for refactor blast-radius checks, multilingual semantic RAG over your codebase, persistent project memory (decisions / patterns / incidents / learnings / solutions), and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
+    "shortDescription": "81 specialist agents + trigger-safe workflow routing + worktree loops + code graph.",
+    "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes trigger-safe workflow routing from brainstorm to plan review to atomic epic execution, worktree-ready autonomous loops with stop/resume/status controls, a code graph (10 languages), multilingual semantic RAG over your codebase, persistent project memory, and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
     "developerName": "vTRKA",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write", "Read"],
     "websiteURL": "https://github.com/vTRKA/supervibe",
     "defaultPrompt": [
       "Run /supervibe-genesis to scaffold .claude/ for this project's stack.",
+      "Run /supervibe --diagnose-trigger when a workflow trigger does not route.",
       "Who calls processPayment? — show callers with file:line.",
       "Find prior decisions on idempotency in this repo's memory."
     ]

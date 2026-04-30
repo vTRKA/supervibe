@@ -19,6 +19,8 @@ set -euo pipefail
 
 PLUGIN_ROOT_DEFAULT="$HOME/.claude/plugins/marketplaces/supervibe-marketplace"
 PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
+EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
+EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 
 if [ -t 1 ]; then
   C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_RED='\033[0;31m'; C_RESET='\033[0m'
@@ -30,11 +32,46 @@ ok()  { printf '%b[evolve-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[evolve-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[evolve-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 
+validate_safe_path() {
+  local path="$1"
+  [ -n "$path" ] || die "unsafe empty plugin root"
+  case "$path" in
+    "/"|"$HOME"|"$HOME/"|*"/../"*|*".."*) die "unsafe plugin root: $path" ;;
+  esac
+}
+
+compute_package_sha256() {
+  git -C "$PLUGIN_ROOT" archive --format=tar HEAD | node -e '
+    const crypto = require("crypto");
+    const hash = crypto.createHash("sha256");
+    process.stdin.on("data", (chunk) => hash.update(chunk));
+    process.stdin.on("end", () => console.log(hash.digest("hex")));
+  '
+}
+
+verify_checkout_integrity() {
+  if [ -n "$EXPECTED_COMMIT" ]; then
+    local actual_commit
+    actual_commit=$(git -C "$PLUGIN_ROOT" rev-parse HEAD)
+    [ "$actual_commit" = "$EXPECTED_COMMIT" ] || die "commit integrity mismatch: expected $EXPECTED_COMMIT got $actual_commit"
+    ok "commit integrity verified: $EXPECTED_COMMIT"
+  fi
+  if [ -n "$EXPECTED_PACKAGE_SHA256" ]; then
+    local actual_sha
+    actual_sha=$(compute_package_sha256)
+    [ "$actual_sha" = "$EXPECTED_PACKAGE_SHA256" ] || die "package checksum mismatch: expected $EXPECTED_PACKAGE_SHA256 got $actual_sha"
+    ok "package checksum verified: $EXPECTED_PACKAGE_SHA256"
+  fi
+}
+
 # ---- preflight ----
 
 command -v git  >/dev/null || die "git not found."
 command -v node >/dev/null || die "node not found. Install Node.js 22+ (https://nodejs.org)."
 command -v npm  >/dev/null || die "npm not found."
+validate_safe_path "$PLUGIN_ROOT"
+say "plan: will update existing checkout at $PLUGIN_ROOT and will not modify local edits"
+say "plan: integrity pins expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 # ---- locate install ----
 
@@ -64,6 +101,7 @@ fi
 
 say "running npm run supervibe:upgrade (does fetch + pull --ff-only + lfs pull + install + tests)"
 ( cd "$PLUGIN_ROOT" && npm run supervibe:upgrade ) || die "upgrade failed; see output above."
+verify_checkout_integrity
 
 ok "done. Restart your AI CLI to pick up the new plugin code."
 ok "if any project has .claude/ overrides, run /evolve-adapt inside that project."

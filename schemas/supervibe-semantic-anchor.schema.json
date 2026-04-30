@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Supervibe Semantic Anchor",
+  "type": "object",
+  "required": ["anchorId", "filePath", "visibility", "invariants", "verificationRefs", "startLine", "endLine", "source"],
+  "additionalProperties": true,
+  "not": {
+    "anyOf": [
+      { "required": ["token"] },
+      { "required": ["secret"] },
+      { "required": ["password"] },
+      { "required": ["apiKey"] },
+      { "required": ["credential"] }
+    ]
+  },
+  "properties": {
+    "anchorId": { "type": "string", "minLength": 1 },
+    "filePath": { "type": "string", "minLength": 1 },
+    "symbolName": { "type": ["string", "null"] },
+    "visibility": { "enum": ["public", "private", "internal"] },
+    "responsibility": { "type": "string" },
+    "invariants": { "type": "array", "items": { "type": "string" } },
+    "verificationRefs": { "type": "array", "items": { "type": "string" } },
+    "startLine": { "type": "integer", "minimum": 1 },
+    "endLine": { "type": "integer", "minimum": 1 },
+    "source": { "enum": ["comment", "sidecar", "generated", "derived-index"] }
+  }
+}

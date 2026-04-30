@@ -1,0 +1,46 @@
+artifact: autonomy-readiness
+max-score: 10
+dimensions:
+  - id: graph-validity
+    weight: 1
+    question: "Is the task graph valid, acyclic, and free of unknown dependencies?"
+    evidence-required: "Task graph validation output with no dependency issues."
+  - id: contract-coverage
+    weight: 1
+    question: "Does every task have an execution contract?"
+    evidence-required: "Contract list containing one contract per task id."
+  - id: verification-coverage
+    weight: 1
+    question: "Does every non-documentation contract define verification references?"
+    evidence-required: "Verification commands or accepted test-gap rationale per contract."
+  - id: policy-readiness
+    weight: 1
+    question: "Are policy, approval, and async gates resolved before execution?"
+    evidence-required: "Gate summary showing no open high-risk approval gates."
+  - id: evidence-expectations
+    weight: 1
+    question: "Are expected outputs and evidence explicit for every contract?"
+    evidence-required: "Contract outputs and evidence expectations."
+  - id: rollback-expectations
+    weight: 1
+    question: "Is rollback or cleanup expectation documented in preflight?"
+    evidence-required: "Preflight rollback_expectation value."
+  - id: tool-access
+    weight: 1
+    question: "Is allowed write and tool scope explicit?"
+    evidence-required: "Preflight allowed_write_scope and tool boundary evidence."
+  - id: reviewer-independence
+    weight: 1
+    question: "Is independent review available for autonomous work?"
+    evidence-required: "Reviewer availability or fallback record."
+  - id: progress-resume
+    weight: 1
+    question: "Can progress and resume state be reconstructed without chat history?"
+    evidence-required: "Stop conditions, resume notes, and progress log policy."
+  - id: side-effect-boundaries
+    weight: 1
+    question: "Are forbidden side effects and production mutation boundaries declared?"
+    evidence-required: "Forbidden behavior list and side-effect boundary statement."
+gates:
+  block-below: 9
+  warn-below: 10

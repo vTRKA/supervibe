@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/autonomous-loop-verification.schema.json",
+  "title": "Autonomous Loop Verification Scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenarioId",
+    "contractRef",
+    "taskId",
+    "evidenceType",
+    "command",
+    "expectedOutcome",
+    "requiredMarkers",
+    "forbiddenMarkers",
+    "level"
+  ],
+  "properties": {
+    "scenarioId": { "type": "string", "minLength": 1 },
+    "contractRef": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "evidenceType": {
+      "enum": [
+        "deterministic assertion",
+        "trace assertion",
+        "integration check",
+        "browser check",
+        "semantic evaluation with rubric"
+      ]
+    },
+    "command": { "type": ["string", "null"] },
+    "expectedOutcome": { "type": "string", "minLength": 1 },
+    "requiredMarkers": { "type": "array", "items": { "type": "string" } },
+    "forbiddenMarkers": { "type": "array", "items": { "type": "string" } },
+    "level": { "enum": ["module", "wave", "phase", "production-prep"] },
+    "anchoredRegionRefs": { "type": "array", "items": { "type": "string" } },
+    "assignmentRefs": { "type": "array", "items": { "type": "string" } }
+  }
+}

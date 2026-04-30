@@ -1,7 +1,7 @@
 ---
 name: using-git-worktrees
 namespace: process
-description: "Use BEFORE starting feature work that needs isolation from current workspace OR before executing implementation plans to create isolated git worktree. RU: Используется ПЕРЕД началом фичи, требующей изоляции от текущего workspace, ИЛИ перед выполнением плана — создаёт изолированный git worktree. Trigger phrases: 'git worktree', 'isolated workspace', 'отдельная ветка-папка', 'worktree'."
+description: "Use BEFORE feature work, autonomous session, or plan execution that needs isolation TO create or validate a git worktree, register active session ownership, keep the main workspace clean, heartbeat/status the session, and cleanup only after merge/PR. Trigger phrases: git worktree, isolated workspace, autonomous worktree, separate session, active session registry, heartbeat, cleanup."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: exec
 prerequisites: []
@@ -42,10 +42,20 @@ Worktree location:
 
 ## Procedure
 
+## Managed Session Policy
+
+- Preferred roots: existing `.worktrees/`, existing `worktrees/`, configured project root, global cache, then ask the user.
+- Project-local roots must be ignored before creation.
+- Session record fields: `sessionId`, `epicId`, `branchName`, `worktreePath`, `createdAt`, `baselineCommit`, `baselineChecks`, `activeAgentIds`, `assignedWaveId`, `assignedTaskIds`, `assignedWriteSet`, `status`, `cleanupPolicy`.
+- Multiple sessions may share one epic only when every session declares disjoint assigned tasks/work items and non-overlapping write sets.
+- Status must expose active/stale/cleanup-blocked sessions.
+- Cleanup must archive first and must never remove a worktree with uncommitted changes.
+
 1. **Verify clean state** (Step 0)
 2. **Choose branch name** — `feat/<topic>` or `fix/<topic>` per conventions
 3. **Choose worktree path** — `../<repo-name>-<topic>` typically
-4. **Create**: `git worktree add <path> -b <branch>`
+4. **Create**: `git worktree add <path> -b <branch>` only after explicit user command or validated existing worktree.
+4a. **Register session** in `.claude/memory/worktree-sessions/registry.json` and record heartbeat/status/cleanup controls.
 5. **Verify**: `git worktree list` shows new entry
 6. **Switch context** — communicate to user: subsequent commands run in `<path>`
 7. **Work** — execute plan / feature / fix
@@ -57,6 +67,8 @@ Worktree location:
 Returns:
 - Worktree path created
 - Branch name created
+- Session id and registry path
+- Stop, status, resume, and cleanup commands
 - Confirmation user is aware of context switch
 
 ## Guard rails
@@ -65,7 +77,11 @@ Returns:
 - DO NOT: `git stash` to clean (banned by `git-discipline` rule)
 - DO NOT: use subdirectory of repo for worktree (gitignore confusion)
 - DO NOT: remove worktree before verifying changes are merged/committed
+- DO NOT: remove a worktree with uncommitted changes
+- DO NOT: start an unscoped second session on the same epic
+- DO NOT: let two active sessions claim the same work item, assigned task, or file write set unless explicitly allowed
 - ALWAYS: name branch per project convention
+- ALWAYS: record heartbeat/status in the active session registry
 - ALWAYS: confirm with user before context switch
 
 ## Verification

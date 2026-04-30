@@ -1,3 +1,14 @@
+export const REQUEUE_REASONS = Object.freeze([
+  "verification_failed",
+  "contract_drift",
+  "missing_access",
+  "flaky_check",
+  "policy_gate",
+  "tool_failed",
+  "no_progress",
+  "review_failed",
+]);
+
 export function evaluateTask(task, evidence = {}, options = {}) {
   const dimensions = {
     acceptance: hasItems(task.acceptanceCriteria) && evidence.acceptance !== false ? 2 : 0,
@@ -18,6 +29,13 @@ export function evaluateTask(task, evidence = {}, options = {}) {
   if (!hasItems(task.acceptanceCriteria)) caps.push({ score: 8, reason: "acceptance criteria are incomplete" });
   if (evidence.policyCompliant === false) caps.push({ score: 7, reason: "policy risk is unresolved" });
   if (evidence.verificationEvidenceMissing) caps.push({ score: 6, reason: "verification evidence is missing" });
+  if (Array.isArray(task.verificationMatrix) && task.verificationMatrix.length > 0 && evidence.verificationMatrix?.pass !== true) {
+    caps.push({ score: 6, reason: "verification matrix evidence is missing or failed" });
+  }
+  if (evidence.verificationMatrix?.pass === false) caps.push({ score: 6, reason: "verification matrix coverage failed" });
+  if (evidence.failurePacket?.confidenceCap != null) {
+    caps.push({ score: evidence.failurePacket.confidenceCap, reason: `failure packet: ${evidence.failurePacket.requeueReason}` });
+  }
   if (evidence.changedUndeclaredFiles) caps.push({ score: 5, reason: "undeclared file changes" });
   if (evidence.independentEvaluationRequired && !evidence.independentReview) caps.push({ score: 8, reason: "independent evaluator unavailable" });
 
@@ -33,6 +51,24 @@ export function evaluateTask(task, evidence = {}, options = {}) {
   };
 }
 
+export function normalizeRequeueReason(reason = "verification_failed") {
+  const value = String(reason || "verification_failed").trim().toLowerCase();
+  if (REQUEUE_REASONS.includes(value)) return value;
+  if (value === "policy_block" || value === "exact_approval_lease_required") return "policy_gate";
+  if (value === "missing_evidence") return "verification_failed";
+  if (value === "implementation_bug") return "verification_failed";
+  return "verification_failed";
+}
+
+export function confidenceCapForRequeueReason(reason = "verification_failed") {
+  const normalized = normalizeRequeueReason(reason);
+  if (normalized === "missing_access" || normalized === "policy_gate") return 6;
+  if (normalized === "contract_drift" || normalized === "review_failed") return 7;
+  if (normalized === "tool_failed" || normalized === "verification_failed" || normalized === "no_progress") return 8;
+  if (normalized === "flaky_check") return 8;
+  return 8;
+}
+
 export function evaluateRun(tasks, scores) {
   const activeTasks = tasks.filter((task) => !["cancelled"].includes(task.status));
   const scoreByTask = new Map(scores.map((score) => [score.taskId, score.finalScore]));
@@ -44,6 +80,18 @@ export function evaluateRun(tasks, scores) {
     allComplete,
     runScore: Number(runScore.toFixed(1)),
     complete: allComplete && runScore >= 9,
+  };
+}
+
+export function evaluateReplayOutcome({ replay = {}, scorecard = null } = {}) {
+  const comparisonPass = replay.comparison?.pass !== false;
+  const scorecardPass = scorecard ? scorecard.pass === true : true;
+  return {
+    pass: comparisonPass && scorecardPass,
+    replayPass: comparisonPass,
+    scorecardPass,
+    score: scorecard?.score ?? (comparisonPass ? 10 : 0),
+    diffs: replay.comparison?.diffs || [],
   };
 }
 

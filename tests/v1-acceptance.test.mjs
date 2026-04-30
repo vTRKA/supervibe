@@ -25,21 +25,27 @@ test("LICENSE present", async () => {
   assert.ok(existsSync(join(ROOT, "LICENSE")));
 });
 
-test("all 14 confidence rubrics present and validate", async () => {
+test("all 16 confidence rubrics present and validate", async () => {
   const dir = join(ROOT, "confidence-rubrics");
   const files = (await readdir(dir)).filter((f) => f.endsWith(".yaml"));
+  assert.ok(files.length >= 16, `expected >=16 rubrics, found ${files.length}`);
   const expected = [
-    "requirements",
-    "plan",
     "agent-delivery",
-    "scaffold",
-    "framework",
-    "prototype",
-    "research-output",
     "agent-quality",
-    "skill-quality",
-    "rule-quality",
+    "agent-quality-ab",
+    "autonomous-loop",
+    "autonomy-readiness",
     "brandbook",
+    "execute-plan",
+    "framework",
+    "memory-entry",
+    "plan",
+    "prototype",
+    "requirements",
+    "research-output",
+    "rule-quality",
+    "scaffold",
+    "skill-quality",
   ];
   for (const name of expected) {
     assert.ok(files.includes(`${name}.yaml`), `rubric ${name}.yaml missing`);
@@ -159,7 +165,7 @@ test("hooks.json wires SessionStart, PostToolUse, Stop", async () => {
   assert.ok(data.hooks.Stop, "Stop hook missing");
 });
 
-test("all 33+ skills have valid trigger-clarity descriptions", async () => {
+test("all 51+ skills have valid trigger-clarity descriptions", async () => {
   const { checkTriggerClarity } =
     await import("../scripts/lib/trigger-clarity.mjs");
   const matter = (await import("gray-matter")).default;
@@ -177,7 +183,7 @@ test("all 33+ skills have valid trigger-clarity descriptions", async () => {
     assert.strictEqual(result.pass, true, `${entry.name}: ${result.reason}`);
     count++;
   }
-  assert.ok(count >= 33, `expected ≥33 skills, found ${count}`);
+  assert.ok(count >= 51, `expected >=51 skills, found ${count}`);
 });
 
 test("registry generates and includes all artifact types", async () => {
@@ -187,23 +193,23 @@ test("registry generates and includes all artifact types", async () => {
     await readFile(join(ROOT, "registry.yaml"), "utf8"),
   );
   assert.ok(
-    Object.keys(registry.agents).length >= 33,
-    "registry should have ≥33 agents",
+    Object.keys(registry.agents).length >= 81,
+    "registry should have >=81 agents",
   );
   assert.ok(
-    Object.keys(registry.skills).length >= 33,
-    "registry should have ≥33 skills",
+    Object.keys(registry.skills).length >= 51,
+    "registry should have >=51 skills",
   );
   assert.ok(
-    Object.keys(registry.rules).length >= 16,
-    "registry should have ≥16 rules",
+    Object.keys(registry.rules).length >= 23,
+    "registry should have >=23 rules",
   );
   assert.ok(
     Object.keys(registry["stack-packs"]).length >= 1,
     "registry should have ≥1 stack-pack",
   );
   assert.ok(
-    Object.keys(registry["confidence-rubrics"]).length >= 11,
-    "registry should have ≥11 rubrics",
+    Object.keys(registry["confidence-rubrics"]).length >= 16,
+    "registry should have >=16 rubrics",
   );
 });

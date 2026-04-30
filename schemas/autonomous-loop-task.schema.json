@@ -17,15 +17,49 @@
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "goal": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
     "category": { "type": "string", "minLength": 1 },
     "requiredAgentCapability": { "type": "string", "minLength": 1 },
     "dependencies": { "type": "array", "items": { "type": "string" } },
+    "dependents": { "type": "array", "items": { "type": "string" } },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "targetId"],
+        "properties": {
+          "type": {
+            "enum": ["blocks", "related", "duplicates", "supersedes", "replies_to", "discovered_from", "parent_child"]
+          },
+          "targetId": { "type": "string" }
+        }
+      }
+    },
+    "parentId": { "type": ["string", "null"] },
+    "epicId": { "type": ["string", "null"] },
     "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
     "verificationCommands": { "type": "array", "items": { "type": "string" } },
     "confidenceRubricId": { "type": "string", "minLength": 1 },
     "policyRiskLevel": { "enum": ["none", "low", "medium", "high"] },
     "stopConditions": { "type": "array", "items": { "type": "string" } },
-    "status": { "type": "string" },
+    "status": {
+      "enum": [
+        "pending",
+        "running",
+        "blocked",
+        "complete",
+        "cancelled",
+        "policy_stopped",
+        "budget_stopped",
+        "open",
+        "ready",
+        "claimed",
+        "in_progress",
+        "deferred",
+        "failed"
+      ]
+    },
+    "priority": {},
     "source": {}
   }
 }

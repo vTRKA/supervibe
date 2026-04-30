@@ -1,7 +1,7 @@
 ---
 name: requesting-code-review
 namespace: process
-description: "Use BEFORE invoking code-reviewer agent or opening a PR to prepare the review package with PR description, evidence, and changed-file scope. RU: Используется ПЕРЕД вызовом code-reviewer или открытием PR — готовит пакет на ревью: описание PR, evidence и scope изменённых файлов. Trigger phrases: 'pre-PR review', 'request review', 'запроси ревью', 'готов к ревью'."
+description: "Use BEFORE code-reviewer, PR, or AFTER plan/план is written TO run a review/ревью loop with evidence, changed-file scope, plan risks, and next handoff. Trigger phrases: pre-PR review, request review, готов к ревью, сделай ревью плана, review loop."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: review
 prerequisites: [agent-output]
@@ -18,12 +18,15 @@ last-verified: 2026-04-27
 
 BEFORE invoking `code-reviewer` agent OR before opening a PR for external review. After implementation completes but before claiming done.
 
+Also invoke this as the mandatory **plan-review loop** immediately after `supervibe:writing-plans` saves a plan. In plan-review mode, review the plan artifact itself before atomization, epic creation, or execution.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read the spec/plan that motivated the change
 2. Read all modified/created/deleted files (`git diff`)
 3. Run full check (`npm run check` or project equivalent) — capture output
 4. Take screenshots if UI change
+5. Include wave status and assignment explanation when the change came from `/supervibe-loop --assign-ready` or a multi-agent wave
 
 ## Decision tree
 
@@ -53,11 +56,42 @@ What's the review surface?
    - Test output (verbatim, not summarized)
    - Screenshots for UI
    - Performance numbers (before/after) for perf changes
+   - Assignment explanation, reviewer independence, and wave/block reasons for multi-agent work
 4. **Identify reviewer agent** — `code-reviewer` for general, `security-auditor` for security-sensitive, `db-reviewer` for DB
 5. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output (the prepared package)
 6. **Invoke reviewer** with the prepared package
 
 ## Output contract
+
+### Plan-review mode
+
+When the input artifact is a plan, produce a review package with:
+- Spec coverage and unresolved questions
+- Dependency graph and critical-path sanity
+- Task size and atomicity
+- Verification coverage, including UI/browser evidence where applicable
+- Rollback coverage and risky side effects
+- Parallel write-set conflicts
+- Worktree suitability for long autonomous runs
+- Capability assignment, reviewer independence, and wave serialization/blocker reasons
+- Provider-policy safety: no bypass defaults, no hidden background automation, explicit stop/resume/status
+
+If the plan passes, print:
+
+```text
+NEXT_STEP_HANDOFF
+Current phase: plan-review
+Artifact: docs/plans/YYYY-MM-DD-<slug>.md
+Next phase: work-item-atomization
+Next command: /supervibe-loop --from-plan --atomize docs/plans/YYYY-MM-DD-<slug>.md
+Next skill: supervibe:writing-plans
+Stop condition: ask-before-work-item-atomization
+Why: A reviewed plan can become durable atomic work items and an epic.
+Question: Next step is atomizing the plan into an epic and child work items. Proceed?
+END_NEXT_STEP_HANDOFF
+```
+
+If the plan fails review, do not atomize or execute. Return findings and route back to `/supervibe-plan <plan-path>` for repair.
 
 Returns:
 - PR description (Markdown)

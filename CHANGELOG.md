@@ -5,6 +5,27 @@ All notable changes to the Supervibe plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.9.0] - 2026-04-30
+
+### Added - Autonomous loop 10/10 upgrade
+
+- Durable `/supervibe-loop` task graph execution with readiness contracts,
+  verification matrix evidence, failure packets, requeue handling, doctor/prime,
+  graph export, archive/import, and status/resume/stop controls.
+- Reviewed-plan atomization into epics and atomic work items with templates,
+  comments, query UX, native graph fallback, optional tracker sync, and
+  worktree-aware session visibility.
+- Provider-safe automation guard with permission audit, dangerous provider flag
+  denylist, prompt bridge requirements, network/MCP approval checks,
+  rate-limit/backoff stops, and secret redaction.
+- Public docs now label autonomous execution as opt-in and unreleased until the
+  release gate publishes it.
+- Release security and install integrity gates now audit dependency provenance,
+  installer checksum hooks, version-tagged install URLs, third-party license
+  inventory, and release provenance before publishing.
+
 ## [1.7.0] — 2026-04-27
 
 **Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent evolution loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused comparison vs superpowers.**

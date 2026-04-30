@@ -4,8 +4,10 @@
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 #
 # Override defaults:
-#   $env:SUPERVIBE_REF = "v1.7.0"           # tag, branch, or commit
+#   $env:SUPERVIBE_REF = "main"             # tag, branch, or commit
 #   $env:SUPERVIBE_REPO = "git@github.com:my-fork/supervibe.git"
+#   $env:SUPERVIBE_EXPECTED_COMMIT = "<sha>"          # optional release provenance pin
+#   $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256 = "<sha>"  # optional git-archive checksum pin
 #
 # Idempotent — safe to re-run for upgrades.
 
@@ -13,6 +15,8 @@ $ErrorActionPreference = 'Stop'
 
 $RepoUrl         = if ($env:SUPERVIBE_REPO) { $env:SUPERVIBE_REPO } else { 'https://github.com/vTRKA/supervibe.git' }
 $Ref             = if ($env:SUPERVIBE_REF)  { $env:SUPERVIBE_REF }  else { 'main' }
+$ExpectedCommit  = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
+$ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $PluginName      = 'supervibe'
 $MarketplaceName = 'supervibe-marketplace'
 
@@ -24,6 +28,37 @@ function Say  { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor C
 function Ok   { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Green }
 function Warn { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Yellow }
 function Die  { param($m) Write-Host "[supervibe-install] $m" -ForegroundColor Red; exit 1 }
+
+function Assert-SafePluginPath {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { Die 'unsafe empty plugin target path' }
+  if ($Path -match '\.\.') { Die "unsafe plugin target path: $Path" }
+  $full = [System.IO.Path]::GetFullPath($Path)
+  $root = [System.IO.Path]::GetPathRoot($full)
+  if ($full.TrimEnd('\') -eq $root.TrimEnd('\')) { Die "unsafe plugin target path: $Path" }
+  $expected = [System.IO.Path]::GetFullPath((Join-Path $HOME ".claude\plugins\marketplaces\$MarketplaceName"))
+  if ($full.TrimEnd('\') -ne $expected.TrimEnd('\')) { Die "unexpected package root: $Path" }
+}
+
+function Get-PackageSha256 {
+  $archive = Join-Path $LogDir 'package.tar'
+  & git -C $Target archive --format=tar -o $archive HEAD
+  if ($LASTEXITCODE -ne 0) { Die 'failed to create package archive for checksum verification' }
+  return (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+}
+
+function Test-CheckoutIntegrity {
+  if ($ExpectedCommit) {
+    $actualCommit = (git -C $Target rev-parse HEAD 2>$null) -join ''
+    if ($actualCommit -ne $ExpectedCommit) { Die "commit integrity mismatch: expected $ExpectedCommit got $actualCommit" }
+    Ok "commit integrity verified: $ExpectedCommit"
+  }
+  if ($ExpectedPackageSha256) {
+    $actualSha = Get-PackageSha256
+    if ($actualSha -ne $ExpectedPackageSha256) { Die "package checksum mismatch: expected $ExpectedPackageSha256 got $actualSha" }
+    Ok "package checksum verified: $ExpectedPackageSha256"
+  }
+}
 
 # ---- preflight ----
 
@@ -62,6 +97,10 @@ if ($ClisFound.Count -eq 0) {
 # ---- clone or update the shared checkout ----
 
 $Target = Join-Path $ClaudeDir "plugins\marketplaces\$MarketplaceName"
+Assert-SafePluginPath $Target
+Say "plan: will install or update checkout at $Target"
+Say "plan: will modify Claude config under $ClaudeDir, Codex plugin link under $CodexDir, and Gemini include under $GeminiDir when those CLIs are detected"
+Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
   param([string[]]$Args, [string]$LogName, [switch]$AllowFail)
@@ -87,6 +126,8 @@ if (Test-Path (Join-Path $Target '.git')) {
   Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone'
   Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
 }
+
+Test-CheckoutIntegrity
 
 # Optional LFS pull
 if (Get-Command git-lfs -ErrorAction SilentlyContinue) {

@@ -1,10 +1,8 @@
 ---
 description: >-
-  Execute an implementation plan with explicit 10/10 confidence gates —
-  readiness audit BEFORE execution + completion audit AFTER. Optionally takes a
-  plan path; otherwise auto-detects most recent plan. Опционально принимает путь
-  плана; иначе берёт самый свежий. Triggers: 'execute plan', 'выполни план',
-  'запусти план', '/supervibe-execute-plan'.
+  Use AFTER plan review and atomic/epic handoff TO execute a plan with 10/10
+  readiness and completion gates. Trigger phrases: execute plan, сделай по
+  плану, review passed, atomic tasks ready, epic ready, /supervibe-execute-plan.
 ---
 
 # /supervibe-execute-plan
@@ -96,6 +94,20 @@ Default: A.
 ---
 
 ## Procedure
+
+### 0a. Mandatory workflow gates before readiness
+
+Before any execution audit, confirm the plan has:
+- A passed plan-review artifact or explicit `planReviewPassed` state
+- Atomic work items or an epic generated from the reviewed plan
+- Execution mode selected (`dry-run`, `guided`, `manual`, or `fresh-context`)
+- Stop, status, resume, and cleanup controls for long or worktree-backed runs
+- Worktree session selected or created when `--worktree`, `--worktree-existing`, or `--resume-session` is used
+
+If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --from-plan --atomize <plan-path>` after review passes.
+
+For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree --max-duration 3h` so the run has an active session registry, heartbeat, and cleanup-safe worktree path.
+For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .claude/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.
 
 ### 0. Resolve plan path
 

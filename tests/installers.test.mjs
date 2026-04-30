@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 const ROOT = process.cwd();
 const SH = join(ROOT, 'install.sh');
@@ -12,13 +12,20 @@ const UPD_PS1 = join(ROOT, 'update.ps1');
 
 function bashSyntaxCheck(filePath) {
   try {
-    execFileSync('bash', ['-n', filePath], { stdio: 'pipe' });
+    execFileSync('bash', ['-n', filePath], { cwd: ROOT, stdio: 'pipe' });
     return;
   } catch (firstErr) {
     if (process.platform !== 'win32') throw firstErr;
     try {
+      const relPath = relative(ROOT, filePath).split(sep).join('/');
+      execFileSync('bash', ['-n', relPath], { cwd: ROOT, stdio: 'pipe' });
+      return;
+    } catch {
+      // Fall through to WSL path conversion for shells that are not cwd-aware.
+    }
+    try {
       const wslPath = execFileSync('wsl', ['wslpath', '-a', filePath], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-      execFileSync('bash', ['-n', wslPath], { stdio: 'pipe' });
+      execFileSync('bash', ['-n', wslPath], { cwd: ROOT, stdio: 'pipe' });
       return;
     } catch {
       throw firstErr;

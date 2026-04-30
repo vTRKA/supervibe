@@ -1,7 +1,7 @@
 ---
 name: subagent-driven-development
 namespace: process
-description: "Use WHEN executing implementation plan with independent tasks AND subagents are available to dispatch fresh subagent per task with two-stage review. RU: Используется КОГДА выполняется план с независимыми задачами И доступны subagents — диспатчит свежий subagent на каждую задачу с двухстадийным ревью. Trigger phrases: 'parallel subagents', 'fan-out', 'разнеси по subagent', 'subagent-driven'."
+description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and two-stage review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, 3h autonomous, active session registry."
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
 phase: exec
 prerequisites: [implementation-plan]
@@ -40,7 +40,10 @@ Per task: which subagent type?
 ## Procedure
 
 1. **Plan analysis** (Step 0)
+1a. **Orchestration preflight** - for durable/epic execution, run or consult `/supervibe-loop --plan-waves <plan-or-state>` and use capability/preset assignment before dispatching a wave. Every task needs a worker, an independent reviewer, declared write scope, and required evidence before launch.
 2. **Wave organization** — group tasks; tasks within wave are parallelizable
+2a. **Session coordination** - if execution is epic/worktree-backed, check the active worktree session registry before dispatch. Do not let two sessions claim the same epic/work item unless explicitly allowed.
+2b. **Assignment explainability** - record why the worker/reviewer were chosen, which alternatives were rejected, and why any task was serialized or blocked.
 3. **Per task: write brief** (subagent has no conversation memory; brief must be self-contained):
    - What to do (concrete deliverable)
    - What files to touch
@@ -53,12 +56,14 @@ Per task: which subagent type?
 6. **Reject if**: scope violation, missing evidence, regression introduced
 7. **Re-dispatch with corrected brief** if rejected
 8. **After wave completes** — proceed to next wave
+9. **Heartbeat/status** - update the session registry after each wave and mark stale/cleanup-blocked sessions explicitly.
 
 ## Output contract
 
 Returns wave-by-wave execution log:
 ```
 Wave 1 (parallel, N tasks):
+  Assignment model: <worker-preset>/<subagent-type> + <reviewer-preset>, with why-worker, why-reviewer, rejected alternatives, required evidence, and wave/block reason
   - Task 1: <subagent-type> → SUCCESS / REJECTED+reason
   - Task 2: ...
 Wave 2 (parallel, N tasks):
@@ -72,8 +77,12 @@ Final: combined deliverable + per-wave confidence score
 - DO NOT: dispatch >5 parallel in single wave (track-ability suffers)
 - DO NOT: skip Stage 2 review (subagent can claim done without doing)
 - DO NOT: re-dispatch with same brief (will produce same output)
+- DO NOT: dispatch work already owned by another active worktree session
+- DO NOT: let a worker review its own output or share an overlapping write set in the same wave
 - ALWAYS: brief includes WHY the task matters + project conventions
 - ALWAYS: per-task verification before claiming wave done
+- ALWAYS: include stop/resume/status commands for long autonomous waves
+- ALWAYS: include assignment explanation and wave status in the handoff package
 
 ## Verification
 

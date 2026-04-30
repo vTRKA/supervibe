@@ -15,9 +15,9 @@ For deep dives, agents read on demand from `.claude/docs/`:
 | Confidence Engine (12 rubrics, gates) | `.claude/docs/confidence-engine.md` |
 | Agent Evolution Loop (telemetry, strengthen) | `.claude/docs/agent-evolution-loop.md` |
 | Canonical agent output footer | `.claude/docs/agent-output-footer.md` |
-| Agent system (79 agents, namespace registry) | `.claude/docs/agent-system-registry.md` |
-| Skill system (40 skills, phase registry) | `.claude/docs/skill-system-registry.md` |
-| Rules / discipline (21 rules) | `.claude/docs/rules-registry.md` |
+| Agent system (81 agents, namespace registry) | `.claude/docs/agent-system-registry.md` |
+| Skill system (51 skills, phase registry) | `.claude/docs/skill-system-registry.md` |
+| Rules / discipline (23 rules) | `.claude/docs/rules-registry.md` |
 | MCP integrations | `.claude/docs/mcp-integrations.md` |
 | Browser Feedback Channel | `.claude/docs/browser-feedback-channel.md` |
 | Non-web design surfaces | `.claude/docs/non-web-design.md` |
@@ -48,16 +48,16 @@ These six principles override defaults whenever they conflict with general pract
 ```
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
-├── agents/                        79 agents (_core/_meta/_design/_ops/_product + stacks/)
-├── skills/                        49 process skills
+├── agents/                        81 agents (_core/_meta/_design/_ops/_product + stacks/)
+├── skills/                        51 process skills
 ├── commands/                      19 slash commands (/evolve, /supervibe-design, /supervibe-execute-plan, /supervibe-debug, ...)
-├── rules/                         21 project rules
-├── confidence-rubrics/            14 YAML rubrics
+├── rules/                         23 project rules
+├── confidence-rubrics/            16 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars (LFS)
 ├── models/Xenova/...              Embedding model (LFS)
 ├── scripts/                       Build / index / search / validate (Node ESM)
 │   └── lib/                         Reusable libs
-├── tests/                         258+ tests (node:test)
+├── tests/                         node:test suite (run via `npm run check`)
 ├── docs/                          specs/, plans/, audits/, getting-started.md, ...
 │   └── confidence-gates-spec.md     Unified gate semantics
 ├── hooks/hooks.json               SessionStart, PreToolUse, UserPromptSubmit, PostToolUse, Stop
@@ -100,7 +100,7 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 ## Quick conventions
 
 - **Commits**: Conventional Commits (commitlint via Husky `commit-msg`)
-- **Pre-commit / Pre-push**: Husky + `npm run check` (258+ tests + 10 validators)
+- **Pre-commit / Pre-push**: Husky + `npm run check` (validators, audits, knip, and the full node:test suite)
 - **Imports**: ESM only; `node:sqlite`, `node:crypto`, etc.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)

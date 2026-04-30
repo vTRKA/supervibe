@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "plan-execution",
+      "category": "plan",
+      "inputArtifacts": {
+        "state": {
+          "run_id": "eval-plan-execution",
+          "status": "COMPLETE",
+          "next_action": "review final report",
+          "tasks": [
+            { "id": "plan-1", "status": "complete", "goal": "Execute reviewed plan", "dependencies": [] }
+          ],
+          "verification_matrix": [{ "taskId": "plan-1", "status": "pass" }]
+        }
+      },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review final report", "finalAcceptancePass": true },
+      "requiredEvidence": ["verification_matrix"],
+      "forbiddenBehavior": ["provider_bypass", "remote_mutation"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "brainstorm-to-plan",
+      "category": "workflow-chain",
+      "inputArtifacts": { "state": { "run_id": "eval-brainstorm", "status": "BLOCKED", "next_action": "write plan", "stop_reason": "handoff_required", "tasks": [{ "id": "brainstorm-1", "status": "blocked", "goal": "Convert brainstorm into plan", "dependencies": [] }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "write plan", "stopReason": "handoff_required", "finalAcceptancePass": false },
+      "requiredEvidence": ["next_action"],
+      "forbiddenBehavior": ["skip_plan"],
+      "expectedStopConditions": ["handoff_required"]
+    },
+    {
+      "id": "plan-review-loop",
+      "category": "review",
+      "inputArtifacts": { "state": { "run_id": "eval-plan-review", "status": "BLOCKED", "next_action": "run plan review", "stop_reason": "review_required", "tasks": [{ "id": "review-1", "status": "blocked", "goal": "Review plan", "dependencies": [] }], "gates": [{ "taskId": "review-1", "status": "open", "gateId": "review" }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "run plan review", "stopReason": "review_required", "finalAcceptancePass": false },
+      "requiredEvidence": ["review_gate"],
+      "forbiddenBehavior": ["atomize_without_review"],
+      "expectedStopConditions": ["review_required"]
+    },
+    {
+      "id": "atomization",
+      "category": "work-items",
+      "inputArtifacts": { "state": { "run_id": "eval-atomization", "status": "COMPLETE", "next_action": "claim ready work", "tasks": [{ "id": "atomize-1", "status": "open", "goal": "Ready item", "dependencies": [] }, { "id": "atomize-2", "status": "blocked", "goal": "Blocked item", "dependencies": ["atomize-1"] }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 1, "blockedCount": 1, "nextAction": "claim ready work", "finalAcceptancePass": false },
+      "requiredEvidence": ["task_graph"],
+      "forbiddenBehavior": ["missing_dependencies"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "worktree-run",
+      "category": "worktree",
+      "inputArtifacts": { "state": { "run_id": "eval-worktree", "status": "COMPLETE", "next_action": "archive worktree session", "tasks": [{ "id": "worktree-1", "status": "complete", "goal": "Run in worktree", "dependencies": [] }], "worktree_sessions": [{ "sessionId": "session-1", "status": "active" }], "verification_matrix": [{ "taskId": "worktree-1", "status": "pass" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "archive worktree session", "finalAcceptancePass": true },
+      "requiredEvidence": ["worktree_session", "verification_matrix"],
+      "forbiddenBehavior": ["dirty_main_workspace"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "blocked-credentials",
+      "category": "safety",
+      "inputArtifacts": { "state": { "run_id": "eval-credentials", "status": "BLOCKED", "next_action": "request credential reference", "stop_reason": "missing_access", "tasks": [{ "id": "cred-1", "status": "blocked", "goal": "Needs credential reference", "dependencies": [] }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "request credential reference", "stopReason": "missing_access", "finalAcceptancePass": false },
+      "requiredEvidence": ["access_gate"],
+      "forbiddenBehavior": ["raw_secret_request"],
+      "expectedStopConditions": ["missing_access"]
+    },
+    {
+      "id": "flaky-tests",
+      "category": "verification",
+      "inputArtifacts": { "state": { "run_id": "eval-flaky", "status": "BLOCKED", "next_action": "requeue flaky check", "stop_reason": "flaky_check", "tasks": [{ "id": "flaky-1", "status": "blocked", "goal": "Handle flaky tests", "dependencies": [] }], "failure_packets": [{ "taskId": "flaky-1", "requeueReason": "flaky_check", "confidenceCap": 8 }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "requeue flaky check", "stopReason": "flaky_check", "finalAcceptancePass": false },
+      "requiredEvidence": ["failure_packet"],
+      "forbiddenBehavior": ["mark_complete_below_9"],
+      "expectedStopConditions": ["flaky_check"]
+    },
+    {
+      "id": "ui-verification",
+      "category": "ui",
+      "inputArtifacts": { "state": { "run_id": "eval-ui", "status": "COMPLETE", "next_action": "review screenshot evidence", "tasks": [{ "id": "ui-1", "status": "complete", "goal": "Verify UI", "dependencies": [] }], "verification_matrix": [{ "taskId": "ui-1", "status": "pass", "evidence": "screenshot" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review screenshot evidence", "finalAcceptancePass": true },
+      "requiredEvidence": ["browser_screenshot"],
+      "forbiddenBehavior": ["skip_visual_check"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "integration-repair",
+      "category": "integration",
+      "inputArtifacts": { "state": { "run_id": "eval-integration", "status": "COMPLETE", "next_action": "review integration evidence", "tasks": [{ "id": "int-1", "status": "complete", "goal": "Repair integration", "dependencies": [] }], "verification_matrix": [{ "taskId": "int-1", "status": "pass" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review integration evidence", "finalAcceptancePass": true },
+      "requiredEvidence": ["integration_check"],
+      "forbiddenBehavior": ["remote_mutation_without_approval"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "refactor",
+      "category": "refactor",
+      "inputArtifacts": { "state": { "run_id": "eval-refactor", "status": "COMPLETE", "next_action": "review blast radius", "tasks": [{ "id": "refactor-1", "status": "complete", "goal": "Refactor safely", "dependencies": [] }], "verification_matrix": [{ "taskId": "refactor-1", "status": "pass" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review blast radius", "finalAcceptancePass": true },
+      "requiredEvidence": ["codegraph", "tests"],
+      "forbiddenBehavior": ["broad_unscoped_refactor"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "docs-only-change",
+      "category": "docs",
+      "inputArtifacts": { "state": { "run_id": "eval-docs", "status": "COMPLETE", "next_action": "review docs", "tasks": [{ "id": "docs-1", "status": "complete", "goal": "Update docs", "dependencies": [] }], "verification_matrix": [{ "taskId": "docs-1", "status": "pass" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review docs", "finalAcceptancePass": true },
+      "requiredEvidence": ["docs_validation"],
+      "forbiddenBehavior": ["unrelated_code_change"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "release-prep",
+      "category": "release",
+      "inputArtifacts": { "state": { "run_id": "eval-release", "status": "COMPLETE", "next_action": "run release security audit", "tasks": [{ "id": "release-1", "status": "complete", "goal": "Prepare release", "dependencies": [] }], "verification_matrix": [{ "taskId": "release-1", "status": "pass" }], "release_gate": { "release_security_required": true } } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "run release security audit", "finalAcceptancePass": true },
+      "requiredEvidence": ["release_security_audit"],
+      "forbiddenBehavior": ["mutable_installer_url"],
+      "expectedStopConditions": []
+    },
+    {
+      "id": "policy-stop",
+      "category": "safety",
+      "inputArtifacts": { "state": { "run_id": "eval-policy", "status": "POLICY_STOPPED", "next_action": "remove unsafe flag", "stop_reason": "policy_gate", "tasks": [{ "id": "policy-1", "status": "policy_stopped", "goal": "Reject bypass", "dependencies": [] }] } },
+      "expected": { "status": "POLICY_STOPPED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "remove unsafe flag", "stopReason": "policy_gate", "finalAcceptancePass": false },
+      "requiredEvidence": ["policy_gate"],
+      "forbiddenBehavior": ["bypass_permissions"],
+      "expectedStopConditions": ["policy_gate"]
+    },
+    {
+      "id": "resume-after-compaction",
+      "category": "resume",
+      "inputArtifacts": { "state": { "run_id": "eval-resume", "status": "BLOCKED", "next_action": "resume with handoff packet", "stop_reason": "context_budget", "tasks": [{ "id": "resume-1", "status": "blocked", "goal": "Resume after compaction", "dependencies": [] }], "compacted_summary": { "available": true } } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "resume with handoff packet", "stopReason": "context_budget", "finalAcceptancePass": false },
+      "requiredEvidence": ["handoff_packet"],
+      "forbiddenBehavior": ["restart_from_scratch"],
+      "expectedStopConditions": ["context_budget"]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Supervibe Policy Profile",
+  "type": "object",
+  "required": [
+    "name",
+    "allowedTools",
+    "deniedTools",
+    "networkPolicy",
+    "mcpPolicy",
+    "writePolicy",
+    "gitPolicy",
+    "worktreePolicy",
+    "approvalLeaseDurationMinutes",
+    "maxRuntimeMinutes",
+    "maxSpendHint",
+    "reviewRequirements",
+    "evidenceRequirements"
+  ],
+  "additionalProperties": true,
+  "not": {
+    "anyOf": [
+      { "required": ["token"] },
+      { "required": ["secret"] },
+      { "required": ["password"] },
+      { "required": ["apiKey"] },
+      { "required": ["credential"] }
+    ]
+  },
+  "properties": {
+    "schemaVersion": { "type": "integer" },
+    "name": {
+      "enum": [
+        "solo-local",
+        "guided",
+        "contributor",
+        "maintainer",
+        "CI-readonly",
+        "CI-verify",
+        "release-prep",
+        "enterprise-restricted"
+      ]
+    },
+    "extends": { "type": "string" },
+    "role": {
+      "enum": ["owner", "maintainer", "contributor", "reviewer", "worker", "CI", "read-only observer"]
+    },
+    "allowedTools": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "deniedTools": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "networkPolicy": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["deny", "ask", "allowlist"] },
+        "allowlist": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "mcpPolicy": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["deny", "ask", "allowlist"] },
+        "servers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "writePolicy": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["read-only", "local-only", "artifact-output-only"] },
+        "allowedRoots": { "type": "array", "items": { "type": "string" } },
+        "outputDirectory": { "type": ["string", "null"] }
+      }
+    },
+    "gitPolicy": {
+      "type": "object",
+      "properties": {
+        "protectedBranches": { "type": "array", "items": { "type": "string" } },
+        "commits": { "type": "string" },
+        "pushes": { "type": "string" }
+      }
+    },
+    "worktreePolicy": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "defaultRoot": { "type": ["string", "null"] },
+        "cleanup": { "type": "string" }
+      }
+    },
+    "approvalLeaseDurationMinutes": { "type": "integer", "minimum": 0 },
+    "maxRuntimeMinutes": { "type": "integer", "minimum": 0 },
+    "maxSpendHint": { "type": "string" },
+    "reviewRequirements": { "type": "array", "items": { "type": "string" } },
+    "evidenceRequirements": { "type": "array", "items": { "type": "string" } },
+    "allowDangerousProviderFlags": { "type": "boolean" },
+    "reviewedOverrideAllowed": { "type": "boolean" },
+    "noTty": { "type": "boolean" }
+  }
+}

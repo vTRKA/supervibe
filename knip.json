@@ -31,6 +31,7 @@
     "scripts/measure-token-footprint.mjs",
     "scripts/validate-no-deep-refs.mjs",
     "scripts/validate-agent-section-order.mjs",
+    "scripts/audit-plugin-package.mjs",
     "scripts/regression-suite.mjs",
     "scripts/lib/regression-scorer.mjs",
     "scripts/audit-evidence-citations.mjs",
@@ -39,6 +40,14 @@
     "scripts/hooks/pre-tool-use-refactor-advisory.mjs"
   ],
   "ignoreUnresolved": ["node:sqlite"],
+  "ignoreIssues": {
+    "scripts/lib/autonomous-loop-provider-policy-guard.mjs": ["exports"],
+    "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": ["exports"],
+    "scripts/lib/supervibe-work-item-comments.mjs": ["exports"],
+    "scripts/lib/supervibe-work-item-query.mjs": ["exports"],
+    "scripts/lib/supervibe-work-item-template-catalog.mjs": ["exports"],
+    "scripts/lib/supervibe-worktree-session-manager.mjs": ["exports"]
+  },
   "project": ["scripts/**/*.mjs", "tests/**/*.mjs"],
   "ignore": ["node_modules/**", "**/*.md"],
   "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli", "@commitlint/config-conventional"]

@@ -17,17 +17,55 @@ $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
 } else {
   Join-Path $HOME '.claude\plugins\marketplaces\supervibe-marketplace'
 }
+$ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
+$ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 
 function Say  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Cyan }
 function Ok   { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Green }
 function Warn { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Yellow }
 function Die  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Red; exit 1 }
 
+function Assert-SafePluginPath {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { Die 'unsafe empty plugin root' }
+  if ($Path -match '\.\.') { Die "unsafe plugin root: $Path" }
+  $full = [System.IO.Path]::GetFullPath($Path)
+  $root = [System.IO.Path]::GetPathRoot($full)
+  if ($full.TrimEnd('\') -eq $root.TrimEnd('\')) { Die "unsafe plugin root: $Path" }
+}
+
+function Get-PackageSha256 {
+  $archive = Join-Path ([System.IO.Path]::GetTempPath()) "supervibe-update-package.$PID.tar"
+  try {
+    & git -C $PluginRoot archive --format=tar -o $archive HEAD
+    if ($LASTEXITCODE -ne 0) { Die 'failed to create package archive for checksum verification' }
+    return (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+  } finally {
+    Remove-Item -Force $archive -ErrorAction SilentlyContinue
+  }
+}
+
+function Test-CheckoutIntegrity {
+  if ($ExpectedCommit) {
+    $actualCommit = (git -C $PluginRoot rev-parse HEAD 2>$null) -join ''
+    if ($actualCommit -ne $ExpectedCommit) { Die "commit integrity mismatch: expected $ExpectedCommit got $actualCommit" }
+    Ok "commit integrity verified: $ExpectedCommit"
+  }
+  if ($ExpectedPackageSha256) {
+    $actualSha = Get-PackageSha256
+    if ($actualSha -ne $ExpectedPackageSha256) { Die "package checksum mismatch: expected $ExpectedPackageSha256 got $actualSha" }
+    Ok "package checksum verified: $ExpectedPackageSha256"
+  }
+}
+
 # ---- preflight ----
 
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.' }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Die 'node not found. Install Node.js 22+ (https://nodejs.org).' }
 if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die 'npm not found.' }
+Assert-SafePluginPath $PluginRoot
+Say "plan: will update existing checkout at $PluginRoot and will not modify local edits"
+Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 # ---- locate install ----
 
@@ -61,6 +99,7 @@ try {
 } finally {
   Pop-Location
 }
+Test-CheckoutIntegrity
 
 Ok 'done. Restart your AI CLI to pick up the new plugin code.'
 Ok 'if any project has .claude/ overrides, run /evolve-adapt inside that project.'

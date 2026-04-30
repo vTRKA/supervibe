@@ -24,7 +24,7 @@ test("build-registry produces a registry.yaml with required top-level keys", asy
   assert.ok("confidence-rubrics" in data, "missing confidence-rubrics key");
 });
 
-test("build-registry includes all 14 rubrics by name", async () => {
+test("build-registry includes all 16 rubrics by name", async () => {
   if (existsSync(REGISTRY)) await rm(REGISTRY);
   execSync("node scripts/build-registry.mjs", { cwd: ROOT, stdio: "pipe" });
   const content = await readFile(REGISTRY, "utf8");
@@ -34,6 +34,8 @@ test("build-registry includes all 14 rubrics by name", async () => {
     "agent-delivery",
     "agent-quality",
     "agent-quality-ab",
+    "autonomous-loop",
+    "autonomy-readiness",
     "brandbook",
     "execute-plan",
     "framework",

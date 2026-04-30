@@ -24,10 +24,12 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 ## What Supervibe provides
 
 Same as `CLAUDE.md`:
-- 73 specialist agents in `./agents/`
-- 45 process skills in `./skills/`
-- 19 project rules in `./rules/`
-- 12 confidence rubrics in `./confidence-rubrics/`
+- 81 specialist agents in `./agents/`
+- 51 process skills in `./skills/`
+- 23 project rules in `./rules/`
+- 16 confidence rubrics in `./confidence-rubrics/`
+- Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
+- Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
 - Code graph + semantic RAG via `./scripts/search-code.mjs`
 - Project memory via `./scripts/search-memory.mjs`
 - Live preview-server via `./scripts/preview-server.mjs`

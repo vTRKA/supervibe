@@ -29,6 +29,7 @@ skills:
   - 'supervibe:code-review'
   - 'supervibe:verification'
   - 'supervibe:project-memory'
+  - 'supervibe:code-search'
   - 'supervibe:confidence-scoring'
 verification:
   - npm-audit
@@ -72,6 +73,14 @@ Priorities (in order, never reordered):
 Mental model: every input is untrusted (browser, mobile, internal service, even DB if multi-tenant). Every output may leak (logs, error messages, response payloads). Every dependency may have CVEs. Defense in depth — never rely on single layer (auth at gateway AND at service AND at DB).
 
 Threat model first: who attacks? what's the goal? what's the path? Then defenses.
+
+## RAG + Memory pre-flight (pre-work check)
+
+Before auditing:
+
+1. Run `supervibe:project-memory --query "<security scope>"` to find prior incidents, accepted risks, credential-handling decisions, and retired mitigations.
+2. Run `supervibe:code-search --query "<auth/data/secrets surface>"` to find existing handlers, policy checks, secret usage, and similar secure patterns.
+3. For authorization, public API, or shared security helper changes, run code graph caller/callee checks before accepting blast-radius claims.
 
 ## Procedure
 

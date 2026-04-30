@@ -43,7 +43,14 @@ Specifically: a rename in TypeScript broke production because 3 callers in a Pyt
    - **1–10 callers**: update them in the same PR
    - **>10 callers OR cross-module**: escalate to architect-reviewer for ADR before proceeding
 4. If renaming: after the change, verify `--callers "<old-name>"` returns 0
-5. Cite graph evidence in PR description / output contract using the Case A/B/C template
+5. Check semantic anchors when present:
+   ```bash
+   /supervibe-status --anchors --file <touched-file>
+   /supervibe-loop --anchor-doctor
+   ```
+   Anchored refactors must preserve listed invariants or document the reviewed
+   contract update.
+6. Cite graph and anchor evidence in PR description / output contract using the Case A/B/C template
 
 ## When NOT to apply
 

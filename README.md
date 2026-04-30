@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist agents with a code graph, project memory, and confidence gates. Runs locally. No Docker.
 
-**v1.8.1** · MIT · Windows / macOS / Linux
+**v1.9.0** · MIT · Windows / macOS / Linux
 
 ---
 
@@ -21,7 +21,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 81 specialist 
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
-| Autonomous loop | `/supervibe-loop` turns a plan or validation request into a bounded, visible, cancellable agent loop with preflight, policy gates, side-effect ledger, and 9/10 confidence completion |
+| Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
 | Design pipeline (5 targets) | web · chrome-extension · electron · tauri · mobile-native — specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
@@ -83,12 +83,14 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v1.8.1 initialized for this project
+[supervibe] welcome — plugin v1.9.0 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
 
 **Requirements:** Node.js 22+ and Git. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
+
+Release integrity evidence is documented in [release security](docs/release-security.md), [install integrity](docs/install-integrity.md), and [third-party licenses](docs/third-party-licenses.md). The default installer follows `main`; strict installs can set `SUPERVIBE_REF`, `SUPERVIBE_EXPECTED_COMMIT`, and `SUPERVIBE_EXPECTED_PACKAGE_SHA256` before running the installer.
 
 ### Update
 
@@ -122,6 +124,97 @@ All three do the same thing: refuse if you have uncommitted edits to the plugin 
 ---
 
 ## Workflows
+
+### Brainstorm -> Plan -> Review -> Atomize -> Epic -> Worktree Run
+
+The trigger-safe path is explicit and chainable:
+
+1. `/supervibe-brainstorm <topic>` writes the approved spec, then asks: `Следующий шаг - написать план. Переходим?`
+2. `/supervibe-plan <spec-path>` writes the plan, then asks for the review loop before execution.
+3. `/supervibe-plan --review <plan-path>` reviews plan quality, safety, missing checks, and README impact.
+4. `/supervibe-loop --from-plan --atomize <plan-path>` splits the reviewed plan into atomic work items and an epic.
+5. `/supervibe-loop --epic <id> --worktree --max-duration 3h` runs only after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls.
+
+Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
+
+Unreleased capability label: the durable autonomous loop is implemented in this
+workspace and remains opt-in until the release gate publishes it. Autonomous execution is opt-in, not the default.
+The default path is read-only planning, review, atomization preview, status,
+diagnostics, and dry-run artifacts.
+
+Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execution:
+
+```bash
+/supervibe-brainstorm "idea"
+/supervibe-plan --from-brainstorm docs/specs/example.md
+/supervibe-plan --review docs/plans/example.md
+/supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
+/supervibe-loop --epic example-epic --worktree --max-duration 3h
+/supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
+/supervibe-loop --status --epic example-epic
+/supervibe-loop --resume .claude/memory/loops/example-run/state.json
+/supervibe-loop --stop example-run
+```
+
+Execution modes are explicit: `--dry-run`, `--guided`, `--manual`,
+`--fresh-context --tool codex|claude|gemini|opencode`, and worktree-backed
+execution with `--worktree`. Provider prompts, rate limits, network/MCP approvals,
+secrets, billing, deploys, production mutations, and credential changes are
+never bypassed. Missing credentials, missing provider permissions,
+CI/external access failures, worktree conflicts, policy stops, stale claims, and
+sync drift become blocked states with a next safe action.
+
+For parallel work on one epic, scope each worktree session with
+`--assigned-task` and `--assigned-write-set`. The registry is lock-protected and
+status output shows each active session's wave, task IDs, write-set, agents, and
+path so separate sessions do not silently claim the same zone.
+
+Implemented loop operations now include graph inspection, doctor/repair,
+fresh-context prime summaries, PRD/story intake, and safe export/import bundles:
+
+```bash
+/supervibe-loop --from-prd docs/specs/checkout.md --dry-run
+/supervibe-loop --atomize-plan docs/plans/example.md --dry-run
+/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/example-epic/graph.json
+/supervibe-loop graph --file .claude/memory/loops/<run-id>/state.json --format text
+/supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json
+/supervibe-loop prime --file .claude/memory/loops/<run-id>/state.json
+/supervibe-loop export --file .claude/memory/loops/<run-id>/state.json --out .claude/memory/bundles/<run-id>
+```
+
+Work-item status uses the same vocabulary in CLI, reports, and query answers:
+`ready`, `blocked`, `claimed`, `stale`, `orphan`, `drift`, `review`, and
+`done`. State and evidence live under `.claude/memory/loops/`, atomized epics
+under `.claude/memory/work-items/`, external tracker mappings in
+`task-tracker-map.json`, and archived/exported run bundles under
+`.claude/memory/bundles/`.
+
+Production-prep may complete autonomously when evidence is complete, but
+production mutation, destructive migration, credential mutation, billing, DNS,
+account, access-control, and remote server changes remain blocked without an
+exact approval lease.
+
+Policy profiles make those boundaries explicit per project and role. Use
+`/supervibe-status --policy` to inspect the active profile, `/supervibe-status
+--role` to inspect team governance, and `/supervibe-loop --policy-profile
+guided|contributor|maintainer|CI-readonly|CI-verify` to run with a named local
+profile. Approval receipts live in a scoped expiring local ledger and can be
+listed with `/supervibe-loop --approval-receipts`. Details are in
+[policy profiles](docs/policy-profiles.md).
+
+Semantic anchors are optional local hints for large files. They let agents find
+stable regions, file-local contracts, invariants, and per-file change summaries
+without requiring heavy markup everywhere. Use `/supervibe-status --anchors
+--file src/example.ts` to inspect one file and `/supervibe-loop --anchor-doctor`
+to check derived anchor drift. Details are in
+[semantic anchors](docs/semantic-anchors.md).
+
+Multi-agent orchestration can be inspected before any fan-out. Use
+`/supervibe-loop --plan-waves docs/plans/example.md` to see safe parallel
+waves, `/supervibe-loop --assign-ready --explain --file <state.json>` to see
+worker/reviewer reasoning, and `/supervibe-status --assignment <task-id> --file
+<state.json>` to answer why a task was assigned or serialized. Details are in
+[multi-agent orchestration](docs/multi-agent-orchestration.md).
 
 Three named flows cover most of the day-to-day use. Each has an explicit slash-command entry point — no need to remember the right phrase to make the AI pick the right skill.
 
@@ -200,6 +293,7 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow; produces an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
+| `/supervibe-loop --request/--plan/--from-prd` | Bounded autonomous loop with graph scheduler, status/resume/stop, doctor, graph export, and policy gates |
 | `/supervibe-design <brief>` | End-to-end design pipeline: brand → spec → prototype → live preview → approval |
 | `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
 | `/supervibe-preview` | Manage live preview servers |
@@ -221,6 +315,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | Command | What it does |
 |---------|--------------|
 | `npm run supervibe:status` | Health check across every index |
+| `npm run supervibe:loop -- --help` | Local no-tty help for loop status, graph, doctor, prime, export/import, and execution modes |
 | `npm run supervibe:upgrade` | git pull, lfs pull, npm install, run all tests |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
 | `npm run code:index` | Full reindex |

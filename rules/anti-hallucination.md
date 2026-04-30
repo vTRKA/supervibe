@@ -39,6 +39,9 @@ Concrete consequence of NOT following: production deploy of code that imports `g
 **Before stating a fact about the codebase:**
 - Provide grep evidence (file:line citation)
 - Or `Read` a specific section confirming
+- If a semantic anchor or file-local contract is cited, verify it with
+  `/supervibe-status --anchors --file <path>` or by reading the sidecar/index.
+  Never invent anchor IDs, invariants, or change-summary evidence.
 
 **Before asserting "this is the convention":**
 - Show ≥3 examples of the pattern (1 example = anecdote, 3 = pattern)
