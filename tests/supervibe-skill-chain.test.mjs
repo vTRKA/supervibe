@@ -20,7 +20,8 @@ test("workflow phase graph forces brainstorm to plan to review to atomization", 
   assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan");
   assert.equal(getNextWorkflowStep("plan").command, "/supervibe-plan --review");
   assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --from-plan --atomize");
-  assert.equal(getNextWorkflowStep("work-item-atomization").command, "/supervibe-loop --epic --worktree");
+  assert.equal(getNextWorkflowStep("work-item-atomization").command, "/supervibe-loop --guided --max-duration 3h");
+  assert.equal(getNextWorkflowStep("worktree-setup").command, "/supervibe-loop --epic --worktree --max-duration 3h");
 });
 
 test("next-step handoff block is parseable and prevents silent producer stops", () => {

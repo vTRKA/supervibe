@@ -21,6 +21,7 @@ Primary path:
 /supervibe-loop --from-plan docs/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
 /supervibe-loop --request "finish onboarding design and wire it into app" --max-loops 20
+/supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic SV-123 --worktree --max-duration 3h
 /supervibe-loop --epic SV-123 --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
 /supervibe-loop --worktree-existing .worktrees/loop-upgrade --resume-session session-loop-upgrade
@@ -175,12 +176,17 @@ resolution comment or linked decision.
 Worktree sessions:
 
 ```bash
+/supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic <epic-id> --worktree --max-duration 3h
 /supervibe-loop --epic <epic-id> --worktree --assigned-task T1 --assigned-write-set src/auth.ts
 /supervibe-loop --epic <epic-id> --worktree --assigned-task T2 --assigned-write-set src/billing.ts
 /supervibe-loop --worktree-existing .worktrees/<session> --resume-session <session-id>
 /supervibe-loop --worktree-status
 ```
+
+Use the current-session command when the user is working alone in one checkout
+and does not want isolation. Worktree-backed runs are opt-in for parallel
+sessions, risky changes, or explicit isolation.
 
 Worktree-backed runs use an active session registry at `.claude/memory/worktree-sessions/registry.json`. Each session records `sessionId`, `epicId`, `branchName`, `worktreePath`, `baselineCommit`, `baselineChecks`, `activeAgentIds`, `status`, `cleanupPolicy`, heartbeat, stop, resume, and cleanup commands. Cleanup is blocked until the worktree is clean and archived.
 Parallel sessions on one epic must declare task and write-set ownership. The

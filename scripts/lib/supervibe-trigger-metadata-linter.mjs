@@ -50,7 +50,9 @@ const FILE_REQUIREMENTS = [
 ];
 
 const README_REQUIRED = [
-  "Brainstorm -> Plan -> Review -> Atomize -> Epic -> Worktree Run",
+  "Brainstorm -> Plan -> Review -> Atomize -> Safe Run",
+  "current session",
+  "worktree is optional",
   "why-trigger",
   "diagnose-trigger",
   "provider-safe",

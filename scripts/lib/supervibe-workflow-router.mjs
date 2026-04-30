@@ -190,12 +190,17 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
   }
 
   if (containsAny(text, WORKTREE_PHRASES)) {
-    return fromWorkflowStep("work-item-atomization", {
+    return fromWorkflowStep("worktree-setup", {
       intent: "worktree_autonomous_run",
       locale,
       confidence: 0.9,
       reason: "Request mentions isolated worktree execution.",
       source: "worktree-rule",
+      command: "/supervibe-loop --epic --worktree",
+      skill: "supervibe:using-git-worktrees",
+      question: locale === "ru"
+        ? "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?"
+        : "Next step is provider-safe preflight before the worktree/autonomous run. Proceed?",
       artifactOverride: artifacts.epicId ?? artifacts.epic ?? undefined,
     });
   }
@@ -219,11 +224,11 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
         source: "atomization-gate",
       });
     }
-    return fromWorkflowStep("worktree-setup", {
-      intent: "execute_epic",
+    return fromWorkflowStep("work-item-atomization", {
+      intent: "single_session_epic_run",
       locale,
       confidence: 0.88,
-      reason: "Reviewed and atomized work can enter bounded execution preflight.",
+      reason: "Reviewed and atomized work can enter bounded current-session execution; worktree is only used when explicitly requested.",
       source: "execution-rule",
     });
   }
@@ -302,7 +307,7 @@ function fromTriggerRoute(route, options = {}) {
 function fromWorkflowStep(phase, options = {}) {
   const edge = getNextWorkflowStep(phase);
   const locale = options.locale === "ru" ? "ru" : "en";
-  const nextPromptText = locale === "ru" ? edge.questionRu : edge.questionEn;
+  const nextPromptText = options.question ?? (locale === "ru" ? edge.questionRu : edge.questionEn);
   return {
     intent: options.intent ?? `continue_${edge.nextPhase}`,
     phase: edge.phase,
@@ -349,8 +354,8 @@ function phaseForRoute(route) {
   if (route.intent === "brainstorm_to_plan") return "brainstorm";
   if (route.intent === "plan_review" || route.intent === "execute_plan") return "plan";
   if (route.intent === "atomize_plan" || route.intent === "create_epic") return "plan-review";
-  if (route.intent === "worktree_autonomous_run") return "work-item-atomization";
-  if (route.intent === "autonomous_epic_run") return "worktree-setup";
+  if (route.intent === "worktree_autonomous_run") return "worktree-setup";
+  if (route.intent === "autonomous_epic_run") return "work-item-atomization";
   return "intake";
 }
 
@@ -389,7 +394,7 @@ function intentForCommand(command) {
 
 function mutationRiskForCommand(command) {
   if (command.includes("--worktree")) return "creates-worktree";
-  if (command.includes("--epic") || command.includes("execute-plan")) return "executes-code";
+  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return "executes-code";
   if (command.includes("--atomize") || command.includes("--create-epic")) return "writes-tracker";
   if (command.includes("plan") || command.includes("brainstorm")) return "writes-docs";
   return "none";
@@ -398,7 +403,7 @@ function mutationRiskForCommand(command) {
 function safetyForCommand(command) {
   const base = ["confirm-before-mutation", "no-provider-bypass", "no-hidden-background-work"];
   if (command.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "bounded-runtime"];
-  if (command.includes("--epic") || command.includes("execute-plan")) return [...base, "readiness-gate", "stop-command", "bounded-runtime"];
+  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "bounded-runtime"];
   if (command.includes("--atomize") || command.includes("--create-epic")) return [...base, "plan-review-pass-required"];
   if (command.includes("--review")) return [...base, "review-evidence-required"];
   return base;
@@ -408,7 +413,7 @@ function stopConditionForCommand(command) {
   if (command.includes("--review")) return "ask-before-plan-review";
   if (command.includes("--atomize") || command.includes("--create-epic")) return "ask-before-work-item-write";
   if (command.includes("--worktree")) return "ask-before-worktree-run";
-  if (command.includes("--epic") || command.includes("execute-plan")) return "ask-before-execution";
+  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return "ask-before-execution";
   if (command.includes("plan")) return "ask-before-plan";
   return "ask-before-next-step";
 }

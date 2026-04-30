@@ -125,7 +125,7 @@ All three do the same thing: refuse if you have uncommitted edits to the plugin 
 
 ## Workflows
 
-### Brainstorm -> Plan -> Review -> Atomize -> Epic -> Worktree Run
+### Brainstorm -> Plan -> Review -> Atomize -> Safe Run
 
 The trigger-safe path is explicit and chainable:
 
@@ -133,7 +133,7 @@ The trigger-safe path is explicit and chainable:
 2. `/supervibe-plan <spec-path>` writes the plan, then asks for the review loop before execution.
 3. `/supervibe-plan --review <plan-path>` reviews plan quality, safety, missing checks, and README impact.
 4. `/supervibe-loop --from-plan --atomize <plan-path>` splits the reviewed plan into atomic work items and an epic.
-5. `/supervibe-loop --epic <id> --worktree --max-duration 3h` runs only after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls.
+5. `/supervibe-loop --guided --max-duration 3h` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
 
@@ -149,6 +149,7 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 /supervibe-plan --from-brainstorm docs/specs/example.md
 /supervibe-plan --review docs/plans/example.md
 /supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
+/supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic example-epic --worktree --max-duration 3h
 /supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
 /supervibe-loop --status --epic example-epic
@@ -157,8 +158,9 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 ```
 
 Execution modes are explicit: `--dry-run`, `--guided`, `--manual`,
-`--fresh-context --tool codex|claude|gemini|opencode`, and worktree-backed
-execution with `--worktree`. Provider prompts, rate limits, network/MCP approvals,
+`--fresh-context --tool codex|claude|gemini|opencode`, and optional worktree-backed
+execution with `--worktree`. A single current-session run is valid when the user
+does not need isolation or parallel sessions. Provider prompts, rate limits, network/MCP approvals,
 secrets, billing, deploys, production mutations, and credential changes are
 never bypassed. Missing credentials, missing provider permissions,
 CI/external access failures, worktree conflicts, policy stops, stale claims, and

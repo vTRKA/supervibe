@@ -60,6 +60,19 @@ test("worktree request routes to isolated session preflight and adds dirty-state
   assert.ok(route.safetyBlockers.includes("dirty-main-worktree-needs-isolated-session-plan"));
 });
 
+test("single-session execution does not force worktree orchestration", () => {
+  const route = routeWorkflowIntent({
+    userPhrase: "run it",
+    dirtyGitState: "clean",
+    artifacts: { planReviewPassed: true, workItemsReady: true, epicId: "EPIC-1", stopCommandAvailable: true },
+  });
+  assert.equal(route.intent, "single_session_epic_run");
+  assert.equal(route.command, "/supervibe-loop --guided --max-duration 3h");
+  assert.equal(route.command.includes("--worktree"), false);
+  assert.equal(route.skill, "supervibe:autonomous-agent-loop");
+  assert.match(route.nextPromptText, /current session/i);
+});
+
 test("multi-session plan requests route to worktree orchestration", () => {
   const route = routeWorkflowIntent({
     userPhrase: "coordinate 10 sessions on the same plan in worktree",
