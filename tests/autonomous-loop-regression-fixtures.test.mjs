@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("canonical autonomous-loop regression fixtures cover required scenarios", async () => {
-  const fixtures = JSON.parse(await readFile(new URL("../docs/audits/regression-suite/canonical-tasks.json", import.meta.url), "utf8"));
+  const fixtures = JSON.parse(await readFile(new URL("../tests/fixtures/regression-suite/canonical-tasks.json", import.meta.url), "utf8"));
   const ids = new Set(fixtures["autonomous-loop"].map((item) => item.id));
   for (const id of [
     "linear-graph",

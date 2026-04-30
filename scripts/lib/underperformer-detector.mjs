@@ -9,9 +9,16 @@ const OVERRIDE_TREND_DELTA = 0.4;
 export function detectUnderperformers(allInvocations, opts = {}) {
   const minInv = opts.minInvocations ?? MIN_INVOCATIONS;
   const confThreshold = opts.confidenceThreshold ?? CONFIDENCE_THRESHOLD;
+  const knownAgentIds = opts.knownAgentIds ? new Set(opts.knownAgentIds) : null;
+  const ignoredAgentIds = new Set(opts.ignoredAgentIds || []);
+  const ignoreFixtureTelemetry = opts.ignoreFixtureTelemetry ?? true;
 
   const byAgent = {};
   for (const inv of allInvocations) {
+    if (!inv?.agent_id) continue;
+    if (ignoredAgentIds.has(inv.agent_id)) continue;
+    if (knownAgentIds && !knownAgentIds.has(inv.agent_id)) continue;
+    if (ignoreFixtureTelemetry && isFixtureInvocation(inv)) continue;
     if (!byAgent[inv.agent_id]) byAgent[inv.agent_id] = [];
     byAgent[inv.agent_id].push(inv);
   }
@@ -44,4 +51,13 @@ export function detectUnderperformers(allInvocations, opts = {}) {
     }
   }
   return flagged;
+}
+
+function isFixtureInvocation(inv) {
+  return inv.fixture === true ||
+    inv.test === true ||
+    inv.source === 'test' ||
+    inv.telemetry_type === 'fixture' ||
+    inv.metadata?.fixture === true ||
+    inv.metadata?.source === 'test';
 }

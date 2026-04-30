@@ -20,6 +20,12 @@ worktrees/
 .claude/memory/*.jsonl
 .claude/memory/worktree-sessions/
 
+# Local Supervibe generated reports and IDE bridge descriptors
+.supervibe/audits/
+.supervibe/evals/
+.supervibe/ide-bridge.json
+.supervibe/policy-derived-defaults.json
+
 # Models: track quantized only, ignore full + tmp downloads
 models/**/onnx/model.onnx
 models/**/onnx/*.tmp.*

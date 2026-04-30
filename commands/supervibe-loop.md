@@ -20,6 +20,7 @@ Primary path:
 /supervibe-loop --atomize-plan docs/plans/payment-integration.md --plan-review-passed
 /supervibe-loop --from-plan docs/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
+/supervibe-loop --happy-path --plan docs/plans/payment-integration.md
 /supervibe-loop --request "finish onboarding design and wire it into app" --max-loops 20
 /supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic SV-123 --worktree --max-duration 3h
@@ -77,7 +78,7 @@ Advanced diagnostics:
 /supervibe-loop --tracker-doctor --file .claude/memory/work-items/<epic-id>/graph.json --fix
 /supervibe-loop --export-sync-bundle .claude/memory/loops/<run-id> --out .claude/memory/bundles/<run-id>-sync
 /supervibe-loop --import-sync-bundle .claude/memory/bundles/<run-id>-sync --dry-run
-/supervibe-loop --eval --case plan-review-loop --out docs/audits/autonomous-loop-evals/latest-report.json
+/supervibe-loop --eval --case plan-review-loop --out .supervibe/audits/autonomous-loop-evals/latest-report.json
 ```
 
 Plan atomization:
@@ -117,6 +118,11 @@ remains visible in status, dashboard, query results, and SLA reports. No
 background daemon is required; due work is re-evaluated deterministically when a
 status, dashboard, report, or scheduler check runs.
 
+For visual inspection, `/supervibe-ui` can open the same `graph.json` and loop
+`state.json` in a localhost control plane. It previews context packs, waves,
+reports, GC candidates, and safe local actions without changing the canonical
+JSON graph unless the user applies a token-protected mutation.
+
 Interactive mode is opt-in. `/supervibe-loop --create-work-item --interactive`
 uses guided terminal forms when a real TTY exists; otherwise it prints a
 `SUPERVIBE_INTERACTIVE_FALLBACK` command and exits without mutation. Guided
@@ -127,7 +133,7 @@ defer, claim, and close-style actions. `--yes` is limited to safe local actions
 and cannot approve provider, network, production, webhook, or risky operations.
 
 Autonomous evals are local by default. `/supervibe-loop --eval` replays the
-benchmark corpus from `docs/audits/autonomous-loop-evals/benchmark-corpus.json`
+benchmark corpus from `tests/fixtures/autonomous-loop-evals/benchmark-corpus.json`
 against `golden-outcomes.json`, calculates a quality scorecard, writes a local
 report, and never calls provider tools or mutates the workspace. `--eval
 --replay <run-dir>` replays archived run artifacts. `--eval-live` is blocked
@@ -247,6 +253,7 @@ Execution modes:
 
 ```bash
 npm run supervibe:loop -- --dry-run --request "validate integrations"
+npm run supervibe:loop -- --happy-path --plan docs/plans/example.md
 npm run supervibe:loop -- --dry-run --request "validate integrations" --notify terminal,inbox
 npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .claude/memory/work-items/<epic-id>/graph.json
 npm run supervibe:loop -- --create-work-item --title "Fix checkout bug" --template bug --dry-run
@@ -256,4 +263,7 @@ npm run supervibe:loop -- graph --file .claude/memory/loops/<run-id>/state.json 
 npm run supervibe:loop -- doctor --file .claude/memory/loops/<run-id>/state.json
 npm run supervibe:loop -- prime --file .claude/memory/loops/<run-id>/state.json
 npm run supervibe:loop -- --export-sync-bundle .claude/memory/loops/<run-id> --out .claude/memory/bundles/<run-id>-sync
+npm run supervibe:context-pack -- --file .claude/memory/work-items/<epic-id>/graph.json --item T1
+npm run supervibe:ui -- --file .claude/memory/work-items/<epic-id>/graph.json
+npm run supervibe:gc -- --all --dry-run
 ```

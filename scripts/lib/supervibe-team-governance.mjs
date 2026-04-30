@@ -163,5 +163,5 @@ function decision(allowed, governance, reason, noTty) {
 
 function isArtifactTarget(target = "") {
   const value = String(target || "").replace(/\\/g, "/");
-  return value.startsWith(".claude/memory/") || value.startsWith("docs/audits/");
+  return value.startsWith(".claude/memory/") || value.startsWith(".supervibe/audits/");
 }

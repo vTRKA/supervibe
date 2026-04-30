@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("upstream coverage document classifies every useful source family", async () => {
-  const content = await readFile("docs/design-intelligence-upstream-coverage.md", "utf8");
+  const content = await readFile("references/design-intelligence-upstream-coverage.md", "utf8");
   for (const phrase of [
     "Main design CSV data",
     "Duplicate data trees",

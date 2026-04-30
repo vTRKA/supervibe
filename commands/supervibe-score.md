@@ -215,7 +215,7 @@ Dimensions:
 
 - `supervibe:confidence-scoring` skill — the underlying methodology
 - `confidence-rubrics/*.yaml` — the 14 rubrics this command scores against
-- `docs/internal-commands/supervibe-evaluate.md` — legacy telemetry alias spec
+- `references/internal-commands/supervibe-evaluate.md` — legacy telemetry alias spec
 - `/supervibe-strengthen` — if score is `block`, this is the agent-improvement path
-- `docs/internal-commands/supervibe-override.md` — internal override logging spec
+- `references/internal-commands/supervibe-override.md` — internal override logging spec
 - `.claude/memory/score-log.jsonl` — telemetry trail for score trends over time

@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { redactSensitiveContent } from "./autonomous-loop-artifact-retention.mjs";
 
-export const DEFAULT_BENCHMARK_CORPUS_PATH = "docs/audits/autonomous-loop-evals/benchmark-corpus.json";
-export const DEFAULT_GOLDEN_OUTCOMES_PATH = "docs/audits/autonomous-loop-evals/golden-outcomes.json";
+export const DEFAULT_BENCHMARK_CORPUS_PATH = "tests/fixtures/autonomous-loop-evals/benchmark-corpus.json";
+export const DEFAULT_GOLDEN_OUTCOMES_PATH = "tests/fixtures/autonomous-loop-evals/golden-outcomes.json";
 
 export const REQUIRED_BENCHMARK_CASES = Object.freeze([
   "plan-execution",

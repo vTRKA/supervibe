@@ -95,4 +95,4 @@ Why this is good: override recorded with reason ≥10 chars, traceable in audit.
 
 - `confidence-rubrics/` — all 14 rubrics
 - `skills/confidence-scoring/SKILL.md`
-- `docs/internal-commands/supervibe-override.md`
+- `references/internal-commands/supervibe-override.md`

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-04-30
+
+### Added
+
+- Added a Figma source-of-truth flow covering variables/components, token sync,
+  prototype handoff, code drift audit, and permissioned writeback boundaries.
+- Added explicit AI/data boundary sections to intake, PRD, and plan templates,
+  with validators for MCP, Figma, external API, PII, and approval boundaries.
+- Added a shipped confidence gates validator and wired it into `npm run check`.
+- Added a read-only multi-host doctor for Codex, Cursor, Gemini, OpenCode,
+  Copilot, and Claude Code compatibility checks.
+
+### Changed
+
+- Refreshed onboarding docs and local install examples for the current release.
+- Filtered fixture and unknown agent telemetry from underperformer detection so
+  `/supervibe-strengthen` does not recommend fixing test-only agents.
+
 ## [2.0.1] - 2026-04-30
 
 ### Changed

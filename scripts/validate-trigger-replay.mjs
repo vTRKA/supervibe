@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { getTriggerIntentCorpus } from "./lib/supervibe-trigger-intent-corpus.mjs";
 import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
-import { evaluateTriggerMatrix, formatTriggerEvaluation } from "./lib/supervibe-trigger-evaluator.mjs";
+import {
+  evaluateSemanticIntentMatrix,
+  evaluateTriggerMatrix,
+  formatSemanticIntentEvaluation,
+  formatTriggerEvaluation,
+} from "./lib/supervibe-trigger-evaluator.mjs";
 
 const corpus = getTriggerIntentCorpus();
 const failures = [];
@@ -35,5 +40,11 @@ if (failures.length > 0) {
 const workflowEvaluation = evaluateTriggerMatrix();
 console.log(formatTriggerEvaluation(workflowEvaluation));
 if (!workflowEvaluation.pass) {
+  process.exitCode = 1;
+}
+
+const semanticEvaluation = evaluateSemanticIntentMatrix();
+console.log(formatSemanticIntentEvaluation(semanticEvaluation));
+if (!semanticEvaluation.pass) {
   process.exitCode = 1;
 }

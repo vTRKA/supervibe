@@ -40,7 +40,7 @@ test('E2E: invocations → log → aggregate → detect → suggest', async () =
   assert.ok(flagged.find(f => f.agent_id === 'failing-stack-agent'),
     'detector should flag failing-stack-agent');
 
-  const suggestions = await buildStrengthenSuggestions();
+  const suggestions = await buildStrengthenSuggestions({ knownAgentIds: new Set(['failing-stack-agent']) });
   const sug = suggestions.find(s => s.agent_id === 'failing-stack-agent');
   assert.ok(sug, 'suggestion should be present');
   assert.match(sug.command, /^\/supervibe-strengthen/);

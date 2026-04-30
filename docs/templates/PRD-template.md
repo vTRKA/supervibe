@@ -60,6 +60,21 @@
 
 ---
 
+## AI/Data Boundary
+
+| Data or surface | Allowed for agents/MCPs? | Redaction required | Approval required |
+|-----------------|--------------------------|--------------------|-------------------|
+| Source code | yes/no | <paths/fields> | <when> |
+| Customer/user data | yes/no | <PII fields> | <approver> |
+| Figma/design files | yes/no | <hidden layers/assets> | <file/node scope> |
+| Browser screenshots | yes/no | <regions to blur> | <when> |
+| External APIs/tools | yes/no | <request/response fields> | <tool/action scope> |
+
+**Never share:** <secrets, raw tokens, credentials, production PII, internal URLs, screenshots with private data>.
+**Approval boundary:** <which MCP, Figma, browser, network, or remote mutation actions require exact approval>.
+
+---
+
 ## User stories with acceptance criteria
 
 ### Story 1: <name>

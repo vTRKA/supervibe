@@ -1,4 +1,5 @@
 import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
+import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
 
 const ROUTES = {
   brainstorm_to_plan: {
@@ -161,6 +162,54 @@ const ROUTES = {
     nextQuestionEn: "Next step - prepare stack-aware UI handoff from approved tokens. Proceed?",
     prerequisites: ["approved-design-system", "design-artifact"],
   },
+  work_control_ui: {
+    phase: "status",
+    command: "/supervibe-ui",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Следующий шаг - открыть локальный UI для задач, эпиков, фаз, волн и безопасных действий. Переходим?",
+    nextQuestionEn: "Next step - open the local UI for tasks, epics, phases, waves, and safe actions. Proceed?",
+    prerequisites: [],
+  },
+  cleanup_stale_work: {
+    phase: "maintenance",
+    command: "/supervibe-gc --all --dry-run",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Следующий шаг - показать dry-run очистки старых задач, эпиков и памяти без удаления. Переходим?",
+    nextQuestionEn: "Next step - show a dry-run cleanup for stale tasks, epics, and memory without deleting anything. Proceed?",
+    prerequisites: [],
+  },
+  agent_strengthen: {
+    phase: "maintenance",
+    command: "/supervibe-strengthen",
+    skill: "supervibe:strengthen",
+    nextQuestionRu: "Следующий шаг - проверить слабых агентов по телеметрии и предложить усиление через user gate. Переходим?",
+    nextQuestionEn: "Next step - inspect weak agents from telemetry and propose strengthening through a user gate. Proceed?",
+    prerequisites: [],
+  },
+  memory_audit: {
+    phase: "audit",
+    command: "/supervibe-audit --memory",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Следующий шаг - проверить memory/RAG/codegraph/context качество, свежесть и расход токенов. Переходим?",
+    nextQuestionEn: "Next step - audit memory/RAG/codegraph/context quality, freshness, and token cost. Proceed?",
+    prerequisites: [],
+  },
+  docs_audit: {
+    phase: "audit",
+    command: "/supervibe-audit --docs",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Следующий шаг - проверить docs на устаревшие и внутренние dev-артефакты. Переходим?",
+    nextQuestionEn: "Next step - audit docs for stale and internal development artifacts. Proceed?",
+    prerequisites: [],
+  },
+  figma_source_of_truth: {
+    phase: "design",
+    command: "/supervibe-design --figma-source-of-truth",
+    skill: "supervibe:design-intelligence",
+    nextQuestionRu: "Следующий шаг - пройти Figma source-of-truth flow: variables/components -> tokens -> prototype -> code -> drift audit. Переходим?",
+    nextQuestionEn: "Next step - run the Figma source-of-truth flow: variables/components -> tokens -> prototype -> code -> drift audit. Proceed?",
+    prerequisites: ["design-brief"],
+  },
 };
 
 const RULES = [
@@ -231,7 +280,7 @@ const RULES = [
   },
   {
     intent: "presentation_deck",
-    confidence: 0.9,
+    confidence: 0.93,
     test: (text) => hasAny(text, ["deck", "presentation", "слайд", "презентац"]) && hasAny(text, ["design", "дизайн", "make", "сделай", "build"]),
   },
   {
@@ -241,12 +290,12 @@ const RULES = [
   },
   {
     intent: "chart_ux",
-    confidence: 0.89,
+    confidence: 0.92,
     test: (text) => hasAny(text, ["chart", "graph", "data viz", "график", "диаграм"]) && hasAny(text, ["ux", "design", "дизайн", "a11y", "accessibility"]),
   },
   {
     intent: "mobile_ui",
-    confidence: 0.88,
+    confidence: 0.93,
     test: (text) => hasAny(text, ["mobile", "ios", "android", "touch", "мобиль"]) && hasAny(text, ["ui", "дизайн", "interface", "экран"]),
   },
   {
@@ -293,7 +342,23 @@ export function routeTriggerRequest(input, options = {}) {
     );
   }
 
-  const scored = RULES.filter((rule) => rule.test(text)).sort((a, b) => b.confidence - a.confidence);
+  const keywordScored = RULES
+    .filter((rule) => rule.test(text))
+    .map((rule) => ({ ...rule, source: "keyword-rule", reason: `Keyword route: ${rule.intent}` }));
+  const semanticScored = rankSemanticIntents(text)
+    .filter((candidate) => ROUTES[candidate.intent])
+    .map((candidate) => ({
+      intent: candidate.intent,
+      confidence: candidate.confidence,
+      source: candidate.source,
+      reason: candidate.reason,
+      semanticEvidence: {
+        matchedGroups: candidate.matchedGroups,
+        painMatches: candidate.painMatches,
+      },
+    }));
+  const scored = [...keywordScored, ...semanticScored]
+    .sort((a, b) => b.confidence - a.confidence || sourcePriority(b.source) - sourcePriority(a.source));
   if (scored.length > 0) {
     const route = ROUTES[scored[0].intent];
     return withArtifactStatus(
@@ -310,7 +375,9 @@ export function routeTriggerRequest(input, options = {}) {
         nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
         alternatives: scored.slice(1, 4).map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
         matchedPhrase: null,
-        reason: `Keyword route: ${scored[0].intent}`,
+        semanticEvidence: scored[0].semanticEvidence,
+        source: scored[0].source,
+        reason: scored[0].reason,
       },
       artifacts,
     );
@@ -399,7 +466,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
-  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -410,6 +477,12 @@ function requiredSafetyFor(intent) {
   }
   if (intent === "execute_plan") return [...base, "readiness-gate", "completion-gate"];
   return base;
+}
+
+function sourcePriority(source) {
+  if (source === "semantic-intent-profile") return 2;
+  if (source === "keyword-rule") return 1;
+  return 0;
 }
 
 function detectLocale(text) {

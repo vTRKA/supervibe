@@ -8,6 +8,10 @@ description: >-
 
 # /supervibe-memory-gc
 
+Internal low-level spec. The shipped user-facing cleanup route is
+`/supervibe-gc`, backed by `npm run supervibe:gc`,
+`npm run supervibe:memory-gc`, and `npm run supervibe:work-items-gc`.
+
 Garbage-collect (archive, not delete) old or superseded entries from `.claude/memory/`. Prevents unbounded memory growth while preserving every entry forever — archived entries are moved to `.claude/memory/.archive/`, never erased, fully reversible via `--restore`.
 
 This command does NOT touch `.claude/memory/code.db` / `memory.db` (SQLite indexes — these are rebuilt from the markdown source-of-truth). It operates on the `.md` files in `decisions/`, `learnings/`, `patterns/`, `incidents/`, `solutions/`.

@@ -92,8 +92,13 @@ export function validatePlanArtifact(markdown) {
     issues.push('plan format: missing hard constraints block');
   }
 
-  for (const section of ['File Structure', 'Critical Path', 'Self-Review', 'Execution Handoff']) {
+  for (const section of ['AI/Data Boundary', 'File Structure', 'Critical Path', 'Self-Review', 'Execution Handoff']) {
     if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
+  }
+
+  const aiBoundary = sectionBody(markdown, 'AI/Data Boundary');
+  for (const field of ['MCP', 'Figma', 'External', 'PII', 'approval']) {
+    if (!new RegExp(field, 'i').test(aiBoundary)) issues.push(`ai/data boundary: missing ${field}`);
   }
 
   const fileStructure = sectionBody(markdown, 'File Structure');

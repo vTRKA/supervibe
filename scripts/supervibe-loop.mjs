@@ -33,6 +33,7 @@ import { appendChangeSummary, defaultChangeSummaryPath, formatChangeSummaryRepor
 import { buildSemanticAnchorIndex, formatSemanticAnchorReport, parseSemanticAnchors } from "./lib/supervibe-semantic-anchor-index.mjs";
 import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explainer.mjs";
 import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
+import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
 import {
   createWorktreeSessionRecord,
@@ -95,6 +96,7 @@ function parseArgs(argv) {
     "explain",
     "setup-worker-presets",
     "allow-session-conflict",
+    "happy-path",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -129,6 +131,22 @@ async function main() {
     return;
   }
 
+  if (args["happy-path"]) {
+    const plan = createHappyPathPlan({
+      prdPath: args["from-prd"] || args.prd,
+      planPath: args.plan || args["atomize-plan"],
+      request: args.request || args._.join(" "),
+      epicId: args.epic || "<epic-id>",
+      graphPath: args.file,
+      maxDuration: args["max-duration"] || "3h",
+      tool: args.tool || "codex",
+      dryRun: !args.apply,
+    });
+    if (args.json) console.log(JSON.stringify(plan, null, 2));
+    else console.log(formatHappyPathPlan(plan));
+    return;
+  }
+
   if (args.interactive) {
     const result = runInteractiveCli({
       mode: "loop",
@@ -153,7 +171,7 @@ async function main() {
       maxRuntimeMinutes: args["max-runtime-minutes"],
       maxIterations: args["max-iterations"],
       providerBudget: args["provider-budget"],
-      writeReportPath: args.out || "docs/audits/autonomous-loop-evals/latest-report.json",
+      writeReportPath: args.out || ".supervibe/audits/autonomous-loop-evals/latest-report.json",
     });
     console.log(formatEvalHarnessReport(report));
     if (!report.pass) process.exitCode = report.blocked ? 2 : 1;
@@ -810,6 +828,7 @@ function printHelp() {
   console.log(`SUPERVIBE_LOOP_HELP
 Primary:
   supervibe-loop --request "validate integrations"
+  supervibe-loop --happy-path --plan docs/plans/example.md
   supervibe-loop --plan docs/plans/example.md
   supervibe-loop --from-prd docs/specs/example.md
   supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed

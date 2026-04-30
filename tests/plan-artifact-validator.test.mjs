@@ -16,6 +16,17 @@ const GOOD_PLAN = `# Billing Export Implementation Plan
 
 **Hard constraints (do not violate):** No PII outside allowed columns.
 
+## AI/Data Boundary
+
+| Area | Allowed | Redaction | Approval gate |
+|------|---------|-----------|---------------|
+| Local source reads | yes | no secrets | none |
+| Local writes | yes | no PII fixtures | review |
+| MCP/browser automation | MCP no, browser no | N/A | user approval |
+| Figma/design source | no Figma source | N/A | Figma writeback blocked |
+| External network/API | no External calls | N/A | explicit approval |
+| PII/secrets | references only | redact PII | approver |
+
 ## File Structure
 
 ### Created

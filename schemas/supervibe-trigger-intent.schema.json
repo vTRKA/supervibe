@@ -53,7 +53,13 @@
         "chart_ux",
         "presentation_deck",
         "brand_collateral",
-        "stack_ui_guidance"
+        "stack_ui_guidance",
+        "work_control_ui",
+        "cleanup_stale_work",
+        "agent_strengthen",
+        "memory_audit",
+        "docs_audit",
+        "figma_source_of_truth"
       ]
     },
     "phase": {

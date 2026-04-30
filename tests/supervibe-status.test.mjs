@@ -83,3 +83,8 @@ test('evolve-status: reports agent telemetry state', () => {
   const out = runStatus();
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');
 });
+
+test('evolve-status: reports GC hints', () => {
+  const out = runStatus();
+  assert.ok(/SUPERVIBE_GC_HINTS/.test(out), 'should mention GC hints');
+});

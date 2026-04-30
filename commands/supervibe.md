@@ -11,6 +11,13 @@ description: >-
 
 Trigger router for the full workflow chain: brainstorm -> plan -> review -> atomic work items -> epic -> provider-safe worktree run. It also handles work-item questions, status, dashboard output, integration readiness, saved views, structured queries, local reports, autonomous replay evals, deferred work, guided forms, interactive command palette, sync bundle export/import, notifications, stop/resume, and trigger diagnostics (`--diagnose-trigger`, `--why-trigger`) before any mutating action.
 
+The router has three layers: exact trigger corpus, deterministic keyword rules,
+and semantic intent profiles for implicit needs. Semantic profiles catch pain
+statements such as "users cannot see epics/tasks", "old tasks are cluttering
+memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has
+internal TODO garbage", "Figma tokens drift from code", and "the UI looks
+amateur" without requiring the user to name the command.
+
 Design requests route to existing commands only:
 - new UI, prototype, mockup, professional polish request -> `/supervibe-design`
 - design review, UI polish, token drift, accessibility review -> `/supervibe-audit --design`
@@ -19,6 +26,7 @@ Design requests route to existing commands only:
 - presentation/deck design -> `/supervibe-design --presentation`
 - brand/collateral asset work -> `/supervibe-design --brand-collateral`
 - stack-aware UI handoff -> `/supervibe-design --handoff`
+- Figma variables/components/tokens drift -> `/supervibe-design --figma-source-of-truth`
 
 The internal design intelligence lookup never appears as its own slash command.
 
@@ -58,6 +66,11 @@ Advanced loop helpers are direct routes: `/supervibe-loop --quickstart` creates 
 
 4. **Ask for confirmation** before running anything destructive. `/supervibe-update` and `/supervibe-adapt` modify files — explicit "yes" required. `/supervibe-audit` and `/supervibe-score --record` are read-only scoring/persistence flows and can run immediately if the user agrees.
 
+Local visual and cleanup routes are explicit: `/supervibe-ui` opens the
+localhost control plane for epics, tasks, loop state, waves, reports, context
+packs, and safe local actions; `/supervibe-gc` previews reversible cleanup for
+completed work-item graphs and stale/superseded memory before any archive write.
+
 ## Output contract
 
 Mirrors what `evolve-detect.mjs` prints, plus a one-line conclusion:
@@ -68,7 +81,7 @@ Project:  <path>
 Plugin:   <path>
 
   ✓ upstream-behind             → plugin is up to date with upstream
-  ✓ version-bump-unacked        → project + plugin both on 2.0.1
+  ✓ version-bump-unacked        → project + plugin both on 2.0.2
   ⚠ project-not-scaffolded      → no .claude/agents/ and no CLAUDE.md — run genesis first
   ✓ underperformers             → 12 invocations, no underperformers
   ✓ stale-artifacts             → 0 stale artifact(s) (under 3-threshold)

@@ -26,6 +26,7 @@ import { formatGovernanceStatus, resolveTeamGovernance } from './lib/supervibe-t
 import { formatSemanticAnchorReport, parseSemanticAnchors } from './lib/supervibe-semantic-anchor-index.mjs';
 import { formatAssignmentExplanation } from './lib/supervibe-assignment-explainer.mjs';
 import { buildExecutionWaves, formatWaveStatus } from './lib/supervibe-wave-controller.mjs';
+import { buildGcHints, formatGcHints } from './lib/supervibe-gc-hints.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
@@ -59,7 +60,7 @@ async function main() {
   }
 
   if (args['eval-report']) {
-    const reportPath = args.file || join(PROJECT_ROOT, 'docs', 'audits', 'autonomous-loop-evals', 'latest-report.json');
+    const reportPath = args.file || join(PROJECT_ROOT, '.supervibe', 'audits', 'autonomous-loop-evals', 'latest-report.json');
     const report = JSON.parse(readFileSync(reportPath, 'utf8'));
     if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
     else console.log(formatEvalHarnessReport(report));
@@ -104,6 +105,13 @@ async function main() {
     });
     if (args.json) console.log(renderTerminalOutput({ data: plan, json: true }, { json: true }));
     else console.log(formatWaveStatus(plan));
+    return;
+  }
+
+  if (args['gc-hints']) {
+    const hints = await buildGcHints({ rootDir: PROJECT_ROOT, now: args.now || new Date().toISOString() });
+    if (args.json) console.log(renderTerminalOutput({ data: hints, json: true }, { json: true }));
+    else console.log(formatGcHints(hints));
     return;
   }
 
@@ -354,11 +362,13 @@ async function main() {
   console.log();
   const { readInvocations } = await import('./lib/agent-invocation-logger.mjs');
   const { detectUnderperformers } = await import('./lib/underperformer-detector.mjs');
+  const { listKnownAgentIds } = await import('./lib/agent-id-registry.mjs');
   const allInv = await readInvocations({ limit: 10000 });
   if (allInv.length < 10) {
     console.log(color(`○ Agent telemetry: ${allInv.length} invocations logged (need ≥10 for analysis)`, 'dim'));
   } else {
-    const flagged = detectUnderperformers(allInv);
+    const knownAgentIds = await listKnownAgentIds({ rootDir: PROJECT_ROOT });
+    const flagged = detectUnderperformers(allInv, { knownAgentIds });
     if (flagged.length === 0) {
       console.log(color(`✓ Agent telemetry: ${allInv.length} invocations, no underperformers`, 'green'));
     } else {
@@ -368,13 +378,22 @@ async function main() {
       }
     }
   }
+
+  if (!args['no-gc-hints']) {
+    console.log();
+    try {
+      console.log(color(formatGcHints(await buildGcHints({ rootDir: PROJECT_ROOT })), 'dim'));
+    } catch (error) {
+      console.log(color(`SUPERVIBE_GC_HINTS\nNEEDS_ATTENTION: unknown\nNEXT_ACTION: inspect GC manually (${error.message})`, 'yellow'));
+    }
+  }
 }
 
 main().catch(err => { console.error('supervibe-status error:', err); process.exit(1); });
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'no-gc-hints']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

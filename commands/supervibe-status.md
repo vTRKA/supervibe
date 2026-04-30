@@ -28,7 +28,7 @@ saved views, and render local redacted daily/weekly/SLA reports.
 /supervibe-status --report sla --file .claude/memory/work-items/<epic-id>/graph.json --out .claude/memory/reports/sla.md
 /supervibe-status --interactive
 /supervibe-status --eval-report
-/supervibe-status --eval-report --file docs/audits/autonomous-loop-evals/latest-report.json --json
+/supervibe-status --eval-report --file .supervibe/audits/autonomous-loop-evals/latest-report.json --json
 /supervibe-status --policy
 /supervibe-status --policy --policy-profile CI-readonly --json
 /supervibe-status --role

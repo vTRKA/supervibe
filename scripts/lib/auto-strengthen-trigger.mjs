@@ -2,16 +2,21 @@
 // the user can act on with one confirmation. Never auto-modifies agent files.
 
 import { readInvocations } from './agent-invocation-logger.mjs';
+import { listKnownAgentIds } from './agent-id-registry.mjs';
 import { detectUnderperformers } from './underperformer-detector.mjs';
 
 /**
  * Returns list of agents to strengthen + suggested commands.
  * @returns {Promise<Array<{agent_id, reason, value, command}>>}
  */
-export async function buildStrengthenSuggestions() {
+export async function buildStrengthenSuggestions(options = {}) {
   const all = await readInvocations({ limit: 10000 });
   if (all.length < 10) return [];
-  const flagged = detectUnderperformers(all);
+  const knownAgentIds = options.knownAgentIds ?? await listKnownAgentIds({ rootDir: options.rootDir || process.cwd() });
+  const flagged = detectUnderperformers(all, {
+    knownAgentIds,
+    ignoreFixtureTelemetry: options.ignoreFixtureTelemetry ?? true,
+  });
   return flagged.map(f => ({
     agent_id: f.agent_id,
     reason: f.reason,

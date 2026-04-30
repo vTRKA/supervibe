@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_SEMANTIC_TRIGGER_FIXTURES,
   DEFAULT_WORKFLOW_TRIGGER_FIXTURES,
+  evaluateSemanticIntentMatrix,
   evaluateTriggerMatrix,
+  formatSemanticIntentEvaluation,
   formatTriggerEvaluation,
 } from "../scripts/lib/supervibe-trigger-evaluator.mjs";
 
@@ -25,4 +28,11 @@ test("trigger evaluation reports route failures", () => {
   assert.equal(evaluation.pass, false);
   assert.equal(evaluation.failed.length, 1);
   assert.match(formatTriggerEvaluation(evaluation), /bad-fixture/);
+});
+
+test("semantic paraphrase trigger matrix passes implicit user needs", () => {
+  const evaluation = evaluateSemanticIntentMatrix();
+  assert.equal(evaluation.pass, true, formatSemanticIntentEvaluation(evaluation));
+  assert.equal(evaluation.total, DEFAULT_SEMANTIC_TRIGGER_FIXTURES.length);
+  assert.ok(evaluation.total >= 16);
 });

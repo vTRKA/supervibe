@@ -19,5 +19,5 @@ test("design docs require memory, lookup, citations, and token precedence", asyn
   assert.match(docs, /project memory/i);
   assert.match(docs, /cited rows/i);
   assert.match(docs, /Approved design system/);
-  assert.match(docs, /2\.0\.1/);
+  assert.match(docs, /2\.0\.2/);
 });

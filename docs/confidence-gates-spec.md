@@ -68,29 +68,30 @@ If override would break this 5%-budget → command stops with: "Override budget 
 
 ---
 
-## Auto-fix step (NEW — Phase C of cmd-quality plan)
+## Remediation And Planned Auto-Fix
 
-Where possible, commands now offer to **auto-apply** the suggested remediation:
+Current shipped behavior: scoring returns concrete remediation actions and the
+caller asks before making changes. Low-risk auto-apply is planned, but it is not
+part of the shipped gate contract until an implementation and validator are in
+place.
 
-| Gate state | Default user prompt | Auto-fix available? |
+| Gate state | Default user prompt | Shipped behavior |
 |---|---|---|
-| `block` (score < 9) | "Score is X/10. Options: [1] Apply suggested fix / [2] Override / [3] Cancel" | YES for low-risk fixes |
-| `warn` (9-9.99) | "Score is X/10. Optional improvements: [1] Apply / [2] Continue / [3] Cancel" | YES for low-risk fixes |
-| `pass` (≥10) | (nothing — proceed) | n/a |
+| `block` (score < 9) | "Score is X/10. Options: [1] Fix gaps / [2] Override / [3] Cancel" | Halt and show remediation; write only after the caller gets approval |
+| `warn` (9-9.99) | "Score is X/10. Optional improvements: [1] Fix / [2] Continue / [3] Cancel" | Continue with warning or apply approved remediation |
+| `pass` (≥10) | (nothing — proceed) | Continue |
 
-**Auto-fix is "low-risk" when:**
+Planned auto-apply will be considered low-risk only when:
 - Fix is a single section addition (not removal)
 - Fix is a frontmatter field addition
 - Fix is a rename of a token reference
 - Fix has been categorised as `auto-fixable: yes` in the rubric's remediation hints
 
-**Auto-fix is NOT applied without confirmation when:**
+Auto-apply will remain blocked without confirmation when:
 - Fix changes Persona / Decision tree / Anti-patterns (these shape every output)
 - Fix removes content
 - Fix touches multiple files
 - Fix is categorised as `auto-fixable: no`
-
-The auto-fix mechanism uses the rubric's `dimensions[].evidence-required` + a remediation hint per dimension. Implementation: `scripts/lib/auto-fix-suggester.mjs` (TODO: ship in next cycle).
 
 ---
 
@@ -104,21 +105,21 @@ Every user-facing command in `commands/` declares which rubric it uses + how it 
 
 ### Single-stage commands (most)
 
-| Command | Rubric | block-below | Auto-fix? |
+| Command | Rubric | block-below | Remediation behavior |
 |---|---|---|---|
-| `/supervibe-brainstorm` | `requirements.yaml` | 9 | yes (add missing sections) |
-| `/supervibe-plan` | `plan.yaml` | 9 | yes (split fat tasks) |
+| `/supervibe-brainstorm` | `requirements.yaml` | 9 | suggest missing sections/questions |
+| `/supervibe-plan` | `plan.yaml` | 9 | suggest task splitting, evidence, rollback, or review fixes |
 | `/supervibe-design` | implicit per stage; final scored against `prototype.yaml` or `brandbook.yaml` | 9 | no (design is human judgment) |
-| `/supervibe-genesis` | `scaffold.yaml` | 9 | yes (regenerate missing files) |
-| `/supervibe-execute-plan` | `execute-plan.yaml` (Stage A) + per-rubric (Stage B) | 9 | partial (Stage A: yes, Stage B: case-by-case) |
-| `/supervibe-score` | matches artifact-type rubric | 9 | yes |
+| `/supervibe-genesis` | `scaffold.yaml` | 9 | suggest missing generated files or config drift |
+| `/supervibe-execute-plan` | `execute-plan.yaml` (Stage A) + per-rubric (Stage B) | 9 | suggest readiness/completion repairs |
+| `/supervibe-score` | matches artifact-type rubric | 9 | returns rubric-specific remediation |
 | `/supervibe-strengthen` | `agent-quality.yaml` | 9 | no (changes shape every output; user must approve) |
 | `/supervibe-audit` | n/a (read-only inspection) | — | — |
 | `/supervibe-update` | n/a (infrastructure) | — | — |
 | `/supervibe-preview` | n/a (server) | — | — |
-| `/supervibe-adapt` | propagates per-artifact gates | 9 | yes (per-file diff gate) |
+| `/supervibe-adapt` | propagates per-artifact gates | 9 | per-file diff gate |
 
-Internal specs for legacy aliases, plugin QA, memory GC, changelog display, deployment integration, and override logging live in `docs/internal-commands/`. They are intentionally outside the published slash-command directory.
+Internal specs for legacy aliases, plugin QA, memory GC, changelog display, deployment integration, and override logging live in `references/internal-commands/`. They are intentionally outside the published slash-command directory and outside user-facing docs.
 
 ### Skills
 
@@ -215,17 +216,19 @@ If any command/skill predates this spec:
 4. If it's an artifact-producing command, add memory pre-flight
 5. Update its frontmatter to declare gate behavior
 
-Validator `validate-confidence-gates.mjs` (TODO) will enforce this on every commit once shipped.
+Validator `scripts/validate-confidence-gates.mjs` enforces rubric gate fields,
+gated skill rubric references, user-facing command gate mapping, and this spec's
+no-unshipped-placeholder rule during `npm run check`.
 
 ---
 
 ## Related
 
 - `confidence-rubrics/_schema.json` — rubric file format
-- `confidence-rubrics/*.yaml` — rubric instances (14 currently)
+- `confidence-rubrics/*.yaml` — rubric instances
 - `supervibe:confidence-scoring` skill — the universal scoring mechanism
 - `scripts/lib/load-rubrics.mjs` — programmatic rubric access
 - `scripts/lib/append-override-log.mjs` — override telemetry writer
 - `.claude/memory/score-log.jsonl` — unified gate telemetry
 - `.claude/confidence-log.jsonl` — override-specific log (subset of score-log)
-- `docs/internal-commands/supervibe-override.md` — internal override-with-rationale spec
+- `references/internal-commands/supervibe-override.md` — internal override-with-rationale spec

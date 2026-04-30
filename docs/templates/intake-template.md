@@ -57,6 +57,20 @@
 
 ---
 
+## AI/data boundary
+
+| Boundary | Value | Source |
+|----------|-------|--------|
+| Data agents may read | ... | user/system |
+| Data agents must not read | ... | user/system |
+| MCP/browser/Figma allowed | yes/no/which tools | user/system |
+| Screenshots allowed | yes/no/redaction rules | user/system |
+| External API calls allowed | yes/no/which targets | user/system |
+| PII/secrets handling | no raw values / references only / other | user/system |
+| Approval required before | remote mutation / Figma writeback / production / billing / credentials | user/system |
+
+---
+
 ## Stakeholders
 
 - **Decision approvers**: ...

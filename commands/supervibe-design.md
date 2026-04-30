@@ -112,6 +112,23 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json
 
 Persist the result in `prototypes/<slug>/config.json.mediaCapabilities`. If `video=false`, designers MUST NOT promise rendered video output. They may still create CSS/WAAPI motion in the live prototype, static storyboard frames, SVG/Lottie specs when assets already exist, or poster-frame + interaction notes. If `video=true`, video is allowed but still requires a performance + reduced-motion fallback plan.
 
+**Stage 0e — Figma source-of-truth check (required when Figma is mentioned).**
+
+If the brief, ticket, memory, or project docs include a Figma URL, file key,
+node id, variables export, component library, or Code Connect metadata:
+
+1. Invoke `supervibe:mcp-discovery` with category=`figma`.
+2. Follow `docs/figma-source-of-truth.md`.
+3. Record capability mode in `prototypes/<slug>/config.json.figma`:
+   `none`, `read-only`, `writeback`, or `code-connect`.
+4. Extract variables/components/assets only when the MCP or user-provided
+   artifacts allow it.
+5. Build from approved local tokens/components, not raw Figma values.
+6. Write `prototypes/<slug>/figma-source/drift-report.md` before approval.
+7. Block any Figma writeback unless an exact approval covers file, node/page,
+   action type, and timebox. If writeback is unavailable, write
+   `figma-source/manual-patch.md` instead.
+
 ### Stage 1 — Brand direction (conditional)
 
 If brand direction missing OR brief asks for "new brand / rebrand":
@@ -312,3 +329,4 @@ Rubric:     prototype
 - `<stack>-developer` agents (laravel / nextjs / vue / etc.) — pick up `handoff/` after Stage 8
 - `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`
 - `mcp-server-figma`, `mcp-server-firecrawl`, `mcp-playwright` — optional MCPs that improve specific stages
+- `docs/figma-source-of-truth.md` — optional Figma variables/components/token/code parity flow

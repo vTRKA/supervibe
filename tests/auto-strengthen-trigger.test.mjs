@@ -25,7 +25,7 @@ test('buildStrengthenSuggestions: returns commands for flagged agents', async ()
       confidence_score: 7 + (i % 3) * 0.1,
     });
   }
-  const suggestions = await buildStrengthenSuggestions();
+  const suggestions = await buildStrengthenSuggestions({ knownAgentIds: new Set(['weak-agent']) });
   const found = suggestions.find(s => s.agent_id === 'weak-agent');
   assert.ok(found, 'should suggest strengthen for weak-agent');
   assert.strictEqual(found.command, '/supervibe-strengthen weak-agent');

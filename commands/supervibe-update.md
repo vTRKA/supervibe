@@ -34,7 +34,7 @@ Roll back to the previous commit on the plugin checkout. Useful after a failed u
 ### `/supervibe-update --to <ref>` — pin to specific version
 
 Examples:
-- `/supervibe-update --to v2.0.1` — checkout tag
+- `/supervibe-update --to v2.0.2` — checkout tag
 - `/supervibe-update --to abc123` — checkout commit SHA
 
 After pin: same install + test cycle. Use to test a specific candidate before adopting.
@@ -155,7 +155,7 @@ Successful upgrade:
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         vX.Y.Z
-After:          v2.0.1
+After:          v2.0.2
 Tests:          679 / 679 passed
 Validators:     10 / 10 clean (+ knip)
 LFS:            pulled (or: skipped — lazy-fetch fallback)
@@ -174,7 +174,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v2.0.1
+Target:         v2.0.2
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -197,7 +197,7 @@ Dry-run:
 ```
 === Supervibe Update — DRY RUN ===
 Current:        vX.Y.Z
-Latest:         v2.0.1
+Latest:         v2.0.2
 Changelog summary: [from CHANGELOG.md since vX.Y.Z]
 
 Breaking changes detected: 2

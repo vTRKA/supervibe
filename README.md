@@ -84,9 +84,15 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.1 initialized for this project
+[supervibe] welcome — plugin v2.0.2 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
+```
+
+Check multi-host readiness at any time:
+
+```bash
+npm run supervibe:doctor -- --host all
 ```
 
 **Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
@@ -138,7 +144,7 @@ The trigger-safe path is explicit and chainable:
 4. `/supervibe-loop --from-plan --atomize <plan-path>` splits the reviewed plan into atomic work items and an epic.
 5. `/supervibe-loop --guided --max-duration 3h` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
-Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
+Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
 
 Unreleased capability label: the durable autonomous loop is implemented in this
 workspace and remains opt-in until the release gate publishes it. Autonomous execution is opt-in, not the default.
@@ -175,7 +181,8 @@ status output shows each active session's wave, task IDs, write-set, agents, and
 path so separate sessions do not silently claim the same zone.
 
 Implemented loop operations now include graph inspection, doctor/repair,
-fresh-context prime summaries, PRD/story intake, and safe export/import bundles:
+fresh-context prime summaries, context packs, PRD/story intake, visual local
+control, reversible GC, and safe export/import bundles:
 
 ```bash
 /supervibe-loop --from-prd docs/specs/checkout.md --dry-run
@@ -184,6 +191,8 @@ fresh-context prime summaries, PRD/story intake, and safe export/import bundles:
 /supervibe-loop graph --file .claude/memory/loops/<run-id>/state.json --format text
 /supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json
 /supervibe-loop prime --file .claude/memory/loops/<run-id>/state.json
+/supervibe-ui --file .claude/memory/work-items/example-epic/graph.json
+/supervibe-gc --all --dry-run
 /supervibe-loop export --file .claude/memory/loops/<run-id>/state.json --out .claude/memory/bundles/<run-id>
 ```
 
@@ -193,6 +202,22 @@ Work-item status uses the same vocabulary in CLI, reports, and query answers:
 under `.claude/memory/work-items/`, external tracker mappings in
 `task-tracker-map.json`, and archived/exported run bundles under
 `.claude/memory/bundles/`.
+
+The localhost UI is universal across IDEs: run `/supervibe-ui` or
+`npm run supervibe:ui -- --file <graph.json>`, then open the printed
+`127.0.0.1` URL in a browser or IDE webview. It shows epics, tasks, selected
+context packs, loop `state.json`, waves, gates, SLA reports, and GC previews.
+Mutating actions are local-only and require an explicit token-protected apply.
+`npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` writes a
+portable descriptor that IDE webviews can consume without becoming a separate
+task store.
+
+Long-lived projects can prune clutter without deleting evidence:
+`/supervibe-gc` and `npm run supervibe:gc -- --all --dry-run` preview completed
+epic archival and memory cleanup; `--apply` moves candidates into reversible
+`.archive/` folders with JSONL audit logs.
+`npm run supervibe:status -- --gc-hints` prints the same cleanup signal inside
+the normal status flow.
 
 Production-prep may complete autonomously when evidence is complete, but
 production mutation, destructive migration, credential mutation, billing, DNS,
@@ -299,6 +324,8 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
 | `/supervibe-loop --request/--plan/--from-prd` | Bounded autonomous loop with graph scheduler, status/resume/stop, doctor, graph export, and policy gates |
+| `/supervibe-ui` | Local browser/IDE-webview control plane for epics, tasks, loop state, waves, context packs, reports, and safe local actions |
+| `/supervibe-gc` | Reversible dry-run-first cleanup for completed work-item graphs and stale/superseded memory |
 | `/supervibe-design <brief>` | End-to-end design pipeline with memory/code/design-intelligence preflight: brand → spec → prototype → live preview → approval |
 | `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
 | `/supervibe-preview` | Manage live preview servers |
@@ -313,7 +340,10 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | `/supervibe-strengthen [agent_id]` | Strengthen a weak agent from telemetry; without arguments auto-detects flagged agents |
 | `/supervibe-score [--record] <artifact>` | Score an artifact against its rubric; `--record` also updates telemetry. This is the preferred scoring/evaluation command |
 
-Internal command specs for diagnostics, plugin QA, memory GC, legacy aliases, and override logging live in `docs/internal-commands/`. They are intentionally outside the published `commands/` directory so they do not add slash-command noise.
+Internal command specs for diagnostics, plugin QA, low-level GC internals,
+legacy aliases, and override logging live in `references/internal-commands/`. They
+are intentionally outside the published `commands/` directory so they do not
+add slash-command noise.
 
 Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/supervibe-marketplace/`):
 
@@ -321,6 +351,13 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 |---------|--------------|
 | `npm run supervibe:status` | Health check across every index |
 | `npm run supervibe:loop -- --help` | Local no-tty help for loop status, graph, doctor, prime, export/import, and execution modes |
+| `npm run supervibe:ui -- --file <graph.json>` | Local visual control plane for work items, loop state, reports, context packs, and safe actions |
+| `npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` | Webview descriptor for wrapping the local UI in any IDE |
+| `npm run supervibe:gc -- --all --dry-run` | Reversible cleanup preview for work-item graphs and memory |
+| `npm run supervibe:context-pack -- --file <graph.json> --item T1` | Compact high-signal context pack for one active task |
+| `npm run supervibe:context-eval -- --case-file <cases.json>` | Retrieval/context-pack evals for required memory, evidence, anchors, and token budgets |
+| `npm run supervibe:happy-path -- --plan <plan.md>` | Ralph-style happy path: PRD/plan -> atomize -> execute -> verify -> archive |
+| `npm run supervibe:docs-audit` | User-facing docs relevance audit; flags internal dev files if they drift into `docs/` |
 | `npm run supervibe:upgrade` | git pull, lfs pull, npm install, run all tests |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
 | `npm run code:index` | Full reindex |
@@ -329,7 +366,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Optional watcher daemon |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
-| `npm run check` | All 320 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, and trigger-clarity validation |
+| `npm run check` | All 724 tests plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
 
 ---
 

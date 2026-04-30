@@ -5,7 +5,7 @@
  * For each task, prints a structured prompt for the user to dispatch the agent
  * via Task tool, then expects the output pasted back via stdin.
  *
- * Saves outputs to docs/audits/regression-suite/<phase>/<agent>-<idx>.md.
+ * Saves outputs to .supervibe/audits/regression-suite/<phase>/<agent>-<idx>.md.
  *
  * Compare phases: scripts/lib/regression-scorer.mjs::diffPhases()
  */
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
-const TASKS_PATH = 'docs/audits/regression-suite/canonical-tasks.json';
+const TASKS_PATH = 'tests/fixtures/regression-suite/canonical-tasks.json';
 
 async function loadTasks() {
   const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
@@ -42,7 +42,7 @@ async function main() {
 
   const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const tasks = await loadTasks();
-  const outDir = join(root, 'docs', 'audits', 'regression-suite', phase);
+  const outDir = join(root, '.supervibe', 'audits', 'regression-suite', phase);
   await mkdir(outDir, { recursive: true });
 
   let total = 0;

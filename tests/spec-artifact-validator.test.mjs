@@ -51,6 +51,17 @@ We need billing CSV export.
 ## Out of scope
 - PDF export.
 
+## AI/data boundary
+| Boundary | Value | Source |
+|----------|-------|--------|
+| Data agents may read | billing code | repo |
+| Data agents must not read | raw secrets | policy |
+| MCP/browser/Figma allowed | Figma no, browser no, MCP local only | user |
+| Screenshots allowed | no screenshots | user |
+| External API calls allowed | no External API calls | user |
+| PII/secrets handling | no raw PII or secrets | policy |
+| Approval required before | production, Figma writeback, External API mutation | user |
+
 ## Stakeholders
 - **Decision approvers**: PM
 - **Affected parties**: Finance

@@ -12,6 +12,23 @@
 
 ---
 
+## AI/Data Boundary
+
+| Area | Allowed | Redaction | Approval gate |
+|------|---------|-----------|---------------|
+| Local source reads | yes/no | <paths/fields> | <when> |
+| Local writes | yes/no | <paths> | <when> |
+| MCP/browser automation | yes/no/tools | <selectors/regions> | <when> |
+| Figma/design source | yes/no/file/node | <hidden layers/assets> | <writeback approval> |
+| External network/API | yes/no/targets | <request/response fields> | <approval receipt> |
+| PII/secrets | references only/no access | <fields> | <approver> |
+
+**Blocked without exact approval:** production mutation, destructive migration,
+credential changes, billing/account/DNS/access-control changes, Figma writeback,
+and screenshots containing private data.
+
+---
+
 ## File Structure
 
 ### Created

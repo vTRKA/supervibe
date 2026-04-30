@@ -11,6 +11,7 @@ const REQUIRED_INTAKE_SECTIONS = [
   'Constraints',
   'Success criteria',
   'Out of scope',
+  'AI/data boundary',
   'Stakeholders',
   'Open questions',
   'Suggested next step',
@@ -94,6 +95,10 @@ export function validateIntakeSpec(markdown) {
   }
   if (countMarkdownItems(sectionBody(markdown, 'Out of scope')) < 1) {
     issues.push('out of scope: expected at least 1 explicit boundary');
+  }
+  const aiBoundary = sectionBody(markdown, 'AI/data boundary');
+  for (const field of ['MCP', 'Figma', 'Screenshots', 'External API', 'PII', 'Approval']) {
+    if (!new RegExp(field, 'i').test(aiBoundary)) issues.push(`ai/data boundary: missing ${field}`);
   }
   if (countMarkdownItems(sectionBody(markdown, 'Open questions')) < 3) {
     issues.push('open questions: expected at least 3 questions');

@@ -31,9 +31,25 @@ test('detectUnderperformers: flags rising override-rate trend', () => {
     `expected drift detected via override trend; flagged: ${ids.join(',')}`);
 });
 
-test('detectUnderperformers: needs ≥10 invocations to flag', () => {
+test('detectUnderperformers: needs at least 10 invocations to flag', () => {
   const inv = fakeInvocations('newbie', [5, 5, 5, 5]);
   const flagged = detectUnderperformers(inv);
   assert.ok(!flagged.find(f => f.agent_id === 'newbie'),
     'should not flag agents with < 10 invocations');
+});
+
+test('detectUnderperformers: ignores unknown agents when knownAgentIds provided', () => {
+  const allInv = [
+    ...fakeInvocations('real-agent', [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]),
+    ...fakeInvocations('test-agent', [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+  ];
+  const flagged = detectUnderperformers(allInv, { knownAgentIds: new Set(['real-agent']) });
+  assert.deepEqual(flagged, []);
+});
+
+test('detectUnderperformers: ignores explicit fixture telemetry', () => {
+  const inv = fakeInvocations('fixture-agent', [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    .map(entry => ({ ...entry, fixture: true }));
+  const flagged = detectUnderperformers(inv);
+  assert.deepEqual(flagged, []);
 });
