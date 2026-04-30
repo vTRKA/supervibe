@@ -43,6 +43,12 @@ function Assert-SafePluginPath {
   if ($full.TrimEnd('\') -ne $expected.TrimEnd('\')) { Die "unexpected package root: $Path" }
 }
 
+function Write-Utf8NoBom {
+  param([string]$Path, [string]$Value)
+  $utf8NoBom = New-Object System.Text.UTF8Encoding -ArgumentList $false
+  [System.IO.File]::WriteAllText($Path, $Value, $utf8NoBom)
+}
+
 function Get-PackageSha256 {
   $archive = Join-Path $LogDir 'package.tar'
   & git -C $Target archive --format=tar -o $archive HEAD
@@ -170,22 +176,26 @@ Say "plan: will modify Claude config under $ClaudeDir, Codex plugin link under $
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
-  param([string[]]$Args, [string]$LogName, [switch]$AllowFail, [switch]$SkipLfsSmudge)
+  param([string[]]$GitArgs, [string]$LogName, [switch]$AllowFail, [switch]$SkipLfsSmudge)
   $log = Join-Path $LogDir "$LogName.log"
-  $gitArgs = $Args
+  $effectiveGitArgs = $GitArgs
   $oldSkip = $env:GIT_LFS_SKIP_SMUDGE
+  $oldErrorActionPreference = $ErrorActionPreference
   if ($SkipLfsSmudge) {
-    $gitArgs = @('-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.required=false') + $Args
+    $effectiveGitArgs = @('-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.required=false') + $GitArgs
     $env:GIT_LFS_SKIP_SMUDGE = '1'
   }
   try {
-    & git @gitArgs 2>&1 | Tee-Object -FilePath $log | Out-Null
-    if ($LASTEXITCODE -ne 0 -and -not $AllowFail) {
+    $ErrorActionPreference = 'Continue'
+    & git @effectiveGitArgs 2>&1 | Tee-Object -FilePath $log | Out-Null
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0 -and -not $AllowFail) {
       Get-Content $log | Write-Host
-      Die "git $($Args -join ' ') failed. Log: $log"
+      Die "git $($GitArgs -join ' ') failed. Log: $log"
     }
-    return ($LASTEXITCODE -eq 0)
+    return ($exitCode -eq 0)
   } finally {
+    $ErrorActionPreference = $oldErrorActionPreference
     if ($SkipLfsSmudge) {
       if ($null -eq $oldSkip) { Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue }
       else { $env:GIT_LFS_SKIP_SMUDGE = $oldSkip }
@@ -197,6 +207,12 @@ function Invoke-CleanManagedCheckout {
   param([string]$Path)
   $status = @(git -C $Path status --porcelain 2>$null)
   $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
+  if ($trackedDirty.Count -eq 1 -and $trackedDirty[0] -match '^[ MARCUD?!]{2} package-lock\.json$') {
+    Warn "restoring package-lock.json drift from previous installer npm install"
+    Run-Git @('-C', $Path, 'checkout', '--', 'package-lock.json') 'restore-package-lock'
+    $status = @(git -C $Path status --porcelain 2>$null)
+    $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
+  }
   if ($trackedDirty.Count -gt 0) {
     $trackedDirty | Write-Host
     Die "tracked local edits in $Path; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
@@ -258,19 +274,23 @@ function Run-NpmStep {
   $log = Join-Path $LogDir "$safeLogName.log"
   Say "running $ScriptName (log: $log)"
   Push-Location $Target
+  $oldErrorActionPreference = $ErrorActionPreference
   try {
+    $ErrorActionPreference = 'Continue'
     & npm @NpmArgs *>&1 | Tee-Object -FilePath $log | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
       Write-Host '--- last 40 lines ---'
       Get-Content $log -Tail 40 | Write-Host
       Die "$ScriptName failed. Full log: $log"
     }
   } finally {
+    $ErrorActionPreference = $oldErrorActionPreference
     Pop-Location
   }
 }
 
-Run-NpmStep 'npm install' @('install', '--no-audit', '--no-fund')
+Run-NpmStep 'npm ci' @('ci', '--no-audit', '--no-fund')
 Run-NpmStep 'npm run registry:build' @('run', 'registry:build')
 Run-NpmStep 'npm run check' @('run', 'check')
 Ok 'all checks passed'
@@ -291,9 +311,9 @@ function Register-Claude {
   $settingsJson     = Join-Path $ClaudeDir  'settings.json'
   New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
 
-  if (-not (Test-Path $pluginsJson))      { Set-Content -Path $pluginsJson      -Value '{ "version": 2, "plugins": {} }' -Encoding UTF8 }
-  if (-not (Test-Path $marketplacesJson)) { Set-Content -Path $marketplacesJson -Value '{}'                              -Encoding UTF8 }
-  if (-not (Test-Path $settingsJson))     { Set-Content -Path $settingsJson     -Value '{}'                              -Encoding UTF8 }
+  if (-not (Test-Path $pluginsJson))      { Write-Utf8NoBom $pluginsJson      '{ "version": 2, "plugins": {} }' }
+  if (-not (Test-Path $marketplacesJson)) { Write-Utf8NoBom $marketplacesJson '{}' }
+  if (-not (Test-Path $settingsJson))     { Write-Utf8NoBom $settingsJson     '{}' }
 
   $key = "$PluginName@$MarketplaceName"
 
@@ -317,11 +337,15 @@ function Register-Claude {
 const fs = require("fs");
 const now = new Date().toISOString();
 const repoSlug = (process.env.SUPERVIBE_REPO_SLUG || "").replace(/\.git$/, "");
+function readJson(path, fallback) {
+  const raw = fs.readFileSync(path, "utf8").replace(/^\uFEFF/, "").trim();
+  return JSON.parse(raw || fallback);
+}
 
 // 1. installed_plugins.json
 const pjPath = process.env.EVOLVE_PJ;
 const pjKey  = process.env.EVOLVE_KEY;
-const pj = JSON.parse(fs.readFileSync(pjPath, "utf8"));
+const pj = readJson(pjPath, '{ "version": 2, "plugins": {} }');
 pj.version = pj.version || 2;
 pj.plugins = pj.plugins || {};
 const pjEntry = {
@@ -342,7 +366,7 @@ fs.writeFileSync(pjPath, JSON.stringify(pj, null, 2) + "\n");
 // 2. known_marketplaces.json
 const mpPath = process.env.EVOLVE_MJ;
 const mpName = process.env.EVOLVE_MARKETPLACE;
-const mp = JSON.parse(fs.readFileSync(mpPath, "utf8"));
+const mp = readJson(mpPath, '{}');
 mp[mpName] = {
   source: { source: "github", repo: repoSlug },
   installLocation: process.env.EVOLVE_INSTALL_PATH,
@@ -353,7 +377,7 @@ fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
 
 // 3. settings.json - enabledPlugins + extraKnownMarketplaces
 const sjPath = process.env.EVOLVE_SJ;
-const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
+const sj = readJson(sjPath, '{}');
 sj.enabledPlugins = sj.enabledPlugins || {};
 sj.enabledPlugins[pjKey] = true;
 sj.extraKnownMarketplaces = sj.extraKnownMarketplaces || {};

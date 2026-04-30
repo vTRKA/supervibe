@@ -87,7 +87,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.5 initialized for this project
+[supervibe] welcome — plugin v2.0.6 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -145,7 +145,7 @@ cd ~/.claude/plugins/marketplaces/supervibe-marketplace
 npm run supervibe:upgrade
 ```
 
-All three do the same thing: refuse tracked edits in the plugin checkout, clean stale untracked/ignored files, then `git pull --ff-only` + LFS pull + `npm install` + rebuild generated `registry.yaml` + run all tests + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+All three do the same thing: refuse tracked edits in the plugin checkout, clean stale untracked/ignored files, then `git pull --ff-only` + LFS pull + `npm ci` + rebuild generated `registry.yaml` + run all tests + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
 
 ---
 
@@ -385,7 +385,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run supervibe:happy-path -- --plan <plan.md>` | Ralph-style happy path: PRD/plan -> atomize -> execute -> verify -> archive |
 | `npm run supervibe:docs-audit` | User-facing docs relevance audit; flags internal dev files if they drift into `docs/` |
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
-| `npm run supervibe:upgrade` | clean checkout, git pull, lfs pull, npm install, rebuild registry, run all tests, run install doctor |
+| `npm run supervibe:upgrade` | clean checkout, git pull, lfs pull, npm ci, rebuild registry, run all tests, run install doctor |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
 | `npm run code:index` | Full reindex |
 | `npm run code:search -- --query "..."` | Semantic search |

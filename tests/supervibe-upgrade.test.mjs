@@ -20,12 +20,29 @@ test("supervibe-upgrade rebuilds generated registry before final audit", async (
 test("supervibe-upgrade cleans stale untracked plugin files before reinstall", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
   const clean = source.indexOf("clean managed checkout (git clean -ffdx)");
-  const install = source.indexOf("[supervibe:upgrade] npm install");
+  const install = source.indexOf("[supervibe:upgrade] npm ci");
 
   assert.notEqual(clean, -1, "upgrade should clean stale plugin checkout files");
   assert.notEqual(install, -1, "upgrade should reinstall dependencies");
-  assert.ok(clean < install, "stale files must be cleaned before npm install");
+  assert.ok(clean < install, "stale files must be cleaned before npm ci");
   assert.match(source, /tracked changes in the plugin checkout/);
+});
+
+test("supervibe-upgrade avoids shell true while preserving Windows npm command resolution", async () => {
+  const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+
+  assert.match(source, /commandForPlatform/);
+  assert.match(source, /cmd === 'npm'/);
+  assert.match(source, /\$\{cmd\}\.cmd/);
+  assert.doesNotMatch(source, /shell:\s*process\.platform === ['"]win32['"]/);
+});
+
+test("supervibe-upgrade self-heals package-lock drift from older installer runs", async () => {
+  const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+
+  assert.match(source, /isPackageLockOnlyDrift/);
+  assert.match(source, /restoring package-lock\.json drift/);
+  assert.match(source, /git', \['checkout', '--', 'package-lock\.json'\]/);
 });
 
 test("supervibe-upgrade preserves auto-update lock and state during git clean", async () => {

@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-Package: supervibe-framework v2.0.5
+Package: supervibe-framework v2.0.6
 Source: package-lock.json
 Scope: direct runtime and development dependencies plus lockfile license counts.
 

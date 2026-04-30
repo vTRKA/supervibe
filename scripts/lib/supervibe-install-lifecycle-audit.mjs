@@ -205,7 +205,6 @@ async function inspectGeminiRegistration({ rootDir, homeDir, required }) {
 async function collectGitStatusLines(rootDir) {
   const result = spawnSync("git", ["-C", rootDir, "status", "--porcelain"], {
     encoding: "utf8",
-    shell: process.platform === "win32",
   });
   if (result.status !== 0) return [];
   return String(result.stdout || "")

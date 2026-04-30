@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   auditInstallLifecycleData,
@@ -7,7 +8,7 @@ import {
 
 test("install lifecycle audit passes clean generated install state", () => {
   const audit = auditInstallLifecycleData({
-    version: "2.0.5",
+    version: "2.0.6",
     packageAudit: { pass: true, score: 10, issues: [], warnings: [] },
     registryPresent: true,
     gitStatusLines: [],
@@ -52,4 +53,10 @@ test("stale classifier only treats untracked files as install leftovers", () => 
     " M README.md",
     "A  scripts/new-tracked.mjs",
   ]), ["commands/legacy.md"]);
+});
+
+test("install lifecycle audit does not use shell true for git status", async () => {
+  const source = await readFile("scripts/lib/supervibe-install-lifecycle-audit.mjs", "utf8");
+
+  assert.doesNotMatch(source, /shell:\s*process\.platform === ['"]win32['"]/);
 });

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-05-01
+
+### Fixed
+
+- Hardened Windows installer native-command handling so stderr warnings from
+  `git` and `npm` do not abort successful commands under
+  `$ErrorActionPreference = 'Stop'`.
+- Made installer and upgrade dependency restores use `npm ci` to avoid dirtying
+  `package-lock.json` in managed plugin checkouts.
+- Added BOM-safe Claude JSON registration and package-lock drift recovery for
+  installs affected by older installer runs.
+- Stabilized Windows/WSL installer syntax tests and removed unnecessary
+  `shell: true` usage from install lifecycle git status checks.
+
 ## [2.0.5] - 2026-04-30
 
 ### Added

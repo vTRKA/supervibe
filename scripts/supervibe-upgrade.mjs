@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Upgrade the Supervibe plugin to the latest commit on the tracked branch.
-// Cross-platform (Windows / macOS / Linux). Pure Node — no shell tricks.
+// Cross-platform (Windows / macOS / Linux). Pure Node - no shell tricks.
 //
 // Steps:
 //   1. Read current version from .claude-plugin/plugin.json
 //   2. Refuse tracked local edits, then clean untracked/ignored stale files
 //   3. git fetch + git pull --ff-only (refuses to clobber local commits)
 //   4. git lfs pull (model + grammars)
-//   5. npm install (pin versions from lockfile)
+//   5. npm ci (pin versions from lockfile without dirtying package-lock.json)
 //   6. npm run registry:build (generated registry.yaml is intentionally not committed)
 //   7. npm run check (must stay green before declaring success)
 //   8. npm run supervibe:install-doctor (post-upgrade lifecycle audit)
@@ -31,11 +31,16 @@ function manifestVersion(root) {
   } catch { return null; }
 }
 
+function commandForPlatform(cmd) {
+  if (process.platform !== 'win32') return cmd;
+  if (cmd === 'npm' || cmd === 'npx') return `${cmd}.cmd`;
+  return cmd;
+}
+
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, {
+  const r = spawnSync(commandForPlatform(cmd), args, {
     cwd: PLUGIN_ROOT,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
     ...opts,
   });
   return r.status === 0;
@@ -57,12 +62,16 @@ function runGitNoLfsSmudge(args) {
 }
 
 function runQuiet(cmd, args) {
-  const r = spawnSync(cmd, args, { cwd: PLUGIN_ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
+  const r = spawnSync(commandForPlatform(cmd), args, { cwd: PLUGIN_ROOT, encoding: 'utf8' });
   return { ok: r.status === 0, stdout: (r.stdout || '').trim(), stderr: (r.stderr || '').trim() };
 }
 
 function statusLines(stdout) {
   return String(stdout || '').split(/\r?\n/).map((line) => line.trimEnd()).filter(Boolean);
+}
+
+function isPackageLockOnlyDrift(lines) {
+  return lines.length === 1 && /^[ MARCUD?!]{2} package-lock\.json$/.test(lines[0]);
 }
 
 function fail(msg) {
@@ -78,17 +87,25 @@ if (!nodeCapability.installSupported) {
 }
 
 if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
-  fail('Not a git checkout — upgrade only works for symlink/clone installs. Re-clone from upstream.');
+  fail('Not a git checkout - upgrade only works for symlink/clone installs. Re-clone from upstream.');
 }
 
 const before = manifestVersion(PLUGIN_ROOT);
 console.log(`[supervibe:upgrade] current version: ${before || 'unknown'}`);
 
 // Refuse tracked local edits; clean untracked/ignored stale files from the managed checkout.
-const status = runQuiet('git', ['status', '--porcelain']);
-const dirty = status.ok ? statusLines(status.stdout) : [];
-const trackedDirty = dirty.filter((line) => !line.startsWith('?? '));
-const untrackedDirty = dirty.filter((line) => line.startsWith('?? '));
+let status = runQuiet('git', ['status', '--porcelain']);
+let dirty = status.ok ? statusLines(status.stdout) : [];
+let trackedDirty = dirty.filter((line) => !line.startsWith('?? '));
+let untrackedDirty = dirty.filter((line) => line.startsWith('?? '));
+if (isPackageLockOnlyDrift(trackedDirty)) {
+  console.log('[supervibe:upgrade] restoring package-lock.json drift from previous installer npm install');
+  if (!run('git', ['checkout', '--', 'package-lock.json'])) fail('failed to restore package-lock.json drift');
+  status = runQuiet('git', ['status', '--porcelain']);
+  dirty = status.ok ? statusLines(status.stdout) : [];
+  trackedDirty = dirty.filter((line) => !line.startsWith('?? '));
+  untrackedDirty = dirty.filter((line) => line.startsWith('?? '));
+}
 if (trackedDirty.length > 0) {
   console.error('[supervibe:upgrade] uncommitted changes in plugin dir:');
   console.error(trackedDirty.join('\n'));
@@ -120,14 +137,14 @@ if (lfsCheck.ok) {
   console.log('[supervibe:upgrade] git-lfs not installed; skipping (model will lazy-fetch from HF on first use)');
 }
 
-console.log('[supervibe:upgrade] npm install ...');
-if (!run('npm', ['install'])) fail('npm install failed');
+console.log('[supervibe:upgrade] npm ci ...');
+if (!run('npm', ['ci', '--no-audit', '--no-fund'])) fail('npm ci failed');
 
 console.log('[supervibe:upgrade] npm run registry:build ...');
 if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
 
 console.log('[supervibe:upgrade] npm run check ...');
-if (!run('npm', ['run', 'check'])) fail('npm run check failed — upgrade applied but tests are red. Investigate before using.');
+if (!run('npm', ['run', 'check'])) fail('npm run check failed - upgrade applied but tests are red. Investigate before using.');
 
 console.log('[supervibe:upgrade] npm run supervibe:install-doctor ...');
 if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');
@@ -144,8 +161,9 @@ console.log('\n=================================================');
 if (before === after) {
   console.log(`[supervibe:upgrade] already up to date (v${after})`);
 } else {
-  console.log(`[supervibe:upgrade] ✓ upgraded ${before} → ${after}`);
+  console.log(`[supervibe:upgrade] upgraded ${before} -> ${after}`);
   console.log(`[supervibe:upgrade] restart Claude Code to pick up the new plugin code.`);
-  console.log(`[supervibe:upgrade] Each project will see [supervibe] ⬆ on its next session start.`);
+  console.log(`[supervibe:upgrade] Each project will see [supervibe]  on its next session start.`);
 }
 console.log('=================================================');
+

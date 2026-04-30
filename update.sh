@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Evolve standalone updater вЂ” macOS + Linux.
+# Evolve standalone updater - macOS + Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
-#   2. Refuses to clobber local edits (uncommitted changes в†’ stop)
+#   2. Refuses to clobber local edits (uncommitted changes -> stop)
 #   3. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
-#      git fetch в†’ ff-only pull в†’ lfs pull (if available) в†’ npm install в†’
-#      npm run check в†’ refresh upstream-check cache
+#      git fetch -> ff-only pull -> lfs pull (if available) -> npm ci ->
+#      npm run check -> refresh upstream-check cache
 #
-# To install for the first time, use install.sh instead вЂ” this script does
+# To install for the first time, use install.sh instead - this script does
 # not bootstrap a missing install (by design: update should be predictable,
 # install needs CLI registration).
 
@@ -81,15 +81,15 @@ has_required_node_runtime() {
 
 confirm_node_install() {
   case "${SUPERVIBE_INSTALL_NODE:-}" in
-    1|true|TRUE|yes|YES|y|Y|РґР°|Р”Рђ) return 0 ;;
-    0|false|FALSE|no|NO|n|N|РЅРµС‚|РќР•Рў) return 1 ;;
+    1|true|TRUE|yes|YES|y|Y) return 0 ;;
+    0|false|FALSE|no|NO|n|N) return 1 ;;
   esac
   if [ -r /dev/tty ] && [ -w /dev/tty ]; then
     printf '%b[evolve-update]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
     local answer
     IFS= read -r answer < /dev/tty || return 1
     case "$answer" in
-      y|Y|yes|YES|РґР°|Р”Рђ) return 0 ;;
+      y|Y|yes|YES) return 0 ;;
     esac
   fi
   return 1

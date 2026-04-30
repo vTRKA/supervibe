@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Supervibe universal installer — macOS + Linux.
+# Supervibe universal installer - macOS + Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
@@ -10,12 +10,12 @@
 #   SUPERVIBE_EXPECTED_COMMIT=<sha>          # optional release provenance pin
 #   SUPERVIBE_EXPECTED_PACKAGE_SHA256=<sha>  # optional git-archive checksum pin
 #
-# What it does (idempotent — safe to re-run):
+# What it does (idempotent - safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
-#   2. Clones the Supervibe repo (LFS optional — model lazy-fetches from HuggingFace)
+#   2. Clones the Supervibe repo (LFS optional - model lazy-fetches from HuggingFace)
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
 #   4. Cleans stale files from the managed checkout before reinstalling
-#   5. Runs npm install + registry build + npm run check so SQLite/RAG/CodeGraph are available
+#   5. Runs npm ci + registry build + npm run check so SQLite/RAG/CodeGraph are available
 #   6. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
 #        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
@@ -109,6 +109,17 @@ clean_managed_checkout() {
   local status tracked_dirty untracked_count
   status=$(git -C "$root" status --porcelain 2>/dev/null || true)
   tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
+  if [ -n "$tracked_dirty" ] \
+    && [ "$(printf '%s\n' "$tracked_dirty" | wc -l | tr -d ' ')" = "1" ] \
+    && printf '%s\n' "$tracked_dirty" | grep -q -E '^[ MARCUD?!]{2} package-lock\.json$'; then
+    warn "restoring package-lock.json drift from previous installer npm install"
+    git -C "$root" checkout -- package-lock.json >/dev/null 2>"$LOG_DIR/restore-package-lock.log" || {
+      cat "$LOG_DIR/restore-package-lock.log" >&2
+      die "failed to restore package-lock.json. Inspect: $root"
+    }
+    status=$(git -C "$root" status --porcelain 2>/dev/null || true)
+    tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
+  fi
   if [ -n "$tracked_dirty" ]; then
     printf '%s\n' "$tracked_dirty" >&2
     die "tracked local edits in $root; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
@@ -152,15 +163,15 @@ has_required_node_runtime() {
 
 confirm_node_install() {
   case "${SUPERVIBE_INSTALL_NODE:-}" in
-    1|true|TRUE|yes|YES|y|Y|да|ДА) return 0 ;;
-    0|false|FALSE|no|NO|n|N|нет|НЕТ) return 1 ;;
+    1|true|TRUE|yes|YES|y|Y) return 0 ;;
+    0|false|FALSE|no|NO|n|N) return 1 ;;
   esac
   if [ -r /dev/tty ] && [ -w /dev/tty ]; then
     printf '%b[supervibe-install]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
     local answer
     IFS= read -r answer < /dev/tty || return 1
     case "$answer" in
-      y|Y|yes|YES|да|ДА) return 0 ;;
+      y|Y|yes|YES) return 0 ;;
     esac
   fi
   return 1
@@ -252,7 +263,7 @@ command -v copilot >/dev/null 2>&1    && CLIS_FOUND+=("copilot") || true
 command -v opencode >/dev/null 2>&1   && CLIS_FOUND+=("opencode") || true
 
 if [ ${#CLIS_FOUND[@]} -eq 0 ]; then
-  warn "No AI CLI detected. Installing under ~/.claude/ — register manually in your CLI if needed."
+  warn "No AI CLI detected. Installing under ~/.claude/ - register manually in your CLI if needed."
   mkdir -p "$CLAUDE_DIR/plugins/marketplaces"
   CLIS_FOUND=("claude")
 else
@@ -271,7 +282,7 @@ say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} p
 
 if [ -d "$TARGET/.git" ]; then
   clean_managed_checkout "$TARGET"
-  say "found existing checkout at $TARGET — updating to $REF"
+  say "found existing checkout at $TARGET - updating to $REF"
   if ! git_no_lfs_smudge -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
     cat "$LOG_DIR/fetch.log" >&2
     die "git fetch failed. Inspect: $TARGET"
@@ -284,7 +295,7 @@ if [ -d "$TARGET/.git" ]; then
     warn "pull --ff-only failed (local diverged or detached head); leaving checkout at current commit"
   fi
 else
-  say "cloning $REPO_URL ($REF) → $TARGET"
+  say "cloning $REPO_URL ($REF) -> $TARGET"
   if [ -e "$TARGET" ]; then
     quarantine_non_git_target "$TARGET"
   fi
@@ -301,9 +312,9 @@ fi
 
 verify_checkout_integrity
 
-# Optional LFS pull. Failure is non-fatal — runtime falls back to HF lazy-fetch.
+# Optional LFS pull. Failure is non-fatal - runtime falls back to HF lazy-fetch.
 if command -v git-lfs >/dev/null 2>&1; then
-  say "git-lfs detected — pulling embedding model"
+  say "git-lfs detected - pulling embedding model"
   git -C "$TARGET" lfs pull >/dev/null 2>"$LOG_DIR/lfs.log" \
     || warn "git lfs pull failed; model will lazy-fetch from HuggingFace on first use"
 else
@@ -312,11 +323,11 @@ fi
 
 # ---- install deps + verify ----
 
-say "running npm install (logs at $LOG_DIR/npm-install.log)"
-( cd "$TARGET" && npm install --no-audit --no-fund >"$LOG_DIR/npm-install.log" 2>&1 ) || {
-  echo "--- last 40 lines of npm install ---" >&2
-  tail -n 40 "$LOG_DIR/npm-install.log" >&2
-  die "npm install failed. Full log: $LOG_DIR/npm-install.log"
+say "running npm ci (logs at $LOG_DIR/npm-ci.log)"
+( cd "$TARGET" && npm ci --no-audit --no-fund >"$LOG_DIR/npm-ci.log" 2>&1 ) || {
+  echo "--- last 40 lines of npm ci ---" >&2
+  tail -n 40 "$LOG_DIR/npm-ci.log" >&2
+  die "npm ci failed. Full log: $LOG_DIR/npm-ci.log"
 }
 
 say "running npm run registry:build"
@@ -345,9 +356,9 @@ REGISTERED_HOSTS=()
 register_claude() {
   # Claude Code requires three coordinated files for a plugin to be loaded
   # AND enabled on session start. Our installer upserts each idempotently:
-  #   1. ~/.claude/plugins/installed_plugins.json  → "<plugin>@<marketplace>" entry
-  #   2. ~/.claude/plugins/known_marketplaces.json → marketplace metadata
-  #   3. ~/.claude/settings.json                   → enabledPlugins + extraKnownMarketplaces
+  #   1. ~/.claude/plugins/installed_plugins.json  -> "<plugin>@<marketplace>" entry
+  #   2. ~/.claude/plugins/known_marketplaces.json -> marketplace metadata
+  #   3. ~/.claude/settings.json                   -> enabledPlugins + extraKnownMarketplaces
   # Missing #2 or #3 is what makes a "successful" install invisible in the IDE.
 
   local plugins_dir="$CLAUDE_DIR/plugins"
@@ -363,7 +374,7 @@ register_claude() {
   local commit_sha
   commit_sha=$(git -C "$TARGET" rev-parse HEAD 2>/dev/null || echo "")
 
-  # All paths and values pass through env vars — never interpolate into JS source
+  # All paths and values pass through env vars - never interpolate into JS source
   EVOLVE_PJ="$plugins_json" \
   EVOLVE_MJ="$marketplaces_json" \
   EVOLVE_SJ="$settings_json" \
@@ -411,7 +422,7 @@ register_claude() {
     };
     fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
 
-    // 3. settings.json — enabledPlugins + extraKnownMarketplaces
+    // 3. settings.json - enabledPlugins + extraKnownMarketplaces
     const sjPath = process.env.EVOLVE_SJ;
     const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
     sj.enabledPlugins = sj.enabledPlugins || {};
@@ -436,7 +447,7 @@ register_codex() {
     rm -rf "$link"
   fi
   ln -s "$TARGET" "$link"
-  ok "registered with Codex CLI (symlink: $link → $TARGET)"
+  ok "registered with Codex CLI (symlink: $link -> $TARGET)"
 }
 
 register_gemini() {
@@ -491,7 +502,7 @@ ${C_GREEN}=================================================================${C_R
 
   Next steps:
     1. Restart your AI CLI so it picks up the plugin
-    2. Open any project — you should see [supervibe] banner lines on session start
+    2. Open any project - you should see [supervibe] banner lines on session start
     3. /supervibe-genesis (in Claude Code) for first-time project scaffolding
     4. npm run supervibe:status (from $TARGET) for index health any time
 

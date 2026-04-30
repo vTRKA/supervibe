@@ -1,6 +1,6 @@
 ---
 description: >-
-  Update the Supervibe plugin: git pull + lfs pull + npm install + tests +
+Update the Supervibe plugin: git pull + lfs pull + npm ci + tests +
   register-refresh. Idempotent. Now with mid-upgrade rollback procedure if tests
   fail. Идемпотентно. С rollback при сбое тестов на середине upgrade. Triggers:
   'update plugin', 'обнови плагин', 'evolve upgrade', '/supervibe-update'.
@@ -38,7 +38,7 @@ Roll back to the previous commit on the plugin checkout. Useful after a failed u
 ### `/supervibe-update --to <ref>` — pin to specific version
 
 Examples:
-- `/supervibe-update --to v2.0.5` — checkout tag
+- `/supervibe-update --to v2.0.6` — checkout tag
 - `/supervibe-update --to abc123` — checkout commit SHA
 
 After pin: same install + test cycle. Use to test a specific candidate before adopting.
@@ -73,7 +73,7 @@ Print: current version, target version, changelog summary between them, breaking
    ```bash
    cd $CLAUDE_PLUGIN_ROOT && npm run supervibe:upgrade
    ```
-   This script does: clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` -> `git lfs pull` (if available) -> `npm install` -> `npm run registry:build` -> `npm run check` -> `npm run supervibe:install-doctor`.
+This script does: clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` -> `git lfs pull` (if available) -> `npm ci` -> `npm run registry:build` -> `npm run check` -> `npm run supervibe:install-doctor`.
 
 5. **If upgrade fails — automatic rollback:**
 
@@ -83,7 +83,7 @@ Print: current version, target version, changelog summary between them, breaking
    # Rollback procedure (mid-upgrade failure)
    cd $CLAUDE_PLUGIN_ROOT
    git reset --hard $PRE_SHA   # restore source code
-   npm install                  # restore old node_modules
+npm ci                       # restore old node_modules from package-lock.json
    git lfs pull                 # restore LFS state if changed
    ```
 
@@ -134,7 +134,7 @@ Print: current version, target version, changelog summary between them, breaking
 | Tracked local edits in checkout | List dirty tracked files; instruct stash/commit; exit |
 | Stale untracked files in checkout | Clean automatically with `git clean -ffdx` before reinstall; install doctor fails if any remain |
 | Network failure during `git pull` | Print message; preserve pre-state; exit (no rollback needed — nothing changed yet) |
-| `npm install` fails | Auto-rollback (step 5) — restore old node_modules from `package-lock.json` |
+| `npm ci` fails | Auto-rollback (step 5) — restore old node_modules from `package-lock.json` |
 | `npm run check` fails (tests, validators, knip) | Auto-rollback; save failure log; suggest `--to <prev-version>` to pin |
 | LFS fetch fails | Continue (LFS is non-critical; lazy-fetch on first use); print warning |
 | Rollback itself fails | Last-resort guidance: `git reflog` to find pre-state SHA; manual `git reset --hard <sha>`; print exact commands |
@@ -147,7 +147,7 @@ If a hard machine crash or interrupt happens mid-upgrade:
 cd $CLAUDE_PLUGIN_ROOT
 cat .claude/memory/.evolve-update-state.json   # find preSha
 git reset --hard <preSha>
-npm install
+npm ci
 ```
 
 If the state file is corrupted: `git reflog` shows recent HEAD positions.
@@ -160,7 +160,7 @@ Successful upgrade:
 === Supervibe Update ===
 Plugin root:    /path/to/marketplace
 Before:         vX.Y.Z
-After:          v2.0.5
+After:          v2.0.6
 Tests:          679 / 679 passed
 Validators:     10 / 10 clean (+ knip)
 LFS:            pulled (or: skipped — lazy-fetch fallback)
@@ -179,7 +179,7 @@ Failed upgrade with rollback:
 === Supervibe Update — FAILED ===
 Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
-Target:         v2.0.5
+Target:         v2.0.6
 
 ❌ Failed at: npm run check (3 tests failed)
 Error excerpt: [first 500 chars]
@@ -202,7 +202,7 @@ Dry-run:
 ```
 === Supervibe Update — DRY RUN ===
 Current:        vX.Y.Z
-Latest:         v2.0.5
+Latest:         v2.0.6
 Changelog summary: [from CHANGELOG.md since vX.Y.Z]
 
 Breaking changes detected: 2

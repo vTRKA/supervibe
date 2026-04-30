@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join, relative, sep } from 'node:path';
+import { join } from 'node:path';
 
 const ROOT = process.cwd();
 const SH = join(ROOT, 'install.sh');
@@ -12,24 +12,14 @@ const UPD_PS1 = join(ROOT, 'update.ps1');
 
 function bashSyntaxCheck(filePath) {
   try {
-    execFileSync('bash', ['-n', filePath], { cwd: ROOT, stdio: 'pipe' });
+    execFileSync('bash', ['-n', '-s'], {
+      cwd: ROOT,
+      input: readFileSync(filePath),
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     return;
-  } catch (firstErr) {
-    if (process.platform !== 'win32') throw firstErr;
-    try {
-      const relPath = relative(ROOT, filePath).split(sep).join('/');
-      execFileSync('bash', ['-n', relPath], { cwd: ROOT, stdio: 'pipe' });
-      return;
-    } catch {
-      // Fall through to WSL path conversion for shells that are not cwd-aware.
-    }
-    try {
-      const wslPath = execFileSync('wsl', ['wslpath', '-a', filePath], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-      execFileSync('bash', ['-n', wslPath], { cwd: ROOT, stdio: 'pipe' });
-      return;
-    } catch {
-      throw firstErr;
-    }
+  } catch (err) {
+    throw err;
   }
 }
 
@@ -86,6 +76,11 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate');
   assert.match(src, /SymbolicLink/, 'must prefer native PowerShell symlink before falling back to copy');
   assert.match(src, /\$safeLogName/, 'must sanitize npm script names before using them as Windows log filenames');
+  assert.match(src, /Write-Utf8NoBom/, 'must write Claude JSON files without UTF-8 BOM');
+  assert.match(src, /replace\(\/\^\\uFEFF\//, 'must tolerate existing BOM-prefixed JSON files');
+  assert.doesNotMatch(src, /param\(\[string\[\]\]\$Args/, 'must not shadow PowerShell automatic $args variable');
+  assert.match(src, /\$ErrorActionPreference\s*=\s*'Continue'/, 'must let native stderr warnings pass through log capture');
+  assert.match(src, /restore-package-lock/, 'must self-heal package-lock drift left by older installer runs');
 });
 
 test('install.sh and install.ps1 reference the same marketplace name', () => {
@@ -123,6 +118,9 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   }
   assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
   assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
+  assert.match(sh, /npm ci --no-audit --no-fund/, 'bash installer must not dirty package-lock.json');
+  assert.match(sh, /restore-package-lock/, 'bash installer must self-heal package-lock drift left by older installer runs');
+  assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
 });
 
 test('installers skip Git LFS smudge during clone and checkout', () => {
