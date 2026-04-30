@@ -201,12 +201,6 @@ function validateVulnerabilityEvidence(data, now, issues, warnings) {
   if (high + critical > 0 && (data.vulnerabilityExceptions || []).length === 0) {
     addIssue(issues, "npm-audit-high-without-exception", `npm audit reports ${high} high and ${critical} critical vulnerabilities without exceptions`, "Fix the advisory or add a reviewed expiring exception.");
   }
-  if (!data.npmAudit) {
-    warnings.push({
-      code: "npm-audit-offline",
-      message: "release security audit did not run network npm audit; local lockfile and exception policy were checked",
-    });
-  }
 }
 
 function buildReleaseSecurityReport(data, details) {

@@ -133,12 +133,16 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
 test('dead-code lint is stable in installed checkouts', () => {
   const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const knip = JSON.parse(readFileSync(join(ROOT, 'knip.json'), 'utf8'));
+  const commitMsgHook = readFileSync(join(ROOT, '.husky', 'commit-msg'), 'utf8');
 
   assert.match(packageJson.scripts['lint:dead-code'], /--no-config-hints/, 'install check must not fail or warn on Knip config hints');
   assert.ok(knip.entry.includes('scripts/*.mjs'), 'Knip must treat shipped CLI scripts as entrypoints');
   assert.ok(knip.entry.includes('scripts/hooks/*.mjs'), 'Knip must treat Claude hook scripts as entrypoints');
-  assert.ok(knip.entry.includes('.husky/*'), 'Knip must see hook binaries such as lint-staged');
-  assert.ok(knip.entry.includes('lint-staged.config.js'), 'Knip must connect lint-staged with its config');
+  assert.ok(knip.entry.includes('.husky/*'), 'Knip must see Husky hook entrypoints');
+  assert.equal(packageJson.devDependencies['lint-staged'], undefined, 'installer check must not depend on lint-staged');
+  assert.equal(packageJson.devDependencies['@commitlint/cli'], undefined, 'installer check must not depend on commitlint');
+  assert.doesNotMatch(commitMsgHook, /commitlint/, 'commit-msg hook must not require commitlint binaries');
+  assert.match(commitMsgHook, /validate-commit-message\.mjs/, 'commit-msg hook must use the shipped validator');
 });
 
 test('installers skip Git LFS smudge during clone and checkout', () => {
@@ -159,9 +163,12 @@ test('installers make optional Git LFS pull bounded and skippable', () => {
 
   for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
     assert.match(src, /SUPERVIBE_SKIP_LFS/, `${name} must allow users to skip optional LFS prefetch`);
+    assert.match(src, /SUPERVIBE_PREFETCH_LFS/, `${name} must require explicit opt-in before LFS prefetch`);
     assert.match(src, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, `${name} must expose an LFS timeout override`);
     assert.match(src, /\.git[\\/]lfs[\\/]incomplete|\.git\\lfs\\incomplete/, `${name} must clean incomplete LFS downloads after failure`);
   }
+  assert.match(sh, /model downloads never block install/, 'bash installer must default to lazy model fetch');
+  assert.match(ps1, /model downloads never block install/, 'PowerShell installer must default to lazy model fetch');
   assert.match(sh, /timeout "\$timeout_seconds" git -C "\$TARGET" lfs pull/, 'bash installer must bound git lfs pull when timeout is available');
   assert.match(ps1, /Invoke-GitLfsPull/, 'PowerShell installer must use a bounded LFS pull helper');
   assert.match(ps1, /WaitForExit\(\[int\]\(\$timeoutSeconds \* 1000\)\)/, 'PowerShell installer must enforce the LFS timeout');

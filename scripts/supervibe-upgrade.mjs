@@ -6,7 +6,7 @@
 //   1. Read current version from .claude-plugin/plugin.json
 //   2. Refuse tracked local edits, then clean untracked/ignored stale files
 //   3. git fetch + git pull --ff-only (refuses to clobber local commits)
-//   4. git lfs pull (model + grammars)
+//   4. skip optional Git LFS model prefetch unless SUPERVIBE_PREFETCH_LFS=1
 //   5. npm ci (pin versions from lockfile without dirtying package-lock.json)
 //   6. npm run registry:build (generated registry.yaml is intentionally not committed)
 //   7. npm run check (must stay green before declaring success)
@@ -169,8 +169,8 @@ if (!runGitNoLfsSmudge(['fetch', '--tags', '--prune'])) fail('git fetch failed')
 if (!runGitNoLfsSmudge(['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
 
 const lfsCheck = runQuiet('git', ['lfs', 'version']);
-if (isTruthyEnv(process.env.SUPERVIBE_SKIP_LFS)) {
-  console.log('[supervibe:upgrade] SUPERVIBE_SKIP_LFS=1; skipping git lfs pull (model will lazy-fetch from HF on first use)');
+if (isTruthyEnv(process.env.SUPERVIBE_SKIP_LFS) || !isTruthyEnv(process.env.SUPERVIBE_PREFETCH_LFS)) {
+  console.log('[supervibe:upgrade] skipping optional git lfs model prefetch (model will lazy-fetch from HF on first use)');
 } else if (lfsCheck.ok) {
   console.log(`[supervibe:upgrade] git lfs pull (timeout: ${gitLfsTimeoutMs()}ms) ...`);
   if (!runGitLfsPull()) {

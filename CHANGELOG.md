@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.9] - 2026-05-01
+
+### Fixed
+
+- Removed `lint-staged` from the shipped installer/check surface so official
+  plugin installs cannot fail Knip on a local-only pre-commit helper.
+- Replaced the pre-commit hook with a direct plugin manifest validation that
+  does not require extra development binaries.
+- Made ONNX model prefetch lazy by default: installers and upgrades skip Git
+  LFS model downloads unless `SUPERVIBE_PREFETCH_LFS=1` is explicitly set.
+
 ## [2.0.8] - 2026-05-01
 
 ### Fixed

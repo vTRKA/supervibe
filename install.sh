@@ -346,9 +346,9 @@ fi
 
 verify_checkout_integrity
 
-# Optional LFS pull. Failure is non-fatal - runtime falls back to HF lazy-fetch.
-if truthy_env "${SUPERVIBE_SKIP_LFS:-}"; then
-  warn "SUPERVIBE_SKIP_LFS=1; skipping Git LFS pull. Model will lazy-fetch from HuggingFace on first use."
+# Optional LFS pull. Default is lazy-fetch so model downloads never block install.
+if truthy_env "${SUPERVIBE_SKIP_LFS:-}" || ! truthy_env "${SUPERVIBE_PREFETCH_LFS:-}"; then
+  say "skipping optional Git LFS model prefetch; model will lazy-fetch from HuggingFace on first semantic search"
 elif command -v git-lfs >/dev/null 2>&1; then
   say "git-lfs detected - pulling embedding model (timeout: $(git_lfs_timeout_seconds)s)"
   if ! git_lfs_pull_optional; then

@@ -67,6 +67,7 @@ test("supervibe-upgrade makes optional Git LFS pull bounded and skippable", asyn
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
 
   assert.match(source, /SUPERVIBE_SKIP_LFS/, "upgrade should support skipping optional LFS prefetch");
+  assert.match(source, /SUPERVIBE_PREFETCH_LFS/, "upgrade should require explicit opt-in before LFS prefetch");
   assert.match(source, /SUPERVIBE_LFS_TIMEOUT_MS/, "upgrade should support a millisecond LFS timeout override");
   assert.match(source, /SUPERVIBE_LFS_TIMEOUT_SECONDS/, "upgrade should support a seconds-based LFS timeout override");
   assert.match(source, /timeout,/, "upgrade should pass a timeout to spawnSync");

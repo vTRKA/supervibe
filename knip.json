@@ -5,9 +5,7 @@
     "scripts/hooks/*.mjs",
     "scripts/lib/memory-preflight.mjs",
     "scripts/lib/regression-scorer.mjs",
-    ".husky/*",
-    "commitlint.config.js",
-    "lint-staged.config.js"
+    ".husky/*"
   ],
   "ignoreIssues": {
     "scripts/lib/autonomous-loop-provider-policy-guard.mjs": ["exports"],

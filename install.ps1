@@ -331,9 +331,9 @@ if (Test-Path (Join-Path $Target '.git')) {
 
 Test-CheckoutIntegrity
 
-# Optional LFS pull
-if (Test-TruthyEnv $env:SUPERVIBE_SKIP_LFS) {
-  Warn 'SUPERVIBE_SKIP_LFS=1; skipping Git LFS pull. Model will lazy-fetch from HuggingFace on first use.'
+# Optional LFS pull. Default is lazy-fetch so model downloads never block install.
+if ((Test-TruthyEnv $env:SUPERVIBE_SKIP_LFS) -or -not (Test-TruthyEnv $env:SUPERVIBE_PREFETCH_LFS)) {
+  Say 'skipping optional Git LFS model prefetch; model will lazy-fetch from HuggingFace on first semantic search'
 } elseif (Get-Command git-lfs -ErrorAction SilentlyContinue) {
   Say "git-lfs detected - pulling embedding model (timeout: $(Get-LfsTimeoutSeconds)s)"
   if (-not (Invoke-GitLfsPull $Target)) {
