@@ -6,14 +6,13 @@
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
-#   2. Refuses to clobber local edits (uncommitted changes -> stop)
-#   3. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
+#   2. If missing, delegates to install.sh for first-time install
+#   3. Refuses to clobber local edits (uncommitted changes -> stop)
+#   4. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
 #      git fetch -> ff-only pull -> lfs pull (if available) -> npm ci ->
 #      npm run check -> refresh upstream-check cache
 #
-# To install for the first time, use install.sh instead - this script does
-# not bootstrap a missing install (by design: update should be predictable,
-# install needs CLI registration).
+# Safe as the user-facing "install or update" entrypoint.
 
 set -euo pipefail
 
@@ -32,6 +31,18 @@ say() { printf '%b[evolve-update]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
 ok()  { printf '%b[evolve-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[evolve-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[evolve-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
+
+bootstrap_first_install() {
+  local install_url="${SUPERVIBE_INSTALL_URL:-}"
+  if [ -z "$install_url" ]; then
+    install_url="https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh"
+  fi
+  warn "no Supervibe install found at $PLUGIN_ROOT"
+  say "running first-time installer from $install_url"
+  command -v curl >/dev/null 2>&1 || die "curl not found. Install curl or run install.sh manually."
+  curl -fsSL "$install_url" | bash
+  exit $?
+}
 
 validate_safe_path() {
   local path="$1"
@@ -159,30 +170,21 @@ ensure_node_runtime() {
   install_node_runtime
 }
 
+# ---- locate install ----
+
+validate_safe_path "$PLUGIN_ROOT"
+if [ ! -d "$PLUGIN_ROOT/.git" ]; then
+  bootstrap_first_install
+fi
+ok "found checkout at $PLUGIN_ROOT"
+
 # ---- preflight ----
 
 command -v git  >/dev/null || die "git not found."
 ensure_node_runtime
 command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall Node.js $MIN_NODE_VERSION+ and re-run."
-validate_safe_path "$PLUGIN_ROOT"
 say "plan: will update existing checkout at $PLUGIN_ROOT, preserve tracked local edits, and clean stale untracked files"
 say "plan: integrity pins expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
-
-# ---- locate install ----
-
-if [ ! -d "$PLUGIN_ROOT/.git" ]; then
-  cat >&2 <<EOF
-${C_RED}[evolve-update]${C_RESET} no Supervibe install found at $PLUGIN_ROOT
-
-If this is your first install, run:
-  curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
-
-If your plugin lives elsewhere, point the updater at it:
-  SUPERVIBE_PLUGIN_ROOT=/path/to/evolve curl -fsSL .../update.sh | bash
-EOF
-  exit 1
-fi
-ok "found checkout at $PLUGIN_ROOT"
 
 # ---- safety: refuse to clobber local edits ----
 

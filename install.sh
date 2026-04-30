@@ -85,9 +85,9 @@ cleanup_git_lfs_incomplete() {
 }
 
 git_lfs_timeout_seconds() {
-  local timeout_seconds="${SUPERVIBE_LFS_TIMEOUT_SECONDS:-120}"
+  local timeout_seconds="${SUPERVIBE_LFS_TIMEOUT_SECONDS:-45}"
   case "$timeout_seconds" in
-    ''|*[!0-9]*|0) timeout_seconds=120 ;;
+    ''|*[!0-9]*|0) timeout_seconds=45 ;;
   esac
   printf '%s' "$timeout_seconds"
 }

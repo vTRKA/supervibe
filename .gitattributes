@@ -1,5 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+.gitattributes text eol=lf
+
+# Shell installers are parsed by bash during Windows install checks. Keep them
+# LF even when users clone with core.autocrlf=true.
+*.sh text eol=lf
 
 # Embedding model is ~113MB, exceeds GitHub's 100MB single-file limit → must use LFS.
 # When LFS is unavailable, runtime falls back to HuggingFace lazy-fetch.

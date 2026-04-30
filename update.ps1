@@ -1,15 +1,15 @@
-# Evolve standalone updater вЂ” Windows.
+# Supervibe standalone updater - Windows.
 #
 # Usage (PowerShell):
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 #
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
-#   2. Refuses to clobber local edits (uncommitted changes в†’ stop)
-#   3. Delegates to `npm run supervibe:upgrade` inside the checkout
+#   2. If missing, delegates to install.ps1 for first-time install
+#   3. Refuses to clobber local edits (uncommitted changes stop)
+#   4. Delegates to `npm run supervibe:upgrade` inside the checkout
 #
-# For first-time install, use install.ps1 вЂ” this script does not bootstrap.
-
+# Safe as the user-facing "install or update" entrypoint.
 $ErrorActionPreference = 'Stop'
 
 $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
@@ -25,6 +25,23 @@ function Say  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Cyan 
 function Ok   { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Green }
 function Warn { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Yellow }
 function Die  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Red; exit 1 }
+
+function Invoke-FirstInstall {
+  $installUrl = if ($env:SUPERVIBE_INSTALL_URL) {
+    $env:SUPERVIBE_INSTALL_URL
+  } else {
+    'https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1'
+  }
+  Warn "no Supervibe install found at $PluginRoot"
+  Say "running first-time installer from $installUrl"
+  try {
+    $installer = Invoke-RestMethod -Uri $installUrl -UseBasicParsing
+    Invoke-Expression $installer
+    exit 0
+  } catch {
+    Die "first-time install failed: $($_.Exception.Message)"
+  }
+}
 
 function Assert-SafePluginPath {
   param([string]$Path)
@@ -129,28 +146,21 @@ function Ensure-NodeRuntime {
   Install-NodeRuntime
 }
 
+# ---- locate install ----
+
+Assert-SafePluginPath $PluginRoot
+if (-not (Test-Path (Join-Path $PluginRoot '.git'))) {
+  Invoke-FirstInstall
+}
+Ok "found checkout at $PluginRoot"
+
 # ---- preflight ----
 
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.' }
 Ensure-NodeRuntime
 if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
-Assert-SafePluginPath $PluginRoot
 Say "plan: will update existing checkout at $PluginRoot, preserve tracked local edits, and clean stale untracked files"
 Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
-
-# ---- locate install ----
-
-if (-not (Test-Path (Join-Path $PluginRoot '.git'))) {
-  Write-Host "[evolve-update] no Supervibe install found at $PluginRoot" -ForegroundColor Red
-  Write-Host ''
-  Write-Host 'If this is your first install, run:'
-  Write-Host '  irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'
-  Write-Host ''
-  Write-Host 'If your plugin lives elsewhere, point the updater at it:'
-  Write-Host '  $env:SUPERVIBE_PLUGIN_ROOT = "C:\path\to\evolve"; irm .../update.ps1 | iex'
-  exit 1
-}
-Ok "found checkout at $PluginRoot"
 
 # ---- safety: refuse to clobber local edits ----
 

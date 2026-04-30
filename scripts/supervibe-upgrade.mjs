@@ -24,7 +24,7 @@ import {
 
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT
   || process.cwd();
-const DEFAULT_LFS_TIMEOUT_MS = 120_000;
+const DEFAULT_LFS_TIMEOUT_MS = 45_000;
 
 function manifestVersion(root) {
   try {

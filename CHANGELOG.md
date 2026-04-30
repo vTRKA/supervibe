@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.8] - 2026-05-01
+
+### Fixed
+
+- Made `update.sh` and `update.ps1` safe for first-time use by delegating a
+  missing checkout to the full installer instead of stopping with a manual
+  install instruction.
+- Forced shell installer/update scripts to LF checkouts on Windows so bash
+  syntax tests do not fail under `core.autocrlf=true`.
+- Hardened Knip configuration for installed checkouts by making shipped CLI,
+  hook, and Husky entrypoints explicit and suppressing stale config hints.
+- Reduced the default optional Git LFS prefetch timeout so installs fall back
+  to lazy HuggingFace model fetch faster when LFS stalls.
+
 ## [2.0.7] - 2026-05-01
 
 ### Fixed

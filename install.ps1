@@ -210,7 +210,7 @@ function Test-TruthyEnv {
 }
 
 function Get-LfsTimeoutSeconds {
-  $timeoutSeconds = 120
+  $timeoutSeconds = 45
   $parsedTimeout = 0
   if ($env:SUPERVIBE_LFS_TIMEOUT_MS -and [int]::TryParse($env:SUPERVIBE_LFS_TIMEOUT_MS, [ref]$parsedTimeout) -and $parsedTimeout -gt 0) {
     return [Math]::Max(1, [int][Math]::Ceiling($parsedTimeout / 1000))

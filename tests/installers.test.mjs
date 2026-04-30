@@ -9,6 +9,7 @@ const SH = join(ROOT, 'install.sh');
 const PS1 = join(ROOT, 'install.ps1');
 const UPD_SH = join(ROOT, 'update.sh');
 const UPD_PS1 = join(ROOT, 'update.ps1');
+const GITATTRIBUTES = join(ROOT, '.gitattributes');
 
 function bashSyntaxCheck(filePath) {
   try {
@@ -49,6 +50,11 @@ test('install.sh has shebang, set -euo pipefail, idempotency markers', () => {
   assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /node -e/, 'must use node -e for JSON upsert (not heredoc string-interpolation)');
   assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate into source');
+});
+
+test('shell installers stay LF under Windows autocrlf checkouts', () => {
+  const attrs = readFileSync(GITATTRIBUTES, 'utf8');
+  assert.match(attrs, /\*\.sh text eol=lf/, 'bash installer/update scripts must not be checked out with CRLF');
 });
 
 test('install.sh writes all three Claude config files (regression: empty banner bug)', () => {
@@ -124,6 +130,17 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
 });
 
+test('dead-code lint is stable in installed checkouts', () => {
+  const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  const knip = JSON.parse(readFileSync(join(ROOT, 'knip.json'), 'utf8'));
+
+  assert.match(packageJson.scripts['lint:dead-code'], /--no-config-hints/, 'install check must not fail or warn on Knip config hints');
+  assert.ok(knip.entry.includes('scripts/*.mjs'), 'Knip must treat shipped CLI scripts as entrypoints');
+  assert.ok(knip.entry.includes('scripts/hooks/*.mjs'), 'Knip must treat Claude hook scripts as entrypoints');
+  assert.ok(knip.entry.includes('.husky/*'), 'Knip must see hook binaries such as lint-staged');
+  assert.ok(knip.entry.includes('lint-staged.config.js'), 'Knip must connect lint-staged with its config');
+});
+
 test('installers skip Git LFS smudge during clone and checkout', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
@@ -190,11 +207,13 @@ test('update.sh is syntactically valid bash', () => {
   }
 });
 
-test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
+test('update.sh has shebang, set -euo pipefail, and bootstraps first install', () => {
   const src = readFileSync(UPD_SH, 'utf8');
   assert.match(src, /^#!\/usr\/bin\/env bash/, 'must start with bash shebang');
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
-  assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.sh first when checkout is missing');
+  assert.match(src, /bootstrap_first_install/, 'must handle first-time install when checkout is missing');
+  assert.match(src, /SUPERVIBE_INSTALL_URL/, 'must allow overriding the delegated installer URL');
+  assert.match(src, /install\.sh/, 'must delegate missing checkouts to install.sh');
   assert.match(src, /git -C .* status --porcelain/, 'must check for uncommitted changes before updating');
   assert.match(src, /tracked_dirty/, 'must refuse tracked edits specifically');
   assert.match(src, /untracked stale file/, 'must allow stale untracked cleanup through canonical upgrader');
@@ -204,7 +223,9 @@ test('update.sh has shebang, set -euo pipefail, refuses to bootstrap', () => {
 test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
   const src = readFileSync(UPD_PS1, 'utf8');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
-  assert.match(src, /no Supervibe install found/, 'must explicitly tell user to run install.ps1 first when checkout is missing');
+  assert.match(src, /Invoke-FirstInstall/, 'must handle first-time install when checkout is missing');
+  assert.match(src, /SUPERVIBE_INSTALL_URL/, 'must allow overriding the delegated installer URL');
+  assert.match(src, /install\.ps1/, 'must delegate missing checkouts to install.ps1');
   assert.match(src, /status --porcelain/, 'must check for uncommitted changes before updating');
   assert.match(src, /\$trackedDirty/, 'must refuse tracked edits specifically');
   assert.match(src, /untracked stale file/, 'must allow stale untracked cleanup through canonical upgrader');
