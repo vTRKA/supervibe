@@ -36,12 +36,15 @@ NOT for:
 3. **Two viewports by default** — `375px` (mobile) and `1440px` (desktop). The user may request more (e.g. `768px` tablet, `1920px` wide-screen) but the default is exactly these two. Ask user upfront before building.
 4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with progress indicator ("Шаг 2/5: viewports").
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
+6. **Existing artifact mode is explicit.** If `prototypes/`, `mockups/`, or `presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
+7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews.
 
 ## Step 0 — Read source of truth (required)
 
 1. **Design system check.** Read `prototypes/_design-system/tokens.css`, `prototypes/_design-system/components/*.md`, `prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
-2. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
-3. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
+2. **Artifact mode check.** Run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
+3. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
+4. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
 
 ## Target surfaces (Шаг 0 — ASK BEFORE viewport)
 
@@ -147,9 +150,10 @@ Wait for explicit answer. Then next question. Never combine.
 
 ### Stage 4 — Live preview
 
-1. Invoke `supervibe:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min.
-2. Print URL to user. Hand-off to user for visual review.
-3. Ensure server stays alive while feedback loop runs.
+1. Invoke `supervibe:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
+2. Verify the served HTML includes `#evolve-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
+3. Print URL to user. Hand-off to user for visual review.
+4. Ensure server stays alive while feedback loop runs.
 
 ### Stage 5 — Feedback loop (required)
 
@@ -220,6 +224,8 @@ Rubric:     prototype
 - DO NOT install any npm package or import any framework. Native only.
 - DO NOT exceed 2 viewports unless user explicitly asked for more.
 - DO NOT proceed past delivery without explicit feedback choice.
+- DO NOT reuse or edit an old design artifact without the artifact-mode question when the brief is ambiguous.
+- DO NOT disable preview feedback overlay for prototype previews.
 - DO NOT mark approved without `.approval.json` artifact.
 - DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
 - DO NOT ask >1 question per message.
@@ -241,6 +247,8 @@ Rubric:     prototype
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
 - `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
+- `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
+- `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
 
 ## Related
 

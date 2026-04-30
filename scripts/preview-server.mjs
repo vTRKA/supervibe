@@ -9,6 +9,7 @@
 //   --idle-timeout <min>    Auto-shutdown after N minutes of inactivity (default 30; 0 = disable)
 //   --force                 Bypass max-servers limit
 //   --list                  List currently running preview servers
+//   --no-feedback           Disable overlay for non-design roots only
 //   --kill <port>           Kill server on given port
 //   --kill-all              Kill all registered preview servers
 
@@ -17,6 +18,7 @@ import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { startStaticServer } from './lib/preview-static-server.mjs';
 import { attachHotReload } from './lib/preview-hot-reload.mjs';
+import { assertFeedbackAllowed } from './lib/preview-feedback-policy.mjs';
 import {
   findFreePort,
   registerServer, unregisterServer,
@@ -50,7 +52,9 @@ Usage:
   preview-server.mjs --root <dir> [--port N] [--label "name"] [--no-watch] [--idle-timeout <min>] [--force]
   preview-server.mjs --list
   preview-server.mjs --kill <port>
-  preview-server.mjs --kill-all`);
+  preview-server.mjs --kill-all
+
+Note: --no-feedback is blocked for prototypes/, mockups/, and presentations/ roots.`);
   process.exit(0);
 }
 
@@ -107,6 +111,12 @@ if (!existsSync(absRoot)) {
   console.error(`Root directory does not exist: ${absRoot}`);
   process.exit(1);
 }
+try {
+  assertFeedbackAllowed({ root: absRoot, noFeedback: Boolean(values['no-feedback']) });
+} catch (err) {
+  console.error(`[supervibe-preview] ${err.message}`);
+  process.exit(2);
+}
 
 const portArg = values.port ? parseInt(values.port, 10) : 0;
 const port = portArg || await findFreePort();
@@ -135,7 +145,7 @@ const url = `http://localhost:${server.port}`;
 console.log(`[supervibe-preview] ${label} → ${url}`);
 console.log(`[supervibe-preview] root: ${absRoot}`);
 console.log(`[supervibe-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
-console.log(`[supervibe-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click 💬 in browser)`);
+console.log(`[supervibe-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click Feedback in browser)`);
 console.log(`[supervibe-preview] PID: ${process.pid}`);
 console.log(`[supervibe-preview] press Ctrl+C to stop`);
 

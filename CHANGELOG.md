@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-04-30
+
+### Changed
+
+- Hardened the design artifact intake gate so existing prototypes, mockups, and
+  presentations are never reused silently when the brief is ambiguous.
+- Made design preview feedback mandatory and visible across prototype, mockup,
+  and presentation roots, with an IDE-neutral queue fallback for hosts without
+  prompt hooks.
+- Aligned designer agents with `prototypes/_design-system/` as the canonical
+  token/component/motion source of truth.
+- Added a prototype write guard that blocks raw colors and hardcoded layout
+  pixels after a design system is approved.
+
 ## [2.0.0] - 2026-04-30
 
 ### Added - Design intelligence scale-up

@@ -14,7 +14,7 @@ last-verified: 2026-04-27
 
 # Preview Server
 
-Spawn a local hot-reload preview server for freshly generated mockup files, hand the URL to the user, and (optionally) capture a Playwright screenshot before tearing the server down.
+Spawn the Supervibe local hot-reload preview server for freshly generated mockup files, hand the URL to the user, and (optionally) capture a Playwright screenshot before tearing the server down. For design roots, the feedback overlay is mandatory. The feedback path is IDE-neutral at the preview layer: browser comments are written to `.claude/memory/feedback-queue.jsonl`; hooks surface them automatically where supported, and other IDEs can poll with `feedback-status.mjs --list`.
 
 ## When to invoke
 
@@ -50,12 +50,13 @@ Always prefer the project's own dev script when one exists; fall back to `live-s
 
 1. Complete Step 0 (verification + `--list` check).
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
-3. Start the server bound to `127.0.0.1` on an ephemeral port; capture the PID.
+3. Start the server with `node "$CLAUDE_PLUGIN_ROOT/scripts/preview-server.mjs" --root <mockup-root> --label "<label>"`; capture the PID. Design roots include `prototypes/<slug>`, `mockups/<slug>`, and `presentations/<slug>`; never pass `--no-feedback` for them.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
-5. Hand the URL to the user using the Output contract template below.
-6. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
-7. Continue the surrounding task — keep the server alive only while the user is reviewing.
-8. On task completion (or user "done"), kill the PID and confirm port released.
+5. For a design root, verify the response body contains `evolve-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list`.
+6. Hand the URL to the user using the Output contract template below.
+7. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
+8. Continue the surrounding task — keep the server alive only while the user is reviewing.
+9. On task completion (or user "done"), kill the PID and confirm port released.
 
 ## Output contract
 
@@ -68,6 +69,7 @@ Return to the user as Markdown:
 - Label: <label>
 - Root: <absolute path to served directory>
 - Hot-reload: <yes|no>
+- Feedback button: <visible | n/a for non-design root>
 - PID: <pid>
 - Screenshot: <absolute path or "none">
 ```
@@ -81,6 +83,7 @@ The `evolve` orchestrator consumes this block to populate `emits-artifact: previ
 - ALWAYS kill the server PID on task completion, error, or user cancel — leaked dev servers are a recurring incident class.
 - ALWAYS bind to `127.0.0.1` only — never `0.0.0.0` and never an externally routable interface.
 - ALWAYS include both the port and PID in the output block so the user (and subsequent skills) can clean up manually if needed.
+- NEVER disable the feedback overlay for `prototypes/`, `mockups/`, or `presentations/`; missing `Feedback` button is a blocking preview setup bug.
 
 ## Verification
 
@@ -88,7 +91,8 @@ After spawn, before reporting success, confirm:
 
 1. `curl -sS http://localhost:<port>/ | head -n 5` returns HTML (HTTP 200, `<!doctype html>` or `<html` present).
 2. The response body contains the hot-reload `EventSource` / WebSocket injection (skip for framework dev servers that use their own HMR channel).
-3. `evolve --list` now shows the preview-server entry with the same PID.
+3. For design roots, the response body contains `evolve-fb-toggle` and the visible button text `Feedback`.
+4. `evolve --list` now shows the preview-server entry with the same PID.
 
 If any check fails, kill the PID and surface the error — do not return a half-working URL.
 

@@ -36,6 +36,8 @@ Step N: Print this exact prompt:
 - advancing-without-feedback-prompt
 - framework-coupling
 - silent-viewport-expansion
+- silent-existing-artifact-reuse
+- missing-preview-feedback-button
 - random-regen-instead-of-tradeoff-alternatives
 `;
   const issues = validateDesignSkill('prototype', body);

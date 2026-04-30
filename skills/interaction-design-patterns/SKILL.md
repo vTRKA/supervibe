@@ -36,8 +36,8 @@ NOT for: pure static layout, content-only screens.
 
 ## Step 0 — Read source of truth (required)
 
-1. Read `prototypes/_brandbook/motion.md` for timing tiers + easing
-2. Read `prototypes/_brandbook/components/` for component-specific transitions
+1. Read `prototypes/_design-system/motion.css` for timing tiers + easing
+2. Read `prototypes/_design-system/components/` for component-specific transitions
 3. Check `prefers-reduced-motion` policy (mandatory respect)
 4. Check target browser matrix — modern features (View Transitions API, scroll-driven animations) need fallbacks for Safari < 17 / Firefox
 5. Run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` before promising video/GIF output. If video is unavailable, select CSS/WAAPI, SVG/Lottie spec, storyboard frames, or static poster alternatives.

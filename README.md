@@ -84,7 +84,7 @@ Open the plugin search interface (`/plugins`) and search for "supervibe".
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.0 initialized for this project
+[supervibe] welcome — plugin v2.0.1 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```

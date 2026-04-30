@@ -4,8 +4,15 @@
 
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${proto}//${window.location.host}/_feedback`);
+  const pendingPayloads = [];
   let armed = false;
   let highlight = null;
+
+  ws.addEventListener('open', () => {
+    while (pendingPayloads.length > 0 && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(pendingPayloads.shift()));
+    }
+  });
 
   function el(tag, props, children) {
     const e = document.createElement(tag);
@@ -16,8 +23,9 @@
 
   const button = el('button', {
     id: 'evolve-fb-toggle',
-    textContent: '💬',
-    title: 'Click to comment on a region (Evolve feedback)',
+    textContent: 'Feedback',
+    title: 'Click to comment on a region and send it to the agent',
+    ariaLabel: 'Send design feedback to the agent',
   });
   document.documentElement.appendChild(button);
 
@@ -27,12 +35,12 @@
 
   function arm() {
     armed = true;
-    button.textContent = '✕';
+    button.textContent = 'Cancel';
     document.documentElement.style.cursor = 'crosshair';
   }
   function disarm() {
     armed = false;
-    button.textContent = '💬';
+    button.textContent = 'Feedback';
     document.documentElement.style.cursor = '';
     if (highlight) { highlight.remove(); highlight = null; }
   }
@@ -100,23 +108,39 @@
 
     send.addEventListener('click', () => {
       const payload = {
-        prototypeSlug: window.__evolvePrototypeSlug || 'unknown',
-        viewport: window.__evolveViewport || `${window.innerWidth}`,
+        prototypeSlug: window.__supervibePrototypeSlug || window.__evolvePrototypeSlug || 'unknown',
+        viewport: window.__supervibeViewport || window.__evolveViewport || `${window.innerWidth}`,
         region: { selector: sel, x: rect.left, y: rect.top, width: rect.width, height: rect.height },
         comment: textarea.value.trim(),
         type: typeSel.value,
         url: window.location.href,
       };
       if (!payload.comment) return;
-      ws.send(JSON.stringify(payload));
+      const sent = sendFeedbackPayload(payload);
+      if (!sent) {
+        flashAck('Feedback unavailable');
+        return;
+      }
       panel.style.display = 'none';
       disarm();
-      flashAck();
+      flashAck(ws.readyState === WebSocket.OPEN ? 'Feedback sent' : 'Feedback queued');
     });
   }
 
-  function flashAck() {
-    const ack = el('div', { id: 'evolve-fb-ack', textContent: '✓ Feedback sent' });
+  function sendFeedbackPayload(payload) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(payload));
+      return true;
+    }
+    if (ws.readyState === WebSocket.CONNECTING) {
+      pendingPayloads.push(payload);
+      return true;
+    }
+    return false;
+  }
+
+  function flashAck(message) {
+    const ack = el('div', { id: 'evolve-fb-ack', textContent: message });
     document.documentElement.appendChild(ack);
     setTimeout(() => ack.remove(), 1500);
   }

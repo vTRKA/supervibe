@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packageVersionTarget": "2.0.0",
+  "packageVersionTarget": "2.0.1",
   "sourceRepository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
   "sourceCommit": "b7e3af80f6e331f6fb456667b82b12cade7c9d35",
   "sourceCommitShort": "b7e3af8",
@@ -72,7 +72,7 @@
       "sourcePath": "src/ui-ux-pro-max/data/styles.csv",
       "packagedAssetPath": "cli/assets/data/styles.csv",
       "importedPath": "skills/design-intelligence/data/styles.csv",
-      "rows": 75,
+      "rows": 76,
       "sha256": "9b5089dcde8999333b36878252a255cc3bacbb2fe7b836c76cc7f7aa2abb643d",
       "originalHeaders": [
         "No",

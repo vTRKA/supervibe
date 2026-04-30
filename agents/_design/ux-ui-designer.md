@@ -66,6 +66,7 @@ anti-patterns:
   - jargon-instead-of-microcopy
   - no-reference-scan
   - video-assumption-without-capability-check
+  - silent-existing-artifact-reuse
 version: 1.1
 last-verified: 2026-04-27T00:00:00.000Z
 verified-against: HEAD
@@ -144,8 +145,9 @@ Use `supervibe:design-intelligence` after memory and code search for product, UX
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
-2. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
-3. **Reference scan**: collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
+2. **Artifact mode gate**: if existing `prototypes/`, `mockups/`, `presentations/`, or prior specs match the brief and the user did not explicitly say continue existing vs new from scratch, ask one question before treating old files as source. Prior files are evidence, not permission to reuse.
+3. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
+4. **Reference scan**: collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
 4. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
 4. **Map information architecture**: list every piece of information the screen owes the user; rank primary / secondary / tertiary by JTBD priority, not by what the API returns.
 5. **Wireframe** at low fidelity: blocks-and-arrows. Validate hierarchy reads correctly without color, type weight, or imagery.
@@ -293,11 +295,12 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Design tokens: `design-tokens/`, `frontend/src/tokens/`, `prototypes/_brandbook/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
+- Design tokens: `prototypes/_design-system/tokens.css`, `design-tokens/`, `frontend/src/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
 - Screen specs: `screen-specs/`, `docs/specs/`, or co-located alongside route files
 - Component library: `frontend/src/components/`, `packages/ui/`, Storybook entry points
 - Mockups / prototypes: `mockups/`, `prototypes/`, Figma file references in CLAUDE.md
-- Brandbook: `prototypes/_brandbook/` — voice, type scale, color system, motion principles
+- Design system: `prototypes/_design-system/` — tokens, component specs, motion, accessibility
+- Brandbook: `prototypes/_brandbook/` — direction, voice, moodboards, positioning
 - IA reference: `docs/ia/`, sitemap files, or route manifests
 - Past design decisions: `.claude/memory/design/` — prior screen specs and rationale
 

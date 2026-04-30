@@ -41,13 +41,16 @@ Plus landing-specific:
 6. **SEO scaffolding from day one.** `<title>`, meta description, Open Graph, Twitter card, canonical, structured-data JSON-LD — all present from the first commit, not added later.
 7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
+9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old prototypes/mockups/presentations exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
+10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`.
 
 ## Step 0 — Read source of truth (required)
 
 1. **Design system check** — same as `supervibe:prototype`. Required: `prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
 2. **Brand direction check** — `prototypes/_brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
-3. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
-4. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
+3. **Artifact mode check** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
+4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
+5. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
 
 ## Decision tree — landing structure
 
@@ -133,7 +136,7 @@ prototypes/landing-<topic>/
 
 ### Stage 4 — Live preview
 
-Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/`.
+Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#evolve-fb-toggle` / visible `Feedback` button before presenting the URL.
 
 ### Stage 5 — Feedback loop (required)
 
@@ -205,6 +208,8 @@ Same as `supervibe:prototype`, plus:
 - DO NOT inline analytics provider code. Just `data-analytics-event` attributes; provider wiring is downstream's job.
 - DO NOT use placeholder Lorem Ipsum past Stage 1. Actual copy from copywriter (or user-provided) must be in by Stage 3.
 - DO NOT exceed Lighthouse mobile budgets without justification ADR.
+- DO NOT reuse or edit an old landing artifact without the artifact-mode question when the brief is ambiguous.
+- DO NOT disable preview feedback overlay for landing previews.
 
 ## Verification
 
@@ -221,6 +226,8 @@ Same as `supervibe:prototype`, plus:
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
 - `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
+- `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
+- `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 
 ## Related

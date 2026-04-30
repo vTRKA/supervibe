@@ -33,6 +33,8 @@ export function derivePreviewArtifactSlug(filePath) {
   const norm = filePath.split(sep).join('/');
   const prototype = norm.match(/\/prototypes\/([^/]+)/);
   if (prototype) return prototype[1];
+  const mockup = norm.match(/\/mockups\/([^/]+)/);
+  if (mockup) return `mockup:${mockup[1]}`;
   const presentation = norm.match(/\/presentations\/([^/]+)/);
   if (presentation) return `presentation:${presentation[1]}`;
   return 'unknown';

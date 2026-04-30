@@ -269,7 +269,7 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - Tauri config: `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`
 - Renderer entry: `src/index.html`, `index.html`, framework root (Vite / SvelteKit / Solid / Vue / React)
 - IPC commands: `src-tauri/src/main.rs` (`#[tauri::command]` definitions); renderer-side `invoke('cmd_name', { ... })`
-- Brand tokens: `prototypes/_brandbook/tokens.css`
+- Design-system tokens: `prototypes/_design-system/tokens.css`
 - Viewport preset: `templates/viewport-presets/tauri.json`
 - Mockup output dir: `prototypes/<feature>/tauri/{main-window,secondary,tray}/`
 - Webview compat notes: `docs/webview-compat.md` (per-engine min versions + known bugs)

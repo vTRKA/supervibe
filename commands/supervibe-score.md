@@ -21,7 +21,7 @@ Examples:
 - `/supervibe-score requirements docs/specs/2026-04-28-billing-design.md`
 - `/supervibe-score plan docs/plans/2026-04-28-token-economy-safe-mode.md`
 - `/supervibe-score skill-quality skills/component-library-integration/SKILL.md`
-- `/supervibe-score brandbook prototypes/_brandbook/system.md`
+- `/supervibe-score brandbook prototypes/_design-system/system.md`
 
 ### `/supervibe-score <path>` — auto-detect type
 

@@ -113,7 +113,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 1. **Read manifest** — open `manifest.json`; capture `action`, `options_ui`, `side_panel`, `chrome_url_overrides`, `permissions`, `host_permissions`, and `content_security_policy.extension_pages`. Note minimum Chrome version. If manifest absent, defer to `chrome-extension-architect` to author it before designing.
 2. **Search project memory** for prior extension decisions, abandoned surface choices, and permission-prompt copy with tags `chrome-extension`, `mv3`, `popup`, `side-panel`. Cite at least 2 entries or note "no prior extension memory".
-3. **Read brand tokens** from `prototypes/_brandbook/` — extension UI MUST inherit web tokens; do not reinvent palette per surface.
+3. **Read design-system tokens** from `prototypes/_design-system/` — extension UI MUST inherit approved project tokens; do not reinvent palette per surface.
 4. **Declare target surfaces** — emit a one-paragraph decision: which of {popup, options, side-panel, newtab} this feature needs and why; explicit rejection of non-chosen surfaces.
 5. **Load viewport preset** `templates/viewport-presets/chrome-extension.json`; lock the working canvases to declared widths × heights (popup 360×600 default; options 1024×768; side-panel 400×800).
 6. **Author per-surface mockups** in `prototypes/<feature>/extension/<surface>/index.html` with linked `tokens.css` + `surface.css`. One HTML per surface.
@@ -273,7 +273,7 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 
 - Manifest source: `manifest.json` (MV3 fields: `action.default_popup`, `options_page` / `options_ui`, `side_panel.default_path`, `chrome_url_overrides.newtab`, `permissions[]`, `host_permissions[]`, `content_security_policy.extension_pages`)
 - Surface entry HTML: `src/popup/index.html`, `src/options/index.html`, `src/side-panel/index.html`, `src/newtab/index.html`
-- Brand tokens: `prototypes/_brandbook/tokens.css`, `src/styles/tokens.css`
+- Design-system tokens: `prototypes/_design-system/tokens.css`, `src/styles/tokens.css`
 - Viewport preset: `templates/viewport-presets/chrome-extension.json`
 - Stack agents (handoff partners): `agents/stacks/chrome-extension/chrome-extension-architect.md`, `agents/stacks/chrome-extension/chrome-extension-developer.md`
 - Mockup output dir: `prototypes/<feature>/extension/{popup,options,side-panel,newtab}/`

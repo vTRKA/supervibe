@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -45,6 +46,26 @@ test("manifest records duplicate source divergence before import", async () => {
   assert.ok(appInterface.duplicateSources.cliAssets);
   assert.notEqual(appInterface.duplicateSources.src, appInterface.duplicateSources.cliAssets);
   assert.equal(appInterface.canonicalSourceTree, "src/ui-ux-pro-max/data");
+});
+
+test("manifest row counts and checksums match imported design data", async () => {
+  const data = await loadDesignIntelligenceData();
+  const mismatches = [];
+
+  for (const domain of data.manifest.domains) {
+    const text = await readFile(domain.importedPath, "utf8");
+    const rows = parseCsv(text).length;
+    const sha256 = createHash("sha256").update(text).digest("hex");
+    if (rows !== domain.rows || sha256 !== domain.sha256) {
+      mismatches.push({
+        id: domain.id,
+        rows: { expected: domain.rows, actual: rows },
+        sha256: { expected: domain.sha256, actual: sha256 },
+      });
+    }
+  }
+
+  assert.deepEqual(mismatches, []);
 });
 
 test("csv parser handles quoted commas and newlines", () => {

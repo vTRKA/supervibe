@@ -232,8 +232,8 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Design tokens: `prototypes/_brandbook/tokens.css`, `tokens.json`, or framework-equivalent (`tailwind.config.*`, `theme.ts`, CSS custom properties)
-- Brandbook / styleguide: `prototypes/_brandbook/`, `docs/design-system/`, Storybook URL
+- Design tokens: `prototypes/_design-system/tokens.css`, `tokens.json`, or framework-equivalent (`tailwind.config.*`, `theme.ts`, CSS custom properties)
+- Brandbook / styleguide: `prototypes/_brandbook/`, `prototypes/_design-system/`, `docs/design-system/`, Storybook URL
 - Component library: `components/`, `src/ui/`, `packages/ui/`
 - Screen specs: `screen-specs/`, design-tool URLs (Figma) referenced in tickets
 - Visual regression baselines: `tests/visual/`, `__screenshots__/`, Chromatic / Percy / Loki output

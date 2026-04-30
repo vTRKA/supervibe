@@ -1,7 +1,7 @@
 ---
 name: browser-feedback
 namespace: evolve
-description: "Use WHEN browser-feedback system-reminder appears with click-region context AND active prototype or presentation is open in preview server TO triage the comment, route to designer/deck/layout agent, and respond. Closes the user→browser→agent loop in real time. RU: используется КОГДА появляется system-reminder с browser-feedback и в preview server открыт прототип или презентация — классифицирует комментарий, перенаправляет к нужному дизайнеру, deck-builder или верстальщику и отвечает. Закрывает петлю user→browser→agent в реальном времени. Trigger phrases: 'browser-feedback received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'."
+description: "Use WHEN browser-feedback system-reminder appears with click-region context AND active prototype, mockup, or presentation is open in preview server TO triage the comment, route to designer/deck/layout agent, and respond. Closes the user→browser→agent loop in real time. RU: используется КОГДА появляется system-reminder с browser-feedback и в preview server открыт прототип, мокап или презентация — классифицирует комментарий, перенаправляет к нужному дизайнеру, deck-builder или верстальщику и отвечает. Закрывает петлю user→browser→agent в реальном времени. Trigger phrases: 'browser-feedback received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'."
 allowed-tools: [Read, Edit, Bash, Grep]
 phase: feedback
 prerequisites: []
@@ -19,15 +19,17 @@ last-verified: 2026-04-28T00:00:00.000Z
 When feedback affects design quality, run project memory, code search, and internal `supervibe:design-intelligence` lookup before proposing fixes. Findings should cite token, UX, accessibility, chart, or stack evidence when lookup influenced the recommendation.
 
 ## When to invoke
-Trigger source: `<system-reminder>` containing `[evolve] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id.
+Trigger source: `<system-reminder>` containing `[evolve] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id. Slugs can be plain prototype slugs, `mockup:<slug>`, or `presentation:<slug>`.
 
-If user invokes manually with no pending feedback, run `cat .claude/memory/feedback-queue.jsonl | tail -10` to surface recent entries.
+Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root prototypes/<slug>/` without `--no-feedback`, verify `#evolve-fb-toggle` appears in served HTML, and only then continue design review.
+
+If user invokes manually with no pending feedback, run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` first, then inspect `.claude/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
 
 Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. The UserPromptSubmit hook resurfaces unresolved entries until they are marked `resolved` or `rejected`.
 
 ## Step 0 — Read source of truth
 - Read full feedback entry: `jq -c "select(.id==\"<id>\")" .claude/memory/feedback-queue.jsonl`
-- Read artifact config: `prototypes/<slug>/config.json` or `presentations/<slug>/deck.json`
+- Read artifact config: `prototypes/<slug>/config.json`, `mockups/<slug>/config.json`, or `presentations/<slug>/deck.json`
 - Read prototype/deck preview HTML at the indicated viewport
 - Read DS manifest if comment mentions colour/typography/spacing
 
@@ -40,6 +42,7 @@ Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. 
 | layout (spacing/order/alignment) | `prototype-builder` | HTML/CSS structure |
 | copy (text/voice) | `copywriter` (if in stack) or prototype-builder | content/copy.md |
 | a11y (focus/contrast/aria) | `prototype-builder` + `accessibility-reviewer` | HTML attributes + CSS |
+| mockup visual/layout | `prototype-builder` or `creative-director` | `mockups/<slug>/` |
 | presentation slide/story/export | `presentation-deck-builder` | `presentations/<slug>/deck.json` + preview |
 
 ## Procedure
@@ -55,7 +58,7 @@ Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. 
    a. Reproduce the issue at the named viewport.
    b. Apply minimal change.
    c. Trigger preview hot-reload (no manual restart needed).
-   d. Write `prototypes/<slug>/feedback-resolutions/<id>.md` or `presentations/<slug>/feedback-resolutions/<id>.md` with: original comment, classification, change made, file:line refs, before/after summary.
+   d. Write `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` with: original comment, classification, change made, file:line refs, before/after summary.
 6. Mark the entry `in_progress` when work starts:
    ```bash
    node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --progress <id>
@@ -69,12 +72,12 @@ Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. 
    ```
 8. If the user accepts the fix, mark it resolved:
    ```bash
-   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution prototypes/<slug>/feedback-resolutions/<id>.md
+   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution prototypes|mockups|presentations/<slug>/feedback-resolutions/<id>.md
    ```
    If the user rejects or parks it, use `--reject <id>` and include the reason in the resolution record.
 
 ## Output contract
-- `prototypes/<slug>/feedback-resolutions/<id>.md` or `presentations/<slug>/feedback-resolutions/<id>.md` — resolution record
+- `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` — resolution record
 - `.claude/memory/feedback-status.json` updated to `resolved`, `rejected`, or `in_progress`
 - Modified prototype files OR design-system overrides
 - Confidence footer:
@@ -92,7 +95,7 @@ Rubric: agent-delivery
 - `advancing-without-feedback-prompt` — concluding without printing the resolution feedback block.
 
 ## Verification
-- Check the matching `feedback-resolutions/<id>.md` exists under `prototypes/<slug>/` or `presentations/<slug>/`.
+- Check the matching `feedback-resolutions/<id>.md` exists under `prototypes/<slug>/`, `mockups/<slug>/`, or `presentations/<slug>/`.
 - Run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` and confirm accepted entries no longer appear as open.
 - Reload browser preview; confirm visual change matches comment intent.
 - `git diff` shows minimal change scope (no scope-creep).

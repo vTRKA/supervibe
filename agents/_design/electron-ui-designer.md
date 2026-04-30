@@ -268,7 +268,7 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 - Renderer entry: `src/renderer/index.html`, `index.html`
 - Preload bridge: `src/preload/index.ts` (the contextBridge contract)
 - Native menu config: `src/main/menu.ts`, `src/main/tray.ts`
-- Brand tokens: `prototypes/_brandbook/tokens.css`
+- Design-system tokens: `prototypes/_design-system/tokens.css`
 - Viewport preset: `templates/viewport-presets/electron.json`
 - Mockup output dir: `prototypes/<feature>/electron/{main-window,settings,modal,tray}/`
 - Keyboard accelerator catalog: `docs/accelerators.md` (per-platform overrides)

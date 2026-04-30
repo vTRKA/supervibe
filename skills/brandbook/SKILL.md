@@ -256,6 +256,7 @@ Final output: `prototypes/_design-system/manifest.json`:
 ```json
 {
   "version": "1.0.0",
+  "status": "approved",
   "approvedAt": "<ISO>",
   "approvedBy": "<user>",
   "sections": {

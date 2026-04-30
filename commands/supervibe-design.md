@@ -31,6 +31,8 @@ The output must include `Design Intelligence Evidence` when retrieved rows influ
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
 8. **Approved → handoff** automatically copies prototype to `prototypes/<slug>/handoff/` ready to be promoted into chosen stack later.
+9. **Existing design files are never reused silently.** If any `prototypes/`, `mockups/`, or `presentations/` artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
+10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `prototypes/`, `mockups/`, or `presentations/`; verify the visible `Feedback` button before presenting the preview URL.
 
 ## Invocation forms
 
@@ -56,9 +58,30 @@ Use most recent brief from the conversation, or ask one clarifying question.
 
 Each stage is gated on user explicit approval before the next starts. Skip stages that don't apply (e.g. brand direction unnecessary for an in-product flow inside an existing brand).
 
-### Stage 0 — Target surface + Triage (always)
+### Stage 0 — Artifact mode + Target surface + Triage (always)
 
-**Шаг 0a/N: Target surface.** Before anything else, ask the user the target surface (one question, markdown):
+**Step 0a/N: Design artifact mode.** Before choosing target surface or opening old design files, run:
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"
+```
+
+If it returns `needsQuestion: true`, ask exactly one question:
+
+```markdown
+**Step 0/8: Design artifact mode.**
+I found existing design artifacts, but the brief does not say whether to reuse them or start fresh.
+
+What should I do?
+
+- Continue an existing artifact - pick the path or say "latest".
+- Create a new design from scratch - new slug, no edits to old artifacts.
+- Create an alternative next to the old one - keep the old artifact parked for comparison.
+```
+
+Do not read, edit, copy, or treat any prior `prototypes/<slug>/`, `mockups/<slug>/`, or `presentations/<slug>/` artifact as source until the user chooses. If the brief explicitly says "from scratch/new" then create a new slug. If it explicitly says "continue/refine existing" or names a path, reuse only that selected artifact.
+
+**Шаг 0b/N: Target surface.** Ask the user the target surface (one question, markdown):
 
 - `web` — браузер (default 375 mobile + 1440 desktop)
 - `chrome-extension` — popup / options / side-panel
@@ -68,7 +91,7 @@ Each stage is gated on user explicit approval before the next starts. Skip stage
 
 Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as starting viewport list. Save `target`, `viewports`, `runtime`, `constraints` into `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook will block writes until config.json exists.
 
-**Шаг 0b/N: Triage.** Then determine:
+**Шаг 0c/N: Triage.** Then determine:
 - Is this a marketing landing page → uses `supervibe:landing-page` skill
 - Is this an in-product flow → uses `supervibe:prototype` skill
 - Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes reuse it by default and skip Stage 1
@@ -79,7 +102,7 @@ Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as s
 
 ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prototypes/<slug>/config.json` before stage advance.
 
-**Stage 0c — Media capability check (required for motion/video-heavy briefs).**
+**Stage 0d — Media capability check (required for motion/video-heavy briefs).**
 
 Run:
 
@@ -167,7 +190,7 @@ Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `a
 
 ### Stage 6 — Live preview + parallel review
 
-1. Skill auto-spawns `supervibe:preview-server --root prototypes/<slug>/`. Print `http://localhost:NNNN` to user. Preview includes feedback overlay — user can click regions to comment; comments arrive as system-reminder on next user prompt via UserPromptSubmit hook.
+1. Skill auto-spawns `supervibe:preview-server --root prototypes/<slug>/` with feedback overlay enabled. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#evolve-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list`.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `prototypes/<slug>/_reviews/a11y.md`.

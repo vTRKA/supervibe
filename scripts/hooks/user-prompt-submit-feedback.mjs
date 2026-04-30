@@ -36,7 +36,12 @@ function routeFeedback(entry) {
 
 function formatEntry(entry) {
   const agent = routeFeedback(entry);
-  const label = String(entry.prototypeSlug || '').startsWith('presentation:') ? 'presentation' : 'artifact';
+  const slug = String(entry.prototypeSlug || '');
+  const label = slug.startsWith('presentation:')
+    ? 'presentation'
+    : slug.startsWith('mockup:')
+      ? 'mockup'
+      : 'artifact';
   return [
     `[supervibe] browser-feedback received:`,
     `- id: ${entry.id}`,

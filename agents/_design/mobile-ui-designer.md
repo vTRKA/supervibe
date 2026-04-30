@@ -292,7 +292,7 @@ Do NOT skip platform-divergence documentation when policy is parity — every di
 - Android source: `android/`, `app/src/main/AndroidManifest.xml`, `*.kt`, `*.xml` layouts
 - React Native: `App.tsx`, `index.js`, `react-native.config.js`
 - Flutter: `lib/main.dart`, `pubspec.yaml`
-- Brand tokens: `prototypes/_brandbook/tokens.css` (translated to platform tokens via `supervibe:tokens-export`)
+- Design-system tokens: `prototypes/_design-system/tokens.css` (translated to platform tokens via `supervibe:tokens-export`)
 - Viewport preset: `templates/viewport-presets/mobile-native.json`
 - Mockup output dir: `prototypes/<feature>/mobile/{ios,android}/<screen>/`
 - Per-platform divergence log: `docs/platform-divergence.md`

@@ -14,6 +14,8 @@ const REQUIRED_ANTIPATTERNS_PROTOTYPE = [
   ...REQUIRED_ANTIPATTERNS_ALL,
   'framework-coupling',
   'silent-viewport-expansion',
+  'silent-existing-artifact-reuse',
+  'missing-preview-feedback-button',
 ];
 
 const SKILLS = {

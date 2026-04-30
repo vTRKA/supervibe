@@ -41,6 +41,8 @@ test('serves HTML with hot-reload script injected', async () => {
   assert.match(r.body, /Hello/);
   assert.match(r.body, /__supervibe_preview\/sse/);
   assert.match(r.body, /EventSource/);
+  assert.match(r.body, /evolve-fb-toggle/);
+  assert.match(r.body, /Feedback/);
 });
 
 test('serves CSS without injection', async () => {
@@ -116,8 +118,9 @@ test('server reports active SSE clients count', async () => {
   assert.strictEqual(typeof initial, 'boolean');
 });
 
-test('derivePreviewArtifactSlug supports prototypes and presentations', () => {
+test('derivePreviewArtifactSlug supports design preview roots', () => {
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/prototypes/checkout/index.html'), 'checkout');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/mockups/landing/index.html'), 'mockup:landing');
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/presentations/investor/preview/index.html'), 'presentation:investor');
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/public/index.html'), 'unknown');
 });

@@ -59,6 +59,7 @@ Why this is good: the existing system stays stable, and the missing capability i
 - `supervibe:brandbook` has reuse/extension mode.
 - `prototype-builder` must stop on missing tokens/components and request an extension instead of inventing values.
 - `ui-polish-reviewer` flags token bypass and component duplication.
+- `scripts/hooks/pre-write-prototype-guard.mjs` blocks raw colors and hardcoded layout pixel values in prototype surfaces after `_design-system/manifest.json` is approved.
 
 ## Related rules
 

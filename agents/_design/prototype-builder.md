@@ -67,6 +67,8 @@ anti-patterns:
   - advancing-without-feedback-prompt
   - marking-approved-without-marker
   - inline-cubic-bezier
+  - silent-existing-artifact-reuse
+  - missing-preview-feedback-button
 version: 2
 last-verified: 2026-04-28T00:00:00.000Z
 verified-against: HEAD
@@ -111,9 +113,10 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
-2. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status !== "approved"` → STOP and tell user: "Дизайн-система не утверждена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без утверждённой системы прототип нельзя строить, токены неоткуда брать." Do not proceed.
+2. **Artifact mode gate (MANDATORY)** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `prototypes/`, `mockups/`, or `presentations/` files until this choice is explicit.
+3. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status !== "approved"` → STOP and tell user: "Дизайн-система не утверждена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без утверждённой системы прототип нельзя строить, токены неоткуда брать." Do not proceed.
 
-2a. **Target-specific scaffolding.** Read `prototypes/<feature>/config.json` for `target`. Branch directory layout:
+3a. **Target-specific scaffolding.** Read `prototypes/<feature>/config.json` for `target`. Branch directory layout:
 - `web` → `prototypes/<feature>/{index.html, styles/, scripts/, content/}`. Single page or pages/.
 - `chrome-extension` → `prototypes/<feature>/{popup/index.html, options/index.html, side-panel/index.html, manifest.json (mock)}`. Each surface its own HTML file. Verify CSP compliance: no `<script>` inline content; all JS in external files.
 - `electron` → `prototypes/<feature>/{main-window/index.html, settings/index.html}`. Note in README that production preload bridge is NOT implemented in prototype.
@@ -134,7 +137,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
-9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload. Hand URL to user. Inform: "💬 кнопка в правом нижнем углу — кликни любой элемент, оставь комментарий, и я получу его как system-reminder на следующий твой prompt (через UserPromptSubmit hook)."
+9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#evolve-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
 12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
@@ -198,6 +201,8 @@ Rubric: prototype
 - **Inline styles**: `style="..."` attributes hide token discipline from grep audits. All styling lives in `styles.css` (or component CSS files), never inline.
 - **No keyboard**: pointer-only prototype. Tab must visit every interactive element in logical order, focus must be visible, Escape must close overlays. A prototype that doesn't keyboard-navigate is half a prototype.
 - **Drift without flag**: deliberate exception to a token (e.g., a 1px hairline that genuinely should be a literal pixel) without a `/* DRIFT: <reason> */` comment + README entry. Silent drift is the failure mode this agent exists to prevent.
+- **Silent existing artifact reuse**: using last round's prototype/spec because it exists, without asking whether the user wants to continue it, start fresh, or create an alternative.
+- **Missing preview feedback button**: presenting a preview URL before verifying the `Feedback` overlay button is visible and enabled.
 
 ## User dialogue discipline
 
@@ -296,8 +301,8 @@ Do NOT touch: production CSS, design system source code, or anything outside `pr
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Output location: `prototypes/<feature>/` — one directory per feature
-- Brandbook tokens: `prototypes/_brandbook/tokens.css` — single source of truth, imported by every prototype
-- Component prototypes from brandbook: `prototypes/_brandbook/components/` — atomic building blocks (buttons, inputs, cards)
+- Design-system tokens: `prototypes/_design-system/tokens.css` — single source of truth, imported by every prototype
+- Component specs from design system: `prototypes/_design-system/components/` — atomic building blocks (buttons, inputs, cards)
 - States directory: `prototypes/<feature>/states/` — one HTML file per visual state
 - Design tokens canonical source: `design-tokens/` (Style Dictionary, Theo, or hand-authored CSS variables)
 - Figma source-of-truth: linked via `recommended-mcps: [figma]` for token sync + asset extraction
