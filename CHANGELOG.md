@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.11] - 2026-05-01
+
+### Fixed
+
+- Removed the absolute ONNX model download timeout. Direct model downloads now
+  report percentage progress when the server provides a size and only abort
+  when transfer progress stalls.
+- Reworked Git LFS model setup to use stall detection instead of a fixed total
+  timeout before falling back to direct HuggingFace download.
+- Fixed Windows upgrade execution by routing npm/npx through
+  `cmd.exe /d /s /c`, avoiding `spawnSync npm.cmd EINVAL` on newer Node, and
+  printing spawn startup errors instead of hiding them behind `npm ci failed`.
+
 ## [2.0.10] - 2026-05-01
 
 ### Fixed

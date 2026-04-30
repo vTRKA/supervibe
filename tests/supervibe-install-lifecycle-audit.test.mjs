@@ -8,7 +8,7 @@ import {
 
 test("install lifecycle audit passes clean generated install state", () => {
   const audit = auditInstallLifecycleData({
-    version: "2.0.10",
+    version: "2.0.11",
     packageAudit: { pass: true, score: 10, issues: [], warnings: [] },
     registryPresent: true,
     gitStatusLines: [],

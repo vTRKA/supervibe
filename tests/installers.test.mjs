@@ -177,8 +177,9 @@ test('installers require the ONNX embedding model before registration', () => {
   assert.ok(shModelSetup < shRegistration, 'bash installer must prepare model before CLI registration');
   assert.ok(ps1ModelSetup < ps1Registration, 'PowerShell installer must prepare model before CLI registration');
   assert.match(modelScript, /MODEL_DOWNLOAD_URL/, 'shared model setup must have a direct HuggingFace fallback');
-  assert.match(modelScript, /SUPERVIBE_LFS_TIMEOUT_MS/, 'shared model setup must bound Git LFS');
-  assert.match(modelScript, /SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS/, 'shared model setup must bound direct downloads');
+  assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_MS/, 'shared model setup must detect stalled Git LFS');
+  assert.match(modelScript, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, 'shared model setup must detect stalled direct downloads');
+  assert.doesNotMatch(modelScript, /SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/, 'direct model download must not have an absolute time limit');
   assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, 'shared model setup must remove incomplete LFS downloads safely');
 });
 

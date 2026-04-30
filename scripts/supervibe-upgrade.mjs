@@ -31,18 +31,29 @@ function manifestVersion(root) {
   } catch { return null; }
 }
 
-function commandForPlatform(cmd) {
-  if (process.platform !== 'win32') return cmd;
-  if (cmd === 'npm' || cmd === 'npx') return `${cmd}.cmd`;
-  return cmd;
+function commandInvocation(cmd, args) {
+  if (process.platform === 'win32' && (cmd === 'npm' || cmd === 'npx')) {
+    return {
+      command: 'cmd.exe',
+      args: ['/d', '/s', '/c', `${cmd}.cmd`, ...args],
+      display: `cmd.exe /d /s /c ${cmd}.cmd ${args.join(' ')}`,
+    };
+  }
+  return { command: cmd, args, display: `${cmd} ${args.join(' ')}` };
 }
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(commandForPlatform(cmd), args, {
+  const invocation = commandInvocation(cmd, args);
+  const r = spawnSync(invocation.command, invocation.args, {
     cwd: PLUGIN_ROOT,
     stdio: 'inherit',
     ...opts,
   });
+  if (r.error) {
+    console.error(`[supervibe:upgrade] failed to start ${invocation.display}: ${r.error.message}`);
+  } else if (r.signal) {
+    console.error(`[supervibe:upgrade] ${invocation.display} stopped by signal ${r.signal}`);
+  }
   return r.status === 0;
 }
 
@@ -62,7 +73,11 @@ function runGitNoLfsSmudge(args) {
 }
 
 function runQuiet(cmd, args) {
-  const r = spawnSync(commandForPlatform(cmd), args, { cwd: PLUGIN_ROOT, encoding: 'utf8' });
+  const invocation = commandInvocation(cmd, args);
+  const r = spawnSync(invocation.command, invocation.args, { cwd: PLUGIN_ROOT, encoding: 'utf8' });
+  if (r.error) {
+    return { ok: false, stdout: '', stderr: r.error.message };
+  }
   return { ok: r.status === 0, stdout: (r.stdout || '').trim(), stderr: (r.stderr || '').trim() };
 }
 
