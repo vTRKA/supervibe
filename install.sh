@@ -13,8 +13,9 @@
 # What it does (idempotent — safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
 #   2. Clones the Supervibe repo (LFS optional — model lazy-fetches from HuggingFace)
-#   3. Runs npm install + npm run check
-#   4. Registers the plugin in every detected CLI:
+#   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
+#   4. Runs npm install + npm run check so SQLite/RAG/CodeGraph are available
+#   5. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
 #        - Codex:   ~/.codex/plugins/supervibe  (symlink to shared checkout)
 #        - Gemini:  ~/.gemini/GEMINI.md      (idempotent include via marker)
@@ -28,6 +29,7 @@ EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
 EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="supervibe-marketplace"
+MIN_NODE_VERSION="22.5.0"
 LOG_DIR="${TMPDIR:-/tmp}/evolve-install.$$"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
@@ -81,17 +83,105 @@ verify_checkout_integrity() {
   fi
 }
 
+node_version_ge() {
+  node -e '
+    const min = process.argv[1].split(".").map(Number);
+    const cur = process.versions.node.split(".").map(Number);
+    process.exit(cur[0] > min[0] || (cur[0] === min[0] && (cur[1] > min[1] || (cur[1] === min[1] && cur[2] >= min[2]))) ? 0 : 1);
+  ' "$1"
+}
+
+has_required_node_runtime() {
+  command -v node >/dev/null 2>&1 || return 1
+  node_version_ge "$MIN_NODE_VERSION" || return 1
+  node -e 'import("node:sqlite").then((m) => process.exit(m.DatabaseSync ? 0 : 1)).catch(() => process.exit(1))' >/dev/null 2>&1
+}
+
+confirm_node_install() {
+  case "${SUPERVIBE_INSTALL_NODE:-}" in
+    1|true|TRUE|yes|YES|y|Y|да|ДА) return 0 ;;
+    0|false|FALSE|no|NO|n|N|нет|НЕТ) return 1 ;;
+  esac
+  if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+    printf '%b[supervibe-install]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
+    local answer
+    IFS= read -r answer < /dev/tty || return 1
+    case "$answer" in
+      y|Y|yes|YES|да|ДА) return 0 ;;
+    esac
+  fi
+  return 1
+}
+
+load_node_manager_env() {
+  if [ -n "${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+  elif [ -s "$HOME/.nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    . "$NVM_DIR/nvm.sh"
+  fi
+  if command -v fnm >/dev/null 2>&1; then
+    eval "$(fnm env --shell bash)" || true
+  elif [ -x "$HOME/.local/share/fnm/fnm" ]; then
+    export PATH="$HOME/.local/share/fnm:$PATH"
+    eval "$("$HOME/.local/share/fnm/fnm" env --shell bash)" || true
+  fi
+}
+
+install_node_runtime() {
+  warn "Node.js $MIN_NODE_VERSION+ with node:sqlite is required before Supervibe can install."
+  warn "Current node: $(command -v node >/dev/null 2>&1 && node --version || printf 'not found')"
+  if ! confirm_node_install; then
+    die "Node.js $MIN_NODE_VERSION+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
+  fi
+
+  load_node_manager_env
+  if command -v nvm >/dev/null 2>&1; then
+    say "installing Node.js 22 via nvm"
+    nvm install 22 >/dev/null
+    nvm use 22 >/dev/null
+  elif command -v fnm >/dev/null 2>&1; then
+    say "installing Node.js 22 via fnm"
+    fnm install 22
+    fnm use 22
+  elif command -v volta >/dev/null 2>&1; then
+    say "installing Node.js 22 via Volta"
+    volta install node@22
+  elif command -v brew >/dev/null 2>&1; then
+    say "installing Node.js via Homebrew"
+    brew install node@22 || brew install node
+    export PATH="/opt/homebrew/opt/node@22/bin:/usr/local/opt/node@22/bin:$PATH"
+    brew link --overwrite --force node@22 >/dev/null 2>&1 || true
+  elif command -v curl >/dev/null 2>&1; then
+    say "installing fnm into the user profile, then Node.js 22"
+    curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+    export PATH="$HOME/.local/share/fnm:$PATH"
+    eval "$("$HOME/.local/share/fnm/fnm" env --shell bash)"
+    fnm install 22
+    fnm use 22
+  else
+    die "No supported Node installer found. Install Node.js $MIN_NODE_VERSION+ from https://nodejs.org, then re-run."
+  fi
+
+  hash -r 2>/dev/null || true
+  has_required_node_runtime || die "Node bootstrap finished, but Node.js $MIN_NODE_VERSION+ with node:sqlite is still unavailable. Restart the shell or install Node.js manually, then re-run."
+  ok "node $(node --version) ok with node:sqlite"
+}
+
+ensure_node_runtime() {
+  load_node_manager_env
+  if has_required_node_runtime; then
+    ok "node $(node --version) ok with node:sqlite"
+    return
+  fi
+  install_node_runtime
+}
+
 # ---- preflight ----
 
 command -v git  >/dev/null || die "git not found. Install git first."
-command -v node >/dev/null || die "node not found. Install Node.js 22+ first (https://nodejs.org)."
-command -v npm  >/dev/null || die "npm not found. Comes with Node.js — reinstall."
-
-NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  die "Node.js 22+ required (you have $(node --version)). Upgrade: https://nodejs.org"
-fi
-ok "node $(node --version) ok"
+ensure_node_runtime
+command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall Node.js $MIN_NODE_VERSION+ and re-run."
 
 # ---- detect AI CLIs (by both directory and command in PATH) ----
 
@@ -321,6 +411,7 @@ ${C_GREEN}=================================================================${C_R
 
   Location:    $TARGET
   CLIs wired:  ${CLIS_FOUND[*]}
+  Runtime:     Node $(node --version) with node:sqlite
 
   Next steps:
     1. Restart your AI CLI so it picks up the plugin

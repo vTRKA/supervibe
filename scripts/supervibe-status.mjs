@@ -4,6 +4,7 @@
 
 import { CodeStore } from './lib/code-store.mjs';
 import { MemoryStore } from './lib/memory-store.mjs';
+import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from './lib/node-sqlite-runtime.mjs';
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,6 +30,7 @@ import { buildExecutionWaves, formatWaveStatus } from './lib/supervibe-wave-cont
 const PROJECT_ROOT = process.cwd();
 const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
 const args = parseArgs(process.argv.slice(2));
+const sqliteAvailable = hasNodeSqliteSupport();
 
 function color(s, c) {
   if (noColor) return s;
@@ -222,6 +224,9 @@ async function main() {
   if (!existsSync(codeDbPath)) {
     console.log(color('✗ Code RAG + Graph: NOT INITIALIZED', 'red'));
     console.log(color('  Run: npm run code:index', 'dim'));
+  } else if (!sqliteAvailable) {
+    console.log(color(`! Code RAG + Graph: requires Node.js ${SQLITE_NODE_MIN_VERSION}+ for node:sqlite`, 'yellow'));
+    console.log(color(`  Current runtime: ${process.version}. Upgrade Node to read ${codeDbPath}`, 'dim'));
   } else {
     const store = new CodeStore(PROJECT_ROOT, { useEmbeddings: false });
     await store.init();
@@ -265,6 +270,9 @@ async function main() {
   const memDbPath = join(PROJECT_ROOT, '.claude', 'memory', 'memory.db');
   if (!existsSync(memDbPath)) {
     console.log(color('○ Memory: not yet built (no entries indexed)', 'yellow'));
+  } else if (!sqliteAvailable) {
+    console.log(color(`! Memory: requires Node.js ${SQLITE_NODE_MIN_VERSION}+ for node:sqlite`, 'yellow'));
+    console.log(color(`  Current runtime: ${process.version}. Upgrade Node to read ${memDbPath}`, 'dim'));
   } else {
     const mem = new MemoryStore(PROJECT_ROOT, { useEmbeddings: false });
     await mem.init();

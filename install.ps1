@@ -19,6 +19,7 @@ $ExpectedCommit  = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $PluginName      = 'supervibe'
 $MarketplaceName = 'supervibe-marketplace'
+$MinNodeVersion = [version]'22.5.0'
 
 $LogDir = Join-Path $env:TEMP "supervibe-install.$PID"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -60,17 +61,90 @@ function Test-CheckoutIntegrity {
   }
 }
 
+function Refresh-PathFromRegistry {
+  $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $env:Path = "$machinePath;$userPath;$env:Path"
+}
+
+function Test-NodeRuntime {
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $false }
+  try {
+    $nodeVersionText = (node -p 'process.versions.node') -join ''
+    if ([version]$nodeVersionText -lt $MinNodeVersion) { return $false }
+    node -e "import('node:sqlite').then((m)=>process.exit(m.DatabaseSync?0:1)).catch(()=>process.exit(1))" *> $null
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  }
+}
+
+function Confirm-NodeInstall {
+  switch ($env:SUPERVIBE_INSTALL_NODE) {
+    '1' { return $true }
+    'true' { return $true }
+    'yes' { return $true }
+    'y' { return $true }
+    'да' { return $true }
+    '0' { return $false }
+    'false' { return $false }
+    'no' { return $false }
+    'n' { return $false }
+    'нет' { return $false }
+  }
+  $answer = Read-Host "Node.js $MinNodeVersion+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N]"
+  return ($answer -match '^(y|yes|да)$')
+}
+
+function Install-NodeRuntime {
+  Warn "Node.js $MinNodeVersion+ with node:sqlite is required before Supervibe can install."
+  $currentNode = if (Get-Command node -ErrorAction SilentlyContinue) { (node --version) -join '' } else { 'not found' }
+  Warn "Current node: $currentNode"
+  if (-not (Confirm-NodeInstall)) {
+    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
+  }
+
+  if (Get-Command winget -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via winget'
+    winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-package-agreements --accept-source-agreements
+  } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via Chocolatey'
+    choco install nodejs-lts -y
+  } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via Scoop'
+    scoop install nodejs-lts
+  } elseif (Get-Command fnm -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js 22 via fnm'
+    fnm install 22
+    fnm use 22
+  } elseif (Get-Command volta -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js 22 via Volta'
+    volta install node@22
+  } else {
+    Die "No supported Node installer found. Install Node.js $MinNodeVersion+ from https://nodejs.org, then re-run."
+  }
+
+  Refresh-PathFromRegistry
+  if (-not (Test-NodeRuntime)) {
+    Die "Node bootstrap finished, but Node.js $MinNodeVersion+ with node:sqlite is still unavailable. Restart PowerShell or install Node.js manually, then re-run."
+  }
+  Ok "node $(node --version) ok with node:sqlite"
+}
+
+function Ensure-NodeRuntime {
+  Refresh-PathFromRegistry
+  if (Test-NodeRuntime) {
+    Ok "node $(node --version) ok with node:sqlite"
+    return
+  }
+  Install-NodeRuntime
+}
+
 # ---- preflight ----
 
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found. Install git first.' }
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Die 'node not found. Install Node.js 22+ (https://nodejs.org).' }
-if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die 'npm not found. Comes with Node.js.' }
-
-$nodeMajor = [int](node -p 'process.versions.node.split(".")[0]')
-if ($nodeMajor -lt 22) {
-  Die "Node.js 22+ required (you have $(node --version)). Upgrade: https://nodejs.org"
-}
-Ok "node $(node --version) ok"
+Ensure-NodeRuntime
+if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
 
 # ---- detect AI CLIs (by both directory and command in PATH) ----
 
@@ -316,6 +390,7 @@ Write-Host '=================================================================' -
 Write-Host ''
 Write-Host "  Location:    $Target"
 Write-Host "  CLIs wired:  $($ClisFound -join ', ')"
+Write-Host "  Runtime:     Node $(node --version) with node:sqlite"
 Write-Host ''
 Write-Host '  Next steps:'
 Write-Host '    1. Restart your AI CLI so it picks up the plugin'

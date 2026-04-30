@@ -2,7 +2,6 @@
 // Mirrors MemoryStore but for source code: per-file rows + per-chunk embeddings.
 // Hash-based change detection skips unchanged files on re-index.
 
-import { DatabaseSync } from 'node:sqlite';
 import { readdir, readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -10,6 +9,7 @@ import { hashFile } from './file-hash.mjs';
 import { chunkCode, detectLanguage } from './code-chunker.mjs';
 import { embed, cosineSimilarity, vectorToBuffer, bufferToVector } from './embeddings.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
+import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 
 const SUPPORTED_EXTENSIONS = new Set([
   '.ts', '.tsx', '.mts', '.cts',
@@ -42,6 +42,7 @@ export class CodeStore {
     if (!existsSync(this.dbDir)) {
       await mkdir(this.dbDir, { recursive: true });
     }
+    const DatabaseSync = await loadNodeSqliteDatabaseSync('Code RAG and code graph');
     this.db = new DatabaseSync(this.dbPath);
     // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual code:index)
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');

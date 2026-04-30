@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release security and install integrity gates now audit dependency provenance,
   installer checksum hooks, version-tagged install URLs, third-party license
   inventory, and release provenance before publishing.
+- Installer/update runtime handling now requires Node.js 22.5+ with
+  `node:sqlite` before registration, offers a consent-based Node bootstrap
+  when the runtime is missing or too old, and keeps `npm run check` mandatory
+  so SQLite-backed RAG, code graph, and memory are not silently disabled.
 
 ## [1.7.0] — 2026-04-27
 

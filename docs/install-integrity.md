@@ -75,4 +75,6 @@ Installers print the checkout path, config areas they will modify, and integrity
 - optional package checksum verification
 - dirty checkout refusal for updates
 - path-safety checks before writes
-- `npm run check` before reporting success
+- Node.js 22.5+ with `node:sqlite` is required before installation or update continues
+- when Node is missing or too old, installers ask for explicit consent before attempting a user-level Node bootstrap; `SUPERVIBE_INSTALL_NODE=1` allows unattended bootstrap and `SUPERVIBE_INSTALL_NODE=0` fails fast
+- full `npm run check` must pass before reporting success, so SQLite-backed RAG, code graph, project memory, and agent task memory are not silently disabled

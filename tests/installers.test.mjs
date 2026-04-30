@@ -103,6 +103,25 @@ test('install.sh and install.ps1 reference the same plugin name', () => {
   assert.strictEqual(shName, psName, `plugin name mismatch: bash=${shName} ps1=${psName}`);
 });
 
+test('installers require Node 22.5+ and offer consent-based bootstrap before registration', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+  const updateSh = readFileSync(UPD_SH, 'utf8');
+  const updatePs1 = readFileSync(UPD_PS1, 'utf8');
+
+  for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1], ['update.sh', updateSh], ['update.ps1', updatePs1]]) {
+    assert.match(src, /22\.5/, `${name} must preserve the node:sqlite runtime floor`);
+    assert.match(src, /SUPERVIBE_INSTALL_NODE/, `${name} must support explicit bootstrap consent`);
+    assert.match(src, /node:sqlite/, `${name} must verify the SQLite runtime`);
+  }
+  for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
+    assert.match(src, /npm run check/, `${name} must keep the full check path`);
+    assert.doesNotMatch(src, /supervibe:install-check/, `${name} must not install a reduced runtime`);
+  }
+  assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
+  assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
+});
+
 test('marketplace name in installers matches marketplace.json file', () => {
   const sh = readFileSync(SH, 'utf8');
   const shName = sh.match(/MARKETPLACE_NAME="([^"]+)"/)?.[1];

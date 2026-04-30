@@ -182,6 +182,12 @@ function validateInstallUpdateSmoke(scripts, issues) {
   if (!/npm run check/.test(scripts.installSh || "") || !/npm run check/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-smoke-missing-check", "install scripts must run npm run check", "Keep install scripts on the static local check path.");
   }
+  if (!/SUPERVIBE_INSTALL_NODE/.test(scripts.installSh || "") || !/SUPERVIBE_INSTALL_NODE/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "install-node-bootstrap-consent-missing", "install scripts must ask for explicit consent before bootstrapping Node", "Keep Node upgrades explicit while requiring the full SQLite runtime.");
+  }
+  if (/supervibe:install-check/.test(scripts.installSh || "") || /supervibe:install-check/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "legacy-install-check-still-enabled", "install scripts must not report success through reduced compatibility checks", "Run full npm run check after Node.js 22.5+ is available.");
+  }
   if (!/status --porcelain/.test(scripts.updateSh || "") || !/status --porcelain/.test(scripts.updatePs1 || "")) {
     addIssue(issues, "update-smoke-missing-dirty-check", "update scripts must refuse dirty checkouts", "Check git status --porcelain before updating.");
   }

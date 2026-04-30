@@ -27,7 +27,7 @@
   "interface": {
     "displayName": "Supervibe",
     "shortDescription": "81 specialist agents + trigger-safe workflow routing + worktree loops + code graph.",
-    "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes trigger-safe workflow routing from brainstorm to plan review to atomic epic execution, worktree-ready autonomous loops with stop/resume/status controls, a code graph (10 languages), multilingual semantic RAG over your codebase, persistent project memory, and confidence-rubric gates that block merges below 9/10. Pure Node 22+ — no Docker, no native compilation, no external services.",
+    "longDescription": "Supervibe turns any AI coding agent into a team of specialists with fixed methodology. Includes trigger-safe workflow routing from brainstorm to plan review to atomic epic execution, worktree-ready autonomous loops with stop/resume/status controls, a code graph (10 languages), multilingual semantic RAG over your codebase, persistent project memory, and confidence-rubric gates that block merges below 9/10. Requires Node 22.5+ with node:sqlite; installers can offer a consent-based Node upgrade before registration. No Docker, no native compilation, no external services.",
     "developerName": "vTRKA",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write", "Read"],

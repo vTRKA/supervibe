@@ -1,6 +1,6 @@
 // Memory v2: SQLite FTS5-backed semantic-ish search.
 // Replaces markdown+grep with BM25-ranked full-text + tag filtering.
-// Zero external deps — uses Node 22+ built-in node:sqlite.
+// Zero external deps. Full SQLite-backed mode requires Node 22.5+ built-in node:sqlite.
 //
 // Schema:
 //   entries(id PK, type, date, tags_csv, agent, confidence, file, content, summary)
@@ -9,13 +9,13 @@
 //
 // Index file: .claude/memory/memory.db  (gitignored)
 
-import { DatabaseSync } from 'node:sqlite';
 import { mkdir, readdir, readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import matter from 'gray-matter';
 import { embed, cosineSimilarity, vectorToBuffer, bufferToVector, EMBEDDING_DIM } from './embeddings.mjs';
 import { chunkText, countTokens } from './chunker.mjs';
+import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 
 const CATEGORIES = ['decisions', 'patterns', 'incidents', 'learnings', 'solutions'];
 
@@ -36,6 +36,7 @@ export class MemoryStore {
       await mkdir(join(this.memoryDir, cat), { recursive: true });
     }
 
+    const DatabaseSync = await loadNodeSqliteDatabaseSync('Project memory');
     this.db = new DatabaseSync(this.dbPath);
     // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual rebuild)
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');

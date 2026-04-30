@@ -9,9 +9,9 @@
 // cheap to write but unsearchable. This SQLite mirror gives FTS5 BM25 search
 // + indexed numeric filters without slowing the JSONL write path.
 
-import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS agent_tasks (
@@ -77,6 +77,7 @@ export class AgentTaskStore {
     const dir = dirname(this.dbPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
+    const DatabaseSync = await loadNodeSqliteDatabaseSync('Agent task memory');
     this.db = new DatabaseSync(this.dbPath);
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA synchronous  = NORMAL;');

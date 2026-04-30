@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.5.0"
   },
   "scripts": {
     "dev":       "vite build --watch --mode development",

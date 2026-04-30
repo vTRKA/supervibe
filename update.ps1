@@ -19,6 +19,7 @@ $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
 }
 $ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
+$MinNodeVersion = [version]'22.5.0'
 
 function Say  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Cyan }
 function Ok   { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Green }
@@ -58,11 +59,90 @@ function Test-CheckoutIntegrity {
   }
 }
 
+function Refresh-PathFromRegistry {
+  $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $env:Path = "$machinePath;$userPath;$env:Path"
+}
+
+function Test-NodeRuntime {
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $false }
+  try {
+    $nodeVersionText = (node -p 'process.versions.node') -join ''
+    if ([version]$nodeVersionText -lt $MinNodeVersion) { return $false }
+    node -e "import('node:sqlite').then((m)=>process.exit(m.DatabaseSync?0:1)).catch(()=>process.exit(1))" *> $null
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  }
+}
+
+function Confirm-NodeInstall {
+  switch ($env:SUPERVIBE_INSTALL_NODE) {
+    '1' { return $true }
+    'true' { return $true }
+    'yes' { return $true }
+    'y' { return $true }
+    'да' { return $true }
+    '0' { return $false }
+    'false' { return $false }
+    'no' { return $false }
+    'n' { return $false }
+    'нет' { return $false }
+  }
+  $answer = Read-Host "Node.js $MinNodeVersion+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N]"
+  return ($answer -match '^(y|yes|да)$')
+}
+
+function Install-NodeRuntime {
+  Warn "Node.js $MinNodeVersion+ with node:sqlite is required before Supervibe can update."
+  $currentNode = if (Get-Command node -ErrorAction SilentlyContinue) { (node --version) -join '' } else { 'not found' }
+  Warn "Current node: $currentNode"
+  if (-not (Confirm-NodeInstall)) {
+    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow updater bootstrap, or install Node.js manually and re-run."
+  }
+
+  if (Get-Command winget -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via winget'
+    winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-package-agreements --accept-source-agreements
+  } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via Chocolatey'
+    choco install nodejs-lts -y
+  } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js LTS via Scoop'
+    scoop install nodejs-lts
+  } elseif (Get-Command fnm -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js 22 via fnm'
+    fnm install 22
+    fnm use 22
+  } elseif (Get-Command volta -ErrorAction SilentlyContinue) {
+    Say 'installing Node.js 22 via Volta'
+    volta install node@22
+  } else {
+    Die "No supported Node installer found. Install Node.js $MinNodeVersion+ from https://nodejs.org, then re-run."
+  }
+
+  Refresh-PathFromRegistry
+  if (-not (Test-NodeRuntime)) {
+    Die "Node bootstrap finished, but Node.js $MinNodeVersion+ with node:sqlite is still unavailable. Restart PowerShell or install Node.js manually, then re-run."
+  }
+  Ok "node $(node --version) ok with node:sqlite"
+}
+
+function Ensure-NodeRuntime {
+  Refresh-PathFromRegistry
+  if (Test-NodeRuntime) {
+    Ok "node $(node --version) ok with node:sqlite"
+    return
+  }
+  Install-NodeRuntime
+}
+
 # ---- preflight ----
 
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.' }
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Die 'node not found. Install Node.js 22+ (https://nodejs.org).' }
-if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die 'npm not found.' }
+Ensure-NodeRuntime
+if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
 Assert-SafePluginPath $PluginRoot
 Say "plan: will update existing checkout at $PluginRoot and will not modify local edits"
 Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"

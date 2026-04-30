@@ -13,7 +13,11 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  SQLITE_NODE_MIN_VERSION,
+  formatNodeRuntimeMode,
+  getNodeRuntimeCapability,
+} from './lib/node-runtime-requirements.mjs';
 
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT
   || process.cwd();
@@ -45,6 +49,11 @@ function fail(msg) {
 }
 
 console.log(`[supervibe:upgrade] plugin root: ${PLUGIN_ROOT}`);
+
+const nodeCapability = getNodeRuntimeCapability();
+if (!nodeCapability.installSupported) {
+  fail(`${formatNodeRuntimeMode()} Run install.sh/install.ps1 and approve the Node.js upgrade prompt, or install Node.js ${SQLITE_NODE_MIN_VERSION}+ manually.`);
+}
 
 if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
   fail('Not a git checkout — upgrade only works for symlink/clone installs. Re-clone from upstream.');

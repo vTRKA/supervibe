@@ -21,7 +21,7 @@ Supervise is a Claude Code plugin with specialist agents, code graph, project me
 ## Requirements
 
 - **Claude Code** (latest)
-- **Node.js 22+** (for SQLite memory; `node:sqlite` built-in)
+- **Node.js 22.5+** for SQLite-backed semantic RAG, code graph, project memory, agent task memory, and full `npm run check`. The installer can offer to install/upgrade Node with explicit consent.
 - **Git**
 - **Git LFS** *(recommended)* — the embedding model (`model_quantized.onnx`, 113 MB) is stored via Git LFS. Without LFS, the plugin still works: it auto-downloads the model from HuggingFace on first use (~118 MB, one-time, cached). With LFS, it works fully offline immediately after clone.
   - Check: `git lfs version` (should print `git-lfs/X.Y.Z ...`)
@@ -52,7 +52,7 @@ git clone https://github.com/your-org/supervibe ~/dev/supervibe   # or download 
 cd ~/dev/supervibe
 
 # 2. Install Node deps for dev tooling (validates structure, runs tests)
-nvm use     # uses Node 20 from .nvmrc; ensure Node 22+ for SQLite memory features
+nvm use     # uses the repo runtime from .nvmrc; Node 22.5+ is required for SQLite-backed features and full checks
 npm install
 npm run check    # 51/51 tests must pass before installing to plugins dir
 
@@ -376,9 +376,9 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### SQLite memory errors
 
-- Requires Node 22+ (for `node:sqlite`)
+- Requires Node 22.5+ for SQLite-backed features (`node:sqlite`)
 - Check version: `node --version`
-- If <22: upgrade Node OR fall back to v1.1.x (markdown+grep memory)
+- If <22.5: re-run the installer and approve the Node upgrade prompt, or upgrade Node manually before installing
 
 ### Genesis fails partway
 
@@ -430,7 +430,7 @@ rm -rf <project>/.claude/skills
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
-  - **Requires Node 22+** for `node:sqlite`
+  - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
 - **Action**: re-symlink to v1.2.0 dir, restart Claude Code
 

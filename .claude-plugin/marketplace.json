@@ -4,7 +4,7 @@
     "name": "vTRKA"
   },
   "metadata": {
-    "description": "Claude Code plugin: 81 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, 10-language code graph, multilingual semantic RAG, project memory, confidence gates, and live preview server. Pure Node 22+, no Docker, no native deps.",
+    "description": "Claude Code plugin: 81 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, 10-language code graph, multilingual semantic RAG, project memory, confidence gates, and live preview server. Requires Node 22.5+ with node:sqlite. No Docker, no native deps.",
     "homepage": "https://github.com/vTRKA/supervibe",
     "version": "1.9.0"
   },

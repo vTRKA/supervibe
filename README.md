@@ -88,7 +88,9 @@ Restart your AI CLI. On the next session you should see:
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
 
-**Requirements:** Node.js 22+ and Git. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
+**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional — the embedding model downloads from HuggingFace on first use. No Docker, no Python, no native compile step.
+
+For unattended installs, set `SUPERVIBE_INSTALL_NODE=1` to allow Node bootstrap or `SUPERVIBE_INSTALL_NODE=0` to fail fast with manual instructions.
 
 Release integrity evidence is documented in [release security](docs/release-security.md), [install integrity](docs/install-integrity.md), and [third-party licenses](docs/third-party-licenses.md). The default installer follows `main`; strict installs can set `SUPERVIBE_REF`, `SUPERVIBE_EXPECTED_COMMIT`, and `SUPERVIBE_EXPECTED_PACKAGE_SHA256` before running the installer.
 
@@ -338,7 +340,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 
 **`Protobuf parsing failed`.** The embedding model is an LFS pointer. Run `git lfs pull` inside `~/.claude/plugins/marketplaces/supervibe-marketplace`, or just trigger a code search — the model downloads from HuggingFace (~118 MB).
 
-**SQLite errors.** Node.js 22+ is required for the built-in `node:sqlite`. Older versions cannot use the semantic memory.
+**SQLite errors.** Node.js 22.5+ is required for the built-in `node:sqlite` used by semantic RAG, code graph, project memory, and agent task memory. Re-run the installer and approve the Node upgrade prompt, or install Node.js 22.5+ manually and then re-run.
 
 **Stale code index.** The mtime scan on session start catches most external edits. For a full rebuild: `rm .claude/memory/code.db && npm run code:index` from your project directory.
 
