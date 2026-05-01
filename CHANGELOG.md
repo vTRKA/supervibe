@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.21] - 2026-05-01
+
+### Fixed
+
+- Removed remaining Claude-only project folder references from host-neutral
+  stack-pack scaffold files so non-Claude projects do not receive default
+  `.claude` assumptions through copied root configs.
+
+### Added
+
+- Added regression coverage that blocks host-neutral scaffold files from
+  hardcoding `.claude/` paths outside the Claude adapter templates.
+
 ## [2.0.20] - 2026-05-01
 
 ### Fixed

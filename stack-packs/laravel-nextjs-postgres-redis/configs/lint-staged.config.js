@@ -1,3 +1,6 @@
+const validateJson = (files) =>
+  files.map((file) => `node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" ${JSON.stringify(file)}`);
+
 export default {
   // Backend (Laravel / PHP)
   'backend/**/*.php': [
@@ -14,9 +17,9 @@ export default {
     'cd frontend && npx prettier --write'
   ],
 
-  // .claude/rules edits trigger reminder via post-edit-stack-watch hook
-  '.claude/rules/**/*.md': () => 'echo "→ Rule edited: rules-curator review recommended"',
+  // Host-adapter rule edits trigger reminder via post-edit-stack-watch hook.
+  '.{codex,cursor,gemini,opencode}/rules/**/*.md': () => 'echo "Rule edited: rules-curator review recommended"',
 
-  // .claude/settings.json validated
-  '.claude/settings.json': () => 'node -e "JSON.parse(require(\'fs\').readFileSync(\'.claude/settings.json\', \'utf8\'))"'
+  // Host-adapter JSON settings validated without assuming Claude.
+  '{.codex/config.json,.cursor/supervibe.json,.gemini/settings.json,opencode.json}': validateJson
 };

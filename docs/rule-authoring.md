@@ -99,8 +99,8 @@ Threshold: ≥9 to ship.
 
 ## After authoring
 
-1. If `mandatory: true` → reference in target project's `CLAUDE.md`
-2. If introduces command ban → add to `.claude/settings.json` deny-list
+1. If `mandatory: true` -> reference it from the selected host instruction file (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or host rule file)
+2. If it introduces a command ban -> add it to the selected host adapter settings file when supported
 3. Run `supervibe:rule-audit` to check for contradictions with existing rules
 4. Run `npm run registry:build` — rule should appear in `registry.yaml`
 

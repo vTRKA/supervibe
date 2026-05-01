@@ -27,6 +27,3 @@ web-ext-artifacts/
 # Supervibe local state
 .supervibe/
 .claude-plugin/.upgrade-check.json
-
-# Local Claude permissions (per-machine)
-.claude/settings.local.json

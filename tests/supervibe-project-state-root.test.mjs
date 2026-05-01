@@ -53,11 +53,31 @@ test("Supervibe-owned project state defaults to .supervibe, not Claude project s
   assert.deepEqual(offenders, []);
 });
 
+test("host-neutral scaffold files do not hardcode Claude project folders", () => {
+  const offenders = [];
+  for (const file of trackedTextFiles()) {
+    if (!isHostNeutralScaffoldFile(file)) continue;
+    const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    if (/\.claude[\\/]/.test(text)) {
+      offenders.push(`${file}: host-neutral scaffold file references .claude/`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
 function trackedTextFiles() {
   const output = execFileSync("git", ["ls-files"], { encoding: "utf8" });
   return output
     .split("\n")
     .filter(Boolean)
+    .filter((file) => file !== "tests/supervibe-project-state-root.test.mjs")
     .filter((file) => !file.startsWith("models/") && !file.startsWith("grammars/"))
     .filter((file) => TEXT_EXTENSIONS.has(extname(file)));
+}
+
+function isHostNeutralScaffoldFile(file) {
+  return (
+    (file.startsWith("stack-packs/") && file.includes("/configs/")) ||
+    file.startsWith("templates/gitignore/")
+  );
 }
