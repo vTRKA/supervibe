@@ -100,7 +100,7 @@ function Install-NodeRuntime {
   $currentNode = if (Get-Command node -ErrorAction SilentlyContinue) { (node --version) -join '' } else { 'not found' }
   Warn "Current node: $currentNode"
   if (-not (Confirm-NodeInstall)) {
-    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
+    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, and project memory. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
   }
 
   if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -223,6 +223,19 @@ function Invoke-CleanManagedCheckout {
   }
   Say 'cleaning managed checkout (git clean -ffdx)'
   $null = Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
+  Assert-CheckoutMirrorClean $Path 'pre-update cleanup'
+}
+
+function Assert-CheckoutMirrorClean {
+  param([string]$Path, [string]$Stage)
+  $status = @(git -C $Path status --porcelain --untracked-files=all 2>$null | Where-Object { $_ })
+  if ($LASTEXITCODE -ne 0) {
+    Die "git status failed while checking managed checkout mirror after $Stage."
+  }
+  if ($status.Count -gt 0) {
+    $status | Write-Host
+    Die "managed checkout is not a clean mirror after $Stage; stale files may remain active."
+  }
 }
 
 function Invoke-RequiredOnnxModelSetup {
@@ -265,6 +278,7 @@ if (Test-Path (Join-Path $Target '.git')) {
   if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail -SkipLfsSmudge)) {
     Warn 'pull --ff-only failed (local diverged or detached head); leaving checkout at current commit'
   }
+  Assert-CheckoutMirrorClean $Target 'checkout update'
 } else {
   Say "cloning $RepoUrl ($Ref) -> $Target"
   if (Test-Path $Target) {
@@ -273,6 +287,7 @@ if (Test-Path (Join-Path $Target '.git')) {
   New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
   $null = Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone' -SkipLfsSmudge
   $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
+  Assert-CheckoutMirrorClean $Target 'fresh clone'
 }
 
 Test-CheckoutIntegrity
@@ -305,8 +320,7 @@ function Run-NpmStep {
 
 Run-NpmStep 'npm ci' @('ci', '--no-audit', '--no-fund')
 Run-NpmStep 'npm run registry:build' @('run', 'registry:build')
-Run-NpmStep 'npm run check' @('run', 'check')
-Ok 'all checks passed'
+Ok 'install preparation passed'
 
 $InstalledVersion = (Get-Content (Join-Path $Target '.claude-plugin\plugin.json') -Raw | ConvertFrom-Json).version
 

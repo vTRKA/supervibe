@@ -20,7 +20,7 @@ test('node runtime requirements enforce the full SQLite runtime before install',
   assert.equal(getNodeRuntimeCapability('22.4.0').sqliteSupported, false);
   assert.equal(getNodeRuntimeCapability('22.5.0').installSupported, true);
   assert.equal(getNodeRuntimeCapability('22.5.0').sqliteSupported, true);
-  assert.equal(getNodeRuntimeCapability('25.0.0').fullCheckSupported, true);
+  assert.equal(getNodeRuntimeCapability('25.0.0').devCheckSupported, true);
 });
 
 test('package and lockfile require Node 22.5+ full runtime', () => {

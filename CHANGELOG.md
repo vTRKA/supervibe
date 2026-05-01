@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.16] - 2026-05-01
+
+### Changed
+
+- Removed the developer `npm run check` suite from user install/update flows;
+  installers now run dependency install, registry build, mirror cleanup, and
+  install lifecycle doctor, while tests remain in developer hooks/CI.
+- Added explicit clean-mirror assertions after installer/upgrade cleanup,
+  checkout, clone, and pull steps so stale files from older plugin layouts
+  cannot stay active unnoticed.
+
 ## [2.0.15] - 2026-05-01
 
 ### Added

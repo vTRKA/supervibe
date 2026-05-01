@@ -8,7 +8,7 @@
 #   2. If missing, delegates to install.ps1 for first-time install
 #   3. Refuses to clobber local edits (uncommitted changes stop)
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout
-#      (fetch + pull --ff-only + required ONNX model setup + install + tests)
+#      (fetch + pull --ff-only + mirror cleanup + required ONNX model setup + install audit)
 #
 # Safe as the user-facing "install or update" entrypoint.
 $ErrorActionPreference = 'Stop'
@@ -108,7 +108,7 @@ function Install-NodeRuntime {
   $currentNode = if (Get-Command node -ErrorAction SilentlyContinue) { (node --version) -join '' } else { 'not found' }
   Warn "Current node: $currentNode"
   if (-not (Confirm-NodeInstall)) {
-    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow updater bootstrap, or install Node.js manually and re-run."
+    Die "Node.js $MinNodeVersion+ is required for SQLite-backed semantic RAG, CodeGraph, and project memory. Set SUPERVIBE_INSTALL_NODE=1 to allow updater bootstrap, or install Node.js manually and re-run."
   }
 
   if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -178,7 +178,7 @@ if ($untrackedDirty.Count -gt 0) {
 
 # ---- delegate to npm run supervibe:upgrade ----
 
-Say 'running npm run supervibe:upgrade (fetch + pull --ff-only + required ONNX model setup + install + tests)'
+Say 'running npm run supervibe:upgrade (fetch + pull --ff-only + mirror cleanup + required ONNX model setup + install audit)'
 Push-Location $PluginRoot
 try {
   npm run supervibe:upgrade

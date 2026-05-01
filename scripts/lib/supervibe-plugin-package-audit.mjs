@@ -105,6 +105,7 @@ async function loadPluginPackageData(root) {
       installPs1: await readOptional(join(root, "install.ps1")),
       updateSh: await readOptional(join(root, "update.sh")),
       updatePs1: await readOptional(join(root, "update.ps1")),
+      upgradeMjs: await readOptional(join(root, "scripts", "supervibe-upgrade.mjs")),
     },
   };
 }
@@ -247,23 +248,43 @@ function validatePublicDocs(data, packageVersion, issues) {
 }
 
 function validateInstallUpdateSmoke(scripts, issues) {
-  if (!/npm run check/.test(scripts.installSh || "") || !/npm run check/.test(scripts.installPs1 || "")) {
-    addIssue(issues, "install-smoke-missing-check", "install scripts must run npm run check", "Keep install scripts on the static local check path.");
+  for (const [label, source] of Object.entries({
+    "install.sh": scripts.installSh,
+    "install.ps1": scripts.installPs1,
+    "update.sh": scripts.updateSh,
+    "update.ps1": scripts.updatePs1,
+    "scripts/supervibe-upgrade.mjs": scripts.upgradeMjs,
+  })) {
+    if (runsDevCheck(source)) {
+      addIssue(issues, "user-update-runs-dev-check", `${label} must not run npm run check in the user install/update path`, "Keep tests in developer hooks/CI; user updates should run registry build and install-doctor only.");
+    }
   }
   if (!/registry:build/.test(scripts.installSh || "") || !/registry:build/.test(scripts.installPs1 || "")) {
-    addIssue(issues, "install-registry-build-missing", "install scripts must generate registry.yaml before final checks", "Run npm run registry:build before npm run check.");
+    addIssue(issues, "install-registry-build-missing", "install scripts must generate registry.yaml before final install audit", "Run npm run registry:build before npm run supervibe:install-doctor.");
+  }
+  if (!/registry:build/.test(scripts.upgradeMjs || "")) {
+    addIssue(issues, "upgrade-registry-build-missing", "upgrade script must generate registry.yaml before final install audit", "Run npm run registry:build before npm run supervibe:install-doctor.");
   }
   if (!/supervibe:install-doctor/.test(scripts.installSh || "") || !/supervibe:install-doctor/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-doctor-missing", "install scripts must run the install lifecycle doctor", "Run npm run supervibe:install-doctor after host registration.");
   }
+  if (!/supervibe:install-doctor/.test(scripts.upgradeMjs || "")) {
+    addIssue(issues, "upgrade-doctor-missing", "upgrade script must run the install lifecycle doctor", "Run npm run supervibe:install-doctor after registry build.");
+  }
   if (!/git clean -ffdx/.test(scripts.installSh || "") || !/clean', '-ffdx/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-clean-reinstall-missing", "install scripts must clean stale managed checkout files before reinstall", "Clean untracked and ignored files from the managed checkout before npm install.");
+  }
+  if (!/assert_checkout_mirror_clean/.test(scripts.installSh || "") || !/Assert-CheckoutMirrorClean/.test(scripts.installPs1 || "")) {
+    addIssue(issues, "install-mirror-clean-missing", "install scripts must assert the managed checkout mirror before registration", "Assert git status is clean after checkout cleanup, update, or clone.");
+  }
+  if (!/git clean -ffdx/.test(scripts.upgradeMjs || "") || !/assertMirrorCheckoutClean/.test(scripts.upgradeMjs || "")) {
+    addIssue(issues, "upgrade-mirror-clean-missing", "upgrade script must clean and assert the managed checkout mirror before reinstall", "Run git clean -ffdx, then assert git status is clean after cleanup and pull.");
   }
   if (!/SUPERVIBE_INSTALL_NODE/.test(scripts.installSh || "") || !/SUPERVIBE_INSTALL_NODE/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-node-bootstrap-consent-missing", "install scripts must ask for explicit consent before bootstrapping Node", "Keep Node upgrades explicit while requiring the full SQLite runtime.");
   }
   if (/supervibe:install-check/.test(scripts.installSh || "") || /supervibe:install-check/.test(scripts.installPs1 || "")) {
-    addIssue(issues, "legacy-install-check-still-enabled", "install scripts must not report success through reduced compatibility checks", "Run full npm run check after Node.js 22.5+ is available.");
+    addIssue(issues, "legacy-install-check-still-enabled", "install scripts must not report success through reduced compatibility checks", "Use registry build plus install-doctor for user installs.");
   }
   if (!/status --porcelain/.test(scripts.updateSh || "") || !/status --porcelain/.test(scripts.updatePs1 || "")) {
     addIssue(issues, "update-smoke-missing-dirty-check", "update scripts must refuse dirty checkouts", "Check git status --porcelain before updating.");
@@ -277,6 +298,10 @@ function validateInstallUpdateSmoke(scripts, issues) {
   if (!/npm run supervibe:upgrade/.test(scripts.updateSh || "") || !/npm run supervibe:upgrade/.test(scripts.updatePs1 || "")) {
     addIssue(issues, "update-smoke-missing-delegation", "update scripts must delegate to npm run supervibe:upgrade", "Delegate update flow to the canonical upgrade script.");
   }
+}
+
+function runsDevCheck(source = "") {
+  return /npm\s+run\s+check/.test(source) || /['"]run['"]\s*,\s*['"]check['"]/.test(source);
 }
 
 function validateRegistry(registryYaml, issues, warnings) {

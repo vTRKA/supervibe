@@ -49,14 +49,14 @@ export function auditInstallLifecycleData(data = {}) {
     issues.push({
       code: "package-audit-failed",
       message: `plugin package audit failed with score ${data.packageAudit?.score ?? 0}`,
-      nextAction: "Run npm run registry:build and npm run check before reporting install success.",
+      nextAction: "Run npm run registry:build and npm run supervibe:install-doctor before reporting install success.",
     });
   }
   if (!data.registryPresent) {
     issues.push({
       code: "registry-missing-after-install",
       message: "generated registry.yaml is missing after install/update",
-      nextAction: "Run npm run registry:build before npm run check and before final install success.",
+      nextAction: "Run npm run registry:build before final install success.",
     });
   }
   if (staleFiles.length > 0) {

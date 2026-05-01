@@ -6,10 +6,10 @@
 //   1. Read current version from .claude-plugin/plugin.json
 //   2. Refuse tracked local edits, then clean untracked/ignored stale files
 //   3. git fetch + git pull --ff-only (refuses to clobber local commits)
-//   4. ensure the required ONNX embedding model is downloaded and usable
-//   5. npm ci (pin versions from lockfile without dirtying package-lock.json)
-//   6. npm run registry:build (generated registry.yaml is intentionally not committed)
-//   7. npm run check (must stay green before declaring success)
+//   4. Assert the tracked plugin checkout is a clean mirror of upstream
+//   5. ensure the required ONNX embedding model is downloaded and usable
+//   6. npm ci (pin versions from lockfile without dirtying package-lock.json)
+//   7. npm run registry:build (generated registry.yaml is intentionally not committed)
 //   8. npm run supervibe:install-doctor (post-upgrade lifecycle audit)
 //   9. Read new version, print diff banner
 
@@ -89,6 +89,24 @@ function isPackageLockOnlyDrift(lines) {
   return lines.length === 1 && /^[ MARCUD?!]{2} package-lock\.json$/.test(lines[0]);
 }
 
+function isAllowedAutoUpdateStateLine(line) {
+  return /^\?\? \.claude-plugin\/\.auto-update\.(json|lock)$/.test(String(line || "").trimEnd());
+}
+
+function assertMirrorCheckoutClean(stage) {
+  const status = runQuiet('git', ['status', '--porcelain', '--untracked-files=all']);
+  if (!status.ok) {
+    fail(`git status failed during ${stage}: ${status.stderr || status.stdout || 'unknown error'}`);
+  }
+  const drift = statusLines(status.stdout).filter((line) => !isAllowedAutoUpdateStateLine(line));
+  if (drift.length === 0) return;
+
+  console.error(`[supervibe:upgrade] checkout drift after ${stage}:`);
+  console.error(drift.slice(0, 30).join('\n'));
+  if (drift.length > 30) console.error(`[supervibe:upgrade] ... and ${drift.length - 30} more line(s)`);
+  fail('managed plugin checkout is not a clean mirror after cleanup/pull; stale files may remain active.');
+}
+
 function fail(msg) {
   console.error(`\n[supervibe:upgrade] ${msg}`);
   process.exit(1);
@@ -139,10 +157,12 @@ if (!run('git', [
   '-e',
   '.claude-plugin/.auto-update.lock',
 ])) fail('git clean failed');
+assertMirrorCheckoutClean('pre-pull cleanup');
 
 console.log('[supervibe:upgrade] git fetch + pull --ff-only ...');
 if (!runGitNoLfsSmudge(['fetch', '--tags', '--prune'])) fail('git fetch failed');
 if (!runGitNoLfsSmudge(['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
+assertMirrorCheckoutClean('git pull --ff-only');
 
 console.log('[supervibe:upgrade] ensuring required ONNX embedding model ...');
 if (!run('node', ['scripts/ensure-onnx-model.mjs'])) {
@@ -154,9 +174,6 @@ if (!run('npm', ['ci', '--no-audit', '--no-fund'])) fail('npm ci failed');
 
 console.log('[supervibe:upgrade] npm run registry:build ...');
 if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
-
-console.log('[supervibe:upgrade] npm run check ...');
-if (!run('npm', ['run', 'check'])) fail('npm run check failed - upgrade applied but tests are red. Investigate before using.');
 
 console.log('[supervibe:upgrade] npm run supervibe:install-doctor ...');
 if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');

@@ -10,7 +10,7 @@
 #   3. Refuses to clobber local edits (uncommitted changes -> stop)
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
 #      git fetch -> ff-only pull -> required ONNX model setup -> npm ci ->
-#      npm run check -> refresh upstream-check cache
+#      registry build -> install lifecycle doctor -> refresh upstream-check cache
 #
 # Safe as the user-facing "install or update" entrypoint.
 
@@ -125,7 +125,7 @@ install_node_runtime() {
   warn "Node.js $MIN_NODE_VERSION+ with node:sqlite is required before Supervibe can update."
   warn "Current node: $(command -v node >/dev/null 2>&1 && node --version || printf 'not found')"
   if ! confirm_node_install; then
-    die "Node.js $MIN_NODE_VERSION+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow updater bootstrap, or install Node.js manually and re-run."
+    die "Node.js $MIN_NODE_VERSION+ is required for SQLite-backed semantic RAG, CodeGraph, and project memory. Set SUPERVIBE_INSTALL_NODE=1 to allow updater bootstrap, or install Node.js manually and re-run."
   fi
 
   load_node_manager_env
@@ -201,7 +201,7 @@ fi
 
 # ---- delegate to npm run supervibe:upgrade ----
 
-say "running npm run supervibe:upgrade (does fetch + pull --ff-only + required ONNX model setup + install + tests)"
+say "running npm run supervibe:upgrade (does fetch + pull --ff-only + mirror cleanup + required ONNX model setup + install audit)"
 ( cd "$PLUGIN_ROOT" && npm run supervibe:upgrade ) || die "upgrade failed; see output above."
 verify_checkout_integrity
 

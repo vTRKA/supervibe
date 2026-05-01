@@ -39,8 +39,8 @@ test("current checkout passes installer health", () => {
 test("upgrade dry-run includes backup, rollback and user-facing risks", () => {
   const dryRun = createUpgradeDryRun({
     rootDir: process.cwd(),
-    currentVersion: "2.0.15",
-    targetVersion: "2.0.15",
+    currentVersion: "2.0.16",
+    targetVersion: "2.0.16",
     plannedFiles: ["scripts/lib/supervibe-installer-health.mjs"],
   });
 

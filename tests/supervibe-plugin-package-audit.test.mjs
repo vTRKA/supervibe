@@ -57,6 +57,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
       installPs1: "",
       updateSh: "",
       updatePs1: "",
+      upgradeMjs: "",
     },
   });
 
@@ -65,13 +66,41 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "manifest-path-escapes-package"));
   assert.ok(audit.issues.some((issue) => issue.code === "missing-command-doc"));
   assert.ok(audit.issues.some((issue) => issue.code === "codex-unsupported-manifest-field"));
-  assert.ok(audit.issues.some((issue) => issue.code === "install-smoke-missing-check"));
+  assert.ok(audit.issues.some((issue) => issue.code === "install-mirror-clean-missing"));
+  assert.ok(audit.issues.some((issue) => issue.code === "upgrade-mirror-clean-missing"));
+  assert.ok(audit.issues.some((issue) => issue.code === "upgrade-registry-build-missing"));
+  assert.ok(audit.issues.some((issue) => issue.code === "upgrade-doctor-missing"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-claude-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-supervibe-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-generated-registry"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-worktree-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-runtime-artifact"));
   assert.ok(audit.nextActions.every(Boolean));
+});
+
+test("plugin package audit blocks dev test suite in user install and update paths", () => {
+  const audit = auditPluginPackageData({
+    packageJson: { version: "2.0.16" },
+    manifests: {},
+    marketplace: { name: "supervibe-marketplace", plugins: [] },
+    geminiExtension: { version: "2.0.16" },
+    opencodeSource: 'version: "2.0.16"',
+    readme: "Supervibe v2.0.16",
+    changelog: "Autonomous loop 10/10 upgrade",
+    registryYaml: "agents:\nskills:\ngenerated-at:",
+    commandFiles: [],
+    trackedFiles: [],
+    pathExists: {},
+    scripts: {
+      installSh: "npm run check\nregistry:build\nsupervibe:install-doctor\ngit clean -ffdx\nassert_checkout_mirror_clean\nSUPERVIBE_INSTALL_NODE",
+      installPs1: "npm run check\nregistry:build\nsupervibe:install-doctor\nclean', '-ffdx\nAssert-CheckoutMirrorClean\nSUPERVIBE_INSTALL_NODE",
+      updateSh: "status --porcelain\ntracked_dirty\nuntracked\nnpm run supervibe:upgrade",
+      updatePs1: "status --porcelain\n$trackedDirty\nuntrackedDirty\nnpm run supervibe:upgrade",
+      upgradeMjs: "['run', 'check']\nregistry:build\nsupervibe:install-doctor\ngit clean -ffdx\nassertMirrorCheckoutClean",
+    },
+  });
+
+  assert.ok(audit.issues.some((issue) => issue.code === "user-update-runs-dev-check"));
 });
 
 test("plugin package audit integrates with final acceptance release gate", () => {

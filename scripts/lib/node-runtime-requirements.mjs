@@ -33,16 +33,16 @@ export function getNodeRuntimeCapability(version = process.versions.node) {
     version: parsed.raw,
     installSupported: fullRuntime,
     sqliteSupported: fullRuntime,
-    fullCheckSupported: fullRuntime,
+    devCheckSupported: fullRuntime,
   };
 }
 
 export function formatNodeRuntimeMode(version = process.versions.node) {
   const capability = getNodeRuntimeCapability(version);
   if (!capability.installSupported) {
-    return `Node.js ${SQLITE_NODE_MIN_VERSION}+ is required to install Supervibe with SQLite-backed semantic RAG, code graph, project memory, and full npm run check (current ${versionString(version)}).`;
+    return `Node.js ${SQLITE_NODE_MIN_VERSION}+ is required to install Supervibe with SQLite-backed semantic RAG, code graph, and project memory (current ${versionString(version)}).`;
   }
-  return `Node.js ${versionString(version)} supports full Supervibe checks and SQLite-backed features.`;
+  return `Node.js ${versionString(version)} supports Supervibe SQLite-backed features and developer checks.`;
 }
 
 function versionString(version) {

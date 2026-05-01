@@ -134,11 +134,13 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
     assert.match(src, /node:sqlite/, `${name} must verify the SQLite runtime`);
   }
   for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
-    assert.match(src, /npm run check/, `${name} must keep the full check path`);
-    assert.match(src, /registry:build/, `${name} must generate registry.yaml before checks`);
+    assert.doesNotMatch(src, /npm\s+run\s+check|['"]run['"]\s*,\s*['"]check['"]/, `${name} must not run the dev test suite for user installs`);
+    assert.match(src, /registry:build/, `${name} must generate registry.yaml before install lifecycle audit`);
     assert.match(src, /supervibe:install-doctor/, `${name} must run the install lifecycle doctor`);
     assert.doesNotMatch(src, /supervibe:install-check/, `${name} must not install a reduced runtime`);
   }
+  assert.match(sh, /assert_checkout_mirror_clean/, 'bash installer must assert checkout mirror cleanup');
+  assert.match(ps1, /Assert-CheckoutMirrorClean/, 'PowerShell installer must assert checkout mirror cleanup');
   assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
   assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
   assert.match(sh, /npm ci --no-audit --no-fund/, 'bash installer must not dirty package-lock.json');

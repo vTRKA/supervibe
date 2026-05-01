@@ -16,7 +16,7 @@
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
 #   4. Cleans stale files from the managed checkout before reinstalling
 #   5. Downloads the required ONNX embedding model before registration
-#   6. Runs npm ci + registry build + npm run check so SQLite/RAG/CodeGraph are available
+#   6. Runs npm ci + registry build + install lifecycle audit
 #   7. Registers the plugin in every detected CLI:
 #        - Claude:  ~/.claude/plugins/installed_plugins.json (idempotent JSON upsert)
 #        - Codex:   ~/.codex/plugins/cache/supervibe-marketplace/supervibe/local
@@ -147,6 +147,22 @@ clean_managed_checkout() {
     cat "$LOG_DIR/git-clean.log" >&2
     die "git clean failed. Inspect: $root"
   }
+  assert_checkout_mirror_clean "$root" "pre-update cleanup"
+}
+
+assert_checkout_mirror_clean() {
+  local root="$1"
+  local stage="$2"
+  local status
+  if ! status=$(git -C "$root" status --porcelain --untracked-files=all 2>"$LOG_DIR/git-status-mirror.log"); then
+    cat "$LOG_DIR/git-status-mirror.log" >&2
+    die "git status failed while checking managed checkout mirror after $stage."
+  fi
+  status=$(printf '%s\n' "$status" | sed '/^$/d' || true)
+  if [ -n "$status" ]; then
+    printf '%s\n' "$status" >&2
+    die "managed checkout is not a clean mirror after $stage; stale files may remain active."
+  fi
 }
 
 quarantine_non_git_target() {
@@ -210,7 +226,7 @@ install_node_runtime() {
   warn "Node.js $MIN_NODE_VERSION+ with node:sqlite is required before Supervibe can install."
   warn "Current node: $(command -v node >/dev/null 2>&1 && node --version || printf 'not found')"
   if ! confirm_node_install; then
-    die "Node.js $MIN_NODE_VERSION+ is required for SQLite-backed semantic RAG, CodeGraph, project memory, and full checks. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
+    die "Node.js $MIN_NODE_VERSION+ is required for SQLite-backed semantic RAG, CodeGraph, and project memory. Set SUPERVIBE_INSTALL_NODE=1 to allow installer bootstrap, or install Node.js manually and re-run."
   fi
 
   load_node_manager_env
@@ -308,6 +324,7 @@ if [ -d "$TARGET/.git" ]; then
   if ! git_no_lfs_smudge -C "$TARGET" pull --ff-only --quiet 2>"$LOG_DIR/pull.log"; then
     warn "pull --ff-only failed (local diverged or detached head); leaving checkout at current commit"
   fi
+  assert_checkout_mirror_clean "$TARGET" "checkout update"
 else
   say "cloning $REPO_URL ($REF) -> $TARGET"
   if [ -e "$TARGET" ]; then
@@ -322,13 +339,14 @@ else
     cat "$LOG_DIR/checkout.log" >&2
     die "git checkout $REF failed inside fresh clone."
   }
+  assert_checkout_mirror_clean "$TARGET" "fresh clone"
 fi
 
 verify_checkout_integrity
 
 ensure_required_onnx_model
 
-# ---- install deps + verify ----
+# ---- install deps + generated registry ----
 
 say "running npm ci (logs at $LOG_DIR/npm-ci.log)"
 ( cd "$TARGET" && npm ci --no-audit --no-fund >"$LOG_DIR/npm-ci.log" 2>&1 ) || {
@@ -344,13 +362,7 @@ say "running npm run registry:build"
   die "npm run registry:build failed. Full log: $LOG_DIR/npm-registry-build.log"
 }
 
-say "running npm run check"
-( cd "$TARGET" && npm run check >"$LOG_DIR/npm-check.log" 2>&1 ) || {
-  echo "--- last 40 lines of npm run check ---" >&2
-  tail -n 40 "$LOG_DIR/npm-check.log" >&2
-  die "npm run check failed. Full log: $LOG_DIR/npm-check.log"
-}
-ok "all checks passed"
+ok "install preparation passed"
 
 # Capture installed version (env-var approach avoids quote injection in path)
 INSTALLED_VERSION=$(EVOLVE_TARGET="$TARGET" node -e \
