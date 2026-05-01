@@ -21,10 +21,11 @@ import {
   impactRadius, listIndexedFiles, searchSymbols
 } from './lib/code-graph-queries.mjs';
 import { buildCodeGraphContext } from './lib/supervibe-codegraph-context.mjs';
+import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
 import { parseArgs } from 'node:util';
 
 const PROJECT_ROOT = process.cwd();
-const { values } = parseArgs({
+const { values, positionals } = parseArgs({
   options: {
     query: { type: 'string', short: 'q', default: '' },
     callers: { type: 'string', default: '' },
@@ -35,20 +36,29 @@ const { values } = parseArgs({
     impact: { type: 'string', default: '' },
     files: { type: 'string', default: '' },
     context: { type: 'string', default: '' },
+    'repo-map': { type: 'boolean', default: false },
     depth: { type: 'string', default: '1' },
     format: { type: 'string', default: 'flat' },
     lang: { type: 'string', default: '' },
     kind: { type: 'string', default: '' },
     limit: { type: 'string', short: 'n', default: '10' },
     'no-semantic': { type: 'boolean', default: false },
+    'debug-ranking': { type: 'boolean', default: false },
     json: { type: 'boolean', default: false }
   },
-  strict: false
+  strict: false,
+  allowPositionals: true,
 });
 
-if (!values.query && !values.callers && !values.callees && !values.neighbors && !values['top-symbols'] && !values['symbol-search'] && !values.impact && !values.files && !values.context) {
+if (!values.query && positionals.length > 0) {
+  values.query = positionals.join(' ');
+}
+
+if (!values.query && !values.callers && !values.callees && !values.neighbors && !values['top-symbols'] && !values['symbol-search'] && !values.impact && !values.files && !values.context && !values['repo-map']) {
   console.error('Usage:');
   console.error('  search-code.mjs --query "<text>" [--lang ...] [--kind ...] [--limit N]');
+  console.error('  search-code.mjs "<text>" [--limit N] [--debug-ranking]');
+  console.error('  supervibe-context-pack.mjs --query "<text>" --json   # coordinated memory/RAG/codegraph pack');
   console.error('  search-code.mjs --callers "<symbol-name-or-id>"');
   console.error('  search-code.mjs --callees "<symbol-name-or-id>"');
   console.error('  search-code.mjs --neighbors "<symbol-name-or-id>" --depth 2');
@@ -57,6 +67,7 @@ if (!values.query && !values.callers && !values.callees && !values.neighbors && 
   console.error('  search-code.mjs --impact "<symbol-name-or-id>" --depth 2');
   console.error('  search-code.mjs --files "." [--lang typescript] [--format flat]');
   console.error('  search-code.mjs --context "<task or symbol>" [--no-semantic]');
+  console.error('  search-code.mjs --repo-map --query "<task>"');
   process.exit(1);
 }
 
@@ -67,7 +78,11 @@ const limit = parseInt(values.limit, 10);
 let results;
 let mode;
 
-if (values.callers) {
+if (values['repo-map']) {
+  mode = 'repo-map';
+  const repoMap = await buildRepoMap({ rootDir: PROJECT_ROOT, tier: 'standard' });
+  results = selectRepoMapContext(repoMap, { tier: 'standard', query: values.query || values.context || '' });
+} else if (values.callers) {
   mode = 'callers';
   results = findCallers(store.db, values.callers).slice(0, limit);
   if (results.length === 0) {
@@ -140,6 +155,13 @@ if (values.callers) {
 
 store.close();
 
+if (mode === 'repo-map') {
+  if (values.json) console.log(JSON.stringify(results, null, 2));
+  else console.log(formatRepoMapContext(results));
+  store.close();
+  process.exit(0);
+}
+
 if (values.json) {
   console.log(JSON.stringify({ mode, results }, null, 2));
   process.exit(0);
@@ -155,6 +177,9 @@ for (const [i, r] of results.entries()) {
   if (mode === 'semantic') {
     console.log(`${i + 1}. ${r.file}:${r.startLine}-${r.endLine}  [${r.kind}${r.name ? ': ' + r.name : ''}, ${r.language}]`);
     console.log(`   score=${r.score.toFixed(3)} bm25=${r.bm25.toFixed(2)} semantic=${r.semantic.toFixed(3)}`);
+    if (values['debug-ranking']) {
+      console.log(`   mode=${r.retrievalMode} generated=${r.generatedSource} components=${JSON.stringify(r.scoreComponents)}`);
+    }
     console.log(`   ${r.snippet.split('\n').slice(0, 4).join('\n   ')}\n`);
   } else if (mode === 'callers') {
     console.log(`${i + 1}. ${r.path}:${r.startLine}-${r.endLine}  [${r.kind}: ${r.name}]  ←${r.edgeKind}→`);

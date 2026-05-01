@@ -74,6 +74,7 @@ Confidence self-assessment:
 7. **Score** with `supervibe:confidence-scoring` (memory-entry rubric ≥9 required)
 8. **Trigger `scripts/build-memory-index.mjs`** to update `index.json`
 9. **Cross-link** — update `related:` in any related entries (bidirectional)
+10. **Lifecycle metadata** — add `supersedes:`, `supersededBy:` or `contradicts:` when this entry replaces or conflicts with earlier memory. Contradictions are review candidates, not automatic deletes.
 
 ## Output contract
 
@@ -91,6 +92,7 @@ Returns:
 - DO NOT: add memory with confidence <9 (hallucination/noise risk)
 - ALWAYS: add memory at end of significant tasks (otherwise lost)
 - ALWAYS: rebuild index after add
+- ALWAYS: preserve historical entries; use curator lifecycle fields instead of deleting stale memory by default
 
 ## Verification
 

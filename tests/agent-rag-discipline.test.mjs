@@ -6,7 +6,7 @@ import matter from "gray-matter";
 
 test("all agents keep RAG, code graph, and memory pre-flight discipline", async () => {
   const files = await listAgentFiles("agents");
-  assert.equal(files.length, 83);
+  assert.equal(files.length, 89);
 
   const missing = [];
   for (const file of files) {

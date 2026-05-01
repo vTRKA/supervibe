@@ -62,7 +62,6 @@ async function checkOverrideRate() {
 // === Phase D: code RAG + graph index health ===
 async function ensureCodeIndexFresh(projectRoot) {
   const { CodeStore } = await import("./lib/code-store.mjs");
-  const { statSync } = await import("node:fs");
 
   const dbPath = join(projectRoot, ".claude", "memory", "code.db");
   const indexExists = existsSync(dbPath);
@@ -89,7 +88,7 @@ async function ensureCodeIndexFresh(projectRoot) {
       store.close();
       return { action: "skip", stats, scanCounts };
     } catch (err) {
-      return { action: "skip", error: err.message };
+      return { action: "skip", error: `${err.message}. Repair with node scripts/build-code-index.mjs --root . --migrate --health` };
     }
   }
 
@@ -119,9 +118,9 @@ async function reportCodeIndexHealth() {
         `[supervibe] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`,
       );
       const sc = result.scanCounts;
-      if (sc && (sc.reindexed > 0 || sc.removed > 0)) {
+      if (sc && (sc.reindexed > 0 || sc.removed > 0 || sc.discovered > 0 || sc.pruned > 0)) {
         console.log(
-          `[supervibe] mtime-scan: ${sc.reindexed} file(s) reindexed, ${sc.removed} removed (external edits caught)`,
+          `[supervibe] mtime-scan: ${sc.reindexed} file(s) reindexed, ${sc.discovered || 0} discovered, ${sc.removed} removed, ${sc.pruned || 0} pruned`,
         );
       }
     } else {
@@ -258,8 +257,35 @@ async function main() {
   await reportVersionBump();
   await reportUpstreamUpdates();
 
+  async function reportInstallerHealth() {
+    try {
+      if (!existsSync(join(PROJECT_ROOT, ".claude-plugin", "plugin.json"))) return;
+      const { runInstallerHealthGate } = await import("./lib/supervibe-installer-health.mjs");
+      const health = runInstallerHealthGate({ rootDir: PROJECT_ROOT });
+      if (!health.pass) {
+        console.log(`[supervibe] install health blocked: ${health.issues.length} issue(s). Run node scripts/supervibe-auto-update.mjs --dry-run --health`);
+      }
+    } catch {
+      // Non-fatal session-start diagnostic.
+    }
+  }
+  await reportInstallerHealth();
+
   // Phase D: code index health (last so user sees stale-artifact warnings first)
   await reportCodeIndexHealth();
+
+  async function reportWatcherDiagnostics() {
+    try {
+      const { readWatcherDiagnostics } = await import("./lib/supervibe-index-watcher.mjs");
+      const diagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
+      if (diagnostics.heartbeat.status === "stale") {
+        console.log(`[supervibe] watcher heartbeat stale; repair: ${diagnostics.repairActions[0]}`);
+      }
+    } catch {
+      // Non-fatal watcher diagnostic.
+    }
+  }
+  await reportWatcherDiagnostics();
 
   // Memory mtime-scan: catch external edits to .claude/memory/ between sessions.
   async function reportMemoryScan() {

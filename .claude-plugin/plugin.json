@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
   "description": "Claude Code plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
-  "version": "2.0.12",
+  "version": "2.0.15",
   "author": {
     "name": "vTRKA"
   },
@@ -46,6 +46,7 @@
     "./agents/_meta/supervibe-orchestrator.md",
     "./agents/_meta/memory-curator.md",
     "./agents/_meta/rules-curator.md",
+    "./agents/_ops/ai-agent-orchestrator.md",
     "./agents/_ops/ai-integration-architect.md",
     "./agents/_ops/api-contract-reviewer.md",
     "./agents/_ops/api-designer.md",
@@ -58,7 +59,11 @@
     "./agents/_ops/devops-sre.md",
     "./agents/_ops/infra-pattern-researcher.md",
     "./agents/_ops/infrastructure-architect.md",
+    "./agents/_ops/ipc-contract-reviewer.md",
     "./agents/_ops/job-scheduler-architect.md",
+    "./agents/_ops/llm-evals-engineer.md",
+    "./agents/_ops/llm-rag-architect.md",
+    "./agents/_ops/model-ops-engineer.md",
     "./agents/_ops/network-router-engineer.md",
     "./agents/_ops/observability-architect.md",
     "./agents/_ops/performance-reviewer.md",
@@ -105,6 +110,7 @@
     "./agents/stacks/spring/spring-architect.md",
     "./agents/stacks/spring/spring-developer.md",
     "./agents/stacks/svelte/sveltekit-developer.md",
+    "./agents/stacks/tauri/tauri-rust-engineer.md",
     "./agents/stacks/vue/vue-implementer.md"
   ]
 }

@@ -21,11 +21,27 @@ last-verified: 2026-04-27
 - Files renamed/deleted that artifacts reference
 - User runs `/supervibe-adapt`
 
+## Shared Dialogue Contract
+
+Lifecycle: `scan -> plan -> review -> approved -> applied -> verified`. Persist state in `.claude/memory/adapt/state.json` before every lifecycle transition.
+
+Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+
+Default behavior: produce a dry-run adaptation plan and do not edit artifacts until approval. Free-form path: the user can name exact agents, rules, skills, paths, or stack changes to include or exclude.
+
+After every material delivery, ask one explicit next-step question with choices:
+- Approve - apply the adaptation plan.
+- Refine - user gives one focused change to the plan.
+- Alternative - produce another adaptation scope with explicit tradeoffs.
+- Deeper review - run audit or confidence scoring before applying.
+- Stop - persist current state and exit without claiming silent completion.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current state
 2. Run `git diff <verified-against>..HEAD --stat` to find changes
 3. Read changed manifest files for new deps
+4. Run or consult `node scripts/supervibe-status.mjs --capabilities` so proposed agent, rule and skill updates are grounded in the capability registry.
 
 ## Procedure
 
@@ -36,8 +52,10 @@ last-verified: 2026-04-27
    - Minor (new lib in existing stack) → update agent context
    - Major (new framework / new layer) → suggest `supervibe:genesis` for new component
 5. **Deleted files** — remove references from artifacts
-6. **Bump versions** + update `last-verified` + `verified-against`
-7. Run `supervibe:audit` to verify clean state
+6. **Host context migration** — if `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` or `opencode.json` changes, use `scripts/lib/supervibe-context-migrator.mjs` dry-run planning and never overwrite user-owned sections.
+7. **Capability registry** — propose affected agents, rules and skills together, including registry evidence and confidence for each linked artifact.
+8. **Bump versions** + update `last-verified` + `verified-against`
+9. Run `supervibe:audit` to verify clean state
 
 ## Output contract
 

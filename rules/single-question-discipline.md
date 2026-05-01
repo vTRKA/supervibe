@@ -19,9 +19,18 @@ related-rules:
 ---
 
 ## What
-Any agent that engages the user in clarification, requirements gathering, design dialogue, or branching decisions MUST present **one question at a time**, formatted as markdown with a `Шаг N/M:` (or `Step N/M:`) progress indicator. Choices must be a list. The agent must wait for an explicit user reply before asking the next question.
+Any agent, command, or skill that engages the user in clarification, requirements gathering, design dialogue, or branching decisions MUST present **one question at a time**, formatted as markdown with a `Шаг N/M:` (or `Step N/M:`) progress indicator. Choices must be a list. The agent must wait for an explicit user reply before asking the next question.
 
 Questions must be easy to answer. Prefer 2-4 choices, put the recommended/default choice first, and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
+
+Delivery-style flows must also declare lifecycle states, a persisted state artifact path, default behavior, free-form path, stop condition, and a post-delivery menu with approve/refine/alternative/deeper-review/stop. Shared reusable wording lives in `scripts/lib/supervibe-dialogue-contract.mjs`.
+
+Genesis-style install flows must split selection into separate questions: host adapter, install profile, optional add-ons, then custom group edits. Presets such as `minimal`, `product-design`, `full-stack`, `research-heavy`, and `custom` must include one-line tradeoffs and a stop condition before any file write.
+
+When a question branches into implementation or refactor work, apply
+`scripts/lib/supervibe-retrieval-decision-policy.mjs` before asking for approval:
+memory, code RAG and codegraph requirements must be explicit, and skipped
+retrieval needs a reason.
 
 ## Why
 Multi-question dumps overwhelm users, cause partial answers, and produce ambiguous state. Designers learned this first — the design-pipeline rollout in commit `2a16afc` proved one-at-a-time dialogues raise approval rates and reduce rework. The discipline must extend to product, ops, stack, and meta agents — not only design.

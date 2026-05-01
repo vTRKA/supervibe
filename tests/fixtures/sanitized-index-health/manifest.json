@@ -1,0 +1,54 @@
+{
+  "projectRoot": "sanitized-desktop-project",
+  "indexedFiles": 16,
+  "indexedChunks": 79,
+  "eligibleSourceFiles": 829,
+  "sourceRoots": [
+    "src",
+    "src-tauri",
+    "packages",
+    "tests"
+  ],
+  "indexedPaths": [
+    "src/main.tsx",
+    "src/app.tsx",
+    "src/api/client.ts",
+    "src-tauri/src/main.rs",
+    "dist-check/assets/index-Ie.js",
+    "dist-check/assets/vendor-Os.js"
+  ],
+  "languageCoverage": {
+    "typescript": {
+      "eligible": 412,
+      "indexed": 12,
+      "filesWithSymbols": 8
+    },
+    "rust": {
+      "eligible": 94,
+      "indexed": 1,
+      "filesWithSymbols": 1
+    },
+    "javascript": {
+      "eligible": 21,
+      "indexed": 2,
+      "filesWithSymbols": 2
+    }
+  },
+  "topSymbols": [
+    "Ie",
+    "Os",
+    "B",
+    "at",
+    "Ye",
+    "_s",
+    "IdeasPage",
+    "useUserVPNConfigQuery"
+  ],
+  "staleRows": [
+    "src/removed-file.ts"
+  ],
+  "crossResolvedEdges": {
+    "resolved": 7,
+    "total": 42
+  }
+}

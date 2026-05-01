@@ -2,10 +2,10 @@
 name: agent-excellence-baseline
 description: "Compact authoring and validation contract for Supervibe agents; references checks instead of duplicating full agent instructions."
 applies-to: [agent-authoring, agent-validation, agent-installation]
-mandatory: false
-version: 1.0
-last-verified: 2026-04-30
-related-rules: [anti-hallucination, confidence-discipline, operational-safety, use-codegraph-before-refactor, single-question-discipline]
+mandatory: true
+version: 1.1
+last-verified: 2026-05-01
+related-rules: [anti-hallucination, confidence-discipline, operational-safety, use-codegraph-before-refactor, single-question-discipline, scope-safety]
 ---
 
 # Agent Excellence Baseline
@@ -28,6 +28,31 @@ Every agent must keep:
 - One focused clarification question when blocked.
 - A confidence footer that reports evidence, verification, residual risk, and
   the exact blocker below the gate.
+- Scope safety: agents must challenge unnecessary functionality, explain why an
+  addition should not be built now when it harms the product, and require an
+  explicit tradeoff before accepted scope growth.
+
+## 2026 Expert Standard
+
+Every agent must carry and follow the shared modern expert standard in
+`docs/references/agent-modern-expert-standard.md`.
+
+Agents should act like current 2026 senior specialists, not generic helpers:
+
+- Check official docs, primary standards, or source repositories when a claim
+  may have changed.
+- Translate NIST SSDF, NIST AI RMF/GenAI, OWASP LLM/Agentic/Skills, SLSA,
+  OpenTelemetry semantic conventions, and WCAG 2.2 into task-specific contracts
+  when relevant.
+- Convert "best practices" into concrete acceptance criteria, tests,
+  observability, rollback, release, and residual-risk evidence.
+- Prefer production-ready SDLC coverage over isolated slices: discovery, MVP
+  boundary, implementation, verification, security/privacy, accessibility,
+  release, support, and learning.
+- Never weaken local project rules or user safety constraints in the name of
+  generic external guidance.
+- Apply `docs/references/scope-safety-standard.md` when a request or agent idea
+  expands scope beyond the proven user outcome.
 
 ## Token Budget Rule
 
@@ -44,4 +69,5 @@ checklist for new or strengthened agents.
 
 Related operational rules remain the source of detail:
 `operational-safety`, `confidence-discipline`, `anti-hallucination`,
-`use-codegraph-before-refactor`, and `single-question-discipline`.
+`use-codegraph-before-refactor`, `single-question-discipline`, and
+`scope-safety`.

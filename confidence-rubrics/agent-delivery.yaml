@@ -17,8 +17,12 @@ dimensions:
     weight: 1
     question: "Did output explicitly pick one of three Graph evidence cases — A (callers found, listed), B (zero callers verified, decision shown), or C (N/A with reason) — per the agent output contract? Skipping the section entirely on a structural change FAILS this criterion. For pure-additive or non-structural changes, output must explicitly state 'Graph queries: N/A' with a reason."
     evidence-required: "Delivery contains a Graph-evidence section that names Case A/B/C explicitly: A lists discovered callers, B shows the zero-result query and the decision, or C states 'Graph queries: N/A' with a one-line justification. Absence of this section on any structural change is a fail."
+  - id: required-context-evidence
+    weight: 1
+    question: "When retrieval policy marks memory, RAG or codegraph mandatory, did the agent cite required memory IDs, RAG chunk IDs, graph symbols, bypass reasons and redaction status in the evidence ledger?"
+    evidence-required: "Evidence ledger gate passes with memoryIds/ragChunkIds/graphSymbols/citations/verificationCommands/redactionStatus or an explicit policy bypass reason"
   - id: skill-adherence
-    weight: 2
+    weight: 1
     question: "Did the agent follow its attached skills (TDD when required, debugging method, code-review checklist)?"
     evidence-required: "Tool call sequence matches skill procedures (e.g., test-before-impl for TDD)"
   - id: regression-clean

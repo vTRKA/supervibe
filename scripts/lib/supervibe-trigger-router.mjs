@@ -1,7 +1,41 @@
 import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
 import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
+import { getCapabilityRouteHint } from "./supervibe-capability-registry.mjs";
+import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
 const ROUTES = {
+  genesis_setup: {
+    phase: "setup",
+    command: "/supervibe-genesis",
+    skill: "supervibe:genesis",
+    nextQuestionRu: "Следующий шаг - host-aware genesis dry-run с сохранением CLAUDE.md/AGENTS.md. Переходим?",
+    nextQuestionEn: "Next step - run a host-aware genesis dry-run while preserving CLAUDE.md, AGENTS.md, and other host files. Proceed?",
+    prerequisites: ["user-request"],
+  },
+  index_repair: {
+    phase: "diagnostics",
+    command: "/supervibe-status --index-health --strict-index-health",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Следующий шаг - показать index health gate и repair command. Переходим?",
+    nextQuestionEn: "Next step - show the index health gate and repair command. Proceed?",
+    prerequisites: [],
+  },
+  preview_server: {
+    phase: "preview",
+    command: "/supervibe-preview --daemon",
+    skill: "supervibe:preview-server",
+    nextQuestionRu: "Следующий шаг - запустить silent preview daemon с pid/log evidence. Переходим?",
+    nextQuestionEn: "Next step - start the silent preview daemon with PID and log evidence. Proceed?",
+    prerequisites: ["user-request"],
+  },
+  delivery_control: {
+    phase: "delivery",
+    command: "/supervibe --delivery-control",
+    skill: "supervibe:executing-plans",
+    nextQuestionRu: "Следующий шаг - сохранить state и выбрать approve/refine/alternative/stop. Переходим?",
+    nextQuestionEn: "Next step - persist state and choose approve, refine, alternative, or stop. Proceed?",
+    prerequisites: ["user-request"],
+  },
   brainstorm_to_plan: {
     phase: "brainstorm",
     command: "/supervibe-plan",
@@ -238,6 +272,27 @@ const ROUTES = {
 
 const RULES = [
   {
+    intent: "genesis_setup",
+    confidence: 0.93,
+    test: (text) => hasAny(text, ["genesis", "supervibe-genesis", "set up", "setup", "bootstrap", "scaffold", "install", "initialize", "генезис", "разверн"]) &&
+      hasAny(text, ["supervibe", ".claude", "agents", "skills", "rules", "codex", "claude", "cursor", "gemini", "opencode", "AGENTS.md", "CLAUDE.md"]),
+  },
+  {
+    intent: "index_repair",
+    confidence: 0.92,
+    test: (text) => hasAny(text, ["broken rag", "index health", "repair index", "stale index", "code index"]) && hasAny(text, ["repair", "health", "gate", "fix", "show"]),
+  },
+  {
+    intent: "preview_server",
+    confidence: 0.91,
+    test: (text) => hasAny(text, ["preview", "preview server"]) && hasAny(text, ["silent", "daemon", "background"]),
+  },
+  {
+    intent: "delivery_control",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["stop after delivery", "resume later", "save state", "post-delivery"]) && hasAny(text, ["stop", "resume", "state"]),
+  },
+  {
     intent: "worktree_autonomous_run",
     confidence: 0.92,
     test: (text) => hasAny(text, ["worktree", "separate workspace", "isolated session"]) && hasAny(text, ["parallel sessions", "multiple sessions", "10 sessions", "same plan", "same epic"]),
@@ -371,17 +426,50 @@ export function routeTriggerRequest(input, options = {}) {
   const locale = detectLocale(text);
   const corpus = options.corpus ?? getTriggerIntentCorpus();
 
+  const commandMatch = matchSlashCommand(text);
+  if (commandMatch) {
+    const route = ROUTES[commandMatch.intent];
+    return withArtifactStatus(
+      withRoutingEvidence({
+        intent: commandMatch.intent,
+        phase: route.phase,
+        command: route.command,
+        skill: route.skill,
+        confidence: 1,
+        confidenceFloor: 0.99,
+        mutationRisk: mutationRiskFor(commandMatch.intent),
+        prerequisites: route.prerequisites,
+        requiredSafety: requiredSafetyFor(commandMatch.intent),
+        nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+        alternatives: alternativesFromRoutes(commandMatch.intent),
+        matchedPhrase: route.command,
+        source: "exact-command",
+        reason: `Exact slash command match: ${route.command}`,
+      }, [{
+        source: "exact-command",
+        reason: `Exact slash command match: ${route.command}`,
+        matchedPhrase: route.command,
+      }], alternativesFromRoutes(commandMatch.intent)),
+      artifacts,
+    );
+  }
+
   const exact = corpus.find((entry) => normalize(entry.phrase) === text);
   if (exact) {
     return withArtifactStatus(
-      {
+      withRoutingEvidence({
         ...exact,
         confidence: 1,
         nextQuestion: localizeQuestion(exact, locale),
         alternatives: alternativesFor(exact.intent, corpus),
         matchedPhrase: exact.phrase,
+        source: "exact-corpus",
         reason: `Exact corpus match: ${exact.id}`,
-      },
+      }, [{
+        source: "exact-corpus",
+        reason: `Exact corpus match: ${exact.id}`,
+        matchedPhrase: exact.phrase,
+      }], alternativesFor(exact.intent, corpus)),
       artifacts,
     );
   }
@@ -406,7 +494,7 @@ export function routeTriggerRequest(input, options = {}) {
   if (scored.length > 0) {
     const route = ROUTES[scored[0].intent];
     return withArtifactStatus(
-      {
+      withRoutingEvidence({
         intent: scored[0].intent,
         phase: route.phase,
         command: route.command,
@@ -422,12 +510,17 @@ export function routeTriggerRequest(input, options = {}) {
         semanticEvidence: scored[0].semanticEvidence,
         source: scored[0].source,
         reason: scored[0].reason,
-      },
+      }, evidenceFor(scored[0]), scored.slice(1, 4).map((rule) => ({
+        intent: rule.intent,
+        confidence: rule.confidence,
+        source: rule.source,
+        reason: rule.reason,
+      }))),
       artifacts,
     );
   }
 
-  return {
+  return withRoutingEvidence({
     intent: "unknown",
     phase: "diagnostics",
     command: "/supervibe --diagnose-trigger",
@@ -445,7 +538,71 @@ export function routeTriggerRequest(input, options = {}) {
     safetyBlockers: [],
     matchedPhrase: null,
     reason: "No corpus or keyword match",
+    clarifyingQuestion: true,
+  }, [{
+    source: "fallback",
+    reason: "No corpus or keyword match",
+  }], []);
+}
+
+export function evaluateIntentGoldenCorpus(corpus = []) {
+  const results = corpus.map((entry) => {
+    const route = routeTriggerRequest(entry.phrase);
+    const failures = [];
+    const expected = entry.expected || {};
+
+    if (expected.intent && route.intent !== expected.intent) {
+      failures.push(`expected intent ${expected.intent} but got ${route.intent}`);
+    }
+    if (expected.notIntent && route.intent === expected.notIntent) {
+      failures.push(`expected not to route to ${expected.notIntent}`);
+    }
+    if (expected.command && route.command !== expected.command) {
+      failures.push(`expected command ${expected.command} but got ${route.command}`);
+    }
+    if (typeof expected.minConfidence === "number" && route.confidence < expected.minConfidence) {
+      failures.push(`expected confidence >= ${expected.minConfidence} but got ${route.confidence}`);
+    }
+    if (expected.clarifyingQuestion && !(route.clarifyingQuestion || route.nextQuestion)) {
+      failures.push("expected clarifying question");
+    }
+    if (!route.routingEvidence?.length) {
+      failures.push("missing routing evidence");
+    }
+    if (!Array.isArray(route.rejectedAlternatives)) {
+      failures.push("missing rejected alternatives");
+    }
+
+    return {
+      id: entry.id,
+      phrase: entry.phrase,
+      expected,
+      pass: failures.length === 0,
+      failures,
+      route,
+    };
+  });
+  const failed = results.filter((result) => !result.pass);
+  return {
+    pass: failed.length === 0,
+    total: results.length,
+    failed,
+    results,
   };
+}
+
+export function formatIntentGoldenEvaluation(evaluation) {
+  const lines = [
+    "SUPERVIBE_INTENT_GOLDEN_EVALUATION",
+    `PASS: ${evaluation.pass}`,
+    `TOTAL: ${evaluation.total}`,
+    `FAILED: ${evaluation.failed.length}`,
+  ];
+  for (const failure of evaluation.failed) {
+    lines.push(`- ${failure.id}: ${failure.failures.join("; ")}`);
+    lines.push(`  route: ${failure.route.intent} -> ${failure.route.command} (${failure.route.confidence})`);
+  }
+  return lines.join("\n");
 }
 
 function withArtifactStatus(route, artifacts) {
@@ -498,6 +655,13 @@ function alternativesFor(intent, corpus) {
     .map((candidate) => ({ intent: candidate, confidence: 0.5 }));
 }
 
+function alternativesFromRoutes(intent) {
+  return Object.keys(ROUTES)
+    .filter((candidate) => candidate !== intent)
+    .slice(0, 3)
+    .map((candidate) => ({ intent: candidate, confidence: 0.5 }));
+}
+
 function localizeQuestion(entry, locale) {
   if (locale === "en") {
     const route = ROUTES[entry.intent];
@@ -516,6 +680,7 @@ function mutationRiskFor(intent) {
 
 function requiredSafetyFor(intent) {
   const base = ["no-provider-bypass", "no-hidden-background-work", "confirm-before-mutation"];
+  if (intent === "genesis_setup") return [...base, "dry-run-before-host-file-write", "preserve-existing-host-files"];
   if (["autonomous_epic_run", "worktree_autonomous_run"].includes(intent)) {
     return [...base, "bounded-runtime", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
   }
@@ -527,6 +692,8 @@ function requiredSafetyFor(intent) {
 }
 
 function sourcePriority(source) {
+  if (source === "exact-command") return 4;
+  if (source === "exact-corpus") return 3;
   if (source === "semantic-intent-profile") return 2;
   if (source === "keyword-rule") return 1;
   return 0;
@@ -538,6 +705,36 @@ function detectLocale(text) {
 
 function hasAny(text, phrases) {
   return phrases.some((phrase) => text.includes(normalize(phrase)));
+}
+
+function matchSlashCommand(text) {
+  if (!text.startsWith("/")) return null;
+  return Object.entries(ROUTES)
+    .map(([intent, route]) => ({ intent, command: normalize(route.command).split(" ")[0] }))
+    .sort((a, b) => b.command.length - a.command.length)
+    .find((candidate) => text === candidate.command || text.startsWith(`${candidate.command} `)) || null;
+}
+
+function evidenceFor(candidate) {
+  return [{
+    source: candidate.source,
+    reason: candidate.reason,
+    matchedPhrase: candidate.matchedPhrase || null,
+    semanticEvidence: candidate.semanticEvidence,
+  }];
+}
+
+function withRoutingEvidence(route, evidence, rejectedAlternatives) {
+  const capability = getCapabilityRouteHint(route.intent);
+  return {
+    ...route,
+    capabilityId: capability?.capabilityId || null,
+    verificationHooks: capability?.verificationHooks || [],
+    toolMetadata: { required: Boolean(capability?.toolMetadataRequired), deterministicOrder: true, intentScoped: true },
+    retrievalPolicy: decideRetrievalPolicy({ taskText: `${route.intent} ${route.command} ${route.reason || ""}` }),
+    routingEvidence: evidence.filter(Boolean),
+    rejectedAlternatives: rejectedAlternatives || [],
+  };
 }
 
 function hasDesignSurface(text) {

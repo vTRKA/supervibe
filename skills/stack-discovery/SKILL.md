@@ -42,6 +42,8 @@ Manifest detected?
 ├─ pyproject.toml + fastapi → backend: fastapi
 ├─ Gemfile + rails → backend: rails
 ├─ Cargo.toml + tauri → desktop: tauri (+ frontend from package.json)
+│  └─ package.json + @tauri-apps/api + react + vite + src-tauri/Cargo.toml with tauri = "2"
+│     → pack: tauri-react-rust-postgres when SQLx/Postgres evidence exists; otherwise tauri-react-rust
 ├─ go.mod + gin/echo → backend: go
 └─ ... (use stack-fingerprint registry)
 
@@ -55,7 +57,8 @@ Chrome-extension sub-detection (when manifest_version: 3):
 DB inferred from?
 ├─ Migration files (database/migrations/, db/migrate/, alembic/, migrations/)
 ├─ Connection string env vars
-└─ Composer/npm deps (pg/mysql2/sqlite3/mongodb)
+├─ Composer/npm deps (pg/mysql2/sqlite3/mongodb)
+└─ Rust deps (sqlx with postgres feature, diesel postgres, sea-orm postgres)
 
 Infra inferred from?
 ├─ docker-compose.yml services list

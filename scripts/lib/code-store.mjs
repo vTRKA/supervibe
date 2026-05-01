@@ -2,7 +2,7 @@
 // Mirrors MemoryStore but for source code: per-file rows + per-chunk embeddings.
 // Hash-based change detection skips unchanged files on re-index.
 
-import { readdir, readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { hashFile } from './file-hash.mjs';
@@ -10,24 +10,8 @@ import { chunkCode, detectLanguage } from './code-chunker.mjs';
 import { embed, cosineSimilarity, vectorToBuffer, bufferToVector } from './embeddings.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
 import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
-
-const SUPPORTED_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.mts', '.cts',
-  '.js', '.jsx', '.mjs', '.cjs',
-  '.py',
-  '.php',
-  '.rs',
-  '.go',
-  '.java',
-  '.rb',
-  '.vue', '.svelte'
-]);
-
-const SKIP_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'out', '.next', 'coverage',
-  '.turbo', 'vendor', '__pycache__', 'target', 'venv', '.venv'
-]);
-const SKIP_FILE_PATTERNS = [/\.min\.(js|css)$/, /\.bundle\./, /\.test\./, /\.spec\./, /\.d\.ts$/];
+import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedSymbolName, pruneCodeIndex } from './supervibe-index-policy.mjs';
+import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
 
@@ -224,7 +208,8 @@ export class CodeStore {
     const DatabaseSync = await loadNodeSqliteDatabaseSync('Code RAG and code graph');
     this.db = new DatabaseSync(this.dbPath);
     // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual code:index)
-    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
+    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;');
+    applyCodeDbMigrations(this.db, { dbPath: this.dbPath });
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS code_files (
         path TEXT PRIMARY KEY,
@@ -322,9 +307,9 @@ export class CodeStore {
 
   /** Index a single file. Skips if hash unchanged (idempotent). */
   async indexFile(absPath) {
-    const lang = detectLanguage(absPath);
-    if (!lang) return { skipped: 'unsupported-language' };
-
+    const policy = classifyIndexPath(absPath, { rootDir: this.projectRoot });
+    if (!policy.included) return { skipped: policy.reason };
+    const lang = policy.language || detectLanguage(absPath);
     const relPath = this.toRel(absPath);
     let content;
     try { content = await readFile(absPath, 'utf8'); }
@@ -548,38 +533,26 @@ export class CodeStore {
 
   /** Walk project directory, index all supported files. */
   async indexAll(rootDir) {
-    const counts = { indexed: 0, skipped: 0, errors: 0 };
-    const queue = [rootDir];
-    while (queue.length > 0) {
-      const dir = queue.shift();
-      let entries;
-      try { entries = await readdir(dir, { withFileTypes: true }); }
-      catch { continue; }
-      for (const e of entries) {
-        if (e.name.startsWith('.') && e.name !== '.') continue;
-        const full = join(dir, e.name);
-        if (e.isDirectory()) {
-          if (SKIP_DIRS.has(e.name)) continue;
-          queue.push(full);
-        } else if (e.isFile()) {
-          const dotIdx = e.name.lastIndexOf('.');
-          if (dotIdx < 0) continue;
-          const ext = e.name.slice(dotIdx).toLowerCase();
-          if (!SUPPORTED_EXTENSIONS.has(ext)) continue;
-          if (SKIP_FILE_PATTERNS.some(p => p.test(e.name))) continue;
-          try {
-            const result = await this.indexFile(full);
-            if (result.indexed) counts.indexed++;
-            else counts.skipped++;
-          } catch {
-            counts.errors++;
-          }
-        }
+    const inventory = await discoverSourceFiles(rootDir);
+    const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0 };
+    for (const file of inventory.files) {
+      try {
+        const result = await this.indexFile(file.absPath);
+        if (result.indexed) counts.indexed++;
+        else counts.skipped++;
+      } catch {
+        counts.errors++;
       }
     }
+    const prune = await this.pruneToInventory(inventory, rootDir);
+    counts.pruned = prune.removed;
     // Phase D: resolve cross-file edges after full pass
     counts.edgesResolved = this.resolveAllEdges();
     return counts;
+  }
+
+  async pruneToInventory(inventory, rootDir = this.projectRoot) {
+    return pruneCodeIndex(this, inventory, rootDir);
   }
 
   /** Index a specific list of absolute file paths (lazy mode). */
@@ -638,11 +611,55 @@ export class CodeStore {
     }));
   }
 
+  getGraphHealthMetrics({ topSymbolLimit = 30 } = {}) {
+    const totalFiles = this.db.prepare('SELECT COUNT(*) AS n FROM code_files').get().n;
+    const filesWithSymbols = this.db.prepare('SELECT COUNT(DISTINCT path) AS n FROM code_symbols').get().n;
+    const indexedPaths = this.db.prepare('SELECT path FROM code_files').all().map((row) => row.path);
+    const generatedIndexedFiles = indexedPaths.filter(isGeneratedPath).length;
+    const totalEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges').get().n;
+    const resolvedEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges WHERE to_id IS NOT NULL').get().n;
+    const topSymbols = this.db.prepare(`
+      SELECT s.name AS name, COUNT(DISTINCT e.rowid) + COUNT(DISTINCT inbound.rowid) AS degree
+      FROM code_symbols s
+      LEFT JOIN code_edges e ON e.from_id = s.id
+      LEFT JOIN code_edges inbound ON inbound.to_id = s.id
+      GROUP BY s.id
+      ORDER BY degree DESC, s.name ASC
+      LIMIT ?
+    `).all(topSymbolLimit).map((row) => row.name);
+    const minifiedTopSymbols = [...new Set(topSymbols.filter(looksMinifiedSymbolName))];
+
+    return {
+      symbolNameQuality: {
+        topSymbols,
+        minifiedTopSymbols,
+        minifiedTopSymbolRatio: topSymbols.length === 0 ? 0 : minifiedTopSymbols.length / topSymbols.length,
+      },
+      sourceFileSymbolCoverage: {
+        files: totalFiles,
+        filesWithSymbols,
+        generatedIndexedFiles,
+        coverage: totalFiles === 0 ? 1 : filesWithSymbols / totalFiles,
+      },
+      unresolvedImportRate: {
+        unresolved: Math.max(0, totalEdges - resolvedEdges),
+        total: totalEdges,
+        rate: totalEdges === 0 ? 0 : (totalEdges - resolvedEdges) / totalEdges,
+      },
+      crossResolvedEdges: {
+        resolved: resolvedEdges,
+        total: totalEdges,
+        rate: totalEdges === 0 ? 1 : resolvedEdges / totalEdges,
+      },
+    };
+  }
+
   /** Hybrid search: FTS5 keyword + semantic cosine (max-over-chunks per file) → RRF. */
-  async search({ query, language = null, kind = null, limit = 10, semantic = true } = {}) {
+  async search({ query, language = null, kind = null, limit = 10, semantic = true, queryVector = null } = {}) {
     if (!query || !query.trim()) return [];
 
-    const escapedQuery = query.trim().split(/\s+/).map(t => '"' + t.replace(/"/g, '""') + '"').join(' ');
+    const escapedTerms = query.trim().split(/\s+/).map(t => '"' + t.replace(/"/g, '""') + '"');
+    const escapedQuery = escapedTerms.join(' ');
     let sql = `
       SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
              cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
@@ -659,42 +676,110 @@ export class CodeStore {
     sql += ' ORDER BY bm25 LIMIT ?';
     params.push(limit * 3);
 
+    const runFts = (ftsQuery) => this.db.prepare(sql).all(ftsQuery, ...params.slice(1));
     let rows;
-    try { rows = this.db.prepare(sql).all(...params); }
+    let ftsMode = 'fts';
+    try { rows = runFts(params[0]); }
     catch { rows = []; }
+    if (rows.length === 0 && escapedTerms.length > 1) {
+      try {
+        rows = runFts(escapedTerms.join(' OR '));
+        ftsMode = rows.length > 0 ? 'fts-relaxed' : ftsMode;
+      } catch {
+        rows = [];
+      }
+    }
 
-    if (!semantic || !this.useEmbeddings || rows.length === 0) {
+    if (!semantic || !this.useEmbeddings) {
+      for (const r of rows) {
+        r.retrievalMode = ftsMode;
+        r.score = -Math.abs(r.bm25 || 0);
+      }
       return this._aggregateByFile(rows, limit);
     }
 
     let queryVec;
-    try { queryVec = await embed(query, 'query'); }
+    try { queryVec = queryVector || await embed(query, 'query'); }
     catch { return this._aggregateByFile(rows, limit); }
 
-    for (const r of rows) {
+    const k = 60;
+    const semanticRows = this._loadSemanticCandidates({ language, kind, limit: Math.max(limit * 50, 200) });
+    for (const r of semanticRows) {
       r.semanticScore = r.embedding ? cosineSimilarity(queryVec, bufferToVector(r.embedding)) : 0;
     }
+    semanticRows.sort((a, b) => b.semanticScore - a.semanticScore);
 
-    const k = 60;
+    if (rows.length === 0) {
+      return this._aggregateByFile(
+        semanticRows
+          .filter((r) => r.semanticScore > 0)
+          .slice(0, Math.max(limit * 3, limit))
+          .map((r, index) => ({
+            ...r,
+            score: 1 / (k + index + 1),
+            retrievalMode: 'semantic',
+          })),
+        limit
+      );
+    }
+
     const bm25Sorted = [...rows].sort((a, b) => Math.abs(a.bm25) - Math.abs(b.bm25));
-    const semSorted = [...rows].sort((a, b) => b.semanticScore - a.semanticScore);
     const bm25Ranks = new Map(bm25Sorted.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
-    const semRanks = new Map(semSorted.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
+    const semRanks = new Map(semanticRows.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
+    const semanticByKey = new Map(semanticRows.map((r) => [`${r.path}#${r.chunk_idx}`, r]));
+    const combined = new Map();
 
     for (const r of rows) {
       const key = `${r.path}#${r.chunk_idx}`;
-      r.score = 1 / (k + (bm25Ranks.get(key) || 1000)) + 1 / (k + (semRanks.get(key) || 1000));
+      const semanticRow = semanticByKey.get(key);
+      const semanticScore = semanticRow?.semanticScore || (r.embedding ? cosineSimilarity(queryVec, bufferToVector(r.embedding)) : 0);
+      combined.set(key, {
+        ...r,
+        semanticScore,
+        score: 1 / (k + (bm25Ranks.get(key) || 1000)) + 1 / (k + (semRanks.get(key) || 1000)),
+        retrievalMode: semanticScore > 0 ? 'hybrid' : ftsMode,
+      });
     }
-    rows.sort((a, b) => b.score - a.score);
-    return this._aggregateByFile(rows, limit);
+
+    for (const [index, r] of semanticRows.slice(0, Math.max(limit * 3, limit)).entries()) {
+      const key = `${r.path}#${r.chunk_idx}`;
+      if (combined.has(key)) continue;
+      combined.set(key, {
+        ...r,
+        score: 1 / (k + index + 1),
+        retrievalMode: 'semantic',
+      });
+    }
+
+    const mergedRows = [...combined.values()].sort((a, b) => b.score - a.score);
+    return this._aggregateByFile(mergedRows, limit);
+  }
+
+  _loadSemanticCandidates({ language = null, kind = null, limit = 500 } = {}) {
+    let sql = `
+      SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
+             cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
+             cc.start_line AS start_line, cc.end_line AS end_line, cc.embedding AS embedding,
+             0 AS bm25
+      FROM code_chunks cc
+      JOIN code_files cf ON cf.path = cc.path
+      WHERE cc.embedding IS NOT NULL
+    `;
+    const params = [];
+    if (language) { sql += ' AND cf.language = ?'; params.push(language); }
+    if (kind) { sql += ' AND cc.kind = ?'; params.push(kind); }
+    sql += ' LIMIT ?';
+    params.push(limit);
+    try { return this.db.prepare(sql).all(...params); }
+    catch { return []; }
   }
 
   _aggregateByFile(rows, limit) {
     const byFile = new Map();
     for (const r of rows) {
-      const score = r.score || -Math.abs(r.bm25 || 0);
+      const score = r.score ?? -Math.abs(r.bm25 || 0);
       const existing = byFile.get(r.path);
-      const existingScore = existing ? (existing.score || -Math.abs(existing.bm25 || 0)) : -Infinity;
+      const existingScore = existing ? (existing.score ?? -Math.abs(existing.bm25 || 0)) : -Infinity;
       if (!existing || score > existingScore) {
         byFile.set(r.path, r);
       }
@@ -710,7 +795,14 @@ export class CodeStore {
       snippet: r.chunk_text.slice(0, 400),
       score: r.score || 0,
       semantic: r.semanticScore || 0,
-      bm25: Math.abs(r.bm25 || 0)
+      bm25: Math.abs(r.bm25 || 0),
+      retrievalMode: r.retrievalMode || 'fts',
+      generatedSource: isGeneratedPath(r.path),
+      scoreComponents: {
+        bm25: Math.abs(r.bm25 || 0),
+        semantic: r.semanticScore || 0,
+        rrf: r.score || 0,
+      },
     }));
   }
 }

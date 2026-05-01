@@ -2,10 +2,13 @@
 // Memory query CLI: invoked by supervibe:project-memory skill.
 // Usage:
 //   node scripts/search-memory.mjs --query "billing idempotency" --tags billing,redis --type decision --limit 5
+//   node scripts/supervibe-context-pack.mjs --query "billing idempotency" --json  # coordinated pack
 //
 // Output: JSON array of matching entries with bm25 score.
 
 import { searchMemory } from './lib/memory-store.mjs';
+import { annotateMemorySearchResults, curateProjectMemory } from './lib/supervibe-memory-curator.mjs';
+import { buildProjectKnowledgeGraph, formatKnowledgeGraphSearch } from './lib/supervibe-project-knowledge-graph.mjs';
 import { parseArgs } from 'node:util';
 
 const PROJECT_ROOT = process.cwd();
@@ -16,8 +19,12 @@ const { values } = parseArgs({
     tags: { type: 'string', short: 't', default: '' },
     type: { type: 'string', default: '' },
     limit: { type: 'string', short: 'n', default: '5' },
-    'min-confidence': { type: 'string', default: '0' }
+    'min-confidence': { type: 'string', default: '0' },
+    graph: { type: 'boolean', default: false },
+    'include-history': { type: 'boolean', default: false },
+    'include-superseded': { type: 'boolean', default: false }
   },
+  allowPositionals: true,
   strict: false
 });
 
@@ -30,7 +37,16 @@ const opts = {
 };
 
 try {
-  const results = await searchMemory(PROJECT_ROOT, opts);
+  const curation = await curateProjectMemory({ rootDir: PROJECT_ROOT, rebuildSqlite: false });
+  const results = annotateMemorySearchResults(await searchMemory(PROJECT_ROOT, opts), curation);
+  if (values.graph) {
+    const graph = await buildProjectKnowledgeGraph({ rootDir: PROJECT_ROOT, curation });
+    console.log(formatKnowledgeGraphSearch(graph, {
+      query: opts.query,
+      includeHistory: Boolean(values['include-history'] || values['include-superseded']),
+    }));
+    if (results.length > 0) console.log("");
+  }
   if (results.length === 0) {
     console.log('No memory entries matched.');
     if (opts.query || opts.tags.length) {
@@ -45,6 +61,8 @@ try {
     console.log(`${i + 1}. [${r.type}] ${r.date || ''} — ${r.id}`);
     console.log(`   Tags: ${r.tags.join(', ')}`);
     console.log(`   Confidence: ${r.confidence}/10`);
+    console.log(`   Freshness: ${r.freshness || 'unknown'}${r.stale ? ' (stale)' : ''}`);
+    if (r.contradictionIds?.length) console.log(`   Contradictions: ${r.contradictionIds.join(', ')}`);
     console.log(`   Score: ${r.score.toFixed(2)} (lower=better in BM25)`);
     console.log(`   File: ${r.file}`);
     console.log(`   Summary: ${r.summary.slice(0, 200)}${r.summary.length > 200 ? '...' : ''}`);

@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { buildContextPack } from "./supervibe-context-pack.mjs";
+import { evaluateContextQualityCases, formatContextQualityReport } from "./supervibe-context-quality-eval.mjs";
 
 export async function runContextPackEval({
   rootDir = process.cwd(),
@@ -11,6 +12,20 @@ export async function runContextPackEval({
   now = new Date().toISOString(),
 } = {}) {
   const loadedCases = caseFile ? await readCases(resolve(rootDir, caseFile)) : cases;
+  if ((loadedCases || []).some((testCase) => testCase?.quality) && !(loadedCases || []).some((testCase) => testCase?.graphPath)) {
+    const qualityReport = evaluateContextQualityCases(loadedCases);
+    const report = {
+      ...qualityReport,
+      generatedAt: now,
+    };
+    if (out) {
+      const outPath = resolve(rootDir, out);
+      await mkdir(dirname(outPath), { recursive: true });
+      await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+      report.outPath = outPath;
+    }
+    return report;
+  }
   const results = [];
   for (const testCase of loadedCases || []) {
     results.push(await evaluateContextCase({ rootDir, testCase, now }));
@@ -67,6 +82,7 @@ export async function evaluateContextCase({ rootDir = process.cwd(), testCase = 
 }
 
 export function formatContextEvalReport(report = {}) {
+  if (report.kind === "context-quality") return formatContextQualityReport(report);
   return [
     "SUPERVIBE_CONTEXT_EVAL",
     `PASS: ${Boolean(report.pass)}`,

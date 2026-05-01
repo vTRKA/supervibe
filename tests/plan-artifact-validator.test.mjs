@@ -44,6 +44,34 @@ tests/billing/export-service.test.ts
 
 Off-path parallel candidates: T4 || T5
 
+## Scope Safety Gate
+
+- Approved scope baseline: CSV export service and route.
+- Deferred scope: async queue remains deferred until export exceeds 30s with evidence.
+- Rejected scope: PDF export rejected because it adds support and QA cost without current evidence.
+- Scope expansion tradeoff: any new export format removes another item or is re-estimated.
+
+## Delivery Strategy
+
+- SDLC flow: discovery -> spec -> plan -> review -> implementation -> verification -> release.
+- MVP path: ship CSV export behind an internal gate before broad production exposure.
+- Phase plan: foundation, behavior, hardening, release.
+- Production target: export is supportable, observable, documented, and reversible.
+
+## Production Readiness
+
+- Test: unit, integration, authorization, and CSV injection tests pass.
+- Security: role checks and PII boundaries reviewed.
+- Observability: export duration and failure metrics are emitted.
+- Rollback: feature flag and route removal are documented.
+- Release: changelog and operator notes are ready.
+
+## Final 10/10 Acceptance Gate
+
+- 10/10 acceptance requires every requirement mapped to a green verification.
+- Verification commands are rerun after the final task.
+- No open blockers remain before production release.
+
 ## Task T1: Export service
 
 **Files:**
@@ -108,6 +136,18 @@ test('validatePlanArtifact catches missing readiness fields', () => {
   const issues = validatePlanArtifact(GOOD_PLAN.replace('## Critical Path', '## Dependencies').replace('**Rollback:** `git revert <sha>`', ''));
   assert.ok(issues.some(issue => issue.includes('Critical Path')));
   assert.ok(issues.some(issue => issue.includes('rollback')));
+});
+
+test('validatePlanArtifact requires production SDLC and final 10/10 gate', () => {
+  const issues = validatePlanArtifact(
+    GOOD_PLAN
+      .replace('## Scope Safety Gate', '## Scope Notes')
+      .replace('## Delivery Strategy', '## Delivery Notes')
+      .replace('## Final 10/10 Acceptance Gate', '## Final Gate')
+  );
+  assert.ok(issues.some(issue => issue.includes('Scope Safety Gate')));
+  assert.ok(issues.some(issue => issue.includes('Delivery Strategy')));
+  assert.ok(issues.some(issue => issue.includes('Final 10/10 Acceptance Gate')));
 });
 
 test('validatePlanArtifact rejects placeholder wording', () => {

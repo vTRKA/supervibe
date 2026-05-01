@@ -11,8 +11,9 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 | Form | Behavior |
 | --- | --- |
 | `/supervibe-preview` | No args — list all currently running preview servers (port, directory, PID, uptime). |
-| `/supervibe-preview <dir>` | Start a preview server for `<dir>` on the next available port. |
-| `/supervibe-preview <dir> --port N` | Start a preview server for `<dir>` on a specific port `N`. |
+| `/supervibe-preview <dir> --daemon` | Start a silent background preview server for `<dir>` on the next available port. |
+| `/supervibe-preview <dir> --foreground` | Start a foreground preview server for debugging. |
+| `/supervibe-preview <dir> --port N --daemon` | Start a silent background preview server for `<dir>` on a specific port `N`. |
 | `/supervibe-preview --kill <port>` | Kill the preview server bound to `<port>`. |
 | `/supervibe-preview --kill-all` | Kill every running preview server tracked by this session. |
 
@@ -21,8 +22,9 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 1. Parse the user's args into one of the five usage forms above.
 2. Map the parsed form to flags for `scripts/preview-server.mjs`:
    - no args -> `node scripts/preview-server.mjs --list`
-   - `<dir>` -> `node scripts/preview-server.mjs --serve <dir>`
-   - `<dir> --port N` -> `node scripts/preview-server.mjs --serve <dir> --port N`
+   - `<dir> --daemon` -> `node scripts/preview-server.mjs --root <dir> --daemon`
+   - `<dir> --foreground` -> `node scripts/preview-server.mjs --root <dir> --foreground`
+   - `<dir> --port N --daemon` -> `node scripts/preview-server.mjs --root <dir> --port N --daemon`
    - `--kill <port>` -> `node scripts/preview-server.mjs --kill <port>`
    - `--kill-all` -> `node scripts/preview-server.mjs --kill-all`
 3. Run the script as a child process and capture stdout/stderr.
@@ -34,6 +36,7 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 
 ## Notes
 
-- Auto-cleanup on session end: tracked PIDs are terminated when the Claude Code session exits, so leftover servers don't pile up.
+- Background mode is silent on Windows: `--daemon` uses a detached hidden process, writes logs under `.supervibe/servers/`, and returns the URL plus PID.
+- Foreground mode is for debugging: `--foreground` keeps server output attached to the terminal.
 - Hot-reload by default: file changes inside the served directory trigger a browser refresh; pass `--no-reload` to disable.
 - `127.0.0.1` only: the server binds to loopback (never `0.0.0.0`), so previews are not reachable from other machines on the network.

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { getParser, getLanguage, isLanguageSupported } from './grammar-loader.mjs';
 import { extractScriptBlocks, extractTemplateRefs } from './sfc-extractor.mjs';
+import { isGeneratedPath } from './supervibe-index-policy.mjs';
 
 const PLUGIN_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const QUERY_DIR = join(PLUGIN_ROOT, 'grammars', 'queries');
@@ -107,6 +108,10 @@ function isLikelyCallableBinding(name) {
  *   Edge:   {fromId, toName, toId?, kind}  // toId resolved later (cross-file)
  */
 export async function extractGraph(code, filePath) {
+  if (isGeneratedPath(filePath)) {
+    return { symbols: [], edges: [] };
+  }
+
   // SFC (.vue/.svelte): extract script blocks, parse each with TS/JS grammar,
   // adjust line numbers + add template-ref edges. See sfc-extractor.mjs.
   if (isSfcFile(filePath)) {

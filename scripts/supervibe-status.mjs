@@ -15,6 +15,7 @@ import { defaultDelegatedInboxPath, formatDelegatedInbox, readDelegatedInbox } f
 import { buildRunDashboardModel, writeRunDashboardHtml } from './lib/supervibe-run-dashboard.mjs';
 import { createIntegrationCatalog, formatIntegrationCatalog, summarizeIntegrationCatalog } from './lib/supervibe-external-integration-catalog.mjs';
 import { createWorkItemIndex } from './lib/supervibe-work-item-query.mjs';
+import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth, formatIndexHealthGate } from './lib/supervibe-index-health.mjs';
 import { applyStructuredWorkItemQuery, formatStructuredWorkItemQueryResult, parseWorkItemQuery } from './lib/supervibe-work-item-query-language.mjs';
 import { applySavedView, defaultSavedViewsPath, formatSavedViewResult, listSavedViews, readSavedViewStore, saveCustomView, writeSavedViewStore } from './lib/supervibe-work-item-saved-views.mjs';
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown, writeWorkReportMarkdown } from './lib/supervibe-work-item-sla-reports.mjs';
@@ -27,6 +28,18 @@ import { formatSemanticAnchorReport, parseSemanticAnchors } from './lib/supervib
 import { formatAssignmentExplanation } from './lib/supervibe-assignment-explainer.mjs';
 import { buildExecutionWaves, formatWaveStatus } from './lib/supervibe-wave-controller.mjs';
 import { buildGcHints, formatGcHints } from './lib/supervibe-gc-hints.mjs';
+import { evaluateIntentGoldenCorpus, formatIntentGoldenEvaluation } from './lib/supervibe-trigger-router.mjs';
+import { buildCapabilityRegistry, formatCapabilityRegistryReport, validateCapabilityRegistry } from './lib/supervibe-capability-registry.mjs';
+import { formatHostDiagnostics, selectHostAdapter } from './lib/supervibe-host-detector.mjs';
+import { buildGenesisAgentRecommendation, buildGenesisDryRunReport, discoverGenesisStackFingerprint, formatGenesisDryRunReport } from './lib/supervibe-agent-recommendation.mjs';
+import { formatWatcherDiagnostics, readWatcherDiagnostics } from './lib/supervibe-index-watcher.mjs';
+import { formatPrivacyPolicyDiagnostics, summarizePrivacyPolicy } from './lib/supervibe-privacy-policy.mjs';
+import { auditEvidenceLedger, formatEvidenceLedgerStatus } from './lib/supervibe-evidence-ledger.mjs';
+import { checkpointDiagnostics, formatCheckpointDiagnostics } from './lib/supervibe-agent-checkpoints.mjs';
+import { buildOrchestratedContextPackFromProject } from './lib/supervibe-context-orchestrator.mjs';
+import { buildUserOutcomeReportFromContextPack, formatUserOutcomeReport } from './lib/supervibe-user-outcome-metrics.mjs';
+import { buildPerformanceSloReport, formatPerformanceSloReport } from './lib/supervibe-performance-slo.mjs';
+import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from './lib/supervibe-workspace-isolation.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
@@ -56,6 +69,142 @@ async function main() {
     });
     console.log(result.output);
     if (!result.ok) process.exitCode = result.exitCode;
+    return;
+  }
+
+  if (args['intent-diagnostics']) {
+    const fixturePath = args.file || join(PROJECT_ROOT, 'tests', 'fixtures', 'intent-router', 'golden-corpus.json');
+    const corpus = JSON.parse(readFileSync(fixturePath, 'utf8'));
+    const evaluation = evaluateIntentGoldenCorpus(corpus);
+    if (args.json) console.log(renderTerminalOutput({ data: evaluation, json: true }, { json: true }));
+    else console.log(formatIntentGoldenEvaluation(evaluation));
+    if (!evaluation.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args.capabilities) {
+    const registry = buildCapabilityRegistry({ rootDir: PROJECT_ROOT });
+    const validation = validateCapabilityRegistry(registry);
+    if (args.json) console.log(renderTerminalOutput({ data: { registry, validation }, json: true }, { json: true }));
+    else console.log(formatCapabilityRegistryReport(registry, validation));
+    if (!validation.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['host-diagnostics']) {
+    const diagnostics = selectHostAdapter({
+      rootDir: PROJECT_ROOT,
+      env: process.env,
+    });
+    if (args.json) console.log(renderTerminalOutput({ data: diagnostics, json: true }, { json: true }));
+    else console.log(formatHostDiagnostics(diagnostics));
+    return;
+  }
+
+  if (args['genesis-dry-run']) {
+    const targetRoot = args['genesis-dry-run'];
+    const report = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot: PROJECT_ROOT,
+      env: process.env,
+      selectedProfile: args.profile || 'minimal',
+      addOns: args.addons ? String(args.addons).split(',').filter(Boolean) : [],
+    });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatGenesisDryRunReport(report));
+    return;
+  }
+
+  if (args['stack-pack-diagnostics']) {
+    const targetRoot = args.target || PROJECT_ROOT;
+    const packPath = join(PROJECT_ROOT, 'stack-packs', 'tauri-react-rust-postgres', 'pack.yaml');
+    const fingerprint = discoverGenesisStackFingerprint({ rootDir: targetRoot });
+    const recommendation = buildGenesisAgentRecommendation({
+      rootDir: PROJECT_ROOT,
+      fingerprint,
+      selectedProfile: args.profile || 'minimal',
+      addOns: [],
+    });
+    const missing = recommendation.missingSpecialists.map((entry) => entry.agentId);
+    const output = [
+      'SUPERVIBE_STACK_PACK_DIAGNOSTICS',
+      `PACK: tauri-react-rust-postgres`,
+      `PACK_FILE: ${existsSync(packPath) ? 'present' : 'missing'}`,
+      `TARGET: ${targetRoot}`,
+      `STACK: ${fingerprint.tags.join(', ') || 'unknown'}`,
+      `SELECTED_AGENTS: ${recommendation.selectedAgents.join(', ') || 'none'}`,
+      `MISSING_SPECIALISTS: ${missing.join(', ') || 'none'}`,
+    ].join('\n');
+    if (args.json) console.log(renderTerminalOutput({ data: { packPath, packExists: existsSync(packPath), fingerprint, recommendation }, json: true }, { json: true }));
+    else console.log(output);
+    if (!existsSync(packPath) || missing.length > 0) process.exitCode = 2;
+    return;
+  }
+
+  if (args['watcher-diagnostics']) {
+    const diagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
+    if (args.json) console.log(renderTerminalOutput({ data: diagnostics, json: true }, { json: true }));
+    else console.log(formatWatcherDiagnostics(diagnostics));
+    return;
+  }
+
+  if (args['index-policy-diagnostics']) {
+    const summary = summarizePrivacyPolicy(['.env', '.env.local', 'backup.rar', 'assets/logo.png', 'config/local.json', 'dist/app.js', 'src/main.ts']);
+    if (args.json) console.log(renderTerminalOutput({ data: summary, json: true }, { json: true }));
+    else console.log(formatPrivacyPolicyDiagnostics(summary));
+    return;
+  }
+
+  if (args['evidence-ledger']) {
+    const report = await auditEvidenceLedger({ rootDir: PROJECT_ROOT });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatEvidenceLedgerStatus(report));
+    if (!report.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['checkpoint-diagnostics']) {
+    const report = await checkpointDiagnostics({ rootDir: PROJECT_ROOT });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatCheckpointDiagnostics(report));
+    if (!report.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['user-outcomes']) {
+    const pack = await buildOrchestratedContextPackFromProject({ rootDir: PROJECT_ROOT, query: args.query || "status user outcome metrics" });
+    const report = buildUserOutcomeReportFromContextPack(pack);
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatUserOutcomeReport(report));
+    if (!report.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['performance-slo'] && args['workspace-isolation']) {
+    const performanceSlo = buildPerformanceSloReport({ rootDir: PROJECT_ROOT });
+    const workspaceIsolation = buildWorkspaceIsolationReport({ rootDir: PROJECT_ROOT });
+    if (args.json) {
+      console.log(renderTerminalOutput({ data: { performanceSlo, workspaceIsolation }, json: true }, { json: true }));
+    } else {
+      console.log([formatPerformanceSloReport(performanceSlo), formatWorkspaceIsolationReport(workspaceIsolation)].join("\n\n"));
+    }
+    if (!performanceSlo.pass || !workspaceIsolation.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['performance-slo']) {
+    const report = buildPerformanceSloReport({ rootDir: PROJECT_ROOT });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatPerformanceSloReport(report));
+    if (!report.pass) process.exitCode = 2;
+    return;
+  }
+
+  if (args['workspace-isolation']) {
+    const report = buildWorkspaceIsolationReport({ rootDir: PROJECT_ROOT });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatWorkspaceIsolationReport(report));
+    if (!report.pass) process.exitCode = 2;
     return;
   }
 
@@ -242,6 +391,8 @@ async function main() {
     await store.init();
     const s = store.stats();
     const health = store.getGrammarHealth();
+    const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
+    const indexGate = evaluateIndexHealthGate(indexHealth);
     store.close();
 
     const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
@@ -272,6 +423,15 @@ async function main() {
     if (brokenState.pointers.length > 0) {
       console.log(color(`⚠  Grammars are LFS pointers (need 'git lfs pull'): ${brokenState.pointers.join(', ')}`, 'yellow'));
       console.log(color(`   Affected languages will skip graph extraction (semantic RAG still works)`, 'dim'));
+    }
+    console.log();
+    console.log(color(formatIndexHealthGate(indexGate), indexGate.ready ? 'green' : 'yellow'));
+    if (args['index-health']) {
+      console.log();
+      console.log(color(formatIndexHealth(indexHealth), indexHealth.ok ? 'green' : 'yellow'));
+    }
+    if (args['strict-index-health'] && !indexGate.ready) {
+      process.exitCode = 2;
     }
   }
 
@@ -396,7 +556,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'no-gc-hints']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

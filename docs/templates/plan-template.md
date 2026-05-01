@@ -49,6 +49,47 @@ Off-path: T2 || T4; T6 || T7
 
 ---
 
+## Scope Safety Gate
+
+- **Approved scope baseline:** <items implemented by this plan>.
+- **Deferred scope:** <valuable but not required now; include validation trigger>.
+- **Rejected scope:** <harmful or unnecessary now; include rationale>.
+- **Scope expansion rule:** any new functionality requires an explicit scope-change note with user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout, and rollback.
+- **Execution stop condition:** if a task introduces functionality not mapped to the approved scope baseline, stop and re-plan instead of silently building it.
+
+---
+
+## Delivery Strategy
+
+- **SDLC flow:** discovery -> spec -> plan -> review -> implementation -> verification -> release -> post-release learning.
+- **MVP path:** <smallest production-safe slice, beta/internal rollout, production rollout>.
+- **Phase model:** <foundation, feature, hardening, release, operations>.
+- **Launch model:** <feature flag / cohort / staged rollout / one-shot migration>.
+- **Production target:** <support, observability, rollback, documentation, ownership>.
+
+---
+
+## Production Readiness
+
+- **Test:** <unit / integration / e2e / smoke / contract coverage>.
+- **Security/privacy:** <threat model, permissions, data handling, secret boundaries>.
+- **Performance:** <SLOs, load shape, budget, regression threshold>.
+- **Observability:** <logs, metrics, traces, alerts, dashboards>.
+- **Rollback:** <feature flag, migration rollback, restore path, owner>.
+- **Release:** <docs, changelog, migration notes, runbook, support handoff>.
+
+---
+
+## Final 10/10 Acceptance Gate
+
+- [ ] 10/10 acceptance: every requirement is implemented and verified.
+- [ ] Verification: all task, phase, and release commands pass with captured output.
+- [ ] No open blockers: unresolved risks are either closed or explicitly accepted by the user.
+- [ ] Production readiness: security, performance, observability, rollback, docs, and support gates pass.
+- [ ] Plan reread: compare final implementation against this plan and fix deviations before handoff.
+
+---
+
 ## Task N: <Component>
 
 **Files:**

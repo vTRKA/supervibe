@@ -8,6 +8,10 @@ description: >-
 
 # /supervibe-status
 
+Status outputs are covered by scenario evals for broken RAG/index repair. When
+index health is requested, include the gate result, repair command and explicit
+next action rather than only raw counts.
+
 Shows local index health, preview servers, MCP discovery, task tracker mapping,
 read-only work-item watch snapshots, delegated inbox blockers, agent telemetry,
 dashboard output, and external integration readiness.

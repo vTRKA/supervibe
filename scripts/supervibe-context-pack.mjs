@@ -2,6 +2,9 @@
 
 import { writeFile } from "node:fs/promises";
 import { buildContextPack } from "./lib/supervibe-context-pack.mjs";
+import { buildOrchestratedContextPackFromProject, formatContextSourceDiagnostics } from "./lib/supervibe-context-orchestrator.mjs";
+import { buildUserOutcomeReportFromContextPack, formatUserOutcomeReport } from "./lib/supervibe-user-outcome-metrics.mjs";
+import { buildPerformanceSloReport, formatPerformanceSloReport } from "./lib/supervibe-performance-slo.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -18,7 +21,7 @@ if (args.help) {
 }
 
 try {
-  const pack = await buildContextPack({
+  const pack = args.file ? await buildContextPack({
     rootDir: args.root || process.cwd(),
     graphPath: args.file,
     itemId: args.item || args["item-id"],
@@ -27,14 +30,30 @@ try {
     evidenceLimit: args["evidence-limit"] || 8,
     maxChars: args["max-chars"] || 12_000,
     now: args.now || new Date().toISOString(),
+  }) : await buildOrchestratedContextPackFromProject({
+    rootDir: args.root || process.cwd(),
+    query: args.query || "",
+    maxTokens: args["max-tokens"] || 4000,
   });
   if (args.out) {
-    await writeFile(args.out, pack.markdown, "utf8");
-    console.log(`SUPERVIBE_CONTEXT_PACK\nOUT: ${args.out}\nTOKENS: ${pack.summary.estimatedTokens}`);
+    await writeFile(args.out, pack.markdown || JSON.stringify(pack, null, 2), "utf8");
+    console.log(`SUPERVIBE_CONTEXT_PACK\nOUT: ${args.out}\nTOKENS: ${pack.summary?.estimatedTokens ?? pack.tokenBudget?.estimatedTokens ?? 0}`);
   } else if (args.json) {
     console.log(JSON.stringify(pack, null, 2));
+  } else if (args.explain) {
+    const outcome = buildUserOutcomeReportFromContextPack(pack);
+    const performance = buildPerformanceSloReport({ rootDir: args.root || process.cwd(), measurements: { tokenBudgetMax: pack.tokenBudget?.maxTokens || pack.summary?.estimatedTokens || 0 } });
+    console.log(pack.markdown || [
+      formatContextSourceDiagnostics(pack),
+      "",
+      formatUserOutcomeReport(outcome),
+      "",
+      formatPerformanceSloReport(performance),
+      "",
+      JSON.stringify({ confidence: pack.confidence, tokenBudget: pack.tokenBudget, repoMapBudget: pack.repoMapBudget }, null, 2),
+    ].join("\n"));
   } else {
-    console.log(pack.markdown);
+    console.log(pack.markdown || JSON.stringify(pack, null, 2));
   }
 } catch (err) {
   console.error(`SUPERVIBE_CONTEXT_PACK_ERROR: ${err.message}`);
@@ -47,6 +66,7 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--json") parsed.json = true;
+    else if (arg === "--explain") parsed.explain = true;
     else if (arg.startsWith("--")) {
       const key = arg.replace(/^--/, "");
       if (key.includes("=")) {

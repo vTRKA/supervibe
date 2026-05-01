@@ -24,6 +24,7 @@ WHEN executing a plan AND subagent dispatch is available AND plan has 5+ indepen
 2. Identify task dependencies (which tasks need others' output first)
 3. Group into waves: tasks within wave run in parallel; waves are sequential
 4. Read project's subagent type list to pick appropriate type per task
+5. Read `docs/references/scope-safety-standard.md`, apply the Scope Safety Gate, and preserve the plan's approved/deferred/rejected scope boundary
 
 ## Decision tree
 
@@ -49,11 +50,12 @@ Per task: which subagent type?
    - What files to touch
    - Verification command + expected output
    - Quality gate (≥9 on agent-output)
+   - Approved scope id and explicit instruction to reject or defer unapproved extras instead of implementing them
 4. **Dispatch wave** — parallel Agent tool calls in single message
 5. **Two-stage review per task**:
    - Stage 1: subagent self-reviews via attached `supervibe:verification` and `supervibe:confidence-scoring`
    - Stage 2: parent (this skill) reviews subagent output for scope respect, evidence completeness, regression safety
-6. **Reject if**: scope violation, missing evidence, regression introduced
+6. **Reject if**: scope violation, unapproved feature expansion, missing evidence, regression introduced
 7. **Re-dispatch with corrected brief** if rejected
 8. **After wave completes** — proceed to next wave
 9. **Heartbeat/status** - update the session registry after each wave and mark stale/cleanup-blocked sessions explicitly.
@@ -79,15 +81,18 @@ Final: combined deliverable + per-wave confidence score
 - DO NOT: re-dispatch with same brief (will produce same output)
 - DO NOT: dispatch work already owned by another active worktree session
 - DO NOT: let a worker review its own output or share an overlapping write set in the same wave
+- DO NOT: reward a worker for adding extra functionality that was not in the plan
 - ALWAYS: brief includes WHY the task matters + project conventions
 - ALWAYS: per-task verification before claiming wave done
 - ALWAYS: include stop/resume/status commands for long autonomous waves
 - ALWAYS: include assignment explanation and wave status in the handoff package
+- ALWAYS: require workers to explain rejected or deferred extras with concrete project harm and a safer alternative
 
 ## Verification
 
 - Every task has dispatch + Stage 1 + Stage 2 outputs
 - Failed tasks have new brief + re-dispatch evidence
+- Stage 2 review confirms no unapproved scope expansion shipped
 - Final deliverable passes overall agent-output rubric ≥9
 
 ## Related

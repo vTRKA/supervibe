@@ -51,6 +51,12 @@ We need billing CSV export.
 ## Out of scope
 - PDF export.
 
+## Scope Safety Gate
+| Candidate item | Decision | Evidence | Complexity cost | Tradeoff |
+|----------------|----------|----------|-----------------|----------|
+| CSV export | include | Finance support evidence and success metric | Low maintenance cost | Keep PDF deferred |
+| PDF export | reject | No evidence for current users | Adds layout, QA, and support risk | Won't ship in this scope |
+
 ## AI/data boundary
 | Boundary | Value | Source |
 |----------|-------|--------|
@@ -92,6 +98,19 @@ Admins need a reliable billing export path that avoids manual SQL.
 ### Non-goals
 - PDF export.
 
+## Product and SDLC fit
+- MVP path: ship synchronous export first, async only if measured need appears.
+- SDLC stage: discovery complete, ready for implementation planning, test design, release review, and production rollout.
+- Launch path: internal beta, finance validation, then production release.
+- Production bar: no raw PII leakage, auditable exports, measurable performance.
+
+## Scope Safety Gate
+| Candidate addition | Decision | Evidence | Complexity cost | Tradeoff |
+|--------------------|----------|----------|-----------------|----------|
+| Synchronous CSV export | include | Admin outcome and finance workflow metric | Low risk and easy rollback | PDF export stays deferred |
+| Async export queue | defer | No failing test or support evidence yet | Adds jobs, emails, storage, support risk | Promote only if 10k rows exceeds 30s |
+| PDF export | reject | No current user evidence | High maintenance and QA cost | Won't build until a paid workflow needs it |
+
 ## Options explored
 ### Option A: Synchronous export
 Simple controller endpoint.
@@ -121,6 +140,19 @@ weights set BEFORE scores
 ## Recommended option
 Choose A for first release.
 
+## Production readiness contract
+- Contract: request filters, CSV columns, authorization roles, and error envelope are explicit.
+- Data: only allowed billing fields are exported; raw secrets are never read.
+- Security: role checks and CSV injection escaping are required.
+- Observability: export count, duration, and error metrics are emitted.
+- Rollback: feature flag disables export and removes route from navigation.
+
+## Acceptance and 10/10 scorecard
+- Acceptance: selected rows export exactly once with the documented columns.
+- Verification: unit, integration, authorization, and CSV injection tests pass.
+- Release: changelog, docs, and rollback note are complete.
+- 10/10 gate: all acceptance criteria, production readiness items, and open blockers are closed.
+
 ## Open questions
 - Do we need async later?
 
@@ -146,6 +178,18 @@ test('validateBrainstormSpec flags weak decision artifacts', () => {
   const issues = validateBrainstormSpec(GOOD_BRAINSTORM.replace('weights set BEFORE scores', '').replace('- Kill if export exceeds 30s for 10k rows.', '- Kill if it feels slow.'));
   assert.ok(issues.some(issue => issue.includes('weights')));
   assert.ok(issues.some(issue => issue.includes('quantitative')));
+});
+
+test('validateBrainstormSpec requires production-grade SDLC and 10/10 gates', () => {
+  const issues = validateBrainstormSpec(
+    GOOD_BRAINSTORM
+      .replace('## Product and SDLC fit', '## Product notes')
+      .replace('## Scope Safety Gate', '## Scope Notes')
+      .replace('## Acceptance and 10/10 scorecard', '## Acceptance')
+  );
+  assert.ok(issues.some(issue => issue.includes('Product and SDLC fit')));
+  assert.ok(issues.some(issue => issue.includes('Scope Safety Gate')));
+  assert.ok(issues.some(issue => issue.includes('10/10')));
 });
 
 test('validateSpecArtifact auto-detects intake vs brainstorm', () => {

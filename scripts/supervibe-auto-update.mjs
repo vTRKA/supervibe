@@ -7,6 +7,7 @@
 // - SUPERVIBE_AUTO_UPDATE=check/off: force notify-only or disabled behavior
 
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   acquireAutoUpdateLock,
@@ -18,6 +19,12 @@ import {
   performUpstreamCheck,
   readUpgradeCache,
 } from "./lib/upgrade-check.mjs";
+import {
+  createUpgradeDryRun,
+  formatInstallerHealthReport,
+  formatUpgradeDryRun,
+  runInstallerHealthGate,
+} from "./lib/supervibe-installer-health.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
@@ -26,6 +33,21 @@ async function main() {
   if (args.status) {
     const state = await readAutoUpdateState(PLUGIN_ROOT);
     console.log(JSON.stringify(state || { status: "none" }, null, 2));
+    return;
+  }
+
+  if (args.dryRun) {
+    const cache = await readUpgradeCache(PLUGIN_ROOT);
+    const health = args.health ? runInstallerHealthGate({ rootDir: PLUGIN_ROOT }) : runInstallerHealthGate({ rootDir: PLUGIN_ROOT });
+    const dryRun = createUpgradeDryRun({
+      rootDir: PLUGIN_ROOT,
+      currentVersion: readPluginVersion(PLUGIN_ROOT),
+      targetVersion: cache?.latestTag || null,
+      plannedFiles: [],
+      health,
+    });
+    console.log(args.health ? `${formatInstallerHealthReport(health)}\n\n${formatUpgradeDryRun(dryRun)}` : formatUpgradeDryRun(dryRun));
+    if (args.health && !health.pass) process.exitCode = 2;
     return;
   }
 
@@ -100,6 +122,18 @@ async function runWithLock() {
     return;
   }
 
+  const health = runInstallerHealthGate({ rootDir: PLUGIN_ROOT });
+  if (!health.pass) {
+    await writeAutoUpdateState(PLUGIN_ROOT, {
+      status: "blocked-by-install-health",
+      at: new Date().toISOString(),
+      issues: health.issues,
+    });
+    if (!args.background) console.error(formatInstallerHealthReport(health));
+    process.exitCode = 2;
+    return;
+  }
+
   await writeAutoUpdateState(PLUGIN_ROOT, {
     status: "applying",
     at: new Date().toISOString(),
@@ -161,8 +195,18 @@ function parseArgs(argv) {
     else if (arg === "--refresh") parsed.refresh = true;
     else if (arg === "--plan") parsed.plan = true;
     else if (arg === "--status") parsed.status = true;
+    else if (arg === "--dry-run") parsed.dryRun = true;
+    else if (arg === "--health") parsed.health = true;
   }
   return parsed;
+}
+
+function readPluginVersion(root) {
+  try {
+    return JSON.parse(readFileSync(join(root, ".claude-plugin", "plugin.json"), "utf8")).version || null;
+  } catch {
+    return null;
+  }
 }
 
 main().catch(async (err) => {

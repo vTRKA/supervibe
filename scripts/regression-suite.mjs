@@ -13,6 +13,7 @@ import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { evaluateAgentRegressionChecks, formatAgentRegressionReport } from './lib/supervibe-agent-regression-checks.mjs';
 
 const TASKS_PATH = 'tests/fixtures/regression-suite/canonical-tasks.json';
 
@@ -33,7 +34,21 @@ async function dispatchManual(agent, task) {
 }
 
 async function main() {
-  const phase = process.argv[2];
+  const argv = process.argv.slice(2);
+  if (argv.length === 0 || argv.includes('--local')) {
+    const report = evaluateAgentRegressionChecks();
+    console.log(formatAgentRegressionReport(report));
+    if (!report.pass) process.exitCode = 1;
+    return;
+  }
+  if (argv.includes('--feedback-learning-smoke')) {
+    const { runFeedbackLearningSmoke, formatFeedbackLearningReport } = await import('./lib/supervibe-feedback-learning-loop.mjs');
+    const report = runFeedbackLearningSmoke();
+    console.log(formatFeedbackLearningReport(report));
+    if (!report.pass) process.exitCode = 1;
+    return;
+  }
+  const phase = argv[0];
   if (!phase) {
     console.error('Usage: node regression-suite.mjs <phase>');
     console.error('Examples: regression-suite.mjs baseline | regression-suite.mjs phase1 | regression-suite.mjs phase4');

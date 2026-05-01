@@ -21,6 +21,10 @@ last-verified: 2026-04-27
 - Agent reports `stale-context` blocker
 - User runs `/supervibe-audit`
 
+## Dialogue Mode
+
+Audit is read-only and non-interactive by default. No-prompt path: run the audit, print the structured report, and stop without mutation. If the user asks what to do next, ask one `Step 1/1` question with the recommended/default repair path first and include a stop option.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current artifact list
@@ -32,6 +36,8 @@ last-verified: 2026-04-27
 
 1. **Stale references** — for each artifact, grep paths/funcs/cmds it mentions; flag MISSING
 2. **Coverage gaps** — Glob source dirs vs registry; flag uncovered modules
+   - Run `node scripts/supervibe-status.mjs --index-health --no-gc-hints`; if `SUPERVIBE_INDEX_GATE READY: false`, flag stale or incomplete code index state with the failed gate codes.
+   - Run `node scripts/supervibe-status.mjs --index-policy-diagnostics` when privacy/indexing is in scope; report classes and paths, never secret values.
 3. **Weak artifacts** — agents <250 lines, skills <80 lines, rules <200 lines, missing Persona/Step 0/decision-tree
 4. **Agent-freshness** — every agent's `last-verified` >90d → STALE
 5. **Rule-freshness** — every rule's `last-verified` >90d → STALE
@@ -48,6 +54,10 @@ last-verified: 2026-04-27
 - ...
 ### Coverage Gaps (N)
 - ...
+### Code Index Health
+- READY: true|false
+- FAILED: source-coverage, generated-leakage, stale-rows, symbol-coverage, symbol-quality
+- Repair: `node scripts/build-code-index.mjs --root . --force --health`
 ### Weak Artifacts (N)
 - ...
 ### Stale Verifications (N)

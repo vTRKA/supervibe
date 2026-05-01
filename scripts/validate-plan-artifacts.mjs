@@ -92,7 +92,7 @@ export function validatePlanArtifact(markdown) {
     issues.push('plan format: missing hard constraints block');
   }
 
-  for (const section of ['AI/Data Boundary', 'File Structure', 'Critical Path', 'Self-Review', 'Execution Handoff']) {
+  for (const section of ['AI/Data Boundary', 'File Structure', 'Critical Path', 'Scope Safety Gate', 'Delivery Strategy', 'Production Readiness', 'Final 10/10 Acceptance Gate', 'Self-Review', 'Execution Handoff']) {
     if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
   }
 
@@ -112,6 +112,26 @@ export function validatePlanArtifact(markdown) {
   }
   if (!/(parallel|off-path|\|\|)/i.test(criticalPath)) {
     issues.push('critical path: expected parallel/off-path candidates');
+  }
+
+  const scopeSafety = sectionBody(markdown, 'Scope Safety Gate');
+  for (const term of ['approved', 'deferred', 'rejected', 'tradeoff']) {
+    if (!new RegExp(term, 'i').test(scopeSafety)) issues.push(`scope safety gate: missing ${term}`);
+  }
+
+  const deliveryStrategy = sectionBody(markdown, 'Delivery Strategy');
+  for (const term of ['SDLC', 'MVP', 'phase', 'production']) {
+    if (!new RegExp(term, 'i').test(deliveryStrategy)) issues.push(`delivery strategy: missing ${term}`);
+  }
+
+  const productionReadiness = sectionBody(markdown, 'Production Readiness');
+  for (const term of ['test', 'security', 'observability', 'rollback', 'release']) {
+    if (!new RegExp(term, 'i').test(productionReadiness)) issues.push(`production readiness: missing ${term}`);
+  }
+
+  const finalGate = sectionBody(markdown, 'Final 10/10 Acceptance Gate');
+  for (const term of ['10/10', 'acceptance', 'verification', 'no open blockers']) {
+    if (!new RegExp(term.replace('/', '\\/'), 'i').test(finalGate)) issues.push(`final 10/10 acceptance gate: missing ${term}`);
   }
 
   const tasks = taskBlocks(markdown);

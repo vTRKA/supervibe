@@ -1,0 +1,141 @@
+[
+  {
+    "id": "broken-rag-repair",
+    "request": "repair broken RAG index health and show the exact health gate",
+    "expected": {
+      "intent": "index_repair",
+      "command": "/supervibe-status --index-health --strict-index-health",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": ["rag-index-health"],
+        "sourceChunkIds": ["scripts/build-code-index.mjs#index-health", "scripts/lib/supervibe-index-health.mjs#gate"],
+        "graphSymbols": ["collectIndexHealthFromStore", "evaluateIndexHealthGate"]
+      },
+      "retrieved": {
+        "memoryIds": ["rag-index-health"],
+        "sourceChunkIds": ["scripts/build-code-index.mjs#index-health", "scripts/lib/supervibe-index-health.mjs#gate"],
+        "graphSymbols": ["collectIndexHealthFromStore", "evaluateIndexHealthGate"],
+        "estimatedTokens": 760,
+        "citations": [
+          { "id": "rag-index-health", "source": "memory", "path": ".claude/memory/decisions/rag-index-health.md", "redacted": true },
+          { "id": "index-health-gate", "source": "rag", "path": "scripts/lib/supervibe-index-health.mjs", "redacted": true }
+        ],
+        "evidence": [{ "id": "health-gate", "stale": false }]
+      },
+      "tokenBudget": { "maxTokens": 1200 }
+    }
+  },
+  {
+    "id": "genesis-existing-claude",
+    "request": "run genesis in existing project with CLAUDE.md but only dry run",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "requiresDryRun": true,
+      "requiresPostDeliveryMenu": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": ["host-adapter-decision"],
+        "sourceChunkIds": ["commands/supervibe-genesis.md#dry-run", "scripts/lib/supervibe-host-detector.mjs#select"],
+        "graphSymbols": ["selectHostAdapter", "buildGenesisDryRunReport"]
+      },
+      "retrieved": {
+        "memoryIds": ["host-adapter-decision"],
+        "sourceChunkIds": ["commands/supervibe-genesis.md#dry-run", "scripts/lib/supervibe-host-detector.mjs#select"],
+        "graphSymbols": ["selectHostAdapter", "buildGenesisDryRunReport"],
+        "estimatedTokens": 820,
+        "citations": [
+          { "id": "host-adapter", "source": "rag", "path": "scripts/lib/supervibe-host-detector.mjs", "redacted": true }
+        ],
+        "evidence": [{ "id": "dry-run", "stale": false }]
+      },
+      "tokenBudget": { "maxTokens": 1300 }
+    }
+  },
+  {
+    "id": "codex-target-genesis",
+    "request": "/supervibe-genesis --host codex",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "requiresDryRun": true,
+      "requiresPostDeliveryMenu": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": ["codex-host-support"],
+        "sourceChunkIds": ["docs/references/host-adapter-matrix.md#codex", "scripts/lib/supervibe-host-adapters.mjs#codex"],
+        "graphSymbols": ["HOST_ADAPTERS", "normalizeHostPath"]
+      },
+      "retrieved": {
+        "memoryIds": ["codex-host-support"],
+        "sourceChunkIds": ["docs/references/host-adapter-matrix.md#codex", "scripts/lib/supervibe-host-adapters.mjs#codex"],
+        "graphSymbols": ["HOST_ADAPTERS", "normalizeHostPath"],
+        "estimatedTokens": 780,
+        "citations": [
+          { "id": "codex-adapter", "source": "rag", "path": "scripts/lib/supervibe-host-adapters.mjs", "redacted": true }
+        ],
+        "evidence": [{ "id": "codex-host", "stale": false }]
+      },
+      "tokenBudget": { "maxTokens": 1200 }
+    }
+  },
+  {
+    "id": "silent-preview",
+    "request": "start a silent preview server in daemon mode",
+    "expected": {
+      "intent": "preview_server",
+      "command": "/supervibe-preview --daemon",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": ["silent-windows-daemon"],
+        "sourceChunkIds": ["scripts/lib/supervibe-process-manager.mjs#daemon", "scripts/preview-server.mjs#daemon"],
+        "graphSymbols": ["startSilentProcess", "startPreviewDaemon"]
+      },
+      "retrieved": {
+        "memoryIds": ["silent-windows-daemon"],
+        "sourceChunkIds": ["scripts/lib/supervibe-process-manager.mjs#daemon", "scripts/preview-server.mjs#daemon"],
+        "graphSymbols": ["startSilentProcess", "startPreviewDaemon"],
+        "estimatedTokens": 700,
+        "citations": [
+          { "id": "process-manager", "source": "rag", "path": "scripts/lib/supervibe-process-manager.mjs", "redacted": true }
+        ],
+        "evidence": [{ "id": "daemon", "stale": false }]
+      },
+      "tokenBudget": { "maxTokens": 1000 }
+    }
+  },
+  {
+    "id": "post-delivery-stop",
+    "request": "stop after delivery and save state so I can resume later",
+    "expected": {
+      "intent": "delivery_control",
+      "command": "/supervibe --delivery-control",
+      "requiresResumeToken": true,
+      "requiresPostDeliveryMenu": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": ["dialogue-contract"],
+        "sourceChunkIds": ["scripts/lib/supervibe-command-state.mjs#delivery", "rules/single-question-discipline.md#post-delivery"],
+        "graphSymbols": ["createCommandState", "evaluateScenarioFlows"]
+      },
+      "retrieved": {
+        "memoryIds": ["dialogue-contract"],
+        "sourceChunkIds": ["scripts/lib/supervibe-command-state.mjs#delivery", "rules/single-question-discipline.md#post-delivery"],
+        "graphSymbols": ["createCommandState", "evaluateScenarioFlows"],
+        "estimatedTokens": 900,
+        "citations": [
+          { "id": "command-state", "source": "rag", "path": "scripts/lib/supervibe-command-state.mjs", "redacted": true }
+        ],
+        "evidence": [{ "id": "delivery-state", "stale": false }]
+      },
+      "tokenBudget": { "maxTokens": 1400 }
+    }
+  }
+]

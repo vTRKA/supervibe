@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, sep } from 'node:path';
 import matter from 'gray-matter';
+import { validateDialogueContract } from './lib/supervibe-dialogue-contract.mjs';
 
 const APPLIES_TO_GLOBS = [
   /^agents[\\/]_design[\\/]/,
@@ -16,6 +17,23 @@ const APPLIES_TO_GLOBS = [
 const DISCIPLINE_MARKER_A = '## User dialogue discipline';
 const DISCIPLINE_MARKER_B = 'Шаг N/M';
 const ANTI_PATTERN_REQUIRED = 'asking-multiple-questions-at-once';
+const DELIVERY_COMMAND_SCOPE = new Set([
+  'commands/supervibe-design.md',
+  'commands/supervibe-genesis.md',
+]);
+const NO_PROMPT_COMMAND_SCOPE = new Set([
+  'commands/supervibe-preview.md',
+  'commands/supervibe-ui.md',
+  'commands/supervibe-status.md',
+]);
+const DELIVERY_SKILL_SCOPE = new Set([
+  'skills/genesis/SKILL.md',
+  'skills/adapt/SKILL.md',
+  'skills/strengthen/SKILL.md',
+]);
+const NO_PROMPT_SKILL_SCOPE = new Set([
+  'skills/audit/SKILL.md',
+]);
 
 export function isInScope(relPath) {
   const normalized = relPath.split(sep).join('/');
@@ -46,6 +64,19 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
   return issues;
 }
 
+export function checkCommandOrSkillDiscipline(relPath, frontmatter, body) {
+  const normalized = relPath.split(sep).join('/');
+  if (frontmatter?.dialogue === 'noninteractive') return [];
+  if (DELIVERY_COMMAND_SCOPE.has(normalized) || DELIVERY_SKILL_SCOPE.has(normalized)) {
+    return validateDialogueContract({ path: normalized, content: body, delivery: true })
+      .map((issue) => ({ file: relPath, ...issue }));
+  }
+  if (NO_PROMPT_COMMAND_SCOPE.has(normalized) || NO_PROMPT_SKILL_SCOPE.has(normalized)) {
+    return checkNoPromptPath(normalized, body).map((issue) => ({ file: relPath, ...issue }));
+  }
+  return [];
+}
+
 async function walk(dir) {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -56,17 +87,39 @@ async function walk(dir) {
   return out;
 }
 
+export async function collectDisciplineFiles(root) {
+  const groups = [
+    ['agents', join(root, 'agents')],
+    ['commands', join(root, 'commands')],
+    ['skills', join(root, 'skills')],
+    ['rules', join(root, 'rules')],
+  ];
+  const files = [];
+  for (const [kind, dir] of groups) {
+    const paths = await walk(dir);
+    for (const fullPath of paths) {
+      files.push({
+        kind,
+        fullPath,
+        relPath: fullPath.slice(root.length + 1),
+      });
+    }
+  }
+  return files;
+}
+
 export async function main() {
   const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
-  const agentsDir = join(root, 'agents');
-  const files = await walk(agentsDir);
+  const files = await collectDisciplineFiles(root);
 
   let totalIssues = 0;
-  for (const full of files) {
-    const rel = full.slice(root.length + 1);
-    const raw = await readFile(full, 'utf8');
-    const parsed = matter(raw);
-    const issues = checkAgentDiscipline(rel, parsed.data, parsed.content);
+  for (const file of files) {
+    const rel = file.relPath;
+    const raw = await readFile(file.fullPath, 'utf8');
+    const parsed = safeMatter(raw);
+    const issues = file.kind === 'agents'
+      ? checkAgentDiscipline(rel, parsed.data, parsed.content)
+      : checkCommandOrSkillDiscipline(rel, parsed.data, parsed.content);
     for (const issue of issues) {
       console.error(`[${issue.code}] ${issue.file}: ${issue.message}`);
       totalIssues++;
@@ -76,7 +129,32 @@ export async function main() {
     console.error(`\n${totalIssues} discipline issue(s).`);
     process.exit(1);
   }
-  console.log('[validate-question-discipline] all interactive agents compliant');
+  console.log('[validate-question-discipline] all scoped agents, commands, skills, and dialogue rules compliant');
+}
+
+function safeMatter(raw) {
+  try {
+    return matter(raw);
+  } catch {
+    return { data: {}, content: raw };
+  }
+}
+
+function checkNoPromptPath(relPath, body) {
+  const issues = [];
+  if (!/--yes|--dry-run|--json|--daemon|--foreground|--list|--kill|read-only|no-tty|non-interactive|no-prompt/i.test(body)) {
+    issues.push({
+      code: 'missing-no-prompt-path',
+      message: 'Document --yes, --dry-run, --json, daemon/list/kill, read-only, no-tty, or another no-prompt path.',
+    });
+  }
+  if (/wait for (user|approval)|await approval/i.test(body) && !/Step N\/M|Шаг N\/M|one question at a time/i.test(body)) {
+    issues.push({
+      code: 'missing-single-question-for-prompt',
+      message: 'Prompting artifact must use the shared single-question contract.',
+    });
+  }
+  return issues.map((issue) => ({ file: relPath, ...issue }));
 }
 
 const isMainEntry = (() => {

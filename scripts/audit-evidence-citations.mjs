@@ -21,6 +21,7 @@
 import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { auditEvidenceLedger, formatEvidenceLedgerStatus } from './lib/supervibe-evidence-ledger.mjs';
 
 const REFACTOR_AGENTS = new Set([
   'refactoring-specialist',
@@ -124,14 +125,19 @@ async function main() {
   const windowIdx = args.indexOf('--window');
   const window = windowIdx >= 0 ? parseInt(args[windowIdx + 1], 10) : 10;
   const strict = args.includes('--strict');
+  const maxAgeIdx = args.indexOf('--max-age-hours');
+  const maxAgeHours = maxAgeIdx >= 0 ? parseInt(args[maxAgeIdx + 1], 10) : (strict ? 48 : 0);
 
   const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const logPath = join(projectRoot, '.claude', 'memory', 'agent-invocations.jsonl');
+  const ledgerReport = await auditEvidenceLedger({ rootDir: projectRoot });
 
   try {
     await access(logPath);
   } catch {
     console.log(`[audit-evidence-citations] No invocation log at ${logPath} — telemetry not yet running.`);
+    console.log(formatEvidenceLedgerStatus(ledgerReport));
+    if (strict && !ledgerReport.pass) process.exit(1);
     return;
   }
 
@@ -140,12 +146,24 @@ async function main() {
     try { return JSON.parse(l); } catch { return null; }
   }).filter(Boolean);
 
-  const usage = aggregateUsage(entries, window);
+  const freshEntries = maxAgeHours > 0
+    ? entries.filter((entry) => {
+      const ts = Date.parse(entry.ts || entry.timestamp || "");
+      return Number.isFinite(ts) && Date.now() - ts <= maxAgeHours * 60 * 60 * 1000;
+    })
+    : entries;
+
+  const usage = aggregateUsage(freshEntries, window);
   const violations = detectViolations(usage);
 
   console.log(`=== Evidence-citation audit (last ${window} invocations per agent) ===\n`);
+  console.log(formatEvidenceLedgerStatus(ledgerReport));
+  console.log("");
   if (usage.length === 0) {
-    console.log('No agents with sub-tool telemetry yet. (Telemetry ships with PostToolUse hook updates.)');
+    console.log(maxAgeHours > 0
+      ? `No fresh agents with sub-tool telemetry in the last ${maxAgeHours}h. (Older fixture telemetry ignored for strict release gate.)`
+      : 'No agents with sub-tool telemetry yet. (Telemetry ships with PostToolUse hook updates.)');
+    if (strict && !ledgerReport.pass) process.exit(1);
     return;
   }
 
@@ -154,7 +172,7 @@ async function main() {
     console.log(`${flag} ${u.agent_id.padEnd(35)}  mem ${(u.memoryRate * 100).toFixed(0).padStart(3)}%  search ${(u.codeSearchRate * 100).toFixed(0).padStart(3)}%  graph ${(u.codeGraphRate * 100).toFixed(0).padStart(3)}%  (${u.sample} samples)`);
   }
 
-  if (violations.length > 0) {
+  if (violations.length > 0 || !ledgerReport.pass) {
     console.log(`\n${violations.length} advisory warning(s):`);
     for (const v of violations) {
       console.log(`  • ${v.agent_id}: ${v.kind} — ${(v.rate * 100).toFixed(0)}% (threshold ${(v.threshold * 100).toFixed(0)}%, ${v.sample} samples)`);

@@ -2,7 +2,7 @@
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 83 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
 **v2.0** · MIT · Windows / macOS / Linux
 
@@ -12,7 +12,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 83 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 83 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| 89 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
@@ -24,6 +24,9 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 83 specialist 
 | Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
 | Security audit loop | `/supervibe-security-audit` runs read-only multi-agent AppSec/dependency/ops/AI security review, ranks vulnerabilities, then optionally plans, executes, and re-audits remediation to a 10/10 gate |
 | Prompt AI engineering | Optional `prompt-ai-engineer` add-on strengthens prompts, agent instructions, intent routing, structured outputs, tool policies, evals, and prompt-injection defenses |
+| Visible context intelligence | Context packs show memory/RAG/codegraph/repo-map citations, confidence delta, omitted context, repair actions, and no-silent-done lifecycle evidence |
+| Performance SLOs | Local release gates report context-pack latency, token ceilings, watcher overhead, index size, eval runtime, and resource drift |
+| Feedback learning loop | User corrections become reviewed memory candidates, eval cases, and high-severity regression fixtures instead of disappearing in chat history |
 | Network/router agent | Optional `network-router-engineer` add-on handles routers, VPN, firewall, Wi-Fi, DNS/DHCP, and routing stability with read-only diagnostics first and scoped approval before mutations |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
 | Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
@@ -87,7 +90,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.12 initialized for this project
+[supervibe] welcome — plugin v2.0.15 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```

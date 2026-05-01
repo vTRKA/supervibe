@@ -1,5 +1,17 @@
 const SEMANTIC_INTENT_PROFILES = Object.freeze([
   {
+    intent: "genesis_setup",
+    baseConfidence: 0.84,
+    minGroups: 2,
+    concepts: [
+      ["genesis", "supervibe-genesis", "bootstrap", "scaffold", "setup", "set up", "install", "initialize", "init", "генезис", "разверн", "настрой"],
+      ["supervibe", "plugin", ".claude", "agents", "skills", "rules", "marketplace"],
+      ["codex", "claude", "cursor", "gemini", "opencode", "host", "multi-host", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursor/rules"],
+      ["existing repo", "without overwriting", "preserve", "dry-run", "do not overwrite", "не перетир", "без перезапис", "сохран"],
+    ],
+    pain: ["genesis is claude-centric", "do not overwrite claude.md", "preserve agents.md", "host-aware setup", "не перетирать CLAUDE.md"],
+  },
+  {
     intent: "work_control_ui",
     baseConfidence: 0.84,
     minGroups: 2,

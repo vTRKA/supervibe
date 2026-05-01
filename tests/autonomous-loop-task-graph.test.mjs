@@ -69,6 +69,7 @@ test("graphToFlatTasks preserves runner-compatible task fields", () => {
       blocks: ["t2"],
       related: ["doc-1"],
       writeScope: [{ action: "modify", path: "src/a.ts" }],
+      scopeSafetyChecklist: ["No unapproved extras"],
       estimatedSize: "small",
       parallelGroup: "A",
       executionHints: { requiredAgentCapability: "stack-developer" },
@@ -81,5 +82,6 @@ test("graphToFlatTasks preserves runner-compatible task fields", () => {
   assert.equal(tasks[0].epicId, "epic-1");
   assert.equal(tasks[0].blocks[0], "t2");
   assert.equal(tasks[0].writeScope[0].path, "src/a.ts");
+  assert.equal(tasks[0].scopeSafetyChecklist[0], "No unapproved extras");
   assert.equal(tasks[0].parallelGroup, "A");
 });

@@ -8,8 +8,14 @@
 //   --no-embeddings      BM25-only (skip semantic embeddings)
 
 import { CodeStore } from './lib/code-store.mjs';
+import { collectIndexHealthFromStore, formatIndexHealth } from './lib/supervibe-index-health.mjs';
+import { discoverSourceFiles } from './lib/supervibe-index-policy.mjs';
+import { formatWatcherDiagnostics, readWatcherDiagnostics } from './lib/supervibe-index-watcher.mjs';
+import { recoverCorruptCodeDb } from './lib/supervibe-db-migrations.mjs';
+import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
+import { createWorkspaceNamespace } from './lib/supervibe-workspace-isolation.mjs';
 import { execSync } from 'node:child_process';
-import { join } from 'node:path';
+import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
@@ -19,24 +25,55 @@ async function main() {
   const { values } = parseArgs({
     options: {
       'no-embeddings': { type: 'boolean', default: false },
-      since: { type: 'string', default: '' }
+      since: { type: 'string', default: '' },
+      root: { type: 'string', default: '' },
+      force: { type: 'boolean', default: false },
+      migrate: { type: 'boolean', default: false },
+      health: { type: 'boolean', default: false },
+      'explain-policy': { type: 'boolean', default: false },
+      'watcher-diagnostics': { type: 'boolean', default: false },
+      'repo-map': { type: 'boolean', default: false }
     },
     strict: false
   });
 
   const noEmbeddings = values['no-embeddings'];
+  const rootDir = values.root ? resolve(PROJECT_ROOT, values.root) : PROJECT_ROOT;
+
+  if (values['watcher-diagnostics']) {
+    console.log(formatWatcherDiagnostics(readWatcherDiagnostics({ rootDir })));
+    return;
+  }
+
+  if (values['repo-map']) {
+    const repoMap = await buildRepoMap({ rootDir, tier: 'standard' });
+    console.log(formatRepoMapContext(selectRepoMapContext(repoMap, { tier: 'standard', query: values.query || '' })));
+    return;
+  }
+
+  if (values['explain-policy']) {
+    const inventory = await discoverSourceFiles(rootDir, { explain: true });
+    console.log(`Index policy for ${rootDir}`);
+    console.log(`  Included source files: ${inventory.files.length}`);
+    console.log(`  Excluded paths with reasons: ${inventory.excluded.length}`);
+    for (const item of inventory.excluded.slice(0, 50)) {
+      console.log(`  - ${item.path}: ${item.reason}`);
+    }
+    if (inventory.excluded.length > 50) console.log(`  ... ${inventory.excluded.length - 50} more`);
+    return;
+  }
 
   let filesToIndex = null;
   if (values.since) {
     try {
       const out = execSync(`git log --name-only --pretty=format: ${values.since}..HEAD`, {
-        cwd: PROJECT_ROOT, encoding: 'utf8'
+        cwd: rootDir, encoding: 'utf8'
       });
       const set = new Set(
         out.split('\n')
           .map(l => l.trim())
           .filter(Boolean)
-          .map(rel => join(PROJECT_ROOT, rel))
+          .map(rel => join(rootDir, rel))
           .filter(abs => existsSync(abs))
       );
       filesToIndex = [...set];
@@ -47,17 +84,29 @@ async function main() {
     }
   }
 
-  console.log(`Indexing code in ${PROJECT_ROOT}${noEmbeddings ? ' (BM25 only, embeddings disabled)' : ''}...`);
+  console.log(`Indexing code in ${rootDir}${noEmbeddings ? ' (BM25 only, embeddings disabled)' : ''}${values.force ? ' (force full discovery)' : ''}...`);
+  console.log(`Workspace namespace: ${createWorkspaceNamespace({ projectRoot: rootDir }).workspaceId}`);
   const t0 = Date.now();
 
-  const store = new CodeStore(PROJECT_ROOT, { useEmbeddings: !noEmbeddings });
-  await store.init();
+  let store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings });
+  try {
+    await store.init();
+  } catch (error) {
+    if (!values.migrate) throw error;
+    const recovery = recoverCorruptCodeDb({ dbPath: join(rootDir, '.claude', 'memory', 'code.db'), rootDir });
+    console.log(`Code DB recovery: ${recovery.recovered ? 'recovered' : 'not-needed'}`);
+    if (recovery.backupPath) console.log(`  Backup: ${recovery.backupPath}`);
+    if (recovery.rebuildCommand) console.log(`  Rebuild: ${recovery.rebuildCommand}`);
+    store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings });
+    await store.init();
+  }
 
   const counts = filesToIndex
     ? await store.indexFiles(filesToIndex)
-    : await store.indexAll(PROJECT_ROOT);
+    : await store.indexAll(rootDir);
 
   const stats = store.stats();
+  const health = values.health ? await collectIndexHealthFromStore(store, { rootDir }) : null;
   store.close();
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
@@ -73,6 +122,10 @@ async function main() {
   if (stats.byLang.length > 0) {
     console.log(`By language:`);
     for (const lg of stats.byLang) console.log(`  ${lg.language}: ${lg.n}`);
+  }
+  if (health) {
+    console.log();
+    console.log(formatIndexHealth(health));
   }
 }
 

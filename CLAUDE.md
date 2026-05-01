@@ -34,6 +34,7 @@ These six principles override defaults whenever they conflict with general pract
 4. **Memory beats re-derivation.** If a decision was made before, find it in `.claude/memory/decisions/` and cite. Re-deriving silently wastes tokens and risks contradicting past resolutions.
 5. **Graph before refactor.** Public-surface changes (rename / move / extract / delete) require `--callers` evidence FIRST. The semantic RAG won't catch cross-file callers — only the graph does.
 6. **Anti-half-finished discipline.** No commented-out code, no TODOs without owners, no half-applied refactors. Either complete a change or revert it cleanly.
+7. **Managed host context only.** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` and `opencode.json` are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
 
 ---
 

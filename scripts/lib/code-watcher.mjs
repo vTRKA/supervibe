@@ -6,8 +6,7 @@ import { join } from 'node:path';
 import { writeFile, rm } from 'node:fs/promises';
 import { MemoryStore } from './memory-store.mjs';
 import { CodeStore } from './code-store.mjs';
-
-const SUPPORTED_CODE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py|php|rs|go|java|rb|vue|svelte)$/i;
+import { createIndexWatcherLifecycle } from './supervibe-index-watcher.mjs';
 
 export async function startWatcher(projectRoot, opts = {}) {
   const { useEmbeddings = true, verbose = true } = opts;
@@ -17,6 +16,7 @@ export async function startWatcher(projectRoot, opts = {}) {
 
   const codeStore = new CodeStore(projectRoot, { useEmbeddings });
   await codeStore.init();
+  const codeLifecycle = createIndexWatcherLifecycle({ rootDir: projectRoot, codeStore });
 
   if (verbose) console.log(`[supervibe-watcher] starting; root=${projectRoot}`);
 
@@ -74,15 +74,11 @@ export async function startWatcher(projectRoot, opts = {}) {
   });
 
   const handleCode = async (event, path) => {
-    if (!SUPPORTED_CODE_EXT.test(path)) return;
     try {
-      if (event === 'unlink') {
-        await codeStore.removeFile(path);
-        if (verbose) console.log(`[supervibe-watcher] code -REMOVED: ${path}`);
-      } else {
-        const r = await codeStore.indexFile(path);
-        if (verbose && r.indexed) console.log(`[supervibe-watcher] code ~${event.toUpperCase()}: ${path} (${r.chunks} chunks)`);
-      }
+      const result = await codeLifecycle.handleSourceEvent(event, path);
+      if (!verbose || result.action === 'ignored') return;
+      if (result.action === 'removed') console.log(`[supervibe-watcher] code -REMOVED: ${path}`);
+      if (result.action === 'indexed') console.log(`[supervibe-watcher] code ~${event.toUpperCase()}: ${path}`);
     } catch (err) { console.error(`[supervibe-watcher] code err: ${err.message}`); }
   };
 

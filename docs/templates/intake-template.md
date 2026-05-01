@@ -57,6 +57,19 @@
 
 ---
 
+## Scope Safety Gate
+
+| Candidate item | Must / Should / Could / Won't | Evidence | Complexity cost | Decision |
+|----------------|-------------------------------|----------|-----------------|----------|
+| ... | ... | ... | ... | include / defer / reject / spike |
+
+**Recommended scope boundary:** ...
+**What we should not add now:** ...
+**Why not:** ...
+**Tradeoff if user insists:** ...
+
+---
+
 ## AI/data boundary
 
 | Boundary | Value | Source |

@@ -39,6 +39,8 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 3 (refactor only): Code graph.** BEFORE rename / extract / move / inline / delete on a public symbol, ALWAYS run \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"\` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this on structural changes FAILS the agent-delivery rubric.
 
+**Step 4: Evidence ledger.** For tasks where the retrieval policy marks memory, RAG or codegraph as mandatory, record cited memory IDs, RAG chunk IDs, graph symbols, verification commands and redaction status in the evidence ledger. Missing mandatory evidence fails the agent-delivery gate.
+
 `;
 
 async function walk(dir) {

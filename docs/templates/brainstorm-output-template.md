@@ -28,6 +28,47 @@
 
 ---
 
+## Product and SDLC fit
+
+### Project type
+- MVP | production feature | migration | experiment | refactor | incident follow-up
+
+### SDLC path
+- Discovery evidence:
+- Requirements and contracts needed:
+- Implementation phases:
+- Verification levels:
+- Release and rollout model:
+- Production owner / support path:
+
+### MVP slice
+- Smallest useful release:
+- What waits for v2:
+- Kill / pivot signal:
+
+---
+
+## Scope Safety Gate
+
+### Scope baseline
+- Core outcome:
+- Must-have for current release:
+- Should-have if cheap:
+- Could-have later:
+- Won't-have now:
+
+### Add / defer / reject decisions
+| Candidate addition | Decision | Evidence | Complexity cost | Tradeoff |
+|--------------------|----------|----------|-----------------|----------|
+| ... | include / defer / reject / spike | ... | ... | ... |
+
+### Why-not rationale
+- Additions that would hurt the project now:
+- Smallest production-safe alternative:
+- Evidence required to promote deferred items:
+
+---
+
 ## Competitive scan (if applicable)
 
 | Product | Approach | What's good | What's bad |
@@ -76,6 +117,45 @@
 ## Recommended option
 
 <Choice + rationale>
+
+---
+
+## Production readiness contract
+
+### Functional contracts
+- Inputs / outputs:
+- API / event / data contracts:
+- State transitions:
+- Error envelope:
+
+### Non-functional contracts
+- Security and privacy:
+- Performance / SLO:
+- Accessibility / i18n:
+- Observability:
+- Backup / rollback:
+
+### Verification strategy
+- Unit:
+- Integration:
+- E2E / smoke:
+- Release gate:
+
+---
+
+## Acceptance and 10/10 scorecard
+
+| Dimension | 10/10 requirement | Evidence |
+|-----------|-------------------|----------|
+| User outcome | | |
+| Contract completeness | | |
+| Edge cases | | |
+| Security/privacy | | |
+| Operability | | |
+| Verification | | |
+| Release readiness | | |
+
+- 10/10 gate: every row has evidence, no open blockers, and all release gates pass.
 
 ---
 

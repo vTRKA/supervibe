@@ -56,6 +56,7 @@ What's the review surface?
    - Test output (verbatim, not summarized)
    - Screenshots for UI
    - Performance numbers (before/after) for perf changes
+   - Evidence ledger status for required memory, RAG and codegraph citations
    - Assignment explanation, reviewer independence, and wave/block reasons for multi-agent work
 4. **Identify reviewer agent** — `code-reviewer` for general, `security-auditor` for security-sensitive, `db-reviewer` for DB
 5. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output (the prepared package)

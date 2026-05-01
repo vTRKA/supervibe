@@ -26,10 +26,16 @@ If subagents available, prefer `supervibe:subagent-driven-development` for fresh
 2. Critical review — identify questions/concerns BEFORE starting
 3. Read project's verification commands from `CLAUDE.md`
 4. If on main branch and plan modifies code, propose worktree (`supervibe:using-git-worktrees`) unless user opts out
+5. Read `docs/references/scope-safety-standard.md` and identify the plan's approved/deferred/rejected scope boundary
 
 ## HARD GATE
 
 If plan has critical gaps preventing start, STOP and ask. Do NOT guess.
+
+If a task, subtask, or agent suggestion adds functionality outside the approved
+plan scope, STOP. Either remove the addition, defer/reject it with rationale, or
+obtain explicit user approval with tradeoff, verification, rollout, and rollback
+before continuing.
 
 ## Decision tree
 
@@ -51,10 +57,11 @@ Per task: blocked?
 3. **For each task**:
    a. Mark in_progress
    b. Follow steps exactly (don't skip verifications)
-   c. Run verification command via Bash
-   d. Show output verbatim
-   e. If pass → mark complete; if fail → STOP, debug
-   f. Commit step (skip if user said no commits)
+   c. Check scope safety: the work maps to an approved requirement or scope-change note
+   d. Run verification command via Bash
+   e. Show output verbatim
+   f. If pass → mark complete; if fail → STOP, debug
+   g. Commit step (skip if user said no commits)
 4. **Per-phase confidence gate** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output for the phase deliverable; ≥9 required to proceed
 5. **After last phase** — invoke `supervibe:requesting-code-review`
 6. **Handoff** to `supervibe:finishing-a-development-branch`
@@ -69,13 +76,16 @@ Returns: TodoWrite log of completed tasks + verification outputs + per-phase con
 - DO NOT: continue past failing verification
 - DO NOT: edit plan tasks during execution (file an issue/note for retro)
 - DO NOT: start on main branch without explicit user consent
+- DO NOT: accept worker-added "nice to have" functionality as progress
 - ALWAYS: stop and ask when blocked; never guess
 - ALWAYS: invoke `supervibe:verification` before any "done" claim
+- ALWAYS: explain why unapproved additions are being deferred or rejected
 
 ## Verification
 
 - Every task in TodoWrite is `completed`
 - Every verification command output is shown verbatim
+- Scope Safety Gate shows zero unapproved additions shipped
 - Per-phase confidence ≥9 recorded
 - Final code-review phase invoked
 

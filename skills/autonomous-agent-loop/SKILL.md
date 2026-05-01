@@ -20,6 +20,9 @@ last-verified: 2026-04-29
 2. Run preflight for scope, autonomy level, budget, environment, MCP/tool
    permissions, access needs, secret handling, approval leases, and rollback
    expectations.
+   - Apply the Scope Safety Gate from `docs/references/scope-safety-standard.md`: distinguish approved
+     scope from optional extras, and reject/defer tasks that do not map to the
+     plan, user outcome, or explicit scope-change approval.
    - For non-dry execution, run provider permission audit before dispatch.
      Block dangerous provider flags, hidden automation, unknown network/MCP
      access, sensitive-file reads, unmanaged rate-limit retries, and missing
@@ -30,26 +33,40 @@ last-verified: 2026-04-29
 4. Build a durable task graph with acceptance criteria, verification commands,
    policy risk, required agent capability, stop conditions, confidence rubric,
    dependencies, and ready-front ordering.
-5. Build a minimal context pack before dispatch: memory lookup, Code RAG,
+5. Add Scope Safety metadata to every task: approved scope id, scope decision
+   (`include`, `defer`, `reject`, `spike`, `ask-one-question`), complexity
+   cost, tradeoff, and stop condition for unapproved scope expansion.
+6. Add an SDLC and production path to the graph: discovery/spec evidence,
+   MVP slice, phased rollout, release gate, security/privacy checks,
+   observability, rollback, support owner, and post-release learning. If the
+   user asks for "one big spec/plan to production", keep the plan broad enough
+   to reach production but split execution into verified phases.
+7. Build a minimal context pack before dispatch: memory lookup, Code RAG,
    CodeGraph when structurally relevant, then targeted file reads.
-6. Dispatch specialist chains by task type and verify required agents, skills,
+8. Dispatch specialist chains by task type and verify required agents, skills,
    MCPs, reviewer independence, and fallback availability.
-7. Execute only ready-front tasks. For fresh-context mode, pass only the task
+9. Execute only ready-front tasks. For fresh-context mode, pass only the task
    contract, acceptance criteria, verification matrix, compact context pack,
    progress notes, policy boundaries, side-effect rules, and output contract.
-8. Require structured handoff after each task with verification evidence and
+10. Require structured handoff after each task with verification evidence and
    independent reviewer evidence when risk or shared contracts require it.
-9. Score every task on the autonomous-loop rubric. Anything below 9.0 is not
+11. Score every task on the autonomous-loop rubric. Anything below 9.0 is not
    complete and must be re-queued, repaired, blocked for user input, or marked
    partial only with explicit user acceptance.
-10. Stop on policy, budget, no progress, approval expiry, side-effect
+12. Stop on policy, budget, no progress, approval expiry, side-effect
    reconciliation failure, state migration failure, cancellation, or missing
    required evidence.
     Treat failed provider permission audit as a policy stop before any task
     attempt starts.
-11. Write final report with task, agent, context, handoff, score, verification,
+    Treat unapproved functionality as a scope-safety stop, not as a task
+    "improvement".
+13. Before completion, run a final 10/10 readiness pass: reread source spec and
+   plan, verify every acceptance criterion, close or explicitly block every
+   open risk, confirm production readiness gates are green, and verify no
+   hidden optional functionality entered execution.
+14. Write final report with task, agent, context, handoff, score, verification,
    approval, rollback, and artifact-retention evidence.
-12. Use `status`, `graph`, `doctor`, and `prime` before resuming a long run in a
+15. Use `status`, `graph`, `doctor`, and `prime` before resuming a long run in a
    fresh context; never rely on hidden conversation state.
 
 ## Output Contract
@@ -65,4 +82,9 @@ STOP_REASON: concrete reason or none
 POLICY_RISK: none | low | medium | high
 PERMISSION_MODE: ask-preserving | blocked | unknown
 BYPASS_DISABLED: true | false
+SDLC_STAGE: discovery | planning | implementation | verification | release | post-release
+PRODUCTION_READINESS: 0.0-10.0
+OPEN_BLOCKERS: number
+SCOPE_SAFETY: pass | blocked | needs-tradeoff
+SCOPE_CHANGES: number
 ```

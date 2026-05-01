@@ -58,6 +58,8 @@ Print the rubric dimensions + evidence requirements WITHOUT actually scoring. Us
 
 Scores the artifact, then writes the accepted/review/rejected outcome to `.claude/memory/agent-invocations.jsonl` via the telemetry logger. This is the mode `/supervibe` proposes when it detects `pending-evaluation`.
 
+When the user correction identifies a missed route, skipped context source, wrong citation, unclear lifecycle choice or failed verification, record it as a feedback review item. Accepted feedback is promoted through the feedback learning loop into memory candidates, eval candidates and high-severity regression fixtures.
+
 ## Valid artifact types
 
 Read live from `confidence-rubrics/*.yaml`:

@@ -9,6 +9,9 @@ description: >-
 
 Run a bounded autonomous loop for a user plan or open request. The command is
 observable, cancellable, policy-gated, and blocked below a 9/10 task score.
+For large specs, the loop must preserve the full SDLC path from discovery to
+production release: MVP slice, phased implementation, verification, release
+gate, rollback, support owner, and post-release learning.
 
 ## Invocation
 
@@ -90,6 +93,9 @@ Plan atomization:
 
 Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed`; `--dry-run` previews the graph without writing.
 Generated work items use reusable templates for feature, bugfix, refactor, UI story, integration, migration, documentation, release-prep, production-prep, and research spike work. Items carry labels, severity, owner/component/stack fields, required gates, verification hints, comments, and optional repo/package/workspace/subproject routing metadata.
+Production-oriented plans also generate release, observability, rollback,
+security/privacy, and post-release learning work items so the loop does not
+stop after a code-only slice.
 
 Durable tracker sync:
 
@@ -217,6 +223,9 @@ Execution modes:
 - Build a task queue from a plan or request.
 - Run preflight for scope, autonomy, budget, environment, MCP/tool permissions,
   access needs, and approval boundaries.
+- Apply Scope Safety Gate before atomization or execution: each task must map
+  to approved scope or an explicit user-approved scope change; optional extras
+  are deferred or rejected with rationale instead of silently built.
 - Run provider permission audit before non-dry execution. The audit records the
   effective permission mode, denied tools, prompt-required tools, rate-limit
   state, network/MCP approval state, and next safe action.
@@ -228,7 +237,7 @@ Execution modes:
   gate, and next action before acting.
 - Treat task score below 9.0 as incomplete.
 - Stop for policy, budget, missing access, production approval, cancellation,
-  state migration, or side-effect reconciliation.
+  state migration, unapproved scope expansion, or side-effect reconciliation.
 
 ## Safety Boundaries
 
@@ -251,6 +260,8 @@ Execution modes:
   prompting.
 - The stop command only terminates loop-owned processes tracked by the
   side-effect ledger.
+- Scope expansion is a stop condition unless it carries user approval, a
+  tradeoff, verification, rollout, and rollback.
 
 ## Local CLI
 

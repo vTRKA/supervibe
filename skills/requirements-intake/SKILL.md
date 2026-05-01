@@ -26,6 +26,7 @@ Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 2. Read `CLAUDE.md` for project conventions
 3. Read `MEMORY.md` for prior preferences/feedback
 4. Identify which `questionnaires/*.yaml` apply to detected stack
+5. Read `docs/references/scope-safety-standard.md` and apply the Scope Safety Gate before any route decision
 
 ## Decision tree (output: which skill to invoke next)
 
@@ -51,20 +52,22 @@ Complexity signals:
 1. **Stack discovery** (Step 0)
 2. **Initial scope reading** — what is the user actually asking?
 3. **Load questionnaires** — pull questions matching detected stack and request type
-4. **Ask one question at a time** — multiple-choice when possible
-5. **Build requirements-spec** with: objective, scope (in/out), acceptance criteria, edge cases, stakeholders, complexity score
-6. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
-7. **Machine-validate intake artifact** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
-8. **If <9** → continue questioning to fill gaps; loop until ≥9
-9. **Compute complexity** using signals table above
-10. **Decide handoff**: brainstorming / writing-plans / executing-plans
-11. **Announce decision** to user with reasoning
+4. **Scope Safety Gate** - separate requested/core scope from optional extras; classify additions as include/defer/reject/spike and explain harmful additions before they enter the backlog.
+5. **Ask one question at a time** — multiple-choice when possible
+6. **Build requirements-spec** with: objective, scope (in/out), Scope Safety Gate, acceptance criteria, edge cases, stakeholders, complexity score
+7. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
+8. **Machine-validate intake artifact** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
+9. **If <9** → continue questioning to fill gaps; loop until ≥9
+10. **Compute complexity** using signals table above
+11. **Decide handoff**: brainstorming / writing-plans / executing-plans
+12. **Announce decision** to user with reasoning, including why deferred or rejected additions are not being built now
 
 ## Output contract
 
 Returns:
 - requirements-spec saved to `docs/specs/YYYY-MM-DD-<topic>-intake.md`
 - complexity-score (1-10) with justification
+- scope-safety decision table with include/defer/reject/spike rationale
 - next-skill recommendation with reason
 - list of asked questions and answers
 
@@ -74,13 +77,16 @@ Returns:
 - DO NOT: assume complexity is low to skip brainstorm — be honest
 - DO NOT: invent acceptance criteria the user didn't agree to
 - DO NOT: route to executing-plans without verifying triviality (re-read change scope)
+- DO NOT: silently accept optional features, protocol parity, or polish work without outcome evidence and a tradeoff
 - ALWAYS: stack-aware (load relevant questionnaires)
 - ALWAYS: gate ≥9 before handoff
+- ALWAYS: explain when "not adding this now" protects the user's project
 
 ## Verification
 
 - Spec file exists with complexity score
 - `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
+- Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence and complexity cost
 - Score ≥9 recorded
 - Next-skill recommendation is one of: brainstorming, writing-plans, executing-plans
 
@@ -165,9 +171,10 @@ Required sections:
 4. **Constraints** (table)
 5. **Success criteria**
 6. **Out of scope**
-7. **Stakeholders**
-8. **Open questions** (≥3)
-9. **Suggested next step**: brainstorm / PRD / ADR / direct implementation
+7. **Scope Safety Gate**
+8. **Stakeholders**
+9. **Open questions** (≥3)
+10. **Suggested next step**: brainstorm / PRD / ADR / direct implementation
 
 ## Anti-patterns
 
@@ -175,6 +182,7 @@ Required sections:
 - **Assume constraints** → discover hard limits during execution
 - **Define solution before success criteria** → can't tell when done
 - **No "out of scope"** → invites scope creep
+- **No Scope Safety Gate** - agents can turn one request into an overbuilt project
 - **Single-stakeholder thinking** → adjacent teams blindsided
 - **Empty open questions** → didn't probe; you have hidden assumptions
 - **Restatement skipped** → misalignment compounds through downstream phases

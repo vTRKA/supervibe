@@ -13,6 +13,7 @@ import {
   auditInstallIntegrity,
   auditInstallIntegrityData,
 } from "./supervibe-install-integrity.mjs";
+import { runContextThreatModel } from "./supervibe-context-threat-model.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -57,6 +58,7 @@ export async function auditReleaseSecurity({ rootDir = process.cwd(), generatedA
     dependencyProvenance,
     installIntegrity,
     pluginPackageAudit,
+    contextThreatModel: runContextThreatModel({ rootDir: root }),
     commitSha: await readGitCommit(root),
     artifactChecksums: await collectArtifactChecksums(root),
   }, { generatedAt });
@@ -82,10 +84,16 @@ export function auditReleaseSecurityData(data = {}, { generatedAt = "determinist
   const dependencyProvenance = data.dependencyProvenance || auditDependencyProvenanceData(data);
   const installIntegrity = data.installIntegrity || auditInstallIntegrityData(data);
   const pluginPackageAudit = data.pluginPackageAudit || null;
+  const contextThreatModel = data.contextThreatModel || { pass: true, failed: [], total: 0 };
 
   mergeSubAuditIssues(issues, "dependency-provenance", dependencyProvenance);
   mergeSubAuditIssues(issues, "install-integrity", installIntegrity);
   if (pluginPackageAudit) mergeSubAuditIssues(issues, "plugin-package", pluginPackageAudit);
+  if (!contextThreatModel.pass) {
+    for (const result of contextThreatModel.failed || []) {
+      addIssue(issues, `context-threat:${result.id}`, result.failures.join("; "), "Fix context threat model policy before release.");
+    }
+  }
 
   validateReleaseDocs(data, dependencyProvenance, packageVersion, issues);
   validateVersionEvidence(data, packageVersion, issues);
@@ -97,6 +105,7 @@ export function auditReleaseSecurityData(data = {}, { generatedAt = "determinist
     dependencyProvenance,
     installIntegrity,
     pluginPackageAudit,
+    contextThreatModel,
     issueCount: issues.length,
   });
 
@@ -225,6 +234,7 @@ function buildReleaseSecurityReport(data, details) {
       dependencyProvenance: Boolean(details.dependencyProvenance?.pass),
       installIntegrity: Boolean(details.installIntegrity?.pass),
       pluginPackageAudit: details.pluginPackageAudit ? Boolean(details.pluginPackageAudit.pass) : null,
+      contextThreatModel: Boolean(details.contextThreatModel?.pass),
       issueCount: details.issueCount,
     },
   };

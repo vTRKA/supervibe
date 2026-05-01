@@ -37,10 +37,14 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
 4. **Invoke `supervibe:writing-plans` skill.** It produces:
    - File structure (which files to create / modify, with paths)
    - Critical path
+   - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
+   - Delivery strategy from MVP to production
+   - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
    - Phased tasks (≤5 minutes each, with verification commands)
    - Per-phase confidence gates
    - Parallelization batches (which tasks can run concurrently)
    - Risk register + rollback plan per phase
+   - Final 10/10 acceptance gate with no open blockers
    - Self-review checklist
 
 5. **Save the plan.** Output goes to `docs/plans/YYYY-MM-DD-<topic-slug>.md`.
@@ -88,6 +92,9 @@ Plan:        docs/plans/YYYY-MM-DD-<slug>.md
 Phases:      <count>
 Tasks:       <count>  (parallelizable batches: <count>)
 Critical path: <N> tasks
+Production readiness: test/security/perf/observability/rollback/release covered
+Scope safety: approved scope mapped; deferred/rejected extras documented
+Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS
 

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "exact-genesis-command",
+    "phrase": "/supervibe-genesis --host codex",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "minConfidence": 0.99
+    }
+  },
+  {
+    "id": "ru-genesis-multihost",
+    "phrase": "генезис должен развернуть supervibe для codex cursor gemini и не перетирать CLAUDE.md",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "minConfidence": 0.86
+    }
+  },
+  {
+    "id": "en-existing-project-safe-setup",
+    "phrase": "set up supervibe in this existing repo without overwriting AGENTS.md or CLAUDE.md",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "minConfidence": 0.86
+    }
+  },
+  {
+    "id": "hard-negative-plan",
+    "phrase": "write an implementation plan for checkout auth and review it",
+    "expected": {
+      "notIntent": "genesis_setup"
+    }
+  },
+  {
+    "id": "unknown-clarifies",
+    "phrase": "do the thing from yesterday but not that other thing",
+    "expected": {
+      "intent": "unknown",
+      "clarifyingQuestion": true
+    }
+  }
+]

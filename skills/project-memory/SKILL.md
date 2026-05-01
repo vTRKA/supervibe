@@ -14,6 +14,10 @@ last-verified: 2026-04-27
 
 # Project Memory
 
+Retrieval policy: memory is mandatory for non-trivial planning, architecture,
+recurring bugs, policy decisions and project-history questions. If skipped,
+state the `supervibe-retrieval-decision-policy` reason explicitly.
+
 ## Design Memory Taxonomy
 
 Design intelligence writes only accepted, rejected, or learned decisions into existing memory categories. Use tags such as `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, `collateral`, and `rejected`. Do not create a separate design memory root.
@@ -90,6 +94,7 @@ Search strategy:
 4. **For each found entry**:
    - Read full content
    - Check `confidence:` field — only treat as authoritative if ≥9
+   - Check `freshness`, `stale`, `supersededBy` and `contradictionIds` from `scripts/search-memory.mjs`
    - Check `date:` — flag if >180 days (may be stale; verify still applicable)
 5. **Synthesize** findings into context for the requesting agent:
    ```
@@ -123,6 +128,7 @@ Returns:
 - DO NOT: invent memory entries that don't exist (anti-hallucination)
 - DO NOT: treat low-confidence entries (<9) as authoritative — flag uncertainty
 - DO NOT: ignore stale-date warnings — old decisions may be obsolete
+- DO NOT: use superseded or contradictory memory as final evidence without citing the newer/current entry
 - DO NOT: return >5 entries (signal-to-noise degrades)
 - ALWAYS: cite file path so user can read full entry
 - ALWAYS: pass through to caller; this skill informs but doesn't decide

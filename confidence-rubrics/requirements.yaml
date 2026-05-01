@@ -10,9 +10,13 @@ dimensions:
     question: "Are edge cases enumerated (auth failure, empty state, race condition, network loss, invalid input, permission denied)?"
     evidence-required: "Edge case list with intended handling for each case"
   - id: scope-isolation
-    weight: 2
+    weight: 1
     question: "Does this spec cover ONE feature with explicit out-of-scope boundary?"
     evidence-required: "Out-of-scope section listing what is deferred to future specs"
+  - id: scope-safety
+    weight: 1
+    question: "Does the spec protect against feature bloat by classifying additions as include, defer, reject, spike, or ask-one-question with evidence and complexity cost?"
+    evidence-required: "Scope Safety Gate table with approved/deferred/rejected/spiked items, harm rationale, and tradeoff"
   - id: stack-alignment
     weight: 2
     question: "Does the spec reference concrete project paths, files, and commands (grep-verifiable), not generic terms?"

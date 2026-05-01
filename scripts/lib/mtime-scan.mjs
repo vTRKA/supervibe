@@ -6,6 +6,7 @@
 import { stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
+import { discoverSourceFiles, normalizeRelPath, pruneCodeIndex } from './supervibe-index-policy.mjs';
 
 function toAbs(projectRoot, relPath) {
   return isAbsolute(relPath) ? relPath : join(projectRoot, relPath);
@@ -17,7 +18,9 @@ function toAbs(projectRoot, relPath) {
  */
 export async function scanCodeChanges(codeStore, projectRoot) {
   const rows = codeStore.db.prepare('SELECT path, indexed_at FROM code_files').all();
-  const counts = { reindexed: 0, removed: 0, scanned: rows.length, errors: 0 };
+  const inventory = await discoverSourceFiles(projectRoot);
+  const indexedPaths = new Set(rows.map((row) => normalizeRelPath(row.path)));
+  const counts = { reindexed: 0, removed: 0, discovered: 0, pruned: 0, scanned: rows.length, errors: 0 };
 
   for (const row of rows) {
     const abs = toAbs(projectRoot, row.path);
@@ -37,6 +40,25 @@ export async function scanCodeChanges(codeStore, projectRoot) {
       }
     } catch { counts.errors++; }
   }
+
+  for (const file of inventory.files) {
+    if (indexedPaths.has(file.relPath)) continue;
+    try {
+      const r = await codeStore.indexFile(file.absPath);
+      if (r.indexed) counts.discovered++;
+    } catch {
+      counts.errors++;
+    }
+  }
+
+  try {
+    const prune = await pruneCodeIndex(codeStore, inventory, projectRoot);
+    counts.pruned = prune.removed;
+    counts.removed += prune.removed;
+  } catch {
+    counts.errors++;
+  }
+
   return counts;
 }
 

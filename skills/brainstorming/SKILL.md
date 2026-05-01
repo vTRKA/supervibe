@@ -27,6 +27,7 @@ Before asking any question, read:
 - Most recent commits (`git log -10 --oneline`) for active context
 - Any related existing specs in `docs/specs/`
 - `MEMORY.md` if exists
+- `docs/references/scope-safety-standard.md` for the mandatory Scope Safety Gate
 
 Do NOT skip this — uninformed questions waste user time.
 
@@ -53,14 +54,16 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases.
 4. **Stack-aware question loading** — if `questionnaires/*.yaml` matches detected stack, pull relevant questions.
 5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
-6. **Present design** in sections scaled to complexity (architecture, components, data flow, error handling, testing). Get approval per section.
-7. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, sections, accepted limitations, out-of-scope list.
-8. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check. Fix inline.
-9. **Machine-validate spec** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
-10. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9.
-11. **User review of written spec** — explicit approval required.
-12. **Handoff** to `supervibe:writing-plans`.
-13. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
+6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
+7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
+8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Get approval per section.
+9. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
+10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
+11. **Machine-validate spec** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
+12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
+13. **User review of written spec** — explicit approval required.
+14. **Handoff** to `supervibe:writing-plans`.
+15. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
 
 ## Output contract
 
@@ -97,8 +100,10 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: ask multi-part questions (one at a time)
 - DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
 - DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension
+- DO NOT: add broad optional functionality just because it is related, modern, or possible
 - ALWAYS: scale design depth to complexity (3 sentences for trivial, 200-300 words for nuanced)
 - ALWAYS: decompose multi-subsystem requests before deep-diving any one
+- ALWAYS: explain deferred/rejected additions with concrete project harm and a safer alternative
 
 ## Verification
 
@@ -106,6 +111,7 @@ This skill's correct application is verifiable by:
 - A spec file exists at the documented path
 - `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
 - Spec frontmatter contains date and topic
+- Scope Safety Gate is present with include/defer/reject/spike decisions and tradeoffs
 - User approval is quoted in the conversation immediately before transition to writing-plans
 - Confidence-scoring result ≥9 is recorded
 
@@ -190,17 +196,22 @@ Required sections (in order):
 3. **Competitive scan** (if applicable)
 4. **Stakeholder map** (if applicable)
 5. **Options explored** (≥3, each with 1 paragraph)
-6. **Non-obvious risks** (≥3 bullets)
-7. **Kill criteria** (≥2 bullets)
-8. **Decision matrix** (table with weights set BEFORE scoring)
-9. **Recommended option** (with rationale)
-10. **Open questions** (what's still unknown — must NOT be empty)
+6. **Product and SDLC fit** (MVP path, launch path, production owner, rollout model)
+7. **Non-obvious risks** (≥3 bullets)
+8. **Kill criteria** (≥2 bullets)
+9. **Decision matrix** (table with weights set BEFORE scoring)
+10. **Scope Safety Gate** (include/defer/reject/spike decisions and why-not rationale)
+11. **Recommended option** (with rationale)
+12. **Production readiness contract** (functional/data/security/observability/rollback contracts)
+13. **Acceptance and 10/10 scorecard** (evidence required for user outcome, contracts, verification and release)
+14. **Open questions** (what's still unknown — must NOT be empty)
 
 ## Anti-patterns
 
 - **Skip first-principle decomposition** — produces "obvious" solutions that miss real constraints
 - **List options without weights** — invites post-hoc rationalization to favor preferred option
 - **Skip kill criteria** — leads to sunk-cost projects that should have died at week 2
+- **Skip Scope Safety Gate** — lets brainstorm output become a feature buffet instead of a focused product decision
 - **Cargo-cult competitive scan** — copying without understanding why
 - **Empty "Open questions"** — means you didn't probe hard enough; SOMETHING is unknown
 - **Single-stakeholder thinking** — missing impact on adjacent teams / future maintainers
@@ -241,11 +252,14 @@ Required sections (in order):
 ## Verification
 
 - Output saved to `docs/specs/YYYY-MM-DD-<topic>-brainstorm.md`
-- All 10 required sections present
+- All required sections present, including SDLC fit, Scope Safety Gate, production readiness contract, and 10/10 scorecard
+- Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence, harm, and tradeoff
 - Decision matrix weights documented BEFORE scores
 - ≥3 non-obvious risks listed
 - Kill criteria has at least 1 quantitative threshold
 - Open questions is non-empty
+- Production readiness contract covers data, security/privacy, observability, rollback, and release verification
+- 10/10 scorecard has evidence or explicit blocker for every row
 - Confidence rubric: `requirements` or custom; score ≥ 9
 - Machine validator: `validate-spec-artifacts.mjs --file <spec>` exits 0
 

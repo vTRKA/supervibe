@@ -14,6 +14,11 @@ last-verified: 2026-04-27
 
 # Code Search
 
+Retrieval policy: code RAG is mandatory for code changes, unfamiliar code, bug
+fixes, implementation planning and stack discovery. Codegraph is mandatory for
+rename, move, delete, extract, public API change, dependency impact analysis,
+architecture review and multi-file refactor.
+
 ## When to invoke
 
 BEFORE any non-trivial code change. Specifically:

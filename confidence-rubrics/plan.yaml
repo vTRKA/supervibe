@@ -14,9 +14,13 @@ dimensions:
     question: "Does every phase end with a verification command and expected output?"
     evidence-required: "Verification section per phase with bash command and expected stdout/exit-code"
   - id: spec-coverage
-    weight: 2
+    weight: 1
     question: "Does every requirement in the source spec map to at least one task?"
     evidence-required: "Coverage matrix or annotation linking spec sections to task numbers"
+  - id: scope-safety
+    weight: 1
+    question: "Does every task map to approved scope, with deferred/rejected extras documented and accepted expansions carrying a tradeoff?"
+    evidence-required: "Scope Safety Gate plus task-to-scope mapping and zero unapproved additions"
   - id: rollback-safety
     weight: 2
     question: "Are commits frequent enough that any single task failure can be rolled back without losing other work?"

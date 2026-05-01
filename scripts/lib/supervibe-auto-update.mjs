@@ -64,6 +64,7 @@ export function createAutoUpdatePlan({
   homeDir = homedir(),
   now = Date.now(),
   runtimeCapability = getNodeRuntimeCapability(),
+  installHealth = null,
 } = {}) {
   const mode = resolveAutoUpdateMode(env);
   const root = pluginRoot ? resolve(pluginRoot) : null;
@@ -81,6 +82,7 @@ export function createAutoUpdatePlan({
   if (!root) applyBlocked.push("plugin-root-missing");
   if (!gitCheckout) applyBlocked.push("not-a-git-checkout");
   if (!runtimeOk) applyBlocked.push(`node-${SQLITE_NODE_MIN_VERSION}-required`);
+  if (installHealth && installHealth.pass === false) applyBlocked.push("install-health-failed");
   if (ci && mode !== "apply") applyBlocked.push("ci");
   if (behind <= 0) applyBlocked.push("up-to-date");
   if (!wantsApply) applyBlocked.push(mode === "off" ? "disabled" : "manual-host");
@@ -90,6 +92,7 @@ export function createAutoUpdatePlan({
     && Boolean(root)
     && gitCheckout
     && runtimeOk
+    && installHealth?.pass !== false
     && behind > 0
     && (!ci || mode === "apply");
 
@@ -100,6 +103,7 @@ export function createAutoUpdatePlan({
     gitCheckout,
     runtimeOk,
     runtimeVersion: runtimeCapability?.version || process.versions.node,
+    installHealthPass: installHealth ? Boolean(installHealth.pass) : null,
     cacheStale,
     behind,
     check: canCheck && cacheStale,

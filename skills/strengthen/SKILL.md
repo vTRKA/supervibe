@@ -18,6 +18,21 @@ last-verified: 2026-04-27
 
 WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe-strengthen`. Loops over each flagged artifact.
 
+## Shared Dialogue Contract
+
+Lifecycle: `intake -> plan -> review -> approved -> applied -> verified`. Persist state in `.claude/memory/strengthen/state.json` before every lifecycle transition.
+
+Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+
+Default behavior: produce a dry-run diff and do not edit artifacts until approval. Free-form path: the user can name exact artifacts, agents, rules, or research constraints to include or exclude.
+
+After every material delivery, ask one explicit next-step question with choices:
+- Approve - apply the strengthened artifact updates.
+- Refine - user gives one focused change to the diff.
+- Alternative - produce another strengthening approach with explicit tradeoffs.
+- Deeper review - run confidence scoring, audit, or specialist review before applying.
+- Stop - persist current state and exit without claiming silent completion.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read MEMORY.md for prior feedback
@@ -25,6 +40,8 @@ WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe
 3. Read recent commits for active patterns
 4. Read `.claude/confidence-log.jsonl` for override patterns
 5. Read `.claude/effectiveness.jsonl` for agent failure patterns
+6. If audit flagged code index health, run `node scripts/build-code-index.mjs --root . --force --health` and re-check with `node scripts/supervibe-status.mjs --index-health --no-gc-hints`
+7. Run or consult `node scripts/supervibe-status.mjs --capabilities` before editing agents, rules, commands or skills so every strengthened artifact stays linked to a capability and verification hook.
 
 ## Decision tree (researcher consultation)
 
@@ -58,9 +75,14 @@ Artifact is stale (last-verified >90d)?
    h. Update `last-verified` to today
    i. Update `verified-against` (current commit hash)
    j. If researcher consulted: cite source in artifact footer
-2. Score each strengthened artifact with confidence-scoring (≥9 required)
-3. Show diff to user; await approval
-4. NEVER delete content — only add/deepen
+2. For code-index health findings:
+   a. Repair with `node scripts/build-code-index.mjs --root . --force --health`
+   b. Confirm `SUPERVIBE_INDEX_GATE READY: true`
+   c. If generated leakage or stale rows remain, inspect `--explain-policy` before editing source rules
+3. Score each strengthened artifact with confidence-scoring (≥9 required)
+4. Re-run capability registry validation when an artifact link changes and fix missing command, agent, skill, rule or verification references before presenting the diff.
+5. Show diff to user; await approval
+6. NEVER delete content — only add/deepen
 
 ## Output contract
 

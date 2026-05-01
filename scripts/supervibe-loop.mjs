@@ -35,6 +35,7 @@ import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explaine
 import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
+import { checkpointDiagnostics, formatCheckpointDiagnostics, readAgentCheckpoint, resumeAgentCheckpoint } from "./lib/supervibe-agent-checkpoints.mjs";
 import {
   createWorktreeSessionRecord,
   defaultWorktreeRegistryPath,
@@ -97,6 +98,8 @@ function parseArgs(argv) {
     "setup-worker-presets",
     "allow-session-conflict",
     "happy-path",
+    "checkpoint-status",
+    "repair-checkpoints",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -128,6 +131,35 @@ async function main() {
 
   if (args.help) {
     printHelp();
+    return;
+  }
+
+  if (args["checkpoint-status"] || args["repair-checkpoints"]) {
+    const report = await checkpointDiagnostics({ rootDir });
+    console.log(formatCheckpointDiagnostics(report));
+    if (!report.pass && !args["repair-checkpoints"]) process.exitCode = 2;
+    return;
+  }
+
+  if (args["resume-task"]) {
+    const checkpoint = await readAgentCheckpoint(args["resume-task"], { rootDir });
+    if (!checkpoint) {
+      console.error(`SUPERVIBE_RESUME_TASK_ERROR: checkpoint not found for ${args["resume-task"]}`);
+      process.exitCode = 2;
+      return;
+    }
+    const resume = resumeAgentCheckpoint(checkpoint, {
+      now: new Date().toISOString(),
+      requestedSideEffect: args["side-effect"] || null,
+    });
+    console.log([
+      "SUPERVIBE_RESUME_TASK",
+      `TASK: ${checkpoint.taskId}`,
+      `PASS: ${resume.pass}`,
+      `NEXT_SAFE_ACTION: ${resume.nextSafeAction}`,
+      `REPLAY_GUARD: ${resume.replayGuard}`,
+    ].join("\n"));
+    if (!resume.pass) process.exitCode = 2;
     return;
   }
 

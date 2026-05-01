@@ -11,6 +11,7 @@ const REQUIRED_INTAKE_SECTIONS = [
   'Constraints',
   'Success criteria',
   'Out of scope',
+  'Scope Safety Gate',
   'AI/data boundary',
   'Stakeholders',
   'Open questions',
@@ -20,11 +21,15 @@ const REQUIRED_INTAKE_SECTIONS = [
 const REQUIRED_BRAINSTORM_SECTIONS = [
   'Problem statement',
   'First-principle decomposition',
+  'Product and SDLC fit',
+  'Scope Safety Gate',
   'Options explored',
   'Non-obvious risks',
   'Kill criteria',
   'Decision matrix',
   'Recommended option',
+  'Production readiness contract',
+  'Acceptance and 10/10 scorecard',
   'Open questions',
   'Next step',
 ];
@@ -69,6 +74,23 @@ function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
 
+function validateScopeSafety(body, prefix) {
+  const issues = [];
+  if (!/(include|defer|reject|spike)/i.test(body)) {
+    issues.push(`${prefix}: expected include/defer/reject/spike decision`);
+  }
+  if (!/\b(evidence|research|metric|failing test|support|analytics)\b/i.test(body)) {
+    issues.push(`${prefix}: expected evidence basis`);
+  }
+  if (!/\b(complexity|cost|harm|maintenance|support|risk|cognitive load)\b/i.test(body)) {
+    issues.push(`${prefix}: expected complexity cost or harm`);
+  }
+  if (!/\b(tradeoff|scope boundary|deferred|rejected|won't|will not)\b/i.test(body)) {
+    issues.push(`${prefix}: expected tradeoff or explicit deferred/rejected boundary`);
+  }
+  return issues;
+}
+
 export function validateIntakeSpec(markdown) {
   const issues = [];
   for (const section of REQUIRED_INTAKE_SECTIONS) {
@@ -96,6 +118,7 @@ export function validateIntakeSpec(markdown) {
   if (countMarkdownItems(sectionBody(markdown, 'Out of scope')) < 1) {
     issues.push('out of scope: expected at least 1 explicit boundary');
   }
+  issues.push(...validateScopeSafety(sectionBody(markdown, 'Scope Safety Gate'), 'scope safety gate'));
   const aiBoundary = sectionBody(markdown, 'AI/data boundary');
   for (const field of ['MCP', 'Figma', 'Screenshots', 'External API', 'PII', 'Approval']) {
     if (!new RegExp(field, 'i').test(aiBoundary)) issues.push(`ai/data boundary: missing ${field}`);
@@ -128,6 +151,13 @@ export function validateBrainstormSpec(markdown) {
   const optionCount = [...options.matchAll(/^###\s+Option\s+[A-Z0-9]/gim)].length;
   if (optionCount < 3) issues.push('options explored: expected at least 3 options');
 
+  const sdlc = sectionBody(markdown, 'Product and SDLC fit');
+  for (const term of ['MVP', 'SDLC', 'launch', 'production']) {
+    if (!new RegExp(term, 'i').test(sdlc)) issues.push(`product and SDLC fit: missing ${term}`);
+  }
+
+  issues.push(...validateScopeSafety(sectionBody(markdown, 'Scope Safety Gate'), 'scope safety gate'));
+
   if (countMarkdownItems(sectionBody(markdown, 'Non-obvious risks')) < 3) {
     issues.push('non-obvious risks: expected at least 3 risks');
   }
@@ -145,6 +175,16 @@ export function validateBrainstormSpec(markdown) {
   }
   if (!/\|\s*Dimension\s*\|\s*Weight\s*\|/i.test(matrix)) {
     issues.push('decision matrix: missing Dimension/Weight table');
+  }
+
+  const readiness = sectionBody(markdown, 'Production readiness contract');
+  for (const term of ['contract', 'data', 'security', 'observability', 'rollback']) {
+    if (!new RegExp(term, 'i').test(readiness)) issues.push(`production readiness contract: missing ${term}`);
+  }
+
+  const scorecard = sectionBody(markdown, 'Acceptance and 10/10 scorecard');
+  for (const term of ['10/10', 'acceptance', 'verification', 'release']) {
+    if (!new RegExp(term.replace('/', '\\/'), 'i').test(scorecard)) issues.push(`acceptance and 10/10 scorecard: missing ${term}`);
   }
 
   if (countMarkdownItems(sectionBody(markdown, 'Open questions')) < 1) {

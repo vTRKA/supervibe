@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.15] - 2026-05-01
+
+### Added
+
+- Added mandatory Scope Safety Gate coverage across agents, intake,
+  brainstorm, planning, autonomous-loop execution, work-item templates, and
+  artifact validators to prevent harmful feature bloat.
+- Added `scope-safety` rule, shared reference standard, memory entry, and
+  regression tests that require include/defer/reject/spike decisions with
+  evidence, complexity cost, tradeoff, and 10/10 scope discipline.
+
+### Changed
+
+- Updated requirement and plan rubrics so scope safety is part of the score
+  without changing the 10-point scale.
+
+## [2.0.14] - 2026-05-01
+
+### Added
+
+- Added production-grade SDLC, MVP, rollout, contract, production-readiness,
+  and final 10/10 acceptance gates to brainstorm, plan, loop, artifact
+  validators, and work-item templates.
+- Added senior AI/LLM specialist coverage for RAG architecture, LLM evals,
+  agent orchestration, and model operations, with registry capability coverage.
+
+### Fixed
+
+- Removed private example project references from docs, tests, fixtures, and
+  index data, and added release-candidate guards to prevent recurrence.
+- Fixed mojibake in Russian routing text and added release-candidate checks for
+  broken encoding markers.
+
+## [2.0.13] - 2026-05-01
+
+### Added
+
+- Added release gates for context quality, retrieval policy, evidence ledgers,
+  tool metadata, repo maps, checkpoints, local agent regressions, context
+  threat fixtures, user outcome metrics, retrieval calibration, temporal
+  knowledge graphs, performance SLOs, workspace isolation, and feedback
+  learning promotion.
+- Added user-visible context provenance, repair actions, confidence deltas,
+  workspace namespace diagnostics, and release-candidate evidence checks.
+
+### Fixed
+
+- Made context evals, regression checks, release-security audit, memory search,
+  and status diagnostics fail visibly when required remediation evidence is
+  stale, missing, unsafe, cross-workspace, or uncited.
+
 ## [2.0.12] - 2026-05-01
 
 ### Fixed

@@ -31,15 +31,18 @@ Treat the most recent user message as the topic.
 
 3. **Invoke the `supervibe:brainstorming` skill.** It encodes the full methodology:
    - First-principle decomposition
+   - Product type, MVP path, SDLC stage, launch model, and production owner
+   - Scope Safety Gate: include/defer/reject/spike decisions, why-not rationale, and tradeoffs
    - Stakeholder map
    - Competitive scan (when applicable, via `supervibe:mcp-discovery` for Firecrawl)
    - 2-3 alternative approaches with kill criteria
    - Decision matrix
+   - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
 4. **Save the spec.** The skill emits `docs/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
-5. **Mandatory handoff.** Print `Следующий шаг - написать план. Переходим?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
+5. **Mandatory handoff.** Print `Следующий шаг - написать production-ready план. Переходим?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
 
 5a. **Machine-readable handoff.** Include:
 
@@ -72,6 +75,9 @@ Lines:     <count>
 Approaches: <count>  (chosen: <name>)
 Score:     <N>/10  Rubric: requirements
 Validator: validate-spec-artifacts PASS
+Production readiness: covered
+Scope safety: present, with deferred/rejected additions explained
+10/10 scorecard: present
 
 Next:      /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan <spec-path>`

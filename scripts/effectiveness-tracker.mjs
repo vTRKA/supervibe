@@ -51,6 +51,8 @@ export function aggregateForAgent(invocations) {
   const total = sorted.length;
   const avgConf = sorted.reduce((s, e) => s + (e.confidence_score || 0), 0) / total;
   const overrideCount = sorted.filter(e => e.override === true).length;
+  const evidenceFailures = sorted.filter(e => e.evidence_gate && e.evidence_gate.pass === false).length;
+  const feedbackCorrections = sorted.filter(e => e.user_feedback && /correction|missed|wrong|skip|fix/i.test(e.user_feedback)).length;
   return {
     iterations: total,
     'last-task': last.task_summary?.slice(0, 100) || null,
@@ -58,6 +60,8 @@ export function aggregateForAgent(invocations) {
     'last-applied': last.ts,
     'avg-confidence': Number(avgConf.toFixed(2)),
     'override-rate': total > 0 ? Number((overrideCount / total).toFixed(3)) : 0,
+    'evidence-failure-rate': total > 0 ? Number((evidenceFailures / total).toFixed(3)) : 0,
+    'feedback-correction-rate': total > 0 ? Number((feedbackCorrections / total).toFixed(3)) : 0,
   };
 }
 

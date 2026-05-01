@@ -73,11 +73,11 @@ export function isPidAlive(pid) {
 }
 
 /** Add an entry. */
-export async function registerServer({ port, pid, root, label = '', watching = [] }) {
+export async function registerServer({ port, pid, root, label = '', watching = [], mode = 'foreground', logs = null }) {
   const entries = await readRegistry();
   const filtered = entries.filter(e => e.port !== port);
   filtered.push({
-    port, pid, root, label, watching,
+    port, pid, root, label, watching, mode, logs,
     startedAt: new Date().toISOString(),
   });
   await writeRegistry(filtered);

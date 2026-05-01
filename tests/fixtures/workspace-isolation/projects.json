@@ -1,0 +1,19 @@
+{
+  "projects": [
+    {
+      "id": "project-a",
+      "root": "D:/workspace/project-a",
+      "visibility": "private"
+    },
+    {
+      "id": "project-b",
+      "root": "D:/workspace/project-b",
+      "visibility": "private"
+    },
+    {
+      "id": "supervibe-global",
+      "root": "D:/workspace/supervibe",
+      "visibility": "global-plugin"
+    }
+  ]
+}

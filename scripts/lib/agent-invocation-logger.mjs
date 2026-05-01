@@ -3,6 +3,7 @@
 import { appendFile, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { createEvidenceRecord } from './supervibe-evidence-ledger.mjs';
 
 const PROJECT_ROOT = process.cwd();
 let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
@@ -19,6 +20,20 @@ export async function logInvocation(entry) {
     ts: new Date().toISOString(),
     ...entry,
   };
+  if (entry.evidence || entry.retrievalPolicy) {
+    record.evidence_gate = createEvidenceRecord({
+      taskId: entry.task_id || entry.taskId || entry.task_summary,
+      agentId: entry.agent_id,
+      retrievalPolicy: entry.retrievalPolicy || entry.evidence?.retrievalPolicy,
+      memoryIds: entry.evidence?.memoryIds || [],
+      ragChunkIds: entry.evidence?.ragChunkIds || [],
+      graphSymbols: entry.evidence?.graphSymbols || [],
+      citations: entry.evidence?.citations || [],
+      verificationCommands: entry.evidence?.verificationCommands || [],
+      redactionStatus: entry.evidence?.redactionStatus || 'unknown',
+      bypassReasons: entry.evidence?.bypassReasons || [],
+    }).gate;
+  }
   await mkdir(dirname(_logPath), { recursive: true });
   await appendFile(_logPath, JSON.stringify(record) + '\n');
   return record;

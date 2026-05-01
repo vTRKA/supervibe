@@ -1,0 +1,90 @@
+id: tauri-react-rust-postgres
+name: "Tauri 2 + React + Rust + Postgres"
+version: 1.0.0
+description: "Desktop stack pack for Tauri 2 apps with React/Vite frontend, Rust command backend, typed IPC, SQLx/Postgres and Playwright desktop QA."
+
+matches:
+  required:
+    runtime: tauri
+    tauri_major: 2
+  optional:
+    frontend: [react]
+    bundler: [vite]
+    css: [tailwind]
+    router: [tanstack-router]
+    backend: [rust]
+    database: [postgres, sqlx]
+    test: [playwright]
+
+profiles:
+  minimal:
+    groups:
+      - core
+      - react-frontend
+      - tauri-desktop
+      - rust-backend
+  product-design:
+    extends: minimal
+    groups:
+      - product-design
+  full-stack:
+    extends: product-design
+    groups:
+      - data-postgres
+      - ops-security
+  research-heavy:
+    extends: minimal
+    groups:
+      - research
+
+agents-attach:
+  - supervibe:_meta:supervibe-orchestrator
+  - supervibe:_core:repo-researcher
+  - supervibe:_core:code-reviewer
+  - supervibe:_core:quality-gate-reviewer
+  - supervibe:_core:root-cause-debugger
+  - supervibe:stacks/react:react-implementer
+  - supervibe:stacks/tauri:tauri-rust-engineer
+  - supervibe:_design:tauri-ui-designer
+  - supervibe:_ops:ipc-contract-reviewer
+  - supervibe:_ops:api-contract-reviewer
+  - supervibe:_ops:data-modeler
+  - supervibe:_ops:db-reviewer
+  - supervibe:_ops:performance-reviewer
+  - supervibe:_core:security-auditor
+  - supervibe:_ops:observability-architect
+  - supervibe:_ops:prompt-ai-engineer
+
+ownership:
+  src-tauri:
+    primary: supervibe:stacks/tauri:tauri-rust-engineer
+    reviewers:
+      - supervibe:_ops:ipc-contract-reviewer
+      - supervibe:_core:security-auditor
+  src:
+    primary: supervibe:stacks/react:react-implementer
+    reviewers:
+      - supervibe:_design:tauri-ui-designer
+      - supervibe:_ops:ipc-contract-reviewer
+  database:
+    primary: supervibe:_ops:data-modeler
+    conditional: "Only when SQLx/Postgres evidence exists in Cargo.toml, env examples or migration files."
+
+rules-attach:
+  - operational-safety
+  - confidence-discipline
+  - anti-hallucination
+  - no-half-finished
+  - no-hardcode
+  - use-codegraph-before-refactor
+  - observability
+  - privacy-pii
+
+verification:
+  required-checks:
+    - "cargo check passes for src-tauri"
+    - "frontend typecheck or Vite build passes"
+    - "IPC commands have typed request, response and error shapes"
+    - "Tauri permissions are scoped and justified"
+    - "Playwright desktop smoke exists or is explicitly deferred"
+    - "SQLx/Postgres specialist is attached only when evidence exists"

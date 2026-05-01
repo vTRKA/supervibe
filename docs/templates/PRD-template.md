@@ -60,6 +60,19 @@
 
 ---
 
+## Scope Safety Gate
+
+| Candidate capability | Must / Should / Could / Won't | Evidence | Complexity cost | Decision |
+|----------------------|-------------------------------|----------|-----------------|----------|
+| ... | ... | ... | ... | include / defer / reject / spike |
+
+**Do not build now:** ...
+**Why not:** ...
+**Smallest production-safe release:** ...
+**Promotion trigger for deferred items:** ...
+
+---
+
 ## AI/Data Boundary
 
 | Data or surface | Allowed for agents/MCPs? | Redaction required | Approval required |

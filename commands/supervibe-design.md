@@ -10,6 +10,19 @@ description: >-
 
 Single entry-point for the design pipeline. Orchestrates 6 design agents and 5 design skills through 8 explicit stages, ending with an **approved, ready-for-development** prototype that any stack-developer agent can pick up.
 
+## Shared Dialogue Contract
+
+Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `prototypes/<slug>/config.json`, section approvals, and `prototypes/<slug>/.approval.json`.
+
+Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+
+After every material delivery, ask one explicit next-step question with choices:
+- Approve - accept this delivery and move to the next lifecycle state.
+- Refine - user gives one focused change; apply one iteration.
+- Alternative - produce another option with explicit tradeoffs.
+- Deeper review - run the relevant review/check agents or validators.
+- Stop - persist current state and exit without claiming silent completion.
+
 ## Design Intelligence Integration
 
 Design intelligence is an internal evidence source for this existing command, not a new workflow surface. Before style, palette, typography, chart, icon, presentation, collateral, mobile, or stack handoff decisions, design agents must run:

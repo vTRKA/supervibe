@@ -5,6 +5,8 @@
 //   --root <dir>            Start server serving <dir> (default: ./mockups or ./)
 //   --port <N>              Specific port (default: auto-allocate 3047-3099 then OS)
 //   --label "<name>"        Friendly label for the registry
+//   --daemon                Start silently in the background and return the URL
+//   --foreground            Keep the server attached for debugging (default)
 //   --no-watch              Disable hot-reload (static-only)
 //   --idle-timeout <min>    Auto-shutdown after N minutes of inactivity (default 30; 0 = disable)
 //   --force                 Bypass max-servers limit
@@ -16,9 +18,11 @@
 import { resolve, basename } from 'node:path';
 import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { startStaticServer } from './lib/preview-static-server.mjs';
 import { attachHotReload } from './lib/preview-hot-reload.mjs';
 import { assertFeedbackAllowed } from './lib/preview-feedback-policy.mjs';
+import { activateDaemonLoggingFromEnv, startBackgroundNodeScript } from './lib/supervibe-process-manager.mjs';
 import {
   findFreePort,
   registerServer, unregisterServer,
@@ -27,6 +31,7 @@ import {
 
 const PROJECT_ROOT = process.cwd();
 const MAX_SERVERS_DEFAULT = 10;
+const daemonLogs = activateDaemonLoggingFromEnv();
 
 const { values } = parseArgs({
   options: {
@@ -35,6 +40,8 @@ const { values } = parseArgs({
     label: { type: 'string', default: '' },
     'no-watch': { type: 'boolean', default: false },
     'no-feedback': { type: 'boolean', default: false },
+    daemon: { type: 'boolean', default: false },
+    foreground: { type: 'boolean', default: false },
     'idle-timeout': { type: 'string', default: '30' },
     force: { type: 'boolean', default: false },
     list: { type: 'boolean', default: false },
@@ -49,7 +56,7 @@ if (values.help) {
   console.log(`Supervibe Preview Server
 
 Usage:
-  preview-server.mjs --root <dir> [--port N] [--label "name"] [--no-watch] [--idle-timeout <min>] [--force]
+  preview-server.mjs --root <dir> [--port N] [--label "name"] [--daemon|--foreground] [--no-watch] [--idle-timeout <min>] [--force]
   preview-server.mjs --list
   preview-server.mjs --kill <port>
   preview-server.mjs --kill-all
@@ -122,6 +129,33 @@ const portArg = values.port ? parseInt(values.port, 10) : 0;
 const port = portArg || await findFreePort();
 const label = values.label || basename(absRoot);
 
+if (values.daemon && !values.foreground) {
+  const childArgs = [
+    '--root', absRoot,
+    '--port', String(port),
+    '--label', label,
+    '--idle-timeout', String(values['idle-timeout'] ?? '30'),
+    '--foreground',
+  ];
+  if (values['no-watch']) childArgs.push('--no-watch');
+  if (values['no-feedback']) childArgs.push('--no-feedback');
+  if (values.force) childArgs.push('--force');
+  const child = startBackgroundNodeScript({
+    scriptPath: fileURLToPath(import.meta.url),
+    args: childArgs,
+    cwd: PROJECT_ROOT,
+    name: 'preview-server',
+    port,
+  });
+  console.log('SUPERVIBE_PREVIEW_DAEMON');
+  console.log(`URL: http://localhost:${port}`);
+  console.log(`PID: ${child.pid}`);
+  console.log(`ROOT: ${absRoot}`);
+  console.log(`LOG_STDOUT: ${child.logs.stdout}`);
+  console.log(`LOG_STDERR: ${child.logs.stderr}`);
+  process.exit(0);
+}
+
 const server = await startStaticServer({
   root: absRoot,
   port,
@@ -139,6 +173,8 @@ await registerServer({
   root: absRoot,
   label,
   watching: watcher ? ['*'] : [],
+  mode: process.env.SUPERVIBE_SERVER_DAEMON === '1' ? 'daemon' : 'foreground',
+  logs: daemonLogs,
 });
 
 const url = `http://localhost:${server.port}`;

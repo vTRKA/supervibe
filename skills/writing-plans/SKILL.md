@@ -26,10 +26,13 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 2. Read `CLAUDE.md` for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
+5. Read `docs/references/scope-safety-standard.md` and preserve the approved scope boundary
 
 ## Scope check
 
 If spec covers multiple independent subsystems → STOP, return to brainstorming for decomposition. One plan = one coherent subsystem.
+
+If the plan includes functionality not present in the approved spec, Scope Safety Gate, or explicit user-approved change request → STOP and either remove it, defer it, or record a scope-change tradeoff. Do not let "nice to have" work enter implementation tasks silently.
 
 ## Decision tree
 
@@ -48,22 +51,26 @@ Per task: TDD applicable?
 
 1. **File structure mapping** — list every file to Create/Modify, with one-line responsibility per file.
 2. **Phase decomposition** — group tasks into phases with clear goal + success criteria + prerequisites.
-3. **Per-task breakdown** with:
+3. **Scope Safety Gate** — create approved/deferred/rejected scope lists; require user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout and rollback for every accepted scope expansion.
+4. **Delivery strategy** — define SDLC flow, MVP slice, staged rollout, production target, owner/support path, and how the plan reaches production rather than stopping at a partial implementation.
+5. **Production readiness contract** — specify test pyramid, security/privacy checks, performance/SLO gates, observability, rollback, release notes, migration/runbook needs, and post-release learning.
+6. **Per-task breakdown** with:
    - Files (Create/Modify list)
    - Bite-sized steps (2-5 min each) showing exact commands and code
    - Verification command + expected output
    - Commit step (or note if commits suppressed)
-4. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix.
-5. **Machine-validate plan** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
-6. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required.
-7. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
-7a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-8. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Следующий шаг - review loop по плану. Переходим?`.
-9. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`.
+7. **Final 10/10 acceptance gate** — define exact evidence needed to call the work production-ready; include "no open blockers" and plan reread requirements.
+8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, SDLC completeness, production-readiness coverage.
+9. **Machine-validate plan** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
+10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
+11. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
+11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
+12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Следующий шаг - review loop по плану. Переходим?`.
+13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`.
 
 ## Output contract
 
-Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure section, numbered Tasks with bite-sized steps, Self-Review section, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
+Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, Final 10/10 Acceptance Gate, Self-Review, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
 
 Required handoff block after saving the plan:
 
@@ -88,13 +95,16 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: call types/functions not defined elsewhere in the plan
 - DO NOT: offer `/supervibe-execute-plan` before review passes and atomic work items exist
 - DO NOT: finish without `NEXT_STEP_HANDOFF`
+- DO NOT: add tasks that implement unapproved extras, speculative framework parity, protocol work, or polish without a Scope Safety tradeoff
 - ALWAYS: show exact code for code steps (engineer reads tasks out of order)
 - ALWAYS: include rollback safety (commit per task or per green test)
+- ALWAYS: map every task to approved scope or an explicit user-approved scope change
 
 ## Verification
 
 - Plan file exists at documented path
 - `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0
+- Scope Safety Gate lists approved, deferred, and rejected scope with tradeoffs
 - Spec coverage matrix maps every spec section to ≥1 task
 - Confidence-scoring(implementation-plan) ≥9 recorded
 
@@ -212,6 +222,9 @@ Required sections per task:
 - Commit step
 
 Required at end:
+- Scope Safety Gate with approved/deferred/rejected scope and tradeoffs
+- Delivery Strategy and Production Readiness sections
+- Final 10/10 Acceptance Gate with no-open-blockers rule
 - Self-Review (spec coverage / placeholders / type consistency)
 - Execution Handoff (Subagent-Driven batches OR Inline batches)
 
@@ -222,6 +235,7 @@ Required at end:
 - **No verification command** ("should work" is not verification; `npm test` is)
 - **No commit per task** (lumping commits hides regressions)
 - **No critical path** (engineer doesn't know which task to start when)
+- **No Scope Safety Gate** (hidden extras can enter the plan without a product decision)
 - **No rollback plan** (task fails midway → unclear how to recover)
 - **Estimates with false precision** ("3h 17min" lies; "1h ± 2x" is honest)
 - **Empty self-review** (failure to scan own work for placeholders)
@@ -257,6 +271,10 @@ Required at end:
 - Plan saved to `docs/plans/YYYY-MM-DD-<feature>.md`
 - Every task has bite-sized steps + failing test + verify command + commit
 - Critical path documented
+- Scope Safety Gate documents approved, deferred, rejected, and spiked scope with evidence and tradeoffs
+- Delivery Strategy covers SDLC, MVP, phases, launch, and production target
+- Production Readiness covers test, security/privacy, performance, observability, rollback, and release
+- Final 10/10 Acceptance Gate requires verification evidence and no open blockers
 - Parallelization batches in Handoff section
 - Rollback plan per task
 - Self-Review section completed before saving
