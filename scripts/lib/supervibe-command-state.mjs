@@ -1,7 +1,6 @@
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
 import { createAgentCheckpoint } from "./supervibe-agent-checkpoints.mjs";
-
-const POST_DELIVERY_CHOICES = Object.freeze(["approve", "refine", "alternative", "deeper-review", "stop"]);
+import { buildPostDeliveryQuestion } from "./supervibe-dialogue-contract.mjs";
 
 function createCommandState({ route, scenario = {} } = {}) {
   const expected = scenario.expected || {};
@@ -51,7 +50,8 @@ export function evaluateScenarioFlows(scenarios = []) {
     if (expected.requiresHealthGate && !state.healthGate?.present) failures.push("user flow did not produce required dry-run, question or health gate");
     if (expected.requiresLifecycleState && !state.lifecycleState) failures.push("missing lifecycle state");
     if (expected.requiresResumeToken && !state.resumeToken) failures.push("missing resume token");
-    if (expected.requiresPostDeliveryMenu && !hasPostDeliveryMenu(state)) failures.push("missing post-delivery approve/refine/alternative/stop menu");
+    if (expected.requiresPostDeliveryMenu && !hasPostDeliveryMenu(state)) failures.push("missing beginner-friendly post-delivery action menu");
+    if (expected.requiresPostDeliveryMenu && !hasUserFacingPostDeliveryLabels(state)) failures.push("post-delivery menu exposes raw action ids or lacks user-facing labels");
     if (!state.persistedBeforeWait) failures.push("state was not persisted before waiting");
     if (state.claimsDoneWithoutChoice) failures.push("claimed done without user choice");
     if (!state.checkpoint?.validation?.pass) failures.push(`checkpoint invalid: ${state.checkpoint?.validation?.failures?.join("; ")}`);
@@ -82,30 +82,14 @@ export function formatScenarioEvaluation(evaluation) {
   return lines.join("\n");
 }
 
-function buildPostDeliveryQuestion(route) {
-  return {
-    prompt: `Step 1/1: ${route.nextQuestion || "Choose the next delivery action."}`,
-    choices: POST_DELIVERY_CHOICES.map((id) => ({
-      id,
-      label: id,
-      tradeoff: tradeoffFor(id),
-    })),
-    stopCondition: "Stop persists state and exits without claiming completion.",
-  };
-}
-
 function hasPostDeliveryMenu(state) {
   const choices = new Set((state.lastPostDeliveryPrompt?.choices || []).map((choice) => choice.id));
-  return ["approve", "refine", "alternative", "stop"].every((choice) => choices.has(choice));
+  return ["approve", "refine", "alternative", "deeper-review", "stop"].every((choice) => choices.has(choice));
 }
 
-function tradeoffFor(id) {
-  const tradeoffs = {
-    approve: "Apply or accept the delivered artifact.",
-    refine: "Make one focused change.",
-    alternative: "Generate another option with tradeoffs.",
-    "deeper-review": "Run additional audit before applying.",
-    stop: "Persist state and exit.",
-  };
-  return tradeoffs[id] || "Choose this path.";
+function hasUserFacingPostDeliveryLabels(state) {
+  const choices = state.lastPostDeliveryPrompt?.choices || [];
+  return choices.length > 0 &&
+    choices.every((choice) => choice.label && choice.label !== choice.id && choice.tradeoff) &&
+    choices.some((choice) => choice.recommended === true);
 }

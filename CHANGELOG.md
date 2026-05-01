@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.23] - 2026-05-01
+
+### Fixed
+
+- Replaced raw post-delivery action labels such as `Approve`, `Refine`,
+  `Alternative`, `Deeper review`, and `Stop` with beginner-friendly,
+  outcome-oriented choices across genesis, design, adapt, and strengthen flows.
+- Updated runtime command state so internal action ids remain in saved state but
+  are no longer exposed as visible user menu labels.
+
+### Changed
+
+- Strengthened agent dialogue discipline to require language-matched,
+  outcome-oriented choices with the recommended option first.
+
+### Added
+
+- Added regression coverage that rejects raw action-id menus and stale generic
+  `<option a>` dialogue placeholders.
+- Added `docs/audits/2026-05-01-dialogue-ux-audit.md` with the dialogue UX
+  audit findings and remediation checklist.
+
 ## [2.0.22] - 2026-05-01
 
 ### Fixed

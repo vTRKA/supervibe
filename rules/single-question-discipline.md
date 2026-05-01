@@ -21,9 +21,9 @@ related-rules:
 ## What
 Any agent, command, or skill that engages the user in clarification, requirements gathering, design dialogue, or branching decisions MUST present **one question at a time**, formatted as markdown with a `Шаг N/M:` (or `Step N/M:`) progress indicator. Choices must be a list. The agent must wait for an explicit user reply before asking the next question.
 
-Questions must be easy to answer. Prefer 2-4 choices, put the recommended/default choice first, and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
+Questions must be easy to answer. Prefer 2-4 choices for ordinary clarifications; delivery gates use the standard 5-action menu. Put the recommended/default choice first and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
 
-Delivery-style flows must also declare lifecycle states, a persisted state artifact path, default behavior, free-form path, stop condition, and a post-delivery menu with approve/refine/alternative/deeper-review/stop. Shared reusable wording lives in `scripts/lib/supervibe-dialogue-contract.mjs`.
+Delivery-style flows must also declare lifecycle states, a persisted state artifact path, default behavior, free-form path, stop condition, and a post-delivery menu. Visible choices must be language-matched and outcome-oriented: `Apply / Применить`, `Revise / Доработать`, `Try another option / Другой вариант`, `Review deeper / Проверить глубже`, `Stop here / Остановиться`. Internal action ids may remain in saved state, but must not be shown as the labels. Shared reusable wording lives in `scripts/lib/supervibe-dialogue-contract.mjs`.
 
 Genesis-style install flows must split selection into separate questions: host adapter, install profile, optional add-ons, then custom group edits. Presets such as `minimal`, `product-design`, `full-stack`, `research-heavy`, and `custom` must include one-line tradeoffs and a stop condition before any file write.
 
@@ -46,13 +46,13 @@ Ask one question per message. Format:
 
 > **Шаг N/M:** <one focused question>
 >
-> - <option a> — <one-line rationale>
-> - <option b> — <one-line rationale>
-> - <option c> — <one-line rationale>
+> - <Recommended action> (recommended) - <what happens and what it costs>
+> - <Second action> - <what happens and what it costs>
+> - <Stop here> - <what is saved and what will not happen>
 >
 > Свободный ответ тоже принимается.
 
-Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message.
+Match the user's language, use outcome-oriented labels, and never show internal lifecycle ids as visible labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message.
 ```
 
 The agent's `## Anti-patterns` section MUST list:

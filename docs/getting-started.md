@@ -70,17 +70,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.22
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.23
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.22
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.22"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.23
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.23"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.22
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.23
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.22" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.23" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.22/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.23/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -385,7 +385,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.22/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.23/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -460,13 +460,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.22
+  - Manifest auto-updated; ensure your install path has v2.0.23
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.22 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.23 dir, restart Claude Code
 
 ## Where to next
 

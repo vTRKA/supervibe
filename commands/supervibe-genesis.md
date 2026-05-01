@@ -16,12 +16,12 @@ Default behavior: choose the safest minimal profile, no add-ons, dry-run only un
 
 Tool metadata contract: `/supervibe-genesis` exposes stable aliases, input shape, host/context requirements, token-cost hint, write side-effect level and dry-run approval policy through `scripts/lib/supervibe-tool-metadata-contract.mjs`; route only the intent-scoped metadata needed for the current setup.
 
-After every material delivery, ask one explicit next-step question with choices:
-- Approve - apply the dry-run scaffold or accept the verified scaffold.
-- Refine - user gives one focused change to the scaffold plan.
-- Alternative - produce another profile/host/stack-pack option with explicit tradeoffs.
-- Deeper review - run status, audit, or confidence scoring before applying.
-- Stop - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
+- Apply / Применить - recommended when the dry-run scaffold looks right; apply it or accept the verified scaffold.
+- Revise / Доработать - user gives one focused change to the scaffold plan; apply one iteration.
+- Try another option / Другой вариант - produce another profile, host, or stack-pack option with explicit tradeoffs.
+- Review deeper / Проверить глубже - run status, audit, or confidence scoring before applying.
+- Stop here / Остановиться - persist current state and exit without claiming silent completion.
 
 Scenario evals assert this post-delivery menu and persisted command state via
 `tests/fixtures/scenario-evals/supervibe-user-flows.json`.

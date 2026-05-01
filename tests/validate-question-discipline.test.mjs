@@ -24,9 +24,44 @@ test('agent without discipline section fails', () => {
 });
 
 test('agent with discipline section passes', () => {
-  const body = `## User dialogue discipline\nШаг N/M format used.\n## Anti-patterns\n- asking-multiple-questions-at-once\n`;
+  const body = [
+    '## User dialogue discipline',
+    'Шаг N/M format used with outcome-oriented labels.',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
   const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
   assert.equal(issues.length, 0);
+});
+
+test('agent with stale option placeholders fails', () => {
+  const body = [
+    '## User dialogue discipline',
+    'When clarifying, use one-line rationale per option.',
+    '> - <option a> - <one-line rationale>',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
+  const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
+  assert.ok(issues.some((issue) => issue.code === 'missing-outcome-label-guidance'), JSON.stringify(issues));
+  assert.ok(issues.some((issue) => issue.code === 'stale-dialogue-placeholder'), JSON.stringify(issues));
+});
+
+test('stale placeholders outside dialogue section do not fail dialogue check', () => {
+  const body = [
+    '## User dialogue discipline',
+    'Шаг N/M format used with outcome-oriented labels.',
+    '',
+    '## Alternatives considered',
+    '- <option A>: rejected because <reason>',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
+  const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
+  assert.equal(issues.length, 0, JSON.stringify(issues));
 });
 
 test('noninteractive frontmatter override skips check', () => {

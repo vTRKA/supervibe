@@ -26,12 +26,12 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 Default behavior: produce a dry-run diff and do not edit artifacts until approval. Free-form path: the user can name exact artifacts, agents, rules, or research constraints to include or exclude.
 
-After every material delivery, ask one explicit next-step question with choices:
-- Approve - apply the strengthened artifact updates.
-- Refine - user gives one focused change to the diff.
-- Alternative - produce another strengthening approach with explicit tradeoffs.
-- Deeper review - run confidence scoring, audit, or specialist review before applying.
-- Stop - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
+- Apply / Применить - recommended when the strengthened artifact updates look right; apply them.
+- Revise / Доработать - user gives one focused change to the diff; apply one iteration.
+- Try another option / Другой вариант - produce another strengthening approach with explicit tradeoffs.
+- Review deeper / Проверить глубже - run confidence scoring, audit, or specialist review before applying.
+- Stop here / Остановиться - persist current state and exit without claiming silent completion.
 
 ## Step 0 — Read source of truth (required)
 

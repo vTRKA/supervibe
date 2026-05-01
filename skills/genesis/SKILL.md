@@ -26,12 +26,12 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 Default behavior: choose the safest minimal profile, no add-ons, dry-run only until the user approves. Free-form path: the user can name exact agents, rules, host files, or stack constraints instead of choosing a listed profile.
 
-After every material delivery, ask one explicit next-step question with choices:
-- Approve - apply the dry-run scaffold or accept the verified scaffold.
-- Refine - user gives one focused change to the scaffold plan.
-- Alternative - produce another profile/host/stack-pack option with explicit tradeoffs.
-- Deeper review - run status, audit, or confidence scoring before applying.
-- Stop - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
+- Apply / Применить - recommended when the dry-run scaffold looks right; apply it or accept the verified scaffold.
+- Revise / Доработать - user gives one focused change to the scaffold plan; apply one iteration.
+- Try another option / Другой вариант - produce another profile, host, or stack-pack option with explicit tradeoffs.
+- Review deeper / Проверить глубже - run status, audit, or confidence scoring before applying.
+- Stop here / Остановиться - persist current state and exit without claiming silent completion.
 
 ## Step 0 — Read source of truth (required)
 

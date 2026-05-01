@@ -32,8 +32,8 @@ const ROUTES = {
     phase: "delivery",
     command: "/supervibe --delivery-control",
     skill: "supervibe:executing-plans",
-    nextQuestionRu: "Следующий шаг - сохранить state и выбрать approve/refine/alternative/stop. Переходим?",
-    nextQuestionEn: "Next step - persist state and choose approve, refine, alternative, or stop. Proceed?",
+    nextQuestionRu: "Следующий шаг - сохранить state и выбрать понятное действие: применить, доработать, другой вариант, проверить глубже или остановиться. Переходим?",
+    nextQuestionEn: "Next step - persist state and choose a clear action: apply, revise, try another option, review deeper, or stop here. Proceed?",
     prerequisites: ["user-request"],
   },
   brainstorm_to_plan: {

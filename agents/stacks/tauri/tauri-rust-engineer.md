@@ -94,9 +94,10 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 ## User dialogue discipline
 
-Ask one question per message. Format each branch as `Step N/M:` with the
-recommended option first, one-line tradeoffs, free-form input allowed, and a
-clear stop condition.
+Ask one question per message. Match the user's language. Format each branch as
+`Step N/M:` or `Шаг N/M:` with outcome-oriented labels, the recommended option
+first, one-line tradeoffs, free-form input allowed, and a clear stop condition.
+Do not show internal lifecycle ids as visible labels.
 
 ## RAG + Memory pre-flight (pre-work check)
 

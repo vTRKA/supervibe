@@ -17,6 +17,8 @@ const APPLIES_TO_GLOBS = [
 const DISCIPLINE_MARKER_A = '## User dialogue discipline';
 const DISCIPLINE_MARKER_B = 'Шаг N/M';
 const ANTI_PATTERN_REQUIRED = 'asking-multiple-questions-at-once';
+const OUTCOME_LABEL_MARKER = 'outcome-oriented labels';
+const STALE_OPTION_PLACEHOLDER_RE = /<option [abc]>|one-line rationale per option/i;
 const DELIVERY_COMMAND_SCOPE = new Set([
   'commands/supervibe-design.md',
   'commands/supervibe-genesis.md',
@@ -47,6 +49,7 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
   const issues = [];
   const hasMarkerA = body.includes(DISCIPLINE_MARKER_A);
   const hasMarkerB = body.includes(DISCIPLINE_MARKER_B);
+  const dialogueSection = extractDialogueSection(body);
   if (!hasMarkerA && !hasMarkerB) {
     issues.push({
       file: relPath,
@@ -61,7 +64,29 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
       message: `Add '${ANTI_PATTERN_REQUIRED}' to anti-patterns.`,
     });
   }
+  if (!dialogueSection.includes(OUTCOME_LABEL_MARKER)) {
+    issues.push({
+      file: relPath,
+      code: 'missing-outcome-label-guidance',
+      message: 'Dialogue discipline must require outcome-oriented labels instead of generic option labels.',
+    });
+  }
+  if (STALE_OPTION_PLACEHOLDER_RE.test(dialogueSection)) {
+    issues.push({
+      file: relPath,
+      code: 'stale-dialogue-placeholder',
+      message: 'Replace generic <option a>/<one-line rationale> placeholders with outcome-oriented action examples.',
+    });
+  }
   return issues;
+}
+
+function extractDialogueSection(body) {
+  const markerIndex = body.indexOf(DISCIPLINE_MARKER_A);
+  if (markerIndex === -1) return body;
+  const section = body.slice(markerIndex);
+  const nextHeadingIndex = section.indexOf('\n## ', DISCIPLINE_MARKER_A.length);
+  return nextHeadingIndex === -1 ? section : section.slice(0, nextHeadingIndex);
 }
 
 export function checkCommandOrSkillDiscipline(relPath, frontmatter, body) {

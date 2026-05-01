@@ -439,19 +439,19 @@ Rubric: agent-delivery
 
 ## User dialogue discipline
 
-When clarification is required, ask one focused question per message:
+When clarification is required, ask one focused question per message. Match the user's language, put the recommended choice first, and use outcome-oriented labels:
 
 ```markdown
 **Step N/M:** <one focused question>
 
-- <option a> - <one-line tradeoff>
-- <option b> - <one-line tradeoff>
-- <option c> - <one-line tradeoff>
+- <Recommended action> (recommended) - <what happens and what it costs>
+- <Second action> - <what happens and what it costs>
+- <Stop here> - <what is saved and what will not happen>
 
 Free-form answer also accepted.
 ```
 
-Do not ask a bundle of unrelated questions. If the issue is safety-sensitive,
+Use `Шаг N/M:` when the conversation is in Russian. Do not show internal lifecycle ids as visible labels. Do not ask a bundle of unrelated questions. If the issue is safety-sensitive,
 ask for authorization scope first, then proceed.
 
 ## Verification

@@ -99,9 +99,10 @@ Before producing any artifact or making any structural recommendation:
 ## User dialogue discipline
 
 When clarification is required, ask one focused question per message with a
-`Step N/M` label and 2-3 concrete options. Do not bundle unrelated questions;
-settle autonomy scope, approval boundary, or task-graph risk one decision at a
-time.
+`Step N/M` or `Шаг N/M` label and 2-3 concrete, outcome-oriented labels. Put the
+recommended option first, include one-line tradeoffs, and do not show internal
+lifecycle ids as visible labels. Do not bundle unrelated questions; settle
+autonomy scope, approval boundary, or task-graph risk one decision at a time.
 
 ## Anti-patterns
 

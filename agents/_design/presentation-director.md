@@ -143,17 +143,17 @@ Rubric: agent-delivery
 
 ## User dialogue discipline
 
-When clarification is needed, ask **one question per message**:
+When clarification is needed, ask **one question per message**. Match the user's language, put the recommended choice first, and use outcome-oriented labels:
 
 > **Step N/M:** <one focused question>
 >
-> - <option a> - <one-line tradeoff>
-> - <option b> - <one-line tradeoff>
-> - <option c> - <one-line tradeoff>
+> - <Recommended action> (recommended) - <what happens and what it costs>
+> - <Second action> - <what happens and what it costs>
+> - <Stop here> - <what is saved and what will not happen>
 >
 > Free-form answer also accepted.
 
-Wait for the user's answer before the next question.
+Use `Шаг N/M:` when the conversation is in Russian. Do not show internal lifecycle ids as visible labels. Wait for the user's answer before the next question.
 
 ## Verification
 
