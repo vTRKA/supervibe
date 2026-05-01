@@ -129,6 +129,11 @@ function validateNoTrackedLocalDevFiles(trackedFiles, issues) {
       nextAction: "Keep registry.yaml generated locally by npm run registry:build, not tracked in git.",
     },
     {
+      code: "tracked-upgrade-check-cache",
+      match: (file) => file === ".claude-plugin/.upgrade-check.json",
+      nextAction: "Remove .claude-plugin/.upgrade-check.json from git; it is a mutable local upstream-check cache.",
+    },
+    {
       code: "tracked-worktree-state",
       match: (file) => /^(\.worktrees|worktrees)\//.test(file),
       nextAction: "Remove local worktree directories from git and keep them ignored.",
@@ -375,13 +380,28 @@ async function listFilesOptional(path) {
 
 async function collectTrackedFiles(root) {
   try {
-    const { stdout } = await execFileAsync("git", ["ls-files"], {
-      cwd: root,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return stdout.split(/\r?\n/).filter(Boolean);
+    const [tracked, deleted] = await Promise.all([
+      execFileAsync("git", ["ls-files"], {
+        cwd: root,
+        maxBuffer: 10 * 1024 * 1024,
+      }),
+      execFileAsync("git", ["ls-files", "--deleted"], {
+        cwd: root,
+        maxBuffer: 10 * 1024 * 1024,
+      }),
+    ]);
+    const deletedFiles = new Set(deleted.stdout.split(/\r?\n/).filter(Boolean));
+    return tracked.stdout.split(/\r?\n/).filter(Boolean).filter((file) => !deletedFiles.has(file));
   } catch {
-    return [];
+    try {
+      const { stdout } = await execFileAsync("git", ["ls-files"], {
+        cwd: root,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      return stdout.split(/\r?\n/).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 }
 

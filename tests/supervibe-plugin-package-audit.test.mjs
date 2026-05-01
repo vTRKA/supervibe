@@ -43,6 +43,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
       ".claude/settings.json",
       ".supervibe/audits/latest.json",
       "registry.yaml",
+      ".claude-plugin/.upgrade-check.json",
       ".worktrees/task-a/README.md",
       ".env.local",
     ],
@@ -73,6 +74,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-claude-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-local-supervibe-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-generated-registry"));
+  assert.ok(audit.issues.some((issue) => issue.code === "tracked-upgrade-check-cache"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-worktree-state"));
   assert.ok(audit.issues.some((issue) => issue.code === "tracked-runtime-artifact"));
   assert.ok(audit.nextActions.every(Boolean));

@@ -505,8 +505,16 @@ async function main() {
       }
     }
     const stateFile = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "", "state.json");
-    const result = await runAutonomousLoop({ rootDir, statusFile: stateFile });
-    console.log(result.statusText);
+    try {
+      const result = await runAutonomousLoop({ rootDir, statusFile: stateFile });
+      console.log(result.statusText);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      console.log("SUPERVIBE_LOOP_STATUS");
+      console.log("STATUS: no loop state found");
+      console.log(`STATE: ${stateFile}`);
+      console.log("NEXT_ACTION: start a loop with npm run supervibe:loop -- --request \"validate integrations\" --dry-run");
+    }
     return;
   }
 

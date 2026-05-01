@@ -1,13 +1,34 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import test from "node:test";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
+
+async function listFiles(root, predicate = () => true) {
+  const entries = await readdir(root, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await listFiles(path, predicate));
+    } else if (predicate(path)) {
+      files.push(path);
+    }
+  }
+
+  return files;
+}
+
+function npmRunReferences(text) {
+  return Array.from(text.matchAll(/\bnpm\s+run\s+([A-Za-z0-9:_-]+)/g), (match) => match[1]);
+}
 
 const PUBLIC_COMMANDS = new Set([
   "supervibe.md",
@@ -44,6 +65,51 @@ const INTERNAL_COMMANDS = new Set([
 test("published command surface contains only user-facing commands", async () => {
   const files = (await readdir(join(ROOT, "commands"))).filter((file) => file.endsWith(".md"));
   assert.deepStrictEqual(new Set(files), PUBLIC_COMMANDS);
+});
+
+test("documented npm scripts exist in package.json", async () => {
+  const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const scripts = new Set(Object.keys(pkg.scripts));
+  const docs = [
+    join(ROOT, "README.md"),
+    join(ROOT, "CLAUDE.md"),
+    ...await listFiles(join(ROOT, "docs"), (file) => file.endsWith(".md")),
+    ...await listFiles(join(ROOT, "commands"), (file) => file.endsWith(".md")),
+    ...await listFiles(join(ROOT, "references", "internal-commands"), (file) => file.endsWith(".md")),
+  ];
+  const missing = [];
+
+  for (const file of docs) {
+    const content = await readFile(file, "utf8");
+    for (const script of npmRunReferences(content)) {
+      if (!scripts.has(script)) missing.push(`${relative(ROOT, file)}: npm run ${script}`);
+    }
+  }
+
+  assert.deepStrictEqual(missing, []);
+});
+
+test("package npm scripts point at existing local scripts", async () => {
+  const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const scriptNames = new Set(Object.keys(pkg.scripts));
+  const missing = [];
+
+  for (const [name, command] of Object.entries(pkg.scripts)) {
+    for (const script of npmRunReferences(command)) {
+      if (!scriptNames.has(script)) missing.push(`${name}: npm run ${script}`);
+    }
+
+    for (const match of command.matchAll(/\bnode\s+((?:\.\/)?scripts\/[^\s"'&|;]+\.mjs)\b/g)) {
+      const scriptPath = match[1].replace(/^\.\//, "");
+      try {
+        await access(join(ROOT, scriptPath));
+      } catch {
+        missing.push(`${name}: node ${scriptPath}`);
+      }
+    }
+  }
+
+  assert.deepStrictEqual(missing, []);
 });
 
 test("internal command specs stay outside published commands directory", async () => {
@@ -138,6 +204,21 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
   assert.match(stdout, /--assigned-task T1 --assigned-write-set src\/file\.ts/);
   assert.match(stdout, /--plan-waves docs\/plans\/example\.md/);
   assert.match(stdout, /--assign-ready --explain/);
+});
+
+test("loop status exits cleanly when no loop state exists", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-status-"));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+    ], { cwd: rootDir });
+    assert.match(stdout, /SUPERVIBE_LOOP_STATUS/);
+    assert.match(stdout, /STATUS: no loop state found/);
+    assert.match(stdout, /NEXT_ACTION:/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("doctor CLI help is plain text and lists supported hosts", async () => {

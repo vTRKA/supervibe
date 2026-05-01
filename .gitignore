@@ -6,6 +6,7 @@ registry.yaml
 .DS_Store
 .claude-plugin/.auto-update.json
 .claude-plugin/.auto-update.lock
+.claude-plugin/.upgrade-check.json
 .worktrees/
 worktrees/
 
