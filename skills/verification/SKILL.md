@@ -23,7 +23,7 @@ The single line that calls this skill: **evidence before assertion, always.**
 ## Step 0 — Read source of truth (required)
 
 Read:
-- The project's `CLAUDE.md` to find the canonical verification commands for this stack (typecheck, test, lint, build).
+- The project's active host instruction file to find the canonical verification commands for this stack (typecheck, test, lint, build).
 - Any `package.json` scripts / `composer.json` scripts / `Makefile` targets that the project blesses for verification.
 
 If no canonical commands documented: STOP and ask the user which commands count as verification for this project.
@@ -44,7 +44,7 @@ What is being claimed?
 ## Procedure
 
 1. **Identify the claim** — what exactly is being asserted?
-2. **Choose verification command(s)** from CLAUDE.md / project conventions.
+2. **Choose verification command(s)** from the active host instruction file / project conventions.
 3. **Run via Bash tool** (do NOT skip — assertion-without-running is a discipline violation).
 4. **Capture output** — full stdout/stderr, exit code.
 5. **Decide**:
@@ -84,7 +84,7 @@ When verification is run after scaffold/genesis/adapt work, keep tool verificati
 
 - DO NOT: claim a thing works without running the command
 - DO NOT: paraphrase or summarize the command output — paste verbatim
-- DO NOT: invent the verification command — read it from CLAUDE.md or ask
+- DO NOT: invent the verification command — read it from the active host instruction file or ask
 - DO NOT: skip verification because "this is obviously fine"
 - ALWAYS: include exit code in the verification record
 - ALWAYS: if there's no canonical command, ask before assuming

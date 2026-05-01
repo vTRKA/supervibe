@@ -24,7 +24,7 @@ If subagents available, prefer `supervibe:subagent-driven-development` for fresh
 
 1. Read the full plan file
 2. Critical review — identify questions/concerns BEFORE starting
-3. Read project's verification commands from `CLAUDE.md`
+3. Read project's verification commands from the active host instruction file
 4. If on main branch and plan modifies code, propose worktree (`supervibe:using-git-worktrees`) unless user opts out
 5. Read `docs/references/scope-safety-standard.md` and identify the plan's approved/deferred/rejected scope boundary
 

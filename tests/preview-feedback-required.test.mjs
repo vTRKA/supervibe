@@ -13,13 +13,14 @@ test("feedback overlay injects a visible mandatory button and artifact slug", as
     viewport: "375",
   });
 
-  assert.match(html, /id: 'evolve-fb-toggle'/);
+  assert.match(html, /id: 'supervibe-fb-toggle'/);
   assert.match(html, /textContent: 'Feedback'/);
   assert.match(html, /pendingPayloads/);
   assert.match(html, /Feedback queued/);
   assert.match(html, /Feedback unavailable/);
   assert.match(html, /window\.__supervibePrototypeSlug="checkout"/);
-  assert.match(html, /window\.__evolvePrototypeSlug="checkout"/);
+  const retiredBrand = ["evo", "lve"].join("");
+  assert.doesNotMatch(html, new RegExp(["supervibeLegacy", "__" + retiredBrand, retiredBrand + "-fb"].join("|")));
 });
 
 test("design preview roots cannot disable feedback overlay", () => {

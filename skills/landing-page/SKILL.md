@@ -136,7 +136,7 @@ prototypes/landing-<topic>/
 
 ### Stage 4 — Live preview
 
-Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#evolve-fb-toggle` / visible `Feedback` button before presenting the URL.
+Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
 
 ### Stage 5 — Feedback loop (required)
 

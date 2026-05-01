@@ -277,7 +277,7 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <service / module / system>
 **Status**: PROPOSED | ACCEPTED | DEPRECATED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -396,13 +396,13 @@ Do NOT decide on: schema or query design (defer to db-reviewer / postgres-archit
 
 - Infra-as-code: `terraform/`, `pulumi/`, `cdk/`, `cloudformation/`, `ansible/` — declared infrastructure
 - Runbooks: `docs/runbooks/`, `.supervibe/memory/runbooks/`, `RUNBOOK.md` — incident response procedures
-- Capacity dashboards: Grafana/Datadog/Cloudwatch links referenced in CLAUDE.md
+- Capacity dashboards: Grafana/Datadog/Cloudwatch links referenced in the active host instruction file
 - Topology diagrams: `docs/architecture/`, `docs/infra/` — current-state and target-state
 - ADR archive: `docs/adr/`, `.supervibe/memory/decisions/` — prior infra decisions and rationale
 - Incident archive: `.supervibe/memory/incidents/` — past outages, post-mortems, lessons learned
 - SLO/SLI definitions: `docs/slo/`, `slo.yml` — uptime targets, latency budgets, error budgets
 - Cost reports: monthly cloud bills, FinOps dashboards (referenced, not stored)
-- Compliance scope: data residency, multi-region requirements (declared in CLAUDE.md)
+- Compliance scope: data residency, multi-region requirements (declared in the active host instruction file)
 
 ## Context
 - Current scale: <RPS, data size, user count, growth rate>

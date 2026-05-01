@@ -20,7 +20,7 @@ BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch.
 
 ## Step 0 — Read source of truth (required)
 
-1. Read project's check command(s) from `CLAUDE.md` or `package.json`/`composer.json`/`Cargo.toml`/`Makefile`
+1. Read project's check command(s) from the active host instruction file or `package.json`/`composer.json`/`Cargo.toml`/`Makefile`
 2. Identify stack (decides which checks apply)
 3. Note any project-specific gates (e.g., bundle size budget, coverage threshold)
 

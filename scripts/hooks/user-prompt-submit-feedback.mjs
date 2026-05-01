@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { join } from 'node:path';
 import { drainNewEntries, writeCursor } from '../lib/feedback-cursor.mjs';
+import { resolveSupervibeProjectRoot } from '../lib/supervibe-plugin-root.mjs';
 import {
   ensureFeedbackTracked,
   readFeedbackQueue,
@@ -58,7 +59,7 @@ function formatEntry(entry) {
 
 async function main() {
   await readEvent();
-  const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectRoot = resolveSupervibeProjectRoot();
   const queuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
   const cursorPath = join(projectRoot, '.supervibe', 'memory', 'feedback-cursor.json');
   const statusPath = join(projectRoot, '.supervibe', 'memory', 'feedback-status.json');

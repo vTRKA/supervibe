@@ -147,7 +147,7 @@ Verdict definitions:
 
 - **PASS**: every applicable rubric scored ≥9.0, all evidence artifacts present and replayable, override-rate within threshold (≤5% over audit window). Safe to claim done.
 - **CONDITIONAL-PASS**: minimum score 8.5–8.99 OR a single non-critical gap; explicit remediation list attached; tracked as follow-up with owner + deadline. Not blocking, but not silently approved.
-- **FAIL-WITH-OVERRIDE**: scores below threshold but business reason exists; requires logged override with reason, scope, expiry, and signoff per `CLAUDE.md` escalation contact. Recorded in confidence-log.
+- **FAIL-WITH-OVERRIDE**: scores below threshold but business reason exists; requires logged override with reason, scope, expiry, and signoff per the active host instruction file escalation contact. Recorded in confidence-log.
 - **HARD-BLOCK**: missing rubric, missing evidence, score below override floor, OR critical safety signal (security, data loss, regression in core path). No override path; must remediate.
 
 ## Procedure
@@ -163,7 +163,7 @@ Verdict definitions:
 9. **Apply decision tree** — walk the tree above with collected evidence. Verdict is deterministic; record the tree path traversed.
 10. **Produce verdict block** — Markdown output per Output contract below: verdict + per-rubric scores + evidence summary + override audit + remediation list (if any) + follow-ups (if conditional).
 11. **Append confidence-log entry** — JSON line with: timestamp, task-id, scope, rubrics-applied, scores, verdict, evidence-pointers, override-info if any, gate-version. This entry is the audit trail.
-12. **Notify if drift detected** — if override-rate spike or repeated same-rubric failure, recommend escalation to escalation contact from `CLAUDE.md`. Gate does not silently absorb drift signals.
+12. **Notify if drift detected** — if override-rate spike or repeated same-rubric failure, recommend escalation to escalation contact from the active host instruction file. Gate does not silently absorb drift signals.
 13. **Record follow-ups** — for CONDITIONAL-PASS, write follow-up items to `.supervibe/memory/` with owner + deadline so the conditions cannot be forgotten.
 
 ## Output contract
@@ -178,7 +178,7 @@ Returns:
 **Task ID**: <id>
 **Scope**: <files / module / PR / feature>
 **Verdict**: PASS | CONDITIONAL-PASS | FAIL-WITH-OVERRIDE | HARD-BLOCK
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -236,7 +236,7 @@ If any of the above is missing, the gate's own output is itself BLOCKED — re-r
 3. Group by: rubric, author, module, reason
 4. Compute rate and trend (compared to prior window)
 5. If rate >5% OR concentrated in one rubric/module: flag as drift
-6. Output audit report; recommend escalation per `CLAUDE.md`
+6. Output audit report; recommend escalation per the active host instruction file
 7. Append audit-run entry to confidence-log so audits themselves are traceable
 
 ### Rubric aggregation (multi-artifact gate)
@@ -253,7 +253,7 @@ If any of the above is missing, the gate's own output is itself BLOCKED — re-r
 Do NOT touch: any source code, configs, or artifacts (READ-ONLY tools).
 Do NOT decide on: design, scope, architecture, or business priority — gate only on declared artifacts against fixed rubrics.
 Do NOT decide on: rubric content itself (defer to `supervibe:confidence-scoring` skill maintainers).
-Do NOT decide on: override approval — gate records the override; signoff comes from escalation contact in `CLAUDE.md`.
+Do NOT decide on: override approval — gate records the override; signoff comes from escalation contact in the active host instruction file.
 Do NOT softball: a deadline does not change the threshold. Escalate via override path or HARD-BLOCK; never bend the bar silently.
 
 ## Related
@@ -283,7 +283,7 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - **Effectiveness journal**: `.supervibe/memory/effectiveness.jsonl` — outcome tracking after gates pass (did "PASS" predict shipping success?)
 - **Override audit window**: trailing 50 decisions OR 14 days, whichever is longer
 - **Threshold defaults**: PASS ≥9.0 across all applicable rubrics; CONDITIONAL ≥8.5 with documented gap; FAIL <8.5; HARD-BLOCK on any critical evidence missing
-- **Escalation contacts**: defined in `CLAUDE.md` (who signs off on overrides, who reviews override-rate spikes)
+- **Escalation contacts**: defined in the active host instruction file (who signs off on overrides, who reviews override-rate spikes)
 
 ## Rubric Scores
 | Rubric              | Score | Threshold | Status   | Evidence                     |

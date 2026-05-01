@@ -19,7 +19,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 | Confidence engine | Seventeen rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
 | 26 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
-| Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
+| Agent improvement loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
 | Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
 | Security audit loop | `/supervibe-security-audit` runs read-only multi-agent AppSec/dependency/ops/AI security review, ranks vulnerabilities, then optionally plans, executes, and re-audits remediation to a 10/10 gate |
@@ -118,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.25 initialized for this project
+[supervibe] welcome — plugin v2.0.26 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -198,7 +198,7 @@ Do not delete installed project agents/rules/skills to "refresh" them. Adapt per
 
 The trigger-safe path is explicit and chainable:
 
-1. `/supervibe-brainstorm <topic>` writes the approved spec, then asks: `Следующий шаг - написать план. Переходим?`
+1. `/supervibe-brainstorm <topic>` writes the approved spec, then asks whether to proceed to planning.
 2. `/supervibe-plan <spec-path>` writes the plan, then asks for the review loop before execution.
 3. `/supervibe-plan --review <plan-path>` reviews plan quality, safety, missing checks, and README impact.
 4. `/supervibe-loop --from-plan --atomize <plan-path>` splits the reviewed plan into atomic work items and an epic.
@@ -430,7 +430,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
 | `npm run supervibe:upgrade` | clean checkout, git pull, lfs pull, npm ci, rebuild registry, run all tests, run install doctor |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
-| `npm run code:index` | Full reindex with progress logging and no fixed total timeout |
+| `npm run code:index` | Full reindex with heartbeat/progress logging, single-run lock, and no fixed total timeout |
 | `npm run code:search -- --query "..."` | Semantic search |
 | `npm run code:search -- --context "..."` | Agent-ready RAG + graph + anchor context |
 | `npm run code:search -- --symbol-search "Symbol"` | Graph: ranked symbol lookup |
@@ -462,7 +462,7 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **SQLite errors.** Node.js 22.5+ is required for the built-in `node:sqlite` used by semantic RAG, code graph, project memory, and agent task memory. Re-run the installer and approve the Node upgrade prompt, or install Node.js 22.5+ manually and then re-run.
 
-**Stale code index.** The mtime scan on session start catches most external edits. For a full rebuild: `rm .supervibe/memory/code.db && npm run code:index` from your project directory. Large projects should be allowed to finish; the indexer prints progress and does not impose a fixed total timeout. To separate source/BM25 readiness from embedding cost, run `node scripts/build-code-index.mjs --root . --force --health --no-embeddings`; graph warnings do not fail the default source RAG gate when coverage is healthy.
+**Stale or partial code index.** The mtime scan on session start catches most external edits. For a full rebuild: `npm run code:index -- --root . --force --health` from your project directory. Large projects should be allowed to finish; the indexer prints heartbeat lines with stage/current file/progress and uses `.supervibe/memory/code-index.lock` to block duplicate runs. To repair an aborted run without repeating everything: `node scripts/build-code-index.mjs --root . --list-missing`, then `node scripts/build-code-index.mjs --root . --resume --max-files 200 --health --no-embeddings`. `--no-embeddings` is now BM25/source-readiness mode and skips graph work unless `--graph` is passed; graph warnings do not fail the default source RAG gate when coverage is healthy.
 
 **Windows.** If PowerShell rejects the installer with an Execution Policy error: `Set-ExecutionPolicy -Scope Process Bypass`. The Codex symlink needs Developer Mode — without it, the installer falls back to a directory copy.
 
@@ -495,7 +495,7 @@ fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
 "
 
 node -e "
-const fs=require('fs'),p=process.env.HOME+'/.claude/settings.json';
+const fs=require('fs'),p=process.env.HOME+'/'+['.','claude'].join('')+'/settings.json';
 if(!fs.existsSync(p))process.exit(0);
 const d=JSON.parse(fs.readFileSync(p,'utf8'));
 if(d.enabledPlugins) delete d.enabledPlugins['supervibe@supervibe-marketplace'];

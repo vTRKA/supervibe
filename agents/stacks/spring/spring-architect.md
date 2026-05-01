@@ -244,7 +244,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** — pick up project conventions, declared module structure, declared runtime model, profile list, ADR location
+1. **Read the active host instruction file** — pick up project conventions, declared module structure, declared runtime model, profile list, ADR location
 2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (runtime model, profile strategy, context splits, observability)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `pom.xml`/`build.gradle.kts` for Boot/Cloud versions, `application.yml` and all `application-*.yml` for profile structure, `src/main/java/<base>/` for module layout, any existing `@Configuration` classes for bean wiring patterns
@@ -270,7 +270,7 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: supervibe:stacks/spring:spring-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -395,7 +395,7 @@ For each architectural recommendation:
 ## Common workflows
 
 ### Runtime-model decision (MVC vs WebFlux vs Virtual-Thread MVC)
-1. Read CLAUDE.md + `pom.xml`/`build.gradle.kts` for current Boot version and dependencies
+1. Read the active host instruction file + `pom.xml`/`build.gradle.kts` for current Boot version and dependencies
 2. Inventory blocking drivers in use (JDBC, JPA, blocking Kafka, blocking SDKs)
 3. Profile current latency / concurrency: p50/p95/p99 and concurrent-inflight-request peaks
 4. Walk RUNTIME MODEL decision tree

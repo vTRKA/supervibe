@@ -4,6 +4,7 @@
  * Compares per-task confidence + evidence references.
  * Flags regressions where new < old * 0.95.
  */
+import { resolveSupervibePluginRoot } from './supervibe-plugin-root.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -71,7 +72,7 @@ async function main() {
     console.error('Usage: node regression-scorer.mjs --baseline <phase> --current <phase>');
     process.exit(2);
   }
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const baselinePhase = args[baselineIdx + 1];
   const currentPhase = args[currentIdx + 1];
   const baselinePath = join(root, 'docs', 'audits', 'regression-suite', baselinePhase);

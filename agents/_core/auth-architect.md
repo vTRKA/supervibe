@@ -156,7 +156,7 @@ Returns:
 **Architect**: supervibe:_core:auth-architect
 **Date**: YYYY-MM-DD
 **Scope**: <module / PR / endpoint set>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

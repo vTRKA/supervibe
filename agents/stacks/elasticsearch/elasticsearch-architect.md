@@ -111,13 +111,13 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- **Distribution and version**: detected via `GET /` — Elasticsearch 8.x (Elastic license), OpenSearch 2.x (Apache-2), AWS OpenSearch Service (managed), Elastic Cloud (managed); fork-specific feature availability declared in CLAUDE.md
+- **Distribution and version**: detected via `GET /` — Elasticsearch 8.x (Elastic license), OpenSearch 2.x (Apache-2), AWS OpenSearch Service (managed), Elastic Cloud (managed); fork-specific feature availability declared in the active host instruction file
 - **Index templates / mappings**: `infra/elasticsearch/templates/`, `config/elasticsearch/mappings/`, or framework-managed (logstash output config, fluent-bit, fluentd, application boot-time index creation)
 - **Index lifecycle policies**: `infra/elasticsearch/ilm/` (Elasticsearch ILM) or `infra/opensearch/ism/` (OpenSearch ISM); declared as JSON
 - **Analyzers / custom tokenizers**: `infra/elasticsearch/analyzers/` — custom analyzers, character filters, token filters; per-language declarations
-- **Aliases**: `<index-name>-write`, `<index-name>-read`, `<index-name>-search` patterns; rolling pointers documented in CLAUDE.md
+- **Aliases**: `<index-name>-write`, `<index-name>-read`, `<index-name>-search` patterns; rolling pointers documented in the active host instruction file
 - **Ingest pipelines**: declared via `_ingest/pipeline/...` API or `pipelines/` directory; processors (grok, date, geoip, set, remove, script)
-- **Cluster topology**: master-only nodes, data-hot, data-warm, data-cold, ingest, coordinating-only — node roles per CLAUDE.md
+- **Cluster topology**: master-only nodes, data-hot, data-warm, data-cold, ingest, coordinating-only — node roles per the active host instruction file
 - **Shard allocation**: hot-warm-cold via `node.attr.data` and `index.routing.allocation.require.data`
 - **Snapshot repository**: S3 / GCS / Azure Blob; schedule via SLM (snapshot lifecycle management) or cron
 - **Search applications**: search-as-you-type, faceted search, log search (Kibana / OpenSearch Dashboards), analytics dashboards
@@ -216,7 +216,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** for declared distribution (Elasticsearch vs OpenSearch), version, cluster topology, fork-specific features in use, deploy cadence, and snapshot policy
+1. **Read the active host instruction file** for declared distribution (Elasticsearch vs OpenSearch), version, cluster topology, fork-specific features in use, deploy cadence, and snapshot policy
 2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this index/area; check `.supervibe/memory/incidents/` for mapping explosions, hot-shard incidents, ILM gaps, reindex regressions
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for Elasticsearch/OpenSearch release notes and fork feature matrices
 4. **Read existing index templates / mappings / ILM policies** — understand current shape before proposing change; capture `GET <index>/_mapping`, `GET <index>/_settings`, `GET _ilm/policy/<policy>` baselines
@@ -248,7 +248,7 @@ Returns a mapping/analyzer/topology ADR:
 **Date**: YYYY-MM-DD
 **Distribution**: Elasticsearch 8.x | OpenSearch 2.x | AWS OpenSearch Service
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -359,7 +359,7 @@ For each mapping/index change:
 
 ### New search index design
 1. Read product spec; identify entity, query patterns (search vs filter vs aggregate), expected doc volume, expected query QPS
-2. Choose distribution (Elasticsearch vs OpenSearch) per CLAUDE.md; reject silent assumption
+2. Choose distribution (Elasticsearch vs OpenSearch) per the active host instruction file; reject silent assumption
 3. Pin every field type (`text` for search prose, `keyword` for filter/exact/aggregate, `numeric` for ranges, `date` with explicit format, `nested` for arrays-of-objects with per-element queries)
 4. Choose analyzer per-language; declare multi-fields (eg `title.en`, `title.fr`); test via `_analyze`
 5. Size shards: estimate full-life total size, divide by target shard size; usually 1-3 primaries for new search indices
@@ -402,7 +402,7 @@ For each mapping/index change:
 4. Verify mapping/template/ILM (Elasticsearch) <-> ISM (OpenSearch) translation
 5. Test golden queries against new distribution; capture relevance deltas
 6. Cutover via dual-write window or snapshot+restore; never trust "drop-in compatible" without testing
-7. Document distribution-specific features and write fork-awareness section in CLAUDE.md
+7. Document distribution-specific features and write fork-awareness section in the active host instruction file
 
 ## Out of scope
 

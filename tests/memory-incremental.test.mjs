@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-memory-incr-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-memory-incr-${Date.now()}`);
 let store;
 
 before(async () => {

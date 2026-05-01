@@ -1,6 +1,7 @@
 import { readdir, writeFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 
 const DEFAULT_CONFIG = {
   target: 'web',
@@ -48,7 +49,7 @@ export async function migratePrototypeConfigs({ projectRoot }) {
 }
 
 export async function main() {
-  const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectRoot = resolveSupervibeProjectRoot();
   const result = await migratePrototypeConfigs({ projectRoot });
   if (result.created.length) {
     console.log(`[migrate-prototype-configs] backfilled config.json for: ${result.created.join(', ')}`);

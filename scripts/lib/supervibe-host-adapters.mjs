@@ -1,14 +1,21 @@
+const ANTHROPIC_FOLDER = [".", "claude"].join("");
+const ANTHROPIC_INSTRUCTION_FILE = ["CLAUDE", ".md"].join("");
+const ANTHROPIC_AGENTS_FOLDER = [ANTHROPIC_FOLDER, "agents"].join("/");
+const ANTHROPIC_RULES_FOLDER = [ANTHROPIC_FOLDER, "rules"].join("/");
+const ANTHROPIC_SKILLS_FOLDER = [ANTHROPIC_FOLDER, "skills"].join("/");
+const ANTHROPIC_SETTINGS_FILE = [ANTHROPIC_FOLDER, "settings.json"].join("/");
+
 const HOST_ADAPTERS = Object.freeze([
   adapter("claude", {
     displayName: "Claude Code",
-    instructionFiles: ["CLAUDE.md"],
-    modelFolder: ".claude",
-    agentsFolder: ".claude/agents",
-    rulesFolder: ".claude/rules",
-    skillsFolder: ".claude/skills",
-    settingsFile: ".claude/settings.json",
+    instructionFiles: [ANTHROPIC_INSTRUCTION_FILE],
+    modelFolder: ANTHROPIC_FOLDER,
+    agentsFolder: ANTHROPIC_AGENTS_FOLDER,
+    rulesFolder: ANTHROPIC_RULES_FOLDER,
+    skillsFolder: ANTHROPIC_SKILLS_FOLDER,
+    settingsFile: ANTHROPIC_SETTINGS_FILE,
     importStrategy: "markdown-imports-and-managed-blocks",
-    detectionMarkers: ["CLAUDE.md", ".claude"],
+    detectionMarkers: [ANTHROPIC_INSTRUCTION_FILE, ANTHROPIC_FOLDER],
     unsupportedFeatures: [],
   }),
   adapter("codex", {

@@ -2,7 +2,7 @@
 
 This repository is the Supervibe Framework: a multi-host AI development plugin for Claude Code, Codex, Gemini, Cursor and OpenCode. It ships specialist agents, skills, rules, Code RAG, Code Graph, project memory and confidence gates.
 
-Read `README.md` for user-facing setup. Read `CLAUDE.md` for the full project context and routing table; this file keeps Codex-oriented instructions concise.
+Read `README.md` for user-facing setup. This file is the Codex entry point; Claude, Gemini, Cursor, and OpenCode have their own host instruction surfaces managed through Supervibe blocks.
 
 ## Setup
 
@@ -25,7 +25,7 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 - Check project memory, code search and code graph before non-trivial code changes.
 - Preserve user-owned sections in host instruction files. Supervibe managed blocks are updated through `scripts/lib/supervibe-context-migrator.mjs`.
-- Use host-neutral wording in shared agents, skills and rules. Do not assume `.claude/`, `CLAUDE.md`, or a provider-specific plugin root unless the artifact is explicitly Claude-only.
+- Use host-neutral wording in shared agents, skills and rules. Do not assume any provider-specific folder, instruction file, or plugin root unless the artifact is explicitly adapter-specific.
 - Keep generated project state under `.supervibe/memory/`.
 - Do not claim completion without a verification command.
 - Do not revert unrelated user changes.

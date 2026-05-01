@@ -54,7 +54,7 @@ After every material delivery, ask one explicit next-step question. Use language
    - Minor (new lib in existing stack) → update agent context
    - Major (new framework / new layer) → suggest `supervibe:genesis` for new component
 5. **Deleted files** — remove references from artifacts
-6. **Host context migration** — if `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` or `opencode.json` changes, use `scripts/lib/supervibe-context-migrator.mjs` dry-run planning and never overwrite user-owned sections.
+6. **Host context migration** — if the active host instruction file, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` or `opencode.json` changes, use `scripts/lib/supervibe-context-migrator.mjs` dry-run planning and never overwrite user-owned sections.
 7. **Capability registry** — propose affected agents, rules and skills together, including registry evidence and confidence for each linked artifact.
 8. **Version marker** — after approved writes, update `.supervibe/memory/.supervibe-version` so future sessions know the project artifacts match the plugin version.
 8. **User-requested project fit** - when the user asks to adapt rules or agents to the project, compare stack tags, selected install profile, existing host artifacts, and capability registry links; then produce an add/keep/defer plan with reasons.

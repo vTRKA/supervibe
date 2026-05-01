@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { appendOverrideEntry } from '../scripts/lib/append-override-log.mjs';
 
-const SANDBOX = join(tmpdir(), `evolve-override-test-${Date.now()}`);
+const SANDBOX = join(tmpdir(), `supervibe-override-test-${Date.now()}`);
 
 before(async () => {
   await mkdir(SANDBOX, { recursive: true });

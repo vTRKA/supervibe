@@ -22,16 +22,16 @@ last-verified: 2026-04-27
 
 ## Step 0 — Read source of truth (required)
 
-1. Read all selected host adapter rule files, e.g. `.codex/rules/*.md` in Codex or `.claude/rules/*.md` in Claude Code
+1. Read all selected host adapter rule files, e.g. `.codex/rules/*.md` in Codex or `selected host rules files` in Claude Code
 2. Read MEMORY.md for prior incidents
-3. Read CLAUDE.md for mandatory rule references
+3. Read the active host instruction file for mandatory rule references
 
 ## Procedure
 
 1. **Contradictions**: grep across rules for conflicting directives (e.g., "always X" vs "never X" for similar context)
 2. **Redundancy**: detect rules saying same thing differently
 3. **Gaps**: known anti-patterns from MEMORY.md not covered by any rule
-4. **Mandatory consistency**: every rule with `mandatory: true` referenced in CLAUDE.md
+4. **Mandatory consistency**: every rule with `mandatory: true` referenced in the active host instruction file
 5. **Settings.json deny consistency**: every "ban" rule has corresponding deny entry
 6. **Cross-link integrity**: every `related-rules` reference exists
 7. Output ranked findings (CRITICAL contradictions → MAJOR redundancy → MINOR gap)

@@ -10,6 +10,7 @@
  * of EN intent is redundant — Claude understands English natively. Trigger phrases
  * (the actual routing layer) are preserved.
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -71,7 +72,7 @@ async function walk(dir) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const dryRun = process.argv.includes('--dry-run');
 
   const targets = [

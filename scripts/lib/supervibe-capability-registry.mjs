@@ -78,7 +78,8 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     rules: ["operational-safety", "anti-hallucination"],
     verificationHooks: [
       "node scripts/supervibe-status.mjs --index-health --strict-index-health --no-gc-hints",
-      "node scripts/build-code-index.mjs --root . --force --health",
+      "node scripts/build-code-index.mjs --root . --list-missing",
+      "node scripts/build-code-index.mjs --root . --resume --health --no-embeddings",
     ],
   },
   {

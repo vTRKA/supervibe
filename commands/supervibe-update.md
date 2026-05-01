@@ -3,7 +3,7 @@ description: >-
 Update the Supervibe plugin: git pull + lfs pull + npm ci + tests +
   register-refresh. Idempotent. Now with mid-upgrade rollback procedure if tests
   fail. Идемпотентно. С rollback при сбое тестов на середине upgrade. Triggers:
-  'update plugin', 'обнови плагин', 'evolve upgrade', '/supervibe-update'.
+  'update plugin', 'обнови плагин', 'supervibe upgrade', '/supervibe-update'.
 ---
 
 # /supervibe-update
@@ -114,7 +114,7 @@ npm ci                       # restore old node_modules from package-lock.json
    ```
 
 6. **If upgrade succeeds:**
-   - Refresh upstream-check cache (handled by `evolve-upgrade.mjs`).
+   - Refresh upstream-check cache (handled by `supervibe-upgrade.mjs`).
    - Confirm `.supervibe/audits/install-lifecycle/latest.json` exists and has `score: 10`.
    - Print version diff: `vX.Y.Z → vA.B.C`.
    - Clean up `.supervibe-update-state.json` (no longer needed for rollback).
@@ -122,7 +122,7 @@ npm ci                       # restore old node_modules from package-lock.json
 
 7. **Print next steps:**
    - Restart the AI CLI to pick up new plugin code.
-   - Each project sees `[evolve] ⬆ plugin upgraded ...` on next session.
+   - Each project sees `[supervibe] ⬆ plugin upgraded ...` on next session.
    - If project has host adapter overrides → run `/supervibe-adapt`.
    - To see what changed → read `CHANGELOG.md` or use `/supervibe-update --dry-run`.
 

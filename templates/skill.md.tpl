@@ -35,7 +35,7 @@ Before doing anything, read:
 1. {{STEP_1}}
 2. {{STEP_2}}
 3. {{STEP_3}}
-4. **Score**: invoke evolve:confidence-scoring with artifact={{ARTIFACT_TYPE}}
+4. **Score**: invoke supervibe:confidence-scoring with artifact={{ARTIFACT_TYPE}}
 5. If score <9: identify gaps, return to relevant step
 6. If score ≥9 OR override invoked: emit artifact
 

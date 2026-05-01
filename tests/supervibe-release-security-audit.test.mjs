@@ -15,9 +15,9 @@ test("release security audit passes current repo and produces redacted provenanc
   assert.equal(audit.pass, true);
   assert.equal(audit.score, 10);
   assert.deepEqual(audit.warnings, []);
-  assert.equal(audit.report.packageVersion, "2.0.25");
+  assert.equal(audit.report.packageVersion, "2.0.26");
   assert.ok(audit.report.verificationCommands.includes("npm run audit:release-security"));
-  assert.doesNotMatch(audit.reportText, /D:\\ggsel projects\\evolve/);
+  assert.doesNotMatch(audit.reportText, new RegExp(["D:", "private workspace", "legacy-app"].join("\\\\")));
 });
 
 test("release security audit catches stale docs, stale license inventory, and vulnerability exceptions", () => {

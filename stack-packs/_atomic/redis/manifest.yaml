@@ -1,7 +1,7 @@
 id: _atomic/redis
 name: "Atomic: Redis cache layer"
 version: 1.0.0
-description: "Adds Redis architect agent + redis-section in CLAUDE.md + Sentinel config notes"
+description: "Adds Redis architect agent + selected host instruction section + Sentinel config notes"
 type: atomic
 
 agents-attach:

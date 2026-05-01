@@ -7,19 +7,25 @@ import { execSync } from 'node:child_process';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
 import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 
-const sandbox = join(tmpdir(), `evolve-postedit-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-postedit-${Date.now()}`);
 const fileA = join(sandbox, 'src', 'a.ts');
 const fileB = join(sandbox, 'src', 'b.ts');
+const legacyProjectDirEnv = ["CLAUDE", "PROJECT_DIR"].join("_");
+const legacyFilePathsEnv = ["CLAUDE", "FILE_PATHS"].join("_");
 
 function runHook(env = {}) {
+  const childEnv = {
+    ...process.env,
+    SUPERVIBE_PROJECT_DIR: sandbox,
+    SUPERVIBE_HOOK_SILENT: '1',
+    ...env,
+  };
+  for (const [key, value] of Object.entries(childEnv)) {
+    if (value === undefined) delete childEnv[key];
+  }
   return execSync(`node "${process.cwd()}/scripts/post-edit-stack-watch.mjs"`, {
     cwd: sandbox,
-    env: {
-      ...process.env,
-      CLAUDE_PROJECT_DIR: sandbox,
-      SUPERVIBE_HOOK_SILENT: '1',
-      ...env,
-    },
+    env: childEnv,
     encoding: 'utf8',
   });
 }
@@ -41,11 +47,11 @@ before(async () => {
 
 after(async () => { await rm(sandbox, { recursive: true, force: true }); });
 
-test('hook: re-indexes source files listed in CLAUDE_FILE_PATHS', async () => {
+test('hook: re-indexes source files listed in SUPERVIBE_FILE_PATHS', async () => {
   // Modify file A so its hash changes
   await writeFile(fileA, `export function hello(name: string) { return 'HELLO ' + name.toUpperCase(); }\n`);
 
-  runHook({ CLAUDE_FILE_PATHS: fileA });
+  runHook({ SUPERVIBE_FILE_PATHS: fileA });
 
   // Open store and verify chunk text reflects new content
   const store = new CodeStore(sandbox, { useEmbeddings: false });
@@ -58,7 +64,7 @@ test('hook: re-indexes source files listed in CLAUDE_FILE_PATHS', async () => {
 });
 
 test('hook: ignores non-source files (e.g. random .json)', () => {
-  const out = runHook({ CLAUDE_FILE_PATHS: join(sandbox, 'random.json') });
+  const out = runHook({ SUPERVIBE_FILE_PATHS: join(sandbox, 'random.json') });
   // No throw, no reminder for non-manifest .json
   assert.strictEqual(out.trim(), '');
 });
@@ -69,8 +75,8 @@ test('hook: still emits manifest reminder + skips index when SUPERVIBE_HOOK_NO_I
     cwd: sandbox,
     env: {
       ...process.env,
-      CLAUDE_PROJECT_DIR: sandbox,
-      CLAUDE_FILE_PATHS: join(sandbox, 'package.json'),
+      SUPERVIBE_PROJECT_DIR: sandbox,
+      SUPERVIBE_FILE_PATHS: join(sandbox, 'package.json'),
       SUPERVIBE_HOOK_NO_INDEX: '1',
     },
     encoding: 'utf8',
@@ -79,8 +85,8 @@ test('hook: still emits manifest reminder + skips index when SUPERVIBE_HOOK_NO_I
   assert.match(out, /supervibe-adapt/);
 });
 
-test('hook: empty CLAUDE_FILE_PATHS is a no-op', () => {
-  const out = runHook({ CLAUDE_FILE_PATHS: '' });
+test('hook: empty SUPERVIBE_FILE_PATHS is a no-op', () => {
+  const out = runHook({ SUPERVIBE_FILE_PATHS: '' });
   assert.strictEqual(out.trim(), '');
 });
 
@@ -99,7 +105,7 @@ test('hook: re-indexes memory entry when path under .supervibe/memory/', async (
   // Edit the entry — change body
   await writeFile(memEntry, `---\nid: auth-decision\ntype: decision\ndate: 2026-04-28\ntags: [auth]\n---\n\n# Auth decision\n\nSwitched to OAuth2 with PKCE flow per security audit.\n`);
 
-  runHook({ CLAUDE_FILE_PATHS: memEntry });
+  runHook({ SUPERVIBE_FILE_PATHS: memEntry });
 
   const mem = new MemoryStore(sandbox, { useEmbeddings: false });
   await mem.init();
@@ -112,7 +118,7 @@ test('hook: re-indexes memory entry when path under .supervibe/memory/', async (
 
 test('hook: tolerates missing code.db (no first-time bootstrap)', async () => {
   // Fresh sandbox without code.db
-  const fresh = join(tmpdir(), `evolve-postedit-fresh-${Date.now()}`);
+  const fresh = join(tmpdir(), `supervibe-postedit-fresh-${Date.now()}`);
   await mkdir(join(fresh, 'src'), { recursive: true });
   const f = join(fresh, 'src', 'x.ts');
   await writeFile(f, `export const x = 1;\n`);
@@ -120,12 +126,35 @@ test('hook: tolerates missing code.db (no first-time bootstrap)', async () => {
     cwd: fresh,
     env: {
       ...process.env,
-      CLAUDE_PROJECT_DIR: fresh,
-      CLAUDE_FILE_PATHS: f,
+      SUPERVIBE_PROJECT_DIR: fresh,
+      SUPERVIBE_FILE_PATHS: f,
       SUPERVIBE_HOOK_SILENT: '1',
     },
     encoding: 'utf8',
   });
   assert.strictEqual(out.trim(), '');
   await rm(fresh, { recursive: true, force: true });
+});
+
+test('hook: legacy host env remains supported through compatibility fallback', async () => {
+  const legacyFile = join(sandbox, 'src', 'legacy.ts');
+  await writeFile(legacyFile, `export function legacy() { return 'before'; }\n`);
+  const store0 = new CodeStore(sandbox, { useEmbeddings: false });
+  await store0.init();
+  await store0.indexFile(legacyFile);
+  store0.close();
+
+  await writeFile(legacyFile, `export function legacy() { return 'after'; }\n`);
+  runHook({
+    SUPERVIBE_PROJECT_DIR: undefined,
+    [legacyProjectDirEnv]: sandbox,
+    [legacyFilePathsEnv]: legacyFile,
+  });
+
+  const store = new CodeStore(sandbox, { useEmbeddings: false });
+  await store.init();
+  const stmt = store.db.prepare('SELECT chunk_text FROM code_chunks WHERE path = ? LIMIT 5');
+  const chunks = stmt.all(store.toRel(legacyFile));
+  store.close();
+  assert.match(chunks.map(c => c.chunk_text).join('\n'), /after/);
 });

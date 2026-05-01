@@ -151,7 +151,7 @@ Wait for explicit answer. Then next question. Never combine.
 ### Stage 4 — Live preview
 
 1. Invoke `supervibe:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
-2. Verify the served HTML includes `#evolve-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
+2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
 3. Print URL to user. Hand-off to user for visual review.
 4. Ensure server stays alive while feedback loop runs.
 

@@ -32,7 +32,7 @@ Do NOT invoke for: pure code review, schema/spec work, or anything without a ren
 ## Step 0 — Read source of truth
 
 1. Verify mockup files exist under the expected output directory (Glob for `*.html`, `index.html`, or framework entry files).
-2. Run `evolve --list` (or the project equivalent) and confirm there is no overlap with another running preview server / dev process. Two skills must not bind the same port.
+2. Run `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --list` (or the project equivalent) and confirm there is no overlap with another running preview server / dev process. Two skills must not bind the same port.
 3. If files are missing or another server is already serving the same root, STOP and report — do not spawn a second instance.
 
 ## Decision tree
@@ -52,7 +52,7 @@ Always prefer the project's own dev script when one exists; fall back to `live-s
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
 3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>"`; capture the PID. Design roots include `prototypes/<slug>`, `mockups/<slug>`, and `presentations/<slug>`; never pass `--no-feedback` for them.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
-5. For a design root, verify the response body contains `evolve-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
+5. For a design root, verify the response body contains `supervibe-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 6. Hand the URL to the user using the Output contract template below.
 7. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
 8. Continue the surrounding task — keep the server alive only while the user is reviewing.
@@ -74,7 +74,7 @@ Return to the user as Markdown:
 - Screenshot: <absolute path or "none">
 ```
 
-The `evolve` orchestrator consumes this block to populate `emits-artifact: preview-url`.
+The Supervibe orchestrator consumes this block to populate `emits-artifact: preview-url`.
 
 ## Guard rails
 
@@ -91,8 +91,8 @@ After spawn, before reporting success, confirm:
 
 1. `curl -sS http://localhost:<port>/ | head -n 5` returns HTML (HTTP 200, `<!doctype html>` or `<html` present).
 2. The response body contains the hot-reload `EventSource` / WebSocket injection (skip for framework dev servers that use their own HMR channel).
-3. For design roots, the response body contains `evolve-fb-toggle` and the visible button text `Feedback`.
-4. `evolve --list` now shows the preview-server entry with the same PID.
+3. For design roots, the response body contains `supervibe-fb-toggle` and the visible button text `Feedback`.
+4. `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --list` now shows the preview-server entry with the same PID.
 
 If any check fails, kill the PID and surface the error — do not return a half-working URL.
 

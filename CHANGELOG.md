@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.26] - 2026-05-02
+
+### Added
+
+- Added real `build-code-index.mjs --help`, `--list-missing`, `--resume`,
+  `--max-files`, `--heartbeat-seconds`, `--graph`, and `--no-graph` controls
+  for large-project indexing and partial-index repair.
+- Added a project-local `.supervibe/memory/code-index.lock` so concurrent
+  indexer runs are rejected, stale locks are recovered, and SIGINT/SIGTERM
+  cleanup closes the DB before exit.
+- Added regression coverage for help mode, live-lock refusal, missing-file
+  listing, and BM25-only source-readiness indexing without graph work.
+
+### Changed
+
+- Changed `--no-embeddings` CLI indexing into a true BM25/source-readiness
+  fallback that skips graph extraction and cross-file edge resolution unless
+  `--graph` is explicitly passed.
+- Expanded index progress logging with heartbeat output for stage, current
+  file, processed/remaining counts, elapsed time, and graph edge-resolution
+  progress.
+- Updated `supervibe-status` to show source coverage directly as
+  `indexed/eligible`, mark partial Code RAG honestly, and report graph warnings
+  separately from source readiness.
+
+### Fixed
+
+- Fixed interrupted large-project indexing UX by allowing missing/stale files to
+  be listed and resumed without forcing a full refresh.
+- Fixed stale graph rows during file removal or BM25-only refresh by explicitly
+  clearing graph tables instead of relying on SQLite cascade behavior.
+
 ## [2.0.25] - 2026-05-02
 
 ### Added
@@ -37,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed stale `.claude/code.db`, `.evolve-version`, and `/evolve-*` era
+- Fixed stale Claude-state DB, retired version-marker, and retired route-era
   references in shared project-facing docs and instructions.
 - Fixed Codex plugin default prompt so genesis scaffolds the selected host
   adapter instead of implying `.claude/`.
@@ -466,7 +498,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.7.0] — 2026-04-27
 
-**Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent evolution loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused comparison vs superpowers.**
+**Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent improvement loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused comparison vs superpowers.**
 
 ### Added — Preview Server (Phase E1)
 
@@ -491,7 +523,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — Reference Templates (Phase E3)
 
 - `docs/templates/{PRD,ADR,plan,RFC,brainstorm-output,intake}-template.md`
-- CLAUDE.md / README.md / docs/getting-started.md surface all new capabilities
+- Host instruction docs / README.md / docs/getting-started.md surface all new capabilities
 
 ### Added — Dynamic MCP Discovery (Phase F1)
 
@@ -519,21 +551,21 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - Removed "15-year-persona" marketing language; comparison table focused on Supervibe vs superpowers
 - Cookbook with 5 end-to-end scenarios (Laravel feature / refactor blast-radius / debug incident / brand redesign / DB migration safety)
 
-### Added — Agent Evolution Loop (Phase G + H)
+### Added — Agent Improvement Loop (Phase G + H)
 
-- `scripts/lib/agent-invocation-logger.mjs` — append-only JSONL invocation log; honors `EVOLVE_INVOCATION_LOG` env
+- `scripts/lib/agent-invocation-logger.mjs` — append-only JSONL invocation log; honored the legacy invocation-log env at the time
 - `scripts/effectiveness-tracker.mjs` (rewritten from stub) writes `effectiveness:` block into agent frontmatter via gray-matter
 - `scripts/lib/underperformer-detector.mjs` — flags `avg-confidence < 8.5` OR rising override-rate trend Δ ≥ 40%
 - `scripts/hooks/post-tool-use-log.mjs` — PostToolUse hook auto-logs every `Task` (subagent) dispatch with confidence-score + override-marker extraction
 - `hooks.json` wired with PostToolUse `Task` matcher → invocation logger
 - `scripts/lib/auto-strengthen-trigger.mjs` + updated `commands/supervibe-strengthen.md` — auto-trigger flow with mandatory user gate
 - `supervibe:status` and SessionStart surface flagged agents
-- E2E test (`tests/evolution-loop-e2e.test.mjs`) proves loop closes (log → aggregate → detect → suggest)
-- README + CLAUDE.md + getting-started document the evolution loop
+- E2E test (`tests/improvement-loop-e2e.test.mjs`) proves loop closes (log → aggregate → detect → suggest)
+- README + host instruction docs + getting-started document the improvement loop
 
 ### Added — Canonical confidence-output footer (Phase I)
 
-- CLAUDE.md mandates `Confidence: N/10 | Override: true|false | Rubric: <id>` block in every agent's `## Output contract`
+- Host instruction docs mandate `Confidence: N/10 | Override: true|false | Rubric: <id>` block in every agent's `## Output contract`
 - `confidence-rubrics/agent-quality.yaml` adds `canonical-output-format` dimension (weight 1, total still 10)
 - `scripts/validate-agent-output-contract.mjs` validator integrated into `npm run check` via new `validate:agent-footers` script
 - All 73 existing agents updated with canonical footer (one-time injection)
@@ -541,7 +573,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 
 ### Tests
 
-- 155 tests pass (was 124 in 1.6.0). Adds: preview-server-manager, preview-static-server, preview-hot-reload, mcp-registry (incl. `pickMcp`), agent-invocation-logger, effectiveness-tracker, underperformer-detector, post-tool-use-log, auto-strengthen-trigger, agent-output-contract-validator, evolution-loop-e2e.
+- 155 tests pass (was 124 in 1.6.0). Adds: preview-server-manager, preview-static-server, preview-hot-reload, mcp-registry (incl. `pickMcp`), agent-invocation-logger, effectiveness-tracker, underperformer-detector, post-tool-use-log, auto-strengthen-trigger, agent-output-contract-validator, improvement-loop-e2e.
 
 ---
 
@@ -566,7 +598,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 
 - **10 agents updated** with graph queries in Procedure + Decision tree + Output contract + Anti-patterns:
   `code-reviewer`, `refactoring-specialist`, `repo-researcher`, `architect-reviewer`, `root-cause-debugger`, `db-reviewer`, 4 stack-developers (laravel, nextjs, fastapi, react)
-- **`CLAUDE.md`** — Code Graph capability advertised in system prompt with when-to-use table
+- **Host instruction docs** — Code Graph capability advertised in system prompt with when-to-use table
 - **`rules/use-codegraph-before-refactor.md`** — critical-severity rule blocking refactor without callers check
 - **`confidence-rubrics/agent-delivery.yaml`** — graph-evidence-when-applicable dimension (weight 1) scoring 3-case output template
 - **`skills/code-review/SKILL.md`** — graph-aware structural-change check in decision tree + procedure
@@ -962,11 +994,11 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - Canonical Claude Code plugin manifest at `.claude-plugin/plugin.json` (verified against superpowers reference)
 - MIT LICENSE
 - Dev tooling: `package.json`, `.nvmrc`, husky+commitlint+lint-staged dogfood
-- Plugin-dev `.claude/settings.json` with 27-entry deny-list
+- Plugin-dev provider settings JSON with 27-entry deny-list
 - knip dead-code linter integrated into `npm run check`
 - 11 confidence rubrics: requirements, plan, agent-delivery, scaffold, framework, prototype, research-output, agent-quality, skill-quality, rule-quality, **brandbook**
 - 2 process skills (Phase 1): `supervibe:confidence-scoring`, `supervibe:verification`
-- 8 commands: `/evolve` dispatcher, `/supervibe-score`, `/supervibe-override`, plus 5 phase commands
+- 8 commands: legacy dispatcher, `/supervibe-score`, `/supervibe-override`, plus 5 phase commands
 - Templates for agent/skill/rule authoring
 - Scripts: `build-registry.mjs` (Windows-safe POSIX paths), `validate-frontmatter.mjs`, `validate-plugin-json.mjs`, `lint-skill-descriptions.mjs`
 - 30 unit tests (rubric-schema, frontmatter, trigger-clarity, registry, override-log-flow, plugin-manifest)
@@ -1002,15 +1034,15 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - **Full reference stack-pack** `laravel-nextjs-postgres-redis/`:
   - manifest.yaml (32 agents-attach + 16 rules-attach)
   - claude/settings.json (50+ deny entries: git + Laravel + Postgres + Redis + Node)
-  - claude/CLAUDE.md.tpl (full routing table for all 32 agents)
+  - provider instruction template (full routing table for all 32 agents)
   - husky/pre-commit, husky/pre-push (stack-aware)
   - configs/lint-staged.config.js, configs/.gitignore, configs/package.json.tpl
 - **5 atomic packs**: redis, queue, db-replicas, husky-base, commitlint-base
 - **templates/**: claude-md/_base.md.tpl, settings/_base.json, configs/{commitlint,editorconfig,gitattributes}, husky/{pre-commit-base,commit-msg,pre-push-base}, gitignore/{_base,laravel,nextjs}
 
-### Added — Phase 6: Self-Evolution (FULL)
+### Added — Phase 6: Self-Improvement (FULL)
 
-- 6 evolution skills: audit, strengthen (with researcher consultation decision tree), adapt, evaluate, sync-rules, rule-audit
+- 6 improvement skills: audit, strengthen (with researcher consultation decision tree), adapt, evaluate, sync-rules, rule-audit
 - `hooks/hooks.json` wiring SessionStart/PostToolUse/Stop
 - 3 hook scripts: session-start-check (stale + override-rate detection), post-edit-stack-watch (manifest + rule edit detection), effectiveness-tracker
 
@@ -1056,7 +1088,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Known accepted limitations
 
-- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `supervibe-orchestrator` (161). Periodic `supervibe:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-evolution loop.
+- Most agents are 60-150 lines (compact form). Strengthen-pass exemplified on `code-reviewer` (244 lines) and `supervibe-orchestrator` (161). Periodic `supervibe:strengthen` invocation will expand others to ≥250 over time — this is BY DESIGN of the self-improvement loop.
 - Hook scripts: `effectiveness-tracker.mjs` is minimal placeholder. Future versions will add transcript analysis.
 - No git commits in this release session per user instruction; the working-tree is the deliverable.
 

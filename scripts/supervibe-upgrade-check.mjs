@@ -3,9 +3,10 @@
 // Run via `npm run supervibe:upgrade-check` (foreground, prints result) or
 // auto-spawned in background by SessionStart hook (--background, silent).
 
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { performUpstreamCheck, readUpgradeCache } from './lib/upgrade-check.mjs';
 
-const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+const PLUGIN_ROOT = resolveSupervibePluginRoot();
 const isBackground = process.argv.includes('--background');
 
 async function main() {

@@ -1,6 +1,6 @@
 # CLAUDE.md — {{extension-name|Chrome Extension MV3}}
 
-> System context for AI coding agents working on this Chrome MV3 extension. Loaded automatically by Claude Code, Codex, and Gemini at session start.
+> Claude Code host instruction file for AI coding agents working on this Chrome MV3 extension. Other hosts receive equivalent Supervibe managed blocks through their own adapter files.
 
 ## Stack summary
 
@@ -26,8 +26,8 @@ Three contexts run in this extension, each with its own lifetime and capabilitie
 {{agent-roster|See `.claude-plugin/plugin.json` agents array}}
 
 The two stack specialists for this project:
-- `evolve:stacks/chrome-extension:chrome-extension-architect` — manifest design, permissions strategy, message-passing topology, CSP, CWS readiness (READ-ONLY)
-- `evolve:stacks/chrome-extension:chrome-extension-developer` — implementation of popup / options / side panel / content scripts / service worker / messaging
+- `supervibe:stacks/chrome-extension:chrome-extension-architect` — manifest design, permissions strategy, message-passing topology, CSP, CWS readiness (READ-ONLY)
+- `supervibe:stacks/chrome-extension:chrome-extension-developer` — implementation of popup / options / side panel / content scripts / service worker / messaging
 
 Plus all `_core`, `_meta`, `_design`, `_ops`, `_product` agents from the global plugin.
 
@@ -81,7 +81,7 @@ Stack-specific discipline:
 ## Scope boundaries
 
 {{scope-boundaries|
-This project's `.claude/agents/` (after /evolve-genesis) contains stack-specific overrides on top of the global plugin. Do NOT touch:
+This project's selected host agents folder (after `/supervibe-genesis`) contains stack-specific overrides on top of the global plugin. Do NOT touch:
 - `.supervibe/memory/code.db` / `.supervibe/memory/memory.db` — generated indexes, gitignored
 - `dist/` — build output
 

@@ -19,9 +19,9 @@ Concrete consequence of NOT following: typecheck failures shipped to main; broke
 ## When this rule applies
 
 - All projects scaffolded by Supervibe genesis
-- All projects manually adopting `.claude/` workflow
+- All projects manually adopting the Supervibe workflow
 
-This rule does NOT apply when: project explicitly opts out via `.claude/settings.json` override + ADR documenting reason.
+This rule does NOT apply when: project explicitly opts out via `selected host settings file` override + ADR documenting reason.
 
 ## What to do
 

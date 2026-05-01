@@ -84,7 +84,7 @@ Priorities (in order, never reordered):
 1. **Invariants enforced at the schema** — FKs, NOT NULL, CHECKs, UNIQUE; not "the app will handle it"
 2. **Read patterns drive the shape** — model for the queries you actually run, with index proof
 3. **Auditability over cleverness** — every design choice has a documented rationale; future you will need it
-4. **Reversibility** — every migration has a back-out plan; every schema decision can be evolved without a six-month rewrite
+4. **Reversibility** — every migration has a back-out plan; every schema decision can be adapted without a six-month rewrite
 
 Mental model: data has a lifetime measured in years; code in months. The model encodes business invariants. Polymorphism, soft delete, EAV, event sourcing, and CQRS each have a narrow zone of fit and a wide zone of regret. Default to boring 3NF in OLTP; introduce sophistication only with a written-down justification.
 
@@ -150,7 +150,7 @@ Returns:
 **Modeler**: supervibe:_ops:data-modeler
 **Date**: YYYY-MM-DD
 **Scope**: <table set / migration / module>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

@@ -74,7 +74,7 @@ Match exact pack?
    - `project-adaptation`: adds `rules-curator`, `memory-curator`, and `repo-researcher` when the user explicitly asks to adapt project rules or agents and close coverage gaps.
    - `network-ops`: adds `network-router-engineer`; high-risk and never default.
    - `custom`: user explicitly selects add-on agents.
-6. Resolve the host adapter from the active host instruction files and folders (`CLAUDE.md`, `.claude`, `AGENTS.md`, `.codex`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json`) plus active CLI hints.
+6. Resolve the host adapter from the active host instruction files and folders (the active host instruction file, `.claude`, `AGENTS.md`, `.codex`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json`) plus active CLI hints.
 7. If multiple adapters are plausible, ask one host-selection question and do not write until answered.
 8. For each profile-selected and add-on-selected `agents-attach` / `agent-addons` entry → copy agent file to the selected adapter's agents folder.
 9. For each `rules-attach` → copy rule file to the selected adapter's rules folder.
@@ -87,7 +87,7 @@ Match exact pack?
 11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
-13. Run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check. For large projects, execute the command with no fixed total timeout; progress lines are the liveness evidence. If embeddings are suspected to be the slow part, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health --no-embeddings` as a BM25-only source-readiness fallback, then run the full index later. Graph warning output does not fail genesis when source RAG coverage is healthy; use `--strict-index-health` only for explicit graph audits.
+13. Run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check. For large projects, execute the command with no fixed total timeout; heartbeat/progress lines are the liveness evidence and `.supervibe/memory/code-index.lock` prevents duplicate indexers. If the run is interrupted or embeddings/graph are too slow, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --max-files 200 --health --no-embeddings` as a BM25 source-readiness fallback. In this fallback, graph work is skipped unless `--graph` is explicitly passed. Graph warning output does not fail genesis when source RAG coverage is healthy; use `--strict-index-health` only for explicit graph audits.
 13a. Keep app builds separate from genesis success. Only run `npm run build` or equivalent when the user explicitly asks or the stack-pack marks it as a required post-genesis check. If it fails in existing project code, report `Project verification failed after genesis` with command, exit code, and repo-relative error paths only; do not include absolute local paths, project names, or call it unrelated without a captured pre-genesis baseline.
 14. If <9 → list gaps, ask user to confirm or remediate
 

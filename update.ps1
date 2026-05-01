@@ -189,4 +189,4 @@ try {
 Test-CheckoutIntegrity
 
 Ok 'done. Restart your AI CLI to pick up the new plugin code.'
-Ok 'if any project has .claude/ overrides, run /evolve-adapt inside that project.'
+Ok 'if any project has selected host adapter overrides, run /supervibe-adapt inside that project.'

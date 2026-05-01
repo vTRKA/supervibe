@@ -10,13 +10,14 @@
 //   --json            print only the JSON, no banner (for scripting)
 //   --project=<path>  override project root (defaults to cwd)
 
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { detectNextPhase } from './lib/supervibe-state-detector.mjs';
 
 const args = process.argv.slice(2);
 const jsonOnly = args.includes('--json');
 const projectArg = args.find(a => a.startsWith('--project='));
 const projectRoot = projectArg ? projectArg.slice('--project='.length) : process.cwd();
-const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || projectRoot;
+const pluginRoot = resolveSupervibePluginRoot({ cwd: projectRoot });
 
 const result = await detectNextPhase(projectRoot, pluginRoot);
 

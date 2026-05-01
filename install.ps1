@@ -147,12 +147,12 @@ if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found 
 
 # ---- detect AI CLIs (by both directory and command in PATH) ----
 
-$ClaudeDir = Join-Path $HOME '.claude'
+$AnthropicConfigDir = Join-Path $HOME '.claude'
 $CodexDir  = Join-Path $HOME '.codex'
 $GeminiDir = Join-Path $HOME '.gemini'
 
 $ClisFound = @()
-if (Test-Path $ClaudeDir) { $ClisFound += 'claude' } elseif (Get-Command claude -ErrorAction SilentlyContinue) { $ClisFound += 'claude' }
+if (Test-Path $AnthropicConfigDir) { $ClisFound += 'claude' } elseif (Get-Command claude -ErrorAction SilentlyContinue) { $ClisFound += 'claude' }
 if (Test-Path $CodexDir)  { $ClisFound += 'codex' } elseif (Get-Command codex -ErrorAction SilentlyContinue) { $ClisFound += 'codex' }
 if (Test-Path $GeminiDir) { $ClisFound += 'gemini' } elseif (Get-Command gemini -ErrorAction SilentlyContinue) { $ClisFound += 'gemini' }
 if (Get-Command cursor -ErrorAction SilentlyContinue)   { $ClisFound += 'cursor' }
@@ -161,7 +161,7 @@ if (Get-Command opencode -ErrorAction SilentlyContinue) { $ClisFound += 'opencod
 
 if ($ClisFound.Count -eq 0) {
   Warn 'No AI CLI detected. Installing under ~/.claude/ - register manually if needed.'
-  New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeDir 'plugins\marketplaces') | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $AnthropicConfigDir 'plugins\marketplaces') | Out-Null
   $ClisFound = @('claude')
 } else {
   Ok "detected AI CLIs: $($ClisFound -join ', ')"
@@ -169,10 +169,10 @@ if ($ClisFound.Count -eq 0) {
 
 # ---- clone or update the shared checkout ----
 
-$Target = Join-Path $ClaudeDir "plugins\marketplaces\$MarketplaceName"
+$Target = Join-Path $AnthropicConfigDir "plugins\marketplaces\$MarketplaceName"
 Assert-SafePluginPath $Target
 Say "plan: will install or update checkout at $Target"
-Say "plan: will modify Claude config under $ClaudeDir, Codex plugin cache/config + native skill links under $CodexDir and ~/.agents, and Gemini include under $GeminiDir when those CLIs are detected"
+Say "plan: will modify Claude config under $AnthropicConfigDir, Codex plugin cache/config + native skill links under $CodexDir and ~/.agents, and Gemini include under $GeminiDir when those CLIs are detected"
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
@@ -262,7 +262,7 @@ function Invoke-RequiredOnnxModelSetup {
 function Move-NonGitTargetAside {
   param([string]$Path)
   $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-  $backupDir = Join-Path (Join-Path $ClaudeDir 'plugins') '.supervibe-install-backups'
+  $backupDir = Join-Path (Join-Path $AnthropicConfigDir 'plugins') '.supervibe-install-backups'
   $backup = Join-Path $backupDir "$MarketplaceName.non-git.$stamp"
   New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
   Warn "found non-git plugin target at $Path; moving it aside before clean reinstall"
@@ -332,10 +332,10 @@ function Register-Claude {
   # (enabledPlugins + extraKnownMarketplaces). Missing any of these makes the
   # install silently invisible.
 
-  $pluginsDir       = Join-Path $ClaudeDir 'plugins'
+  $pluginsDir       = Join-Path $AnthropicConfigDir 'plugins'
   $pluginsJson      = Join-Path $pluginsDir 'installed_plugins.json'
   $marketplacesJson = Join-Path $pluginsDir 'known_marketplaces.json'
-  $settingsJson     = Join-Path $ClaudeDir  'settings.json'
+  $settingsJson     = Join-Path $AnthropicConfigDir  'settings.json'
   New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
 
   if (-not (Test-Path $pluginsJson))      { Write-Utf8NoBom $pluginsJson      '{ "version": 2, "plugins": {} }' }
@@ -350,15 +350,15 @@ function Register-Claude {
   # Derive owner/repo from the URL we cloned from
   $repoSlug = $RepoUrl -replace '^https://github\.com/', '' -replace '\.git$', ''
 
-  $env:EVOLVE_PJ            = $pluginsJson
-  $env:EVOLVE_MJ            = $marketplacesJson
-  $env:EVOLVE_SJ            = $settingsJson
-  $env:EVOLVE_KEY           = $key
-  $env:EVOLVE_MARKETPLACE   = $MarketplaceName
+  $env:SUPERVIBE_PJ            = $pluginsJson
+  $env:SUPERVIBE_MJ            = $marketplacesJson
+  $env:SUPERVIBE_SJ            = $settingsJson
+  $env:SUPERVIBE_KEY           = $key
+  $env:SUPERVIBE_MARKETPLACE   = $MarketplaceName
   $env:SUPERVIBE_REPO_SLUG     = $repoSlug
-  $env:EVOLVE_INSTALL_PATH  = $Target
-  $env:EVOLVE_VERSION       = $InstalledVersion
-  $env:EVOLVE_COMMIT_SHA    = $commitSha
+  $env:SUPERVIBE_INSTALL_PATH  = $Target
+  $env:SUPERVIBE_VERSION       = $InstalledVersion
+  $env:SUPERVIBE_COMMIT_SHA    = $commitSha
 
   $script = @'
 const fs = require("fs");
@@ -370,19 +370,19 @@ function readJson(path, fallback) {
 }
 
 // 1. installed_plugins.json
-const pjPath = process.env.EVOLVE_PJ;
-const pjKey  = process.env.EVOLVE_KEY;
+const pjPath = process.env.SUPERVIBE_PJ;
+const pjKey  = process.env.SUPERVIBE_KEY;
 const pj = readJson(pjPath, '{ "version": 2, "plugins": {} }');
 pj.version = pj.version || 2;
 pj.plugins = pj.plugins || {};
 const pjEntry = {
   scope: "user",
-  installPath: process.env.EVOLVE_INSTALL_PATH,
-  version: process.env.EVOLVE_VERSION,
+  installPath: process.env.SUPERVIBE_INSTALL_PATH,
+  version: process.env.SUPERVIBE_VERSION,
   installedAt: now,
   lastUpdated: now,
 };
-if (process.env.EVOLVE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.EVOLVE_COMMIT_SHA;
+if (process.env.SUPERVIBE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.SUPERVIBE_COMMIT_SHA;
 const list = pj.plugins[pjKey] || [];
 const idx  = list.findIndex(e => e.scope === "user");
 if (idx >= 0) list[idx] = Object.assign({}, list[idx], pjEntry);
@@ -391,19 +391,19 @@ pj.plugins[pjKey] = list;
 fs.writeFileSync(pjPath, JSON.stringify(pj, null, 2) + "\n");
 
 // 2. known_marketplaces.json
-const mpPath = process.env.EVOLVE_MJ;
-const mpName = process.env.EVOLVE_MARKETPLACE;
+const mpPath = process.env.SUPERVIBE_MJ;
+const mpName = process.env.SUPERVIBE_MARKETPLACE;
 const mp = readJson(mpPath, '{}');
 mp[mpName] = {
   source: { source: "github", repo: repoSlug },
-  installLocation: process.env.EVOLVE_INSTALL_PATH,
+  installLocation: process.env.SUPERVIBE_INSTALL_PATH,
   lastUpdated: now,
   autoUpdate: true,
 };
 fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
 
 // 3. settings.json - enabledPlugins + extraKnownMarketplaces
-const sjPath = process.env.EVOLVE_SJ;
+const sjPath = process.env.SUPERVIBE_SJ;
 const sj = readJson(sjPath, '{}');
 sj.enabledPlugins = sj.enabledPlugins || {};
 sj.enabledPlugins[pjKey] = true;
@@ -418,7 +418,7 @@ fs.writeFileSync(sjPath, JSON.stringify(sj, null, 2) + "\n");
   $script | & node -
   if ($LASTEXITCODE -ne 0) { Die 'Failed to register Claude Code config (installed_plugins / known_marketplaces / settings)' }
 
-  Remove-Item Env:EVOLVE_PJ, Env:EVOLVE_MJ, Env:EVOLVE_SJ, Env:EVOLVE_KEY, Env:EVOLVE_MARKETPLACE, Env:SUPERVIBE_REPO_SLUG, Env:EVOLVE_INSTALL_PATH, Env:EVOLVE_VERSION, Env:EVOLVE_COMMIT_SHA -ErrorAction SilentlyContinue
+  Remove-Item Env:SUPERVIBE_PJ, Env:SUPERVIBE_MJ, Env:SUPERVIBE_SJ, Env:SUPERVIBE_KEY, Env:SUPERVIBE_MARKETPLACE, Env:SUPERVIBE_REPO_SLUG, Env:SUPERVIBE_INSTALL_PATH, Env:SUPERVIBE_VERSION, Env:SUPERVIBE_COMMIT_SHA -ErrorAction SilentlyContinue
 
   Ok 'registered with Claude Code: installed_plugins + known_marketplaces + settings.enabledPlugins'
 }
@@ -450,12 +450,12 @@ function Update-CodexConfig {
   $configPath = Join-Path $CodexDir 'config.toml'
   New-Item -ItemType Directory -Force -Path $CodexDir | Out-Null
 
-  $env:EVOLVE_CODEX_CONFIG = $configPath
-  $env:EVOLVE_CODEX_PLUGIN_KEY = "$PluginName@$MarketplaceName"
+  $env:SUPERVIBE_CODEX_CONFIG = $configPath
+  $env:SUPERVIBE_CODEX_PLUGIN_KEY = "$PluginName@$MarketplaceName"
   $script = @'
 const fs = require("fs");
-const configPath = process.env.EVOLVE_CODEX_CONFIG;
-const pluginKey = process.env.EVOLVE_CODEX_PLUGIN_KEY;
+const configPath = process.env.SUPERVIBE_CODEX_CONFIG;
+const pluginKey = process.env.SUPERVIBE_CODEX_PLUGIN_KEY;
 const pluginHeader = `[plugins."${pluginKey}"]`;
 
 function escapeRegExp(value) {
@@ -495,7 +495,7 @@ fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
 
   $script | & node -
   if ($LASTEXITCODE -ne 0) { Die 'Failed to update Codex config.toml plugin registration' }
-  Remove-Item Env:EVOLVE_CODEX_CONFIG, Env:EVOLVE_CODEX_PLUGIN_KEY -ErrorAction SilentlyContinue
+  Remove-Item Env:SUPERVIBE_CODEX_CONFIG, Env:SUPERVIBE_CODEX_PLUGIN_KEY -ErrorAction SilentlyContinue
   Ok "enabled Codex plugin config ($PluginName@$MarketplaceName)"
 }
 

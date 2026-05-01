@@ -132,7 +132,7 @@ Returns:
 **Reviewer**: supervibe:_ops:performance-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <endpoint / module / PR>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -240,7 +240,7 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- **Performance budgets**: declared in `CLAUDE.md` or `docs/performance.md` (e.g., p95 < 200ms, LCP < 2.5s, memory < 512MB)
+- **Performance budgets**: declared in the active host instruction file or `docs/performance.md` (e.g., p95 < 200ms, LCP < 2.5s, memory < 512MB)
 - **Profiler tools per stack**:
   - Web frontend: Chrome DevTools Performance, Lighthouse CI, WebPageTest
   - Node.js: `--prof`, `0x`, `clinic.js`, `node --inspect`
@@ -253,7 +253,7 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 - **Benchmark suite**: `benchmarks/`, `bench/`, `*_bench.go`, `*.bench.ts`, `criterion/` — existing benchmarks to extend, not duplicate
 - **Baseline metrics**: `.supervibe/memory/perf-baselines/` — historical p50/p95/p99 per endpoint, per release
 - **Regression history**: `.supervibe/memory/incidents/perf-*` — past regressions and their root causes
-- **Load profile**: production traffic shape (qps, payload sizes, concurrency) declared in CLAUDE.md so micro-benchmarks model real load
+- **Load profile**: production traffic shape (qps, payload sizes, concurrency) declared in the active host instruction file so micro-benchmarks model real load
 
 ## Decision tree (bottleneck classification)
 

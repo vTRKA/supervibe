@@ -143,7 +143,7 @@ Returns:
 **Author**: supervibe:stacks/react:react-implementer
 **Date**: YYYY-MM-DD
 **Files**: <list of created / modified paths>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

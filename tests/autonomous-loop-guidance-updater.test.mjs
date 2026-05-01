@@ -17,7 +17,7 @@ async function tempRoot(name) {
 
 test("guidance update plan groups scoped candidates and requires review before writing", async () => {
   const rootDir = await tempRoot("guidance-plan");
-  await writeFile(join(rootDir, "CLAUDE.md"), "# Root Guidance\n", "utf8");
+  await writeFile(join(rootDir, "AGENTS.md"), "# Root Guidance\n", "utf8");
 
   const plan = await createGuidanceUpdatePlan([
     { id: "l1", type: "repo-convention", scope: "repo convention", summary: "Use graph export before diagnosing loop scheduling.", evidence: ["progress.md"] },
@@ -31,12 +31,12 @@ test("guidance update plan groups scoped candidates and requires review before w
   const blocked = await applyGuidanceUpdatePlan(plan, { rootDir });
   assert.equal(blocked.applied, false);
   assert.equal(blocked.status, "blocked");
-  assert.equal(await readFile(join(rootDir, "CLAUDE.md"), "utf8"), "# Root Guidance\n");
+  assert.equal(await readFile(join(rootDir, "AGENTS.md"), "utf8"), "# Root Guidance\n");
 });
 
 test("approved guidance updates write reviewed blocks and skip duplicates", async () => {
   const rootDir = await tempRoot("guidance-apply");
-  await writeFile(join(rootDir, "CLAUDE.md"), "# Root Guidance\n", "utf8");
+  await writeFile(join(rootDir, "AGENTS.md"), "# Root Guidance\n", "utf8");
 
   const candidates = [
     { id: "l1", type: "test-convention", scope: "test convention", summary: "Run docs tests before marking README sync complete.", evidence: ["tests/readme-autonomous-loop-docs.test.mjs"] },
@@ -47,14 +47,31 @@ test("approved guidance updates write reviewed blocks and skip duplicates", asyn
     approval: { approved: true, token: GUIDANCE_APPROVAL_TOKEN, reviewedBy: "quality-gate-reviewer" },
   });
 
-  assert.deepEqual(applied.changedFiles, ["CLAUDE.md"]);
-  const content = await readFile(join(rootDir, "CLAUDE.md"), "utf8");
+  assert.deepEqual(applied.changedFiles, ["AGENTS.md"]);
+  const content = await readFile(join(rootDir, "AGENTS.md"), "utf8");
   assert.match(content, /Reviewed Autonomous Loop Learnings/);
   assert.match(content, /Run docs tests/);
 
   const duplicatePlan = await createGuidanceUpdatePlan(candidates, { rootDir });
   assert.equal(duplicatePlan.proposedUpdates.length, 0);
   assert.equal(duplicatePlan.duplicateCandidates.length, 1);
+});
+
+test("guidance update plan preserves a Claude-only host instruction file when it is the existing project surface", async () => {
+  const rootDir = await tempRoot("guidance-claude-host");
+  await writeFile(join(rootDir, "CLAUDE.md"), "# Claude Host Guidance\n", "utf8");
+
+  const plan = await createGuidanceUpdatePlan([
+    { id: "l1", type: "repo-convention", scope: "repo convention", summary: "Keep loop diagnostics in the active host instruction file.", evidence: ["final-report.md"] },
+  ], { rootDir });
+  const applied = await applyGuidanceUpdatePlan(plan, {
+    rootDir,
+    approval: { approved: true, token: GUIDANCE_APPROVAL_TOKEN },
+  });
+
+  assert.deepEqual(applied.changedFiles, ["CLAUDE.md"]);
+  const content = await readFile(join(rootDir, "CLAUDE.md"), "utf8");
+  assert.match(content, /Reviewed Autonomous Loop Learnings/);
 });
 
 test("rejected learning candidates are archived instead of written to guidance", async () => {

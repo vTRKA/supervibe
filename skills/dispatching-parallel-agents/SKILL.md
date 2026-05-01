@@ -25,7 +25,7 @@ NOT for: single tasks, tasks with sequential dependencies, tasks sharing mutable
 1. List the candidate tasks
 2. Identify what each task reads vs writes
 3. Identify shared state (files, registry, DB) between tasks
-4. Read project's subagent dispatch examples in `CLAUDE.md` if present
+4. Read project's subagent dispatch examples in the active host instruction file if present
 
 ## Decision tree
 

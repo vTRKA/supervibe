@@ -157,7 +157,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read `CLAUDE.md`** — capture build/test/lint commands, conventions, declared "do not touch" zones, hot-path warnings
+1. **Read the active host instruction file** — capture build/test/lint commands, conventions, declared "do not touch" zones, hot-path warnings
 2. **Invoke `supervibe:project-memory`** — search `.supervibe/memory/refactors/` and `.supervibe/memory/decisions/` for prior attempts, abandoned ideas, and explicit "rejected: see incident" notes against the symbol or module being touched
 2.5 **Pre-refactor blast-radius check** — for ANY rename/extract/move/inline:
    `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` then `--neighbors "<symbol>" --depth 2`.
@@ -168,7 +168,7 @@ Before producing any artifact or making any structural recommendation:
    - Grep for string-literal references (reflection, DI, config, route names)
    - Glob for related test files
    - Read each caller's context (≥3 lines around) to understand usage shape
-5. **Confirm baseline is green** — run the test command from CLAUDE.md; capture full output; record pass count, warning count, lint count. If RED, STOP and return; refactoring on a red tree is not allowed
+5. **Confirm baseline is green** — run the test command from the active host instruction file; capture full output; record pass count, warning count, lint count. If RED, STOP and return; refactoring on a red tree is not allowed
 6. **Confirm coverage exists** — for each behavior in the change radius, verify a test exercises it. If gap, add characterization test (input/output snapshot is fine for legacy) via `supervibe:tdd` and return to step 5
 7. **Pick the smallest atomic step** — one rename, one extract, one move; never two operations in one diff
 8. **Make the change** — use Edit on the source of truth, then propagate to call sites discovered in step 4
@@ -191,7 +191,7 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / symbol>
 **Operation(s)**: rename | extract-method | inline | move | split-class | merge-modules | extract-module
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -223,7 +223,7 @@ For every refactor:
 
 Explicit commands (run before AND after):
 ```
-# Detect from CLAUDE.md, fall back to common defaults:
+# Detect from the active host instruction file, fall back to common defaults:
 npm test            # or: pnpm test / yarn test / vitest run / jest
 npm run lint        # or: eslint . / biome check
 npm run typecheck   # or: tsc --noEmit
@@ -266,7 +266,7 @@ npm run typecheck   # or: tsc --noEmit
 9. Repeat for next cluster; do not split into more files than there are real cohesion boundaries
 
 ### Module boundary cleanup
-1. Identify two modules that should not depend on each other (per CLAUDE.md architecture rules) but currently do
+1. Identify two modules that should not depend on each other (per the active host instruction file architecture rules) but currently do
 2. Map the offending edges: grep imports across the boundary in both directions
 3. Categorize each edge: (a) misplaced symbol — should move to other side; (b) shared concept — should extract to neutral third module; (c) accidental — refactor to remove
 4. For each edge, choose the smallest fix matching its category; sequence so each step lands green
@@ -301,11 +301,11 @@ npm run typecheck   # or: tsc --noEmit
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Test runner + invocation: detected from project manifest (`package.json` scripts, `composer.json` scripts, `Cargo.toml`, `pyproject.toml`, `Makefile`)
-- Build/lint/typecheck commands: from `CLAUDE.md` or scripts; baseline warning count captured before refactor
-- Existing code conventions: documented in `.claude/rules/` and `CLAUDE.md`
+- Build/lint/typecheck commands: from the active host instruction file or scripts; baseline warning count captured before refactor
+- Existing code conventions: documented in `selected host rules folder/` and the active host instruction file
 - Past refactor decisions / dead-end attempts: `.supervibe/memory/decisions/` and `.supervibe/memory/refactors/`
 - Caller-discovery technique: project-aware (LSP > grep > glob, depending on stack)
-- Module boundaries / public-API surface: declared in CLAUDE.md or inferred from `index.*` / `mod.rs` / `__init__.py`
+- Module boundaries / public-API surface: declared in the active host instruction file or inferred from `index.*` / `mod.rs` / `__init__.py`
 - Hot-path / perf-sensitive zones: declared so refactors there require explicit benchmark check
 
 ## Smell named

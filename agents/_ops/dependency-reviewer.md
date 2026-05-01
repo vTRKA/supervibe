@@ -219,7 +219,7 @@ Returns:
 **Reviewer**: supervibe:_ops:dependency-reviewer
 **Date**: YYYY-MM-DD
 **Scope**: <new dep | upgrade | quarterly audit | vuln response>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

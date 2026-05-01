@@ -273,7 +273,7 @@ Inconsistency between alternatives is a code-smell: if direction A and direction
 
 Returns a brand direction document at `prototypes/_brandbook/direction.md` (or project-equivalent path).
 
-Every output ends with the canonical footer (parsed by PostToolUse hook for the evolution loop):
+Every output ends with the canonical footer (parsed by PostToolUse hook for the improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -362,7 +362,7 @@ For each direction document:
 12. Author DO/DON'T with concrete examples (including animation DO/DON'T)
 13. Stakeholder alignment, capture sign-off, score, hand off to `supervibe:brandbook`
 
-### Brand refresh (evolve existing identity)
+### Brand refresh (refine existing identity)
 1. Brand audit — inventory current palette, type, motion, voice, surfaces
 2. Tag each element KEEP / FLEX / RETIRE with reason
 3. Identify equity to preserve (recognizable logo glyph, signature color, voice quirks)
@@ -461,7 +461,7 @@ NEW BRAND (zero-to-one identity):
   - Token intent built ground-up; defend every choice
   - Stakeholder alignment is high-stakes — first impression of the brand
 
-REFRESH (existing brand evolves):
+REFRESH (existing brand matures):
   - Brand audit MANDATORY — document what exists, what works, what fails
   - Identify equity to preserve (logo glyph? signature color? voice?)
   - Identify debt to retire (legacy gradients, dated type, mixed metaphors)

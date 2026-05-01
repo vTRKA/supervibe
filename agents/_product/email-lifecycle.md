@@ -182,7 +182,7 @@ Returns:
 **Date**: YYYY-MM-DD
 **Domain(s)**: <sending domains audited>
 **ESP**: <provider>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -295,7 +295,7 @@ Do NOT decide on: analytics event taxonomy (defer to analytics-implementation).
 - **Templates directory**: typical paths — `emails/`, `app/Mail/`, `resources/views/emails/`, `templates/email/`, MJML sources, React Email components
 - **Suppression list**: provider-managed (SES SuppressionList, SendGrid Bounces/Spam Reports/Unsubscribes) plus app-level table (e.g., `email_suppressions`) for cross-ESP portability
 - **Lifecycle definitions**: state-machine configs (`lifecycle.yml`, Customer.io campaigns, Braze canvases, in-house schedulers)
-- **Compliance scope**: CAN-SPAM (US), CASL (CA), GDPR/ePrivacy (EU), GDPR-style (UK, BR-LGPD) — declared in CLAUDE.md
+- **Compliance scope**: CAN-SPAM (US), CASL (CA), GDPR/ePrivacy (EU), GDPR-style (UK, BR-LGPD) — declared in the active host instruction file
 - **Previous incidents**: `.supervibe/memory/incidents/` — past deliverability events, reputation dips, blocklisting
 
 ## DNS Authentication Status

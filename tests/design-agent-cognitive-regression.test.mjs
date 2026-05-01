@@ -30,7 +30,7 @@ test("design flow asks before reusing old artifacts and requires preview feedbac
 
   for (const body of [command, prototypeSkill, landingSkill, builder]) {
     assert.match(body, /Feedback/);
-    assert.match(body, /#evolve-fb-toggle/);
+    assert.match(body, /#supervibe-fb-toggle/);
     assert.match(body, /--no-feedback/);
   }
 

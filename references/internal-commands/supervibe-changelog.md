@@ -16,7 +16,7 @@ This command does NOT silently truncate. If the changelog is large, sections are
 
 ### `/supervibe-changelog` — auto-resolve
 
-Reads `.supervibe/memory/.evolve-version` (last seen) and `plugin.json.version` (current). Shows entries between (last, current], inclusive of current.
+Reads `.supervibe/memory/.supervibe-version` (last seen) and `plugin.json.version` (current). Shows entries between (last, current], inclusive of current.
 
 ### `/supervibe-changelog <from> <to>` — explicit version range
 
@@ -59,12 +59,12 @@ If output exceeds context comfort (~6,000 chars), the command splits into pages 
 1. **Resolve range:**
    a. If `<from> <to>` given → use them.
    b. If `--since <ver>` → from = `<ver>`, to = `current`.
-   c. Otherwise: from = `.supervibe/memory/.evolve-version` (read), to = `plugin.json.version` (read).
+   c. Otherwise: from = `.supervibe/memory/.supervibe-version` (read), to = `plugin.json.version` (read).
 
 2. **Validate range:**
    - If `from == to` → "Project on latest plugin version (vX). No changes to show."
    - If `from > to` → unusual case (downgrade?) — print a warning + show entries from current to from in REVERSE.
-   - If `.evolve-version` doesn't exist → first session under plugin install; suggest setting baseline via `node <resolved-supervibe-plugin-root>/scripts/lib/version-tracker.mjs --init` and exit.
+   - If `.supervibe-version` doesn't exist → first session under plugin install; suggest setting baseline via `node <resolved-supervibe-plugin-root>/scripts/lib/version-tracker.mjs --init` and exit.
 
 3. **Read CHANGELOG.md:**
    - Read `<resolved-supervibe-plugin-root>/CHANGELOG.md` in full.
@@ -116,7 +116,7 @@ Pages: 1/N (if paginated)
 
 | Failure | Recovery action |
 |---|---|
-| `.evolve-version` missing | Run `node scripts/lib/version-tracker.mjs --init` to create baseline; exit |
+| `.supervibe-version` missing | Run `node scripts/lib/version-tracker.mjs --init` to create baseline; exit |
 | `plugin.json` missing | Plugin install corrupted; suggest `/supervibe-update` or reinstall |
 | `CHANGELOG.md` missing | Print: "No changelog at expected path. Plugin source may be incomplete." |
 | Range invalid (from > to) | Show in reverse with warning |
@@ -187,6 +187,6 @@ Migrate mode:
 - `npm run supervibe:upgrade` — actually pulls a newer plugin
 - `/supervibe-update` — alias for the upgrade flow with status check
 - `/supervibe-adapt` — propagates plugin changes into project-level overrides (run AFTER reading the changelog)
-- `.supervibe/memory/.evolve-version` — last-seen version marker
+- `.supervibe/memory/.supervibe-version` — last-seen version marker
 - `scripts/lib/version-tracker.mjs` — version-bump detector that maintains the marker
 - `CHANGELOG.md` (plugin root) — source of truth this command reads

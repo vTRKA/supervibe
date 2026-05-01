@@ -10,13 +10,13 @@ function runStatus() {
   });
 }
 
-test('evolve-status: prints index health summary header', () => {
+test('supervibe-status: prints index health summary header', () => {
   const out = runStatus();
   assert.match(out, /Supervibe Index Status/);
   assert.match(out, /Project root:/);
 });
 
-test('evolve-status: reports Code RAG state', () => {
+test('supervibe-status: reports Code RAG state', () => {
   const out = runStatus();
   // Either initialized (lists files/chunks) or NOT INITIALIZED warning
   assert.ok(/Code RAG/.test(out), 'should mention Code RAG');
@@ -26,21 +26,26 @@ test('evolve-status: reports Code RAG state', () => {
   );
 });
 
-test('evolve-status: reports Code Graph state', () => {
+test('supervibe-status: reports source coverage directly', () => {
+  const out = runStatus();
+  assert.ok(/Source coverage: \d+\/\d+ source files indexed, \d+\.\d+% coverage/.test(out) || /NOT INITIALIZED/.test(out));
+});
+
+test('supervibe-status: reports Code Graph state', () => {
   const out = runStatus();
   // Either lists symbols/edges or NOT INITIALIZED (graph lives in same DB as RAG)
   assert.ok(
-    /Code Graph: \d+ symbols, \d+ edges/.test(out) || /NOT INITIALIZED/.test(out),
+    /Code Graph: \d+ symbols, \d+ edges/.test(out) || /Code Graph: not built/.test(out) || /NOT INITIALIZED/.test(out),
     'should show symbol/edge counts or NOT INITIALIZED'
   );
 });
 
-test('evolve-status: reports grammar / language coverage', () => {
+test('supervibe-status: reports grammar / language coverage', () => {
   const out = runStatus();
   assert.match(out, /Language coverage:/);
 });
 
-test('evolve-status: reports Memory state', () => {
+test('supervibe-status: reports Memory state', () => {
   const out = runStatus();
   // Memory: <count> entries OR not yet built
   assert.ok(
@@ -49,7 +54,7 @@ test('evolve-status: reports Memory state', () => {
   );
 });
 
-test('evolve-status: reports watcher state', () => {
+test('supervibe-status: reports watcher state', () => {
   const out = runStatus();
   // Three possible states: running heartbeat, stale heartbeat, or not running
   assert.ok(
@@ -60,7 +65,7 @@ test('evolve-status: reports watcher state', () => {
   );
 });
 
-test('evolve-status: reports preview server state', () => {
+test('supervibe-status: reports preview server state', () => {
   const out = runStatus();
   assert.ok(
     /Preview servers: \d+ running/.test(out) || /Preview servers: none/.test(out),
@@ -68,17 +73,17 @@ test('evolve-status: reports preview server state', () => {
   );
 });
 
-test('evolve-status: reports MCP registry state', () => {
+test('supervibe-status: reports MCP registry state', () => {
   const out = runStatus();
   assert.ok(/MCPs:/.test(out), 'should mention MCPs');
 });
 
-test('evolve-status: reports agent telemetry state', () => {
+test('supervibe-status: reports agent telemetry state', () => {
   const out = runStatus();
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');
 });
 
-test('evolve-status: reports GC hints', () => {
+test('supervibe-status: reports GC hints', () => {
   const out = runStatus();
   assert.ok(/SUPERVIBE_GC_HINTS/.test(out), 'should mention GC hints');
 });

@@ -13,6 +13,7 @@
 //   8. npm run supervibe:install-doctor (post-upgrade lifecycle audit)
 //   9. Read new version, print diff banner
 
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,9 +23,7 @@ import {
   getNodeRuntimeCapability,
 } from './lib/node-runtime-requirements.mjs';
 
-const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT
-  || process.env.CLAUDE_PLUGIN_ROOT
-  || process.cwd();
+const PLUGIN_ROOT = resolveSupervibePluginRoot();
 
 function manifestVersion(root) {
   try {

@@ -9,6 +9,7 @@
  *
  * Compare phases: scripts/lib/regression-scorer.mjs::diffPhases()
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -18,7 +19,7 @@ import { evaluateAgentRegressionChecks, formatAgentRegressionReport } from './li
 const TASKS_PATH = 'tests/fixtures/regression-suite/canonical-tasks.json';
 
 async function loadTasks() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const raw = await readFile(join(root, TASKS_PATH), 'utf8');
   return JSON.parse(raw);
 }
@@ -55,7 +56,7 @@ async function main() {
     process.exit(2);
   }
 
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const tasks = await loadTasks();
   const outDir = join(root, '.supervibe', 'audits', 'regression-suite', phase);
   await mkdir(outDir, { recursive: true });

@@ -157,7 +157,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** for declared Postgres version, replication topology, partitioning conventions, ORM, deploy cadence
+1. **Read the active host instruction file** for declared Postgres version, replication topology, partitioning conventions, ORM, deploy cadence
 2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.supervibe/memory/incidents/` for migration regressions
 3. **Read existing schema** — `db.schema.ts` / `schema.sql` / migration history — understand the current shape before proposing change
 4. **Grep call sites** (`supervibe:code-search`) for every column/table involved; rename/drop without this is malpractice
@@ -188,7 +188,7 @@ Returns a schema/migration ADR:
 **Architect**: supervibe:stacks:postgres:postgres-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -300,7 +300,7 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 - **Schema definition**: `db.schema.ts` (Drizzle), `schema.prisma` (Prisma), `schema.sql` (raw), or ORM model files
 - **Slow-query analysis**: pgBadger reports under `var/log/pgbadger/` or scheduled via cron
 - **Metrics**: Telegraf with `postgresql` input plugin emitting to InfluxDB / Prometheus; dashboards for replication lag, lock wait time, buffer cache hit ratio, transaction-id wraparound headroom
-- **Replication**: streaming primary -> hot standby (sync or async per CLAUDE.md), logical replication slots if CDC in use
+- **Replication**: streaming primary -> hot standby (sync or async per the active host instruction file), logical replication slots if CDC in use
 - **Extensions in use**: detected via `\dx` (commonly `pg_stat_statements`, `pgcrypto`, `pgvector`, `pg_partman`, `pg_repack`)
 - **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration ADRs
 

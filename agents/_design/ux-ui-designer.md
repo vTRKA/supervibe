@@ -203,7 +203,7 @@ Returns a screen spec document:
 **Designer**: supervibe:_design:ux-ui-designer
 **Date**: YYYY-MM-DD
 **Scope**: <route / flow / feature>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -322,7 +322,7 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 - Design tokens: `prototypes/_design-system/tokens.css`, `design-tokens/`, `frontend/src/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
 - Screen specs: `screen-specs/`, `docs/specs/`, or co-located alongside route files
 - Component library: `frontend/src/components/`, `packages/ui/`, Storybook entry points
-- Mockups / prototypes: `mockups/`, `prototypes/`, Figma file references in CLAUDE.md
+- Mockups / prototypes: `mockups/`, `prototypes/`, Figma file references in the active host instruction file
 - Design system: `prototypes/_design-system/` — tokens, component specs, motion, accessibility
 - Brandbook: `prototypes/_brandbook/` — direction, voice, moodboards, positioning
 - IA reference: `docs/ia/`, sitemap files, or route manifests

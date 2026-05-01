@@ -8,7 +8,7 @@ import {
   isPidAlive, killServer, REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/preview-server-manager.mjs';
 
-const sandbox = join(tmpdir(), `evolve-preview-mgr-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-preview-mgr-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.supervibe', 'memory'), { recursive: true });

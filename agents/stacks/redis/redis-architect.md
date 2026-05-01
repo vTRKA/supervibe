@@ -187,7 +187,7 @@ Returns a Redis architecture ADR:
 **Author**: supervibe:stacks/redis:redis-architect
 **Date**: YYYY-MM-DD
 **Status**: Proposed | Accepted | Superseded
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

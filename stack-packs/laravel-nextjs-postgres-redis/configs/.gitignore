@@ -39,7 +39,7 @@ Thumbs.db
 !.vscode/launch.json
 *.swp
 
-# Evolve runtime
+# Supervibe runtime
 .supervibe/research-cache/
 .supervibe/memory/effectiveness.jsonl
 # .supervibe/confidence-log.jsonl   # Track this — audit trail

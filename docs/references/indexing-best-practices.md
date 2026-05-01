@@ -18,12 +18,18 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 ## Runtime
 
 - `build-code-index.mjs` has no fixed total timeout. Large projects should be
-  allowed to finish; progress lines are the liveness evidence.
+  allowed to finish; heartbeat and progress lines are the liveness evidence.
 - Use `SUPERVIBE_INDEX_PROGRESS_EVERY=<N>` or `--progress-every <N>` to tune
   progress logging for very large repositories.
-- `--no-embeddings` is the BM25-only fallback for separating source-index
-  readiness from embedding cost. It should not replace the full semantic index
-  when the user wants best retrieval quality.
+- Use `SUPERVIBE_INDEX_HEARTBEAT_SECONDS=<N>` or `--heartbeat-seconds <N>` to
+  print current stage, current file, processed/remaining counts, and elapsed
+  time during long hashing, chunking, embedding, graph, or health stages.
+- A project-local `.supervibe/memory/code-index.lock` prevents overlapping
+  indexer runs. If a process is killed, the next run removes stale locks whose
+  PID is no longer alive.
+- `--no-embeddings` is the BM25/source-readiness fallback. In CLI indexing it
+  also skips graph extraction and cross-file edge resolution by default; pass
+  `--graph` only when graph data is explicitly needed in the fallback run.
 - Graph symbol extraction is a secondary layer. Source RAG can be ready while a
   language query is degraded; use `--strict-index-health` only when explicitly
   auditing graph extraction.
@@ -33,5 +39,7 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 - `scanCodeChanges()` must discover new source files even when `code.db` already exists.
 - Repair must prune deleted rows, generated rows that were previously indexed, and rows outside the current source inventory.
 - `node scripts/build-code-index.mjs --root . --force --health` is the explicit full-discovery health command.
-- `node scripts/build-code-index.mjs --root . --force --health --no-embeddings` is the BM25-only source-readiness fallback.
+- `node scripts/build-code-index.mjs --root . --list-missing` prints missing/stale policy-eligible files without indexing them.
+- `node scripts/build-code-index.mjs --root . --resume --max-files 200 --health --no-embeddings` batches missing/stale files without redoing the whole project.
+- `node scripts/build-code-index.mjs --root . --resume --health --no-embeddings` is the BM25 source-readiness fallback after a partial/aborted run.
 - `node scripts/build-code-index.mjs --root . --explain-policy` prints include and exclude reasons for auditing.

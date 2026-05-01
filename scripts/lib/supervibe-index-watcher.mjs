@@ -122,7 +122,7 @@ export function readWatcherDiagnostics({ rootDir = process.cwd(), now = Date.now
     lock: readIndexLock({ rootDir, now }),
     repairActions: heartbeat.status === "running"
       ? []
-      : ["npm run memory:watch", "node scripts/build-code-index.mjs --root . --force --health"],
+      : ["npm run memory:watch", "node scripts/build-code-index.mjs --root . --list-missing", "node scripts/build-code-index.mjs --root . --resume --health --no-embeddings"],
   };
 }
 

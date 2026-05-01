@@ -23,7 +23,7 @@ NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writin
 ## Step 0 — Read source of truth (required)
 
 Before asking any question, read:
-- The active host instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, Cursor rule, or `opencode.json`) for architecture, conventions, and scope boundaries
+- The active host instruction file (the active host instruction file, `AGENTS.md`, `GEMINI.md`, Cursor rule, or `opencode.json`) for architecture, conventions, and scope boundaries
 - Most recent commits (`git log -10 --oneline`) for active context
 - Any related existing specs in `docs/specs/`
 - Project memory under `.supervibe/memory/` and any legacy `MEMORY.md` if present

@@ -257,23 +257,30 @@ export function evaluateIndexHealthGate(health = {}, {
 
   return {
     ready: failedGates.length === 0,
+    eligibleSourceFiles: health.eligibleSourceFiles || 0,
+    indexedSourceFiles: health.indexedSourceFiles || 0,
+    sourceCoverage,
     failedGates,
     warnings,
     repairCommand: 'node scripts/build-code-index.mjs --root . --force --health',
-    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --force --health --no-embeddings',
+    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --resume --health --no-embeddings',
   };
 }
 
 export function formatIndexHealthGate(gate = {}) {
   const failed = (gate.failedGates || []).map((item) => item.code).join(', ') || 'none';
   const warnings = (gate.warnings || []).map((item) => item.code).join(', ') || 'none';
+  const indexed = numberOrZero(gate.indexedSourceFiles);
+  const eligible = numberOrZero(gate.eligibleSourceFiles);
+  const coverage = `${indexed}/${eligible} (${(numberOrZero(gate.sourceCoverage) * 100).toFixed(1)}%)`;
   return [
     'SUPERVIBE_INDEX_GATE',
     `READY: ${gate.ready ? 'true' : 'false'}`,
+    `SOURCE_COVERAGE: ${coverage}`,
     `FAILED: ${failed}`,
     `WARNINGS: ${warnings}`,
     `REPAIR: ${gate.repairCommand || 'node scripts/build-code-index.mjs --root . --force --health'}`,
-    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --force --health --no-embeddings'}`,
+    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --resume --health --no-embeddings'}`,
   ].join('\n');
 }
 

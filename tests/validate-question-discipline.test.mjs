@@ -66,7 +66,7 @@ test('stale placeholders outside dialogue section do not fail dialogue check', (
 
 test('noninteractive frontmatter override skips check', () => {
   const issues = checkAgentDiscipline(
-    'agents/_meta/evolve-orchestrator.md',
+    'agents/_meta/supervibe-orchestrator.md',
     { dialogue: 'noninteractive' },
     ''
   );

@@ -151,7 +151,7 @@ Returns:
 **Engineer**: supervibe:_product:qa-test-engineer
 **Date**: YYYY-MM-DD
 **Scope**: <module / feature / PR>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

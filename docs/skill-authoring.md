@@ -40,7 +40,7 @@ Concrete trigger conditions. NOT vague "when needed" — specific user phrases o
 
 ### `## Step 0 — Read source of truth (MANDATORY)`
 Before doing ANYTHING, read:
-- Project's CLAUDE.md
+- Project's active host instruction file
 - Related artifacts
 - Relevant data sources
 

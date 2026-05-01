@@ -173,7 +173,7 @@ Returns a PRD in the following structure:
 **Author**: supervibe:_product:product-manager
 **Date**: YYYY-MM-DD
 **Status**: Draft | In Review | Approved | Shipped | Killed
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -295,7 +295,7 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns �
 - Strategy / OKRs: `docs/strategy/`, `docs/okrs/`, or company wiki
 - Roadmap: `docs/roadmap/` — quarterly + annual horizon
 - README: top-level project description and current focus
-- Genesis questionnaires: `/supervibe-genesis` outputs in `.claude/genesis/` — captured product intent at project start
+- Genesis questionnaires: `/supervibe-genesis` outputs in `.supervibe/memory/genesis/` — captured product intent at project start
 - User research: `docs/research/` — interview notes, survey results, usability studies
 - Analytics baseline: dashboards, KPI tracker, north-star metric definition
 - Decision log: `.supervibe/memory/decisions/` — past product decisions with rationale

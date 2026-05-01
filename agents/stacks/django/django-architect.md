@@ -223,7 +223,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** — pick up project conventions, declared app structure, declared Celery/Channels topology, ADR location
+1. **Read the active host instruction file** — pick up project conventions, declared app structure, declared Celery/Channels topology, ADR location
 2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (app splits, Celery introductions, middleware additions)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `pyproject.toml` / `requirements.txt`, `<project>/settings/`, `<project>/urls.py`, `<project>/celery.py`, `INSTALLED_APPS`, `MIDDLEWARE`; note app boundaries, queue names, signal receivers
@@ -249,7 +249,7 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: supervibe:stacks/django:django-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -302,7 +302,7 @@ For each architectural recommendation:
 ## Common workflows
 
 ### New app introduction (splitting an existing one)
-1. Read CLAUDE.md + existing app structure + cross-app import graph
+1. Read the active host instruction file + existing app structure + cross-app import graph
 2. `supervibe:project-memory` — prior app-split ADRs, retired apps
 3. Identify the driver (team friction / language collision / migration cadence / cyclic imports / CQRS pressure)
 4. Walk APP BOUNDARY decision tree; confirm ≥2 drivers hold; if not, REJECT and document
@@ -399,7 +399,7 @@ Do NOT decide on: Celery worker tuning beyond the topology level (defer to celer
 - `<project>/celery.py` — Celery app definition, autodiscover_tasks, broker URL source
 - `<project>/asgi.py` / `wsgi.py` — ASGI for Channels, WSGI for sync-only
 - `routing.py` — Channels URL routing, `ProtocolTypeRouter`, `AuthMiddlewareStack`
-- ADR archive — `docs/adr/`, `.claude/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 - Migration history — `*/migrations/*.py` count and ordering, evidence of zero-downtime patterns
 - Cross-app imports — model imports from sibling apps, signal-receiver app boundaries
 - Test layout — `tests/` per-app or top-level, pytest-django vs `manage.py test`

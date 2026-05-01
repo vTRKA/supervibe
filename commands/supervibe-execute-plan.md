@@ -80,7 +80,7 @@ Score the executed work against 10 completion dimensions. Each is binary.
 | 7 | **Files modified are minimal** | Modified files only changed sections plan declared; no scope creep |
 | 8 | **Confidence rubric scored** | Final delivery scored against the right rubric (`agent-delivery` / `framework` / per plan); ≥9 |
 | 9 | **No half-finished code** | No commented-out blocks; no orphan TODOs; no skipped error handling per plan |
-| 10 | **Documentation in sync** | If plan touches CLAUDE.md / README.md / agent-authoring.md → updated; if not, no surprise edits |
+| 10 | **Documentation in sync** | If plan touches host instruction files / README.md / agent-authoring.md → updated; if not, no surprise edits |
 
 If score < 10:
 - Print the failing dimensions
@@ -199,12 +199,12 @@ After all phases done, score against 10 completion dimensions:
 [7/10] Files modified are minimal         ✓ (no scope creep)
 [8/10] Confidence rubric scored           ✓ (final delivery: 9.4/10 against agent-delivery)
 [9/10] No half-finished code              ✓ (knip clean)
-[10/10] Documentation in sync             ✓ (CLAUDE.md + README.md updated)
+[10/10] Documentation in sync             ✓ (host instruction file + README.md updated)
 
 Completion score: 10/10 ✓
 ```
 
-If 10/10 → done. Print summary + offer to `/schedule` follow-up if natural cleanup task is implied (per CLAUDE.md guidance).
+If 10/10 → done. Print summary + offer to `/schedule` follow-up if natural cleanup task is implied by the active host instruction file.
 
 If <10 → present options A/B/C.
 

@@ -177,7 +177,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** for declared MongoDB flavour, version, replica set / sharding topology, deploy cadence, ODM choice, and Atlas tier
+1. **Read the active host instruction file** for declared MongoDB flavour, version, replica set / sharding topology, deploy cadence, ODM choice, and Atlas tier
 2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this collection/area; check `.supervibe/memory/incidents/` for unbounded-array, hot-shard, or `$lookup` regressions
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for MongoDB release notes and Atlas API docs
 4. **Read existing schema** — ODM model files / migration scripts / `db.collection.findOne()` sample — understand current shape before proposing change; verify schema validator presence
@@ -210,7 +210,7 @@ Returns a schema/index/topology ADR:
 **Architect**: supervibe:stacks:mongodb:mongo-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -342,14 +342,14 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- **MongoDB flavour and version**: detected via `db.version()` — Community 6.0+, Enterprise, Atlas (M-series tier declared in CLAUDE.md), DocumentDB on AWS (compatibility shim — many features absent)
+- **MongoDB flavour and version**: detected via `db.version()` — Community 6.0+, Enterprise, Atlas (M-series tier declared in the active host instruction file), DocumentDB on AWS (compatibility shim — many features absent)
 - **Schema definitions / validators**: `db.runCommand({collMod, validator})` migrations under `migrations/` or `db/migrations/`; ODM models (Mongoose `models/*.js`, Beanie `app/models/*.py`, Spring Data `@Document` classes)
 - **Index definitions**: declared in code (Mongoose `schema.index()`, Beanie `Indexed`, native driver `createIndex` calls) or in dedicated migration scripts; enumerated via `db.collection.getIndexes()`
 - **Aggregation pipelines**: `services/`, `repositories/`, `pipelines/` — search for `aggregate(` calls
-- **Replica set / sharding**: declared in CLAUDE.md (replica set name, member count, sharded yes/no, shard key per collection, zone tags if geo-aware)
+- **Replica set / sharding**: declared in the active host instruction file (replica set name, member count, sharded yes/no, shard key per collection, zone tags if geo-aware)
 - **Change streams**: consumers under `consumers/`, `workers/`, or framework-specific job runners; cursor resume tokens persisted under `state/` or in the metadata collection
 - **TTL collections**: enumerated via `db.collection.getIndexes()` filtering for `expireAfterSeconds` — sessions, password-reset tokens, idempotency keys, ephemeral cache
-- **Backup**: Atlas continuous backup, `mongodump` schedule, or `mongorestore` from S3 declared in CLAUDE.md
+- **Backup**: Atlas continuous backup, `mongodump` schedule, or `mongorestore` from S3 declared in the active host instruction file
 - **Audit history**: `.supervibe/memory/decisions/` — prior schema/index/sharding ADRs
 
 ## Context

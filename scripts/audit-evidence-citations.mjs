@@ -22,6 +22,7 @@ import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { auditEvidenceLedger, formatEvidenceLedgerStatus } from './lib/supervibe-evidence-ledger.mjs';
+import { resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 
 const REFACTOR_AGENTS = new Set([
   'refactoring-specialist',
@@ -128,7 +129,7 @@ async function main() {
   const maxAgeIdx = args.indexOf('--max-age-hours');
   const maxAgeHours = maxAgeIdx >= 0 ? parseInt(args[maxAgeIdx + 1], 10) : (strict ? 48 : 0);
 
-  const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectRoot = resolveSupervibeProjectRoot();
   const logPath = join(projectRoot, '.supervibe', 'memory', 'agent-invocations.jsonl');
   const ledgerReport = await auditEvidenceLedger({ rootDir: projectRoot });
 

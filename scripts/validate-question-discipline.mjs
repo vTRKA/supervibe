@@ -1,3 +1,4 @@
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, sep } from 'node:path';
@@ -134,7 +135,7 @@ export async function collectDisciplineFiles(root) {
 }
 
 export async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const files = await collectDisciplineFiles(root);
 
   let totalIssues = 0;

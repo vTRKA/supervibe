@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { request } from 'node:http';
 import { derivePreviewArtifactSlug, startStaticServer } from '../scripts/lib/preview-static-server.mjs';
 
-const sandbox = join(tmpdir(), `evolve-preview-srv-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-preview-srv-${Date.now()}`);
 let server;
 let port;
 
@@ -41,7 +41,7 @@ test('serves HTML with hot-reload script injected', async () => {
   assert.match(r.body, /Hello/);
   assert.match(r.body, /__supervibe_preview\/sse/);
   assert.match(r.body, /EventSource/);
-  assert.match(r.body, /evolve-fb-toggle/);
+  assert.match(r.body, /supervibe-fb-toggle/);
   assert.match(r.body, /Feedback/);
 });
 

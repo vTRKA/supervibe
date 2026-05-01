@@ -35,7 +35,7 @@ EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="supervibe-marketplace"
 MIN_NODE_VERSION="22.5.0"
-LOG_DIR="${TMPDIR:-/tmp}/evolve-install.$$"
+LOG_DIR="${TMPDIR:-/tmp}/supervibe-install.$$"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
 
@@ -169,7 +169,7 @@ quarantine_non_git_target() {
   local root="$1"
   local stamp backup_dir backup
   stamp=$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null || date +%Y%m%dT%H%M%S)
-  backup_dir="$CLAUDE_DIR/plugins/.supervibe-install-backups"
+  backup_dir="$ANTHROPIC_CONFIG_DIR/plugins/.supervibe-install-backups"
   backup="$backup_dir/$MARKETPLACE_NAME.non-git.$stamp"
   mkdir -p "$backup_dir"
   warn "found non-git plugin target at $root; moving it aside before clean reinstall"
@@ -280,12 +280,12 @@ command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall 
 
 # ---- detect AI CLIs (by both directory and command in PATH) ----
 
-CLAUDE_DIR="$HOME/.claude"
+ANTHROPIC_CONFIG_DIR="$HOME/.claude"
 CODEX_DIR="$HOME/.codex"
 GEMINI_DIR="$HOME/.gemini"
 
 CLIS_FOUND=()
-[ -d "$CLAUDE_DIR" ] && CLIS_FOUND+=("claude") || command -v claude >/dev/null 2>&1 && CLIS_FOUND+=("claude") || true
+[ -d "$ANTHROPIC_CONFIG_DIR" ] && CLIS_FOUND+=("claude") || command -v claude >/dev/null 2>&1 && CLIS_FOUND+=("claude") || true
 [ -d "$CODEX_DIR" ]  && CLIS_FOUND+=("codex")  || command -v codex >/dev/null 2>&1 && CLIS_FOUND+=("codex") || true
 [ -d "$GEMINI_DIR" ] && CLIS_FOUND+=("gemini") || command -v gemini >/dev/null 2>&1 && CLIS_FOUND+=("gemini") || true
 command -v cursor >/dev/null 2>&1     && CLIS_FOUND+=("cursor") || true
@@ -294,7 +294,7 @@ command -v opencode >/dev/null 2>&1   && CLIS_FOUND+=("opencode") || true
 
 if [ ${#CLIS_FOUND[@]} -eq 0 ]; then
   warn "No AI CLI detected. Installing under ~/.claude/ - register manually in your CLI if needed."
-  mkdir -p "$CLAUDE_DIR/plugins/marketplaces"
+  mkdir -p "$ANTHROPIC_CONFIG_DIR/plugins/marketplaces"
   CLIS_FOUND=("claude")
 else
   ok "detected AI CLIs: ${CLIS_FOUND[*]}"
@@ -304,10 +304,10 @@ fi
 
 # All CLIs reference one on-disk checkout. Claude Code reads it via marketplace
 # layout; Codex via symlink; Gemini via GEMINI.md @-include.
-TARGET="$CLAUDE_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
+TARGET="$ANTHROPIC_CONFIG_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
 validate_safe_path "$TARGET"
 say "plan: will install or update checkout at $TARGET"
-say "plan: will modify Claude config under $CLAUDE_DIR, Codex plugin cache/config + native skill links under $CODEX_DIR and ~/.agents, and Gemini include under $GEMINI_DIR when those CLIs are detected"
+say "plan: will modify Claude config under $ANTHROPIC_CONFIG_DIR, Codex plugin cache/config + native skill links under $CODEX_DIR and ~/.agents, and Gemini include under $GEMINI_DIR when those CLIs are detected"
 say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 if [ -d "$TARGET/.git" ]; then
@@ -365,8 +365,8 @@ say "running npm run registry:build"
 ok "install preparation passed"
 
 # Capture installed version (env-var approach avoids quote injection in path)
-INSTALLED_VERSION=$(EVOLVE_TARGET="$TARGET" node -e \
-  'console.log(require(process.env.EVOLVE_TARGET + "/.claude-plugin/plugin.json").version)')
+INSTALLED_VERSION=$(SUPERVIBE_TARGET="$TARGET" node -e \
+  'console.log(require(process.env.SUPERVIBE_TARGET + "/.claude-plugin/plugin.json").version)')
 
 # ---- register with each detected CLI ----
 
@@ -377,13 +377,13 @@ register_claude() {
   # AND enabled on session start. Our installer upserts each idempotently:
   #   1. ~/.claude/plugins/installed_plugins.json  -> "<plugin>@<marketplace>" entry
   #   2. ~/.claude/plugins/known_marketplaces.json -> marketplace metadata
-  #   3. ~/.claude/settings.json                   -> enabledPlugins + extraKnownMarketplaces
+  #   3. host settings JSON                        -> enabledPlugins + extraKnownMarketplaces
   # Missing #2 or #3 is what makes a "successful" install invisible in the IDE.
 
-  local plugins_dir="$CLAUDE_DIR/plugins"
+  local plugins_dir="$ANTHROPIC_CONFIG_DIR/plugins"
   local plugins_json="$plugins_dir/installed_plugins.json"
   local marketplaces_json="$plugins_dir/known_marketplaces.json"
-  local settings_json="$CLAUDE_DIR/settings.json"
+  local settings_json="$ANTHROPIC_CONFIG_DIR/settings.json"
   mkdir -p "$plugins_dir"
 
   [ -f "$plugins_json"      ] || printf '{ "version": 2, "plugins": {} }\n' > "$plugins_json"
@@ -394,34 +394,34 @@ register_claude() {
   commit_sha=$(git -C "$TARGET" rev-parse HEAD 2>/dev/null || echo "")
 
   # All paths and values pass through env vars - never interpolate into JS source
-  EVOLVE_PJ="$plugins_json" \
-  EVOLVE_MJ="$marketplaces_json" \
-  EVOLVE_SJ="$settings_json" \
-  EVOLVE_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
-  EVOLVE_MARKETPLACE="$MARKETPLACE_NAME" \
+  SUPERVIBE_PJ="$plugins_json" \
+  SUPERVIBE_MJ="$marketplaces_json" \
+  SUPERVIBE_SJ="$settings_json" \
+  SUPERVIBE_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
+  SUPERVIBE_MARKETPLACE="$MARKETPLACE_NAME" \
   SUPERVIBE_REPO_SLUG="${REPO_URL#https://github.com/}" \
-  EVOLVE_INSTALL_PATH="$TARGET" \
-  EVOLVE_VERSION="$INSTALLED_VERSION" \
-  EVOLVE_COMMIT_SHA="$commit_sha" \
+  SUPERVIBE_INSTALL_PATH="$TARGET" \
+  SUPERVIBE_VERSION="$INSTALLED_VERSION" \
+  SUPERVIBE_COMMIT_SHA="$commit_sha" \
   node -e '
     const fs = require("fs");
     const now = new Date().toISOString();
     const repoSlug = (process.env.SUPERVIBE_REPO_SLUG || "").replace(/\.git$/, "");
 
     // 1. installed_plugins.json
-    const pjPath = process.env.EVOLVE_PJ;
-    const pjKey  = process.env.EVOLVE_KEY;
+    const pjPath = process.env.SUPERVIBE_PJ;
+    const pjKey  = process.env.SUPERVIBE_KEY;
     const pj = JSON.parse(fs.readFileSync(pjPath, "utf8"));
     pj.version = pj.version || 2;
     pj.plugins = pj.plugins || {};
     const pjEntry = {
       scope: "user",
-      installPath: process.env.EVOLVE_INSTALL_PATH,
-      version: process.env.EVOLVE_VERSION,
+      installPath: process.env.SUPERVIBE_INSTALL_PATH,
+      version: process.env.SUPERVIBE_VERSION,
       installedAt: now,
       lastUpdated: now,
     };
-    if (process.env.EVOLVE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.EVOLVE_COMMIT_SHA;
+    if (process.env.SUPERVIBE_COMMIT_SHA) pjEntry.gitCommitSha = process.env.SUPERVIBE_COMMIT_SHA;
     const list = pj.plugins[pjKey] || [];
     const idx  = list.findIndex(e => e.scope === "user");
     if (idx >= 0) list[idx] = Object.assign({}, list[idx], pjEntry);
@@ -430,19 +430,19 @@ register_claude() {
     fs.writeFileSync(pjPath, JSON.stringify(pj, null, 2) + "\n");
 
     // 2. known_marketplaces.json
-    const mpPath = process.env.EVOLVE_MJ;
-    const mpName = process.env.EVOLVE_MARKETPLACE;
+    const mpPath = process.env.SUPERVIBE_MJ;
+    const mpName = process.env.SUPERVIBE_MARKETPLACE;
     const mp = JSON.parse(fs.readFileSync(mpPath, "utf8"));
     mp[mpName] = {
       source: { source: "github", repo: repoSlug },
-      installLocation: process.env.EVOLVE_INSTALL_PATH,
+      installLocation: process.env.SUPERVIBE_INSTALL_PATH,
       lastUpdated: now,
       autoUpdate: true,
     };
     fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + "\n");
 
     // 3. settings.json - enabledPlugins + extraKnownMarketplaces
-    const sjPath = process.env.EVOLVE_SJ;
+    const sjPath = process.env.SUPERVIBE_SJ;
     const sj = JSON.parse(fs.readFileSync(sjPath, "utf8"));
     sj.enabledPlugins = sj.enabledPlugins || {};
     sj.enabledPlugins[pjKey] = true;
@@ -478,12 +478,12 @@ register_codex() {
   ln -s "$TARGET" "$cache_link"
 
   local codex_config="$CODEX_DIR/config.toml"
-  EVOLVE_CODEX_CONFIG="$codex_config" \
-  EVOLVE_CODEX_PLUGIN_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
+  SUPERVIBE_CODEX_CONFIG="$codex_config" \
+  SUPERVIBE_CODEX_PLUGIN_KEY="$PLUGIN_NAME@$MARKETPLACE_NAME" \
   node -e '
     const fs = require("fs");
-    const configPath = process.env.EVOLVE_CODEX_CONFIG;
-    const pluginKey = process.env.EVOLVE_CODEX_PLUGIN_KEY;
+    const configPath = process.env.SUPERVIBE_CODEX_CONFIG;
+    const pluginKey = process.env.SUPERVIBE_CODEX_PLUGIN_KEY;
     const pluginHeader = `[plugins."${pluginKey}"]`;
 
     function escapeRegExp(value) {

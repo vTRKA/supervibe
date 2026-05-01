@@ -184,7 +184,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** for declared MySQL flavour, version, replication topology, partitioning conventions, ORM, deploy cadence, and gh-ost / pt-osc throttle policy
+1. **Read the active host instruction file** for declared MySQL flavour, version, replication topology, partitioning conventions, ORM, deploy cadence, and gh-ost / pt-osc throttle policy
 2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.supervibe/memory/incidents/` for migration regressions and deadlock incidents
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for vendor-specific docs (Aurora MySQL, Percona, MariaDB), MySQL release notes
 4. **Read existing schema** — `schema.sql` / migration history / `SHOW CREATE TABLE` for the affected tables — understand current shape and indexes before proposing change
@@ -216,7 +216,7 @@ Returns a schema/migration ADR:
 **Architect**: supervibe:stacks:mysql:mysql-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -354,12 +354,12 @@ Do NOT decide on: search relevance ranking when FULLTEXT is being evaluated agai
 
 - **MySQL flavour and version**: detected via `SELECT VERSION()` — MySQL 8.0+, MariaDB 10.6+, Percona Server, AWS Aurora MySQL, GCP CloudSQL; capabilities differ
 - **Migrations directory**: `migrations/`, `db/migrations/`, framework-specific (Rails `db/migrate`, Django `*/migrations/`, Phoenix `priv/repo/migrations/`, Laravel `database/migrations/`, Flyway `db/migration/V*.sql`, Liquibase `db/changelog/`)
-- **Schema definition**: `schema.sql`, ORM model files, or framework-managed; canonical source declared in CLAUDE.md
+- **Schema definition**: `schema.sql`, ORM model files, or framework-managed; canonical source declared in the active host instruction file
 - **Online DDL tooling**: `gh-ost` config under `ops/gh-ost/` or `pt-online-schema-change` wrapper scripts; throttle thresholds and replica lag budget documented per cluster
 - **Slow-query analysis**: `mysqldumpslow`, `pt-query-digest`, or Performance Schema queries scheduled via cron; reports under `var/log/mysql/slow/`
 - **Metrics**: Telegraf with `mysql` input plugin emitting to InfluxDB / Prometheus; dashboards for replication lag (Seconds_Behind_Master / Group Replication transactions queued), buffer pool hit ratio, InnoDB row-lock wait, semi-sync timeout count, metadata-lock wait
 - **Replication**: async primary -> replica, semi-sync (`rpl_semi_sync_master_timeout` configured), or Group Replication (single-primary or multi-primary mode declared explicitly)
-- **Backup**: `xtrabackup` / `mariabackup` schedule + retention; PITR via binlogs declared in CLAUDE.md
+- **Backup**: `xtrabackup` / `mariabackup` schedule + retention; PITR via binlogs declared in the active host instruction file
 - **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration ADRs
 
 ## Context

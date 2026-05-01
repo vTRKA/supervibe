@@ -7,7 +7,12 @@ test("code indexer uses progress logging and no fixed total timeout", async () =
 
   assert.match(source, /no total timeout/);
   assert.match(source, /SUPERVIBE_INDEX_PROGRESS_EVERY/);
+  assert.match(source, /SUPERVIBE_INDEX_HEARTBEAT_SECONDS/);
+  assert.match(source, /code-index\.lock/);
+  assert.match(source, /--list-missing/);
+  assert.match(source, /--resume/);
   assert.match(source, /progress every/);
+  assert.match(source, /Usage:/);
   assert.doesNotMatch(source, /DEFAULT_INDEX_TIMEOUT_MS|SUPERVIBE_INDEX_TIMEOUT_MS|setTimeout\(\s*.*build-code-index/s);
 });
 

@@ -141,7 +141,7 @@ Returns:
 
 **Specialist**: supervibe:stacks/django:drf-specialist
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -219,7 +219,7 @@ For each API delivery:
 3. Configure `SIMPLE_JWT` in settings: `ACCESS_TOKEN_LIFETIME=timedelta(minutes=15)`, `REFRESH_TOKEN_LIFETIME=timedelta(days=7)`, `ROTATE_REFRESH_TOKENS=True`, `BLACKLIST_AFTER_ROTATION=True`, `ALGORITHM='RS256'` (or HS256 for monolith), `SIGNING_KEY=<key>`
 4. Add to `REST_FRAMEWORK`: `'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication', ...)`
 5. Write tests: obtain pair → use access → refresh rotates → old refresh blacklisted → access expires
-6. Document in CLAUDE.md: token lifetimes, rotation policy, key rotation cadence
+6. Document in the active host instruction file: token lifetimes, rotation policy, key rotation cadence
 7. ADR if algorithm choice (RS256 vs HS256) is non-default for the project
 
 ### Pagination rollout (existing API had no pagination)

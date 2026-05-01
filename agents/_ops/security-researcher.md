@@ -166,7 +166,7 @@ Currency gate (apply BEFORE outputting):
 Returns a research note in this shape (Markdown):
 
 ```markdown
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -279,10 +279,10 @@ Do NOT decide on: incident response operational steps (defer to devops-sre).
 
 - Audit tool outputs: `npm audit`, `composer audit`, `cargo audit`, `pip-audit`, `bundler-audit`, `osv-scanner`
 - Project deps + versions: `package-lock.json`, `composer.lock`, `Cargo.lock`, `poetry.lock`, `Gemfile.lock`
-- Stack manifest: language + framework + runtime versions (declared in CLAUDE.md)
+- Stack manifest: language + framework + runtime versions (declared in the active host instruction file)
 - Research cache: `.supervibe/research-cache/sec-<topic>-<date>.md`
 - Prior incidents: `.supervibe/memory/incidents/` — past advisories already evaluated
-- Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (declared in CLAUDE.md, drives detection-control depth)
+- Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (declared in the active host instruction file, drives detection-control depth)
 
 ## RAG + Memory pre-flight (pre-work check)
 

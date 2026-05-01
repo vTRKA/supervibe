@@ -202,7 +202,7 @@ Returns:
 **Auditor**: supervibe:_product:seo-specialist
 **Date**: YYYY-MM-DD
 **Scope**: <pages / template / locale / migration>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -326,7 +326,7 @@ For each audit:
 - **Render mode per route**: SSR / SSG / ISR / RSC / CSR — detected via `dynamic`, `revalidate`, `generateStaticParams`, `'use client'`.
 - **CWV instrumentation**: `web-vitals` package, RUM provider (Vercel Speed Insights, SpeedCurve, Cloudflare Web Analytics), CrUX dataset reference.
 - **Audit history**: `.supervibe/memory/seo-incidents/` — past deindexations, ranking drops, migration outcomes.
-- **Locales / hreflang map**: declared in CLAUDE.md (e.g., `en-US`, `en-GB`, `de-DE`, `fr-FR`, `x-default`).
+- **Locales / hreflang map**: declared in the active host instruction file (e.g., `en-US`, `en-GB`, `de-DE`, `fr-FR`, `x-default`).
 
 ## Render-mode inventory
 | Route template | Mode | Initial-HTML signals OK? |

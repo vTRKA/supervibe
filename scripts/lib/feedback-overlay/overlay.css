@@ -1,44 +1,44 @@
-#evolve-fb-toggle {
+#supervibe-fb-toggle {
   position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
   min-width: 96px; height: 40px; border-radius: 999px; padding: 0 14px;
   background: #111; color: #fff; border: 0; font-size: 13px;
   font-family: system-ui, sans-serif; font-weight: 700;
   cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.3);
 }
-#evolve-fb-toggle:hover { background: #000; }
+#supervibe-fb-toggle:hover { background: #000; }
 
-#evolve-fb-highlight {
+#supervibe-fb-highlight {
   outline: 2px solid #06b6d4; outline-offset: 2px;
   background: rgba(6, 182, 212, .1);
   z-index: 2147483646;
 }
 
-#evolve-fb-panel {
+#supervibe-fb-panel {
   position: fixed; right: 16px; bottom: 80px; z-index: 2147483647;
   width: 320px; background: #fff; border: 1px solid #e5e7eb;
   border-radius: 12px; padding: 16px; font-family: system-ui, sans-serif;
   box-shadow: 0 8px 24px rgba(0,0,0,.15);
 }
-#evolve-fb-panel h3 { margin: 0 0 8px; font-size: 14px; color: #111; }
-#evolve-fb-panel .evolve-fb-meta {
+#supervibe-fb-panel h3 { margin: 0 0 8px; font-size: 14px; color: #111; }
+#supervibe-fb-panel .supervibe-fb-meta {
   font-family: ui-monospace, monospace; font-size: 11px; color: #6b7280;
   margin-bottom: 8px; word-break: break-all;
 }
-#evolve-fb-panel textarea {
+#supervibe-fb-panel textarea {
   width: 100%; box-sizing: border-box; resize: vertical;
   border: 1px solid #d1d5db; border-radius: 6px; padding: 8px;
   font-family: inherit; font-size: 13px; color: #111;
 }
-#evolve-fb-panel select { margin-left: 4px; }
-#evolve-fb-panel label { display: block; margin-top: 8px; font-size: 12px; color: #374151; }
-#evolve-fb-panel .evolve-fb-send {
+#supervibe-fb-panel select { margin-left: 4px; }
+#supervibe-fb-panel label { display: block; margin-top: 8px; font-size: 12px; color: #374151; }
+#supervibe-fb-panel .supervibe-fb-send {
   margin-top: 8px; width: 100%; padding: 8px;
   background: #06b6d4; color: #fff; border: 0; border-radius: 6px;
   font-weight: 600; cursor: pointer;
 }
-#evolve-fb-panel .evolve-fb-send:hover { background: #0891b2; }
+#supervibe-fb-panel .supervibe-fb-send:hover { background: #0891b2; }
 
-#evolve-fb-ack {
+#supervibe-fb-ack {
   position: fixed; right: 16px; bottom: 80px; z-index: 2147483647;
   background: #10b981; color: #fff; padding: 8px 16px; border-radius: 8px;
   font-family: system-ui; font-size: 13px;

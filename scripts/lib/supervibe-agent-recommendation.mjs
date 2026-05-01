@@ -331,7 +331,15 @@ export function buildGenesisDryRunReport({
     postApplyCommands: [
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health",
-        reason: "initialize Code RAG + Graph with progress logging and no fixed total timeout before status verification",
+        reason: "initialize Code RAG + Graph with heartbeat/progress logging, single-run lock, and no fixed total timeout before status verification",
+      },
+      {
+        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing",
+        reason: "inspect partial index gaps after an interrupted large-project indexing run",
+      },
+      {
+        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --health --no-embeddings",
+        reason: "repair only missing/stale files in BM25 source-readiness mode when full semantic indexing is too slow",
       },
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs",

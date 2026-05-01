@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { detectNextPhase } from "../scripts/lib/supervibe-state-detector.mjs";
 
-const sandboxRoot = join(tmpdir(), `evolve-detector-${Date.now()}`);
+const sandboxRoot = join(tmpdir(), `supervibe-detector-${Date.now()}`);
 
 async function makeProject(name, opts = {}) {
   const root = join(sandboxRoot, name);
@@ -48,7 +48,7 @@ async function makePlugin(name, opts = {}) {
   await mkdir(join(root, ".claude-plugin"), { recursive: true });
   await writeFile(
     join(root, ".claude-plugin", "plugin.json"),
-    JSON.stringify({ name: "evolve", version: opts.version || "1.7.0" }),
+    JSON.stringify({ name: "supervibe", version: opts.version || "1.7.0" }),
   );
   if (opts.upstreamCache) {
     await writeFile(

@@ -394,11 +394,32 @@ async function main() {
     const health = store.getGrammarHealth();
     const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
     const indexGate = evaluateIndexHealthGate(indexHealth, { strictGraph: args['strict-index-health'] });
+    const graphBuildState = store.db.prepare(`
+      SELECT COUNT(*) AS total,
+             SUM(CASE WHEN graph_version > 0 THEN 1 ELSE 0 END) AS current
+      FROM code_files
+    `).get();
     store.close();
 
     const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
-    console.log(color(`✓ Code RAG: ${s.totalFiles} files, ${s.totalChunks} chunks`, 'green'));
-    console.log(color(`✓ Code Graph: ${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`, 'green'));
+    const sourceCoveragePct = (Number(indexHealth.sourceCoverage || 0) * 100).toFixed(1);
+    const coverageSummary = `${indexHealth.indexedSourceFiles}/${indexHealth.eligibleSourceFiles} source files indexed, ${sourceCoveragePct}% coverage`;
+    const codeRagReady = indexGate.ready && s.totalChunks > 0;
+    const graphNotBuilt = Number(graphBuildState.total || 0) > 0
+      && Number(graphBuildState.current || 0) === 0
+      && s.totalSymbols === 0;
+    const graphWarnings = new Set((indexGate.warnings || []).map((item) => item.code));
+    const graphTone = graphNotBuilt || graphWarnings.has('cross-resolution') || graphWarnings.has('symbol-coverage') ? 'yellow' : 'green';
+    const graphPrefix = graphTone === 'yellow' ? '!' : '✓';
+    console.log(color(`${codeRagReady ? '✓' : '!'} Code RAG: ${codeRagReady ? '' : 'PARTIAL - '}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagReady ? 'green' : 'yellow'));
+    console.log(color(`  Source coverage: ${coverageSummary}`, codeRagReady ? 'dim' : 'yellow'));
+    console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
+    if (graphNotBuilt) {
+      console.log(color('  Graph note: run `node scripts/build-code-index.mjs --root . --force --health --graph` when graph data is needed.', 'yellow'));
+    }
+    if (graphWarnings.has('cross-resolution')) {
+      console.log(color('  Graph warning: cross-file edge resolution is low; source RAG can still be ready.', 'yellow'));
+    }
     console.log(color(`  Last update: ${ageStr(dbAge)}`, 'dim'));
     if (s.byLang.length > 0) {
       const langs = s.byLang.slice(0, 5).map(l => `${l.language}(${l.n})`).join(' ');
@@ -406,14 +427,18 @@ async function main() {
     }
 
     // Grammar health
-    const broken = health.filter(h => !h.healthy);
-    if (broken.length > 0) {
+    const broken = graphNotBuilt ? [] : health.filter(h => !h.healthy);
+    if (graphNotBuilt) {
+      console.log(color('  Language coverage: graph not built in current source-readiness index', 'dim'));
+    } else if (broken.length > 0) {
       console.log(color(`! Graph extraction degraded for: ${broken.map(b => b.language).join(', ')}`, 'yellow'));
       console.log(color('  Files indexed; source RAG remains available. Check grammars/queries/<lang>.scm for graph repair.', 'dim'));
     } else if (health.length > 0) {
       console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
     }
-    console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
+    if (!graphNotBuilt) {
+      console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
+    }
     const lowCoverage = health.filter(h => h.coverage < 0.5 && h.files > 5);
     for (const lc of lowCoverage) {
       console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { attachHotReload } from '../scripts/lib/preview-hot-reload.mjs';
 
-const sandbox = join(tmpdir(), `evolve-hot-reload-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-hot-reload-${Date.now()}`);
 
 before(async () => {
   await mkdir(sandbox, { recursive: true });

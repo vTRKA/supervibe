@@ -155,7 +155,7 @@ Returns a research note in this exact structure:
 **Date:** YYYY-MM-DD
 **TTL:** 30 days (re-verify after YYYY-MM-DD)
 **Status:** cache-hit | fresh-fetch
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -273,7 +273,7 @@ For each research note:
 - TTL: 30 days per `topic-YYYY-MM-DD.md`
 - MCP tools (preferred): `context7` for library docs, `firecrawl` for general web
 - Fallback: WebFetch with manually curated authoritative URL list
-- Stack fingerprint: `.claude/stack-fingerprint.md` — lib versions in use
+- Stack fingerprint: `.supervibe/memory/stack-fingerprint.json` — lib versions in use
 - Past research: `.supervibe/research-cache/` index (search before re-fetching)
 
 ## RAG + Memory pre-flight (pre-work check)

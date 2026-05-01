@@ -22,7 +22,7 @@ NOT for: pure config changes, scaffolding files, documentation updates, dependen
 
 ## Step 0 — Read source of truth (required)
 
-1. Read project's test conventions from `CLAUDE.md`
+1. Read project's test conventions from the active host instruction file
 2. Identify test framework from `package.json` / `composer.json` / `Cargo.toml` (vitest/jest/pytest/phpunit/cargo test/etc.)
 3. Identify test command (`npm test`, `pytest`, etc.) and per-file invocation form
 4. Check if project has a "no mocks" rule in the selected host adapter rules folder (some projects mandate integration tests)

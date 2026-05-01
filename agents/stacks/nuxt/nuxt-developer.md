@@ -151,7 +151,7 @@ Returns:
 
 **Developer**: supervibe:stacks/nuxt:nuxt-developer
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -164,7 +164,7 @@ Rubric: agent-delivery
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **`useFetch` without `key`**: Nuxt auto-generates a key based on the call site, but auto-keys break under code-splitting, layout reuse, and same-endpoint multi-instance pages. Worse, hydration relies on the key matching server → client; an unstable key causes "Hydration text mismatch" warnings and silent double-fetches. Always pass `key: 'resource:'+id` (or similar stable string) to every `useFetch`. Same applies to `useAsyncData`.
 - **`server/api/` without `zod` (or equivalent schema validation)**: `const body = await readBody(event)` returns `any` and ships unvalidated input to your domain logic. One malformed payload corrupts the database. Use `await readValidatedBody(event, schema.parse)` with a `zod` schema (or `valibot` if preferred); reject with 400 + actionable error. Type-narrow the body type via `z.infer<typeof schema>` so the handler body is fully typed.
-- **`useState` without namespace**: `useState('user')` collides with any other `useState('user')` anywhere in the app — same module, different module, deep dependency. Use `useState('<feature>:<key>', initFn)`: `useState('auth:current-user')`, `useState('cart:items')`. Document the namespace scheme in CLAUDE.md.
+- **`useState` without namespace**: `useState('user')` collides with any other `useState('user')` anywhere in the app — same module, different module, deep dependency. Use `useState('<feature>:<key>', initFn)`: `useState('auth:current-user')`, `useState('cart:items')`. Document the namespace scheme in the active host instruction file.
 - **Missing `error.vue`**: without an `error.vue` at project root (Nuxt 3) or `app/error.vue` (Nuxt 4), uncaught errors render a default Nuxt error page that may leak stack traces in development and shows nothing meaningful in production. Always implement `error.vue` with branches for `error.statusCode === 404` and `=== 500`, with safe fallback content and a "go home" CTA. Never render the raw `error.message` in production.
 - **No streamed island where one was warranted**: a slow third-party widget (recommendations, comments, related products) blocking SSR TTFB when it could have been a `<NuxtIsland>` that streams independently. Use `<NuxtIsland name="Recs" :props="{userId}" />` for components that fetch their own data and can render after the main page paints. Same applies to `defineServerComponent` for server-only islands. Pure performance pattern, not just architectural — a known slow source belongs in an island.
 - **`$fetch` at `<script setup>` top level**: this runs on both server and client (during hydration), creating a double-fetch — server fetches during SSR, then client re-fetches after hydration because `$fetch` is not SSR-aware. Use `useFetch` for top-level page data; `$fetch` only inside event handlers, watch callbacks, or other post-hydration contexts.
@@ -226,7 +226,7 @@ For each feature delivery:
 3. NOT global — global middleware runs everywhere, slowing all navigations; named middleware opts in
 4. Write test: navigate to admin page as anon → redirected to /login; as user with role='admin' → renders
 5. For server-side, mirror the check in `server/middleware/admin.ts` for any `server/api/admin/*` endpoints
-6. Document the middleware in CLAUDE.md so future page authors know to add it
+6. Document the middleware in the active host instruction file so future page authors know to add it
 
 ### useFetch with transform and default (e.g., shaping API response)
 1. Define the desired component-side shape; usually narrower than the API response

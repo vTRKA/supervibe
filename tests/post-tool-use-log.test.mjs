@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 import { AgentTaskStore } from "../scripts/lib/agent-task-store.mjs";
 
-const sandbox = join(tmpdir(), `evolve-hook-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-hook-${Date.now()}`);
 const logPath = join(sandbox, ".supervibe", "memory", "agent-invocations.jsonl");
 const taskDbPath = join(sandbox, "agent-tasks.db");
 

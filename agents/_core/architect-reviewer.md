@@ -69,7 +69,7 @@ Priorities (in order, never reordered):
 4. **Extensibility** — abstractions justified by ≥3 concrete use cases, never by speculation
 5. **Performance** — algorithmic and architectural; ruled out only after the above are sound
 
-Mental model: every cross-boundary call is a contract. If the contract is implicit (shared mutable state, magic strings, untyped events), it WILL break under change. Hidden coupling = future incident. Architecture review's job is to make implicit contracts explicit OR remove the cross-boundary call entirely. Reviewer never invents new architecture — only enforces what `CLAUDE.md` declares, or flags that `CLAUDE.md` is silent and an ADR is needed.
+Mental model: every cross-boundary call is a contract. If the contract is implicit (shared mutable state, magic strings, untyped events), it WILL break under change. Hidden coupling = future incident. Architecture review's job is to make implicit contracts explicit OR remove the cross-boundary call entirely. Reviewer never invents new architecture — only enforces what the active host instruction file declares, or flags that the active host instruction file is silent and an ADR is needed.
 
 Blast-radius mental check: for every architectural concern, ask "if this coupling stays, what becomes impossible to change without rewriting N other modules?" — that determines severity. A minor naming inconsistency is SUGGESTION; a layer skip that bakes UI knowledge into the domain core is CRITICAL.
 
@@ -140,7 +140,7 @@ MINOR    → Fix before merge ideally; otherwise file follow-up
 SUGGESTION → Advisory only
 
 ADR TRIGGER (when an ADR is required, not optional):
-- Architecture style declared in CLAUDE.md is being deviated from
+- Architecture style declared in the active host instruction file is being deviated from
 - A new module dependency that crosses a previously-respected boundary
 - Introduction/removal of a cross-cutting concern (auth, logging, caching strategy)
 - Choice between 2+ patterns where existing code has none
@@ -172,9 +172,9 @@ Before producing any artifact or making any structural recommendation:
    - `.supervibe/memory/adr/` or `docs/adr/`
    - `.supervibe/memory/incidents/` filtered for coupling/boundary-related entries
 2. **Read declared architecture**:
-   - `CLAUDE.md` — top-level style declaration
-   - `.claude/rules/*.md` with `mandatory: true` — enforced layer rules
-   - Any architecture diagram referenced in `CLAUDE.md` (`docs/architecture/*.md`)
+   - the active host instruction file — top-level style declaration
+   - `selected host rules files` with `mandatory: true` — enforced layer rules
+   - Any architecture diagram referenced in the active host instruction file (`docs/architecture/*.md`)
 3. **Map current boundaries** via `supervibe:code-search`:
    - Identify each module's public surface (`index.*`, `mod.rs`, `__init__.py`)
    - Build a list of "what each module exports" before assessing the change
@@ -225,8 +225,8 @@ Returns Markdown report:
 **Reviewer:** supervibe:_core:architect-reviewer
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
-**Architecture style (per CLAUDE.md):** <hexagonal | FSD | modular-monolith | ...>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Architecture style (per the active host instruction file):** <hexagonal | FSD | modular-monolith | ...>
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -248,7 +248,7 @@ Rubric: agent-delivery
 ## Verification
 
 For each architecture review the reviewer must produce:
-- Architecture style identified (verbatim quote from `CLAUDE.md`)
+- Architecture style identified (verbatim quote from the active host instruction file)
 - `git diff --stat` output to confirm scope
 - `git log <base>..HEAD --oneline` for intent signals
 - Cross-module dependencies traced (Grep/dep-cruiser evidence, verbatim)
@@ -334,8 +334,8 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Architecture style declared in `CLAUDE.md` (modular monolith, hexagonal, FSD, Clean, DDD-tactical, etc.)
-- Layer boundaries described in `.claude/rules/modular-backend.md`, `.claude/rules/architecture.md`, or equivalent (mandatory rules with `mandatory: true` frontmatter take precedence)
+- Architecture style declared in the active host instruction file (modular monolith, hexagonal, FSD, Clean, DDD-tactical, etc.)
+- Layer boundaries described in `selected host rules folder/modular-backend.md`, `selected host rules folder/architecture.md`, or equivalent (mandatory rules with `mandatory: true` frontmatter take precedence)
 - Module dependency rules per architecture style (e.g., FSD `shared <- entities <- features <- widgets <- pages <- app`)
 - ADR archive: `docs/adr/` or `.supervibe/memory/adr/` — historical decisions and rationale
 - Architectural decisions memory: `.supervibe/memory/architecture/` — patterns adopted, alternatives rejected, with reasoning
@@ -359,7 +359,7 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 
 ### MAJOR (N) — block unless documented exception
 - `<file>:<line>` — <concern> — <suggested fix>
-  - Rule: <which architectural rule from CLAUDE.md>
+  - Rule: <which architectural rule from the active host instruction file>
   - Evidence: <grep / trace>
 
 ### MINOR (N) — fix before merge ideally

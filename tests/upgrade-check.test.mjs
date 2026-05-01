@@ -9,7 +9,7 @@ import {
   isCacheStale,
 } from '../scripts/lib/upgrade-check.mjs';
 
-const sandbox = join(tmpdir(), `evolve-ucheck-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-ucheck-${Date.now()}`);
 
 before(async () => {
   await mkdir(join(sandbox, '.claude-plugin'), { recursive: true });

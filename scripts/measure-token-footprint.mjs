@@ -7,18 +7,20 @@
  * - 1 token ≈ 2.5 chars for Cyrillic
  *
  * Budgets:
- * - CLAUDE.md: <5,000 chars / <1,250 tokens (Anthropic concise-is-key)
+ * - Host instruction files: <5,000 chars / <1,250 tokens each
  * - Skill SKILL.md body: <500 lines / <5,000 tokens (Anthropic hard limit)
  * - Skill description: <1,024 chars (Anthropic hard limit)
  * - Agent file: <500 lines / <8,000 tokens (softer — agents have richer persona)
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
+import { getHostAdapterMatrix } from './lib/supervibe-host-adapters.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import matter from 'gray-matter';
 
 const BUDGETS = {
-  claudeMd: { maxChars: 5_000, maxTokens: 1_250 },
+  hostInstruction: { maxChars: 5_000, maxTokens: 1_250 },
   skillBody: { maxLines: 500, maxTokens: 5_000 },
   skillDescription: { maxChars: 1_024 },
   agentBody: { maxLines: 500, maxTokens: 8_000 },
@@ -44,16 +46,36 @@ async function walk(dir) {
 
 export async function measureFootprint(root) {
   const violations = [];
-  const stats = { claudeMd: {}, skills: { count: 0, totalTokens: 0, oversized: [] }, agents: { count: 0, totalTokens: 0, oversized: [] } };
+  const stats = {
+    hostInstructions: [],
+    skills: { count: 0, totalTokens: 0, oversized: [] },
+    agents: { count: 0, totalTokens: 0, oversized: [] },
+  };
 
-  // CLAUDE.md
-  try {
-    const claude = await readFile(join(root, 'CLAUDE.md'), 'utf8');
-    stats.claudeMd = { chars: claude.length, tokens: approxTokens(claude), lines: claude.split('\n').length };
-    if (claude.length > BUDGETS.claudeMd.maxChars) {
-      violations.push({ kind: 'claudeMd-oversized', actual: claude.length, budget: BUDGETS.claudeMd.maxChars });
+  // Host instruction files
+  const hostInstructionFiles = [...new Set(getHostAdapterMatrix().flatMap((adapter) => adapter.instructionFiles))];
+  for (const file of hostInstructionFiles) {
+    try {
+      const content = await readFile(join(root, file), 'utf8');
+      const entry = {
+        path: file,
+        chars: content.length,
+        tokens: approxTokens(content),
+        lines: content.split('\n').length,
+      };
+      stats.hostInstructions.push(entry);
+      if (content.length > BUDGETS.hostInstruction.maxChars) {
+        violations.push({
+          kind: 'host-instruction-oversized',
+          path: file,
+          actual: content.length,
+          budget: BUDGETS.hostInstruction.maxChars,
+        });
+      }
+    } catch {
+      // host file may not exist in this checkout
     }
-  } catch {}
+  }
 
   // Skills
   const skillFiles = (await walk(join(root, 'skills'))).filter(f => f.endsWith('SKILL.md'));
@@ -91,11 +113,17 @@ export async function measureFootprint(root) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const { stats, violations } = await measureFootprint(root);
 
   console.log('=== Token footprint ===');
-  console.log(`CLAUDE.md:        ${stats.claudeMd.chars} chars / ~${stats.claudeMd.tokens} tokens / ${stats.claudeMd.lines} lines  (budget ${BUDGETS.claudeMd.maxChars} chars)`);
+  if (stats.hostInstructions.length) {
+    for (const item of stats.hostInstructions) {
+      console.log(`${item.path.padEnd(17)} ${item.chars} chars / ~${item.tokens} tokens / ${item.lines} lines  (budget ${BUDGETS.hostInstruction.maxChars} chars)`);
+    }
+  } else {
+    console.log(`Host instructions: none found`);
+  }
   console.log(`Skills:           ${stats.skills.count} files / ~${stats.skills.totalTokens} tokens total`);
   if (stats.skills.oversized.length) {
     console.log(`  Oversized (>500 lines OR >5K tokens):`);

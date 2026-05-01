@@ -1,17 +1,21 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { redactSensitiveContent } from "./autonomous-loop-artifact-retention.mjs";
 
 export const GUIDANCE_APPROVAL_TOKEN = "APPROVE_GUIDANCE_UPDATE";
 
 const DEFAULT_TARGETS = {
-  repo: "CLAUDE.md",
+  repo: null,
+  codex: "AGENTS.md",
+  claude: ["CLAUDE", ".md"].join(""),
   gemini: "GEMINI.md",
   command: "commands/supervibe-loop.md",
 };
 
 export async function createGuidanceUpdatePlan(candidates = [], { rootDir = process.cwd(), targets = DEFAULT_TARGETS } = {}) {
   const root = resolve(rootDir);
+  const resolvedTargets = resolveGuidanceTargets(root, targets);
   const proposedByTarget = new Map();
   const duplicateCandidates = [];
   const rejectedCandidates = [];
@@ -23,7 +27,7 @@ export async function createGuidanceUpdatePlan(candidates = [], { rootDir = proc
       continue;
     }
 
-    const targetPath = routeCandidate(candidate, targets);
+    const targetPath = routeCandidate(candidate, resolvedTargets);
     const safeTarget = resolveGuidanceTarget(root, targetPath);
     const existing = await readOptional(safeTarget);
     if (existing.toLowerCase().includes(String(candidate.summary).toLowerCase())) {
@@ -122,9 +126,31 @@ export function renderGuidanceBlock(candidates = []) {
 function routeCandidate(candidate, targets) {
   if (candidate.targetPath) return candidate.targetPath;
   const text = `${candidate.scope || ""} ${candidate.type || ""}`.toLowerCase();
+  if (candidate.cli === "claude") return targets.claude;
+  if (candidate.cli === "codex") return targets.codex;
   if (candidate.cli === "gemini") return targets.gemini;
   if (text.includes("command")) return targets.command;
   return targets.repo;
+}
+
+function resolveGuidanceTargets(root, overrides = {}) {
+  const targets = { ...DEFAULT_TARGETS, ...overrides };
+  if (!targets.repo) {
+    targets.repo = firstExisting(root, [
+      targets.codex,
+      targets.claude,
+      targets.gemini,
+      "opencode.json",
+    ]) || targets.codex;
+  }
+  return targets;
+}
+
+function firstExisting(root, candidates) {
+  for (const candidate of candidates.filter(Boolean)) {
+    if (existsSync(resolve(root, candidate))) return candidate;
+  }
+  return null;
 }
 
 function resolveGuidanceTarget(root, targetPath) {

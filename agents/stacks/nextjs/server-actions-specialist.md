@@ -182,7 +182,7 @@ Each action file ends with a comment block declaring:
 // AUTHZ: user must own resource (post.authorId === session.userId)
 // ERRORS: VALIDATION | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | INTERNAL
 ```
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

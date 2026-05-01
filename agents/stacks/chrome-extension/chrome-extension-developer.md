@@ -151,7 +151,7 @@ Before producing any artifact or making any structural recommendation:
 1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `docs/adr/` or `docs/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
 2. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
 3. **Pre-task: invoke `supervibe:code-search`** — `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
-4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` evolve quarterly — never trust training-cutoff).
+4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` change quarterly — never trust training-cutoff).
 5. **Read related files**: existing `src/lib/messages.ts`, `src/lib/storage.ts`, similar surface implementations, the manifest. Match naming + style conventions.
 6. **Walk the decision tree** — confirm bundler (already chosen), language (TS), UI framework (already chosen), CSS scoping, world, message-passing pattern, periodic-work primitive, storage scope. Document choices in commit message.
 7. **Write failing test first** — vitest unit test for pure logic (message reducer, storage adapter, URL matcher). Playwright surface test if popup/options/sidepanel rendering is in scope. Cover happy path + at least one error path (port disconnect, missing host permission, storage write rejected).
@@ -225,7 +225,7 @@ Returns:
 - <e.g., new permission addition deferred to chrome-extension-architect ADR>
 - <e.g., CWS listing copy update deferred to copywriter>
 
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -373,7 +373,7 @@ Do NOT decide on cross-browser strategy beyond what the ADR specifies (defer to 
 - `supervibe:code-search` — used to find prior patterns and check refactor blast radius
 - `supervibe:mcp-discovery` — used to fetch current Chrome Extensions API docs via context7
 
-**Canonical footer** (parsed by PostToolUse hook for evolution loop — every delivery ends with this block):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop — every delivery ends with this block):
 
 ```
 Confidence: <N>.<dd>/10

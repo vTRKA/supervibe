@@ -8,6 +8,7 @@ import {
   SQLITE_NODE_MIN_VERSION,
   getNodeRuntimeCapability,
 } from "./node-runtime-requirements.mjs";
+import { withSupervibePluginRootEnv } from "./supervibe-plugin-root.mjs";
 
 const AUTO_UPDATE_STATE_FILE = ".auto-update.json";
 const AUTO_UPDATE_LOCK_FILE = ".auto-update.lock";
@@ -162,11 +163,7 @@ export function spawnDetachedAutoUpdate(pluginRoot, {
   const child = spawn(process.execPath, [scriptPath, ...args], {
     cwd: pluginRoot,
     detached: true,
-    env: {
-      ...env,
-      SUPERVIBE_PLUGIN_ROOT: pluginRoot,
-      CLAUDE_PLUGIN_ROOT: pluginRoot,
-    },
+    env: withSupervibePluginRootEnv(pluginRoot, env),
     stdio: "ignore",
     windowsHide: true,
   });

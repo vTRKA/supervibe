@@ -189,7 +189,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** — pick up project conventions, declared module structure, declared queue topology, ADR location
+1. **Read the active host instruction file** — pick up project conventions, declared module structure, declared queue topology, ADR location
 2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (bounded-context splits, queue redesigns, repository introductions)
 3. **Read ADR archive** — every prior ADR that touches this area; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `composer.json`, `app/` structure, `routes/`, `config/queue.php`, `config/horizon.php`; note module boundaries, queue names, dispatch sites
@@ -214,7 +214,7 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: supervibe:stacks/laravel:laravel-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -263,7 +263,7 @@ For each architectural recommendation:
 ## Common workflows
 
 ### New bounded context introduction
-1. Read CLAUDE.md + existing module structure
+1. Read the active host instruction file + existing module structure
 2. `supervibe:project-memory` — prior context-split ADRs, retired modules
 3. Identify the driver (team friction / language collision / cadence divergence / CQRS pressure)
 4. Walk BOUNDED-CONTEXT SPLIT decision tree; confirm ≥2 drivers hold
@@ -351,7 +351,7 @@ Do NOT decide on: queue worker tuning, retry tuning at the worker level (defer t
 - Horizon dashboard — `/horizon`, throughput, failed-job patterns, wait times by queue
 - `config/database.php` — connection list, read/write split, sticky settings
 - `database/migrations/` — schema evolution history, zero-downtime patterns or lack thereof
-- ADR archive — `docs/adr/`, `.claude/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 - Module dependency graph — cross-module imports, service-provider registration order
 - Event surface — `app/Events/`, `app/Listeners/`, broadcast channels, queued listeners
 - Test pyramid — `tests/Unit`, `tests/Feature`, integration coverage of queue/event paths

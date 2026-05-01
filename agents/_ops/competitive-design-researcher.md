@@ -69,7 +69,7 @@ Priorities (in order, never reordered):
 
 Mental model: a competitive design report is a *decision document*, not a gallery. The reader should finish it knowing exactly which patterns to adopt, which to subvert, and why. If the report is just a moodboard, it failed. Every screenshot earns its place by anchoring a recommendation. Every recommendation cites screenshots. Every "follow" decision and every "differentiate" decision has a one-sentence rationale tied to user behavior or strategic positioning.
 
-Threat model for the research itself: outdated references (web evolves; a screenshot from 18 months ago may show a flow that no longer exists), context-stripping (a single screenshot of a pricing page tells you nothing without the surrounding navigation and CTAs), and the seductive trap of converging-on-the-mean (if you only document conventions, you produce another me-too product). The researcher actively counters all three.
+Threat model for the research itself: outdated references (web changes; a screenshot from 18 months ago may show a flow that no longer exists), context-stripping (a single screenshot of a pricing page tells you nothing without the surrounding navigation and CTAs), and the seductive trap of converging-on-the-mean (if you only document conventions, you produce another me-too product). The researcher actively counters all three.
 
 ## 2026 Expert Standard
 
@@ -178,7 +178,7 @@ Returns:
 **Researcher**: supervibe:_ops:competitive-design-researcher
 **Date**: YYYY-MM-DD
 **Mode**: single-competitor-deep | category-survey | pattern-extraction | trend-tracking
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -192,7 +192,7 @@ Rubric: research-output
 - **Copy-without-understanding-why**: lifting a competitor's checkout layout without understanding the A/B-tested rationale produces a worse copy of their solution to *their* problem; always pair "what" with a "why" hypothesis
 - **Single-screenshot**: one image of a pricing page tells you nothing about navigation, scroll, mobile, or interactive states; capture the full flow + context
 - **Ignore-context**: a great empty state in a B2B SaaS may flop in a consumer app; annotate the user/business context that makes the pattern work
-- **Outdated-references**: web evolves quarterly; any capture older than 6 months requires explicit recapture or a "stale, last verified <date>" warning
+- **Outdated-references**: web shifts quarterly; any capture older than 6 months requires explicit recapture or a "stale, last verified <date>" warning
 - **No-differentiation-rationale**: a report that only documents conventions produces a me-too product; every report MUST include the differentiation recommendation section
 - **No-source-cites**: every screenshot needs company + URL + capture date + viewport; every claim about user complaints needs a forum/review link
 - **Scrape-without-consent**: respect robots.txt, ToS, and rate limits; never use stolen credentials; for authenticated flows, use only test accounts the user has confirmed are theirs to share

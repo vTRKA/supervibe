@@ -178,7 +178,7 @@ Returns:
 **Implementer**: supervibe:_product:analytics-implementation
 **Date**: YYYY-MM-DD
 **Scope**: <feature / funnel / vendor>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -295,9 +295,9 @@ Do NOT write E2E framework infrastructure — extend existing fixtures (defer to
 - Consent banner / CMP: OneTrust, Cookiebot, Iubenda, Osano, Klaro, or homegrown — detect via Grep for `consent`, `cmp`, `gdpr`, `__tcfapi`
 - Vendor SDKs in `package.json`: `gtag`, `@analytics/google-analytics`, `mixpanel-browser`, `@amplitude/analytics-browser`, `posthog-js`, `@segment/analytics-next`
 - DataLayer schema: `dataLayer.push()` shapes documented alongside tracking plan
-- Server-side tag containers: GTM Server, Segment, RudderStack — declared in CLAUDE.md or infra repo
+- Server-side tag containers: GTM Server, Segment, RudderStack — declared in the active host instruction file or infra repo
 - Sandbox / dev properties: separate Mixpanel project, Amplitude org, GA4 property for non-prod traffic
-- Compliance scope: declared in CLAUDE.md (GDPR / CCPA / LGPD / PIPEDA / HIPAA)
+- Compliance scope: declared in the active host instruction file (GDPR / CCPA / LGPD / PIPEDA / HIPAA)
 - Event memory: `.supervibe/memory/analytics/` — past taxonomy decisions, deprecation notices
 
 ## Tracking Plan Diff

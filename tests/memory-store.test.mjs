@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 
-const SANDBOX = join(tmpdir(), `evolve-memory-test-${Date.now()}`);
+const SANDBOX = join(tmpdir(), `supervibe-memory-test-${Date.now()}`);
 let store;
 
 before(async () => {
@@ -154,7 +154,7 @@ test('Hybrid mode: semantic search reranks results when embeddings enabled', asy
   // Re-init with embeddings enabled (skip if model unavailable)
   const { MemoryStore: MS } = await import('../scripts/lib/memory-store.mjs');
   // CHUNKING TEST: long entries split into multiple chunks (no truncation)
-  const sandbox2 = join(tmpdir(), `evolve-chunk-test-${Date.now()}`);
+  const sandbox2 = join(tmpdir(), `supervibe-chunk-test-${Date.now()}`);
   await mkdir(sandbox2, { recursive: true });
   const decisions2 = join(sandbox2, '.supervibe', 'memory', 'decisions');
   await mkdir(decisions2, { recursive: true });

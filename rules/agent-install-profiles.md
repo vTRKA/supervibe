@@ -20,7 +20,7 @@ Concrete consequence of NOT following: a small project receives 20+ agents it wi
 
 - `/supervibe-genesis`
 - Stack-pack composition
-- Any installer or adaptation flow that writes `.claude/agents/`
+- Any installer or adaptation flow that writes `selected host agents folder/`
 
 This rule does NOT apply to the plugin marketplace checkout itself; the marketplace can contain the full catalog.
 
@@ -40,8 +40,8 @@ This rule does NOT apply to the plugin marketplace checkout itself; the marketpl
   - `ai-prompting` — prompt AI engineer for system prompts, agent prompts, tool-use policies, intent routing, prompt evals, and prompt-injection tests
   - `network-ops` — router/network engineer for real network devices and routing stability
 - Write only selected agents into the target project.
-- Record the selected profile in generated `CLAUDE.md`.
-- Record selected add-ons in generated `CLAUDE.md`. Never install high-risk network/server agents silently.
+- Record the selected profile in generated the active host instruction file.
+- Record selected add-ons in generated the active host instruction file. Never install high-risk network/server agents silently.
 
 ## Examples
 

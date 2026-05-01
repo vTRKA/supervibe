@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { discoverSourceFiles } from "./supervibe-index-policy.mjs";
+import { getHostAdapterMatrix } from "./supervibe-host-adapters.mjs";
 import { buildRepoMap, selectRepoMapContext } from "./supervibe-repo-map.mjs";
 import { runRetrievalPipeline } from "./supervibe-retrieval-pipeline.mjs";
 import { buildProjectKnowledgeGraph, queryProjectKnowledgeGraph } from "./supervibe-project-knowledge-graph.mjs";
@@ -151,7 +152,7 @@ function citation(sourceName, path, summary = "") {
 }
 
 function collectHostInstructions(rootDir) {
-  const files = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "opencode.json"];
+  const files = [...new Set(getHostAdapterMatrix().flatMap((adapter) => adapter.instructionFiles))];
   return files
     .filter((file) => existsSync(join(rootDir, file)))
     .map((file) => {

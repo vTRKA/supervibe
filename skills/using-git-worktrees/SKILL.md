@@ -24,7 +24,7 @@ NOT for: small fixes, doc-only changes, work on a fresh repo.
 
 1. Run `git status` — check for uncommitted changes
 2. Run `git branch -v` — list current branches
-3. Read project's branch naming convention from `CLAUDE.md` if specified
+3. Read project's branch naming convention from the active host instruction file if specified
 4. Verify worktree dir won't collide with existing path
 
 ## Decision tree

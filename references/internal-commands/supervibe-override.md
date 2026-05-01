@@ -15,7 +15,7 @@ This command is intentionally not part of the normal user path. It should be sug
 - When using Supervibe in a target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.supervibe/confidence-log.jsonl`.
 - When testing the plugin inside its own dev repo, the log lands at `<plugin-repo>/.supervibe/confidence-log.jsonl`.
 
-If `.claude/` does not exist yet, this command must create it.
+If `.supervibe/` does not exist yet, this command must create it.
 
 ## Implementation reference
 
@@ -46,7 +46,7 @@ If reason is missing or shorter than 10 characters: respond "Override requires a
 3. Read the most recent confidence-scoring result from the conversation context.
 4. Construct the log entry with timestamp, artifact-type, score, gaps, agent, reason.
 5. Append a single JSON line to `.supervibe/confidence-log.jsonl` (resolved relative to cwd).
-   - Create `.claude/` and the log file if missing.
+   - Create `.supervibe/` and the log file if missing.
    - NEVER edit existing lines (append-only).
 6. Confirm to user: "Override recorded. Artifact may proceed at score X/10 with the noted gaps."
 

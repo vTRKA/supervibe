@@ -260,7 +260,7 @@ Returns:
 **Scope**: <files / route / component / PR>
 **Target**: WCAG 2.1 AA (or 2.2 AA / AAA)
 **ATs tested**: NVDA+Firefox, VoiceOver+Safari, JAWS+Chrome
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -390,7 +390,7 @@ For each audit, the following evidence is required before sign-off:
 - Screen reader test scripts: `docs/a11y/sr-scripts/` — flow-by-flow scripts that name each expected announcement in order
 - Component library a11y status: `.supervibe/memory/a11y/components.md` — per-component pass/fail history
 - Past a11y findings: `.supervibe/memory/a11y/findings/` — incidents and recurring issues
-- Compliance scope: WCAG 2.1 AA (default), WCAG 2.2 AA (if declared), Section 508, EN 301 549, ADA Title III (US), AODA (Ontario), EAA (EU 2025) — declared in CLAUDE.md
+- Compliance scope: WCAG 2.1 AA (default), WCAG 2.2 AA (if declared), Section 508, EN 301 549, ADA Title III (US), AODA (Ontario), EAA (EU 2025) — declared in the active host instruction file
 - Skip-link presence: `Grep` for `skip|skip-link|main-content` anchors in layout/header components
 - Reduced-motion handling: `Grep` for `prefers-reduced-motion` in CSS/JS
 - Live region usage: `Grep` for `aria-live`, `role="status"`, `role="alert"`

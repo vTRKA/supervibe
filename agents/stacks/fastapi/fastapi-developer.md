@@ -145,7 +145,7 @@ Returns:
 **Developer**: supervibe:stacks/fastapi:fastapi-developer
 **Date**: YYYY-MM-DD
 **Scope**: <files / endpoints / module>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

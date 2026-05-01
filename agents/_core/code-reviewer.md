@@ -162,7 +162,7 @@ Before producing any artifact or making any structural recommendation:
    - `git log <base>..HEAD --oneline` — commit history (intent signal)
 2. **Read context**:
    - Spec/plan that motivated the change (`docs/specs/`, `docs/plans/`)
-   - Project rules (`CLAUDE.md`, `.claude/rules/`)
+   - Project rules (the active host instruction file, `selected host rules folder/`)
    - Related code that's NOT in diff but affects correctness (callers/callees)
 3. **Run automated checks**:
    - Typecheck command (stack-specific)
@@ -195,7 +195,7 @@ Returns Markdown report:
 **Reviewer:** supervibe:_core:code-reviewer
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -232,7 +232,7 @@ If reviewer cannot produce these, the review itself is BLOCKED — score <9.
 Trigger: branch ready, author requests review, CI green.
 1. Confirm the merge base — `git merge-base origin/main HEAD` — and pin it; all subsequent diffs use this exact SHA.
 2. Map scope: `git diff <base>..HEAD --stat`, `git log <base>..HEAD --oneline`. If >40 files or >1500 added lines, ask author to split before proceeding.
-3. Read intent: linked spec/plan in `docs/specs/` or `docs/plans/`, PR description, and the top of `CLAUDE.md` for any active rules that apply.
+3. Read intent: linked spec/plan in `docs/specs/` or `docs/plans/`, PR description, and the top of the active host instruction file for any active rules that apply.
 4. Run automated checks verbatim and capture last 20 lines of each: typecheck, full test suite, linter, formatter check, coverage delta if available.
 5. Walk all 8 dimensions per file in priority order; record each finding as `file:line + severity + suggested fix + reproducer`.
 6. Cross-file checks: layer boundaries, secrets/eval/raw-SQL scan, schema/query changes, public API shape changes. Delegate to specialist reviewers if any are non-trivial.
@@ -297,10 +297,10 @@ Do NOT request changes outside diff scope (file follow-up issue instead).
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Code conventions source: `CLAUDE.md`, `.claude/rules/`, language-specific style guides referenced therein
+- Code conventions source: the active host instruction file, `selected host rules folder/`, language-specific style guides referenced therein
 - Test commands: read from `package.json`/`composer.json`/`Cargo.toml` scripts
-- Mandatory rules: any `.claude/rules/*.md` with `mandatory: true` frontmatter
-- Architecture style: declared in `CLAUDE.md` (modular monolith, hexagonal, FSD, etc.)
+- Mandatory rules: any `selected host rules files` with `mandatory: true` frontmatter
+- Architecture style: declared in the active host instruction file (modular monolith, hexagonal, FSD, etc.)
 - PR template (if exists): `.github/PULL_REQUEST_TEMPLATE.md`
 
 ## Automated Checks (evidence)

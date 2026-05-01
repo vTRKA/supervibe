@@ -32,7 +32,7 @@ Mental model: {{MENTAL_MODEL}}.
 
 ## Project Context
 
-(filled by evolve:strengthen with grep-verified paths from current project)
+(filled by supervibe:strengthen with grep-verified paths from current project)
 
 - Primary code paths: {{PROJECT_PATHS}}
 - Key entry points: {{ENTRY_POINTS}}
@@ -49,7 +49,7 @@ Mental model: {{MENTAL_MODEL}}.
 3. **Plan minimal change**: {{PLAN_STEP}}
 4. **Execute change**: {{EXECUTE_STEP}}
 5. **Verify**: run all commands in `verification` frontmatter; show output
-6. **Score**: invoke evolve:confidence-scoring with artifact=agent-output
+6. **Score**: invoke supervibe:confidence-scoring with artifact=agent-output
 7. **Done if score ≥9, else iterate**
 
 ## User dialogue discipline

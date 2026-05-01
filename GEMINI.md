@@ -1,6 +1,6 @@
 # GEMINI.md — Supervibe plugin context for Gemini CLI
 
-> Loaded automatically by Gemini CLI on session start. Mirrors `CLAUDE.md` but with Gemini-tool-name mappings so skills and agents authored against Claude Code tools work unchanged.
+> Loaded automatically by Gemini CLI on session start. This is the Gemini entry point for the same Supervibe project policy, with Gemini-tool-name mappings for shared skills and agents.
 
 ## Tool name mapping (Gemini CLI ↔ Claude Code)
 
@@ -23,7 +23,7 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 
 ## What Supervibe provides
 
-Same project context as `CLAUDE.md`, adapted for Gemini CLI:
+Same Supervibe project context, adapted for Gemini CLI:
 - 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - 54 process skills in `./skills/`
 - 26 project rules in `./rules/`
@@ -55,7 +55,7 @@ node ./scripts/search-memory.mjs --query "idempotency"
 
 ## Invocation discipline
 
-The same six core principles from `CLAUDE.md` apply — these override Gemini defaults:
+The same six core principles apply across host instruction files — these override Gemini defaults:
 
 1. **Persona over generic agents** — every agent is a specialist with explicit decision tree.
 2. **Evidence over assertion** — cite file:line, test output, graph evidence, or memory entry.
@@ -66,5 +66,5 @@ The same six core principles from `CLAUDE.md` apply — these override Gemini de
 
 ## Reference
 
-Read `CLAUDE.md` for full system context. This file is the Gemini-flavored entry point only.
+Use this file as the Gemini-flavored entry point and keep shared Supervibe managed blocks in sync through `/supervibe-adapt`.
 For generated project artifacts, preserve user-owned content outside Supervibe managed blocks and use `/supervibe-adapt` after plugin updates instead of deleting installed agents/rules/skills.

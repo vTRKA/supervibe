@@ -15,6 +15,7 @@
 import { readFile, readdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { resolveSupervibeProjectRoot } from './supervibe-plugin-root.mjs';
 
 const CATEGORIES = ['decisions', 'patterns', 'incidents', 'learnings', 'solutions'];
 
@@ -156,7 +157,7 @@ async function main() {
 
   const matches = await preflight({
     query,
-    projectRoot: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+    projectRoot: resolveSupervibeProjectRoot(),
     limit: limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 5,
     similarity: simIdx >= 0 ? parseFloat(args[simIdx + 1]) : 0.5,
   });

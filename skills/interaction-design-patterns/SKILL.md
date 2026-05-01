@@ -620,7 +620,7 @@ Use `<picture>` for format negotiation:
 | Pre-rendered designer JSON | Lottie-web | Direct After Effects export pipeline |
 | Scroll-driven animations with fallback | GSAP ScrollTrigger | Robust polyfill where native scroll-timeline unavailable |
 
-But for EVOLVE PROTOTYPES default to **native CSS + Web Animations API + Intersection Observer**. Adding a library is escalation that requires justification: "we need spring physics", "we have 50+ choreographed steps", "designer already exported Lottie JSON". Do not pull GSAP for a fade-in.
+But for Supervibe prototypes default to **native CSS + Web Animations API + Intersection Observer**. Adding a library is escalation that requires justification: "we need spring physics", "we have 50+ choreographed steps", "designer already exported Lottie JSON". Do not pull GSAP for a fade-in.
 
 ## WOW-effect catalog (use sparingly — max 1-2 per product)
 

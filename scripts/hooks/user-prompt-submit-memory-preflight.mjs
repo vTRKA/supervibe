@@ -14,6 +14,7 @@
  */
 import { join } from 'node:path';
 import { preflight, formatMatches } from '../lib/memory-preflight.mjs';
+import { resolveSupervibeProjectRoot } from '../lib/supervibe-plugin-root.mjs';
 
 const TRIVIAL_PATTERNS = [
   /^(yes|no|ok|sure|да|нет|ладно|хорошо|давай|вперёд|пиши|next)[\s.!?]*$/i,
@@ -67,7 +68,7 @@ async function main() {
     return;
   }
 
-  const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectRoot = resolveSupervibeProjectRoot();
 
   let matches;
   try {

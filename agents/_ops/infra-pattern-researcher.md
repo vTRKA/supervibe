@@ -143,7 +143,7 @@ Trade-off priority (which dimension dominates the decision):
 ## Output contract
 
 ```markdown
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -281,7 +281,7 @@ Do NOT produce: implementation plans (defer to devops-sre with research note as 
 
 - Infra components + versions (from project's docker-compose, terraform, IaC)
 - Cloud provider(s): AWS / GCP / Azure / on-prem / multi-cloud
-- Current scale envelope: RPS, data volume, node count, region count (from CLAUDE.md or `.supervibe/memory/scale-fingerprint.md`)
+- Current scale envelope: RPS, data volume, node count, region count (from the active host instruction file or `.supervibe/memory/scale-fingerprint.md`)
 - Cost envelope: monthly infra spend ceiling (if declared)
 - Research cache: `.supervibe/research-cache/`
 - Pattern decisions log: `.supervibe/memory/pattern-decisions/`

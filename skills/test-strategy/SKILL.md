@@ -22,7 +22,7 @@ The skill answers four questions in order: what shape is the pyramid, how do fix
 
 ## Step 0 — Read source of truth (required)
 
-1. Read project `CLAUDE.md` for any pre-declared testing conventions.
+1. Read project the active host instruction file for any pre-declared testing conventions.
 2. Read `package.json` / `pyproject.toml` / `Cargo.toml` to enumerate which test runners exist already.
 3. Read CI config (`.github/workflows/`, `.gitlab-ci.yml`, etc.) and capture current test job timings.
 4. Read the most recent flaky-test issues / quarantine list (search for `skip`, `xit`, `@flaky`, `t.Skip`, quarantine tags).

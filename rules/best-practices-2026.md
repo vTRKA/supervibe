@@ -12,7 +12,7 @@ related-rules: [no-dead-code, anti-hallucination, observability]
 
 ## Why this rule exists
 
-Best practices evolve. What was canonical in 2018 (callbacks, var, prototype methods) is anti-pattern in 2026. This rule captures the current state across stacks for new code; existing code migrates opportunistically.
+Best practices change. What was canonical in 2018 (callbacks, var, prototype methods) is anti-pattern in 2026. This rule captures the current state across stacks for new code; existing code migrates opportunistically.
 
 Concrete consequence of NOT following: code that future contributors find archaic; longer onboarding; missed performance/safety wins built into modern tooling.
 

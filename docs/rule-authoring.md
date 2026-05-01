@@ -72,7 +72,7 @@ Threshold: ≥9 to ship.
 ## Mandatory vs advisory rules
 
 ### Mandatory (`mandatory: true`)
-- Referenced in CLAUDE.md mandatory section
+- Referenced in the selected host instruction file mandatory section
 - Enforced via tooling (deny-list, hook, CI)
 - Examples: `git-discipline`, `commit-discipline`, `confidence-discipline`, `anti-hallucination`, `no-dead-code`
 
@@ -99,7 +99,7 @@ Threshold: ≥9 to ship.
 
 ## After authoring
 
-1. If `mandatory: true` -> reference it from the selected host instruction file (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or host rule file)
+1. If `mandatory: true` -> reference it from the selected host instruction file or host rule file
 2. If it introduces a command ban -> add it to the selected host adapter settings file when supported
 3. Run `supervibe:rule-audit` to check for contradictions with existing rules
 4. Run `npm run registry:build` — rule should appear in `registry.yaml`

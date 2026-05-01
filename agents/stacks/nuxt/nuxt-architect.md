@@ -122,7 +122,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - `modules/` — local Nuxt modules; layer registration; module dependency order
 - `layers/` (or extends in nuxt.config) — multi-layer composition (base layer + product layer)
 - `.env` / `.env.production` — runtime config sourcing; secrets handling
-- ADR archive — `docs/adr/`, `.claude/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 - Hosting target — Vercel / Netlify / Cloudflare Pages / Node self-hosted / static — drives Nitro preset choice
 
 ## Skills
@@ -231,7 +231,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** — pick up project conventions, declared render modes, declared deploy target, ADR location
+1. **Read the active host instruction file** — pick up project conventions, declared render modes, declared deploy target, ADR location
 2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in the area being touched (render-mode mapping, Nitro preset, module additions, layer extractions)
 3. **Read ADR archive** — every prior ADR that touches Nuxt architecture; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read `nuxt.config.ts`, `package.json`, route surface (`pages/` tree), `server/` surface, `stores/`, `modules/`, deploy scripts; note current `routeRules`, `nitro.preset`, `runtimeConfig` shape
@@ -257,7 +257,7 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: supervibe:stacks/nuxt:nuxt-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -363,7 +363,7 @@ For each architectural recommendation:
 ## Common workflows
 
 ### Render-mode mapping for a new application
-1. Read CLAUDE.md + product brief; enumerate every route the app will expose
+1. Read the active host instruction file + product brief; enumerate every route the app will expose
 2. `supervibe:project-memory` — prior render-mode ADRs from sibling projects
 3. Categorize each route by: SEO-required? Auth-required? Per-user dynamic? Update frequency?
 4. Map each category to a render mode using the RENDER MODE PER ROUTE decision tree
@@ -415,7 +415,7 @@ For each architectural recommendation:
 2. For each resource, identify the canonical primitive (useFetch for page data, $fetch for events)
 3. List violations: same resource fetched both ways, $fetch in `<script setup>` top-level, useFetch in event handler
 4. Recommend per-resource fix: replace event-handler useFetch with refresh() of the page-level useFetch; replace top-level $fetch with useFetch
-5. Document the rule in CLAUDE.md as enforceable convention (lint rule if available)
+5. Document the rule in the active host instruction file as enforceable convention (lint rule if available)
 6. Migration: one resource at a time, with grep-based regression check after each change
 
 ## Out of scope

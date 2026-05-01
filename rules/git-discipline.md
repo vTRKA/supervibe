@@ -18,7 +18,7 @@ Concrete consequence of NOT following: lost commits (irrecoverable without reflo
 
 ## When this rule applies
 
-- ALL repos managed via `.claude/` Supervibe workflow
+- ALL repos managed via the selected Supervibe host adapter workflow
 - Any branch (main and feature alike — the rule prevents both push --force and stash)
 - Both interactive (developer) and automated (CI) contexts
 
@@ -26,7 +26,7 @@ This rule does NOT apply when: explicit user override with documented reason in 
 
 ## What to do
 
-**BANNED commands** (enforced via `.claude/settings.json` deny-list):
+**BANNED commands** (enforced via `selected host settings file` deny-list):
 
 - `git stash` (any variant: pop/drop/clear/list/show)
 - `git push --force` / `git push -f` / `git push --force-with-lease`
@@ -80,7 +80,7 @@ Why this is good: visible, recoverable, communicable.
 
 ## Enforcement
 
-- `.claude/settings.json` `permissions.deny` blocks Claude from running banned commands
+- `selected host settings file` `permissions.deny` blocks the active AI host from running banned commands when the host supports command permissions
 - Pre-push hook runs `npm run check` (no commit-bypass)
 - Code review checks for any sneaked-in destructive commands
 - `supervibe:audit` includes git-discipline check (scan recent shell history if available)

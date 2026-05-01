@@ -180,7 +180,7 @@ Returns a bundle of artifacts:
 **Author**: supervibe:_ops:devops-sre
 **Date**: YYYY-MM-DD
 **Scope**: <service / pipeline / incident response>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -301,7 +301,7 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 - SLO documents: `docs/slo/`, `slo.yaml`, `sli/`
 - Observability vendor: detected via config — Datadog (`datadog.yaml`), Grafana/Prometheus (`prometheus.yml`, `grafana/`), New Relic (`newrelic.yml`, `newrelic.ini`), Honeycomb, OpenTelemetry collector configs
 - Container/orchestrator: `Dockerfile`, `docker-compose.yml`, `k8s/`, manifests, Helm charts
-- Incident channel: declared in `CLAUDE.md` (e.g., `#incidents` Slack, PagerDuty service, Opsgenie team)
+- Incident channel: declared in the active host instruction file (e.g., `#incidents` Slack, PagerDuty service, Opsgenie team)
 - Deployment targets: detected from IaC + CI deploy steps (AWS, GCP, Azure, on-prem)
 - Past incidents: `.supervibe/memory/incidents/` — search before designing new alerts
 

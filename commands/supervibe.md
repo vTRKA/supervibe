@@ -94,7 +94,7 @@ graphs and stale/superseded memory before any archive write.
 
 ## Output contract
 
-Mirrors what `evolve-detect.mjs` prints, plus a one-line conclusion:
+Mirrors what `supervibe-detect.mjs` prints, plus a one-line conclusion:
 
 ```
 === Supervibe State ===

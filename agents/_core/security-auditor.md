@@ -200,7 +200,7 @@ Returns:
 **Auditor**: supervibe:_core:security-auditor
 **Date**: YYYY-MM-DD
 **Scope**: <files / module / PR>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -307,7 +307,7 @@ Do NOT decide on: compliance scope (defer to product-manager).
 - Secrets sources: `.env*`, `config/`, vault references (HashiCorp Vault, AWS Secrets Manager, etc.)
 - Dep manifests: `package.json` / `composer.json` / `Cargo.toml` / `requirements.txt`
 - Audit history: `.supervibe/memory/incidents/` — past security incidents
-- Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (if applicable, declared in CLAUDE.md)
+- Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (if applicable, declared in the active host instruction file)
 
 ## OWASP Top 10 (2021) checklist
 

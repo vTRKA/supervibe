@@ -3,7 +3,7 @@
 // for tasks similar to a current low-confidence one.
 //
 // Storage: <projectRoot>/.supervibe/memory/agent-tasks.db
-// Override path via EVOLVE_AGENT_TASK_DB env (used by tests).
+// Override path via SUPERVIBE_AGENT_TASK_DB env (used by tests).
 //
 // Why a separate DB from agent-invocations.jsonl: JSONL is append-only and
 // cheap to write but unsearchable. This SQLite mirror gives FTS5 BM25 search

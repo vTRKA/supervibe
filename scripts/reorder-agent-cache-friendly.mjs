@@ -18,6 +18,7 @@
  * IMPORTANT: zero content removed. Every byte preserved, only order changed.
  * Byte-balance enforced via 2% tolerance check; reorder rejected if exceeded.
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -119,7 +120,7 @@ async function walk(dir) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const dryRun = process.argv.includes('--dry-run');
   const targets = await walk(join(root, 'agents'));
 

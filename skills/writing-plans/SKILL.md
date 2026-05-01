@@ -23,7 +23,7 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 ## Step 0 — Read source of truth (required)
 
 1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `docs/specs/`. Запусти `/supervibe-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/supervibe-plan <path>`." Do not proceed with planning vapor.
-2. Read `CLAUDE.md` for project's verification commands (typecheck, test, lint)
+2. Read the active host instruction file for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
 5. Read `docs/references/scope-safety-standard.md` and preserve the approved scope boundary

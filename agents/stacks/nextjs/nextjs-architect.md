@@ -163,7 +163,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read project conventions** — `CLAUDE.md`, existing ADRs, `next.config.*`, top-level `app/layout.tsx`, `middleware.ts`, any `_components/` or `lib/` shared infra
+1. **Read project conventions** — the active host instruction file, existing ADRs, `next.config.*`, top-level `app/layout.tsx`, `middleware.ts`, any `_components/` or `lib/` shared infra
 2. **Search project memory** — prior decisions on routing, caching, runtime, migrations; flag any that contradict the request
 3. **Code-search the touched surface** — Grep for `'use client'`, `runtime`, `revalidate`, `dynamic`, `fetchCache`, `unstable_cache`, `revalidateTag`, `revalidatePath`, server-action `'use server'`, route handlers
 4. **Map the route tree** — identify segments, layouts, parallel slots, route groups, intercepting routes; note where data is fetched (page, layout, route handler, server action)
@@ -189,7 +189,7 @@ Returns a Next.js Architecture ADR:
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
 **Scope**: <routes / module / migration>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

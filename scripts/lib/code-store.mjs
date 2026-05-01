@@ -199,6 +199,7 @@ export class CodeStore {
     this.dbPath = join(this.dbDir, 'code.db');
     this.db = null;
     this.useEmbeddings = opts.useEmbeddings !== false;
+    this.useGraph = opts.useGraph !== false;
   }
 
   async init() {
@@ -306,12 +307,20 @@ export class CodeStore {
   }
 
   /** Index a single file. Skips if hash unchanged (idempotent). */
-  async indexFile(absPath, { force = false } = {}) {
+  async indexFile(absPath, { force = false, onProgress = null, current = 0, total = 0 } = {}) {
     const policy = classifyIndexPath(absPath, { rootDir: this.projectRoot });
     if (!policy.included) return { skipped: policy.reason };
     const lang = policy.language || detectLanguage(absPath);
     const relPath = this.toRel(absPath);
+    const emit = (phase, extra = {}) => onProgress?.({
+      phase,
+      current,
+      total,
+      path: relPath,
+      ...extra,
+    });
     let content;
+    emit('reading');
     try { content = await readFile(absPath, 'utf8'); }
     catch (err) {
       if (err.code === 'ENOENT') {
@@ -321,15 +330,17 @@ export class CodeStore {
       throw err;
     }
 
+    emit('hashing');
     const hash = await hashFile(absPath);
     const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
     if (existing && existing.content_hash === hash && !force) {
       // Hash unchanged, but extractor/query semantics may have changed across
       // plugin versions. Rebuild only graph rows while preserving expensive RAG
       // chunks and embeddings.
-      if (Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
+      if (this.useGraph && Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
         try {
-        const result = await this.indexGraphFor(absPath, content);
+          emit('graph-extraction');
+          const result = await this.indexGraphFor(absPath, content);
           this.markGraphCurrent(relPath);
           return { skipped: 'unchanged-graph-reindexed', ...result };
         } catch (err) {
@@ -344,6 +355,7 @@ export class CodeStore {
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
 
+    emit('chunking');
     const chunks = await chunkCode(content, absPath);
     const lines = content.split('\n').length;
 
@@ -364,6 +376,7 @@ export class CodeStore {
       const c = chunks[i];
       let embeddingBuf = null;
       if (this.useEmbeddings) {
+        emit('embeddings', { chunk: i + 1, chunks: chunks.length });
         try {
           const vec = await embed(c.text, 'passage');
           embeddingBuf = vectorToBuffer(vec);
@@ -375,13 +388,18 @@ export class CodeStore {
 
     // Phase D: also extract code graph (symbols + edges) for this file.
     // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
-    try {
-      await this.indexGraphFor(absPath, content);
-      this.markGraphCurrent(relPath);
-    } catch (err) {
-      if (process.env.SUPERVIBE_VERBOSE === '1') {
-        console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+    if (this.useGraph) {
+      try {
+        emit('graph-extraction');
+        await this.indexGraphFor(absPath, content);
+        this.markGraphCurrent(relPath);
+      } catch (err) {
+        if (process.env.SUPERVIBE_VERBOSE === '1') {
+          console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+        }
       }
+    } else {
+      this.clearGraphFor(relPath);
     }
 
     return { indexed: true, chunks: chunks.length };
@@ -392,6 +410,16 @@ export class CodeStore {
       .run(CODE_GRAPH_EXTRACTOR_VERSION, relPath);
   }
 
+  clearGraphFor(relPath) {
+    this.db.prepare(`
+      DELETE FROM code_edges
+      WHERE from_id IN (SELECT id FROM code_symbols WHERE path = ?)
+         OR to_id IN (SELECT id FROM code_symbols WHERE path = ?)
+    `).run(relPath, relPath);
+    this.db.prepare('DELETE FROM code_symbols WHERE path = ?').run(relPath);
+    this.db.prepare('DELETE FROM code_semantic_anchors WHERE path = ?').run(relPath);
+  }
+
   /**
    * Extract symbols + edges via tree-sitter and persist to code_symbols/code_edges.
    * Idempotent: clears prior rows for this file via FK CASCADE on code_files re-insert.
@@ -400,8 +428,8 @@ export class CodeStore {
     const { extractGraph } = await import('./code-graph.mjs');
     const relPath = this.toRel(absPath);
 
-    // Clear old graph rows for this file (CASCADE handles edges via from_id FK)
-    this.db.prepare('DELETE FROM code_symbols WHERE path = ?').run(relPath);
+    // Clear old graph rows explicitly; do not rely on host SQLite FK settings.
+    this.clearGraphFor(relPath);
 
     const { symbols, edges } = await extractGraph(content, relPath);
     if (symbols.length === 0 && edges.length === 0) {
@@ -477,7 +505,8 @@ export class CodeStore {
    *
    * @returns number of edges that became resolved
    */
-  resolveAllEdges() {
+  resolveAllEdges({ onProgress = null, progressEvery = 1000 } = {}) {
+    if (!this.useGraph) return 0;
     const files = this.db.prepare('SELECT path, language FROM code_files').all();
     const fileSet = new Set(files.map((f) => f.path));
     const langByFile = new Map(files.map((f) => [f.path, f.language]));
@@ -497,6 +526,8 @@ export class CodeStore {
     `).all();
     const update = this.db.prepare('UPDATE code_edges SET to_id = ? WHERE rowid = ?');
     let resolved = 0;
+    const total = edgeRows.length;
+    onProgress?.({ phase: 'resolving-edges', current: 0, total, resolved });
 
     const getImportMap = (relPath) => {
       if (importMapCache.has(relPath)) return importMapCache.get(relPath);
@@ -514,19 +545,25 @@ export class CodeStore {
       return map;
     };
 
-    for (const edge of edgeRows) {
+    for (const [index, edge] of edgeRows.entries()) {
       const candidates = symbolLookup.all(edge.toName);
-      if (candidates.length === 0) continue;
-      const target = selectBestEdgeTarget({
-        edge,
-        candidates,
-        importMap: getImportMap(edge.fromPath),
-        fromLanguage: langByFile.get(edge.fromPath),
-        langByFile,
-      });
-      if (!target) continue;
-      update.run(target.id, edge.rowid);
-      resolved++;
+      if (candidates.length > 0) {
+        const target = selectBestEdgeTarget({
+          edge,
+          candidates,
+          importMap: getImportMap(edge.fromPath),
+          fromLanguage: langByFile.get(edge.fromPath),
+          langByFile,
+        });
+        if (target) {
+          update.run(target.id, edge.rowid);
+          resolved++;
+        }
+      }
+      const current = index + 1;
+      if (current === total || current % progressEvery === 0) {
+        onProgress?.({ phase: 'resolving-edges', current, total, resolved });
+      }
     }
     return resolved;
   }
@@ -537,8 +574,22 @@ export class CodeStore {
     const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0 };
     onProgress?.({ phase: 'discovered', total: inventory.files.length });
     for (const [index, file] of inventory.files.entries()) {
+      onProgress?.({
+        phase: 'file-start',
+        current: index + 1,
+        total: inventory.files.length,
+        path: file.relPath,
+        indexed: counts.indexed,
+        skipped: counts.skipped,
+        errors: counts.errors,
+      });
       try {
-      const result = await this.indexFile(file.absPath, { force });
+        const result = await this.indexFile(file.absPath, {
+          force,
+          onProgress,
+          current: index + 1,
+          total: inventory.files.length,
+        });
         if (result.indexed) counts.indexed++;
         else counts.skipped++;
       } catch {
@@ -558,7 +609,7 @@ export class CodeStore {
     counts.pruned = prune.removed;
     onProgress?.({ phase: 'resolving-edges', total: inventory.files.length });
     // Phase D: resolve cross-file edges after full pass
-    counts.edgesResolved = this.resolveAllEdges();
+    counts.edgesResolved = this.resolveAllEdges({ onProgress });
     onProgress?.({ phase: 'done', total: inventory.files.length, ...counts });
     return counts;
   }
@@ -572,8 +623,22 @@ export class CodeStore {
     const counts = { indexed: 0, skipped: 0, errors: 0 };
     onProgress?.({ phase: 'discovered', total: absPaths.length });
     for (const [index, absPath] of absPaths.entries()) {
+      onProgress?.({
+        phase: 'file-start',
+        current: index + 1,
+        total: absPaths.length,
+        path: this.toRel(absPath),
+        indexed: counts.indexed,
+        skipped: counts.skipped,
+        errors: counts.errors,
+      });
       try {
-        const r = await this.indexFile(absPath, { force });
+        const r = await this.indexFile(absPath, {
+          force,
+          onProgress,
+          current: index + 1,
+          total: absPaths.length,
+        });
         if (r.indexed) counts.indexed++; else counts.skipped++;
       } catch { counts.errors++; }
       onProgress?.({
@@ -587,7 +652,7 @@ export class CodeStore {
       });
     }
     onProgress?.({ phase: 'resolving-edges', total: absPaths.length });
-    counts.edgesResolved = this.resolveAllEdges();
+    counts.edgesResolved = this.resolveAllEdges({ onProgress });
     onProgress?.({ phase: 'done', total: absPaths.length, ...counts });
     return counts;
   }
@@ -595,6 +660,8 @@ export class CodeStore {
   async removeFile(absPath) {
     const relPath = this.toRel(absPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
+    this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
+    this.clearGraphFor(relPath);
     this.db.prepare('DELETE FROM code_files WHERE path = ?').run(relPath);
   }
 

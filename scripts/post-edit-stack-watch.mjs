@@ -8,18 +8,19 @@
 //      load) — semantic search will lag for that file until full reindex; graph
 //      symbols/edges + BM25 stay current.
 //
-// Env contract (from Claude Code hooks):
-//   CLAUDE_FILE_PATHS — comma-separated absolute paths affected by the tool use
-//   CLAUDE_PROJECT_DIR — repo root (optional fallback to cwd)
+// Env contract:
+//   SUPERVIBE_FILE_PATHS or SUPERVIBE_EDITED_PATHS — comma-separated paths touched by the host
+//   SUPERVIBE_PROJECT_ROOT or SUPERVIBE_PROJECT_DIR — repo root (optional fallback to host env/cwd)
 //   SUPERVIBE_HOOK_EMBED=1 — opt-in to also run embeddings (slower)
 //   SUPERVIBE_HOOK_SILENT=1 — opt-out of any non-error stdout
 //   SUPERVIBE_HOOK_NO_INDEX=1 — opt-out of pseudo-watcher (reminders still fire)
 
 import { existsSync } from 'node:fs';
 import { basename, isAbsolute, resolve } from 'node:path';
+import { resolveSupervibeEditedPaths, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 
-const PROJECT_ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const editedPaths = (process.env.CLAUDE_FILE_PATHS || '').split(',').filter(Boolean);
+const PROJECT_ROOT = resolveSupervibeProjectRoot();
+const editedPaths = resolveSupervibeEditedPaths();
 if (editedPaths.length === 0) process.exit(0);
 
 const MANIFESTS = new Set(['package.json', 'composer.json', 'Cargo.toml', 'pyproject.toml', 'go.mod', 'Gemfile']);

@@ -184,7 +184,7 @@ Returns:
 **Architect**: supervibe:_ops:ai-integration-architect
 **Date**: YYYY-MM-DD
 **Status**: PROPOSED | ACCEPTED | SUPERSEDED
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -303,7 +303,7 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 - **Cost telemetry**: `telemetry/llm-costs.*` or observability stack (OpenTelemetry, Datadog, Langfuse, Helicone)
 - **PII redaction**: pre-call sanitizers, post-response scrubbers, allowlist-based extractors
 - **Decision history**: `.supervibe/memory/adr/` — model swaps, vector DB choice, RAG architecture decisions
-- **Compliance scope**: GDPR / HIPAA / SOC2 (declared in CLAUDE.md) — drives data-residency, no-train flags, redaction strictness
+- **Compliance scope**: GDPR / HIPAA / SOC2 (declared in the active host instruction file) — drives data-residency, no-train flags, redaction strictness
 
 ## Use case
 <classification | RAG | generation | agent>, expected volume req/day, latency target p95

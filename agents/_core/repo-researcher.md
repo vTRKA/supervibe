@@ -199,7 +199,7 @@ Returns Markdown report with these mandatory sections (in order):
 **Researcher**: supervibe:_core:repo-researcher
 **Date**: YYYY-MM-DD
 **Scope**: <module / question / area>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -334,7 +334,7 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - **Source dirs**: detected via Glob on common patterns (`src/`, `app/`, `lib/`, `packages/*/src/`, `services/*/src/`, `apps/*/src/`)
 - **Test dirs**: detected adjacent to source (`tests/`, `__tests__/`, `spec/`, `*.test.*`, `*.spec.*`)
 - **Build manifest(s)**: `package.json` / `composer.json` / `Cargo.toml` / `pyproject.toml` / `go.mod` / `pom.xml` / etc.
-- **Architecture style**: declared in `CLAUDE.md` if present; otherwise inferred from directory layout
+- **Architecture style**: declared in the active host instruction file if present; otherwise inferred from directory layout
 - **code-search index**: `.supervibe/memory/code.db` (SQLite) — semantic embeddings + symbol table maintained by `supervibe:code-search`
 - **Memory of prior research**: `.supervibe/memory/learnings/` — re-using prior maps saves hours; check before fresh exploration
 - **Prior incident notes**: `.supervibe/memory/incidents/` — flag any module touched by past incidents as `[CAUTION]`

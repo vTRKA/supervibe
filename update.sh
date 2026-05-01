@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Evolve standalone updater - macOS + Linux.
+# Supervibe standalone updater - macOS + Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
@@ -206,4 +206,4 @@ say "running npm run supervibe:upgrade (does fetch + pull --ff-only + mirror cle
 verify_checkout_integrity
 
 ok "done. Restart your AI CLI to pick up the new plugin code."
-ok "if any project has .claude/ overrides, run /evolve-adapt inside that project."
+ok "if any project has selected host adapter overrides, run /supervibe-adapt inside that project."

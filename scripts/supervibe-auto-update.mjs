@@ -6,6 +6,7 @@
 // - SUPERVIBE_AUTO_UPDATE=apply: apply for any clean git checkout
 // - SUPERVIBE_AUTO_UPDATE=check/off: force notify-only or disabled behavior
 
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -25,9 +26,10 @@ import {
   formatUpgradeDryRun,
   runInstallerHealthGate,
 } from "./lib/supervibe-installer-health.mjs";
+import { withSupervibePluginRootEnv } from "./lib/supervibe-plugin-root.mjs";
 
 const args = parseArgs(process.argv.slice(2));
-const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+const PLUGIN_ROOT = resolveSupervibePluginRoot();
 
 async function main() {
   if (args.status) {
@@ -151,11 +153,7 @@ async function runWithLock() {
     join(PLUGIN_ROOT, "scripts", "supervibe-upgrade.mjs"),
   ], {
     cwd: PLUGIN_ROOT,
-    env: {
-      ...process.env,
-      SUPERVIBE_PLUGIN_ROOT: PLUGIN_ROOT,
-      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
-    },
+    env: withSupervibePluginRootEnv(PLUGIN_ROOT),
     stdio: args.background ? "ignore" : "inherit",
     windowsHide: true,
   });

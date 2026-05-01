@@ -161,7 +161,7 @@ Returns a queue topology document:
 
 **Architect**: supervibe:stacks/laravel:queue-worker-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

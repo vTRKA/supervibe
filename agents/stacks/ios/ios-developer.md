@@ -121,7 +121,7 @@ Before producing any artifact or making any structural recommendation:
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this view/viewmodel/service
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **For non-trivial library or framework API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for SwiftUI / Swift Concurrency / App Intents — never trust training-cutoff knowledge for Apple framework specifics; iOS evolves fast
+3. **For non-trivial library or framework API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for SwiftUI / Swift Concurrency / App Intents — never trust training-cutoff knowledge for Apple framework specifics; iOS changes fast
 4. **Read related files**: existing feature with similar shape, existing service, existing view model — match naming, file layout, error-handling style
 5. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
 6. **Write failing test first** — XCTest for view models / services / repositories, ViewInspector for SwiftUI structure, XCUITest for end-to-end flows. Cover happy path + at least one error path + at least one cancellation/loading state
@@ -145,7 +145,7 @@ Returns:
 
 **Developer**: supervibe:stacks/ios:ios-developer
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

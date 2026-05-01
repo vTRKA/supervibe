@@ -2,6 +2,7 @@
 // Session-start hook: emits system-reminders if artifacts are stale OR override-rate is high.
 // Output to stdout becomes a system-reminder visible to the main agent.
 
+import { resolveExplicitSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -144,7 +145,7 @@ async function reportCodeIndexHealth() {
 
 async function reportVersionBump() {
   try {
-    const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
+    const pluginRoot = resolveExplicitSupervibePluginRoot();
     if (!pluginRoot) return;
     const { checkVersionBump, setLastSeenVersion } =
       await import("./lib/version-tracker.mjs");
@@ -167,7 +168,7 @@ async function reportVersionBump() {
 
 async function reportUpstreamUpdates() {
   try {
-    const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
+    const pluginRoot = resolveExplicitSupervibePluginRoot();
     if (!pluginRoot) return;
     const { readUpgradeCache } = await import("./lib/upgrade-check.mjs");
     const {

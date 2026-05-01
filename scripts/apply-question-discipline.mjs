@@ -4,6 +4,7 @@
  *
  * Usage: node scripts/apply-question-discipline.mjs
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -84,7 +85,7 @@ function injectAntiPattern(body) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const agentsDir = join(root, 'agents');
   const files = await walk(agentsDir);
   let modified = 0;

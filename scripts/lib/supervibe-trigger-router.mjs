@@ -8,8 +8,8 @@ const ROUTES = {
     phase: "setup",
     command: "/supervibe-genesis",
     skill: "supervibe:genesis",
-    nextQuestionRu: "Следующий шаг - host-aware genesis dry-run с сохранением CLAUDE.md/AGENTS.md. Переходим?",
-    nextQuestionEn: "Next step - run a host-aware genesis dry-run while preserving CLAUDE.md, AGENTS.md, and other host files. Proceed?",
+    nextQuestionRu: "Следующий шаг - host-aware genesis dry-run с сохранением существующих host instruction files. Переходим?",
+    nextQuestionEn: "Next step - run a host-aware genesis dry-run while preserving existing host instruction files. Proceed?",
     prerequisites: ["user-request"],
   },
   index_repair: {
@@ -275,7 +275,7 @@ const RULES = [
     intent: "genesis_setup",
     confidence: 0.93,
     test: (text) => hasAny(text, ["genesis", "supervibe-genesis", "set up", "setup", "bootstrap", "scaffold", "install", "initialize", "генезис", "разверн"]) &&
-      hasAny(text, ["supervibe", ".claude", "agents", "skills", "rules", "codex", "claude", "cursor", "gemini", "opencode", "AGENTS.md", "CLAUDE.md"]),
+      hasAny(text, ["supervibe", "host instruction", "agents", "skills", "rules", "codex", "claude", "cursor", "gemini", "opencode", "AGENTS.md"]),
   },
   {
     intent: "index_repair",

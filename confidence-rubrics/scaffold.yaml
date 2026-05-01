@@ -3,20 +3,20 @@ max-score: 10
 dimensions:
   - id: pack-completeness
     weight: 2
-    question: "Does the scaffold include all artifacts required by the chosen stack-pack manifest (claude/, husky/, configs/, structure/)?"
+    question: "Does the scaffold include all artifacts required by the chosen stack-pack manifest (selected host adapter, husky/, configs/, structure/)?"
     evidence-required: "File list comparison: pack manifest sections vs actually-written files"
   - id: agent-roster
     weight: 2
-    question: "Are all attached agents present in the target's .claude/agents/ with correct frontmatter?"
-    evidence-required: "ls of .claude/agents/ + frontmatter validation result"
+    question: "Are all attached agents present in the selected host agents folder with correct frontmatter?"
+    evidence-required: "Selected host agents folder listing + frontmatter validation result"
   - id: rules-applied
     weight: 2
-    question: "Are all attached rules present in .claude/rules/ AND referenced in CLAUDE.md routing/mandatory sections?"
-    evidence-required: "ls of .claude/rules/ + grep for each rule name in CLAUDE.md"
+    question: "Are all attached rules present in the selected host rules folder AND referenced from the selected host instruction or rules surface?"
+    evidence-required: "Selected host rules folder listing + grep for each mandatory rule name in the selected host instruction/rules surface"
   - id: settings-deny-list
     weight: 2
-    question: "Does .claude/settings.json contain the mandatory deny-list (git stash, force-push, reset --hard, clean -f, dropdb, rm -rf)?"
-    evidence-required: "settings.json deny array containing all 6 mandatory entries"
+    question: "Does the selected host settings file contain the mandatory deny-list when the host supports command permissions?"
+    evidence-required: "Selected host settings/permissions evidence containing all mandatory destructive-command denies, or documented host limitation"
   - id: pre-commit-active
     weight: 2
     question: "Is the pre-commit pipeline installed and runnable (husky directory exists, hooks executable, commitlint config present)?"

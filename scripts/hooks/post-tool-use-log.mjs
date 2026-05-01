@@ -27,13 +27,13 @@ const OVERRIDE_PATTERNS = [
 // Used to surface "agent X never used memory in last 10 invocations" audit signal.
 const SUBTOOL_PATTERNS = {
   memory: [
-    /\bevolve:project-memory\b/i,
+    /\bsupervibe:project-memory\b/i,
     /\bsearch-memory\.mjs\b/i,
     /\bmemory:preflight\b/i,
     /\.supervibe\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
   ],
   'code-search': [
-    /\bevolve:code-search\b/i,
+    /\bsupervibe:code-search\b/i,
     /\bsearch-code\.mjs\b.*--query/i,
   ],
   'code-graph': [

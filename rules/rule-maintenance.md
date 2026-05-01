@@ -1,6 +1,6 @@
 ---
 name: rule-maintenance
-description: "Defines lifecycle of rules in .claude/rules/: when to add, when to retire, how rules-curator agent maintains them. RU: Правила пересматриваются раз в квартал; last-verified держится свежим; rules-curator поддерживает lifecycle. Trigger phrases: 'rules audit', 'аудит правил', 'rule maintenance'."
+description: "Defines lifecycle of rules in selected host rules folder/: when to add, when to retire, how rules-curator agent maintains them. RU: Правила пересматриваются раз в квартал; last-verified держится свежим; rules-curator поддерживает lifecycle. Trigger phrases: 'rules audit', 'аудит правил', 'rule maintenance'."
 applies-to: [any]
 mandatory: true
 version: 1.0
@@ -30,8 +30,8 @@ Concrete consequence of NOT following: contradictory rules ("always commit per t
 1. Use template `templates/rule.md.tpl`
 2. Fill ALL sections (Why / When / What / Examples / Enforcement / Related)
 3. `rule-quality.yaml` rubric ≥9
-4. If `mandatory: true`, reference in `CLAUDE.md` mandatory section
-5. If introduces ban, add to `.claude/settings.json` deny-list
+4. If `mandatory: true`, reference in the active host instruction file mandatory section
+5. If introduces ban, add to `selected host settings file` deny-list
 6. Cross-link from related rules
 7. `supervibe:sync-rules` if multi-project setup
 
@@ -47,7 +47,7 @@ Concrete consequence of NOT following: contradictory rules ("always commit per t
 - Set `applies-to: [retired]`
 - Add `retired-on: YYYY-MM-DD` field
 - Add `retirement-reason` field
-- Move to `.claude/rules/_archive/` if many retired rules accumulate
+- Move to `selected host rules archive folder` if many retired rules accumulate
 
 ### Periodic audit (every 90 days)
 

@@ -24,7 +24,7 @@ async function fixture({ approved = true } = {}) {
 async function runHook(projectRoot, event) {
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [hookPath], {
-      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      env: { ...process.env, SUPERVIBE_PROJECT_DIR: projectRoot },
     });
     let stdout = "";
     let stderr = "";

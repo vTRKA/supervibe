@@ -149,7 +149,7 @@ Returns:
 **Designer**: supervibe:_ops:api-designer
 **Date**: YYYY-MM-DD
 **Scope**: <spec file / endpoints / module>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

@@ -143,7 +143,7 @@ Returns:
 
 **Developer**: supervibe:stacks/django:django-developer
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -219,7 +219,7 @@ For each feature delivery:
 8. Re-run pytest / ruff / mypy
 
 ### Celery task addition (existing project with Celery topology in place)
-1. Confirm queue topology from CLAUDE.md / ADR — pick the right queue (critical / default / low / notifications)
+1. Confirm queue topology from the active host instruction file / ADR — pick the right queue (critical / default / low / notifications)
 2. Add task in `apps/<name>/tasks.py`: `@shared_task(bind=True, autoretry_for=(<transient>,), retry_backoff=True, retry_jitter=True, max_retries=5)`
 3. Constructor / signature: accept only serializable args (model IDs, scalars — NEVER model instances, NEVER closures, NEVER QuerySets)
 4. Body: re-fetch model from ID, idempotent guard (`if invoice.sent_at: return`), single responsibility
@@ -245,7 +245,7 @@ For each feature delivery:
 5. Migrate tests one at a time — replace `fixtures = [...]` with factory calls in `setUp` / fixtures
 6. Delete the JSON fixture once all callers migrated
 7. Run full pytest suite; confirm no regressions
-8. Document the convention in CLAUDE.md (factory_boy for test data, JSON fixtures only for reference)
+8. Document the convention in the active host instruction file (factory_boy for test data, JSON fixtures only for reference)
 
 ### N+1 fix (page reported slow; debug toolbar shows N+1)
 1. Reproduce in dev with django-debug-toolbar; confirm query count and the offending traversal

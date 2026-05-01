@@ -23,7 +23,7 @@ AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framew
 1. Glob for known manifest files: `package.json`, `composer.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml`, `build.gradle`, `*.csproj`, `mix.exs`, `pubspec.yaml`
 2. Glob for IaC: `terraform/`, `*.tf`, `Dockerfile`, `docker-compose.yml`
 3. Glob for CI: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`
-4. Read `CLAUDE.md` if exists (may declare intended stack)
+4. Read the active host instruction file if exists (may declare intended stack)
 
 ## Decision tree
 

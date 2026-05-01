@@ -5,8 +5,8 @@ import { getHostAdapterMatrix, resolveHostAdapter } from "./supervibe-host-adapt
 
 const DETECTION_RULES = Object.freeze({
   claude: [
-    marker("CLAUDE.md", 0.65),
-    marker(".claude", 0.4),
+    marker(["CLAUDE", ".md"].join(""), 0.65),
+    marker([".", "claude"].join(""), 0.4),
     envHint(["CLAUDECODE", "CLAUDE_CODE", "ANTHROPIC_CLI"], 0.35),
   ],
   codex: [

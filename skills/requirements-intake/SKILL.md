@@ -23,7 +23,7 @@ Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 ## Step 0 — Read source of truth (required)
 
 1. Read project state (Glob package.json/composer.json/Cargo.toml — detect stack)
-2. Read `CLAUDE.md` for project conventions
+2. Read the active host instruction file for project conventions
 3. Read `MEMORY.md` for prior preferences/feedback
 4. Identify which `questionnaires/*.yaml` apply to detected stack
 5. Read `docs/references/scope-safety-standard.md` and apply the Scope Safety Gate before any route decision

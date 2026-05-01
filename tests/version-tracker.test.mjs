@@ -10,7 +10,7 @@ import {
   checkVersionBump,
 } from '../scripts/lib/version-tracker.mjs';
 
-const sandbox = join(tmpdir(), `evolve-vtrack-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-vtrack-${Date.now()}`);
 const projectRoot = join(sandbox, 'project');
 const pluginRoot = join(sandbox, 'plugin');
 
@@ -18,7 +18,7 @@ before(async () => {
   await mkdir(join(pluginRoot, '.claude-plugin'), { recursive: true });
   await writeFile(
     join(pluginRoot, '.claude-plugin', 'plugin.json'),
-    JSON.stringify({ name: 'evolve', version: '1.7.0' })
+    JSON.stringify({ name: 'supervibe', version: '1.7.0' })
   );
   await mkdir(join(projectRoot, '.supervibe', 'memory'), { recursive: true });
 });

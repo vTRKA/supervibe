@@ -4,12 +4,12 @@ description: "Sync project-level host artifacts to upstream plugin changes or us
 
 # /supervibe-adapt
 
-Pull upstream improvements from the installed plugin into the selected host adapter (`.claude/`, `.codex/`, `.cursor/`, `.gemini/`, or `.opencode/`) without losing local customizations. This is the project-artifact refresh path after plugin updates; users should not delete generated agents/rules/skills manually.
+Pull upstream improvements from the installed plugin into the selected host adapter without losing local customizations. This is the project-artifact refresh path after plugin updates; users should not delete generated agents/rules/skills manually.
 
 ## When to invoke
 
 - After `npm run supervibe:upgrade` reports a version bump (e.g. `previous → 2.0.11`).
-- The SessionStart banner shows `[evolve] ⬆ plugin upgraded N → M`.
+- The SessionStart banner shows `[supervibe] ⬆ plugin upgraded N → M`.
 - An audit (`/supervibe-audit`) flagged drift between upstream and project copies.
 - The project has been on the same plugin version for >90 days and you want to refresh.
 - The user explicitly asks to adapt rules or agents to the current project so gaps can be closed deliberately.
@@ -21,7 +21,7 @@ Pull upstream improvements from the installed plugin into the selected host adap
 2. **Three-way classification.** For each pair:
    - **Identical** → skip (no action).
    - **Upstream-only change** (project file unchanged from prior version baseline) → propose direct update.
-   - **Both changed** (project has local customizations + upstream evolved) → propose 3-way merge with conflict markers, ask user to resolve manually.
+   - **Both changed** (project has local customizations + upstream changed) → propose 3-way merge with conflict markers, ask user to resolve manually.
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
 
 3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
@@ -57,12 +57,12 @@ Confidence:  N/10  Rubric: agent-delivery
 ## What is NOT touched
 
 Host instruction content outside Supervibe managed blocks is user-owned. This
-includes `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, and
-`opencode.json`.
+includes every provider-specific instruction surface outside the Supervibe
+managed block.
 
 - `.supervibe/memory/decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/` — your project data
 - `.supervibe/memory/*.db` — indexes (regenerated automatically)
-- Any host instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules/*`, `opencode.json`) outside the Supervibe managed block.
+- Any host instruction file or host rule file outside the Supervibe managed block.
 
 ## Related
 

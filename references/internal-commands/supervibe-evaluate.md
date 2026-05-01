@@ -4,7 +4,7 @@ description: "Advanced compatibility alias for /supervibe-score --record. Scores
 
 # /supervibe-evaluate
 
-Advanced compatibility alias for `/supervibe-score --record`. Apply the matching confidence rubric to a finished artifact (agent output, document, scaffold, etc.) and persist the score so the evolution loop can learn from it.
+Advanced compatibility alias for `/supervibe-score --record`. Apply the matching confidence rubric to a finished artifact (agent output, document, scaffold, etc.) and persist the score so the improvement loop can learn from it.
 
 ## Preferred command
 
@@ -44,7 +44,7 @@ Evaluate any artifact on disk, even outside an active task. Example: `/supervibe
 
 3. **Apply the gate.** If total < 9 AND no override is set → print the failing dimensions and stop. If 8.x with override → log to `.supervibe/confidence-log.jsonl` with reason. If ≥9 → mark accepted.
 
-4. **Persist into telemetry.** Call `updateLatestInvocation({ outcome: 'accept'|'review'|'reject', user_feedback: <one-line summary> })` from `scripts/lib/agent-invocation-logger.mjs`. This is what closes the evolution loop — the effectiveness tracker reads `outcome` into agent frontmatter on `Stop` hook.
+4. **Persist into telemetry.** Call `updateLatestInvocation({ outcome: 'accept'|'review'|'reject', user_feedback: <one-line summary> })` from `scripts/lib/agent-invocation-logger.mjs`. This is what closes the improvement loop — the effectiveness tracker reads `outcome` into agent frontmatter on `Stop` hook.
 
 5. **Print the breakdown.** Show the user every dimension's score + the cited evidence so they can challenge any line.
 

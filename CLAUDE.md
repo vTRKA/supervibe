@@ -1,8 +1,8 @@
-# CLAUDE.md — Project Context for Agents
+# Host Context For Agents
 
-> **Audience:** Claude Code agents loading this file as system context. Humans should read `README.md` first.
+> **Audience:** provider agents loading this file as host context. Humans should read `README.md` first.
 
-This is the **Supervibe Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22.5+ with node:sqlite is required. Pure JS. No Docker. No native compilation.**
+This is the **Supervibe Framework** — a multi-host AI development plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22.5+ with node:sqlite is required. Pure JS. No Docker. No native compilation.**
 
 For deep dives, agents read on demand from tracked plugin sources, not local
 `.supervibe/` state:
@@ -34,7 +34,7 @@ These six principles override defaults whenever they conflict with general pract
 4. **Memory beats re-derivation.** If a decision was made before, find it in `.supervibe/memory/decisions/` and cite. Re-deriving silently wastes tokens and risks contradicting past resolutions.
 5. **Graph before refactor.** Public-surface changes (rename / move / extract / delete) require `--callers` evidence FIRST. The semantic RAG won't catch cross-file callers — only the graph does.
 6. **Anti-half-finished discipline.** No commented-out code, no TODOs without owners, no half-applied refactors. Either complete a change or revert it cleanly.
-7. **Managed host context only.** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` and `opencode.json` are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
+7. **Managed host context only.** Host instruction files and host rule surfaces are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
 
 ---
 
@@ -67,7 +67,7 @@ When user asks X, route as follows:
 
 | User intent | First action |
 |-------------|--------------|
-| "Set up a new project" / no Supervibe host scaffold exists | `/supervibe-genesis` (auto via `/evolve`) |
+| "Set up a new project" / no Supervibe host scaffold exists | `/supervibe-genesis` (auto via `/supervibe`) |
 | "Add feature X" / "implement Y" | `supervibe:project-memory` → `supervibe:code-search` → relevant stack-developer |
 | "Refactor X" / "rename Y" | `supervibe:code-search --callers` → `refactoring-specialist` |
 | "Why does X happen?" / debug | `root-cause-debugger` (uses `supervibe:systematic-debugging`) |

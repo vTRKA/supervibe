@@ -1,6 +1,6 @@
 ---
 name: component-library-integration
-namespace: evolve
+namespace: supervibe
 description: Use AFTER design-system-approved AND BEFORE prototype-handoff TO bridge brandbook tokens into a chosen component library (MUI, shadcn/ui, Radix UI, HeadlessUI, Mantine, or fully-custom). Decides which library fits, then generates the token bridge so the library renders with project palette/typography/motion.
 allowed-tools: Read, Write, Edit, Glob, Grep
 phase: design-system

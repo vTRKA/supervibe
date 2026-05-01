@@ -7,7 +7,7 @@ import { CodeStore } from '../scripts/lib/code-store.mjs';
 import { MemoryStore } from '../scripts/lib/memory-store.mjs';
 import { scanCodeChanges, scanMemoryChanges } from '../scripts/lib/mtime-scan.mjs';
 
-const sandbox = join(tmpdir(), `evolve-mtime-${Date.now()}`);
+const sandbox = join(tmpdir(), `supervibe-mtime-${Date.now()}`);
 const fileA = join(sandbox, 'src', 'a.ts');
 const fileB = join(sandbox, 'src', 'b.ts');
 const memEntry = join(sandbox, '.supervibe', 'memory', 'decisions', 'auth.md');
@@ -98,7 +98,7 @@ test('scanMemoryChanges: removes deleted memory entries', async () => {
 
 test('scanCodeChanges: skip when nothing changed (idempotent, fast)', async () => {
   // Fresh store with one file
-  const fresh = join(tmpdir(), `evolve-mtime-fresh-${Date.now()}`);
+  const fresh = join(tmpdir(), `supervibe-mtime-fresh-${Date.now()}`);
   await mkdir(join(fresh, 'src'), { recursive: true });
   const f = join(fresh, 'src', 'x.ts');
   await writeFile(f, `export const x = 1;\n`);

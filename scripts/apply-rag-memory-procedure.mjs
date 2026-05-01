@@ -10,6 +10,7 @@
  * applies-to globs). Excludes pure-output / read-only agents that don't
  * dispatch downstream work.
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -84,7 +85,7 @@ function injectRagBlock(body) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const dryRun = process.argv.includes('--dry-run');
   const agentsDir = join(root, 'agents');
   const files = await walk(agentsDir);

@@ -154,7 +154,7 @@ Returns:
 
 **Developer**: supervibe:stacks/svelte:sveltekit-developer
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

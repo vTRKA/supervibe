@@ -161,7 +161,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
-9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#evolve-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
+9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
 12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
@@ -207,7 +207,7 @@ Returns:
 **Builder**: supervibe:_design:prototype-builder
 **Date**: YYYY-MM-DD
 **Location**: prototypes/<feature>/
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

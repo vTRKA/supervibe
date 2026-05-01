@@ -150,7 +150,7 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <route / component / PR>
 **Viewports tested**: 320 / 768 / 1024 / 1440
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -262,7 +262,7 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 - Screen specs: `screen-specs/`, design-tool URLs (Figma) referenced in tickets
 - Visual regression baselines: `tests/visual/`, `__screenshots__/`, Chromatic / Percy / Loki output
 - Prior review notes: `.supervibe/memory/decisions/` — past polish decisions and rationale
-- Accessibility scope: WCAG 2.1 AA minimum (declared in CLAUDE.md if stricter)
+- Accessibility scope: WCAG 2.1 AA minimum (declared in the active host instruction file if stricter)
 
 ## 8 Dimensions — decision tree
 

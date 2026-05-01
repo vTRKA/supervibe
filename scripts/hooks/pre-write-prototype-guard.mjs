@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { resolveSupervibeProjectRoot } from '../lib/supervibe-plugin-root.mjs';
 
 const FRAMEWORK_PATTERNS = [
   /\bimport\s+.+\s+from\s+['"]/,
@@ -61,7 +62,7 @@ const tool = event.tool_name;
 if (tool !== 'Write' && tool !== 'Edit') emit('allow');
 
 const path = event.tool_input?.file_path || '';
-const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const projectRoot = resolveSupervibeProjectRoot();
 const content = event.tool_input?.content || event.tool_input?.new_string || '';
 
 if (!PROTOTYPE_DIR_RE.test(path)) {

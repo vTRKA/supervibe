@@ -160,7 +160,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 Returns mockup bundle at `prototypes/<feature>/extension/` plus a top-level `extension-ui.md` summary.
 
-Every output ends with the canonical footer (parsed by PostToolUse hook for the evolution loop):
+Every output ends with the canonical footer (parsed by PostToolUse hook for the improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

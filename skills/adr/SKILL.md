@@ -78,7 +78,7 @@ What status?
    - Spec: docs/specs/...
    ```
 4. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output
-5. **Cross-link** — update related ADRs / rules / CLAUDE.md
+5. **Cross-link** — update related ADRs / rules / the active host instruction file
 6. **User approval** — explicit before transitioning status to ACCEPTED
 
 ## Output contract

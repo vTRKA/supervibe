@@ -36,8 +36,8 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 ## Procedure
 
-1. **Pre-flight check.** Run host detection before assuming `.claude`:
-   - Read `CLAUDE.md`, `.claude`, `AGENTS.md`, `.codex`, `.cursor`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json` and active CLI hints.
+1. **Pre-flight check.** Run host detection before assuming any provider folder:
+   - Read supported host instruction files, host marker folders and active CLI hints through the host detector instead of naming one provider as the default.
    - Precedence is explicit user override (`SUPERVIBE_HOST`) -> active runtime/current chat hints -> project filesystem markers. Do not select OpenCode only because `.opencode` or `opencode.json` exists when the current chat is running in Codex.
    - If more than one host has strong evidence, ask exactly one host-selection question and stop until the user chooses.
    - If an existing host instruction file already has custom content, plan a dry-run managed-block update instead of overwriting it.
@@ -46,7 +46,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 3. **Confirm intent.** Show the user the detected fingerprint and ask exactly one `Step N/M` question at a time (e.g. monorepo vs single-app first, deployment environments only if still needed). Wait for the answer before the next question.
 
-4. **Choose agent install profile.** Before writing host adapter agents (`.claude/agents`, `.codex/agents`, `.cursor/agents`, `.gemini/agents` or `.opencode/agents`), present profile choices and wait for explicit selection:
+4. **Choose agent install profile.** Before writing host adapter agents (`<adapter>/agents` as resolved by host detection), present profile choices and wait for explicit selection:
    - `minimal` — core router, repo research, code review, quality gate, stack developer(s). Fastest install; recommended default.
    - `product-design` — minimal + product manager, systems analyst, UX/UI designer, prototype builder, presentation agents, copywriter, accessibility/polish reviewers.
    - `full-stack` — product-design + ops/security/data/performance specialists for larger teams.
@@ -85,7 +85,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
-8. **Initialize and verify indexes.** From the target project root, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` before the final status check. For large projects, execute this with no fixed total timeout; the indexer logs progress periodically and may take as long as the project needs. If embeddings are suspected to be the slow part, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health --no-embeddings` as a BM25-only source-readiness fallback, then re-run the full index when time allows. Graph warning output is not a genesis failure when source RAG coverage is healthy; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`. The banner should show fresh code RAG + graph counts for the project and `SUPERVIBE_INDEX_CONFIG` with `REFRESH_INTERVAL: 5m`.
+8. **Initialize and verify indexes.** From the target project root, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` before the final status check. For large projects, execute this with no fixed total timeout; the indexer logs heartbeat/progress lines with stage, current file, processed/remaining counts, and elapsed time. It also uses `.supervibe/memory/code-index.lock` to block duplicate indexers. If the run is interrupted or embeddings/graph are too slow, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --max-files 200 --health --no-embeddings` as a BM25 source-readiness fallback. In this fallback, graph work is skipped unless `--graph` is explicitly passed. Graph warning output is not a genesis failure when source RAG coverage is healthy; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`. The banner should show source coverage as `indexed/eligible`, fresh code RAG counts, graph warnings separately, and `SUPERVIBE_INDEX_CONFIG` with `REFRESH_INTERVAL: 5m`.
 
 8a. **Keep app builds separate.** Do not use application build scripts, framework builds, or other application verification commands as proof that genesis itself succeeded unless the user explicitly asked for that verification or the selected stack-pack lists it as a required post-genesis check. If an application build is run and fails in pre-existing project code, report it as `Project verification failed after genesis` with the command, exit code, and repo-relative error paths only. Do not include absolute local paths, project names, or claim the failure is unrelated unless a pre-genesis baseline proves it.
 

@@ -167,4 +167,4 @@ Bad persona:
 
 1. Run `npm run registry:build` — agent should appear in `registry.yaml`
 2. Reference in stack-pack manifest if stack-specific
-3. Reference in CLAUDE.md template if universal
+3. Reference in the selected host instruction template if universal

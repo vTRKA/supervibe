@@ -8,7 +8,7 @@ Required sources:
 - `memory`: prior decisions, incidents, learnings and corrections.
 - `rag`: cited source chunks from the code index.
 - `codegraph`: symbol neighborhood and impact radius.
-- `host`: host instruction files such as `CLAUDE.md` or `AGENTS.md`.
+- `host`: active provider instruction files and rule surfaces resolved by the host adapter.
 
 Every context pack reports:
 

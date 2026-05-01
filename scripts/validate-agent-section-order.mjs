@@ -5,6 +5,7 @@
  *
  * Anthropic prompt cache (5-min TTL) requires stable prefix to maximize hit rate.
  */
+import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -42,7 +43,7 @@ export function checkAgentSectionOrder(rel, body) {
 }
 
 async function main() {
-  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = resolveSupervibePluginRoot();
   const agents = (await walk(join(root, 'agents'))).filter(p => p.endsWith('.md'));
   const violations = [];
 

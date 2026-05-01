@@ -142,7 +142,7 @@ Need to know who/what depends on a symbol?
 Returns structured debug report:
 
 ```markdown
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

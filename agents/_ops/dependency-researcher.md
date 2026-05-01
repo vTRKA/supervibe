@@ -183,7 +183,7 @@ Before producing any artifact or making any structural recommendation:
 ## Output contract
 
 ```markdown
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -290,7 +290,7 @@ Do NOT run: dependency installation, build, or tests (defer to relevant operator
 - Project license: `LICENSE` / `LICENSE.md` / `package.json#license` (controls compatibility checks)
 - Research cache: `.supervibe/research-cache/` — keyed by `dep-<pkg>-<version>-<date>.md`
 - Prior decisions: `.supervibe/memory/decisions/deps/` — historical "why we picked X over Y"
-- Bundle budgets (web): `bundlesize.config.json`, Vite/Webpack `performance.budget`, or stated in CLAUDE.md
+- Bundle budgets (web): `bundlesize.config.json`, Vite/Webpack `performance.budget`, or stated in the active host instruction file
 
 ## Registry endpoints
 

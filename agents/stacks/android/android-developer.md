@@ -120,7 +120,7 @@ Before producing any artifact or making any structural recommendation:
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this composable/viewmodel/repository
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
    - Skip for greenfield tasks
-3. **For non-trivial library API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for Compose / Hilt / Room / WorkManager / Navigation Compose — never trust training-cutoff knowledge for AndroidX libraries; the surface evolves
+3. **For non-trivial library API**: invoke `supervibe:mcp-discovery` and use context7 to fetch current docs for Compose / Hilt / Room / WorkManager / Navigation Compose — never trust training-cutoff knowledge for AndroidX libraries; the surface changes
 4. **Read related files**: existing feature with similar shape, existing repository, existing screen — match naming, file layout, error-handling style, theming usage
 5. **Walk the decision tree** — confirm where each piece of new code belongs before opening any file
 6. **Write failing test first** — JUnit + MockK + Turbine for view models / use cases / repositories; Compose UI test (createAndroidComposeRule) for screens; Espresso for cross-Activity flows. Cover happy path + at least one error path + at least one loading state + at least one process-death restoration test for ViewModel SavedStateHandle
@@ -144,7 +144,7 @@ Returns:
 
 **Developer**: supervibe:stacks/android:android-developer
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

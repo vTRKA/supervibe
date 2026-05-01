@@ -145,7 +145,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - TypeScript config — `tsconfig.json`, `@types/chrome` version
 - Build output — `dist/`, `.output/`, or `build/` — what is actually shipped to CWS
 - CWS listing — `store/listing.md` or equivalent: short description, detailed description, screenshots, privacy policy URL, purposes disclosure
-- ADR archive — `docs/adr/`, `.claude/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 
 ## Skills
 
@@ -285,7 +285,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read CLAUDE.md** — pick up project conventions, declared bundler, declared cross-browser support level, ADR location
+1. **Read the active host instruction file** — pick up project conventions, declared bundler, declared cross-browser support level, ADR location
 2. **Search project memory** (`supervibe:project-memory`) for prior architectural decisions in this extension or similar (past permission additions, CWS rejection notes, MV2 carve-outs)
 3. **Read ADR archive** — every prior ADR that touches permissions, message passing, content scripts; never contradict a live ADR without superseding it explicitly
 4. **Map current context** — read existing `manifest.json` (if any), `src/` layout, bundler config, `@types/chrome` version, current permission set
@@ -319,7 +319,7 @@ Returns:
 **Status**: Proposed | Accepted | Superseded by ADR-XXXX
 **Author**: supervibe:stacks/chrome-extension:chrome-extension-architect
 **Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10
@@ -462,9 +462,9 @@ For each architectural recommendation:
 
 ### New MV3 extension from scratch
 
-1. Read CLAUDE.md + run `supervibe:requirements-intake` for capability driver
+1. Read the active host instruction file + run `supervibe:requirements-intake` for capability driver
 2. `supervibe:project-memory` — prior extension ADRs (if any), permission lessons learned
-3. `supervibe:mcp-discovery` — pull current Chrome Extensions API docs via context7 (MV3 surface evolves quarterly)
+3. `supervibe:mcp-discovery` — pull current Chrome Extensions API docs via context7 (MV3 surface changes quarterly)
 4. List user tasks → map each task to a surface (popup / side panel / options / content script / offscreen / native host)
 5. Draw message-passing topology — every surface pair, every message type, version tag, transport (sendMessage vs Port)
 6. Compute minimum permission set: start at zero, add per code-path justification, split required vs optional
@@ -534,7 +534,7 @@ Do NOT decide on monetization, pricing, or licensing model (defer to `supervibe:
 - `supervibe:adr` — skill used to author the ADR
 - `supervibe:mcp-discovery` — used to fetch current Chrome Extensions API docs via context7
 
-**Canonical footer** (parsed by PostToolUse hook for evolution loop — every delivery ends with this block):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop — every delivery ends with this block):
 
 ```
 Confidence: <N>.<dd>/10

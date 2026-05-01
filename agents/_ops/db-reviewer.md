@@ -226,7 +226,7 @@ Returns:
 **Date**: YYYY-MM-DD
 **Scope**: <migration file / PR / query>
 **Engine**: <postgres 15.4 | mysql 8.0.34 | ...>
-**Canonical footer** (parsed by PostToolUse hook for evolution loop):
+**Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
 Confidence: <N>.<dd>/10

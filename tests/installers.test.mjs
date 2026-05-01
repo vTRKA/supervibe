@@ -49,7 +49,7 @@ test('install.sh has shebang, set -euo pipefail, idempotency markers', () => {
   assert.match(src, /set -euo pipefail/, 'must enable strict bash mode');
   assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
   assert.match(src, /node -e/, 'must use node -e for JSON upsert (not heredoc string-interpolation)');
-  assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate into source');
+  assert.match(src, /process\.env\.SUPERVIBE_/, 'must read paths from env in node, not interpolate into source');
 });
 
 test('shell installers stay LF under Windows autocrlf checkouts', () => {
@@ -79,7 +79,7 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   const src = readFileSync(PS1, 'utf8');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Stop'/, 'must enable Stop action');
   assert.match(src, /supervibe-plugin-include: do-not-edit/, 'must use idempotent Gemini marker');
-  assert.match(src, /process\.env\.EVOLVE_/, 'must read paths from env in node, not interpolate');
+  assert.match(src, /process\.env\.SUPERVIBE_/, 'must read paths from env in node, not interpolate');
   assert.match(src, /SymbolicLink/, 'must prefer native PowerShell symlink before falling back to copy');
   assert.match(src, /Junction/, 'must try a Windows junction before copying the whole checkout');
   assert.match(src, /\$safeLogName/, 'must sanitize npm script names before using them as Windows log filenames');
@@ -112,12 +112,12 @@ test('Codex installer registration includes native skills for Zed ACP sessions',
 
   assert.match(sh, /\.codex\/plugins/, 'bash installer must keep Codex plugin registration');
   assert.match(sh, /plugins\/cache\/\$MARKETPLACE_NAME\/\$PLUGIN_NAME/, 'bash installer must write the Codex official plugin cache');
-  assert.match(sh, /EVOLVE_CODEX_CONFIG/, 'bash installer must update Codex config.toml through env-based node script');
+  assert.match(sh, /SUPERVIBE_CODEX_CONFIG/, 'bash installer must update Codex config.toml through env-based node script');
   assert.match(sh, /\[plugins\."\$\{pluginKey\}"\]/, 'bash installer must enable the plugin key in Codex config.toml');
   assert.match(sh, /\.agents\/skills/, 'bash installer must link native skills for Codex/Zed ACP');
   assert.match(ps1, /Join-Path \$CodexDir 'plugins'/, 'PowerShell installer must keep Codex plugin registration');
   assert.match(ps1, /plugins\\cache\\\$MarketplaceName\\\$PluginName/, 'PowerShell installer must write the Codex official plugin cache');
-  assert.match(ps1, /EVOLVE_CODEX_CONFIG/, 'PowerShell installer must update Codex config.toml through env-based node script');
+  assert.match(ps1, /SUPERVIBE_CODEX_CONFIG/, 'PowerShell installer must update Codex config.toml through env-based node script');
   assert.match(ps1, /\[plugins\."\$\{pluginKey\}"\]/, 'PowerShell installer must enable the plugin key in Codex config.toml');
   assert.match(ps1, /Join-Path \$HOME '\.agents\\skills'/, 'PowerShell installer must link native skills for Codex/Zed ACP');
 });

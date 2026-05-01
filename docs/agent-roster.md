@@ -179,6 +179,6 @@ Total agents: 89
 
 ## System improvement
 
-- `evolve-orchestrator` - Use WHEN deciding which evolve phase to invoke based on weighted context (system-reminders, effectiveness, confidence-log, user message, stack-fingerprint) — never auto-executes state changes. Stacks: any.
 - `memory-curator` - Use WHEN auditing project memory hygiene OR after sync-rules to deduplicate, retire stale entries, normalize tags, regenerate index, and audit cross-link integrity. Stacks: any.
-- `rules-curator` - Use WHEN adding/modifying/auditing/retiring project rules to maintain .claude/rules/ in actuality, detect contradictions, normalize format, sync across sibling repos. RU: используется КОГДА добавляются/изменяются/аудя... Stacks: any.
+- `rules-curator` - Use WHEN adding/modifying/auditing/retiring project rules to maintain the selected host rules folder, detect contradictions, normalize format, and sync across sibling repos. RU: используется КОГДА добавляются/изменяют... Stacks: any.
+- `supervibe-orchestrator` - Use WHEN deciding which Supervibe phase to invoke based on weighted context (system-reminders, effectiveness, confidence-log, user message, stack-fingerprint) — never auto-executes state changes. Stacks: any.
