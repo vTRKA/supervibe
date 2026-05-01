@@ -66,7 +66,7 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 | Priority | Check | Signal source | Proposes |
 |----------|-------|---------------|----------|
 | 1 | `upstream-behind` | `.claude-plugin/.upgrade-check.json` shows `behind > 0` | `/supervibe-update` |
-| 2 | `version-bump-unacked` | `.supervibe/memory/.evolve-version` < installed plugin version | `/supervibe-adapt` |
+| 2 | `version-bump-unacked` | `.supervibe/memory/.supervibe-version` < installed plugin version | `/supervibe-adapt` |
 | 3 | `project-not-scaffolded` | No Supervibe host adapter folders or managed instruction block | `/supervibe-genesis` |
 | 4 | `underperformers` | `auto-strengthen-trigger` returns ≥1 flagged agent (needs ≥10 invocations to trigger) | `/supervibe-strengthen` |
 | 5 | `stale-artifacts` | ≥3 files in `agents/` `rules/` `skills/` with `last-verified` >30 days old | `/supervibe-audit` |
@@ -76,7 +76,7 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 
 ## Procedure
 
-1. **Run the detector.** Execute `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-detect.mjs` from the project root. It prints a human-readable banner + the proposed next command. Failure-tolerant — individual check errors do not break the run.
+1. **Run the detector.** Execute `node <resolved-supervibe-plugin-root>/scripts/supervibe-detect.mjs` from the project root. It prints a human-readable banner + the proposed next command. Failure-tolerant — individual check errors do not break the run.
 
 2. **Show the user the report.** Print every check's status (✓ pass / ⚠ triggered) with one-line evidence. Do not paraphrase — the detector's wording is precise.
 

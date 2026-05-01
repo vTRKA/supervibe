@@ -27,10 +27,10 @@ if [ -t 1 ]; then
 else
   C_BLUE=''; C_GREEN=''; C_YELLOW=''; C_RED=''; C_RESET=''
 fi
-say() { printf '%b[evolve-update]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
-ok()  { printf '%b[evolve-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
-warn(){ printf '%b[evolve-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
-die() { printf '%b[evolve-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
+say() { printf '%b[supervibe-update]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
+ok()  { printf '%b[supervibe-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
+warn(){ printf '%b[supervibe-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
+die() { printf '%b[supervibe-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 
 bootstrap_first_install() {
   local install_url="${SUPERVIBE_INSTALL_URL:-}"
@@ -96,7 +96,7 @@ confirm_node_install() {
     0|false|FALSE|no|NO|n|N) return 1 ;;
   esac
   if [ -r /dev/tty ] && [ -w /dev/tty ]; then
-    printf '%b[evolve-update]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
+    printf '%b[supervibe-update]%b Node.js %s+ is required for SQLite/RAG/CodeGraph. Install or upgrade Node now? [y/N] ' "$C_YELLOW" "$C_RESET" "$MIN_NODE_VERSION" > /dev/tty
     local answer
     IFS= read -r answer < /dev/tty || return 1
     case "$answer" in

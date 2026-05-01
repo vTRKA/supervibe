@@ -134,7 +134,7 @@ export async function collectDisciplineFiles(root) {
 }
 
 export async function main() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const files = await collectDisciplineFiles(root);
 
   let totalIssues = 0;

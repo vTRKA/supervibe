@@ -173,7 +173,7 @@ Timing tiers, easing curves, named keyframes for common animations. Output to `m
 
 Reference `supervibe:interaction-design-patterns` for the full menu of approaches. The system declares which timings + easings ARE the brand's vocabulary; prototypes don't author new ones.
 
-Before adding video or animated media, run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json`. If `video=false`, document non-video alternatives in the motion section: live CSS/WAAPI prototype, storyboard frames, static poster, SVG/Lottie spec if an existing asset is available. Do not promise rendered video without this capability.
+Before adding video or animated media, run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json`. If `video=false`, document non-video alternatives in the motion section: live CSS/WAAPI prototype, storyboard frames, static poster, SVG/Lottie spec if an existing asset is available. Do not promise rendered video without this capability.
 
 ### Section 5 — Voice (copy)
 

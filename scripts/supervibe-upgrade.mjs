@@ -22,7 +22,8 @@ import {
   getNodeRuntimeCapability,
 } from './lib/node-runtime-requirements.mjs';
 
-const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT
+const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT
+  || process.env.CLAUDE_PLUGIN_ROOT
   || process.cwd();
 
 function manifestVersion(root) {

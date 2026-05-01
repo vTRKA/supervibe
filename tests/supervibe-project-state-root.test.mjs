@@ -65,6 +65,18 @@ test("host-neutral scaffold files do not hardcode Claude project folders", () =>
   assert.deepEqual(offenders, []);
 });
 
+test("shared agents skills rules and docs avoid Claude-only plugin root references", () => {
+  const offenders = [];
+  for (const file of trackedTextFiles()) {
+    if (!isSharedHostArtifact(file)) continue;
+    const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    if (/CLAUDE_PLUGIN_ROOT|\.claude\/code\.db|\.evolve-version/.test(text)) {
+      offenders.push(`${file}: Claude-only plugin root or stale project state reference`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
 function trackedTextFiles() {
   const output = execFileSync("git", ["ls-files"], { encoding: "utf8" });
   return output
@@ -79,5 +91,17 @@ function isHostNeutralScaffoldFile(file) {
   return (
     (file.startsWith("stack-packs/") && file.includes("/configs/")) ||
     file.startsWith("templates/gitignore/")
+  );
+}
+
+function isSharedHostArtifact(file) {
+  return (
+    file.startsWith("agents/") ||
+    file.startsWith("skills/") ||
+    file.startsWith("rules/") ||
+    file.startsWith("commands/") ||
+    file.startsWith("docs/") ||
+    file.startsWith("templates/") ||
+    ["README.md", "AGENTS.md", "GEMINI.md"].includes(file)
   );
 }

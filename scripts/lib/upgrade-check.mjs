@@ -4,7 +4,7 @@
 //   2. if cache is stale (>RATE_LIMIT_MS old), spawn a detached background
 //      process that runs git fetch and refreshes the cache for the NEXT session
 //
-// Cache file: $CLAUDE_PLUGIN_ROOT/.claude-plugin/.upgrade-check.json
+// Cache file: <resolved-supervibe-plugin-root>/.claude-plugin/.upgrade-check.json
 //   { checkedAt, currentBranch, headSha, upstreamSha, behind, latestTag, error? }
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";

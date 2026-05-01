@@ -164,6 +164,7 @@ export function spawnDetachedAutoUpdate(pluginRoot, {
     detached: true,
     env: {
       ...env,
+      SUPERVIBE_PLUGIN_ROOT: pluginRoot,
       CLAUDE_PLUGIN_ROOT: pluginRoot,
     },
     stdio: "ignore",

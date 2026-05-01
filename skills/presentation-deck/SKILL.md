@@ -30,7 +30,7 @@ Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, 
 2. **One question at a time.** If audience, outcome, source materials, length, or language is unclear, ask one focused question with `Step N/M:`.
 3. **Design-system reuse.** If `prototypes/_design-system/manifest.json` is approved, use its tokens and component language. If deck visuals require new tokens, request a design-system extension instead of inventing a parallel style.
 4. **Reference-aware.** Use web/reference research when the deck category benefits from current visual examples. Record URLs and extraction notes in `presentations/<slug>/references.md`.
-5. **Media capability-aware.** Before promising video, GIF, or generated motion deliverables, run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json`. If video tooling is unavailable, use storyboard frames, animated HTML preview, poster-frame sequences, SVG/Lottie specs, or static visual metaphors.
+5. **Media capability-aware.** Before promising video, GIF, or generated motion deliverables, run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json`. If video tooling is unavailable, use storyboard frames, animated HTML preview, poster-frame sequences, SVG/Lottie specs, or static visual metaphors.
 6. **Feedback is stateful.** Read open feedback with `npm run feedback:status`, resolve each item with `node scripts/feedback-status.mjs --resolve <id> --resolution <path>`, and do not rework already resolved feedback unless the user reopens it.
 
 ## Directory layout

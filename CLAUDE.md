@@ -43,11 +43,11 @@ These six principles override defaults whenever they conflict with general pract
 ```
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
-├── agents/                        83 agents (_core/_meta/_design/_ops/_product + stacks/)
-├── skills/                        51 process skills
-├── commands/                      20 slash commands (/evolve, /supervibe-design, /supervibe-security-audit, /supervibe-execute-plan, ...)
-├── rules/                         25 project rules
-├── confidence-rubrics/            16 YAML rubrics
+├── agents/                        89 agents (_core/_meta/_design/_ops/_product + stacks/)
+├── skills/                        54 process skills
+├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
+├── rules/                         26 project rules
+├── confidence-rubrics/            17 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars (LFS)
 ├── models/Xenova/...              Embedding model (LFS)
 ├── scripts/                       Build / index / search / validate (Node ESM)
@@ -131,8 +131,8 @@ For consistent quality, agents are encouraged to follow this order:
 3. **Run `npm run supervibe:status`** — see real index state
 4. **Read the specific agent** from `agents/<namespace>/`
 5. **Read the relevant rule** from `rules/`
-6. **Search memory**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"` — past decisions
-7. **Search code**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` — existing patterns
+6. **Search memory**: `node scripts/search-memory.mjs --query "<topic>"` — past decisions
+7. **Search code**: `node scripts/search-code.mjs --query "<concept>"` — existing patterns
 8. **Read full docs**: `docs/getting-started.md`
 
 ---

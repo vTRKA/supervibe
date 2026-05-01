@@ -140,17 +140,17 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `docs/adr/` or `docs/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
 2. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
-3. **Pre-task: invoke `supervibe:code-search`** — `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
+3. **Pre-task: invoke `supervibe:code-search`** — `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
 4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` evolve quarterly — never trust training-cutoff).
 5. **Read related files**: existing `src/lib/messages.ts`, `src/lib/storage.ts`, similar surface implementations, the manifest. Match naming + style conventions.
 6. **Walk the decision tree** — confirm bundler (already chosen), language (TS), UI framework (already chosen), CSS scoping, world, message-passing pattern, periodic-work primitive, storage scope. Document choices in commit message.

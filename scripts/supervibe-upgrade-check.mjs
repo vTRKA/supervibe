@@ -5,7 +5,7 @@
 
 import { performUpstreamCheck, readUpgradeCache } from './lib/upgrade-check.mjs';
 
-const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
 const isBackground = process.argv.includes('--background');
 
 async function main() {

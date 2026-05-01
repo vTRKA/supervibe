@@ -44,7 +44,7 @@ export async function findAllRefFiles(skillsDir) {
 }
 
 async function main() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const skillsDir = join(root, 'skills');
   const refFiles = await findAllRefFiles(skillsDir);
 

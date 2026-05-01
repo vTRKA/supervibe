@@ -207,7 +207,7 @@ schemas, tests, and call sites before writing recommendations.
 
 **Step 3 (refactor only): Code graph.** Before moving, renaming, deleting, or
 changing public prompt IDs, parser functions, router intents, or agent entry
-points, run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers
+points, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers
 "<symbol>"`. Cite Case A (callers found), Case B (zero callers verified), or
 Case C (not applicable with reason).
 

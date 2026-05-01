@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
 import { detectLanguage } from './code-chunker.mjs';
+import { loadIndexConfig, shouldExcludeFromIndex } from './supervibe-index-config.mjs';
 import { classifyPrivacyPath } from './supervibe-privacy-policy.mjs';
 
 const DEFAULT_SOURCE_ROOTS = [
@@ -97,13 +98,17 @@ function toPolicyRelPath(path, rootDir = process.cwd()) {
   return normalizeRelPath(relative(rootDir, abs).split(sep).join('/'));
 }
 
-export function classifyIndexPath(path, { rootDir = process.cwd() } = {}) {
+export function classifyIndexPath(path, { rootDir = process.cwd(), indexConfig = loadIndexConfig({ rootDir }) } = {}) {
   const relPath = toPolicyRelPath(path, rootDir);
   const segments = relPath.split('/').filter(Boolean);
   const fileName = segments.at(-1) || '';
   const privacy = classifyPrivacyPath(relPath);
   if (!privacy.indexAllowed && ['generated', 'binary', 'archive', 'secret-like', 'local-config'].includes(privacy.classification)) {
     return { included: false, relPath, language: null, reason: `privacy:${privacy.classification}` };
+  }
+  const userExclude = shouldExcludeFromIndex(relPath, indexConfig);
+  if (userExclude) {
+    return { included: false, relPath, language: null, reason: `user-exclude:${userExclude}` };
   }
   const generatedSegment = segments.find((segment) => GENERATED_DIRS.has(segment));
   if (generatedSegment) {
@@ -128,6 +133,7 @@ export async function discoverSourceFiles(rootDir = process.cwd(), { explain = f
   const files = [];
   const excluded = [];
   const queue = [rootDir];
+  const indexConfig = loadIndexConfig({ rootDir });
 
   while (queue.length > 0) {
     const dir = queue.shift();
@@ -142,7 +148,7 @@ export async function discoverSourceFiles(rootDir = process.cwd(), { explain = f
       const fullPath = join(dir, entry.name);
       const relPath = toPolicyRelPath(fullPath, rootDir);
       if (entry.isDirectory()) {
-        const policy = classifyDirectory(entry.name, relPath);
+        const policy = classifyDirectory(entry.name, relPath, indexConfig);
         if (!policy.included) {
           if (explain) excluded.push({ path: relPath, reason: policy.reason });
           continue;
@@ -151,7 +157,7 @@ export async function discoverSourceFiles(rootDir = process.cwd(), { explain = f
         continue;
       }
       if (!entry.isFile()) continue;
-      const policy = classifyIndexPath(fullPath, { rootDir });
+      const policy = classifyIndexPath(fullPath, { rootDir, indexConfig });
       if (!policy.included) {
         if (explain) excluded.push({ path: policy.relPath, reason: policy.reason });
         continue;
@@ -195,7 +201,10 @@ export async function pruneCodeIndex(codeStore, inventory, rootDir = codeStore.p
   return { removed, pruned };
 }
 
-function classifyDirectory(name, relPath) {
+function classifyDirectory(name, relPath, indexConfig = loadIndexConfig({ rootDir: process.cwd() })) {
+  const userExclude = shouldExcludeFromIndex(`${normalizeRelPath(relPath)}/`, indexConfig)
+    || shouldExcludeFromIndex(`${normalizeRelPath(relPath)}/__dir__`, indexConfig);
+  if (userExclude) return { included: false, reason: `user-exclude:${userExclude}` };
   if (GENERATED_DIRS.has(name)) return { included: false, reason: `generated-dir:${name}` };
   if (SKIP_DIRS.has(name) || name.startsWith('.')) return { included: false, reason: `skip-dir:${name}` };
   return { included: true, reason: 'walk' };

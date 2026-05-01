@@ -23,11 +23,11 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 
 ## What Supervibe provides
 
-Same as `CLAUDE.md`:
-- 83 specialist agents in `./agents/`
-- 51 process skills in `./skills/`
-- 25 project rules in `./rules/`
-- 16 confidence rubrics in `./confidence-rubrics/`
+Same project context as `CLAUDE.md`, adapted for Gemini CLI:
+- 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
+- 54 process skills in `./skills/`
+- 26 project rules in `./rules/`
+- 17 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
 - Security audit, prompt AI engineering, network/router diagnostics, and Kanban work-control routing
@@ -67,3 +67,4 @@ The same six core principles from `CLAUDE.md` apply — these override Gemini de
 ## Reference
 
 Read `CLAUDE.md` for full system context. This file is the Gemini-flavored entry point only.
+For generated project artifacts, preserve user-owned content outside Supervibe managed blocks and use `/supervibe-adapt` after plugin updates instead of deleting installed agents/rules/skills.

@@ -23,7 +23,7 @@ Trigger source: `<system-reminder>` containing `[evolve] browser-feedback receiv
 
 Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root prototypes/<slug>/` without `--no-feedback`, verify `#evolve-fb-toggle` appears in served HTML, and only then continue design review.
 
-If user invokes manually with no pending feedback, run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` first, then inspect `.supervibe/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
+If user invokes manually with no pending feedback, run `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list` first, then inspect `.supervibe/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
 
 Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json`. The UserPromptSubmit hook resurfaces unresolved entries until they are marked `resolved` or `rejected`.
 
@@ -61,7 +61,7 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
    d. Write `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` with: original comment, classification, change made, file:line refs, before/after summary.
 6. Mark the entry `in_progress` when work starts:
    ```bash
-   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --progress <id>
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --progress <id>
    ```
 7. Print feedback prompt to user:
    ```
@@ -72,7 +72,7 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
    ```
 8. If the user accepts the fix, mark it resolved:
    ```bash
-   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution prototypes|mockups|presentations/<slug>/feedback-resolutions/<id>.md
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution prototypes|mockups|presentations/<slug>/feedback-resolutions/<id>.md
    ```
    If the user rejects or parks it, use `--reject <id>` and include the reason in the resolution record.
 
@@ -96,7 +96,7 @@ Rubric: agent-delivery
 
 ## Verification
 - Check the matching `feedback-resolutions/<id>.md` exists under `prototypes/<slug>/`, `mockups/<slug>/`, or `presentations/<slug>/`.
-- Run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` and confirm accepted entries no longer appear as open.
+- Run `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list` and confirm accepted entries no longer appear as open.
 - Reload browser preview; confirm visual change matches comment intent.
 - `git diff` shows minimal change scope (no scope-creep).
 

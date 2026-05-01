@@ -3,7 +3,7 @@
 // when bumped, surface a one-line banner with link to CHANGELOG section.
 //
 // Storage: .supervibe/memory/.supervibe-version (single line, plain version string).
-// Plugin version source: $CLAUDE_PLUGIN_ROOT/.claude-plugin/plugin.json.
+// Plugin version source: <resolved-supervibe-plugin-root>/.claude-plugin/plugin.json.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

@@ -92,7 +92,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 
 2. **Validate rubric exists:**
    ```
-   test -f $CLAUDE_PLUGIN_ROOT/confidence-rubrics/<type>.yaml
+   test -f <resolved-supervibe-plugin-root>/confidence-rubrics/<type>.yaml
    ```
    If missing:
    - Print: "Rubric `<type>.yaml` not found. Available types: <list>."

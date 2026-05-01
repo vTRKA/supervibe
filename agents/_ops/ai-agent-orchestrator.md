@@ -92,9 +92,9 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` and cite prior agent workflow, loop, checkpoint, or handoff decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` to find existing routers, loop state, work-item graphs, checkpoints, and policy guards.
+**Step 2: Code search.** Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"` to find existing routers, loop state, work-item graphs, checkpoints, and policy guards.
 
-**Step 3 (refactor only): Code graph.** Before changing command state, loop graphs, or handoff schemas, run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
+**Step 3 (refactor only): Code graph.** Before changing command state, loop graphs, or handoff schemas, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
 
 ## User dialogue discipline
 

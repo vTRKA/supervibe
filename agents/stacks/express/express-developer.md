@@ -106,16 +106,16 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
-2. **Pre-task: invoke `supervibe:code-search`** — find existing similar routes, middleware, validators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
+2. **Pre-task: invoke `supervibe:code-search`** — find existing similar routes, middleware, validators. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-route tasks: also run `--callers "<controllerName>"` and `--callers "<serviceName>"`
    - For new-middleware touching shared pipeline: `--neighbors "errorHandler" --depth 2`
    - Skip for greenfield tasks

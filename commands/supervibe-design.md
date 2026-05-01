@@ -76,7 +76,7 @@ Each stage is gated on user explicit approval before the next starts. Skip stage
 **Step 0a/N: Design artifact mode.** Before choosing target surface or opening old design files, run:
 
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"
+node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"
 ```
 
 If it returns `needsQuestion: true`, ask exactly one question:
@@ -102,7 +102,7 @@ Do not read, edit, copy, or treat any prior `prototypes/<slug>/`, `mockups/<slug
 - `tauri` — Tauri desktop
 - `mobile-native` — iOS+Android (React Native / Flutter / native)
 
-Read `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json` and use as starting viewport list. Save `target`, `viewports`, `runtime`, `constraints` into `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook will block writes until config.json exists.
+Read `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json` and use as starting viewport list. Save `target`, `viewports`, `runtime`, `constraints` into `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook will block writes until config.json exists.
 
 **Шаг 0c/N: Triage.** Then determine:
 - Is this a marketing landing page → uses `supervibe:landing-page` skill
@@ -120,7 +120,7 @@ ASK ONE QUESTION at a time if any axis above is ambiguous. Save answers to `prot
 Run:
 
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json
+node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json
 ```
 
 Persist the result in `prototypes/<slug>/config.json.mediaCapabilities`. If `video=false`, designers MUST NOT promise rendered video output. They may still create CSS/WAAPI motion in the live prototype, static storyboard frames, SVG/Lottie specs when assets already exist, or poster-frame + interaction notes. If `video=true`, video is allowed but still requires a performance + reduced-motion fallback plan.
@@ -220,7 +220,7 @@ Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `a
 
 ### Stage 6 — Live preview + parallel review
 
-1. Skill auto-spawns `supervibe:preview-server --root prototypes/<slug>/` with feedback overlay enabled. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#evolve-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list`.
+1. Skill auto-spawns `supervibe:preview-server --root prototypes/<slug>/` with feedback overlay enabled. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#evolve-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `prototypes/<slug>/_reviews/a11y.md`.

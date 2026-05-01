@@ -98,6 +98,48 @@ export function buildPostDeliveryQuestion(route = {}, options = {}) {
   };
 }
 
+export function buildTransparentStepQuestion({
+  step = 1,
+  total = 1,
+  question,
+  why,
+  decision,
+  assumption,
+  choices = [],
+  locale = 'en',
+} = {}) {
+  const normalized = normalizeLocale(locale);
+  return {
+    prompt: normalized === 'ru'
+      ? `Шаг ${step}/${total}: ${question || 'что выбираем?'}`
+      : `Step ${step}/${total}: ${question || 'what should we choose?'}`,
+    why: why || (normalized === 'ru' ? 'Этот ответ влияет на следующий шаг.' : 'This answer changes the next step.'),
+    decision: decision || (normalized === 'ru' ? 'Зафиксирую выбранное решение в состоянии.' : 'I will record the selected decision in state.'),
+    assumption: assumption || (normalized === 'ru' ? 'Если пропустить, использую рекомендуемый безопасный вариант.' : 'If skipped, I will use the recommended safe default.'),
+    choices: choices.map((choice, index) => ({
+      ...choice,
+      recommended: choice.recommended ?? index === 0,
+    })),
+    locale: normalized,
+  };
+}
+
+export function formatTransparentStepQuestion(question) {
+  const lines = [
+    `**${question.prompt}**`,
+    '',
+    `Why: ${question.why}`,
+    `Decision unlocked: ${question.decision}`,
+    `If skipped: ${question.assumption}`,
+    '',
+  ];
+  for (const choice of question.choices || []) {
+    const suffix = choice.recommended ? ' (recommended)' : '';
+    lines.push(`- ${choice.label}${suffix} - ${choice.tradeoff || choice.description || 'No tradeoff provided.'}`);
+  }
+  return lines.join('\n');
+}
+
 export function formatPostDeliveryQuestion(question) {
   const lines = [
     `**${question.prompt}**`,

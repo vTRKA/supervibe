@@ -22,10 +22,10 @@ $ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $MinNodeVersion = [version]'22.5.0'
 
-function Say  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Cyan }
-function Ok   { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Green }
-function Warn { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Yellow }
-function Die  { param($m) Write-Host "[evolve-update] $m" -ForegroundColor Red; exit 1 }
+function Say  { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Cyan }
+function Ok   { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Green }
+function Warn { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Yellow }
+function Die  { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Red; exit 1 }
 
 function Invoke-FirstInstall {
   $installUrl = if ($env:SUPERVIBE_INSTALL_URL) {

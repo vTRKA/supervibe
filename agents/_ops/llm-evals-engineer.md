@@ -91,9 +91,9 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` and cite prior eval, incident, prompt, or regression decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` to find existing eval runners, fixtures, graders, and golden corpora.
+**Step 2: Code search.** Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"` to find existing eval runners, fixtures, graders, and golden corpora.
 
-**Step 3 (refactor only): Code graph.** Before changing eval runner APIs or result schemas, run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
+**Step 3 (refactor only): Code graph.** Before changing eval runner APIs or result schemas, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
 
 ## User dialogue discipline
 

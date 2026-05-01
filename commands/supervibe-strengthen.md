@@ -59,7 +59,7 @@ Procedure:
 
 When invoked without arguments:
 
-1. Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` to get the flagged list.
+1. Run `node <resolved-supervibe-plugin-root>/scripts/lib/auto-strengthen-trigger.mjs` to get the flagged list.
 2. Print structured summary:
    ```
    N agents flagged for strengthening:

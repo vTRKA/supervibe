@@ -20,6 +20,7 @@ last-verified: 2026-04-27
 - New major dependency in package.json/composer.json/Cargo.toml
 - Files renamed/deleted that artifacts reference
 - User runs `/supervibe-adapt`
+- Plugin updated and project-level installed agents/rules/skills need refresh without manual deletion
 
 ## Shared Dialogue Contract
 
@@ -55,6 +56,7 @@ After every material delivery, ask one explicit next-step question. Use language
 5. **Deleted files** — remove references from artifacts
 6. **Host context migration** — if `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` or `opencode.json` changes, use `scripts/lib/supervibe-context-migrator.mjs` dry-run planning and never overwrite user-owned sections.
 7. **Capability registry** — propose affected agents, rules and skills together, including registry evidence and confidence for each linked artifact.
+8. **Version marker** — after approved writes, update `.supervibe/memory/.supervibe-version` so future sessions know the project artifacts match the plugin version.
 8. **User-requested project fit** - when the user asks to adapt rules or agents to the project, compare stack tags, selected install profile, existing host artifacts, and capability registry links; then produce an add/keep/defer plan with reasons.
 9. **Bump versions** + update `last-verified` + `verified-against`
 10. Run `supervibe:audit` to verify clean state
@@ -70,6 +72,7 @@ Returns:
 ## Guard rails
 
 - DO NOT: delete agents/skills (rename/archive instead)
+- DO NOT: tell the user to delete all generated project artifacts after plugin updates; use diff-gated adapt instead
 - DO NOT: invent new agent (suggest genesis for new components)
 - ALWAYS: re-audit after adapt to verify clean
 

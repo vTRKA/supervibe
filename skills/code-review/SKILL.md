@@ -65,7 +65,7 @@ Is the diff touching public symbols (rename / move / extract / delete)?
 5. **Rank by severity**
 6. **Structural-change check** (only if diff renames/moves/extracts/deletes a public symbol):
    - Identify changed symbol(s) by walking the diff
-   - For each: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<name>"`
+   - For each: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<name>"`
    - Verify: all callers updated in same diff OR documented as breaking change
    - If breaking: require migration note + deprecation period per `api-contract-reviewer` rules
 7. **Output report** — see Output contract

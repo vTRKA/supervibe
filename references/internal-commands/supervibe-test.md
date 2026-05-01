@@ -85,7 +85,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 
 3. **Run the appropriate command:**
    ```bash
-   cd $CLAUDE_PLUGIN_ROOT && <selected-command>
+   cd <resolved-supervibe-plugin-root> && <selected-command>
    ```
 
 4. **Parse output:**

@@ -123,11 +123,11 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Design Intelligence Evidence
 
@@ -137,7 +137,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
-2. **Artifact mode gate (MANDATORY)** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `prototypes/`, `mockups/`, or `presentations/` files until this choice is explicit.
+2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `prototypes/`, `mockups/`, or `presentations/` files until this choice is explicit.
 3. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status !== "approved"` → STOP and tell user: "Дизайн-система не утверждена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без утверждённой системы прототип нельзя строить, токены неоткуда брать." Do not proceed.
 
 3a. **Target-specific scaffolding.** Read `prototypes/<feature>/config.json` for `target`. Branch directory layout:
@@ -165,7 +165,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
 12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
-12a. **Media capability gate** — read `config.json.mediaCapabilities`; if missing, run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` and write the result to config. If `video=false`, do not create or promise rendered video files. Use CSS/WAAPI motion in the preview, static storyboards, SVG/Lottie specs from existing assets, or poster frames instead.
+12a. **Media capability gate** — read `config.json.mediaCapabilities`; if missing, run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` and write the result to config. If `video=false`, do not create or promise rendered video files. Use CSS/WAAPI motion in the preview, static storyboards, SVG/Lottie specs from existing assets, or poster frames instead.
 13. **Token-discipline grep (CI gate)**:
     - `grep -rE '#[0-9a-fA-F]{3,8}|rgb\(|rgba\(' prototypes/<feature>/styles/pages.css` → 0 hits
     - `grep -rE '\\b[0-9]+px\\b' prototypes/<feature>/styles/pages.css` → audit each (1px borders OK, layout px NOT OK)

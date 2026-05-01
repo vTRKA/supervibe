@@ -18,7 +18,7 @@ import { evaluateAgentRegressionChecks, formatAgentRegressionReport } from './li
 const TASKS_PATH = 'tests/fixtures/regression-suite/canonical-tasks.json';
 
 async function loadTasks() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const raw = await readFile(join(root, TASKS_PATH), 'utf8');
   return JSON.parse(raw);
 }
@@ -55,7 +55,7 @@ async function main() {
     process.exit(2);
   }
 
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const tasks = await loadTasks();
   const outDir = join(root, '.supervibe', 'audits', 'regression-suite', phase);
   await mkdir(outDir, { recursive: true });

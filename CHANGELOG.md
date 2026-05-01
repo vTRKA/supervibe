@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.25] - 2026-05-02
+
+### Added
+
+- Added a generated `docs/agent-roster.md` and reusable agent roster library so
+  genesis, README onboarding, and host context output can explain every selected
+  agent's responsibility instead of listing opaque ids.
+- Added `.supervibe/memory/index-config.json` support for project-owned Code RAG
+  + Code Graph exclusions, with a 5-minute watcher safety refresh policy.
+- Added regression coverage for agent roster sync, index config exclusions,
+  transparent dialogue questions, and host-neutral shared artifacts.
+
+### Changed
+
+- Expanded README onboarding with first-run setup, available agents, indexing
+  config, and the `/supervibe-update` -> `/supervibe-adapt` project refresh path.
+- Strengthened genesis and generated host context output with selected agent
+  role summaries, update/adapt guidance, and explicit memory/RAG/codegraph
+  working contracts.
+- Reworked shared agent, skill, rule, command and template instructions to avoid
+  Claude-only plugin root assumptions; runtime scripts now prefer
+  `SUPERVIBE_PLUGIN_ROOT` while keeping Claude compatibility fallback.
+- Strengthened brainstorming and dialogue helpers so questions explain why they
+  are asked, what decision they unlock, and what safe default applies if skipped.
+- Expanded `no-dead-code` with stack-specific checks for routes, components,
+  jobs, handlers, warnings, generated clients, and intentional public API
+  exceptions.
+
+### Fixed
+
+- Fixed stale `.claude/code.db`, `.evolve-version`, and `/evolve-*` era
+  references in shared project-facing docs and instructions.
+- Fixed Codex plugin default prompt so genesis scaffolds the selected host
+  adapter instead of implying `.claude/`.
+
 ## [2.0.24] - 2026-05-02
 
 ### Fixed
@@ -794,7 +829,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — `supervibe:project-memory` skill upgraded
 
-- Procedure now invokes single Bash call: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query ... --tags ... --type ... --min-confidence ... --limit N`
+- Procedure now invokes single Bash call: `node <resolved-supervibe-plugin-root>/scripts/search-memory.mjs --query ... --tags ... --type ... --min-confidence ... --limit N`
 - Decision tree updated with FTS5 query syntax
 - Compared to v1 (3-5 tool calls per search): **single Bash call**, sub-second response, BM25 ranking instead of mental grep matching
 

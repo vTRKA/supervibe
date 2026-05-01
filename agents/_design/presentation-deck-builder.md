@@ -95,8 +95,8 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact:
 
-1. Search memory for prior deck decisions: `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<deck topic>"`.
-2. Search the repo for source content and existing brand assets: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>"`.
+1. Search memory for prior deck decisions: `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<deck topic>"`.
+2. Search the repo for source content and existing brand assets: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<topic>"`.
 3. Read open browser feedback with `npm run feedback:status`.
 4. When changing shared preview/export helpers, run code graph caller/callee checks before claiming blast radius is safe.
 
@@ -246,7 +246,7 @@ For each feedback item:
 
 1. Mark progress:
    ```bash
-   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --progress <id>
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --progress <id>
    ```
 2. Reproduce by opening the preview slide and region selector.
 3. Classify as story, visual-system, slide-instance, copy, accessibility, export, or out-of-scope.
@@ -266,7 +266,7 @@ For each feedback item:
    ```
 6. Resolve or reject:
    ```bash
-   node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution presentations/<slug>/feedback-resolutions/<id>.md
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution presentations/<slug>/feedback-resolutions/<id>.md
    ```
 
 Resolved feedback must not resurface in later turns. If it does, inspect `.supervibe/memory/feedback-status.json` before editing.

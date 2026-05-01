@@ -48,7 +48,7 @@ Plus landing-specific:
 
 1. **Design system check** — same as `supervibe:prototype`. Required: `prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
 2. **Brand direction check** — `prototypes/_brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
-3. **Artifact mode check** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
+3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
 4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
 5. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
 

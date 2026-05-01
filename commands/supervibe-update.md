@@ -50,28 +50,28 @@ Print: current version, target version, changelog summary between them, breaking
 ## Procedure
 
 1. **Locate the plugin checkout.**
-   - Use `$CLAUDE_PLUGIN_ROOT`. Fail fast with actionable error if not set:
-     > "CLAUDE_PLUGIN_ROOT not set. Re-run installer: curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash"
+   - Use `<resolved-supervibe-plugin-root>`. Fail fast with actionable error if not set:
+     > "Resolved Supervibe plugin root not set. Re-run installer: curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash"
 
 2. **Capture pre-upgrade state (REQUIRED for rollback):**
    ```bash
-   PRE_SHA=$(git -C $CLAUDE_PLUGIN_ROOT rev-parse HEAD)
-   PRE_VERSION=$(node -p "require('$CLAUDE_PLUGIN_ROOT/.claude-plugin/plugin.json').version")
+   PRE_SHA=$(git -C <resolved-supervibe-plugin-root> rev-parse HEAD)
+   PRE_VERSION=$(node -p "require('<resolved-supervibe-plugin-root>/.claude-plugin/plugin.json').version")
    ```
-   Save to `.supervibe/memory/.evolve-update-state.json`:
+   Save to `.supervibe/memory/.supervibe-update-state.json`:
    ```json
    { "preSha": "<sha>", "preVersion": "<ver>", "startedAt": "<ISO>" }
    ```
    This file is the rollback anchor. Cleaned up only on successful upgrade.
 
 3. **Refuse tracked local edits; clean stale leftovers.**
-   - Run `git -C $CLAUDE_PLUGIN_ROOT status --porcelain`.
+   - Run `git -C <resolved-supervibe-plugin-root> status --porcelain`.
    - If tracked files are modified, print them and exit. Never auto-discard user edits.
    - If only untracked/ignored stale files exist, continue. The managed upgrader runs `git clean -ffdx` before reinstalling dependencies so old routes, commands, generated leftovers, and removed files cannot stay active.
 
 4. **Run the upgrade.**
    ```bash
-   cd $CLAUDE_PLUGIN_ROOT && npm run supervibe:upgrade
+   cd <resolved-supervibe-plugin-root> && npm run supervibe:upgrade
    ```
 This script does: clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` -> `git lfs pull` (if available) -> `npm ci` -> `npm run registry:build` -> `npm run check` -> `npm run supervibe:install-doctor`.
 
@@ -81,7 +81,7 @@ This script does: clean managed checkout -> `git fetch --tags --prune` -> `git p
 
    ```bash
    # Rollback procedure (mid-upgrade failure)
-   cd $CLAUDE_PLUGIN_ROOT
+   cd <resolved-supervibe-plugin-root>
    git reset --hard $PRE_SHA   # restore source code
 npm ci                       # restore old node_modules from package-lock.json
    git lfs pull                 # restore LFS state if changed
@@ -117,7 +117,7 @@ npm ci                       # restore old node_modules from package-lock.json
    - Refresh upstream-check cache (handled by `evolve-upgrade.mjs`).
    - Confirm `.supervibe/audits/install-lifecycle/latest.json` exists and has `score: 10`.
    - Print version diff: `vX.Y.Z → vA.B.C`.
-   - Clean up `.evolve-update-state.json` (no longer needed for rollback).
+   - Clean up `.supervibe-update-state.json` (no longer needed for rollback).
    - Append success record to `.supervibe/memory/decisions/upgrades.md`.
 
 7. **Print next steps:**
@@ -130,7 +130,7 @@ npm ci                       # restore old node_modules from package-lock.json
 
 | Failure | Recovery action |
 |---|---|
-| `CLAUDE_PLUGIN_ROOT` not set | Print installer URL; exit |
+| Resolved Supervibe plugin root not set | Print installer URL; exit |
 | Tracked local edits in checkout | List dirty tracked files; instruct stash/commit; exit |
 | Stale untracked files in checkout | Clean automatically with `git clean -ffdx` before reinstall; install doctor fails if any remain |
 | Network failure during `git pull` | Print message; preserve pre-state; exit (no rollback needed — nothing changed yet) |
@@ -144,8 +144,8 @@ npm ci                       # restore old node_modules from package-lock.json
 If a hard machine crash or interrupt happens mid-upgrade:
 
 ```bash
-cd $CLAUDE_PLUGIN_ROOT
-cat .supervibe/memory/.evolve-update-state.json   # find preSha
+cd <resolved-supervibe-plugin-root>
+cat .supervibe/memory/.supervibe-update-state.json   # find preSha
 git reset --hard <preSha>
 npm ci
 ```
@@ -226,6 +226,6 @@ Run `/supervibe-update` to apply (auto-rollback on failure).
 - `/supervibe-update --rollback` — explicit revert to last good state
 - `CHANGELOG.md` — what changed
 - `/supervibe-adapt` — propagate upstream changes into a specific project
-- `.supervibe/memory/.evolve-update-state.json` — rollback anchor (transient)
+- `.supervibe/memory/.supervibe-update-state.json` — rollback anchor (transient)
 - `.supervibe/memory/incidents/upgrade-failure-*.md` — failure forensics
 - `.supervibe/memory/decisions/upgrades.md` — success log

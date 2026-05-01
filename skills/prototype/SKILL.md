@@ -42,7 +42,7 @@ NOT for:
 ## Step 0 — Read source of truth (required)
 
 1. **Design system check.** Read `prototypes/_design-system/tokens.css`, `prototypes/_design-system/components/*.md`, `prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
-2. **Artifact mode check.** Run `node "$CLAUDE_PLUGIN_ROOT/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
+2. **Artifact mode check.** Run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
 3. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
 4. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
 
@@ -107,7 +107,7 @@ What level of fidelity does this prototype need?
 ### Stage 1 — Setup
 
 1. Pick a slug for the prototype: `prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
-2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `$CLAUDE_PLUGIN_ROOT/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
+2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
 3. Confirm interaction depth level (visual-only / click-through / realistic / data-fed). One question, multiple-choice format.
 4. Create directory layout:
    ```

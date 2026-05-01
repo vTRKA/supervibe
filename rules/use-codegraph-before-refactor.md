@@ -36,7 +36,7 @@ Specifically: a rename in TypeScript broke production because 3 callers in a Pyt
 1. Identify the symbol being modified (function, class, method, type)
 2. Run:
    ```bash
-   node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol-name>"
+   node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol-name>"
    ```
 3. Read each caller. Decide:
    - **0 callers**: safe to proceed (still validate with `--neighbors` for indirect refs)

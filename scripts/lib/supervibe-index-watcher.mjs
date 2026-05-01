@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { classifyIndexPath } from "./supervibe-index-policy.mjs";
+import { loadIndexConfig } from "./supervibe-index-config.mjs";
 
 const HEARTBEAT_REL = ".supervibe/memory/.watcher-heartbeat";
 const LOCK_REL = ".supervibe/memory/.code-index.lock";
@@ -116,6 +117,7 @@ export function readWatcherDiagnostics({ rootDir = process.cwd(), now = Date.now
   }
   return {
     rootDir,
+    indexConfig: loadIndexConfig({ rootDir }),
     heartbeat,
     lock: readIndexLock({ rootDir, now }),
     repairActions: heartbeat.status === "running"
@@ -129,6 +131,7 @@ export function formatWatcherDiagnostics(diagnostics) {
     "SUPERVIBE_WATCHER_DIAGNOSTICS",
     `HEARTBEAT: ${diagnostics.heartbeat.status}`,
     `LOCK: ${diagnostics.lock.status}`,
+    `REFRESH_INTERVAL_MS: ${diagnostics.indexConfig.refreshIntervalMs}`,
     `REPAIR_ACTIONS: ${diagnostics.repairActions.join(" | ") || "none"}`,
   ].join("\n");
 }

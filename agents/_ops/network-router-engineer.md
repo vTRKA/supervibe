@@ -171,7 +171,7 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 2: Code/config search.** Run `supervibe:code-search --query "<router vendor or network concept>"` when configs, IaC, Ansible, Terraform, NetBox exports, runbooks, or deployment files are present. Read the top relevant results before proposing changes.
 
-**Step 3: Code graph / caller check.** If changing repo-owned automation that generates network config, run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` before moving, renaming, or deleting public helpers. Cite caller evidence in the output.
+**Step 3: Code graph / caller check.** If changing repo-owned automation that generates network config, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` before moving, renaming, or deleting public helpers. Cite caller evidence in the output.
 
 ## Procedure
 

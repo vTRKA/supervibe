@@ -4,7 +4,7 @@
 // can both display findings and machine-read the proposed next command.
 //
 // Usage from /supervibe slash command:
-//   node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-detect.mjs
+//   node <resolved-supervibe-plugin-root>/scripts/supervibe-detect.mjs
 //
 // Flags:
 //   --json            print only the JSON, no banner (for scripting)
@@ -16,7 +16,7 @@ const args = process.argv.slice(2);
 const jsonOnly = args.includes('--json');
 const projectArg = args.find(a => a.startsWith('--project='));
 const projectRoot = projectArg ? projectArg.slice('--project='.length) : process.cwd();
-const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || projectRoot;
+const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || projectRoot;
 
 const result = await detectNextPhase(projectRoot, pluginRoot);
 

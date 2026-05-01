@@ -105,9 +105,9 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` and cite relevant prior decisions or explicitly state why they do not apply.
 
-**Step 2: Code search.** Run `supervibe:code-search` or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"` to find existing Tauri commands, Rust modules and frontend call sites before editing.
+**Step 2: Code search.** Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"` to find existing Tauri commands, Rust modules and frontend call sites before editing.
 
-**Step 3 (refactor only): Code graph.** Before renaming, moving or deleting a public command or Rust symbol, run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
+**Step 3 (refactor only): Code graph.** Before renaming, moving or deleting a public command or Rust symbol, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
 
 ## Procedure
 

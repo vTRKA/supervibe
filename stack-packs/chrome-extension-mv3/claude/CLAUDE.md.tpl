@@ -113,6 +113,6 @@ Custom decisions, patterns, incidents go in `.supervibe/memory/<category>/` as m
 1. Read this file again — likely answer is here
 2. Read `agents/stacks/chrome-extension/chrome-extension-architect.md` for deeper architectural questions
 3. Read `agents/stacks/chrome-extension/chrome-extension-developer.md` for implementation patterns
-4. Search memory: `node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs --query "<topic>"`
-5. Search code: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`
-6. Stack-pack source: `$CLAUDE_PLUGIN_ROOT/stack-packs/chrome-extension-mv3/manifest.yaml`
+4. Search memory: `node <resolved-supervibe-plugin-root>/scripts/search-memory.mjs --query "<topic>"`
+5. Search code: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`
+6. Stack-pack source: `<resolved-supervibe-plugin-root>/stack-packs/chrome-extension-mv3/manifest.yaml`

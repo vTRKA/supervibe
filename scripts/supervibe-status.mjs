@@ -40,6 +40,7 @@ import { buildOrchestratedContextPackFromProject } from './lib/supervibe-context
 import { buildUserOutcomeReportFromContextPack, formatUserOutcomeReport } from './lib/supervibe-user-outcome-metrics.mjs';
 import { buildPerformanceSloReport, formatPerformanceSloReport } from './lib/supervibe-performance-slo.mjs';
 import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from './lib/supervibe-workspace-isolation.mjs';
+import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-config.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
@@ -454,6 +455,11 @@ async function main() {
     console.log(color(`  Last update: ${ageStr(memAge)}`, 'dim'));
   }
 
+  console.log();
+
+  // Index config
+  const indexConfig = loadIndexConfig({ rootDir: PROJECT_ROOT });
+  console.log(color(formatIndexConfigStatus(indexConfig), 'dim'));
   console.log();
 
   // Watcher status (heartbeat-based)

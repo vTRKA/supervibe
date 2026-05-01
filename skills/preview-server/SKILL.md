@@ -50,9 +50,9 @@ Always prefer the project's own dev script when one exists; fall back to `live-s
 
 1. Complete Step 0 (verification + `--list` check).
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
-3. Start the server with `node "$CLAUDE_PLUGIN_ROOT/scripts/preview-server.mjs" --root <mockup-root> --label "<label>"`; capture the PID. Design roots include `prototypes/<slug>`, `mockups/<slug>`, and `presentations/<slug>`; never pass `--no-feedback` for them.
+3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>"`; capture the PID. Design roots include `prototypes/<slug>`, `mockups/<slug>`, and `presentations/<slug>`; never pass `--no-feedback` for them.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
-5. For a design root, verify the response body contains `evolve-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list`.
+5. For a design root, verify the response body contains `evolve-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 6. Hand the URL to the user using the Output contract template below.
 7. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
 8. Continue the surrounding task — keep the server alive only while the user is reviewing.

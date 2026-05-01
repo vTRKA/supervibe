@@ -144,7 +144,7 @@ async function reportCodeIndexHealth() {
 
 async function reportVersionBump() {
   try {
-    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+    const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
     if (!pluginRoot) return;
     const { checkVersionBump, setLastSeenVersion } =
       await import("./lib/version-tracker.mjs");
@@ -167,7 +167,7 @@ async function reportVersionBump() {
 
 async function reportUpstreamUpdates() {
   try {
-    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+    const pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
     if (!pluginRoot) return;
     const { readUpgradeCache } = await import("./lib/upgrade-check.mjs");
     const {

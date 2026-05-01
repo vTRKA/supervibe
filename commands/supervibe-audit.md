@@ -10,23 +10,23 @@ Design audit mode uses the same command surface: `/supervibe-audit --design`. It
 
 ## Procedure
 
-1. **Index health.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.
+1. **Index health.** Run `npm run supervibe:status` (or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.
 
-2. **Frontmatter validation.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/validate-frontmatter.mjs`. Flags any agent / skill / rule / rubric with malformed or missing required fields.
+2. **Frontmatter validation.** Run `node <resolved-supervibe-plugin-root>/scripts/validate-frontmatter.mjs`. Flags any agent / skill / rule / rubric with malformed or missing required fields.
 
-3. **Skill triggers.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lint-skill-descriptions.mjs`. Flags skill descriptions that fail trigger-clarity (`Use BEFORE/AFTER/WHEN ... TO ...`).
+3. **Skill triggers.** Run `node <resolved-supervibe-plugin-root>/scripts/lint-skill-descriptions.mjs`. Flags skill descriptions that fail trigger-clarity (`Use BEFORE/AFTER/WHEN ... TO ...`).
 
 4. **Agent canonical footers.** Run `npm run validate:agent-footers` to confirm every agent's `## Output contract` ends with the parser-readable confidence trailer.
 
 5. **Stale artifacts.** Walk `agents/`, `rules/`, `skills/` for files whose frontmatter `last-verified` is older than 30 days. List each with its age.
 
-6. **Project-level overrides.** If the selected host adapter's agents folder exists in the current project (`.claude/agents`, `.codex/agents`, `.cursor/agents`, `.gemini/agents` or `.opencode/agents`), diff each file against the upstream version in `$CLAUDE_PLUGIN_ROOT/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
+6. **Project-level overrides.** If the selected host adapter's agents folder exists in the current project (`.claude/agents`, `.codex/agents`, `.cursor/agents`, `.gemini/agents` or `.opencode/agents`), diff each file against the upstream version in `<resolved-supervibe-plugin-root>/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
 
 7. **Memory hygiene.** List memory categories under `.supervibe/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
 
 8. **Override-rate check.** Read `.supervibe/confidence-log.jsonl`. If override rate over the last 100 entries exceeds 5%, escalate as a finding.
 
-9. **Underperformer scan.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
+9. **Underperformer scan.** Run `node <resolved-supervibe-plugin-root>/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
 
 10. **Design intelligence audit.** If design artifacts are in scope, verify that the agent output includes `Design Intelligence Evidence`, memory/code preflight, token compliance, brand asset audit, and the precedence hierarchy `approved design system > project memory > codebase patterns > accessibility law > external lookup`.
 

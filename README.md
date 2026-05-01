@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
-**v2.0** - MIT - Windows / macOS / Linux - 869 tests
+**v2.0** - MIT - Windows / macOS / Linux - 894 tests
 
 ---
 
@@ -12,12 +12,12 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 89 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification |
+| 89 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
 | Confidence engine | Seventeen rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
-| 25 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
+| 26 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent evolution loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
@@ -39,6 +39,34 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 24 stacks supported: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
 
 ---
+
+## Start here
+
+1. Install or update the plugin with the one-line installer for your OS.
+2. Restart your AI CLI.
+3. Open the target project and run `/supervibe-genesis`.
+4. Review the dry-run: host adapter, detected stack, selected agent groups, each selected agent's responsibility, rules, skills, memory/index files, and host instruction changes.
+5. Approve only after the dry-run looks right. Genesis writes managed project artifacts and initializes Code RAG + Code Graph.
+6. Run `npm run supervibe:status` or `/supervibe --status` to confirm memory, RAG, code graph, watcher and index config health.
+
+Existing projects should not be wiped after plugin updates. Run `/supervibe-update` to update the plugin, then `/supervibe-adapt` inside each project to review and apply managed agent/rule/skill/context diffs.
+
+## Available agents
+
+Supervibe ships 89 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
+
+Core examples:
+- `supervibe-orchestrator` routes work, verifies skill/agent selection and keeps the workflow moving.
+- `repo-researcher` maps unfamiliar code with memory, semantic search and code graph evidence before changes.
+- `code-reviewer` performs severity-ranked review before merge.
+- `quality-gate-reviewer` checks final readiness, tests and release evidence.
+- `root-cause-debugger` isolates bugs with hypothesis/evidence loops.
+
+Stack examples include React, Next.js, Vue, Nuxt, SvelteKit, Laravel, Django, FastAPI, Rails, Go, Spring, ASP.NET, Tauri, mobile, databases, GraphQL, Redis and Elasticsearch specialists.
+
+## Indexing config
+
+Code RAG + Code Graph use `.supervibe/memory/index-config.json` for project-owned indexing settings. `exclude` patterns hide files from indexing; privacy blocks for secrets, archives, binaries and local config always win. The optional `npm run memory:watch` daemon reacts to file events immediately and runs a 5-minute safety refresh.
 
 ## Install
 
@@ -90,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.24 initialized for this project
+[supervibe] welcome — plugin v2.0.25 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -149,6 +177,18 @@ npm run supervibe:upgrade
 ```
 
 All three do the same thing: refuse tracked edits in the plugin checkout, clean stale untracked/ignored files, then `git pull --ff-only` + LFS pull + `npm ci` + rebuild generated `registry.yaml` + run all tests + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+
+### Refresh an already-scaffolded project
+
+Plugin update and project artifact refresh are separate on purpose:
+
+1. Update the plugin with `/supervibe-update` or the installer update command.
+2. Open each project that previously ran genesis.
+3. Run `/supervibe-adapt`.
+4. Review the dry-run table for agents, rules, skills, host instruction managed blocks and `.supervibe/memory/.supervibe-version`.
+5. Approve only the files you want updated. User-owned host instruction sections and project memory entries are preserved.
+
+Do not delete installed project agents/rules/skills to "refresh" them. Adapt performs a diff-gated update, flags deleted or renamed upstream artifacts, and can archive project-only files when you explicitly approve it.
 
 ---
 
@@ -406,7 +446,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 
 ## Troubleshooting
 
-**No banner after install.** Re-run the installer — it is idempotent and refreshes the three Claude config files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).
+**No banner after install.** Re-run the installer — it is idempotent and refreshes the detected host registration files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).
 
 The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if the banner is still absent, check that report for stale files or missing host registration.
 

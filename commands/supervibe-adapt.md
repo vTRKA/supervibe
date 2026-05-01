@@ -4,7 +4,7 @@ description: "Sync project-level host artifacts to upstream plugin changes or us
 
 # /supervibe-adapt
 
-Pull upstream improvements from the installed plugin into the selected host adapter (`.claude/`, `.codex/`, `.cursor/`, `.gemini/`, or `.opencode/`) without losing local customizations.
+Pull upstream improvements from the installed plugin into the selected host adapter (`.claude/`, `.codex/`, `.cursor/`, `.gemini/`, or `.opencode/`) without losing local customizations. This is the project-artifact refresh path after plugin updates; users should not delete generated agents/rules/skills manually.
 
 ## When to invoke
 
@@ -16,7 +16,7 @@ Pull upstream improvements from the installed plugin into the selected host adap
 
 ## Procedure
 
-1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in `$CLAUDE_PLUGIN_ROOT/<namespace>/<name>.md`.
+1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in the resolved Supervibe plugin root under `agents/`, `rules/`, or `skills/`.
 
 2. **Three-way classification.** For each pair:
    - **Identical** → skip (no action).
@@ -37,7 +37,7 @@ Pull upstream improvements from the installed plugin into the selected host adap
 
 5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval.
 
-6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.evolve-version` to the current plugin version.
+6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
@@ -62,7 +62,7 @@ includes `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, and
 
 - `.supervibe/memory/decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/` — your project data
 - `.supervibe/memory/*.db` — indexes (regenerated automatically)
-- `CLAUDE.md` if it was hand-edited beyond the generated template — manual review required
+- Any host instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules/*`, `opencode.json`) outside the Supervibe managed block.
 
 ## Related
 

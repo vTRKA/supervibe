@@ -64,10 +64,10 @@ If output exceeds context comfort (~6,000 chars), the command splits into pages 
 2. **Validate range:**
    - If `from == to` → "Project on latest plugin version (vX). No changes to show."
    - If `from > to` → unusual case (downgrade?) — print a warning + show entries from current to from in REVERSE.
-   - If `.evolve-version` doesn't exist → first session under plugin install; suggest setting baseline via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/version-tracker.mjs --init` and exit.
+   - If `.evolve-version` doesn't exist → first session under plugin install; suggest setting baseline via `node <resolved-supervibe-plugin-root>/scripts/lib/version-tracker.mjs --init` and exit.
 
 3. **Read CHANGELOG.md:**
-   - Read `$CLAUDE_PLUGIN_ROOT/CHANGELOG.md` in full.
+   - Read `<resolved-supervibe-plugin-root>/CHANGELOG.md` in full.
    - Parse `## [VERSION] — DATE` headings into a structured array.
    - Extract entries within the resolved range.
 

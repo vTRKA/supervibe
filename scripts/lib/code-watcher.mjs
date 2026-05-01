@@ -7,9 +7,13 @@ import { writeFile, rm } from 'node:fs/promises';
 import { MemoryStore } from './memory-store.mjs';
 import { CodeStore } from './code-store.mjs';
 import { createIndexWatcherLifecycle } from './supervibe-index-watcher.mjs';
+import { DEFAULT_INDEX_REFRESH_INTERVAL_MS, ensureIndexConfig } from './supervibe-index-config.mjs';
+import { scanCodeChanges, scanMemoryChanges } from './mtime-scan.mjs';
 
 export async function startWatcher(projectRoot, opts = {}) {
   const { useEmbeddings = true, verbose = true } = opts;
+  const indexConfig = await ensureIndexConfig({ rootDir: projectRoot });
+  const refreshIntervalMs = Number(opts.refreshIntervalMs || indexConfig.refreshIntervalMs || DEFAULT_INDEX_REFRESH_INTERVAL_MS);
 
   const memoryStore = new MemoryStore(projectRoot, { useEmbeddings });
   await memoryStore.init();
@@ -18,7 +22,7 @@ export async function startWatcher(projectRoot, opts = {}) {
   await codeStore.init();
   const codeLifecycle = createIndexWatcherLifecycle({ rootDir: projectRoot, codeStore });
 
-  if (verbose) console.log(`[supervibe-watcher] starting; root=${projectRoot}`);
+  if (verbose) console.log(`[supervibe-watcher] starting; root=${projectRoot}; refresh=${Math.round(refreshIntervalMs / 60000)}m`);
 
   const memWatcher = chokidar.watch(join(projectRoot, '.supervibe', 'memory'), {
     ignored: /(^|[/\\])\..*\.swp$|memory\.db|code\.db$/,
@@ -97,9 +101,29 @@ export async function startWatcher(projectRoot, opts = {}) {
   // Write initial heartbeat immediately so status command sees us right after start
   try { await writeFile(heartbeatPath, String(Date.now())); } catch {}
 
+  let refreshRunning = false;
+  const refreshTimer = setInterval(async () => {
+    if (refreshRunning) return;
+    refreshRunning = true;
+    try {
+      const [memory, code] = await Promise.all([
+        scanMemoryChanges(memoryStore, projectRoot),
+        scanCodeChanges(codeStore, projectRoot),
+      ]);
+      if (verbose) {
+        console.log(`[supervibe-watcher] periodic ${Math.round(refreshIntervalMs / 60000)}m scan: memory=${memory.reindexed}/${memory.removed} code=${code.reindexed + code.discovered}/${code.removed} errors=${memory.errors + code.errors}`);
+      }
+    } catch (error) {
+      console.error(`[supervibe-watcher] periodic scan err: ${error.message}`);
+    } finally {
+      refreshRunning = false;
+    }
+  }, refreshIntervalMs);
+
   return {
     stop: async () => {
       clearInterval(heartbeatTimer);
+      clearInterval(refreshTimer);
       try { await rm(heartbeatPath, { force: true }); } catch {}
       await memWatcher.close();
       await codeWatcher.close();

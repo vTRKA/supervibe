@@ -23,10 +23,10 @@ NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writin
 ## Step 0 — Read source of truth (required)
 
 Before asking any question, read:
-- Project's `CLAUDE.md` (architecture, conventions, scope boundaries)
+- The active host instruction file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, Cursor rule, or `opencode.json`) for architecture, conventions, and scope boundaries
 - Most recent commits (`git log -10 --oneline`) for active context
 - Any related existing specs in `docs/specs/`
-- `MEMORY.md` if exists
+- Project memory under `.supervibe/memory/` and any legacy `MEMORY.md` if present
 - `docs/references/scope-safety-standard.md` for the mandatory Scope Safety Gate
 
 Do NOT skip this — uninformed questions waste user time.
@@ -51,7 +51,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 
 1. **Context scan** (Step 0)
 2. **Scope check** — multi-subsystem? Decompose first.
-3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases.
+3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases. State why the question matters, what decision it unlocks, and what assumption you will use if the user skips it.
 4. **Stack-aware question loading** — if `questionnaires/*.yaml` matches detected stack, pull relevant questions.
 5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
 6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
@@ -59,7 +59,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Get approval per section.
 9. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
 10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
-11. **Machine-validate spec** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
+11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
 13. **User review of written spec** — explicit approval required.
 14. **Handoff** to `supervibe:writing-plans`.
@@ -101,15 +101,17 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
 - DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension
 - DO NOT: add broad optional functionality just because it is related, modern, or possible
+- DO NOT: stop at a vague plan; every accepted requirement needs acceptance evidence, verification path, owner or fallback decision
 - ALWAYS: scale design depth to complexity (3 sentences for trivial, 200-300 words for nuanced)
 - ALWAYS: decompose multi-subsystem requests before deep-diving any one
 - ALWAYS: explain deferred/rejected additions with concrete project harm and a safer alternative
+- ALWAYS: keep a visible readiness scorecard and close every gap needed for 10/10 product-readiness before handoff
 
 ## Verification
 
 This skill's correct application is verifiable by:
 - A spec file exists at the documented path
-- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
+- `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file <spec>` exits 0
 - Spec frontmatter contains date and topic
 - Scope Safety Gate is present with include/defer/reject/spike decisions and tradeoffs
 - User approval is quoted in the conversation immediately before transition to writing-plans

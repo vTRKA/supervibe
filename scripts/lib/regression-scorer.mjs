@@ -71,7 +71,7 @@ async function main() {
     console.error('Usage: node regression-scorer.mjs --baseline <phase> --current <phase>');
     process.exit(2);
   }
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const baselinePhase = args[baselineIdx + 1];
   const currentPhase = args[currentIdx + 1];
   const baselinePath = join(root, 'docs', 'audits', 'regression-suite', baselinePhase);

@@ -35,12 +35,29 @@ This rule does NOT apply when: explicit `@public-api` or `@stable` annotation ma
 - **Every variant**: switch/match exhaustive — every variant matched somewhere
 - **Every parameter**: must affect output (or be marked unused with `_` prefix)
 
+- **Every route/component/command/job**: must be registered in the runtime graph and reachable from a user flow, scheduled job, CLI entrypoint, queue consumer, or documented public API.
+- **Every warning about unused code**: treat as a dead-code signal until proven intentional. TypeScript, compiler, linter, bundler, framework and CI warnings are not "noise" when they point to unreferenced code, unreachable branches, unused imports, unreachable CSS/classes, unregistered routes, or uncalled generated clients.
+
 **Detection tools:**
 - JS/TS: `knip`, `ts-prune`, `eslint-plugin-unused-imports`
 - Rust: `cargo-udeps`, `dead_code` lint
 - Python: `vulture`, `pylint --disable=all --enable=W0611`
 - Go: `unused`, `staticcheck`
 - PHP: `phpstan` with `treatPhpDocTypesAsCertain`
+
+**Stack-specific checks:**
+- React / Next.js / Remix / TanStack Router: components must be imported by a route, layout, story/test fixture, or exported public package surface; routes must be reachable from the router manifest; server actions/loaders must have a caller; CSS modules/classes must be referenced.
+- Vue / Nuxt / SvelteKit: components, composables, stores, pages, endpoints and load functions must be referenced by framework routing or imports; orphan `.vue`/`.svelte` files are dead unless documented as public examples.
+- Node APIs (Express, NestJS, Fastify): controllers, routers, middleware, providers, background jobs and DI tokens must be registered; unused DTOs/schemas are dead unless generated public contracts.
+- Python (Django/FastAPI): views, routers, serializers, management commands, Celery tasks and migrations must be registered; unused settings, URL patterns and dependency providers count.
+- Rails / Laravel / Symfony: controllers, routes, service providers, console commands, jobs/listeners, policies and views must be wired in route/service/event registries.
+- Go / Rust / Java / .NET: exported packages/modules, structs/classes, traits/interfaces, enum variants and generated clients must have callers or public API annotations; compiler warnings are release blockers.
+- Mobile / desktop / browser extensions: screens, permissions, manifests, commands, background handlers, IPC/Tauri commands and extension content scripts must be reachable from navigation, manifest entries or registered IPC bridges.
+
+**Intentional exceptions must include all three:**
+- explicit annotation (`@public-api`, `@generated`, `@external-contract`, or local equivalent);
+- owner/date or upstream contract reference;
+- verification command showing why removal would break compatibility.
 
 ## Examples
 

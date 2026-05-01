@@ -137,11 +137,11 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Design Intelligence Evidence
 
@@ -154,7 +154,7 @@ Use `supervibe:design-intelligence` after memory and code search for product, st
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason.
 4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch/WebSearch and explicitly note `MCP unavailable; competitor scan limited to manually fetched/searchable URLs`.
 5. **Reference scan** — use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Never copy a brand wholesale; extract patterns.
-5a. **Media capability check** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
+5a. **Media capability check** — run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
 6. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.
 7. **Define emotional anchors** per primary user moment (first-launch, daily-use, error-state, success-moment, payment, etc.) — what should the user feel in their body during each.

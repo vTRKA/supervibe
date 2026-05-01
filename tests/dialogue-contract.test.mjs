@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 
 import {
   buildPostDeliveryQuestion,
+  buildTransparentStepQuestion,
   formatPostDeliveryQuestion,
+  formatTransparentStepQuestion,
   validateDialogueContract,
 } from '../scripts/lib/supervibe-dialogue-contract.mjs';
 import { collectDisciplineFiles } from '../scripts/validate-question-discipline.mjs';
@@ -49,6 +51,27 @@ test('post-delivery question uses beginner-friendly labels instead of raw ids', 
   assert.equal(question.choices[0].recommended, true);
   assert.ok(question.choices.every((choice) => choice.label !== choice.id), 'visible labels must not equal internal ids');
   assert.match(formatPostDeliveryQuestion(question), /Рекомендованный путь стоит первым/);
+});
+
+test('transparent step questions expose why, decision, and skip assumption', () => {
+  const question = buildTransparentStepQuestion({
+    step: 2,
+    total: 3,
+    question: 'Which install profile should genesis use?',
+    why: 'The profile controls which agents, rules and skills are copied.',
+    decision: 'This selects the dry-run artifact set.',
+    assumption: 'If skipped, use minimal with no add-ons.',
+    choices: [
+      { label: 'minimal', tradeoff: 'Smallest safe setup.' },
+      { label: 'full-stack', tradeoff: 'More coverage, more files.' },
+    ],
+  });
+  const formatted = formatTransparentStepQuestion(question);
+
+  assert.match(formatted, /Why:/);
+  assert.match(formatted, /Decision unlocked:/);
+  assert.match(formatted, /If skipped:/);
+  assert.match(formatted, /minimal \(recommended\)/);
 });
 
 test('dialogue contract rejects raw action-id delivery menus', () => {

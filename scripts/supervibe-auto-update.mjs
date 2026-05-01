@@ -27,7 +27,7 @@ import {
 } from "./lib/supervibe-installer-health.mjs";
 
 const args = parseArgs(process.argv.slice(2));
-const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+const PLUGIN_ROOT = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
 
 async function main() {
   if (args.status) {
@@ -153,6 +153,7 @@ async function runWithLock() {
     cwd: PLUGIN_ROOT,
     env: {
       ...process.env,
+      SUPERVIBE_PLUGIN_ROOT: PLUGIN_ROOT,
       CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
     },
     stdio: args.background ? "ignore" : "inherit",

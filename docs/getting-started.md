@@ -56,7 +56,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 
 ```bash
 # 1. Clone or download Supervibe
-git clone https://github.com/your-org/supervibe ~/dev/supervibe   # or download archive
+git clone https://github.com/vTRKA/supervibe ~/dev/supervibe   # or download archive
 cd ~/dev/supervibe
 
 # 2. Install Node deps for dev tooling (validates structure, runs tests)
@@ -70,17 +70,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.24
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.25
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.24
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.24"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.25
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.25"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.24
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.25
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.24" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.25" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.24/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.25/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -219,7 +219,7 @@ Each entry = markdown with frontmatter (id/type/date/tags/related/agent/confiden
 
 **Search** (BM25-ranked, sub-second):
 ```bash
-node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs \
+node <resolved-supervibe-plugin-root>/scripts/search-memory.mjs \
   --query "billing idempotency" \
   --tags billing,redis \
   --type decision \
@@ -228,7 +228,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-memory.mjs \
 
 **Rebuild index** (idempotent, after manual edits):
 ```bash
-node $CLAUDE_PLUGIN_ROOT/scripts/build-memory-index.mjs
+node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs
 ```
 
 **Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `supervibe:add-memory` skill — writes markdown + auto-rebuilds index.
@@ -239,16 +239,16 @@ Beyond markdown memory, Supervibe indexes your source code for semantic search. 
 
 ```bash
 # One-time full index (after install or major refactor)
-node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health
 
 # BM25-only source-readiness fallback when embeddings are the slow part
-node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health --no-embeddings
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 # Manual semantic search (optional — agents auto-invoke this)
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication is handled"
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "where authentication is handled"
 
 # Agent-ready context pack (RAG chunks + graph + anchors)
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --context "auth login flow" --limit 8
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --context "auth login flow" --limit 8
 ```
 
 **What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `bower_components/`, `site-packages/`, `dist/`, `.next/`, `.nuxt/`, `.svelte-kit/`, `__pycache__/`, `Pods/`, `bin/`, `obj/`, and generated/cache folders.
@@ -261,11 +261,11 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --context "auth login flow" --l
 
 1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.supervibe/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
 2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
-3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar long-running with embeddings.
+3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes. Chokidar long-running with embeddings.
 
 For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is opt-in.
 
-Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without any path: re-run `npm run code:index` after major changes.
+Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Project-owned indexing exclusions live in `.supervibe/memory/index-config.json`. Without any path: re-run `npm run code:index` after major changes.
 
 **Storage:** `.supervibe/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
@@ -280,13 +280,13 @@ This is automatic — built on first session via SessionStart hook, kept fresh b
 npm run supervibe:status
 
 # Manual graph queries (agents auto-invoke these)
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "loginHandler"
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callees "BillingService"
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --impact "BillingService" --depth 2
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --neighbors "AuthMiddleware" --depth 2
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --symbol-search "AuthMiddleware"
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --files "src/app"
-node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --top-symbols 20
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "loginHandler"
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callees "BillingService"
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --impact "BillingService" --depth 2
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --neighbors "AuthMiddleware" --depth 2
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --symbol-search "AuthMiddleware"
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --files "src/app"
+node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --top-symbols 20
 ```
 
 **Storage:** same `.supervibe/memory/code.db` — extra `code_symbols` + `code_edges` tables.
@@ -390,7 +390,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.24/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.25/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -465,13 +465,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.24
+  - Manifest auto-updated; ensure your install path has v2.0.25
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.24 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.25 dir, restart Claude Code
 
 ## Where to next
 

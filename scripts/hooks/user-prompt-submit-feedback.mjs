@@ -88,7 +88,7 @@ ${pendingCount} unresolved prior entr${pendingCount === 1 ? 'y' : 'ies'} still o
 
 ${blocks}
 
-INVOKE the \`supervibe:browser-feedback\` skill to triage and respond. After applying or rejecting a fix, run \`node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution <path>\` or \`--reject <id>\` so resolved feedback stops resurfacing.
+INVOKE the \`supervibe:browser-feedback\` skill to triage and respond. After applying or rejecting a fix, run \`node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution <path>\` or \`--reject <id>\` so resolved feedback stops resurfacing.
 </system-reminder>`;
 
   process.stdout.write(JSON.stringify({

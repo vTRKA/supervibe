@@ -91,7 +91,7 @@ export async function measureFootprint(root) {
 }
 
 async function main() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const { stats, violations } = await measureFootprint(root);
 
   console.log('=== Token footprint ===');

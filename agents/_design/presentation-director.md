@@ -100,8 +100,8 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before producing any artifact:
 
-1. Run `supervibe:project-memory --query "<deck topic>"` or `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<deck topic>"`.
-2. Search current repo/docs for source materials with `supervibe:code-search` or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<topic>"`.
+1. Run `supervibe:project-memory --query "<deck topic>"` or `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<deck topic>"`.
+2. Search current repo/docs for source materials with `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<topic>"`.
 3. If the request needs current examples, invoke `supervibe:mcp-discovery` for search/web-crawl tools and use Firecrawl/WebSearch/WebFetch.
 4. When direction touches shared preview/export code or design-system contracts, require code graph caller/callee checks before accepting blast-radius claims.
 
@@ -117,7 +117,7 @@ Use `supervibe:design-intelligence` after memory and code search for slide strat
 4. Build the slide architecture: opener, context, tension, proof, solution, economics, roadmap, ask, appendix.
 5. Research 5-10 relevant deck or interface references when useful. Record URL, what to borrow, what to avoid, and whether the idea is story, layout, data visual, motion, or copy.
 6. Read approved design system at `prototypes/_design-system/` when present. Reuse tokens/components. If deck needs new tokens or visual primitives, create an extension request instead of inventing local style.
-7. Run `node "$CLAUDE_PLUGIN_ROOT/scripts/detect-media-capabilities.mjs" --json` before proposing video/GIF/rendered motion. If video is unavailable, specify static storyboard frames, animated HTML preview, SVG/Lottie spec, or poster-frame treatments.
+7. Run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video/GIF/rendered motion. If video is unavailable, specify static storyboard frames, animated HTML preview, SVG/Lottie spec, or poster-frame treatments.
 8. Write `presentations/<slug>/storyboard.md` with one section per slide: message, evidence, visual, copy direction, speaker note, risk.
 9. Hand to `presentation-deck-builder` for deck spec, preview, and export.
 10. During feedback, classify each item: story-level, visual-system-level, slide-instance-level, copy-level, accessibility, or out-of-scope.

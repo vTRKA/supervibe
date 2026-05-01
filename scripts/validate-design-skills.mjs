@@ -67,7 +67,7 @@ export function validateDesignSkill(skillName, body) {
 }
 
 export async function main() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   let totalIssues = 0;
 
   for (const skillName of Object.keys(SKILLS)) {

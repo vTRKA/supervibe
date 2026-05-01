@@ -33,7 +33,7 @@ This skill replaces blind grep. It surfaces conceptually-related code even when 
 ## Step 0 — Read source of truth (required)
 
 1. Verify code index exists: `.supervibe/memory/code.db`
-2. If missing → run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs` first
+2. If missing → run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs` first
 3. If memory watcher is running, file changes are auto-indexed; otherwise re-run after edits
 
 ## Decision tree
@@ -52,10 +52,10 @@ What's the search intent?
 
 ## Procedure
 
-1. Verify index fresh: `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs` (or rely on SessionStart banner)
+1. Verify index fresh: `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs` (or rely on SessionStart banner)
 2. Pick mode from decision tree
-3. **Semantic**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<text>" [--lang <lang>] [--limit 10]`
-4. **Graph — callers/callees**: `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` (or --callees)
+3. **Semantic**: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<text>" [--lang <lang>] [--limit 10]`
+4. **Graph — callers/callees**: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` (or --callees)
 5. **Graph — neighborhood**: `... --neighbors "<symbol>" --depth <1-3>`
 6. **Graph — top symbols**: `... --top-symbols 20 [--kind class]` for orientation in unfamiliar code
 7. **Hybrid (recommended for refactor / impact analysis)**:

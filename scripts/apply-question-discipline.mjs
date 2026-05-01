@@ -84,7 +84,7 @@ function injectAntiPattern(body) {
 }
 
 async function main() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+  const root = process.env.SUPERVIBE_PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
   const agentsDir = join(root, 'agents');
   const files = await walk(agentsDir);
   let modified = 0;

@@ -97,7 +97,7 @@ async function main() {
   }
 
   // Emit advisory — does NOT block. Agent sees the reminder and decides.
-  const reason = `[supervibe] refactor advisory: this Edit removes/renames symbols [${refactor.symbols.join(', ')}] in ${refactor.file}. Per rule use-codegraph-before-refactor: BEFORE applying, run \`node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers <symbol>\` and cite Case A/B/C in your output. Skipping this on a structural change FAILS the agent-delivery rubric (graph-evidence-when-applicable dimension).`;
+  const reason = `[supervibe] refactor advisory: this Edit removes/renames symbols [${refactor.symbols.join(', ')}] in ${refactor.file}. Per rule use-codegraph-before-refactor: BEFORE applying, run \`node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers <symbol>\` and cite Case A/B/C in your output. Skipping this on a structural change FAILS the agent-delivery rubric (graph-evidence-when-applicable dimension).`;
 
   // Use systemMessage to surface to user without blocking; agent reads next turn
   process.stdout.write(JSON.stringify({

@@ -19,7 +19,7 @@ If `.claude/` does not exist yet, this command must create it.
 
 ## Implementation reference
 
-The append/read/rate-compute logic is implemented in `$CLAUDE_PLUGIN_ROOT/scripts/lib/append-override-log.mjs` and tested by `tests/override-log-flow.test.mjs`. When this command executes, follow the schema and validation rules enforced by `appendOverrideEntry()` (required fields, minimum reason length).
+The append/read/rate-compute logic is implemented in `<resolved-supervibe-plugin-root>/scripts/lib/append-override-log.mjs` and tested by `tests/override-log-flow.test.mjs`. When this command executes, follow the schema and validation rules enforced by `appendOverrideEntry()` (required fields, minimum reason length).
 
 ## When this is appropriate
 

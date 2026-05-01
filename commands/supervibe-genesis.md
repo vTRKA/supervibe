@@ -14,6 +14,14 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 Default behavior: choose the safest minimal profile, no add-ons, dry-run only until the user approves. Free-form path: the user can name exact agents, rules, host files, or stack constraints instead of choosing a listed profile.
 
+User-facing transparency is part of the command, not optional polish. Before asking for approval, show:
+- the host adapter chosen and why;
+- the detected stack evidence;
+- the selected agent groups;
+- each selected agent with a one-line responsibility from `docs/agent-roster.md` / `scripts/lib/supervibe-agent-roster.mjs`;
+- which rules, skills, memory/index files and host instruction files will be created or updated;
+- how to update these artifacts later with `/supervibe-update` + `/supervibe-adapt`.
+
 Tool metadata contract: `/supervibe-genesis` exposes stable aliases, input shape, host/context requirements, token-cost hint, write side-effect level and dry-run approval policy through `scripts/lib/supervibe-tool-metadata-contract.mjs`; route only the intent-scoped metadata needed for the current setup.
 
 After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
@@ -57,10 +65,11 @@ Scenario evals assert this post-delivery menu and persisted command state via
    New high-risk or specialized agents are never copied into a project silently. They must be selected through an add-on or `custom`.
 
 5. **Match a stack-pack.** Invoke the `supervibe:genesis` skill with the fingerprint + selected profile. The skill:
-   - Looks for an exact pack in `$CLAUDE_PLUGIN_ROOT/stack-packs/` (e.g. `laravel-nextjs-postgres-redis`).
+   - Looks for an exact pack in the resolved Supervibe plugin root under `stack-packs/` (e.g. `laravel-nextjs-postgres-redis`).
    - If no exact match — composes from `stack-packs/_atomic/` per its decision tree, scoring the composition against `confidence-rubrics/scaffold.yaml`.
 
 5a. **Explain index privacy policy.** Before dry-run file output, summarize skipped classes (`generated`, `binary`, `archive`, `secret-like`, `local-config`) using `node scripts/supervibe-status.mjs --index-policy-diagnostics`; never print secret values.
+   Also point to `.supervibe/memory/index-config.json`: user exclusions there hide files from Code RAG + Code Graph, while privacy blocks for secrets, archives, binaries and local config always win.
 
 6. **Apply scaffold (with diff gate).** Before any write, present a file-by-file diff for the selected host adapter:
    - `<adapter agents folder>` — copies of profile-selected agents only
@@ -76,7 +85,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
-8. **Initialize and verify indexes.** From the target project root, run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` before the final status check. For large projects, execute this with no fixed total timeout; the indexer logs progress periodically and may take as long as the project needs. If embeddings are suspected to be the slow part, run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health --no-embeddings` as a BM25-only source-readiness fallback, then re-run the full index when time allows. Graph warning output is not a genesis failure when source RAG coverage is healthy; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
+8. **Initialize and verify indexes.** From the target project root, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` before the final status check. For large projects, execute this with no fixed total timeout; the indexer logs progress periodically and may take as long as the project needs. If embeddings are suspected to be the slow part, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health --no-embeddings` as a BM25-only source-readiness fallback, then re-run the full index when time allows. Graph warning output is not a genesis failure when source RAG coverage is healthy; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`. The banner should show fresh code RAG + graph counts for the project and `SUPERVIBE_INDEX_CONFIG` with `REFRESH_INTERVAL: 5m`.
 
 8a. **Keep app builds separate.** Do not use application build scripts, framework builds, or other application verification commands as proof that genesis itself succeeded unless the user explicitly asked for that verification or the selected stack-pack lists it as a required post-genesis check. If an application build is run and fails in pre-existing project code, report it as `Project verification failed after genesis` with the command, exit code, and repo-relative error paths only. Do not include absolute local paths, project names, or claim the failure is unrelated unless a pre-genesis baseline proves it.
 
@@ -87,9 +96,10 @@ Detected stack:    <fingerprint summary>
 Pack chosen:       <pack name>  (composition score: X.X/10)
 Install profile:   <minimal | product-design | full-stack | research-heavy | custom>
 Add-ons:           <none | security-audit | ai-prompting | project-adaptation | network-ops | custom list>
+Agent roles:       <agent id -> responsibility list or docs/agent-roster.md reference>
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
-Next:              open the project, restart your AI CLI, watch for [evolve] welcome banner
+Next:              open the project, restart your AI CLI, watch for [supervibe] welcome banner; after plugin updates use /supervibe-update then /supervibe-adapt
 ```
 
 ## When NOT to invoke

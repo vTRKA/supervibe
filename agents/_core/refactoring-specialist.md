@@ -149,18 +149,18 @@ Need to know who/what depends on a symbol?
 
 Before producing any artifact or making any structural recommendation:
 
-**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node $CLAUDE_PLUGIN_ROOT/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
+**Step 1: Memory pre-flight.** Run `supervibe:project-memory --query "<topic>"` (or via `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<topic>"`). If matches found, cite them in your output ("prior work: <path>") OR explicitly state why they don't apply. Avoids re-deriving prior decisions.
 
-**Step 2: Code search.** Run `supervibe:code-search` (or `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
+**Step 2: Code search.** Run `supervibe:code-search` (or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"`) to find existing patterns/implementations in the codebase. Read top-3 results before writing new code. Mention what was found.
 
-**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
+**Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
 ## Procedure
 
 1. **Read `CLAUDE.md`** — capture build/test/lint commands, conventions, declared "do not touch" zones, hot-path warnings
 2. **Invoke `supervibe:project-memory`** — search `.supervibe/memory/refactors/` and `.supervibe/memory/decisions/` for prior attempts, abandoned ideas, and explicit "rejected: see incident" notes against the symbol or module being touched
 2.5 **Pre-refactor blast-radius check** — for ANY rename/extract/move/inline:
-   `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` then `--neighbors "<symbol>" --depth 2`.
+   `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` then `--neighbors "<symbol>" --depth 2`.
    Read all caller file:line refs. If callers > 10 OR neighborhood touches multiple modules → escalate to architect-reviewer before proceeding.
 3. **Name the smell explicitly** — "function `processOrder` is 180 lines mixing IO, validation, and pricing"; reject vague triggers like "this feels off"
 4. **Invoke `supervibe:code-search`** to map blast radius:

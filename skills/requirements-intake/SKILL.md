@@ -56,7 +56,7 @@ Complexity signals:
 5. **Ask one question at a time** — multiple-choice when possible
 6. **Build requirements-spec** with: objective, scope (in/out), Scope Safety Gate, acceptance criteria, edge cases, stakeholders, complexity score
 7. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
-8. **Machine-validate intake artifact** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
+8. **Machine-validate intake artifact** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
 9. **If <9** → continue questioning to fill gaps; loop until ≥9
 10. **Compute complexity** using signals table above
 11. **Decide handoff**: brainstorming / writing-plans / executing-plans
@@ -85,7 +85,7 @@ Returns:
 ## Verification
 
 - Spec file exists with complexity score
-- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
+- `node "<resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs" --file <spec>` exits 0
 - Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence and complexity cost
 - Score ≥9 recorded
 - Next-skill recommendation is one of: brainstorming, writing-plans, executing-plans

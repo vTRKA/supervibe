@@ -61,7 +61,7 @@ Per task: TDD applicable?
    - Commit step (or note if commits suppressed)
 7. **Final 10/10 acceptance gate** — define exact evidence needed to call the work production-ready; include "no open blockers" and plan reread requirements.
 8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, SDLC completeness, production-readiness coverage.
-9. **Machine-validate plan** — run `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
+9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
@@ -103,7 +103,7 @@ END_NEXT_STEP_HANDOFF
 ## Verification
 
 - Plan file exists at documented path
-- `node "$CLAUDE_PLUGIN_ROOT/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0
+- `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0
 - Scope Safety Gate lists approved, deferred, and rejected scope with tradeoffs
 - Spec coverage matrix maps every spec section to ≥1 task
 - Confidence-scoring(implementation-plan) ≥9 recorded
