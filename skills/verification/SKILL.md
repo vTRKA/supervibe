@@ -71,6 +71,15 @@ Returns:
 
 If verdict is `FAIL`, the calling agent MUST NOT proceed with the claim.
 
+## Failure Reporting Discipline
+
+When verification is run after scaffold/genesis/adapt work, keep tool verification separate from project application health:
+
+- If the Supervibe/index/status command passes but an application build/typecheck fails, do not downgrade the scaffold/index claim. Report a separate `Project verification failed after genesis` section.
+- Include the command, exit code, and the failing repo-relative file paths and TypeScript/lint/test diagnostics needed for the user to act.
+- Do not include absolute local paths, machine usernames, or project names in user-facing summaries, commits, changelogs, memories, or release notes.
+- Do not say a failure is "unrelated" unless you captured a pre-change baseline showing the same failure before the Supervibe action. Prefer "separate existing project verification failure" when the evidence is only that the failing files were outside the changed Supervibe scaffold surface.
+
 ## Guard rails
 
 - DO NOT: claim a thing works without running the command

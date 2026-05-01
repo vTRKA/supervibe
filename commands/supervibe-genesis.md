@@ -78,6 +78,8 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 8. **Initialize and verify indexes.** From the target project root, run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` before the final status check, then run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
 
+8a. **Keep app builds separate.** Do not use application build scripts, framework builds, or other application verification commands as proof that genesis itself succeeded unless the user explicitly asked for that verification or the selected stack-pack lists it as a required post-genesis check. If an application build is run and fails in pre-existing project code, report it as `Project verification failed after genesis` with the command, exit code, and repo-relative error paths only. Do not include absolute local paths, project names, or claim the failure is unrelated unless a pre-genesis baseline proves it.
+
 ## Output contract
 
 ```

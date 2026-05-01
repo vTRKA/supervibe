@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.22] - 2026-05-01
+
+### Fixed
+
+- Clarified genesis verification so Code RAG/status success is not conflated
+  with application build/typecheck failures from existing project code.
+- Required post-genesis build failure summaries to use repo-relative paths and
+  avoid leaking local project identity in user-facing artifacts.
+
+### Added
+
+- Added regression coverage for privacy-safe verification failure reporting.
+
 ## [2.0.21] - 2026-05-01
 
 ### Fixed

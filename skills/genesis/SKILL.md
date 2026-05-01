@@ -86,6 +86,7 @@ Match exact pack?
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
 13. Run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check.
+13a. Keep app builds separate from genesis success. Only run `npm run build` or equivalent when the user explicitly asks or the stack-pack marks it as a required post-genesis check. If it fails in existing project code, report `Project verification failed after genesis` with command, exit code, and repo-relative error paths only; do not include absolute local paths, project names, or call it unrelated without a captured pre-genesis baseline.
 14. If <9 → list gaps, ask user to confirm or remediate
 
 ## Output contract
