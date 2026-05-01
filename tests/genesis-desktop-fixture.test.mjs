@@ -181,6 +181,6 @@ test("full genesis dry run includes host adapter, context migration and agent pr
     assert.match(formatGenesisDryRunReport(report), /SUPERVIBE_GENESIS_DRY_RUN/);
     assert.match(formatGenesisDryRunReport(report), /SELECTED_RULES:/);
     assert.match(formatGenesisDryRunReport(report), /SELECTED_SKILLS:/);
-    assert.match(formatGenesisDryRunReport(report), /build-code-index\.mjs --root \. --force --health/);
+    assert.match(formatGenesisDryRunReport(report), /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
   });
 });

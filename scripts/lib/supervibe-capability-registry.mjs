@@ -79,7 +79,8 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     verificationHooks: [
       "node scripts/supervibe-status.mjs --index-health --strict-index-health --no-gc-hints",
       "node scripts/build-code-index.mjs --root . --list-missing",
-      "node scripts/build-code-index.mjs --root . --resume --health --no-embeddings",
+      "node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health",
+      "node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health",
     ],
   },
   {

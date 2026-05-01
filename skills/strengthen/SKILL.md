@@ -40,7 +40,7 @@ After every material delivery, ask one explicit next-step question about the str
 3. Read recent commits for active patterns
 4. Read `.supervibe/confidence-log.jsonl` for override patterns
 5. Read `.supervibe/memory/effectiveness.jsonl` for agent failure patterns
-6. If audit flagged code index health, run `node scripts/build-code-index.mjs --root . --list-missing`, then `node scripts/build-code-index.mjs --root . --resume --health --no-embeddings` for source-readiness repair or `node scripts/build-code-index.mjs --root . --force --health` for a full rebuild, and re-check with `node scripts/supervibe-status.mjs --index-health --no-gc-hints`
+6. If audit flagged code index health, run `node scripts/build-code-index.mjs --root . --list-missing`, then `node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health` for source-readiness repair or `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` for graph repair, and re-check with `node scripts/supervibe-status.mjs --index-health --no-gc-hints`
 7. Run or consult `node scripts/supervibe-status.mjs --capabilities` before editing agents, rules, commands or skills so every strengthened artifact stays linked to a capability and verification hook.
 
 ## Decision tree (researcher consultation)
@@ -76,7 +76,7 @@ Artifact is stale (last-verified >90d)?
    i. Update `verified-against` (current commit hash)
    j. If researcher consulted: cite source in artifact footer
 2. For code-index health findings:
-   a. Repair partial coverage with `node scripts/build-code-index.mjs --root . --resume --health --no-embeddings`; use `--force --health` only for a deliberate full rebuild
+   a. Repair partial source coverage with `node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health`; use `--force --health` only for a deliberate full rebuild
    b. Confirm `SUPERVIBE_INDEX_GATE READY: true`
    c. If generated leakage or stale rows remain, inspect `--explain-policy` before editing source rules
 3. Score each strengthened artifact with confidence-scoring (≥9 required)

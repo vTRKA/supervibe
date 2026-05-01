@@ -262,8 +262,9 @@ export function evaluateIndexHealthGate(health = {}, {
     sourceCoverage,
     failedGates,
     warnings,
-    repairCommand: 'node scripts/build-code-index.mjs --root . --force --health',
-    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --resume --health --no-embeddings',
+    repairCommand: 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress',
+    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress',
+    graphRepairCommand: 'node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --max-seconds 120 --health --json-progress',
   };
 }
 
@@ -279,8 +280,9 @@ export function formatIndexHealthGate(gate = {}) {
     `SOURCE_COVERAGE: ${coverage}`,
     `FAILED: ${failed}`,
     `WARNINGS: ${warnings}`,
-    `REPAIR: ${gate.repairCommand || 'node scripts/build-code-index.mjs --root . --force --health'}`,
-    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --resume --health --no-embeddings'}`,
+    `REPAIR: ${gate.repairCommand || 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress'}`,
+    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress'}`,
+    `GRAPH_REPAIR: ${gate.graphRepairCommand || 'node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --max-seconds 120 --health --json-progress'}`,
   ].join('\n');
 }
 

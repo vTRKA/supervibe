@@ -58,8 +58,9 @@ Audit is read-only and non-interactive by default. No-prompt path: run the audit
 - READY: true|false
 - SOURCE_COVERAGE: indexed/eligible (%)
 - FAILED: source-coverage, generated-leakage, stale-rows, symbol-coverage, symbol-quality
-- Repair partial coverage: `node scripts/build-code-index.mjs --root . --list-missing` then `node scripts/build-code-index.mjs --root . --resume --health --no-embeddings`
-- Full rebuild: `node scripts/build-code-index.mjs --root . --force --health`
+- Repair partial source coverage: `node scripts/build-code-index.mjs --root . --list-missing` then `node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health`
+- Graph repair: `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`
+- Full rebuild: use `--force --health` only when incremental repair cannot explain the index state
 ### Weak Artifacts (N)
 - ...
 ### Stale Verifications (N)

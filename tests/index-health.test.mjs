@@ -55,7 +55,9 @@ test('index health gate does not mark unhealthy index as ready', async () => {
   assert.equal(gate.ready, false, 'status marked unhealthy index as ready');
   assert.ok(gate.failedGates.some((item) => item.code === 'source-coverage'));
   assert.ok(gate.failedGates.some((item) => item.code === 'generated-leakage'));
-  assert.match(gate.repairCommand, /build-code-index\.mjs --root \. --force --health/);
+  assert.match(gate.repairCommand, /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
+  assert.doesNotMatch(gate.repairCommand, /--force/);
+  assert.match(gate.graphRepairCommand, /build-code-index\.mjs --root \. --resume --graph --max-files 200 --max-seconds 120 --health --json-progress/);
 });
 
 test('graph-only symbol degradation warns by default but fails strict graph gate', () => {

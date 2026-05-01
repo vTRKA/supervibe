@@ -20,7 +20,7 @@ Diagnostics:
 node scripts/supervibe-status.mjs --index-policy-diagnostics
 node scripts/build-code-index.mjs --root . --explain-policy
 node scripts/build-code-index.mjs --root . --list-missing
-node scripts/build-code-index.mjs --root . --resume --health --no-embeddings
+node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health
 ```
 
 Genesis and audit output should explain skipped classes by path and reason

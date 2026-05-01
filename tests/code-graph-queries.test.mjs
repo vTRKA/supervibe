@@ -85,3 +85,75 @@ test('findCallers by full symbol ID disambiguates', () => {
   // Without disambiguation we'd see both files' gamma callers; with ID we see only this one's
   assert.ok(Array.isArray(callersOfThatGamma));
 });
+
+test('Python relative imports resolve calls across files', async () => {
+  const root = join(tmpdir(), `supervibe-python-graph-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await mkdir(join(root, 'app', 'routes'), { recursive: true });
+  await writeFile(join(root, 'app', 'routes', 'users.py'), `
+from .services import fetch_users
+
+def list_users():
+    return fetch_users()
+`);
+  await writeFile(join(root, 'app', 'routes', 'services.py'), `
+def fetch_users():
+    return []
+`);
+  await writeFile(join(root, 'app', 'routes', 'other.py'), `
+def fetch_users():
+    return ["wrong"]
+`);
+
+  const pyStore = new CodeStore(root, { useEmbeddings: false });
+  await pyStore.init();
+  try {
+    await pyStore.indexAll(root);
+    const row = pyStore.db.prepare(`
+      SELECT e.to_id AS toId
+      FROM code_edges e
+      JOIN code_symbols s ON s.id = e.from_id
+      WHERE s.name = 'list_users' AND e.to_name = 'fetch_users'
+    `).get();
+    assert.ok(row?.toId?.includes('app/routes/services.py:function:fetch_users'), `expected resolved Python edge, got ${row?.toId || 'null'}`);
+  } finally {
+    pyStore.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('Rust crate imports disambiguate same-name function calls across files', async () => {
+  const root = join(tmpdir(), `supervibe-rust-graph-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await mkdir(join(root, 'src'), { recursive: true });
+  await writeFile(join(root, 'src', 'main.rs'), `
+mod services;
+mod other;
+
+use crate::services::fetch_user;
+
+pub fn load() {
+    fetch_user();
+}
+`);
+  await writeFile(join(root, 'src', 'services.rs'), `
+pub fn fetch_user() {}
+`);
+  await writeFile(join(root, 'src', 'other.rs'), `
+pub fn fetch_user() {}
+`);
+
+  const rustStore = new CodeStore(root, { useEmbeddings: false });
+  await rustStore.init();
+  try {
+    await rustStore.indexAll(root);
+    const row = rustStore.db.prepare(`
+      SELECT e.to_id AS toId
+      FROM code_edges e
+      JOIN code_symbols s ON s.id = e.from_id
+      WHERE s.name = 'load' AND e.to_name = 'fetch_user'
+    `).get();
+    assert.ok(row?.toId?.includes('src/services.rs:function:fetch_user'), `expected Rust edge to services.rs, got ${row?.toId || 'null'}`);
+  } finally {
+    rustStore.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

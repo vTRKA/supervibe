@@ -77,7 +77,7 @@ function isExternalImportSource(importSource, language) {
     return true;
   }
   if (language === 'python') {
-    return !importSource.startsWith('.') && !importSource.includes('.');
+    return !importSource.startsWith('.') && !importSource.includes('.') && !importSource.includes('/');
   }
   return false;
 }
@@ -133,6 +133,14 @@ function buildImportMapForFile({ content, relPath, language, fileSet }) {
         });
       }
     }
+  } else if (language === 'rust') {
+    const useRe = /^\s*use\s+([^;]+);/gm;
+    let match;
+    while ((match = useRe.exec(content)) !== null) {
+      for (const entry of parseRustUseEntries(match[1], relPath)) {
+        add(entry);
+      }
+    }
   } else if (language === 'php') {
     const useRe = /^\s*use\s+([^;]+);/gm;
     let match;
@@ -147,6 +155,73 @@ function buildImportMapForFile({ content, relPath, language, fileSet }) {
   }
 
   return mappings;
+}
+
+function parseRustUseEntries(rawUse, fromRelPath) {
+  const text = String(rawUse || '').trim();
+  if (!text) return [];
+  const entries = [];
+  const brace = text.match(/^(.*)::\{(.+)\}$/s);
+  if (brace) {
+    const prefix = brace[1].trim();
+    const names = brace[2].split(',').map((part) => part.trim()).filter(Boolean);
+    for (const namePart of names) {
+      if (namePart === 'self' || namePart === '*') continue;
+      const alias = namePart.match(/^(\w+)\s+as\s+(\w+)$/);
+      const exportedName = alias ? alias[1] : namePart;
+      const localName = alias ? alias[2] : namePart;
+      const source = rustModuleToPath(prefix, fromRelPath);
+      if (source) entries.push({ localName, exportedName, source });
+    }
+    return entries;
+  }
+
+  const alias = text.match(/^(.*)::(\w+)\s+as\s+(\w+)$/);
+  if (alias) {
+    const source = rustModuleToPath(alias[1], fromRelPath);
+    if (source) entries.push({ localName: alias[3], exportedName: alias[2], source });
+    return entries;
+  }
+
+  const simple = text.match(/^(.*)::(\w+)$/);
+  if (simple) {
+    const source = rustModuleToPath(simple[1], fromRelPath);
+    if (source) entries.push({ localName: simple[2], exportedName: simple[2], source });
+    return entries;
+  }
+
+  return entries;
+}
+
+function rustModuleToPath(moduleName, fromRelPath) {
+  const parts = String(moduleName || '').split('::').filter(Boolean);
+  if (parts.length === 0) return null;
+  const relParts = normalizeRelPath(fromRelPath).split('/').filter(Boolean);
+  const fileDir = dirname(fromRelPath);
+  const head = parts[0];
+
+  if (head === 'crate') {
+    const srcIndex = relParts.lastIndexOf('src');
+    const crateRoot = srcIndex >= 0 ? relParts.slice(0, srcIndex + 1).join('/') : fileDir;
+    const rest = parts.slice(1);
+    return normalizeRelPath([crateRoot, ...rest].filter(Boolean).join('/'));
+  }
+
+  if (head === 'self') {
+    return normalizeRelPath([fileDir, ...parts.slice(1)].filter(Boolean).join('/'));
+  }
+
+  if (head === 'super') {
+    let base = fileDir;
+    let index = 0;
+    while (parts[index] === 'super') {
+      base = dirname(base);
+      index += 1;
+    }
+    return normalizeRelPath([base, ...parts.slice(index)].filter(Boolean).join('/'));
+  }
+
+  return normalizeRelPath([fileDir, ...parts].filter(Boolean).join('/'));
 }
 
 function pythonModuleToPath(moduleName, fromRelPath) {
@@ -569,11 +644,15 @@ export class CodeStore {
   }
 
   /** Walk project directory, index all supported files. */
-  async indexAll(rootDir, { onProgress = null, force = false } = {}) {
+  async indexAll(rootDir, { onProgress = null, force = false, shouldStop = null } = {}) {
     const inventory = await discoverSourceFiles(rootDir);
-    const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0 };
+    const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0, processed: 0, bounded: false };
     onProgress?.({ phase: 'discovered', total: inventory.files.length });
     for (const [index, file] of inventory.files.entries()) {
+      if (index > 0 && shouldStop?.()) {
+        counts.bounded = true;
+        break;
+      }
       onProgress?.({
         phase: 'file-start',
         current: index + 1,
@@ -595,6 +674,7 @@ export class CodeStore {
       } catch {
         counts.errors++;
       }
+      counts.processed = index + 1;
       onProgress?.({
         phase: 'file',
         current: index + 1,
@@ -604,12 +684,21 @@ export class CodeStore {
         skipped: counts.skipped,
         errors: counts.errors,
       });
+      if (shouldStop?.()) {
+        counts.bounded = true;
+        break;
+      }
     }
-    const prune = await this.pruneToInventory(inventory, rootDir);
-    counts.pruned = prune.removed;
-    onProgress?.({ phase: 'resolving-edges', total: inventory.files.length });
-    // Phase D: resolve cross-file edges after full pass
-    counts.edgesResolved = this.resolveAllEdges({ onProgress });
+    if (!counts.bounded) {
+      const prune = await this.pruneToInventory(inventory, rootDir);
+      counts.pruned = prune.removed;
+      onProgress?.({ phase: 'resolving-edges', total: inventory.files.length });
+      // Phase D: resolve cross-file edges after full pass
+      counts.edgesResolved = this.resolveAllEdges({ onProgress });
+    } else {
+      counts.edgesResolved = 0;
+      onProgress?.({ phase: 'bounded-timeout', current: counts.processed, total: inventory.files.length, ...counts });
+    }
     onProgress?.({ phase: 'done', total: inventory.files.length, ...counts });
     return counts;
   }
@@ -619,10 +708,14 @@ export class CodeStore {
   }
 
   /** Index a specific list of absolute file paths (lazy mode). */
-  async indexFiles(absPaths, { onProgress = null, force = false } = {}) {
-    const counts = { indexed: 0, skipped: 0, errors: 0 };
+  async indexFiles(absPaths, { onProgress = null, force = false, shouldStop = null } = {}) {
+    const counts = { indexed: 0, skipped: 0, errors: 0, discovered: absPaths.length, processed: 0, bounded: false };
     onProgress?.({ phase: 'discovered', total: absPaths.length });
     for (const [index, absPath] of absPaths.entries()) {
+      if (index > 0 && shouldStop?.()) {
+        counts.bounded = true;
+        break;
+      }
       onProgress?.({
         phase: 'file-start',
         current: index + 1,
@@ -641,6 +734,7 @@ export class CodeStore {
         });
         if (r.indexed) counts.indexed++; else counts.skipped++;
       } catch { counts.errors++; }
+      counts.processed = index + 1;
       onProgress?.({
         phase: 'file',
         current: index + 1,
@@ -650,9 +744,18 @@ export class CodeStore {
         skipped: counts.skipped,
         errors: counts.errors,
       });
+      if (shouldStop?.()) {
+        counts.bounded = true;
+        break;
+      }
     }
-    onProgress?.({ phase: 'resolving-edges', total: absPaths.length });
-    counts.edgesResolved = this.resolveAllEdges({ onProgress });
+    if (!counts.bounded) {
+      onProgress?.({ phase: 'resolving-edges', total: absPaths.length });
+      counts.edgesResolved = this.resolveAllEdges({ onProgress });
+    } else {
+      counts.edgesResolved = 0;
+      onProgress?.({ phase: 'bounded-timeout', current: counts.processed, total: absPaths.length, ...counts });
+    }
     onProgress?.({ phase: 'done', total: absPaths.length, ...counts });
     return counts;
   }

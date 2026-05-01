@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.28] - 2026-05-02
+
+### Added
+
+- Added bounded code indexing with `--max-seconds`, `--source-only`, and
+  `--json-progress`, including per-file checkpoint persistence.
+
+### Changed
+
+- Changed default index repair guidance to source-first bounded batches, with
+  graph catch-up handled separately through `--resume --graph --max-files`.
+- Changed resume planning to prioritize missing rows before stale hash scans.
+
+### Fixed
+
+- Fixed Rust crate import edge resolution for ambiguous same-name functions.
+- Fixed Python path-style relative import resolution for ambiguous same-name
+  functions.
+
 ## [2.0.27] - 2026-05-02
 
 ### Added

@@ -415,7 +415,7 @@ async function main() {
     console.log(color(`  Source coverage: ${coverageSummary}`, codeRagReady ? 'dim' : 'yellow'));
     console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
     if (graphNotBuilt) {
-      console.log(color('  Graph note: run `node scripts/build-code-index.mjs --root . --force --health --graph` when graph data is needed.', 'yellow'));
+      console.log(color('  Graph note: run `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` when graph data is needed.', 'yellow'));
     }
     if (graphWarnings.has('cross-resolution')) {
       console.log(color('  Graph warning: cross-file edge resolution is low; source RAG can still be ready.', 'yellow'));

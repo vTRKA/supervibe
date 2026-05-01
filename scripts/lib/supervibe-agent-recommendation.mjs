@@ -330,16 +330,16 @@ export function buildGenesisDryRunReport({
     scaffoldArtifacts: scaffoldPlan.files,
     postApplyCommands: [
       {
-        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health",
-        reason: "initialize Code RAG + Graph with heartbeat/progress logging, single-run lock, and no fixed total timeout before status verification",
+        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress",
+        reason: "initialize source RAG in bounded atomic batches with JSON progress, checkpoints, and a single-run lock before status verification",
       },
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing",
         reason: "inspect partial index gaps after an interrupted large-project indexing run",
       },
       {
-        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --health --no-embeddings",
-        reason: "repair only missing/stale files in BM25 source-readiness mode when full semantic indexing is too slow",
+        command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health",
+        reason: "build or repair Code Graph separately after source RAG is healthy",
       },
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs",

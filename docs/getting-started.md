@@ -70,17 +70,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.27
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.28
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.27
-xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.27"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.28
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.28"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.27
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.28
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.27" "C:\path\to\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.28" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.27/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.28/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -238,15 +238,15 @@ node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs
 Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
 
 ```bash
-# One-time full index (after install or major refactor)
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health
+# Source RAG readiness after install or on a large existing project
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 
-# BM25-only source-readiness fallback when embeddings are the slow part
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --health --no-embeddings
+# Build or repair Code Graph separately after source coverage is healthy
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health
 
 # Inspect and batch-repair partial indexes after an abort/timeout
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --max-files 200 --health --no-embeddings
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 
 # Manual semantic search (optional — agents auto-invoke this)
 node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "where authentication is handled"
@@ -257,7 +257,7 @@ node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --context "auth lo
 
 **What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `bower_components/`, `site-packages/`, `dist/`, `.next/`, `.nuxt/`, `.svelte-kit/`, `__pycache__/`, `Pods/`, `bin/`, `obj/`, and generated/cache folders.
 
-**Large projects:** the indexer has no fixed total timeout, blocks duplicate runs with `.supervibe/memory/code-index.lock`, and prints heartbeat lines with stage/current file/progress (`SUPERVIBE_INDEX_HEARTBEAT_SECONDS` or `--heartbeat-seconds`). Tune completed-file progress with `SUPERVIBE_INDEX_PROGRESS_EVERY` or `--progress-every`. Graph warnings do not fail default source RAG readiness when source coverage is healthy; `--strict-index-health` is for explicit graph audits.
+**Large projects:** use `--max-files` and `--max-seconds` for bounded atomic batches. The indexer blocks duplicate runs with `.supervibe/memory/code-index.lock`, removes stale locks whose PID is gone, prints heartbeat lines with stage/current file/progress (`SUPERVIBE_INDEX_HEARTBEAT_SECONDS` or `--heartbeat-seconds`), emits machine-readable `SUPERVIBE_INDEX_PROGRESS` lines with `--json-progress`, and persists `.supervibe/memory/code-index-checkpoint.json` after each file/batch. Tune completed-file progress with `SUPERVIBE_INDEX_PROGRESS_EVERY` or `--progress-every`. Graph warnings do not fail default source RAG readiness when source coverage is healthy; `--strict-index-health` is for explicit graph audits.
 
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
@@ -394,7 +394,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.27/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.28/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -469,13 +469,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.27
+  - Manifest auto-updated; ensure your install path has v2.0.28
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.27 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.28 dir, restart Claude Code
 
 ## Where to next
 
