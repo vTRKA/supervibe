@@ -16,5 +16,16 @@ test("scenario evals verify user-visible outcomes, not only intent labels", asyn
   for (const result of evaluation.results) {
     assert.equal(result.state.persistedBeforeWait, true, `${result.id} state was not persisted before wait`);
     assert.equal(result.state.claimsDoneWithoutChoice, false, `${result.id} claimed done without user choice`);
+    if (result.route.intent === "genesis_setup") {
+      const prompt = result.state.lastPostDeliveryPrompt;
+      const labels = (prompt?.choices || []).map((choice) => choice.label);
+
+      assert.equal(prompt?.context, "genesis_setup", `${result.id} did not use genesis dialogue context`);
+      assert.doesNotMatch(prompt?.prompt || "", /what should happen next|что делаем дальше/i, `${result.id} used a generic next-step prompt`);
+      assert.ok(
+        labels.includes("Apply scaffold") || labels.includes("Применить scaffold"),
+        `${result.id} did not expose a scaffold-specific apply action: ${labels.join(", ")}`
+      );
+    }
   }
 });

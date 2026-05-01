@@ -30,12 +30,12 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 Default behavior: produce a dry-run adaptation plan and do not edit artifacts until approval. Free-form path: the user can name exact agents, rules, skills, paths, or stack changes to include or exclude.
 
-After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
-- Apply / Применить - recommended when the adaptation plan looks right; apply it.
-- Revise / Доработать - user gives one focused change to the plan; apply one iteration.
-- Try another option / Другой вариант - produce another adaptation scope with explicit tradeoffs.
-- Review deeper / Проверить глубже - run audit or confidence scoring before applying.
-- Stop here / Остановиться - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question about the adaptation plan. Use language-matched, domain-specific labels; keep internal action ids only in saved state.
+- Apply adaptation / Применить адаптацию - recommended when the dry-run adaptation plan looks right; apply the selected artifact updates.
+- Adjust adaptation plan / Изменить план адаптации - user gives one focused agent, rule, skill, path or stack change; rebuild the dry-run without writing files.
+- Compare another scope / Сравнить другой scope - produce another adaptation scope with explicit tradeoffs.
+- Review adaptation deeper / Проверить адаптацию глубже - run audit or confidence scoring before applying.
+- Stop without adapting / Остановиться без адаптации - persist current state and exit without changing project artifacts.
 
 ## Step 0 — Read source of truth (required)
 

@@ -444,7 +444,7 @@ When clarification is required, ask one focused question per message. Match the 
 ```markdown
 **Step N/M:** <one focused question>
 
-- <Recommended action> (recommended) - <what happens and what it costs>
+- <Recommended action> (<recommended marker in the user's language>) - <what happens and what it costs>
 - <Second action> - <what happens and what it costs>
 - <Stop here> - <what is saved and what will not happen>
 

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   buildPostDeliveryQuestion,
@@ -9,7 +11,8 @@ import {
   formatTransparentStepQuestion,
   validateDialogueContract,
 } from '../scripts/lib/supervibe-dialogue-contract.mjs';
-import { collectDisciplineFiles } from '../scripts/validate-question-discipline.mjs';
+import { validateDialogueUx } from '../scripts/validate-dialogue-ux.mjs';
+import { checkAgentDiscipline, collectDisciplineFiles } from '../scripts/validate-question-discipline.mjs';
 
 test('dialogue contract reports missing single-question shape', () => {
   const issues = validateDialogueContract({
@@ -44,13 +47,39 @@ test('genesis skill records state artifact and post-delivery menu', async () => 
 });
 
 test('post-delivery question uses beginner-friendly labels instead of raw ids', () => {
-  const question = buildPostDeliveryQuestion({ nextQuestion: 'Следующий шаг - применить dry-run?' });
+  const question = buildPostDeliveryQuestion({
+    intent: 'delivery_control',
+    nextQuestion: 'Следующий шаг - применить dry-run?',
+  });
   const labels = question.choices.map((choice) => choice.label);
 
   assert.deepEqual(labels, ['Применить', 'Доработать', 'Другой вариант', 'Проверить глубже', 'Остановиться']);
   assert.equal(question.choices[0].recommended, true);
   assert.ok(question.choices.every((choice) => choice.label !== choice.id), 'visible labels must not equal internal ids');
-  assert.match(formatPostDeliveryQuestion(question), /Рекомендованный путь стоит первым/);
+  assert.match(formatPostDeliveryQuestion(question), /Рекомендуемый путь указан первым/);
+});
+
+test('genesis post-delivery question is scaffold-specific, not a generic next-step menu', () => {
+  const question = buildPostDeliveryQuestion({
+    intent: 'genesis_setup',
+    command: '/supervibe-genesis',
+    nextQuestion: 'Следующий шаг - применить dry-run?',
+  });
+  const labels = question.choices.map((choice) => choice.label);
+  const formatted = formatPostDeliveryQuestion(question);
+
+  assert.equal(question.context, 'genesis_setup');
+  assert.equal(question.prompt, 'Шаг 1/1: применяем Supervibe scaffold в проект или сначала меняем план установки?');
+  assert.doesNotMatch(question.prompt, /что делаем дальше/i);
+  assert.deepEqual(labels, [
+    'Применить scaffold',
+    'Изменить план установки',
+    'Сравнить другой набор',
+    'Проверить dry-run глубже',
+    'Остановиться без установки',
+  ]);
+  assert.match(formatted, /Применить scaffold \(рекомендуется\)/);
+  assert.doesNotMatch(formatted, /Применить \(recommended\)/);
 });
 
 test('transparent step questions expose why, decision, and skip assumption', () => {
@@ -93,6 +122,46 @@ test('dialogue contract rejects raw action-id delivery menus', () => {
 
   assert.ok(issues.some((issue) => issue.code === 'raw-action-id-menu'), JSON.stringify(issues));
   assert.ok(issues.some((issue) => issue.code === 'beginner-friendly-action-labels'), JSON.stringify(issues));
+});
+
+test('question discipline rejects hardcoded English recommended marker in localized templates', () => {
+  const issues = checkAgentDiscipline('agents/_core/repo-researcher.md', {}, [
+    '## User dialogue discipline',
+    'When this agent must clarify with the user, ask one question per message and use outcome-oriented labels.',
+    '> **Step N/M:** <one focused question>',
+    '> - <Recommended action> (recommended) - <what happens and what it costs>',
+    '',
+    '## Anti-patterns',
+    '- `asking-multiple-questions-at-once`',
+  ].join('\n'));
+
+  assert.ok(
+    issues.some((issue) => issue.code === 'hardcoded-english-recommended-marker'),
+    JSON.stringify(issues)
+  );
+});
+
+test('dialogue UX validator rejects dry next-step handoff prompts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'supervibe-dialogue-ux-'));
+  await mkdir(join(root, 'commands'), { recursive: true });
+  await mkdir(join(root, 'agents'), { recursive: true });
+  await mkdir(join(root, 'rules'), { recursive: true });
+  await mkdir(join(root, 'scripts', 'lib'), { recursive: true });
+  await mkdir(join(root, 'skills'), { recursive: true });
+  await mkdir(join(root, 'templates'), { recursive: true });
+  await writeFile(join(root, 'commands', 'bad.md'), 'Question: Next step - write the plan. Proceed?\n', 'utf8');
+
+  const result = await validateDialogueUx(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'stale-next-step-handoff'), JSON.stringify(result.issues));
+});
+
+test('dialogue UX validator passes current tracked dialogue surfaces', async () => {
+  const result = await validateDialogueUx(process.cwd());
+
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.pass, true);
 });
 
 test('question discipline validator inspects commands and skills directories', async () => {

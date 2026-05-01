@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.27] - 2026-05-02
+
+### Added
+
+- Added `validate:dialogue-ux` to block stale handoff prompts such as
+  `Next step - ... Proceed?`, `Следующий шаг - ... Переходим?`, generic
+  Genesis next-step wording, and hardcoded English recommended markers.
+- Added a dialogue UX hardening TODO artifact with audited surfaces and
+  acceptance checks.
+
+### Changed
+
+- Reworked trigger, workflow, handoff, command, skill, and agent-template
+  dialogue prompts to use explicit `Step 1/1:` / `Шаг 1/1:` questions.
+- Changed design, adapt, strengthen, and Genesis delivery menus to use
+  domain-specific action labels instead of generic lifecycle wording.
+
+### Fixed
+
+- Fixed Genesis post-delivery UX so scaffold setup asks whether to apply the
+  Supervibe scaffold or adjust the install plan, with localized recommended
+  markers and scaffold-specific choices.
+
 ## [2.0.26] - 2026-05-02
 
 ### Added

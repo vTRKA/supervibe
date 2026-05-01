@@ -16,12 +16,12 @@ Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `prototype
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
-After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
-- Apply / Применить - recommended when the delivery looks right; move to the next lifecycle state.
-- Revise / Доработать - user gives one focused change; apply one iteration.
-- Try another option / Другой вариант - produce another option with explicit tradeoffs.
-- Review deeper / Проверить глубже - run the relevant review/check agents or validators before changing anything.
-- Stop here / Остановиться - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question about the design artifact. Use language-matched, domain-specific labels; keep internal action ids only in saved state.
+- Approve design / Утвердить дизайн - recommended when the current artifact looks right; move to the next lifecycle state.
+- Revise design / Доработать дизайн - user gives one focused visual, UX, content or accessibility change; apply one iteration.
+- Compare another direction / Сравнить другое направление - produce another design option with explicit tradeoffs.
+- Review design deeper / Проверить дизайн глубже - run the relevant review/check agents or validators before changing anything.
+- Stop and save design state / Остановиться и сохранить дизайн - persist current state and exit without claiming silent completion.
 
 ## Design Intelligence Integration
 

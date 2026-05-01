@@ -51,10 +51,10 @@ Security and network requests route through explicit safety boundaries:
 - router/server/network mutation -> ask for scoped approval; read-only until approved
 
 For workflow handoffs, ask the concrete next-step question instead of stopping at the previous phase:
-- Brainstorm ready: `Следующий шаг - написать план. Переходим?`
-- Plan ready: `Следующий шаг - review loop по плану. Переходим?`
-- Review passed: `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`
-- Epic run requested: `Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?`
+- Brainstorm ready: `Шаг 1/1: написать план?`
+- Plan ready: `Шаг 1/1: review loop по плану?`
+- Review passed: `Шаг 1/1: разбить план на атомарные work items и epic?`
+- Epic run requested: `Шаг 1/1: provider-safe preflight перед worktree/autonomous run?`
 - Work status question: route "what is ready?", "what is blocked?", "who owns this?", "what changed?", and "what should I run next?" to the work-item query layer.
 
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.

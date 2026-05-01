@@ -12,7 +12,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "none",
     prerequisites: ["brainstorm-artifact-or-summary"],
-    nextQuestionIncludes: "Следующий шаг - написать план. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: написать план?",
     requiredSafety: baseSafety,
   },
   {
@@ -26,7 +26,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "none",
     prerequisites: ["brainstorm-artifact-or-summary"],
-    nextQuestionIncludes: "Следующий шаг - написать план. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: написать план?",
     requiredSafety: baseSafety,
   },
   {
@@ -40,7 +40,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "writes-docs",
     prerequisites: ["brainstorm-artifact-or-summary"],
-    nextQuestionIncludes: "Следующий шаг - написать план. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: написать план?",
     requiredSafety: baseSafety,
   },
   {
@@ -54,7 +54,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "none",
     prerequisites: ["plan-path-or-plan-content"],
-    nextQuestionIncludes: "Следующий шаг - review loop по плану. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить review loop по плану?",
     requiredSafety: baseSafety,
   },
   {
@@ -68,7 +68,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.95,
     mutationRisk: "none",
     prerequisites: ["plan-path-or-plan-content"],
-    nextQuestionIncludes: "Следующий шаг - review loop по плану. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить review loop по плану?",
     requiredSafety: baseSafety,
   },
   {
@@ -82,7 +82,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "writes-tracker",
     prerequisites: ["reviewed-plan"],
-    nextQuestionIncludes: "Следующий шаг - разбить план на атомарные work items и epic. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: разбить план на атомарные work items и epic?",
     requiredSafety: baseSafety,
   },
   {
@@ -96,7 +96,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "writes-tracker",
     prerequisites: ["reviewed-plan"],
-    nextQuestionIncludes: "Следующий шаг - разбить план на атомарные work items и epic. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: разбить план на атомарные work items и epic?",
     requiredSafety: baseSafety,
   },
   {
@@ -110,7 +110,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "writes-tracker",
     prerequisites: ["reviewed-plan"],
-    nextQuestionIncludes: "Следующий шаг - разбить план на атомарные work items и epic. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: разбить план на атомарные work items и epic?",
     requiredSafety: baseSafety,
   },
   {
@@ -124,7 +124,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "executes-code",
     prerequisites: ["epic-id", "approved-scope"],
-    nextQuestionIncludes: "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "side-effect-ledger"],
   },
   {
@@ -138,7 +138,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "executes-code",
     prerequisites: ["epic-id", "approved-scope", "duration-budget"],
-    nextQuestionIncludes: "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "side-effect-ledger"],
   },
   {
@@ -152,7 +152,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "creates-worktree",
     prerequisites: ["epic-id", "clean-or-isolated-worktree"],
-    nextQuestionIncludes: "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "worktree-cleanup"],
   },
   {
@@ -166,7 +166,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.96,
     mutationRisk: "creates-worktree",
     prerequisites: ["epic-id", "clean-or-isolated-worktree", "duration-budget"],
-    nextQuestionIncludes: "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "worktree-cleanup"],
   },
   {
@@ -180,7 +180,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.91,
     mutationRisk: "writes-docs",
     prerequisites: ["brainstorm-artifact-or-summary"],
-    nextQuestionIncludes: "Следующий шаг - написать план. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: написать план?",
     requiredSafety: baseSafety,
   },
   {
@@ -194,7 +194,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "executes-code",
     prerequisites: ["plan-path-or-plan-content", "readiness-audit"],
-    nextQuestionIncludes: "Следующий шаг - readiness audit перед исполнением. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить readiness audit перед исполнением?",
     requiredSafety: [...baseSafety, "readiness-gate", "completion-gate"],
   },
   {
@@ -208,7 +208,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.88,
     mutationRisk: "none",
     prerequisites: [],
-    nextQuestionIncludes: "Следующий шаг - показать ready work items. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: показать ready work items?",
     requiredSafety: baseSafety,
   },
   {
@@ -222,7 +222,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.88,
     mutationRisk: "none",
     prerequisites: [],
-    nextQuestionIncludes: "Следующий шаг - показать blockers. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: показать blockers?",
     requiredSafety: baseSafety,
   },
   {
@@ -236,7 +236,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "none",
     prerequisites: ["user-request"],
-    nextQuestionIncludes: "Следующий шаг - показать диагностику триггера. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: показать диагностику триггера?",
     requiredSafety: baseSafety,
   },
   {
@@ -250,7 +250,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.92,
     mutationRisk: "none",
     prerequisites: ["last-route"],
-    nextQuestionIncludes: "Следующий шаг - показать объяснение выбора skill. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: показать объяснение выбора skill?",
     requiredSafety: baseSafety,
   },
   {
@@ -264,7 +264,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.88,
     mutationRisk: "writes-docs",
     prerequisites: ["accepted-change-summary"],
-    nextQuestionIncludes: "Следующий шаг - синхронизировать README и acceptance coverage. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: синхронизировать README и acceptance coverage?",
     requiredSafety: baseSafety,
   },
   {
@@ -278,7 +278,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "none",
     prerequisites: ["brainstorm-artifact-or-summary"],
-    nextQuestionIncludes: "Next step - write the plan. Proceed?",
+    nextQuestionIncludes: "Step 1/1: write the plan?",
     requiredSafety: baseSafety,
   },
   {
@@ -292,7 +292,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "none",
     prerequisites: ["plan-path-or-plan-content"],
-    nextQuestionIncludes: "Next step - run the plan review loop. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run the plan review loop?",
     requiredSafety: baseSafety,
   },
   {
@@ -306,7 +306,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.92,
     mutationRisk: "writes-tracker",
     prerequisites: ["reviewed-plan"],
-    nextQuestionIncludes: "Next step - split the plan into atomic work items and an epic. Proceed?",
+    nextQuestionIncludes: "Step 1/1: split the plan into atomic work items and an epic?",
     requiredSafety: baseSafety,
   },
   {
@@ -320,7 +320,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "writes-tracker",
     prerequisites: ["reviewed-plan"],
-    nextQuestionIncludes: "Next step - split the plan into atomic work items and an epic. Proceed?",
+    nextQuestionIncludes: "Step 1/1: split the plan into atomic work items and an epic?",
     requiredSafety: baseSafety,
   },
   {
@@ -334,7 +334,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "executes-code",
     prerequisites: ["epic-id", "approved-scope"],
-    nextQuestionIncludes: "Next step - run provider-safe preflight before the worktree/autonomous run. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run provider-safe preflight before the worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "side-effect-ledger"],
   },
   {
@@ -348,7 +348,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.95,
     mutationRisk: "creates-worktree",
     prerequisites: ["epic-id", "clean-or-isolated-worktree", "duration-budget"],
-    nextQuestionIncludes: "Next step - run provider-safe preflight before the worktree/autonomous run. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run provider-safe preflight before the worktree/autonomous run?",
     requiredSafety: [...baseSafety, "bounded-runtime", "stop-command", "worktree-cleanup"],
   },
   {
@@ -362,7 +362,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.93,
     mutationRisk: "none",
     prerequisites: ["user-request"],
-    nextQuestionIncludes: "Next step - show trigger diagnostics. Proceed?",
+    nextQuestionIncludes: "Step 1/1: show trigger diagnostics?",
     requiredSafety: baseSafety,
   },
   {
@@ -376,7 +376,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Следующий шаг - запустить дизайн-пайплайн с memory, code и design lookup preflight. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить дизайн-пайплайн с memory, code и design lookup preflight?",
     requiredSafety: baseSafety,
   },
   {
@@ -390,7 +390,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "none",
     prerequisites: ["design-artifact"],
-    nextQuestionIncludes: "Следующий шаг - провести дизайн-аудит с evidence, token и accessibility checks. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: провести дизайн-аудит с evidence, token и accessibility checks?",
     requiredSafety: baseSafety,
   },
   {
@@ -404,7 +404,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.88,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Следующий шаг - запустить мобильный UI flow с platform и touch constraints. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить мобильный UI flow с platform и touch constraints?",
     requiredSafety: baseSafety,
   },
   {
@@ -418,7 +418,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.88,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Следующий шаг - проработать chart UX с fallback и accessibility evidence. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: проработать chart UX с fallback и accessibility evidence?",
     requiredSafety: baseSafety,
   },
   {
@@ -432,7 +432,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Следующий шаг - запустить deck flow с narrative, slide и brand evidence. Переходим?",
+    nextQuestionIncludes: "Шаг 1/1: запустить deck flow с narrative, slide и brand evidence?",
     requiredSafety: baseSafety,
   },
   {
@@ -446,7 +446,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Next step - run the design pipeline with memory, code, and design lookup preflight. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run the design pipeline with memory, code, and design lookup preflight?",
     requiredSafety: baseSafety,
   },
   {
@@ -460,7 +460,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "none",
     prerequisites: ["design-artifact"],
-    nextQuestionIncludes: "Next step - run design audit with evidence, token, and accessibility checks. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run design audit with evidence, token, and accessibility checks?",
     requiredSafety: baseSafety,
   },
   {
@@ -474,7 +474,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.86,
     mutationRisk: "writes-docs",
     prerequisites: ["approved-design-system", "design-artifact"],
-    nextQuestionIncludes: "Next step - prepare stack-aware UI handoff from approved tokens. Proceed?",
+    nextQuestionIncludes: "Step 1/1: prepare stack-aware UI handoff from approved tokens?",
     requiredSafety: baseSafety,
   },
   {
@@ -488,7 +488,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.94,
     mutationRisk: "none",
     prerequisites: ["user-request"],
-    nextQuestionIncludes: "Next step - run the read-only security audit with prioritized findings. Proceed?",
+    nextQuestionIncludes: "Step 1/1: run the read-only security audit with prioritized findings?",
     requiredSafety: [...baseSafety, "read-only-audit", "scoped-approval-before-fix"],
   },
   {
@@ -502,7 +502,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.92,
     mutationRisk: "none",
     prerequisites: ["user-request"],
-    nextQuestionIncludes: "Next step - start read-only network/router diagnostics without config changes. Proceed?",
+    nextQuestionIncludes: "Step 1/1: start read-only network/router diagnostics without config changes?",
     requiredSafety: [...baseSafety, "read-only-diagnostics", "scoped-approval-before-network-mutation"],
   },
   {
@@ -516,7 +516,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.92,
     mutationRisk: "writes-docs",
     prerequisites: ["user-request"],
-    nextQuestionIncludes: "Next step - review the prompt, agent, or router contract with evals and safety boundaries. Proceed?",
+    nextQuestionIncludes: "Step 1/1: review the prompt, agent, or router contract with evals and safety boundaries?",
     requiredSafety: [...baseSafety, "eval-before-claim", "tool-boundary-review"],
   },
   {
@@ -530,7 +530,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.92,
     mutationRisk: "none",
     prerequisites: [],
-    nextQuestionIncludes: "Next step - open the local UI for tasks, epics, phases, waves, and safe actions. Proceed?",
+    nextQuestionIncludes: "Step 1/1: open the local UI for tasks, epics, phases, waves, and safe actions?",
     requiredSafety: baseSafety,
   },
 ]);

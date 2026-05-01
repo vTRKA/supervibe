@@ -50,7 +50,7 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
         "Next command: /supervibe-plan --review",
         "Next skill: supervibe:requesting-code-review",
         "Stop condition: ask-before-plan-review",
-        "Question: Next step is the plan review loop. Proceed?",
+        "Question: Step 1/1: the plan review loop?",
         "END_NEXT_STEP_HANDOFF",
       ].join("\n"),
     },

@@ -65,8 +65,8 @@ Per task: TDD applicable?
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Следующий шаг - review loop по плану. Переходим?`.
-13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Следующий шаг - разбить план на атомарные work items и epic. Переходим?`.
+12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Шаг 1/1: review loop по плану?`.
+13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Шаг 1/1: разбить план на атомарные work items и epic?`.
 
 ## Output contract
 
@@ -83,7 +83,7 @@ Next command: /supervibe-plan --review docs/plans/YYYY-MM-DD-<slug>.md
 Next skill: supervibe:requesting-code-review
 Stop condition: ask-before-plan-review
 Why: Execution and atomization are blocked until plan review passes.
-Question: Next step is the plan review loop. Proceed?
+Question: Step 1/1: the plan review loop?
 END_NEXT_STEP_HANDOFF
 ```
 

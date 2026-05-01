@@ -56,7 +56,7 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
 8. **Mandatory review handoff before execution.** Print:
    ```
    Plan saved to <path>.
-   Следующий шаг - review loop по плану. Переходим?
+   Шаг 1/1: review loop по плану?
    ```
 
 8a. **Machine-readable review handoff.** Include:
@@ -70,13 +70,13 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
    Next skill: supervibe:requesting-code-review
    Stop condition: ask-before-plan-review
    Why: Execution and atomization are blocked until plan review passes.
-   Question: Next step is the plan review loop. Proceed?
+   Question: Step 1/1: the plan review loop?
    END_NEXT_STEP_HANDOFF
    ```
 
 9. **After review passes.** Hand off to atomization and epic creation:
    ```
-   Следующий шаг - разбить план на атомарные work items и epic. Переходим?
+   Шаг 1/1: разбить план на атомарные work items и epic?
    ```
 
 After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`.

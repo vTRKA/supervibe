@@ -68,32 +68,112 @@ const POST_DELIVERY_ACTIONS = Object.freeze([
   },
 ]);
 
-function getPostDeliveryActions(locale = 'en') {
+const POST_DELIVERY_CONTEXTS = Object.freeze({
+  genesis_setup: {
+    en: {
+      prompt: 'Step 1/1: apply the Supervibe scaffold to this project, or adjust the install plan first?',
+      recommendation: 'Recommended path: apply the scaffold only when the dry-run host, profile, agents, rules and files look correct.',
+      freeFormPath: 'You can answer in your own words, for example: "keep Codex, but remove design agents".',
+      stopCondition: 'Stop without installing: I will persist the dry-run state and make no project changes.',
+      actions: {
+        approve: {
+          label: 'Apply scaffold',
+          tradeoff: 'Write the selected host artifacts, agents, rules and skills, then run index and status checks.',
+        },
+        refine: {
+          label: 'Adjust install plan',
+          tradeoff: 'Name what to change in host, profile, add-ons or stack-pack; I will rebuild the dry-run without writing files.',
+        },
+        alternative: {
+          label: 'Compare another set',
+          tradeoff: 'Show another profile or agent set with explicit tradeoffs before any write.',
+        },
+        'deeper-review': {
+          label: 'Review dry-run deeper',
+          tradeoff: 'Run audit, confidence or status checks before applying the scaffold.',
+        },
+        stop: {
+          label: 'Stop without installing',
+          tradeoff: 'Keep the current state and exit without changing the project.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: применяем Supervibe scaffold в проект или сначала меняем план установки?',
+      recommendation: 'Рекомендуемый путь: применять scaffold только если dry-run, выбранный host, профиль, агенты, правила и файлы выглядят правильно.',
+      freeFormPath: 'Можно ответить своими словами, например: "оставь Codex, но убери design agents".',
+      stopCondition: 'Остановиться без установки: сохраню dry-run состояние и не буду менять проект.',
+      actions: {
+        approve: {
+          label: 'Применить scaffold',
+          tradeoff: 'Запишу выбранные host-артефакты, агентов, правила и скилы, затем запущу индекс и status checks.',
+        },
+        refine: {
+          label: 'Изменить план установки',
+          tradeoff: 'Укажи, что поменять в host, профиле, add-ons или stack-pack; пересоберу dry-run без записи файлов.',
+        },
+        alternative: {
+          label: 'Сравнить другой набор',
+          tradeoff: 'Покажу альтернативный профиль или набор агентов с явными компромиссами до записи файлов.',
+        },
+        'deeper-review': {
+          label: 'Проверить dry-run глубже',
+          tradeoff: 'Запущу audit, confidence или status checks перед применением scaffold.',
+        },
+        stop: {
+          label: 'Остановиться без установки',
+          tradeoff: 'Сохраню текущее состояние и выйду без изменений проекта.',
+        },
+      },
+    },
+  },
+});
+
+function getPostDeliveryActions(locale = 'en', context = null) {
   const normalized = normalizeLocale(locale);
+  const contextActions = context?.[normalized]?.actions || {};
   return POST_DELIVERY_ACTIONS.map((action, index) => ({
     id: action.id,
-    label: action[normalized].label,
-    tradeoff: action[normalized].tradeoff,
+    label: (contextActions[action.id] || action[normalized]).label,
+    tradeoff: (contextActions[action.id] || action[normalized]).tradeoff,
     recommended: index === 0,
   }));
 }
 
+function resolvePostDeliveryContext(route = {}, options = {}) {
+  const explicitContext = String(options.context || route.intent || '').trim();
+  const command = String(route.command || '');
+  const contextId = POST_DELIVERY_CONTEXTS[explicitContext]
+    ? explicitContext
+    : command.includes('/supervibe-genesis')
+      ? 'genesis_setup'
+      : null;
+  const context = contextId ? POST_DELIVERY_CONTEXTS[contextId] : null;
+  return context ? { ...context, id: contextId } : null;
+}
+
+function contextCopy(context, locale, field, fallback) {
+  return context?.[locale]?.[field] || fallback;
+}
+
 export function buildPostDeliveryQuestion(route = {}, options = {}) {
   const locale = normalizeLocale(options.locale || detectDialogueLocale(route.nextQuestion || route.command || ''));
+  const context = resolvePostDeliveryContext(route, options);
   return {
-    prompt: locale === 'ru'
-      ? 'Шаг 1/1: что делаем дальше?'
-      : 'Step 1/1: what should happen next?',
-    recommendation: locale === 'ru'
-      ? 'Рекомендованный путь стоит первым.'
-      : 'The recommended path is listed first.',
-    choices: getPostDeliveryActions(locale),
-    freeFormPath: locale === 'ru'
+    prompt: contextCopy(context, locale, 'prompt', locale === 'ru'
+      ? 'Шаг 1/1: выберите следующий шаг для результата.'
+      : 'Step 1/1: choose the next step for this delivery.'),
+    recommendation: contextCopy(context, locale, 'recommendation', locale === 'ru'
+      ? 'Рекомендуемый путь указан первым.'
+      : 'The recommended path is listed first.'),
+    choices: getPostDeliveryActions(locale, context),
+    freeFormPath: contextCopy(context, locale, 'freeFormPath', locale === 'ru'
       ? 'Можно ответить своими словами, если ни один вариант не подходит.'
-      : 'You can answer in your own words if none of the choices fit.',
-    stopCondition: locale === 'ru'
+      : 'You can answer in your own words if none of the choices fit.'),
+    stopCondition: contextCopy(context, locale, 'stopCondition', locale === 'ru'
       ? 'Остановиться: сохраню состояние и выйду без скрытого продолжения.'
-      : 'Stop here: persist state and exit without hidden continuation.',
+      : 'Stop here: persist state and exit without hidden continuation.'),
+    context: context?.id || null,
     locale,
   };
 }
@@ -134,7 +214,7 @@ export function formatTransparentStepQuestion(question) {
     '',
   ];
   for (const choice of question.choices || []) {
-    const suffix = choice.recommended ? ' (recommended)' : '';
+    const suffix = choice.recommended ? (question.locale === 'ru' ? ' (рекомендуется)' : ' (recommended)') : '';
     lines.push(`- ${choice.label}${suffix} - ${choice.tradeoff || choice.description || 'No tradeoff provided.'}`);
   }
   return lines.join('\n');
@@ -225,9 +305,9 @@ function hasSingleQuestion(text) {
 
 function hasPostDeliveryMenu(text) {
   const lower = text.toLowerCase();
-  const approve = /approve|approved|apply|применить|утверд|соглас/.test(lower);
-  const refine = /refine|revise|revision|доработ|исправ|уточн/.test(lower);
-  const alternative = /alternative|try another option|another option|другой вариант|альтернатив/.test(lower);
+  const approve = /approve|approved|apply|apply scaffold|применить|утверд|соглас/.test(lower);
+  const refine = /refine|revise|revision|adjust [a-z -]*plan|adjust [a-z -]*diff|доработ|изменить [а-яa-z -]*(план|diff)|исправ|уточн/.test(lower);
+  const alternative = /alternative|try another option|another option|compare another|другой вариант|сравнить друг|альтернатив/.test(lower);
   const stop = /stop|stop here|останов|стоп/.test(lower);
   return approve && refine && alternative && stop;
 }
@@ -244,7 +324,12 @@ function hasBeginnerFriendlyActionLabels(text) {
     /другой вариант/.test(lower) &&
     /проверить глубже/.test(lower) &&
     /остановиться/.test(lower);
-  return english || russian;
+  const domainSpecific = /(apply|approve|применить|утверд)[^\n]*(scaffold|adaptation|strengthening|design|адаптац|усилен|дизайн)/.test(lower) &&
+    /(adjust|revise|изменить|доработ)[^\n]*(plan|diff|design|план|адаптац|усилен|дизайн)/.test(lower) &&
+    /(compare another|сравнить друг)/.test(lower) &&
+    /(review|проверить)[^\n]*(deeper|глубже|dry-run|adaptation|strengthening|design|адаптац|усилен|дизайн)/.test(lower) &&
+    /(stop|останов)[^\n]*(without|save|install|adapt|strengthen|state|без|сохран)/.test(lower);
+  return english || russian || domainSpecific;
 }
 
 function hasRawActionIdMenu(text) {

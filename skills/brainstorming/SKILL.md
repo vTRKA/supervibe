@@ -74,7 +74,7 @@ After saving the spec, ALWAYS print a one-line hand-off so the user knows the ne
 ```
 Spec saved to docs/specs/YYYY-MM-DD-<slug>-design.md
 Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
-Следующий шаг - написать план. Переходим?
+Шаг 1/1: написать план?
 ```
 
 Also include the machine-readable handoff block:
@@ -88,7 +88,7 @@ Next command: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-plan
 Why: Brainstorm output must become a reviewed implementation plan before execution.
-Question: Next step is writing the implementation plan. Proceed?
+Question: Step 1/1: writing the implementation plan?
 END_NEXT_STEP_HANDOFF
 ```
 

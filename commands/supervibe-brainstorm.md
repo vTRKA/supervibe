@@ -42,7 +42,7 @@ Treat the most recent user message as the topic.
 
 4. **Save the spec.** The skill emits `docs/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
-5. **Mandatory handoff.** Print `Следующий шаг - написать production-ready план. Переходим?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
+5. **Mandatory handoff.** Print `Шаг 1/1: написать production-ready план?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
 
 5a. **Machine-readable handoff.** Include:
 
@@ -55,7 +55,7 @@ Treat the most recent user message as the topic.
    Next skill: supervibe:writing-plans
    Stop condition: ask-before-plan
    Why: Brainstorm output must become a reviewed implementation plan before execution.
-   Question: Next step is writing the implementation plan. Proceed?
+   Question: Step 1/1: writing the implementation plan?
    END_NEXT_STEP_HANDOFF
    ```
 

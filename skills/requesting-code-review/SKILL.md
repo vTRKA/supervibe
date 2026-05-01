@@ -88,7 +88,7 @@ Next command: /supervibe-loop --from-plan --atomize docs/plans/YYYY-MM-DD-<slug>
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-work-item-atomization
 Why: A reviewed plan can become durable atomic work items and an epic.
-Question: Next step is atomizing the plan into an epic and child work items. Proceed?
+Question: Step 1/1: atomizing the plan into an epic and child work items?
 END_NEXT_STEP_HANDOFF
 ```
 

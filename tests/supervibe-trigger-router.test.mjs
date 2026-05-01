@@ -11,7 +11,7 @@ describe("supervibe trigger router", () => {
     assert.equal(route.intent, "brainstorm_to_plan");
     assert.equal(route.command, "/supervibe-plan");
     assert.equal(route.skill, "supervibe:writing-plans");
-    assert.equal(route.nextQuestion, "Следующий шаг - написать план. Переходим?");
+    assert.equal(route.nextQuestion, "Шаг 1/1: написать план?");
     assert.deepEqual(route.missingArtifacts, []);
   });
 
@@ -22,7 +22,7 @@ describe("supervibe trigger router", () => {
 
     assert.equal(route.intent, "plan_review");
     assert.equal(route.command, "/supervibe-plan --review");
-    assert.equal(route.nextQuestion, "Следующий шаг - review loop по плану. Переходим?");
+    assert.equal(route.nextQuestion, "Шаг 1/1: запустить review loop по плану?");
   });
 
   it("routes epic worktree runs to provider-safe preflight and exposes blockers", () => {

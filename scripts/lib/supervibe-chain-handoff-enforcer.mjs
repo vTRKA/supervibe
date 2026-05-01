@@ -5,7 +5,7 @@ const HANDOFFS = {
     command: "/supervibe-plan",
     skill: "supervibe:writing-plans",
     artifact: "approved-spec-or-brainstorm-summary",
-    nextQuestion: "Следующий шаг - написать план. Переходим?",
+    nextQuestion: "Шаг 1/1: написать план реализации по утвержденной спецификации?",
   },
   plan: {
     phase: "plan",
@@ -13,7 +13,7 @@ const HANDOFFS = {
     command: "/supervibe-plan --review",
     skill: "supervibe:requesting-code-review",
     artifact: "implementation-plan",
-    nextQuestion: "Следующий шаг - review loop по плану. Переходим?",
+    nextQuestion: "Шаг 1/1: запустить review loop по плану перед атомизацией или исполнением?",
   },
   plan_review_passed: {
     phase: "plan_review_passed",
@@ -21,7 +21,7 @@ const HANDOFFS = {
     command: "/supervibe-loop --from-plan --atomize",
     skill: "supervibe:writing-plans",
     artifact: "reviewed-plan",
-    nextQuestion: "Следующий шаг - разбить план на атомарные work items и epic. Переходим?",
+    nextQuestion: "Шаг 1/1: разбить reviewed plan на атомарные work items и epic?",
   },
   atomized: {
     phase: "atomized",
@@ -29,7 +29,7 @@ const HANDOFFS = {
     command: "/supervibe-loop --epic --worktree",
     skill: "supervibe:autonomous-agent-loop",
     artifact: "epic-with-atomic-work-items",
-    nextQuestion: "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?",
+    nextQuestion: "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?",
   },
   execution_preflight: {
     phase: "execution_preflight",
@@ -37,7 +37,7 @@ const HANDOFFS = {
     command: "/supervibe-loop --epic --worktree --max-duration 3h",
     skill: "supervibe:using-git-worktrees",
     artifact: "approved-preflight",
-    nextQuestion: "Следующий шаг - стартовать bounded run с stop/resume/status контролями. Переходим?",
+    nextQuestion: "Шаг 1/1: стартовать bounded run с stop/resume/status контролями?",
   },
 };
 

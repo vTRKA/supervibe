@@ -23,6 +23,6 @@ describe("supervibe trigger diagnostics", () => {
 
     assert.match(text, /Intent: brainstorm_to_plan/);
     assert.match(text, /Command: \/supervibe-plan/);
-    assert.match(text, /Следующий шаг - написать план/);
+    assert.match(text, /Шаг 1\/1: написать план/);
   });
 });

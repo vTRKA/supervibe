@@ -28,12 +28,12 @@ Default behavior: choose the safest minimal profile, no add-ons, dry-run only un
 
 User-facing transparency is required. The dry-run must show selected agent groups and a one-line responsibility for each selected agent using `scripts/lib/supervibe-agent-roster.mjs` / `docs/agent-roster.md`; never show only opaque agent ids.
 
-After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
-- Apply / Применить - recommended when the dry-run scaffold looks right; apply it or accept the verified scaffold.
-- Revise / Доработать - user gives one focused change to the scaffold plan; apply one iteration.
-- Try another option / Другой вариант - produce another profile, host, or stack-pack option with explicit tradeoffs.
-- Review deeper / Проверить глубже - run status, audit, or confidence scoring before applying.
-- Stop here / Остановиться - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question about the scaffold decision. Use language-matched, domain-specific labels; keep internal action ids only in saved state. Never use a generic next-step prompt for Genesis.
+- Apply scaffold / Применить scaffold - recommended only when the dry-run host, profile, agents, rules and files look correct; write the scaffold and run index/status checks.
+- Adjust install plan / Изменить план установки - user gives one focused host, profile, add-on, stack-pack, agent or rule change; rebuild dry-run without writing files.
+- Compare another set / Сравнить другой набор - produce another profile, host or agent/rule set with explicit tradeoffs before any write.
+- Review dry-run deeper / Проверить dry-run глубже - run status, audit or confidence scoring before applying the scaffold.
+- Stop without installing / Остановиться без установки - persist current dry-run state and exit without changing the project.
 
 ## Step 0 — Read source of truth (required)
 

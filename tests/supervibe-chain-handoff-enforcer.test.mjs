@@ -11,7 +11,7 @@ describe("supervibe chain handoff enforcer", () => {
   it("requires brainstorm output to hand off to planning", () => {
     const handoff = getRequiredHandoff("brainstorm");
     assert.equal(handoff.command, "/supervibe-plan");
-    assert.equal(handoff.nextQuestion, "Следующий шаг - написать план. Переходим?");
+    assert.equal(handoff.nextQuestion, "Шаг 1/1: написать план реализации по утвержденной спецификации?");
   });
 
   it("detects missing review loop handoff after plan output", () => {

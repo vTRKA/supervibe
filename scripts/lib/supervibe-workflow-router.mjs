@@ -165,8 +165,8 @@ function routeFromRecentHandoff(request, recentAssistantOutput, locale) {
     mutationRisk: mutationRiskForCommand(parsed.nextCommand),
     source: "recent-handoff",
     reason: "User affirmed the previous NEXT_STEP_HANDOFF block.",
-    nextPromptText: parsed.question ?? (locale === "ru" ? "Переходим к следующему шагу?" : "Proceed to the next step?"),
-    nextQuestion: parsed.question ?? (locale === "ru" ? "Переходим к следующему шагу?" : "Proceed to the next step?"),
+    nextPromptText: parsed.question ?? (locale === "ru" ? "Шаг 1/1: продолжить с подтвержденной следующей командой?" : "Step 1/1: continue with the confirmed next command?"),
+    nextQuestion: parsed.question ?? (locale === "ru" ? "Шаг 1/1: продолжить с подтвержденной следующей командой?" : "Step 1/1: continue with the confirmed next command?"),
     stopCondition: parsed.stopCondition ?? "ask-before-next-step",
     requiredSafety: safetyForCommand(parsed.nextCommand),
     missingArtifacts: [],
@@ -199,8 +199,8 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       command: "/supervibe-loop --epic --worktree",
       skill: "supervibe:using-git-worktrees",
       question: locale === "ru"
-        ? "Следующий шаг - provider-safe preflight перед worktree/autonomous run. Переходим?"
-        : "Next step is provider-safe preflight before the worktree/autonomous run. Proceed?",
+        ? "Шаг 1/1: запустить provider-safe preflight перед worktree/autonomous run?"
+        : "Step 1/1: run provider-safe preflight before the worktree/autonomous run?",
       artifactOverride: artifacts.epicId ?? artifacts.epic ?? undefined,
     });
   }

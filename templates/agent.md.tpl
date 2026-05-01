@@ -58,13 +58,13 @@ When this agent must clarify with the user, ask **one question per message**. Ma
 
 > **Step N/M:** <one focused question>
 >
-> - <Recommended action> (recommended) - <what happens and what it costs>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what it costs>
 > - <Second action> - <what happens and what it costs>
 > - <Stop here> - <what is saved and what will not happen>
 >
 > Free-form answer also accepted.
 
-Use `Шаг N/M:` when the conversation is in Russian. Do not show internal lifecycle ids as visible labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
+Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
 
 ## Anti-patterns
 

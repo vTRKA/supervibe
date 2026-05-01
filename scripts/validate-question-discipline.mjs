@@ -20,6 +20,7 @@ const DISCIPLINE_MARKER_B = 'Шаг N/M';
 const ANTI_PATTERN_REQUIRED = 'asking-multiple-questions-at-once';
 const OUTCOME_LABEL_MARKER = 'outcome-oriented labels';
 const STALE_OPTION_PLACEHOLDER_RE = /<option [abc]>|one-line rationale per option/i;
+const STALE_RECOMMENDED_MARKER_RE = /<Recommended action>\s+\(recommended\)/;
 const DELIVERY_COMMAND_SCOPE = new Set([
   'commands/supervibe-design.md',
   'commands/supervibe-genesis.md',
@@ -77,6 +78,13 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
       file: relPath,
       code: 'stale-dialogue-placeholder',
       message: 'Replace generic <option a>/<one-line rationale> placeholders with outcome-oriented action examples.',
+    });
+  }
+  if (STALE_RECOMMENDED_MARKER_RE.test(dialogueSection)) {
+    issues.push({
+      file: relPath,
+      code: 'hardcoded-english-recommended-marker',
+      message: 'Use a localized recommended marker, e.g. (recommended) in English and (рекомендуется) in Russian.',
     });
   }
   return issues;

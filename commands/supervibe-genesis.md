@@ -24,12 +24,12 @@ User-facing transparency is part of the command, not optional polish. Before ask
 
 Tool metadata contract: `/supervibe-genesis` exposes stable aliases, input shape, host/context requirements, token-cost hint, write side-effect level and dry-run approval policy through `scripts/lib/supervibe-tool-metadata-contract.mjs`; route only the intent-scoped metadata needed for the current setup.
 
-After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal action ids only in saved state.
-- Apply / Применить - recommended when the dry-run scaffold looks right; apply it or accept the verified scaffold.
-- Revise / Доработать - user gives one focused change to the scaffold plan; apply one iteration.
-- Try another option / Другой вариант - produce another profile, host, or stack-pack option with explicit tradeoffs.
-- Review deeper / Проверить глубже - run status, audit, or confidence scoring before applying.
-- Stop here / Остановиться - persist current state and exit without claiming silent completion.
+After every material delivery, ask one explicit next-step question about the scaffold decision. Use language-matched, domain-specific labels; keep internal action ids only in saved state. Never use a generic next-step prompt for Genesis.
+- Apply scaffold / Применить scaffold - recommended only when the dry-run host, profile, agents, rules and files look correct; write the scaffold and run index/status checks.
+- Adjust install plan / Изменить план установки - user gives one focused host, profile, add-on, stack-pack, agent or rule change; rebuild dry-run without writing files.
+- Compare another set / Сравнить другой набор - produce another profile, host or agent/rule set with explicit tradeoffs before any write.
+- Review dry-run deeper / Проверить dry-run глубже - run status, audit or confidence scoring before applying the scaffold.
+- Stop without installing / Остановиться без установки - persist current dry-run state and exit without changing the project.
 
 Scenario evals assert this post-delivery menu and persisted command state via
 `tests/fixtures/scenario-evals/supervibe-user-flows.json`.
