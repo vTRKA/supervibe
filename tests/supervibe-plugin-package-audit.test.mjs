@@ -80,12 +80,12 @@ test("plugin package audit reports version, path, command, and smoke-check drift
 
 test("plugin package audit blocks dev test suite in user install and update paths", () => {
   const audit = auditPluginPackageData({
-    packageJson: { version: "2.0.16" },
+    packageJson: { version: "2.0.17" },
     manifests: {},
     marketplace: { name: "supervibe-marketplace", plugins: [] },
-    geminiExtension: { version: "2.0.16" },
-    opencodeSource: 'version: "2.0.16"',
-    readme: "Supervibe v2.0.16",
+    geminiExtension: { version: "2.0.17" },
+    opencodeSource: 'version: "2.0.17"',
+    readme: "Supervibe v2.0.17",
     changelog: "Autonomous loop 10/10 upgrade",
     registryYaml: "agents:\nskills:\ngenerated-at:",
     commandFiles: [],

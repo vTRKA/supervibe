@@ -152,6 +152,7 @@ test('dead-code lint is stable in installed checkouts', () => {
   const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const knip = JSON.parse(readFileSync(join(ROOT, 'knip.json'), 'utf8'));
   const commitMsgHook = readFileSync(join(ROOT, '.husky', 'commit-msg'), 'utf8');
+  const prePushHook = readFileSync(join(ROOT, '.husky', 'pre-push'), 'utf8');
 
   assert.match(packageJson.scripts['lint:dead-code'], /--no-config-hints/, 'install check must not fail or warn on Knip config hints');
   assert.ok(knip.entry.includes('scripts/*.mjs'), 'Knip must treat shipped CLI scripts as entrypoints');
@@ -161,6 +162,7 @@ test('dead-code lint is stable in installed checkouts', () => {
   assert.equal(packageJson.devDependencies['@commitlint/cli'], undefined, 'installer check must not depend on commitlint');
   assert.doesNotMatch(commitMsgHook, /commitlint/, 'commit-msg hook must not require commitlint binaries');
   assert.match(commitMsgHook, /validate-commit-message\.mjs/, 'commit-msg hook must use the shipped validator');
+  assert.doesNotMatch(prePushHook, /npm\s+run\s+check|npm\s+test|node\s+--test/, 'pre-push must not run the full test suite for user/developer pushes');
 });
 
 test('installers skip Git LFS smudge during clone and checkout', () => {

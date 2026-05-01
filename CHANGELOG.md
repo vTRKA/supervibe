@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.17] - 2026-05-01
+
+### Changed
+
+- Removed the full `npm run check` suite from the pre-push hook so ordinary
+  pushes and plugin update flows do not run hundreds of developer tests.
+- Kept full validation manual/CI-only, while retaining the lightweight Git LFS
+  pre-push guard and plugin manifest validation in pre-commit.
+
 ## [2.0.16] - 2026-05-01
 
 ### Changed

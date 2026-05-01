@@ -256,7 +256,7 @@ function validateInstallUpdateSmoke(scripts, issues) {
     "scripts/supervibe-upgrade.mjs": scripts.upgradeMjs,
   })) {
     if (runsDevCheck(source)) {
-      addIssue(issues, "user-update-runs-dev-check", `${label} must not run npm run check in the user install/update path`, "Keep tests in developer hooks/CI; user updates should run registry build and install-doctor only.");
+      addIssue(issues, "user-update-runs-dev-check", `${label} must not run npm run check in the user install/update path`, "Keep tests manual/CI-only; user updates should run registry build and install-doctor only.");
     }
   }
   if (!/registry:build/.test(scripts.installSh || "") || !/registry:build/.test(scripts.installPs1 || "")) {

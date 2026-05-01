@@ -81,4 +81,4 @@ Installers print the checkout path, config areas they will modify, and integrity
 - path-safety checks before writes
 - Node.js 22.5+ with `node:sqlite` is required before installation or update continues
 - when Node is missing or too old, installers ask for explicit consent before attempting a user-level Node bootstrap; `SUPERVIBE_INSTALL_NODE=1` allows unattended bootstrap and `SUPERVIBE_INSTALL_NODE=0` fails fast
-- user install/update scripts do not run the developer test suite; `npm run check` stays in developer hooks/CI, while user updates run dependency install, registry build, mirror cleanup, and install-doctor
+- user install/update scripts do not run the developer test suite; `npm run check` stays manual/CI-only, while user updates run dependency install, registry build, mirror cleanup, and install-doctor
