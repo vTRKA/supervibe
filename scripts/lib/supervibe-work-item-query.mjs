@@ -261,7 +261,7 @@ export function workItemStorageMode({ branch = "", protectedBranches = ["main", 
     mode: contributor ? "contributor-local" : protectedMode ? "protected-local" : "project-local",
     protectedMode,
     contributorMode: contributor,
-    storage: explicitMetadataBranch || (protectedMode || contributor ? ".claude/memory/work-items" : ".claude/memory/work-items"),
+    storage: explicitMetadataBranch || (protectedMode || contributor ? ".supervibe/memory/work-items" : ".supervibe/memory/work-items"),
     safeSyncAction: protectedMode || contributor ? "preview-or-metadata-branch" : "local-write",
   };
 }

@@ -6,7 +6,7 @@ import { redactSensitiveText } from "./autonomous-loop-provider-policy-guard.mjs
 const DEFAULT_LEASE_MINUTES = 30;
 
 export function defaultApprovalReceiptLedgerPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "policy", "approval-receipts.jsonl");
+  return join(rootDir, ".supervibe", "memory", "policy", "approval-receipts.jsonl");
 }
 
 export function createApprovalReceipt({

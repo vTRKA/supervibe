@@ -12,7 +12,7 @@ Use `/supervibe-score --record` for new user-facing workflows. This command rema
 
 Difference:
 - `/supervibe-score` scores once and prints a number.
-- `/supervibe-score --record` and `/supervibe-evaluate` score **and** write the outcome into `.claude/memory/agent-invocations.jsonl` (via `updateLatestInvocation`) so the effectiveness tracker, underperformer detector, and re-dispatch suggester all see it.
+- `/supervibe-score --record` and `/supervibe-evaluate` score **and** write the outcome into `.supervibe/memory/agent-invocations.jsonl` (via `updateLatestInvocation`) so the effectiveness tracker, underperformer detector, and re-dispatch suggester all see it.
 
 ## Invocation forms
 
@@ -42,7 +42,7 @@ Evaluate any artifact on disk, even outside an active task. Example: `/supervibe
 
 2. **Invoke `supervibe:confidence-scoring` skill.** Pass: artifact content, rubric path, optional context. The skill returns dimension-by-dimension scores, weighted total, and explicit evidence per dimension.
 
-3. **Apply the gate.** If total < 9 AND no override is set → print the failing dimensions and stop. If 8.x with override → log to `.claude/confidence-log.jsonl` with reason. If ≥9 → mark accepted.
+3. **Apply the gate.** If total < 9 AND no override is set → print the failing dimensions and stop. If 8.x with override → log to `.supervibe/confidence-log.jsonl` with reason. If ≥9 → mark accepted.
 
 4. **Persist into telemetry.** Call `updateLatestInvocation({ outcome: 'accept'|'review'|'reject', user_feedback: <one-line summary> })` from `scripts/lib/agent-invocation-logger.mjs`. This is what closes the evolution loop — the effectiveness tracker reads `outcome` into agent frontmatter on `Stop` hook.
 
@@ -62,7 +62,7 @@ Dimensions:
   ...
 
 Outcome:      accept | review | reject
-Logged to:    .claude/memory/agent-invocations.jsonl
+Logged to:    .supervibe/memory/agent-invocations.jsonl
 
 Confidence:   <N>/10
 Override:     <true|false>

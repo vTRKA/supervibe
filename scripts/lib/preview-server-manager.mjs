@@ -1,5 +1,5 @@
 // Preview Server Manager — port allocation, process tracking, registry persistence.
-// Registry is a JSON file in .claude/memory/preview-servers.json so multiple
+// Registry is a JSON file in .supervibe/memory/preview-servers.json so multiple
 // supervibe sessions and the status command can see/manage each other's servers.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 
 const PROJECT_ROOT = process.cwd();
-let _registryPath = join(PROJECT_ROOT, '.claude', 'memory', 'preview-servers.json');
+let _registryPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'preview-servers.json');
 
 /** TEST HOOK: override registry path for sandboxed tests */
 export function REGISTRY_PATH_FOR_TEST(path) {

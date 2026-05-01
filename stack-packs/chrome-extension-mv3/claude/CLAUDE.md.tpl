@@ -43,7 +43,7 @@ Inherited from the plugin:
 - `i18n` — every user-facing string via `chrome.i18n.getMessage()`
 
 Stack-specific discipline:
-- **Permission justification ADR** — every permission added to `manifest.json` requires a one-paragraph ADR in `.claude/memory/decisions/` answering: why this permission, what API call needs it, what is the user-visible feature
+- **Permission justification ADR** — every permission added to `manifest.json` requires a one-paragraph ADR in `.supervibe/memory/decisions/` answering: why this permission, what API call needs it, what is the user-visible feature
 - **CSP strict-by-default** — `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`. If a third-party script must run, sandbox it via `sandbox.pages` instead of relaxing CSP
 - **`<all_urls>` requires explicit ADR** — broad host_permissions are a CWS-rejection trigger and a trust cost
 - **Message handlers always check `chrome.runtime.lastError`** — silent failures hide bugs that only show on idle restart
@@ -64,7 +64,7 @@ Stack-specific discipline:
 - `extension/manifest.json`     — MV3 manifest
 - `dist/`                        — vite build output, loaded as unpacked extension
 - `docs/cws/`                    — Chrome Web Store listing draft
-- `.claude/memory/decisions/`    — ADRs (permissions, architecture)
+- `.supervibe/memory/decisions/`    — ADRs (permissions, architecture)
 }}
 
 ## Verification commands
@@ -82,10 +82,10 @@ Stack-specific discipline:
 
 {{scope-boundaries|
 This project's `.claude/agents/` (after /evolve-genesis) contains stack-specific overrides on top of the global plugin. Do NOT touch:
-- `.claude/memory/code.db` / `.claude/memory/memory.db` — generated indexes, gitignored
+- `.supervibe/memory/code.db` / `.supervibe/memory/memory.db` — generated indexes, gitignored
 - `dist/` — build output
 
-Custom decisions, patterns, incidents go in `.claude/memory/<category>/` as markdown.
+Custom decisions, patterns, incidents go in `.supervibe/memory/<category>/` as markdown.
 }}
 
 ## Common workflows

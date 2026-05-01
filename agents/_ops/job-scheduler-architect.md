@@ -215,7 +215,7 @@ For each scheduler review:
 2. Add distributed lock OR migrate to k8s CronJob with concurrencyPolicy=Forbid
 3. Add overlap-detected metric + alert
 4. Backfill missed window if applicable
-5. Postmortem to `.claude/memory/incidents/`
+5. Postmortem to `.supervibe/memory/incidents/`
 
 ### Sidekiq Redis multi-tenant cleanup
 1. Inventory all apps/envs on shared Redis
@@ -261,7 +261,7 @@ Do NOT decide on: data retention beyond queue-related (defer to data-modeler)
 - Retry / backoff policy: per-handler config or framework defaults
 - DLQ: defined? where? alerting?
 - Idempotency mechanism: header / payload field / dedup table
-- Past job-related incidents: `.claude/memory/incidents/`
+- Past job-related incidents: `.supervibe/memory/incidents/`
 - Multi-tenant Redis usage: namespace prefix per app/env
 
 ## Domain knowledge
@@ -391,7 +391,7 @@ SUGGESTION:
 ## Queue Choice Rationale
 - Sidekiq chosen for: existing Ruby stack, low-latency tasks, Redis already operational
 - NOT Kafka: no replay needed, no event sourcing, no fan-out streaming
-- ADR: `.claude/memory/decisions/<date>-queue-choice.md`
+- ADR: `.supervibe/memory/decisions/<date>-queue-choice.md`
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

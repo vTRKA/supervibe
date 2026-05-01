@@ -13,7 +13,7 @@ import { searchMemory } from "../scripts/lib/memory-store.mjs";
 
 test("memory curator rebuilds markdown entries into searchable index", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-curation-"));
-  const decisionsDir = join(rootDir, ".claude", "memory", "decisions");
+  const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
   await mkdir(decisionsDir, { recursive: true });
   await writeFile(join(decisionsDir, "old-feedback.md"), [
     "---",

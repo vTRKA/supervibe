@@ -79,7 +79,7 @@ Normalized to Supervibe agents:
 ### 0. Safety preflight
 
 1. Read `rules/operational-safety.md`, `rules/git-discipline.md`,
-   `rules/privacy-pii.md`, and project `.claude/rules/` overrides.
+   `rules/privacy-pii.md`, and project host-adapter rule overrides.
 2. Confirm the target scope and whether the user wants:
    - audit only
    - audit + plan
@@ -101,7 +101,7 @@ Collect facts before findings:
 - config and deployment files
 - `.github/workflows/`, CI configs, Docker/IaC
 - AI/agent/MCP/RAG files if present
-- previous audits under `docs/audits/` and `.claude/memory/incidents/`
+- previous audits under `docs/audits/` and `.supervibe/memory/incidents/`
 
 Do not list a vulnerability until the exact code path is read. A pattern hit is
 a candidate, not a finding.
@@ -168,7 +168,7 @@ For each remediation batch:
    - no new regression findings are introduced
 
 Risk acceptance is never implicit. It requires a user-visible rationale and an
-entry under `.claude/memory/incidents/` or `.claude/memory/decisions/`.
+entry under `.supervibe/memory/incidents/` or `.supervibe/memory/decisions/`.
 
 ## Output Contract
 

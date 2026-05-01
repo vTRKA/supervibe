@@ -4,7 +4,7 @@
  *
  * Two-tier strategy:
  *   1. Try semantic search via memory.db (fast, embeddings-based) if index exists
- *   2. Fallback to grep-style scan over .claude/memory/<category>/*.md if no index
+ *   2. Fallback to grep-style scan over .supervibe/memory/<category>/*.md if no index
  *
  * Returns array of { path, snippet, similarity, category } sorted by similarity desc.
  *
@@ -46,7 +46,7 @@ const jaccard = similarityScore;
 async function listMemoryFiles(projectRoot) {
   const out = [];
   for (const cat of CATEGORIES) {
-    const dir = join(projectRoot, '.claude', 'memory', cat);
+    const dir = join(projectRoot, '.supervibe', 'memory', cat);
     try {
       const entries = await readdir(dir, { withFileTypes: true });
       for (const e of entries) {

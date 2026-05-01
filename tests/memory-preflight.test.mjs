@@ -13,9 +13,9 @@ test('preflight returns empty array on empty memory', async () => {
 
 test('preflight finds matching entry by keyword (fallback grep)', async () => {
   const root = await mkdtemp(join(tmpdir(), 'preflight-'));
-  await mkdir(join(root, '.claude', 'memory', 'decisions'), { recursive: true });
+  await mkdir(join(root, '.supervibe', 'memory', 'decisions'), { recursive: true });
   await writeFile(
-    join(root, '.claude', 'memory', 'decisions', '2026-04-foo.md'),
+    join(root, '.supervibe', 'memory', 'decisions', '2026-04-foo.md'),
     `---
 id: foo
 type: decisions
@@ -37,10 +37,10 @@ We chose payment idempotency via Stripe Idempotency-Key header for all retries.`
 
 test('preflight respects limit', async () => {
   const root = await mkdtemp(join(tmpdir(), 'preflight-'));
-  await mkdir(join(root, '.claude', 'memory', 'decisions'), { recursive: true });
+  await mkdir(join(root, '.supervibe', 'memory', 'decisions'), { recursive: true });
   for (let i = 0; i < 10; i++) {
     await writeFile(
-      join(root, '.claude', 'memory', 'decisions', `entry-${i}.md`),
+      join(root, '.supervibe', 'memory', 'decisions', `entry-${i}.md`),
       `---\nid: entry-${i}\n---\n\npayment thing ${i}`
     );
   }

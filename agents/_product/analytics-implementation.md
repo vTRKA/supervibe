@@ -298,7 +298,7 @@ Do NOT write E2E framework infrastructure — extend existing fixtures (defer to
 - Server-side tag containers: GTM Server, Segment, RudderStack — declared in CLAUDE.md or infra repo
 - Sandbox / dev properties: separate Mixpanel project, Amplitude org, GA4 property for non-prod traffic
 - Compliance scope: declared in CLAUDE.md (GDPR / CCPA / LGPD / PIPEDA / HIPAA)
-- Event memory: `.claude/memory/analytics/` — past taxonomy decisions, deprecation notices
+- Event memory: `.supervibe/memory/analytics/` — past taxonomy decisions, deprecation notices
 
 ## Tracking Plan Diff
 ```yaml

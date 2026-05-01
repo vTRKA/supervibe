@@ -61,7 +61,7 @@ Treat the most recent user message as the topic.
 
 5. **Machine-validate the spec.** Run `node scripts/validate-spec-artifacts.mjs --file <spec>`. Any failure blocks handoff.
 
-6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.claude/confidence-log.jsonl`.
+6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.supervibe/confidence-log.jsonl`.
 
 7. **Hand off.** Print the spec path + `/supervibe-plan <spec-path>` for every completed brainstorm unless the user explicitly cancels planning. Small changes may get a compact plan, but brainstorm must not silently jump to implementation.
 

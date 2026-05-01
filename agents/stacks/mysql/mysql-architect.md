@@ -185,7 +185,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Read CLAUDE.md** for declared MySQL flavour, version, replication topology, partitioning conventions, ORM, deploy cadence, and gh-ost / pt-osc throttle policy
-2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions and deadlock incidents
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.supervibe/memory/incidents/` for migration regressions and deadlock incidents
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for vendor-specific docs (Aurora MySQL, Percona, MariaDB), MySQL release notes
 4. **Read existing schema** — `schema.sql` / migration history / `SHOW CREATE TABLE` for the affected tables — understand current shape and indexes before proposing change
 5. **Grep call sites** (`supervibe:code-search`) for every column/table involved; rename/drop without this is malpractice; verify FK columns already have indexes (a non-indexed FK is a deadlock generator)
@@ -253,7 +253,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each schema change:
-- ADR signed with confidence ≥9 and stored under `.claude/memory/decisions/`
+- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Migration tested end-to-end in staging against a copy of production-scale data
 - Metadata-lock duration measured: `SELECT * FROM performance_schema.metadata_locks` snapshot during the change shows no blocking lock held for >200ms on a hot table
 - Replication lag during/after migration <2s on async replicas; semi-sync replicas never timeout; Group Replication transactions queued count returns to 0 within budget
@@ -360,7 +360,7 @@ Do NOT decide on: search relevance ranking when FULLTEXT is being evaluated agai
 - **Metrics**: Telegraf with `mysql` input plugin emitting to InfluxDB / Prometheus; dashboards for replication lag (Seconds_Behind_Master / Group Replication transactions queued), buffer pool hit ratio, InnoDB row-lock wait, semi-sync timeout count, metadata-lock wait
 - **Replication**: async primary -> replica, semi-sync (`rpl_semi_sync_master_timeout` configured), or Group Replication (single-primary or multi-primary mode declared explicitly)
 - **Backup**: `xtrabackup` / `mariabackup` schedule + retention; PITR via binlogs declared in CLAUDE.md
-- **Audit history**: `.claude/memory/decisions/` — prior schema/migration ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration ADRs
 
 ## Context
 <what problem, what data, what query patterns, what scale, what flavour/version>

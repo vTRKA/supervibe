@@ -14,6 +14,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { getHostAdapterMatrix } from "./supervibe-host-adapters.mjs";
 
 const STALE_DAYS = 30;
 const OVERRIDE_RATE_THRESHOLD = 0.05;
@@ -45,7 +46,7 @@ async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
   try {
     const versionPath = join(
       projectRoot,
-      ".claude",
+      ".supervibe",
       "memory",
       ".supervibe-version",
     );
@@ -78,15 +79,33 @@ async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
 
 async function checkProjectScaffolded(projectRoot) {
   try {
-    const claudeAgentsDir = join(projectRoot, ".claude", "agents");
-    const claudeMd = join(projectRoot, "CLAUDE.md");
-    if (!existsSync(claudeAgentsDir) && !existsSync(claudeMd)) {
+    const folderHits = [];
+    const instructionHits = [];
+    for (const adapter of getHostAdapterMatrix()) {
+      for (const folder of [adapter.agentsFolder, adapter.rulesFolder, adapter.skillsFolder]) {
+        if (existsSync(join(projectRoot, folder))) folderHits.push(folder);
+      }
+      for (const instructionFile of adapter.instructionFiles) {
+        const path = join(projectRoot, instructionFile);
+        if (!existsSync(path)) continue;
+        try {
+          const content = await readFile(path, "utf8");
+          if (content.includes(`SUPERVIBE:BEGIN managed-context ${adapter.id}`)) {
+            instructionHits.push(instructionFile);
+          }
+        } catch {}
+      }
+    }
+    if (folderHits.length === 0 && instructionHits.length === 0) {
       return {
         triggered: true,
-        evidence: "no .claude/agents/ and no CLAUDE.md — run genesis first",
+        evidence: "no Supervibe host adapter folders or managed instruction block found - run genesis first",
       };
     }
-    return { triggered: false, evidence: "project has Supervibe scaffolding" };
+    return {
+      triggered: false,
+      evidence: `project has Supervibe scaffolding (${[...folderHits, ...instructionHits].slice(0, 3).join(", ")})`,
+    };
   } catch (err) {
     return { triggered: false, error: err.message };
   }
@@ -96,7 +115,7 @@ async function checkUnderperformers(projectRoot) {
   try {
     const logPath = join(
       projectRoot,
-      ".claude",
+      ".supervibe",
       "memory",
       "agent-invocations.jsonl",
     );
@@ -173,7 +192,7 @@ async function checkStaleArtifacts(pluginRoot) {
 
 async function checkOverrideRate(projectRoot) {
   try {
-    const logPath = join(projectRoot, ".claude", "confidence-log.jsonl");
+    const logPath = join(projectRoot, ".supervibe", "confidence-log.jsonl");
     if (!existsSync(logPath))
       return { triggered: false, evidence: "no override log yet" };
     const raw = await readFile(logPath, "utf8");
@@ -211,7 +230,7 @@ async function checkPendingEvaluation(projectRoot) {
   try {
     const logPath = join(
       projectRoot,
-      ".claude",
+      ".supervibe",
       "memory",
       "agent-invocations.jsonl",
     );

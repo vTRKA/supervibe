@@ -292,8 +292,8 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 - Linting: `ruff` (config in `pyproject.toml`), `mypy` (strict mode where feasible)
 - Settings: `app/core/config.py` with `pydantic_settings.BaseSettings`, env-var sourced
 - DB: SQLAlchemy 2.0 async with `asyncpg` driver; sessions yielded via `Depends`
-- ADR archive: `docs/adr/` or `.claude/memory/decisions/`
-- Past decisions: `.claude/memory/decisions/` searched via `supervibe:project-memory`
+- ADR archive: `docs/adr/` or `.supervibe/memory/decisions/`
+- Past decisions: `.supervibe/memory/decisions/` searched via `supervibe:project-memory`
 
 ## Context
 <problem, constraints, scale targets, team size>

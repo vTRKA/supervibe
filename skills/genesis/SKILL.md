@@ -20,7 +20,7 @@ WHEN target project has no host-specific Supervibe scaffold OR no managed routin
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.claude/memory/genesis/state.json` before every lifecycle transition.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition.
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -79,12 +79,14 @@ Match exact pack?
 10. Copy support skills referenced by selected agents or the bootstrap/adapt flow to the selected adapter's skills folder.
 10a. Generate or update the selected adapter's settings file only if supported.
 11. Generate or update the selected adapter's instruction file through `scripts/lib/supervibe-context-migrator.mjs`, using managed block markers and preserving user-owned content.
+11b. Create Supervibe-owned state under `.supervibe/memory/` only. Do not create the legacy Claude memory path unless the user explicitly asks for migration.
 9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
 10. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
 11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
-13. If <9 → list gaps, ask user to confirm or remediate
+13. Run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check.
+14. If <9 → list gaps, ask user to confirm or remediate
 
 ## Output contract
 
@@ -111,6 +113,8 @@ Returns:
 - All files in pack manifest present in target
 - Settings.json has full deny-list
 - Selected host instruction file has a Supervibe managed routing block
+- `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs` shows Code RAG + Graph initialized from `.supervibe/memory/code.db`
+- No legacy Claude memory path was created by default
 - Husky configured
 
 ## Related

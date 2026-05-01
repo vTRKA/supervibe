@@ -18,7 +18,7 @@ function createCommandState({ route, scenario = {} } = {}) {
     dryRunOutput: expected.requiresDryRun ? { present: true, summary: `${route.command} dry-run output` } : null,
     healthGate: expected.requiresHealthGate ? { present: true, command: route.command, ready: "evaluated" } : null,
     resumeToken: expected.requiresResumeToken ? `${scenario.id || route.intent}:resume` : null,
-    deliveryArtifactPath: `.claude/memory/commands/${route.intent}/state.json`,
+    deliveryArtifactPath: `.supervibe/memory/commands/${route.intent}/state.json`,
     approvalState: "pending-user-choice",
     lastPostDeliveryPrompt: deliveryMenu ? buildPostDeliveryQuestion(route) : null,
     persistedBeforeWait: true,

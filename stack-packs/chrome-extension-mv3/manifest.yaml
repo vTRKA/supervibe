@@ -118,7 +118,7 @@ scaffold:
     - { path: "extension/public/icons/",        purpose: "16/32/48/128 png icons (action + icons)" }
     - { path: "extension/public/_locales/",     purpose: "i18n via chrome.i18n — at minimum en/messages.json" }
     - { path: "extension/manifest.json",        purpose: "MV3 manifest — generated/maintained by chrome-extension-architect" }
-    - { path: ".claude/memory/decisions/",      purpose: "ADRs (especially permission-justification ADR per release)" }
+    - { path: ".supervibe/memory/decisions/",      purpose: "ADRs (especially permission-justification ADR per release)" }
     - { path: "docs/cws/",                      purpose: "CWS listing draft (description, screenshots, purposes disclosure)" }
 
   manifest-template:

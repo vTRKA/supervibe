@@ -12,7 +12,7 @@ test("README documents autonomous loop end-to-end path and copy-paste commands",
     "/supervibe-loop --atomize-plan docs/plans/example.md",
     "/supervibe-loop --epic example-epic --worktree",
     "/supervibe-loop --status --epic example-epic",
-    "/supervibe-loop --resume .claude/memory/loops/example-run/state.json",
+    "/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json",
     "/supervibe-loop --stop example-run",
   ]) {
     assert.match(readme, escapeRegExp(snippet), `${snippet} must be documented`);
@@ -55,7 +55,7 @@ test("README and command docs share autonomous-loop flags and artifact paths", a
     assert.match(readme, new RegExp(escapeText(flag)));
     assert.match(loopCommand, new RegExp(escapeText(flag)));
   }
-  for (const path of [".claude/memory/loops/", ".claude/memory/work-items/", "task-tracker-map.json", ".claude/memory/bundles/"]) {
+  for (const path of [".supervibe/memory/loops/", ".supervibe/memory/work-items/", "task-tracker-map.json", ".supervibe/memory/bundles/"]) {
     assert.match(readme, new RegExp(escapeText(path)));
   }
   assert.match(planCommand, /tracker-sync-push/);

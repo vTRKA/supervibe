@@ -39,7 +39,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
     registryYaml: "agents:\n",
     commandFiles: ["supervibe.md"],
     trackedFiles: [
-      ".claude/memory/code.db",
+      ".supervibe/memory/code.db",
       ".claude/settings.json",
       ".supervibe/audits/latest.json",
       "registry.yaml",

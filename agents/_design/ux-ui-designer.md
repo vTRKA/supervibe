@@ -326,7 +326,7 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 - Design system: `prototypes/_design-system/` — tokens, component specs, motion, accessibility
 - Brandbook: `prototypes/_brandbook/` — direction, voice, moodboards, positioning
 - IA reference: `docs/ia/`, sitemap files, or route manifests
-- Past design decisions: `.claude/memory/design/` — prior screen specs and rationale
+- Past design decisions: `.supervibe/memory/design/` — prior screen specs and rationale
 
 ## Jobs-to-be-done
 - JTBD-1: When <context>, I want to <action>, so I can <outcome>

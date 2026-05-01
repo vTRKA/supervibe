@@ -90,7 +90,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.19 initialized for this project
+[supervibe] welcome — plugin v2.0.20 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -182,7 +182,7 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 /supervibe-loop --epic example-epic --worktree --max-duration 3h
 /supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
 /supervibe-loop --status --epic example-epic
-/supervibe-loop --resume .claude/memory/loops/example-run/state.json
+/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
 /supervibe-loop --stop example-run
 ```
 
@@ -207,21 +207,21 @@ control, reversible GC, and safe export/import bundles:
 ```bash
 /supervibe-loop --from-prd docs/specs/checkout.md --dry-run
 /supervibe-loop --atomize-plan docs/plans/example.md --dry-run
-/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/example-epic/graph.json
-/supervibe-loop graph --file .claude/memory/loops/<run-id>/state.json --format text
-/supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json
-/supervibe-loop prime --file .claude/memory/loops/<run-id>/state.json
-/supervibe-ui --file .claude/memory/work-items/example-epic/graph.json
+/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/example-epic/graph.json
+/supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format text
+/supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-loop prime --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-ui --file .supervibe/memory/work-items/example-epic/graph.json
 /supervibe-gc --all --dry-run
-/supervibe-loop export --file .claude/memory/loops/<run-id>/state.json --out .claude/memory/bundles/<run-id>
+/supervibe-loop export --file .supervibe/memory/loops/<run-id>/state.json --out .supervibe/memory/bundles/<run-id>
 ```
 
 Work-item status uses the same vocabulary in CLI, reports, and query answers:
 `ready`, `blocked`, `claimed`, `stale`, `orphan`, `drift`, `review`, and
-`done`. State and evidence live under `.claude/memory/loops/`, atomized epics
-under `.claude/memory/work-items/`, external tracker mappings in
+`done`. State and evidence live under `.supervibe/memory/loops/`, atomized epics
+under `.supervibe/memory/work-items/`, external tracker mappings in
 `task-tracker-map.json`, and archived/exported run bundles under
-`.claude/memory/bundles/`.
+`.supervibe/memory/bundles/`.
 
 The localhost UI is universal across IDEs: run `/supervibe-ui` or
 `npm run supervibe:ui -- --file <graph.json>`, then open the printed
@@ -314,7 +314,7 @@ For any visual surface — web landing, in-product flow, browser extension, Elec
   ↓ score ≥9 against prototype rubric
 ```
 
-**Browser feedback in real time:** click the 💬 button in the preview, select any region, type a comment. Hits `.claude/memory/feedback-queue.jsonl`; the `UserPromptSubmit` hook injects new entries as `<system-reminder>` on your next prompt — the `supervibe:browser-feedback` skill triages and dispatches to the right designer.
+**Browser feedback in real time:** click the 💬 button in the preview, select any region, type a comment. Hits `.supervibe/memory/feedback-queue.jsonl`; the `UserPromptSubmit` hook injects new entries as `<system-reminder>` on your next prompt — the `supervibe:browser-feedback` skill triages and dispatches to the right designer.
 
 Manage running servers with `/supervibe-preview --list` / `--kill <port>`. Disable the overlay with `--no-feedback`.
 
@@ -347,7 +347,7 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | Command | What it does |
 |---------|--------------|
 | `/supervibe` | Auto-router: picks genesis, design, security audit, network diagnostics, audit, strengthen, adapt, score, or update based on project state |
-| `/supervibe-genesis` | First-time scaffold of `.claude/` for your stack |
+| `/supervibe-genesis` | First-time host-aware scaffold for your stack |
 | `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow; produces an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
@@ -422,7 +422,7 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **SQLite errors.** Node.js 22.5+ is required for the built-in `node:sqlite` used by semantic RAG, code graph, project memory, and agent task memory. Re-run the installer and approve the Node upgrade prompt, or install Node.js 22.5+ manually and then re-run.
 
-**Stale code index.** The mtime scan on session start catches most external edits. For a full rebuild: `rm .claude/memory/code.db && npm run code:index` from your project directory.
+**Stale code index.** The mtime scan on session start catches most external edits. For a full rebuild: `rm .supervibe/memory/code.db && npm run code:index` from your project directory.
 
 **Windows.** If PowerShell rejects the installer with an Execution Policy error: `Set-ExecutionPolicy -Scope Process Bypass`. The Codex symlink needs Developer Mode — without it, the installer falls back to a directory copy.
 
@@ -468,4 +468,4 @@ sed -i.bak '/<!-- supervibe-plugin-include: do-not-edit -->/,/<!-- supervibe-plu
 
 Windows equivalent: replace `rm -rf` with `Remove-Item -Recurse -Force` and run the same node `-e` blocks (paths via `$HOME` work in PowerShell too).
 
-Project indexes are your data — remove only when sure: `rm -rf .claude/memory/code.db .claude/memory/memory.db`.
+Project indexes are your data — remove only when sure: `rm -rf .supervibe/memory/code.db .supervibe/memory/memory.db`.

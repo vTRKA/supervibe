@@ -36,7 +36,7 @@ such as `token`, `password`, `secret`, `apiKey`, and raw credential values.
 ## Approval Receipts
 
 Approval receipts are scoped, expiring JSONL records under
-`.claude/memory/policy/approval-receipts.jsonl`. A receipt records the action,
+`.supervibe/memory/policy/approval-receipts.jsonl`. A receipt records the action,
 exact target, scope, approver label, creation time, expiry, related task/run,
 and allowed side effects. Receipts never store raw credentials.
 

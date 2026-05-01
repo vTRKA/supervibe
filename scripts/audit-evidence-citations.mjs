@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Advisory audit of recent agent invocations: are agents actually using memory,
- * code-search, and code-graph? Per .claude/memory/agent-invocations.jsonl.
+ * code-search, and code-graph? Per .supervibe/memory/agent-invocations.jsonl.
  *
  * Reports per-agent metrics:
  * - memory-usage rate (% of invocations that referenced memory)
@@ -129,7 +129,7 @@ async function main() {
   const maxAgeHours = maxAgeIdx >= 0 ? parseInt(args[maxAgeIdx + 1], 10) : (strict ? 48 : 0);
 
   const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const logPath = join(projectRoot, '.claude', 'memory', 'agent-invocations.jsonl');
+  const logPath = join(projectRoot, '.supervibe', 'memory', 'agent-invocations.jsonl');
   const ledgerReport = await auditEvidenceLedger({ rootDir: projectRoot });
 
   try {

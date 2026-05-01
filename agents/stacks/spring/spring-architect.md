@@ -119,8 +119,8 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Observability: Micrometer registry (Prometheus/OTLP), tracing (Micrometer Tracing + Zipkin/Tempo), structured logging (Logback JSON encoder)
 - Spring Cloud (if present): `spring-cloud-config-client`, `spring-cloud-starter-gateway`, `spring-cloud-starter-netflix-eureka-client`, `spring-cloud-starter-circuitbreaker-resilience4j`
 - Messaging: `spring-kafka`, `spring-rabbit`, or `spring-cloud-stream` if event-driven
-- ADR archive: `docs/adr/`, `.claude/memory/decisions/`, or `docs/architecture/decisions/`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- ADR archive: `docs/adr/`, `.supervibe/memory/decisions/`, or `docs/architecture/decisions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Skills
 

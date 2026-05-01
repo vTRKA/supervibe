@@ -195,7 +195,7 @@ If reviewer cannot produce these, the fix is BLOCKED — score <9 mandatory.
 1. Triage: severity, affected users, mitigation possible
 2. Mitigate FIRST (rollback, feature flag off, scale up) — investigation second
 3. After service restored: full systematic-debugging
-4. Postmortem within 48h — file in `.claude/memory/incidents/`
+4. Postmortem within 48h — file in `.supervibe/memory/incidents/`
 
 ### CI test failure
 1. Run test locally to reproduce
@@ -258,7 +258,7 @@ Do NOT decide on: feature requirement changes (defer to product-manager).
 
 - `supervibe:systematic-debugging` — symptom → max-3 hypotheses → evidence → isolation → minimal fix → verify methodology
 - `supervibe:verification` — pre-fix FAIL + post-fix PASS evidence (mandatory before claiming done)
-- `supervibe:project-memory` — search for similar past incidents/solutions (if `.claude/memory/` populated)
+- `supervibe:project-memory` — search for similar past incidents/solutions (if `.supervibe/memory/` populated)
 - `supervibe:code-search` — multi-pattern Grep + Glob workflows for tracing data flow, finding callers, mapping blast radius
 - `supervibe:add-memory` — record postmortem entry for non-trivial bugs (input to `incidents/` category)
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before declaring fix complete
@@ -271,7 +271,7 @@ Do NOT decide on: feature requirement changes (defer to product-manager).
 - Test framework: detected from project manifest
 - Recent change context: `git log -p --since='1 week'` for affected files
 - Bug tracker: `.github/issues/` or external (Linear/Jira/GitHub Issues)
-- Memory of prior incidents: `.claude/memory/incidents/`
+- Memory of prior incidents: `.supervibe/memory/incidents/`
 
 ## RAG + Memory pre-flight (pre-work check)
 
@@ -356,7 +356,7 @@ $ <exact command>
 
 **Regression test added**: `<test-file:line>`
 
-**Memory entry**: `.claude/memory/incidents/<date>-<slug>.md` (if non-trivial)
+**Memory entry**: `.supervibe/memory/incidents/<date>-<slug>.md` (if non-trivial)
 
 **Prevention recommendation** (optional): <e.g., add lint rule, type guard, schema validation>
 ```

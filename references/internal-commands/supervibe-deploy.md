@@ -119,7 +119,7 @@ This invokes the full Stage A (readiness) + execution + Stage B (completion) flo
 
 ### 6. Persist deployment record
 
-`.claude/memory/decisions/deployments.md` (append):
+`.supervibe/memory/decisions/deployments.md` (append):
 ```markdown
 ## <slug> deployed
 Date: <ISO>
@@ -163,7 +163,7 @@ When user runs `/supervibe-deploy --rollback <slug>`:
    ```json
    { "rolledBackAt": "<ISO>", "rollbackReason": "<text>", "originalDeploy": { ... } }
    ```
-6. Update `.claude/memory/decisions/deployments.md`: status → reverted.
+6. Update `.supervibe/memory/decisions/deployments.md`: status → reverted.
 
 ## Error recovery
 
@@ -201,7 +201,7 @@ Stage A (readiness): 10/10 ✓
 Stage B (completion): 10/10 ✓
 
 Deployment record: prototypes/landing-fintech-2026/.deployed.json
-Memory: .claude/memory/decisions/deployments.md (appended)
+Memory: .supervibe/memory/decisions/deployments.md (appended)
 
 Follow-ups:
   • Project test command (production tests)
@@ -216,7 +216,7 @@ Follow-ups:
 - Production codebase doesn't yet exist (use `/supervibe-genesis` to scaffold first).
 - For one-off mockups not intended for production.
 - For brand exploration / mood-boards — those don't need deployment.
-- When project is in a freeze period (read `.claude/memory/decisions/` for freeze announcements).
+- When project is in a freeze period (read `.supervibe/memory/decisions/` for freeze announcements).
 
 ## Related
 

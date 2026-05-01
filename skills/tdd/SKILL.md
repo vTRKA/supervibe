@@ -25,7 +25,7 @@ NOT for: pure config changes, scaffolding files, documentation updates, dependen
 1. Read project's test conventions from `CLAUDE.md`
 2. Identify test framework from `package.json` / `composer.json` / `Cargo.toml` (vitest/jest/pytest/phpunit/cargo test/etc.)
 3. Identify test command (`npm test`, `pytest`, etc.) and per-file invocation form
-4. Check if project has a "no mocks" rule in `.claude/rules/` (some projects mandate integration tests)
+4. Check if project has a "no mocks" rule in the selected host adapter rules folder (some projects mandate integration tests)
 
 ## Decision tree
 

@@ -13,8 +13,8 @@ if (args.help) {
   console.log([
     "SUPERVIBE_IDE_BRIDGE_HELP",
     "Usage:",
-    "  npm run supervibe:ide-bridge -- --file .claude/memory/work-items/<epic>/graph.json",
-    "  npm run supervibe:ide-bridge -- --state .claude/memory/loops/<run-id>/state.json --out .supervibe/ide-bridge.json",
+    "  npm run supervibe:ide-bridge -- --file .supervibe/memory/work-items/<epic>/graph.json",
+    "  npm run supervibe:ide-bridge -- --state .supervibe/memory/loops/<run-id>/state.json --out .supervibe/ide-bridge.json",
     "",
     "Creates a JSON descriptor for wrapping /supervibe-ui as a localhost IDE webview/widget.",
   ].join("\n"));
@@ -23,8 +23,8 @@ if (args.help) {
 
 const descriptor = createIdeBridgeDescriptor({
   rootDir: args.root || process.cwd(),
-  graphPath: args.file || args.graph || ".claude/memory/work-items/<epic-id>/graph.json",
-  statePath: args.state || ".claude/memory/loops/<run-id>/state.json",
+  graphPath: args.file || args.graph || ".supervibe/memory/work-items/<epic-id>/graph.json",
+  statePath: args.state || ".supervibe/memory/loops/<run-id>/state.json",
   port: args.port || 3057,
 });
 const out = args.out

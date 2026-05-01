@@ -40,6 +40,6 @@ Thumbs.db
 *.swp
 
 # Evolve runtime
-.claude/research-cache/
-.claude/effectiveness.jsonl
-# .claude/confidence-log.jsonl   # Track this — audit trail
+.supervibe/research-cache/
+.supervibe/memory/effectiveness.jsonl
+# .supervibe/confidence-log.jsonl   # Track this — audit trail

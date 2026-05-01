@@ -1,5 +1,5 @@
 ---
-description: "Internal escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .claude/confidence-log.jsonl. Prefer fixing score gaps first."
+description: "Internal escape hatch for HARD BLOCK confidence gates. Records the override with required reason in .supervibe/confidence-log.jsonl. Prefer fixing score gaps first."
 ---
 
 # /supervibe-override
@@ -10,10 +10,10 @@ This command is intentionally not part of the normal user path. It should be sug
 
 ## Path resolution for the audit log
 
-`.claude/confidence-log.jsonl` is resolved **relative to the current working directory** (the project root where Claude Code is running), NOT relative to the plugin install path.
+`.supervibe/confidence-log.jsonl` is resolved **relative to the current working directory** (the project root where Claude Code is running), NOT relative to the plugin install path.
 
-- When using Supervibe in a target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.claude/confidence-log.jsonl`.
-- When testing the plugin inside its own dev repo, the log lands at `<plugin-repo>/.claude/confidence-log.jsonl`.
+- When using Supervibe in a target project (`/path/to/their-project/`), the log lands at `/path/to/their-project/.supervibe/confidence-log.jsonl`.
+- When testing the plugin inside its own dev repo, the log lands at `<plugin-repo>/.supervibe/confidence-log.jsonl`.
 
 If `.claude/` does not exist yet, this command must create it.
 
@@ -45,7 +45,7 @@ If reason is missing or shorter than 10 characters: respond "Override requires a
 2. Validate reason length ≥10 characters.
 3. Read the most recent confidence-scoring result from the conversation context.
 4. Construct the log entry with timestamp, artifact-type, score, gaps, agent, reason.
-5. Append a single JSON line to `.claude/confidence-log.jsonl` (resolved relative to cwd).
+5. Append a single JSON line to `.supervibe/confidence-log.jsonl` (resolved relative to cwd).
    - Create `.claude/` and the log file if missing.
    - NEVER edit existing lines (append-only).
 6. Confirm to user: "Override recorded. Artifact may proceed at score X/10 with the noted gaps."

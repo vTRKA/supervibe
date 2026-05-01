@@ -19,7 +19,7 @@
         "graphSymbols": ["collectIndexHealthFromStore", "evaluateIndexHealthGate"],
         "estimatedTokens": 760,
         "citations": [
-          { "id": "rag-index-health", "source": "memory", "path": ".claude/memory/decisions/rag-index-health.md", "redacted": true },
+          { "id": "rag-index-health", "source": "memory", "path": ".supervibe/memory/decisions/rag-index-health.md", "redacted": true },
           { "id": "index-health-gate", "source": "rag", "path": "scripts/lib/supervibe-index-health.mjs", "redacted": true }
         ],
         "evidence": [{ "id": "health-gate", "stale": false }]

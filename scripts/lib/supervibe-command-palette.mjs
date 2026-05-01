@@ -14,12 +14,12 @@ export const COMMAND_PALETTE_ACTION_IDS = Object.freeze([
   "stop-run",
 ]);
 
-export function buildCommandPalette({ index = [], state = {}, planPath = null, graphPath = ".claude/memory/work-items/<epic-id>/graph.json", savedViewStore = null, selectedItemId = null } = {}) {
+export function buildCommandPalette({ index = [], state = {}, planPath = null, graphPath = ".supervibe/memory/work-items/<epic-id>/graph.json", savedViewStore = null, selectedItemId = null } = {}) {
   const grouped = groupWorkItemsByStatus(index);
   const ready = grouped.ready[0] || null;
   const blockers = grouped.blocked.length;
   const runId = state.run_id || state.runId || null;
-  const stateFile = state.stateFile || (runId ? `.claude/memory/loops/${runId}/state.json` : ".claude/memory/loops/<run-id>/state.json");
+  const stateFile = state.stateFile || (runId ? `.supervibe/memory/loops/${runId}/state.json` : ".supervibe/memory/loops/<run-id>/state.json");
   const views = savedViewStore ? listSavedViews(savedViewStore) : [];
   const actions = [
     action("view-ready-work", "View ready work", "/supervibe-status --view ready-now --file " + graphPath, { enabled: true }),

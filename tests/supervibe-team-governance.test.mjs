@@ -14,7 +14,7 @@ test("team roles expose storage, branch, sync, review, and metadata defaults", (
 
   assert.ok(ROLE_NAMES.includes("owner"));
   assert.equal(governance.role, "contributor");
-  assert.equal(governance.storage.location, ".claude/memory/work-items");
+  assert.equal(governance.storage.location, ".supervibe/memory/work-items");
   assert.equal(governance.branchPolicy.protected, true);
   assert.equal(governance.allowedSync.includes("metadata-branch"), true);
   assert.equal(governance.review.required, true);

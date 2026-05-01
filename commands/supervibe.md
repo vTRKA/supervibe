@@ -66,11 +66,11 @@ The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 ch
 | Priority | Check | Signal source | Proposes |
 |----------|-------|---------------|----------|
 | 1 | `upstream-behind` | `.claude-plugin/.upgrade-check.json` shows `behind > 0` | `/supervibe-update` |
-| 2 | `version-bump-unacked` | `.claude/memory/.evolve-version` < installed plugin version | `/supervibe-adapt` |
-| 3 | `project-not-scaffolded` | No `.claude/agents/` AND no `CLAUDE.md` in project root | `/supervibe-genesis` |
+| 2 | `version-bump-unacked` | `.supervibe/memory/.evolve-version` < installed plugin version | `/supervibe-adapt` |
+| 3 | `project-not-scaffolded` | No Supervibe host adapter folders or managed instruction block | `/supervibe-genesis` |
 | 4 | `underperformers` | `auto-strengthen-trigger` returns ≥1 flagged agent (needs ≥10 invocations to trigger) | `/supervibe-strengthen` |
 | 5 | `stale-artifacts` | ≥3 files in `agents/` `rules/` `skills/` with `last-verified` >30 days old | `/supervibe-audit` |
-| 6 | `override-rate-high` | `.claude/confidence-log.jsonl` shows >5% overrides over last 100 entries | `/supervibe-audit` |
+| 6 | `override-rate-high` | `.supervibe/confidence-log.jsonl` shows >5% overrides over last 100 entries | `/supervibe-audit` |
 | 7 | `pending-evaluation` | Latest invocation in `agent-invocations.jsonl` has no `outcome` field | `/supervibe-score --record` |
 | (none) | — | All 7 checks pass | "System healthy. No action needed." |
 
@@ -103,14 +103,14 @@ Plugin:   <path>
 
   ✓ upstream-behind             → plugin is up to date with upstream
   ✓ version-bump-unacked        → project + plugin both on 2.0.11
-  ⚠ project-not-scaffolded      → no .claude/agents/ and no CLAUDE.md — run genesis first
+  ⚠ project-not-scaffolded      → no Supervibe host adapter folders or managed instruction block — run genesis first
   ✓ underperformers             → 12 invocations, no underperformers
   ✓ stale-artifacts             → 0 stale artifact(s) (under 3-threshold)
   ✓ override-rate-high          → override rate 1.2% (under threshold)
   ✓ pending-evaluation          → latest invocation already has outcome
 
 Proposed: /supervibe-genesis
-Why:      no .claude/agents/ and no CLAUDE.md — run genesis first
+Why:      no Supervibe host adapter folders or managed instruction block — run genesis first
 
 Confidence: N/A    Rubric: read-only-research
 ```

@@ -26,7 +26,7 @@ asks to update rules after the report.
    `applies-to`, `mandatory`, `version`, and `last-verified`.
 3. Read the project stack fingerprint or manifest files so rule scope is judged
    against the actual project, not generic expectations.
-4. Read prior rule/audit findings if `.claude/memory/` exists.
+4. Read prior rule/audit findings if `.supervibe/memory/` exists.
 
 ## Decision Tree
 

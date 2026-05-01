@@ -32,7 +32,7 @@ This skill replaces blind grep. It surfaces conceptually-related code even when 
 
 ## Step 0 — Read source of truth (required)
 
-1. Verify code index exists: `.claude/memory/code.db`
+1. Verify code index exists: `.supervibe/memory/code.db`
 2. If missing → run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs` first
 3. If memory watcher is running, file changes are auto-indexed; otherwise re-run after edits
 

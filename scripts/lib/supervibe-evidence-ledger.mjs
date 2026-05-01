@@ -2,7 +2,7 @@ import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const DEFAULT_LEDGER = ".claude/memory/evidence-ledger.jsonl";
+const DEFAULT_LEDGER = ".supervibe/memory/evidence-ledger.jsonl";
 const REQUIRED_FIELDS = Object.freeze(["taskId", "agentId", "retrievalPolicy", "verificationCommands", "redactionStatus"]);
 
 function defaultEvidenceLedgerPath(rootDir = process.cwd()) {

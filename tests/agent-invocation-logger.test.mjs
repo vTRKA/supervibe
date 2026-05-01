@@ -8,8 +8,8 @@ import { logInvocation, readInvocations, updateLatestInvocation, INVOCATION_LOG_
 const sandbox = join(tmpdir(), `supervibe-inv-log-${Date.now()}`);
 
 before(async () => {
-  await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
-  INVOCATION_LOG_PATH_FOR_TEST(join(sandbox, '.claude', 'memory', 'agent-invocations.jsonl'));
+  await mkdir(join(sandbox, '.supervibe', 'memory'), { recursive: true });
+  INVOCATION_LOG_PATH_FOR_TEST(join(sandbox, '.supervibe', 'memory', 'agent-invocations.jsonl'));
 });
 
 after(async () => { await rm(sandbox, { recursive: true, force: true }); });

@@ -12,10 +12,10 @@ import {
 
 test("project knowledge graph links memory, files, symbols and temporal supersession", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-knowledge-graph-"));
-  await mkdir(join(rootDir, ".claude", "memory", "decisions"), { recursive: true });
+  await mkdir(join(rootDir, ".supervibe", "memory", "decisions"), { recursive: true });
   await mkdir(join(rootDir, "scripts", "lib"), { recursive: true });
   await writeFile(join(rootDir, "scripts", "lib", "feedback.mjs"), "export function feedbackWebsocket() { return true; }\n", "utf8");
-  await writeFile(join(rootDir, ".claude", "memory", "decisions", "old.md"), [
+  await writeFile(join(rootDir, ".supervibe", "memory", "decisions", "old.md"), [
     "---",
     "id: feedback-websocket-v1",
     "type: decision",
@@ -26,7 +26,7 @@ test("project knowledge graph links memory, files, symbols and temporal superses
     "---",
     "Old decision touches scripts/lib/feedback.mjs.",
   ].join("\n"), "utf8");
-  await writeFile(join(rootDir, ".claude", "memory", "decisions", "new.md"), [
+  await writeFile(join(rootDir, ".supervibe", "memory", "decisions", "new.md"), [
     "---",
     "id: feedback-websocket-v2",
     "type: decision",

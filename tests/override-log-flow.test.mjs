@@ -16,7 +16,7 @@ after(async () => {
   await rm(SANDBOX, { recursive: true, force: true });
 });
 
-test('appendOverrideEntry creates .claude/ if missing', async () => {
+test('appendOverrideEntry creates .supervibe/ if missing and does not create .claude/', async () => {
   const entry = {
     'artifact-type': 'plan',
     'artifact-ref': 'docs/plans/test.md',
@@ -30,12 +30,13 @@ test('appendOverrideEntry creates .claude/ if missing', async () => {
     'user-confirmed': true
   };
   await appendOverrideEntry(SANDBOX, entry);
-  const claudeStat = await stat(join(SANDBOX, '.claude'));
-  assert.ok(claudeStat.isDirectory(), '.claude/ must be created');
+  const stateStat = await stat(join(SANDBOX, '.supervibe'));
+  assert.ok(stateStat.isDirectory(), '.supervibe/ must be created');
+  assert.equal(existsSync(join(SANDBOX, '.claude')), false, '.claude/ must not be created for Supervibe state');
 });
 
 test('appendOverrideEntry creates log file with correct first entry', async () => {
-  const logPath = join(SANDBOX, '.claude', 'confidence-log.jsonl');
+  const logPath = join(SANDBOX, '.supervibe', 'confidence-log.jsonl');
   assert.ok(existsSync(logPath), 'log file must exist after first append');
   const content = await readFile(logPath, 'utf8');
   const lines = content.split('\n').filter(Boolean);
@@ -59,7 +60,7 @@ test('appendOverrideEntry appends without overwriting existing entries', async (
     agent: 'supervibe:test-agent-2',
     'user-confirmed': true
   });
-  const logPath = join(SANDBOX, '.claude', 'confidence-log.jsonl');
+  const logPath = join(SANDBOX, '.supervibe', 'confidence-log.jsonl');
   const content = await readFile(logPath, 'utf8');
   const lines = content.split('\n').filter(Boolean);
   assert.strictEqual(lines.length, 2, 'must have 2 entries after second append');

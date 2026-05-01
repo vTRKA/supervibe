@@ -59,9 +59,9 @@ function formatEntry(entry) {
 async function main() {
   await readEvent();
   const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const queuePath = join(projectRoot, '.claude', 'memory', 'feedback-queue.jsonl');
-  const cursorPath = join(projectRoot, '.claude', 'memory', 'feedback-cursor.json');
-  const statusPath = join(projectRoot, '.claude', 'memory', 'feedback-status.json');
+  const queuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
+  const cursorPath = join(projectRoot, '.supervibe', 'memory', 'feedback-cursor.json');
+  const statusPath = join(projectRoot, '.supervibe', 'memory', 'feedback-status.json');
 
   const { entries, newOffset } = await drainNewEntries({ queuePath, cursorPath });
   const allEntries = await readFeedbackQueue(queuePath);

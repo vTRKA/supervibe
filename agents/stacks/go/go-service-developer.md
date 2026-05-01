@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang go --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-type>" --depth 2`
@@ -271,7 +271,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Logging: `log/slog` (stdlib, structured); JSON handler in prod, text in dev; never `fmt.Println` for app logs, never `log.Fatalln` outside `main`
 - Lint: `golangci-lint run` with `.golangci.yml` (revive, errcheck, ineffassign, gocritic, goimports, nilerr, contextcheck minimum)
 - Vet: `go vet ./...` always clean; `go test -race ./...` always clean
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

@@ -291,7 +291,7 @@ Do NOT decide on: compliance requirements for DLQ retention (defer to product-ma
 - Job middleware: `app/Jobs/Middleware/` — RateLimited, WithoutOverlapping, custom dedup gates
 - Event listeners: `app/Listeners/` queued listeners that share queue infrastructure
 - Scheduled tasks: `routes/console.php` or `app/Console/Kernel.php` — cron-driven dispatch
-- Memory: `.claude/memory/queue-incidents/` — past stuck jobs, DLQ floods, retry storms
+- Memory: `.supervibe/memory/queue-incidents/` — past stuck jobs, DLQ floods, retry storms
 
 ## Decision tree (dispatch model selection)
 

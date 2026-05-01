@@ -75,7 +75,7 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
 });
 
 async function writeGraph(root, graph) {
-  const dir = join(root, ".claude", "memory", "work-items", "epic-context");
+  const dir = join(root, ".supervibe", "memory", "work-items", "epic-context");
   await mkdir(dir, { recursive: true });
   const graphPath = join(dir, "graph.json");
   await writeFile(graphPath, `${JSON.stringify({ kind: "supervibe-work-item-graph", ...graph }, null, 2)}\n`, "utf8");
@@ -83,7 +83,7 @@ async function writeGraph(root, graph) {
 }
 
 async function writeMemory(root, category, fileName, frontmatter, body) {
-  const dir = join(root, ".claude", "memory", category);
+  const dir = join(root, ".supervibe", "memory", category);
   await mkdir(dir, { recursive: true });
   const filePath = join(dir, fileName);
   const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${value}`).join("\n");

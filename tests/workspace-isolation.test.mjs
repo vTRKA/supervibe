@@ -12,8 +12,8 @@ test("workspace isolation denies cross-project context without import approval",
   const projectA = createWorkspaceNamespace({ projectRoot: "D:/workspace/project-a" });
   const projectB = createWorkspaceNamespace({ projectRoot: "D:/workspace/project-b" });
   const items = [
-    ...attachWorkspaceNamespace([{ id: "memory-a", path: ".claude/memory/a.md" }], projectA),
-    ...attachWorkspaceNamespace([{ id: "memory-b", path: ".claude/memory/b.md" }], projectB),
+    ...attachWorkspaceNamespace([{ id: "memory-a", path: ".supervibe/memory/a.md" }], projectA),
+    ...attachWorkspaceNamespace([{ id: "memory-b", path: ".supervibe/memory/b.md" }], projectB),
   ];
 
   const denied = validateWorkspaceIsolation({ targetNamespace: projectA, contextItems: items });

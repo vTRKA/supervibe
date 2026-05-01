@@ -125,6 +125,6 @@ test("loop CLI tracker sync push writes mapping and preserves native graph", asy
 
   assert.match(stdout, /SUPERVIBE_TRACKER_SYNC_PUSH/);
   assert.match(stdout, /STATUS: synced/);
-  const mapping = await readFile(join(rootDir, ".claude", "memory", "loops", "task-tracker-map.json"), "utf8");
+  const mapping = await readFile(join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8");
   assert.match(mapping, /epic-sample/);
 });

@@ -10,11 +10,11 @@ import { scanCodeChanges, scanMemoryChanges } from '../scripts/lib/mtime-scan.mj
 const sandbox = join(tmpdir(), `evolve-mtime-${Date.now()}`);
 const fileA = join(sandbox, 'src', 'a.ts');
 const fileB = join(sandbox, 'src', 'b.ts');
-const memEntry = join(sandbox, '.claude', 'memory', 'decisions', 'auth.md');
+const memEntry = join(sandbox, '.supervibe', 'memory', 'decisions', 'auth.md');
 
 before(async () => {
   await mkdir(join(sandbox, 'src'), { recursive: true });
-  await mkdir(join(sandbox, '.claude', 'memory', 'decisions'), { recursive: true });
+  await mkdir(join(sandbox, '.supervibe', 'memory', 'decisions'), { recursive: true });
 
   await writeFile(fileA, `export function hello() { return 'hi'; }\n`);
   await writeFile(fileB, `export function world() { return 42; }\n`);

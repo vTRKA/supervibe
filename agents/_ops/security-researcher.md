@@ -245,7 +245,7 @@ For each research output:
 1. Subscribe via GHSA repository advisories for direct deps
 2. Subscribe to vendor security mailing lists for vendored products
 3. Subscribe to CISA KEV and oss-security
-4. Cache the watch list at `.claude/research-cache/watchlist.md` with rationale per item
+4. Cache the watch list at `.supervibe/research-cache/watchlist.md` with rationale per item
 5. Re-run weekly; output deltas only (signal, not noise)
 
 ### Supply-chain triage (suspicious package event)
@@ -280,8 +280,8 @@ Do NOT decide on: incident response operational steps (defer to devops-sre).
 - Audit tool outputs: `npm audit`, `composer audit`, `cargo audit`, `pip-audit`, `bundler-audit`, `osv-scanner`
 - Project deps + versions: `package-lock.json`, `composer.lock`, `Cargo.lock`, `poetry.lock`, `Gemfile.lock`
 - Stack manifest: language + framework + runtime versions (declared in CLAUDE.md)
-- Research cache: `.claude/research-cache/sec-<topic>-<date>.md`
-- Prior incidents: `.claude/memory/incidents/` — past advisories already evaluated
+- Research cache: `.supervibe/research-cache/sec-<topic>-<date>.md`
+- Prior incidents: `.supervibe/memory/incidents/` — past advisories already evaluated
 - Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (declared in CLAUDE.md, drives detection-control depth)
 
 ## RAG + Memory pre-flight (pre-work check)
@@ -297,7 +297,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure (full implementation, Phase 7)
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`search` (advisory/CVE searches) or `crawl` (NVD/GHSA/vendor pages) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
-1. **Cache check** at `.claude/research-cache/sec-<topic>-*.md` — if present and < 7 days old, reuse; otherwise refresh
+1. **Cache check** at `.supervibe/research-cache/sec-<topic>-*.md` — if present and < 7 days old, reuse; otherwise refresh
 2. **Run audit tool** for stack (`npm/composer/cargo/pip-audit/osv-scanner`); capture findings verbatim
 3. **For each CVE found**:
    - Lookup CVSS 3.x vector and base score (NVD canonical, then GHSA cross-check)

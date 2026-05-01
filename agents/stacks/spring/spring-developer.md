@@ -114,7 +114,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang java --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -288,7 +288,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Tests: `src/test/java/...`, JUnit 5, `@SpringBootTest` for integration, `@WebMvcTest` / `@DataJpaTest` for slice tests, Testcontainers for real Postgres/Redis/Kafka
 - Static analysis: Checkstyle / Spotless / SpotBugs / ErrorProne — config in `pom.xml` plugins or `build.gradle.kts`
 - Coverage: JaCoCo, threshold in `pom.xml`/`build.gradle.kts`, gate in CI
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

@@ -1,7 +1,7 @@
 # Autonomous Loop Scenarios
 
 This document is the implementation contract for `/supervibe-loop`. Every
-scenario must produce observable artifacts under `.claude/memory/loops/<run-id>/`
+scenario must produce observable artifacts under `.supervibe/memory/loops/<run-id>/`
 and must stop below the 9/10 confidence gate unless the user explicitly accepts
 a partial result.
 
@@ -9,7 +9,7 @@ a partial result.
 
 `/supervibe-loop --dry-run --request "validate integrations"` is the pinned
 compatibility fixture for future loop refactors. A run must keep writing these
-artifacts under `.claude/memory/loops/<run-id>/`:
+artifacts under `.supervibe/memory/loops/<run-id>/`:
 
 - `preflight.json`
 - `state.json`
@@ -78,8 +78,8 @@ Every scenario must support:
 ## Work-Item UX And Tracker Sync
 
 Reviewed plans can be atomized into one epic plus child work items under
-`.claude/memory/work-items/<epic-id>/`. Native JSON remains canonical. Optional
-external tracker sync writes `.claude/memory/loops/task-tracker-map.json` and
+`.supervibe/memory/work-items/<epic-id>/`. Native JSON remains canonical. Optional
+external tracker sync writes `.supervibe/memory/loops/task-tracker-map.json` and
 must preserve ready, blocked, claimed, stale, orphan, drift, review, and done
 states in local status/query output. Tracker unavailability is a degraded
 native-fallback state, not a planning failure.

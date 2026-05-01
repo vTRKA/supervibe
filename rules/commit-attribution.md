@@ -93,7 +93,7 @@ When generating a PR:
 
 If the user explicitly says "add Co-Authored-By: Claude" or "include the Claude footer in this commit" — comply for that specific commit only. The override does not propagate to subsequent commits in the same session.
 
-Log overrides as you would for any rule: append a single line to `.claude/confidence-log.jsonl` with `{ rule: "commit-attribution", override: true, reason: "user requested attribution" }`.
+Log overrides as you would for any rule: append a single line to `.supervibe/confidence-log.jsonl` with `{ rule: "commit-attribution", override: true, reason: "user requested attribution" }`.
 
 ## Verification
 

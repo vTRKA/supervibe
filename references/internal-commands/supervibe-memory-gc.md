@@ -2,7 +2,7 @@
 description: >-
   Archive old/superseded memory entries to prevent unbounded growth. Reads
   decisions/learnings/patterns, applies retention policy, moves stale to
-  .claude/memory/.archive/. Always reversible. Reversible. Triggers: 'memory
+  .supervibe/memory/.archive/. Always reversible. Reversible. Triggers: 'memory
   garbage collect', 'cleanup memory', 'архив памяти', '/supervibe-memory-gc'.
 ---
 
@@ -12,9 +12,9 @@ Internal low-level spec. The shipped user-facing cleanup route is
 `/supervibe-gc`, backed by `npm run supervibe:gc`,
 `npm run supervibe:memory-gc`, and `npm run supervibe:work-items-gc`.
 
-Garbage-collect (archive, not delete) old or superseded entries from `.claude/memory/`. Prevents unbounded memory growth while preserving every entry forever — archived entries are moved to `.claude/memory/.archive/`, never erased, fully reversible via `--restore`.
+Garbage-collect (archive, not delete) old or superseded entries from `.supervibe/memory/`. Prevents unbounded memory growth while preserving every entry forever — archived entries are moved to `.supervibe/memory/.archive/`, never erased, fully reversible via `--restore`.
 
-This command does NOT touch `.claude/memory/code.db` / `memory.db` (SQLite indexes — these are rebuilt from the markdown source-of-truth). It operates on the `.md` files in `decisions/`, `learnings/`, `patterns/`, `incidents/`, `solutions/`.
+This command does NOT touch `.supervibe/memory/code.db` / `memory.db` (SQLite indexes — these are rebuilt from the markdown source-of-truth). It operates on the `.md` files in `decisions/`, `learnings/`, `patterns/`, `incidents/`, `solutions/`.
 
 ## Retention policy (default — configurable per-category)
 
@@ -58,7 +58,7 @@ Mark `old-id` as superseded by `new-id`. Adds `superseded-by: <new-id>` frontmat
 
 ### `/supervibe-memory-gc --restore <archived-id>` — restore from archive
 
-Move file back from `.claude/memory/.archive/<category>/<file>` to `.claude/memory/<category>/<file>`. Re-indexes via `npm run memory:watch` or next session-start.
+Move file back from `.supervibe/memory/.archive/<category>/<file>` to `.supervibe/memory/<category>/<file>`. Re-indexes via `npm run memory:watch` or next session-start.
 
 ### `/supervibe-memory-gc --stats` — memory size report
 
@@ -69,13 +69,13 @@ Prints per-category counts + total bytes + oldest entry date. No archival action
 **Archived files are MOVED, not deleted:**
 
 ```
-.claude/memory/incidents/upgrade-failure-2024-01-15.md
+.supervibe/memory/incidents/upgrade-failure-2024-01-15.md
                     ↓ archived
-.claude/memory/.archive/incidents/upgrade-failure-2024-01-15.md
+.supervibe/memory/.archive/incidents/upgrade-failure-2024-01-15.md
                     ↓ frontmatter updated to add archivedAt + archiveReason
 ```
 
-The archive directory `.claude/memory/.archive/` is gitignored from the index DB but tracked in git (so history persists across machines).
+The archive directory `.supervibe/memory/.archive/` is gitignored from the index DB but tracked in git (so history persists across machines).
 
 **Archived entries are excluded from semantic search** (`scripts/build-memory-index.mjs` skips `.archive/` by default). To include them, run `npm run memory:watch -- --include-archive` for one-off searches.
 
@@ -88,7 +88,7 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
 2. **Scan each category:**
    ```bash
    for category in decisions patterns incidents learnings solutions; do
-     for file in .claude/memory/$category/*.md; do
+     for file in .supervibe/memory/$category/*.md; do
        parse frontmatter (date, superseded-by, confidence, applies-to)
        if matches archive trigger → add to candidates
      done
@@ -135,8 +135,8 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
      archivedAt: <ISO>
      archiveReason: <"superseded" | "age-retention" | "applies-to-deleted">
      ```
-   - Move to `.claude/memory/.archive/<category>/<filename>`.
-   - Append to `.claude/memory/.archive/_archive-log.jsonl`:
+   - Move to `.supervibe/memory/.archive/<category>/<filename>`.
+   - Append to `.supervibe/memory/.archive/_archive-log.jsonl`:
      ```jsonl
      {"id":"<id>","category":"<cat>","archivedAt":"<ISO>","reason":"<r>","originalPath":"<p>"}
      ```
@@ -158,10 +158,10 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
    
    Memory size before: 287 entries / 1.4 MB
    Memory size after:  273 entries / 1.3 MB
-   Archive size:       14 entries / 87 KB (.claude/memory/.archive/)
+   Archive size:       14 entries / 87 KB (.supervibe/memory/.archive/)
    
    Restore any: /supervibe-memory-gc --restore <id>
-   View archive: ls .claude/memory/.archive/<category>/
+   View archive: ls .supervibe/memory/.archive/<category>/
    ```
 
 ## Error recovery
@@ -170,7 +170,7 @@ The archive directory `.claude/memory/.archive/` is gitignored from the index DB
 |---|---|
 | Frontmatter parse error in candidate | Skip that file; report path; suggest manual fix |
 | `superseded-by:` points to non-existent file | Don't archive (broken link is a signal); report; user fixes link |
-| Archive dir doesn't exist | Auto-create `.claude/memory/.archive/<category>/` |
+| Archive dir doesn't exist | Auto-create `.supervibe/memory/.archive/<category>/` |
 | Move fails (permission, lock) | Skip file; print error; continue with others |
 | Re-index fails | Memory entries archived correctly; just SQLite rebuild needs manual `npm run code:index` |
 | User runs `--restore` but file not in archive | Print archive log entries to help locate by `id` |
@@ -188,7 +188,7 @@ By category:
   learnings:  93 entries (oldest: 2023-06-15)
   solutions:  43 entries (oldest: 2023-10-08)
 
-Archive (.claude/memory/.archive/):
+Archive (.supervibe/memory/.archive/):
   Total archived: 14 entries (87 KB)
 
 Stale candidates by current default policy: 14
@@ -216,5 +216,5 @@ Full mode: see step 7 above.
 - `supervibe:add-memory` skill — writes new entries
 - `scripts/build-memory-index.mjs` — re-indexes after archival
 - `scripts/lib/memory-store.mjs` — read/write logic
-- `.claude/memory/.archive/_archive-log.jsonl` — audit trail of archivals
+- `.supervibe/memory/.archive/_archive-log.jsonl` — audit trail of archivals
 - `/supervibe-audit` — surfaces memory growth in health check

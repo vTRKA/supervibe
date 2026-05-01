@@ -33,7 +33,7 @@ NOT for:
 
 1. Read the project's `manifest.json` (or `manifest.json.tpl` if generated). If absent → STOP and tell the user to run `chrome-extension-architect` first.
 2. Read `package.json` for current scripts + devDependencies (which bundler is wired, if any).
-3. Read `.claude/memory/decisions/` for any past bundler ADR. If one exists, the choice is locked unless an explicit re-evaluation ADR is written.
+3. Read `.supervibe/memory/decisions/` for any past bundler ADR. If one exists, the choice is locked unless an explicit re-evaluation ADR is written.
 4. Read `vite.config.*` / `wxt.config.*` / `plasmo.config.*` if present.
 
 ## Decision tree — bundler
@@ -49,7 +49,7 @@ When changing bundler on an existing project, write the migration ADR FIRST. Doc
 
 ## Procedure
 
-1. **Confirm bundler choice.** If a `.claude/memory/decisions/<date>-extension-bundler.md` ADR exists, follow it. Otherwise propose one with the decision tree above and wait for user "yes".
+1. **Confirm bundler choice.** If a `.supervibe/memory/decisions/<date>-extension-bundler.md` ADR exists, follow it. Otherwise propose one with the decision tree above and wait for user "yes".
 
 2. **Install bundler + tooling.**
    ```bash

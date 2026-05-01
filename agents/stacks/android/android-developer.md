@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar composables, view models, repositories. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang kotlin --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this composable/viewmodel/repository
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -293,7 +293,7 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 - Build: `./gradlew assembleDevDebug` / `assembleProdRelease`; product flavors (env) × build types (debug/release)
 - Resources: `res/values/strings.xml` (+ locale variants), `res/values/themes.xml` for Material 3 theming, `res/values-night/` for dark
 - Schema: Room schema export under `app/schemas/<DbClassName>/<version>.json` for migration testing
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

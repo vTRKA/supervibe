@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 const SECRET_PATTERN = /\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{20,}|(?:api[_-]?key|token|secret|password|passwd)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,})/gi;
 
 export function defaultChangeSummaryPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "anchors", "change-summaries.jsonl");
+  return join(rootDir, ".supervibe", "memory", "anchors", "change-summaries.jsonl");
 }
 
 export function createChangeSummary({

@@ -3,8 +3,8 @@ import { dirname, resolve } from "node:path";
 
 export function createIdeBridgeDescriptor({
   rootDir = process.cwd(),
-  graphPath = ".claude/memory/work-items/<epic-id>/graph.json",
-  statePath = ".claude/memory/loops/<run-id>/state.json",
+  graphPath = ".supervibe/memory/work-items/<epic-id>/graph.json",
+  statePath = ".supervibe/memory/loops/<run-id>/state.json",
   port = 3057,
   generatedAt = new Date().toISOString(),
 } = {}) {

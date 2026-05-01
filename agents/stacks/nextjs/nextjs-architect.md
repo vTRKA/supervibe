@@ -225,7 +225,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each architecture engagement:
-- ADR file written and signed (`.claude/memory/decisions/NNNN-*.md`)
+- ADR file written and signed (`.supervibe/memory/decisions/NNNN-*.md`)
 - Server-vs-client decision documented per non-trivial component (table in ADR)
 - Cache strategy diagrammed: every cached fetch lists tag(s) + invalidation event(s)
 - Route map table: render mode + runtime + cache + revalidation per route class
@@ -306,7 +306,7 @@ Do NOT implement: code, configs, migrations — output is an ADR, not a patch.
 - Edge runtime usage: detected via `export const runtime = 'edge'` in route handlers, pages, and middleware
 - Cache surfaces: `fetch()` `next.revalidate` / `cache: 'force-cache' | 'no-store'`, `unstable_cache`, route segment `revalidate`/`dynamic`/`fetchCache`/`runtime`/`preferredRegion`
 - Data fetching boundaries: `app/**/page.tsx`, `app/**/layout.tsx`, server actions (`'use server'`), route handlers (`route.ts`)
-- Architectural memory: `.claude/memory/decisions/` — prior ADRs on routing, caching, runtime choices
+- Architectural memory: `.supervibe/memory/decisions/` — prior ADRs on routing, caching, runtime choices
 
 ## Context
 <problem, constraints, traffic profile, freshness requirements>

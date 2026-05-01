@@ -12,7 +12,7 @@ if (args.help) {
   console.log([
     "SUPERVIBE_CONTEXT_PACK_HELP",
     "Usage:",
-    "  npm run supervibe:context-pack -- --file .claude/memory/work-items/<epic>/graph.json",
+    "  npm run supervibe:context-pack -- --file .supervibe/memory/work-items/<epic>/graph.json",
     "  npm run supervibe:context-pack -- --file graph.json --item T1 --out context.md",
     "  npm run supervibe:context-pack -- --file graph.json --json",
     "  npm run supervibe:context-pack -- --file graph.json --max-chars 12000",

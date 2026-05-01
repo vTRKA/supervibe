@@ -260,7 +260,7 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 - Rate limit headers: `X-RateLimit-*` / `RateLimit-*` (RFC 9239)
 - Pagination convention: offset/limit vs cursor vs link header
 - Deprecation tracking: `Deprecation:` and `Sunset:` headers, changelog files, ADRs
-- Prior API decisions: `.claude/memory/decisions/` for past contract trade-offs
+- Prior API decisions: `.supervibe/memory/decisions/` for past contract trade-offs
 
 ## Domain knowledge
 
@@ -395,7 +395,7 @@ SUGGESTION:
 - Idempotency: M of N mutation endpoints accept Idempotency-Key
 
 ## ADR
-- Recorded: `.claude/memory/decisions/<date>-<topic>.md` (if applicable)
+- Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

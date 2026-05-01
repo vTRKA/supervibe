@@ -55,7 +55,7 @@ Worktree location:
 2. **Choose branch name** — `feat/<topic>` or `fix/<topic>` per conventions
 3. **Choose worktree path** — `../<repo-name>-<topic>` typically
 4. **Create**: `git worktree add <path> -b <branch>` only after explicit user command or validated existing worktree.
-4a. **Register session** in `.claude/memory/worktree-sessions/registry.json` and record heartbeat/status/cleanup controls.
+4a. **Register session** in `.supervibe/memory/worktree-sessions/registry.json` and record heartbeat/status/cleanup controls.
 5. **Verify**: `git worktree list` shows new entry
 6. **Switch context** — communicate to user: subsequent commands run in `<path>`
 7. **Work** — execute plan / feature / fix

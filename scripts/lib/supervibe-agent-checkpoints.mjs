@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 const DEFAULT_SCHEMA_VERSION = 1;
 
 function defaultCheckpointDir(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "checkpoints");
+  return join(rootDir, ".supervibe", "memory", "checkpoints");
 }
 
 function checkpointPathForTask(taskId, { rootDir = process.cwd(), checkpointDir = defaultCheckpointDir(rootDir) } = {}) {

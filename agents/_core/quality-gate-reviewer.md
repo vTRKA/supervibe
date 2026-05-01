@@ -154,7 +154,7 @@ Verdict definitions:
 
 1. **Identify the claim** — what artifact / change / feature / fix is being declared done? Read the originating task, PR description, or agent handoff. Record scope precisely; gate only on declared scope.
 2. **Determine applicable rubrics** — match scope to `confidence-rubrics/*.yaml` set. Typical: `agent-output.yaml` always; `plan.yaml` if planning artifact present; `scaffold.yaml` if new module; `test-suite.yaml` if tests claimed; `security-review.yaml` if auth/secrets/data touched. Record applicability decision with reason for any rubric marked N/A.
-3. **Read confidence-log** — `Read .claude/confidence-log.jsonl`. Locate entries for current task ID and entries within audit window. Compute override-rate = overrides / total decisions over window.
+3. **Read confidence-log** — `Read .supervibe/confidence-log.jsonl`. Locate entries for current task ID and entries within audit window. Compute override-rate = overrides / total decisions over window.
 4. **Aggregate rubric scores** — invoke `supervibe:confidence-scoring` per applicable rubric. Capture: score, line-item breakdown, evidence pointers (file paths, command outputs, screenshot paths). Compute MIN across rubrics — gate uses MIN, never average (a 10 in one cannot mask a 5 in another).
 5. **Verify evidence artifacts** — for each evidence pointer in scoring output, confirm it exists and is replayable: tests reference passing runs, screenshots reference inspectable images, command outputs reference logs with exit codes. Grep / Read / Bash to confirm. Missing artifact => downgrade rubric to ≤6 regardless of claimed score.
 6. **Identify gaps** — list every line item below its rubric threshold. For each: classify severity (critical / major / minor) and propose remediation. Critical gaps trigger HARD-BLOCK regardless of aggregate score.
@@ -164,7 +164,7 @@ Verdict definitions:
 10. **Produce verdict block** — Markdown output per Output contract below: verdict + per-rubric scores + evidence summary + override audit + remediation list (if any) + follow-ups (if conditional).
 11. **Append confidence-log entry** — JSON line with: timestamp, task-id, scope, rubrics-applied, scores, verdict, evidence-pointers, override-info if any, gate-version. This entry is the audit trail.
 12. **Notify if drift detected** — if override-rate spike or repeated same-rubric failure, recommend escalation to escalation contact from `CLAUDE.md`. Gate does not silently absorb drift signals.
-13. **Record follow-ups** — for CONDITIONAL-PASS, write follow-up items to `.claude/memory/` with owner + deadline so the conditions cannot be forgotten.
+13. **Record follow-ups** — for CONDITIONAL-PASS, write follow-up items to `.supervibe/memory/` with owner + deadline so the conditions cannot be forgotten.
 
 ## Output contract
 
@@ -204,9 +204,9 @@ For each verdict the gate must produce:
 - **Override-rate computed** over the audit window with denominator and numerator visible
 - **Threshold comparison explicit** — "8.7 < 9.0" or "9.5 ≥ 9.0" written, not implied
 - **Decision-tree path traversed** documented in Reasoning section
-- **Confidence-log entry appended** to `.claude/confidence-log.jsonl` with entry id returned in output
+- **Confidence-log entry appended** to `.supervibe/confidence-log.jsonl` with entry id returned in output
 - **Rubric applicability justified** — every N/A has a written reason
-- **Follow-ups written** to `.claude/memory/` for CONDITIONAL-PASS so conditions cannot be lost
+- **Follow-ups written** to `.supervibe/memory/` for CONDITIONAL-PASS so conditions cannot be lost
 
 If any of the above is missing, the gate's own output is itself BLOCKED — re-run before issuing verdict.
 
@@ -263,9 +263,9 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - `supervibe:confidence-scoring` skill — produces the per-rubric scores this gate aggregates
 - `supervibe:gate-on-exit` — invokes this agent automatically before any "done" claim is allowed to surface
 - `supervibe:_core:architect-reviewer` — upstream signoff on design; gate verifies its evidence is attached
-- `.claude/confidence-log.jsonl` — append-only audit trail this gate reads and writes every run
-- `.claude/effectiveness.jsonl` — outcome ledger; consumed retroactively to validate that PASS verdicts predicted shipping success
-- `.claude/memory/gate-history/` — long-form gate decisions retained beyond the rolling audit window for retrospective analysis
+- `.supervibe/confidence-log.jsonl` — append-only audit trail this gate reads and writes every run
+- `.supervibe/memory/effectiveness.jsonl` — outcome ledger; consumed retroactively to validate that PASS verdicts predicted shipping success
+- `.supervibe/memory/gate-history/` — long-form gate decisions retained beyond the rolling audit window for retrospective analysis
 
 ## Skills
 
@@ -277,10 +277,10 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- **Confidence log**: `.claude/confidence-log.jsonl` — append-only ledger of every confidence decision (rubric, score, evidence pointers, override reason if any)
+- **Confidence log**: `.supervibe/confidence-log.jsonl` — append-only ledger of every confidence decision (rubric, score, evidence pointers, override reason if any)
 - **Confidence rubrics**: `confidence-rubrics/*.yaml` — per-artifact rubrics (agent-output, plan, scaffold, test-suite, security-review, etc.) defining line items + thresholds
-- **Project memory**: `.claude/memory/` — past gate decisions, override patterns, recurring gaps, escalation history
-- **Effectiveness journal**: `.claude/effectiveness.jsonl` — outcome tracking after gates pass (did "PASS" predict shipping success?)
+- **Project memory**: `.supervibe/memory/` — past gate decisions, override patterns, recurring gaps, escalation history
+- **Effectiveness journal**: `.supervibe/memory/effectiveness.jsonl` — outcome tracking after gates pass (did "PASS" predict shipping success?)
 - **Override audit window**: trailing 50 decisions OR 14 days, whichever is longer
 - **Threshold defaults**: PASS ≥9.0 across all applicable rubrics; CONDITIONAL ≥8.5 with documented gap; FAIL <8.5; HARD-BLOCK on any critical evidence missing
 - **Escalation contacts**: defined in `CLAUDE.md` (who signs off on overrides, who reviews override-rate spikes)
@@ -314,7 +314,7 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - [ ] Fix flaky test — owner: <handle> — deadline: <date>
 
 ## Confidence-log Entry
-Appended to `.claude/confidence-log.jsonl` (entry id: <hash>)
+Appended to `.supervibe/confidence-log.jsonl` (entry id: <hash>)
 
 ## Reasoning
 <2-4 sentences walking the decision-tree path traversed and why this verdict, not the adjacent one>

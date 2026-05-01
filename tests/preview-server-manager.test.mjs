@@ -11,8 +11,8 @@ import {
 const sandbox = join(tmpdir(), `evolve-preview-mgr-${Date.now()}`);
 
 before(async () => {
-  await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
-  REGISTRY_PATH_FOR_TEST(join(sandbox, '.claude', 'memory', 'preview-servers.json'));
+  await mkdir(join(sandbox, '.supervibe', 'memory'), { recursive: true });
+  REGISTRY_PATH_FOR_TEST(join(sandbox, '.supervibe', 'memory', 'preview-servers.json'));
 });
 
 after(async () => {

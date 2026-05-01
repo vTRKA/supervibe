@@ -147,7 +147,7 @@ ACTION: rebuild
 
 ## Procedure
 
-1. **Snapshot backup**: copy entire `.claude/memory/` tree (excluding `_backup/`) to `.claude/memory/_backup/<ISO-timestamp>/` BEFORE any modification. No exceptions.
+1. **Snapshot backup**: copy entire `.supervibe/memory/` tree (excluding `_backup/`) to `.supervibe/memory/_backup/<ISO-timestamp>/` BEFORE any modification. No exceptions.
 2. **Walk all categories**: for each of `decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/`, glob all `*.md` entries. Record count per category as baseline.
 3. **Parse frontmatter** for every entry: extract `id`, `tags`, `confidence`, `last-verified`, `created`, `related`, `supersedes`, content-hash. Build in-memory registry.
 4. **Detect duplicates by id collision**: any two entries with identical `id` field → CRITICAL — surface immediately, do NOT auto-merge, requires human review.
@@ -173,8 +173,8 @@ Returns:
 
 **Curator**: supervibe:_meta:memory-curator
 **Date**: YYYY-MM-DD
-**Scope**: .claude/memory/ (all categories)
-**Backup**: .claude/memory/_backup/<timestamp>/
+**Scope**: .supervibe/memory/ (all categories)
+**Backup**: .supervibe/memory/_backup/<timestamp>/
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
@@ -190,7 +190,7 @@ Rubric: memory-entry
 - **Over-aggressive retire**: retiring entries simply because they are old. An entry from 2023 describing a still-load-bearing decision is current, not stale. Retire only when content is obsolete OR superseded, not merely when timestamp is.
 - **Inconsistent tag normalization**: applying canonical `authentication` in some entries but leaving `auth-flow` in others. Either complete the migration or don't start it. Half-normalized taxonomy is worse than the original chaos.
 - **Merge without confirmation**: near-duplicates may carry meaningful nuance one entry retained and the other lost. Never auto-merge near-duplicates; surface as proposals requiring human confirmation.
-- **No rebuild after edit**: every write to `.claude/memory/*.md` invalidates `memory.db` + `code.db`. Failing to run `scripts/build-memory-index.mjs` after edits leaves the FTS5 index serving stale results. Rebuild is non-optional.
+- **No rebuild after edit**: every write to `.supervibe/memory/*.md` invalidates `memory.db` + `code.db`. Failing to run `scripts/build-memory-index.mjs` after edits leaves the FTS5 index serving stale results. Rebuild is non-optional.
 - **Duplicate entries kept**: lowers signal-to-noise; merge to one canonical with cross-references to absorbed entries.
 - **Ad-hoc tags**: every new tag synonym = harder search; normalize aggressively against `_vocabulary.yaml`.
 - **Never retire**: stale advice presented as current is anti-pattern; archive when content describes removed code or superseded decision.
@@ -200,7 +200,7 @@ Rubric: memory-entry
 ## Verification
 
 For each curation run:
-- Backup exists at `.claude/memory/_backup/<timestamp>/` with size ≥ source size (sanity check)
+- Backup exists at `.supervibe/memory/_backup/<timestamp>/` with size ≥ source size (sanity check)
 - `memory.db` rebuilds cleanly (`scripts/build-memory-index.mjs` exit 0)
 - FTS5 test queries return without error: `SELECT count(*) FROM memory_fts WHERE memory_fts MATCH 'authentication'`
 - `code.db` cross-references intact: every `mentioned-symbol` resolves OR is flagged
@@ -214,7 +214,7 @@ For each curation run:
 
 ### Quarterly hygiene
 1. Trigger: scheduled every 90 days OR after `supervibe:audit` flags memory drift
-2. Snapshot backup of entire `.claude/memory/` tree
+2. Snapshot backup of entire `.supervibe/memory/` tree
 3. Walk all five categories, build entry registry
 4. Run full procedure (steps 4–13)
 5. Rebuild index + verify FTS5
@@ -271,10 +271,10 @@ When `supervibe:project-memory` returns ≥3 entries with tag `code-graph`:
 
 ## Out of scope
 
-Do NOT touch: source code outside `.claude/memory/` (curator works only in memory tree + `scripts/build-memory-index.mjs` invocation).
+Do NOT touch: source code outside `.supervibe/memory/` (curator works only in memory tree + `scripts/build-memory-index.mjs` invocation).
 Do NOT decide on: what knowledge SHOULD exist (defer to producing agents — code-reviewer, security-auditor, architect-reviewer, etc., who write the entries via `supervibe:add-memory`).
 Do NOT decide on: confidence rubric definition (defer to `supervibe:confidence-scoring`); curator only enforces existing rubric.
-Do NOT decide on: project-rule curation (defer to `rules-curator` for `.claude/rules/` hygiene; this agent owns only `.claude/memory/`).
+Do NOT decide on: project-rule curation (defer to `rules-curator` for `.claude/rules/` hygiene; this agent owns only `.supervibe/memory/`).
 Do NOT delete entries — archive only. Restoration must always be possible.
 
 ## Related
@@ -298,18 +298,18 @@ Do NOT delete entries — archive only. Restoration must always be possible.
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- **Memory root**: `.claude/memory/` with five canonical subdirectories:
+- **Memory root**: `.supervibe/memory/` with five canonical subdirectories:
   - `decisions/` — architectural / technology / process decisions (ADR-style)
   - `patterns/` — reusable solutions, code idioms, integration patterns
   - `incidents/` — postmortems, security incidents, outages, regressions
   - `learnings/` — discoveries, surprises, "we learned X the hard way"
   - `solutions/` — concrete fixes for specific recurring problems
-- **Index database**: `.claude/memory/memory.db` — SQLite with FTS5 full-text index over title, summary, tags, body
-- **Code symbol database**: `.claude/memory/code.db` — SQLite mirror of code symbols cross-referenced from memory entries (used to detect entries pointing at deleted code)
+- **Index database**: `.supervibe/memory/memory.db` — SQLite with FTS5 full-text index over title, summary, tags, body
+- **Code symbol database**: `.supervibe/memory/code.db` — SQLite mirror of code symbols cross-referenced from memory entries (used to detect entries pointing at deleted code)
 - **Index generator**: `scripts/build-memory-index.mjs` — rebuilds memory.db + code.db from filesystem
-- **Archive**: `.claude/memory/_archive/` — retired entries, preserved with `retired-on:` field for forensic recall
-- **Backup**: `.claude/memory/_backup/<timestamp>/` — snapshot taken before every curation run
-- **Tag vocabulary**: `.claude/memory/_vocabulary.yaml` — canonical tag list with synonyms map (built from frequency analysis)
+- **Archive**: `.supervibe/memory/_archive/` — retired entries, preserved with `retired-on:` field for forensic recall
+- **Backup**: `.supervibe/memory/_backup/<timestamp>/` — snapshot taken before every curation run
+- **Tag vocabulary**: `.supervibe/memory/_vocabulary.yaml` — canonical tag list with synonyms map (built from frequency analysis)
 
 ## Baseline (before curation)
 - decisions/: N entries
@@ -327,12 +327,12 @@ Do NOT delete entries — archive only. Restoration must always be possible.
 
 ### Retirement
 - Entries archived: N (list with reason per entry)
-- Archive location: `.claude/memory/_archive/`
+- Archive location: `.supervibe/memory/_archive/`
 
 ### Tag Normalization
 - Synonym mappings applied: N (e.g., `auth-flow` → `authentication` in 7 entries)
 - Long-tail tags rationalized: N
-- Vocabulary updated: `.claude/memory/_vocabulary.yaml`
+- Vocabulary updated: `.supervibe/memory/_vocabulary.yaml`
 
 ### Cross-link Repair
 - Broken references found: N

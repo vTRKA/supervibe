@@ -52,6 +52,6 @@ test("design memory writer writes into existing memory categories", async () => 
     tags: ["charts", "tokens"],
   }, { projectRoot });
   const content = await readFile(written.path, "utf8");
-  assert.match(written.path.replace(/\\/g, "/"), /\.claude\/memory\/patterns\/design-learned-pattern-token-first-chart-states\.md$/);
+  assert.match(written.path.replace(/\\/g, "/"), /\.supervibe\/memory\/patterns\/design-learned-pattern-token-first-chart-states\.md$/);
   assert.match(content, /tags: \["design", "charts", "tokens"\]/);
 });

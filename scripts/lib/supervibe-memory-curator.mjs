@@ -13,7 +13,7 @@ export async function curateProjectMemory({
   rebuildSqlite = false,
   useEmbeddings = false,
 } = {}) {
-  const memoryDir = join(rootDir, ".claude", "memory");
+  const memoryDir = join(rootDir, ".supervibe", "memory");
   await mkdir(memoryDir, { recursive: true });
   const entries = await readMarkdownMemoryEntries({ rootDir, now });
   const validation = validateMemoryEntries(entries);
@@ -54,7 +54,7 @@ export async function curateProjectMemory({
 }
 
 export async function readMarkdownMemoryEntries({ rootDir = process.cwd(), now = new Date().toISOString() } = {}) {
-  const memoryDir = join(rootDir, ".claude", "memory");
+  const memoryDir = join(rootDir, ".supervibe", "memory");
   const entries = [];
   for (const category of MEMORY_CATEGORIES) {
     const dir = join(memoryDir, category);

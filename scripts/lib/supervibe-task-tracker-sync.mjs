@@ -7,7 +7,7 @@ import { attachExternalClaim, claimTask, releaseClaim } from "./autonomous-loop-
 import { createUnavailableTaskTrackerAdapter } from "./supervibe-durable-task-tracker-adapter.mjs";
 
 export function defaultTrackerMappingPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "loops", "task-tracker-map.json");
+  return join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json");
 }
 
 export async function readTrackerMapping(filePath) {

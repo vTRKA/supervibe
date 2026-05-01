@@ -46,7 +46,7 @@ Memory GC archives:
 - incidents after retention
 - low-confidence learnings after retention
 
-Archives are moved under `.claude/memory/**/.archive/` and recorded in JSONL
+Archives are moved under `.supervibe/memory/**/.archive/` and recorded in JSONL
 archive logs. Archived entries are excluded from active memory and work-item
 views by default.
 

@@ -195,7 +195,7 @@ function ensureColumn(db, table, column, definition) {
 export class CodeStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
-    this.dbDir = join(projectRoot, '.claude', 'memory');
+    this.dbDir = join(projectRoot, '.supervibe', 'memory');
     this.dbPath = join(this.dbDir, 'code.db');
     this.db = null;
     this.useEmbeddings = opts.useEmbeddings !== false;

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.20] - 2026-05-01
+
+### Fixed
+
+- Moved Supervibe-owned project state defaults from `.claude` into
+  `.supervibe`, covering memory, indexes, loop/work-item state, feedback,
+  preview/MCP registries, telemetry, version markers, effectiveness logs,
+  research cache, and confidence logs.
+- Fixed genesis dry-run output so Codex and other non-Claude hosts do not plan
+  `.claude` artifacts by default while still allowing `.claude` as the Claude
+  host adapter folder.
+- Added a post-genesis Code RAG + Graph initialization command so
+  `/supervibe-status` can show initialized `.supervibe/memory/code.db` state
+  after scaffold verification.
+
+### Added
+
+- Added regression coverage that blocks tracked `.claude` project-state
+  defaults from returning and verifies Codex genesis plans only Codex +
+  `.supervibe` artifacts.
+
 ## [2.0.19] - 2026-05-01
 
 ### Added
@@ -339,7 +360,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — Preview Server (Phase E1)
 
 - `scripts/lib/preview-mime.mjs` — hardcoded MIME map (zero new deps)
-- `scripts/lib/preview-server-manager.mjs` — port alloc 3047-3099 → OS-assigned, JSON registry at `.claude/memory/preview-servers.json`, PID liveness check
+- `scripts/lib/preview-server-manager.mjs` — port alloc 3047-3099 → OS-assigned, JSON registry at `.supervibe/memory/preview-servers.json`, PID liveness check
 - `scripts/lib/preview-static-server.mjs` — pure `node:http` static + SSE hot-reload injection
 - `scripts/lib/preview-hot-reload.mjs` — chokidar → SSE bridge with 150ms debounce
 - `scripts/preview-server.mjs` CLI: `--root --port --label --list --kill --kill-all --idle-timeout --force`
@@ -428,7 +449,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **`build-code-index.mjs --since=<git-rev>`** — lazy mode for huge monorepos (only files changed since rev)
 - **SessionStart hook**: auto-builds index if missing, prints status banner first 3 lines of every session
 - **`npm run supervibe:status`** — comprehensive index health (RAG + graph + grammars + watcher + memory)
-- **Watcher heartbeat file** (`.claude/memory/.watcher-heartbeat`) — status command shows running/stale/missing
+- **Watcher heartbeat file** (`.supervibe/memory/.watcher-heartbeat`) — status command shows running/stale/missing
 
 ### Added — Agent integration (closes "capability dark" gap)
 
@@ -439,7 +460,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **`confidence-rubrics/agent-delivery.yaml`** — graph-evidence-when-applicable dimension (weight 1) scoring 3-case output template
 - **`skills/code-review/SKILL.md`** — graph-aware structural-change check in decision tree + procedure
 - **`agents/_meta/memory-curator.md`** — graph-pattern hygiene workflow (consolidate/dedupe code-graph-tagged entries)
-- **`agents/_core/repo-researcher.md`** — auto-persists non-obvious graph findings to `.claude/memory/patterns/`
+- **`agents/_core/repo-researcher.md`** — auto-persists non-obvious graph findings to `.supervibe/memory/patterns/`
 - **Output contract 3-case template** (Case A: callers found / Case B: zero callers verified / Case C: N/A with reason) — ensures user sees graph evidence in every agent output
 
 ### Added — Operational hardening
@@ -486,7 +507,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 - **`MemoryStore.incrementalUpdate(absPath)`** — hash-based skip if unchanged; CASCADE refresh on change
 - **`MemoryStore.removeEntryByPath(absPath)`** — handles file-deletion path
 - **`content_hash` column** added to `entries` (idempotent migration)
-- **`scripts/lib/code-watcher.mjs`** — chokidar daemon; watches `.claude/memory/` AND project source files
+- **`scripts/lib/code-watcher.mjs`** — chokidar daemon; watches `.supervibe/memory/` AND project source files
 - **`scripts/watch-memory.mjs`** — daemon entry (`npm run memory:watch`); SIGINT-graceful
 - **`chokidar`** dependency added; debounce + `awaitWriteFinish` for safe save handling
 
@@ -757,8 +778,8 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - `supervibe:add-memory` skill — write memory entries after significant work
 - `agents/_meta/memory-curator` — maintains memory hygiene (deduplication, tag normalization, staleness)
 - `confidence-rubrics/memory-entry.yaml` — 5-dim quality bar for memory entries
-- `scripts/build-memory-index.mjs` — generates `.claude/memory/index.json` (tag→entries lookup)
-- Memory structure: `.claude/memory/{decisions,patterns,incidents,learnings,solutions}/`
+- `scripts/build-memory-index.mjs` — generates `.supervibe/memory/index.json` (tag→entries lookup)
+- Memory structure: `.supervibe/memory/{decisions,patterns,incidents,learnings,solutions}/`
 - Markdown-based with frontmatter (id/type/date/tags/related/agent/confidence)
 - Search via tag-overlap + grep fallback (v2 will add real embeddings)
 

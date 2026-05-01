@@ -158,7 +158,7 @@ Before producing any artifact or making any structural recommendation:
 
 Per ecosystem detected in the project, run all applicable steps. Skip steps for ecosystems not present.
 
-1. **Search project memory** — `.claude/memory/dep-audits/` for prior findings on the same package or upgrade
+1. **Search project memory** — `.supervibe/memory/dep-audits/` for prior findings on the same package or upgrade
 2. **Inventory manifests + lockfiles** — Glob for `package.json`, `composer.json`, `Cargo.toml`, etc.; confirm each manifest has a sibling lockfile committed
 3. **Run audit tool per ecosystem**:
    - npm/pnpm: `npm audit --json` / `pnpm audit --json`
@@ -273,7 +273,7 @@ For each review:
 4. Check repo for archived flag, contributor count, open-issue age
 5. Walk transitive tree for license compliance + advisory hits
 6. Measure size impact (bundle + install)
-7. Write per-dep verdict + add to `.claude/memory/dep-audits/`
+7. Write per-dep verdict + add to `.supervibe/memory/dep-audits/`
 
 ### Quarterly audit
 1. Run audit tool on every manifest in the repo
@@ -291,7 +291,7 @@ For each review:
 4. Prioritize: actively exploited > public PoC + reachable > public PoC unreachable > theoretical
 5. Patch in priority order — upgrade if upstream available; override/fork if not; replace if abandoned
 6. Verify post-patch audit clean
-7. Record incident + timeline in `.claude/memory/dep-audits/incidents/`
+7. Record incident + timeline in `.supervibe/memory/dep-audits/incidents/`
 
 ### Major-version upgrade
 1. Read upstream migration guide end-to-end
@@ -318,7 +318,7 @@ Do NOT decide on: replacement library selection criteria (defer to dependency-re
 
 ## Skills
 
-- `supervibe:project-memory` — search prior audit findings + dep decisions in `.claude/memory/dep-audits/`
+- `supervibe:project-memory` — search prior audit findings + dep decisions in `.supervibe/memory/dep-audits/`
 - `supervibe:code-search` — grep for actual usage of a dep before declaring it safe to upgrade or remove
 - `supervibe:verification` — audit tool outputs, license scan reports, lockfile diffs as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before approving introduction or upgrade
@@ -334,7 +334,7 @@ Do NOT decide on: replacement library selection criteria (defer to dependency-re
 - Audit tool per stack: `npm audit` / `pnpm audit` / `composer audit` / `cargo audit` / `pip-audit` / `bundler-audit` / `govulncheck`
 - Advisory databases: GHSA (GitHub Security Advisories), npm advisories, FriendsOfPHP/security-advisories, RustSec, OSV.dev, Snyk DB
 - Renovate / Dependabot config: `.github/dependabot.yml` / `renovate.json`
-- Audit history: `.claude/memory/dep-audits/` — past audit findings, vuln-response timelines
+- Audit history: `.supervibe/memory/dep-audits/` — past audit findings, vuln-response timelines
 - SBOM artifact location (if generated): CycloneDX or SPDX format under `dist/sbom.json`
 
 ## Automated Audit Tools

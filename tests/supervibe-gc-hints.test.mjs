@@ -28,7 +28,7 @@ test("GC hints summarize work-item and memory cleanup candidates", async () => {
 });
 
 async function writeGraph(root) {
-  const dir = join(root, ".claude", "memory", "work-items", "epic-old");
+  const dir = join(root, ".supervibe", "memory", "work-items", "epic-old");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "graph.json"), `${JSON.stringify({
     kind: "supervibe-work-item-graph",
@@ -43,7 +43,7 @@ async function writeGraph(root) {
 }
 
 async function writeMemory(root, id, extra) {
-  const dir = join(root, ".claude", "memory", "decisions");
+  const dir = join(root, ".supervibe", "memory", "decisions");
   await mkdir(dir, { recursive: true });
   const fields = { id, date: "2026-01-01", confidence: 9, ...extra };
   const yaml = Object.entries(fields).map(([key, value]) => `${key}: ${value}`).join("\n");

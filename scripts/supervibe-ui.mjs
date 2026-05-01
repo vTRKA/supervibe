@@ -12,7 +12,7 @@ if (args.help) {
   console.log([
     "SUPERVIBE_UI_HELP",
     "Usage:",
-    "  npm run supervibe:ui -- --file .claude/memory/work-items/<epic>/graph.json",
+    "  npm run supervibe:ui -- --file .supervibe/memory/work-items/<epic>/graph.json",
     "  npm run supervibe:ui -- --port 3057",
     "  npm run supervibe:ui -- --daemon",
     "  npm run supervibe:ui -- --foreground",

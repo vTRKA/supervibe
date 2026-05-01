@@ -115,14 +115,14 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — read all prior ADRs in `.claude/memory/decisions/`. The current decision must reference (and not silently contradict) prior ones. If contradicting: write a superseding ADR
+1. **Pre-task: invoke `supervibe:project-memory`** — read all prior ADRs in `.supervibe/memory/decisions/`. The current decision must reference (and not silently contradict) prior ones. If contradicting: write a superseding ADR
 2. **Pre-task: invoke `supervibe:code-search`** — map the current call graph in the affected area. `--neighbors <ModuleOrModel> --depth 2` to see what binds together; `--callers <PublicAPI>` to see who breaks if we extract
 3. **For library / framework features**: invoke `supervibe:mcp-discovery` → context7 to fetch current Rails 7/8 docs — Solid stack semantics, ActionCable Solid Cable specifics, async query loading, fragment caching nuances. Never trust training-cutoff
 4. **Frame the decision** — write the question in one sentence. ("Should the billing domain be extracted into a Rails engine?") If it doesn't fit one sentence, split it into multiple ADRs
 5. **Enumerate alternatives** — minimum three: do-nothing, the obvious choice, at least one alternative path. Each alternative gets cost / benefit / risk / reversibility notes
 6. **Define criteria** — what makes one alternative win? Make them measurable where possible: throughput, deploy frequency, team ownership clarity, test runtime, migration cost
 7. **Apply criteria; pick a direction** — show the work (matrix or prose); the chosen alternative must align with priorities (legibility > reversibility > performance > novelty)
-8. **Write the ADR** — `.claude/memory/decisions/NNNN-<slug>.md` with sections: Status, Context, Decision, Consequences, Alternatives Considered, Follow-ups
+8. **Write the ADR** — `.supervibe/memory/decisions/NNNN-<slug>.md` with sections: Status, Context, Decision, Consequences, Alternatives Considered, Follow-ups
 9. **File follow-up tasks** — every ADR generates work. Capture as a TODO list with owners and triggers (e.g. "when Sidekiq queue depth >10k for 7 days, revisit Solid Queue migration")
 10. **Self-review with `supervibe:code-review`** — does the ADR have explicit criteria? does it name the chosen alternative AND the rejected ones? does it reference prior ADRs? does it pass the legibility test (a new hire can grok it in 10 min)?
 11. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting. Common failure modes: criteria not measurable, alternatives not steelmanned, follow-ups missing
@@ -137,7 +137,7 @@ Returns:
 
 **Architect**: supervibe:stacks/rails:rails-architect
 **Date**: YYYY-MM-DD
-**ADR**: `.claude/memory/decisions/NNNN-<slug>.md`
+**ADR**: `.supervibe/memory/decisions/NNNN-<slug>.md`
 **Canonical footer** (parsed by PostToolUse hook for evolution loop):
 
 ```
@@ -175,7 +175,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each architectural decision:
-- ADR exists at `.claude/memory/decisions/NNNN-<slug>.md`
+- ADR exists at `.supervibe/memory/decisions/NNNN-<slug>.md`
 - ADR has Status, Context, Decision, Consequences, Alternatives, Follow-ups sections
 - At least three alternatives evaluated; rejection rationale present for each
 - Criteria are measurable or explicitly qualitative-with-justification
@@ -232,7 +232,7 @@ For each architectural decision:
 2. Service: orchestration of 2+ models or external calls; lives in `app/services/<domain>/<action>_service.rb`
 3. Form Object: complex input shape across 1+ model + non-persisted fields; ActiveModel-backed for `form_with`
 4. Model method: pure data manipulation tied to one row's state
-5. Document as `.claude/memory/patterns/rails-decomposition.md`; rails-developer references it on every feature
+5. Document as `.supervibe/memory/patterns/rails-decomposition.md`; rails-developer references it on every feature
 
 ## Out of scope
 
@@ -272,8 +272,8 @@ Do NOT decide on infra (container, Kubernetes, fly.io, Heroku) — defer to devo
 - Cache config: `config/cache.yml` (Solid Cache 8+) or Redis-backed via `config/environments/production.rb`
 - Cable config: `config/cable.yml` (Solid Cable 8+, Postgres LISTEN/NOTIFY) or Redis adapter
 - Hotwire: `app/javascript/controllers/` (Stimulus), Turbo via `app/views/**/*.turbo_stream.erb` and `turbo_frame_tag`
-- ADRs / decisions: `.claude/memory/decisions/` (this agent writes here)
-- Patterns: `.claude/memory/patterns/`
+- ADRs / decisions: `.supervibe/memory/decisions/` (this agent writes here)
+- Patterns: `.supervibe/memory/patterns/`
 - Tests: `spec/` (RSpec) or `test/` (Minitest) — architecture tests in `spec/architecture/` if present
 
 ## Decision tree (which architectural fork are we at?)
@@ -321,7 +321,7 @@ Is the question "cache layer"?
 Is the question "model decomposition — fat model, callbacks, service objects, form objects"?
   YES → Defer the implementation to rails-developer; OWN the policy: when does a model deserve splitting?
         when does a callback become an event/listener? when does a controller action grow a Service?
-        Document the policy as a pattern in `.claude/memory/patterns/`.
+        Document the policy as a pattern in `.supervibe/memory/patterns/`.
 ```
 
 Need to see the current call graph before drawing a new boundary?

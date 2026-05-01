@@ -108,6 +108,14 @@ test("full genesis dry run includes host adapter, context migration and agent pr
     assert.ok(report.selectedRules.includes("operational-safety"));
     assert.ok(report.selectedRules.includes("use-codegraph-before-refactor"));
     assert.ok(report.filesToCreate.some((entry) => entry.path === ".codex/rules/operational-safety.md"));
+    assert.ok(report.filesToCreate.some((entry) => entry.path === ".supervibe/memory/"));
+    assert.ok(report.filesToCreate.some((entry) => entry.path === ".supervibe/memory/genesis/state.json"));
+    assert.equal(
+      [...report.filesToCreate, ...report.filesToModify, ...report.scaffoldArtifacts]
+        .some((entry) => String(entry.path).startsWith(".claude/")),
+      false,
+      "codex genesis must not plan .claude artifacts",
+    );
     assert.ok(report.selectedSkills.includes("genesis"));
     assert.ok(report.selectedSkills.includes("ui-review-and-polish"));
     assert.ok(report.filesToCreate.some((entry) => entry.path === ".codex/skills/genesis/SKILL.md"));
@@ -118,5 +126,6 @@ test("full genesis dry run includes host adapter, context migration and agent pr
     assert.match(formatGenesisDryRunReport(report), /SUPERVIBE_GENESIS_DRY_RUN/);
     assert.match(formatGenesisDryRunReport(report), /SELECTED_RULES:/);
     assert.match(formatGenesisDryRunReport(report), /SELECTED_SKILLS:/);
+    assert.match(formatGenesisDryRunReport(report), /build-code-index\.mjs --root \. --force --health/);
   });
 });

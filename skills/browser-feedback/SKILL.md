@@ -23,12 +23,12 @@ Trigger source: `<system-reminder>` containing `[evolve] browser-feedback receiv
 
 Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root prototypes/<slug>/` without `--no-feedback`, verify `#evolve-fb-toggle` appears in served HTML, and only then continue design review.
 
-If user invokes manually with no pending feedback, run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` first, then inspect `.claude/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
+If user invokes manually with no pending feedback, run `node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --list` first, then inspect `.supervibe/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
 
-Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. The UserPromptSubmit hook resurfaces unresolved entries until they are marked `resolved` or `rejected`.
+Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json`. The UserPromptSubmit hook resurfaces unresolved entries until they are marked `resolved` or `rejected`.
 
 ## Step 0 — Read source of truth
-- Read full feedback entry: `jq -c "select(.id==\"<id>\")" .claude/memory/feedback-queue.jsonl`
+- Read full feedback entry: `jq -c "select(.id==\"<id>\")" .supervibe/memory/feedback-queue.jsonl`
 - Read artifact config: `prototypes/<slug>/config.json`, `mockups/<slug>/config.json`, or `presentations/<slug>/deck.json`
 - Read prototype/deck preview HTML at the indicated viewport
 - Read DS manifest if comment mentions colour/typography/spacing
@@ -78,7 +78,7 @@ Feedback entries have lifecycle state in `.claude/memory/feedback-status.json`. 
 
 ## Output contract
 - `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` — resolution record
-- `.claude/memory/feedback-status.json` updated to `resolved`, `rejected`, or `in_progress`
+- `.supervibe/memory/feedback-status.json` updated to `resolved`, `rejected`, or `in_progress`
 - Modified prototype files OR design-system overrides
 - Confidence footer:
 
@@ -101,7 +101,7 @@ Rubric: agent-delivery
 - `git diff` shows minimal change scope (no scope-creep).
 
 ## Related
-- `scripts/preview-server.mjs` — emits feedback over WebSocket into `.claude/memory/feedback-queue.jsonl`
+- `scripts/preview-server.mjs` — emits feedback over WebSocket into `.supervibe/memory/feedback-queue.jsonl`
 - `scripts/hooks/user-prompt-submit-feedback.mjs` — UserPromptSubmit hook surfaces new entries as `additionalContext` on every prompt
 - `scripts/lib/feedback-cursor.mjs` — tracks last-seen offset
 - `agents/_design/creative-director.md`, `agents/_design/prototype-builder.md`, `agents/_design/presentation-deck-builder.md`

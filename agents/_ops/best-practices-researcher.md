@@ -269,12 +269,12 @@ For each research note:
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Research cache: `.claude/research-cache/` (created on first miss)
+- Research cache: `.supervibe/research-cache/` (created on first miss)
 - TTL: 30 days per `topic-YYYY-MM-DD.md`
 - MCP tools (preferred): `context7` for library docs, `firecrawl` for general web
 - Fallback: WebFetch with manually curated authoritative URL list
 - Stack fingerprint: `.claude/stack-fingerprint.md` — lib versions in use
-- Past research: `.claude/research-cache/` index (search before re-fetching)
+- Past research: `.supervibe/research-cache/` index (search before re-fetching)
 
 ## RAG + Memory pre-flight (pre-work check)
 
@@ -289,14 +289,14 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure (full implementation, Phase 7)
 
 1. **Identify research topic** with version constraint (e.g., "Next.js 15.2 cache patterns" not "Next.js cache patterns")
-2. **Cache check** — Read `.claude/research-cache/<topic-slug>-*.md`; if mtime within TTL → return
+2. **Cache check** — Read `.supervibe/research-cache/<topic-slug>-*.md`; if mtime within TTL → return
 3. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=`current-docs` (or `crawl`/`search` for general web sweep) to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output.
 4. **WebFetch fallback** (if discovery returns nothing usable): query official docs URL directly at pinned version path
 5. **Source authority filter**: drop non-authoritative per decision tree
 6. **Recency filter**: ≥80% of cited sources within 12 months OR explicitly canonical
 7. **Contradiction resolution**: if sources disagree, note explicitly with reasoning for chosen position
 8. **Applicability**: state how findings apply to current project's stack version (read from stack-fingerprint)
-9. **Cache** at `.claude/research-cache/<topic-slug>-<YYYY-MM-DD>.md` (template below)
+9. **Cache** at `.supervibe/research-cache/<topic-slug>-<YYYY-MM-DD>.md` (template below)
 10. **Score** with `supervibe:confidence-scoring` (research-output rubric ≥9)
 11. Return findings + cache path + status
 
@@ -339,5 +339,5 @@ Before producing any artifact or making any structural recommendation:
 
 - File naming: `<topic-slug>-<YYYY-MM-DD>.md` (date = fetch date, not pub date)
 - On TTL expiry, re-fetch and overwrite; preserve old file as `.archive/` if claim changed
-- Index entries belong in `.claude/research-cache/INDEX.md` (one line per topic + last-fetched date)
+- Index entries belong in `.supervibe/research-cache/INDEX.md` (one line per topic + last-fetched date)
 - If a claim contradicts a prior cached note, surface it explicitly: "supersedes <old-note> dated YYYY-MM-DD"

@@ -5,7 +5,7 @@
 This is the **Supervibe Framework** — a Claude Code plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22.5+ with node:sqlite is required. Pure JS. No Docker. No native compilation.**
 
 For deep dives, agents read on demand from tracked plugin sources, not local
-`.claude/` state:
+`.supervibe/` state:
 
 | Topic | File |
 |---|---|
@@ -31,7 +31,7 @@ These six principles override defaults whenever they conflict with general pract
 1. **Persona over generic agents.** Every agent is a specialist with explicit decision tree, procedure, output contract, and anti-patterns. Generic helpfulness is what training data already gives — agents earn their place by being specific.
 2. **Evidence over assertion.** Every claim — "X works", "Y is safe", "Z is the right approach" — must cite file:line, test output, graph evidence, or memory entry. No "trust me" outputs.
 3. **Confidence-gated delivery.** Work isn't done when you stop typing — work is done when an applicable rubric scores ≥9/10. Below threshold: iterate. Override: log and explain.
-4. **Memory beats re-derivation.** If a decision was made before, find it in `.claude/memory/decisions/` and cite. Re-deriving silently wastes tokens and risks contradicting past resolutions.
+4. **Memory beats re-derivation.** If a decision was made before, find it in `.supervibe/memory/decisions/` and cite. Re-deriving silently wastes tokens and risks contradicting past resolutions.
 5. **Graph before refactor.** Public-surface changes (rename / move / extract / delete) require `--callers` evidence FIRST. The semantic RAG won't catch cross-file callers — only the graph does.
 6. **Anti-half-finished discipline.** No commented-out code, no TODOs without owners, no half-applied refactors. Either complete a change or revert it cleanly.
 7. **Managed host context only.** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` and `opencode.json` are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
@@ -56,7 +56,7 @@ supervibe/
 ├── docs/                          specs/, plans/, audits/, getting-started.md, ...
 │   └── confidence-gates-spec.md     Unified gate semantics
 ├── hooks/hooks.json               SessionStart, PreToolUse, UserPromptSubmit, PostToolUse, Stop
-└── .claude/                       Local-only generated state (gitignored; never shipped)
+└── .supervibe/                    Local-only generated state (gitignored; never shipped)
 ```
 
 ---
@@ -67,7 +67,7 @@ When user asks X, route as follows:
 
 | User intent | First action |
 |-------------|--------------|
-| "Set up a new project" / no `.claude/` exists | `/supervibe-genesis` (auto via `/evolve`) |
+| "Set up a new project" / no Supervibe host scaffold exists | `/supervibe-genesis` (auto via `/evolve`) |
 | "Add feature X" / "implement Y" | `supervibe:project-memory` → `supervibe:code-search` → relevant stack-developer |
 | "Refactor X" / "rename Y" | `supervibe:code-search --callers` → `refactoring-specialist` |
 | "Why does X happen?" / debug | `root-cause-debugger` (uses `supervibe:systematic-debugging`) |
@@ -127,7 +127,7 @@ For consistent quality, agents are encouraged to follow this order:
 ## When in doubt
 
 1. **Re-read this file** — likely answer is the routing table or a tracked docs/source pointer above
-2. **Read the specific `docs/<topic>.md` or source module** — they encode the discipline without shipping local `.claude/` state
+2. **Read the specific `docs/<topic>.md` or source module** — they encode the discipline without shipping local `.supervibe/` state
 3. **Run `npm run supervibe:status`** — see real index state
 4. **Read the specific agent** from `agents/<namespace>/`
 5. **Read the relevant rule** from `rules/`

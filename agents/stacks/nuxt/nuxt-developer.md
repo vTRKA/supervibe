@@ -118,7 +118,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and again with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-route tasks: `--callers "<route-or-handler>"` to find consumers
    - For new server/api/ that exposes a shared schema: `--neighbors "<schema-name>" --depth 2`
@@ -295,7 +295,7 @@ Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defe
 - Type checker: `nuxi typecheck` (wraps `vue-tsc` with Nuxt's auto-imports baseline)
 - Bundler: Vite (Nuxt-managed); production via Nitro
 - Validation: `zod` (preferred) or `valibot` for `server/api/` body / query / params validation
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

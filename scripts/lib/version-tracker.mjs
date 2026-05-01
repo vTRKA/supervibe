@@ -2,7 +2,7 @@
 // On SessionStart, compare current plugin.json version to stored value;
 // when bumped, surface a one-line banner with link to CHANGELOG section.
 //
-// Storage: .claude/memory/.supervibe-version (single line, plain version string).
+// Storage: .supervibe/memory/.supervibe-version (single line, plain version string).
 // Plugin version source: $CLAUDE_PLUGIN_ROOT/.claude-plugin/plugin.json.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -20,14 +20,14 @@ export async function getCurrentPluginVersion(pluginRoot) {
 }
 
 export async function getLastSeenVersion(projectRoot) {
-  const path = join(projectRoot, '.claude', 'memory', '.supervibe-version');
+  const path = join(projectRoot, '.supervibe', 'memory', '.supervibe-version');
   if (!existsSync(path)) return null;
   try { return (await readFile(path, 'utf8')).trim() || null; }
   catch { return null; }
 }
 
 export async function setLastSeenVersion(projectRoot, version) {
-  const path = join(projectRoot, '.claude', 'memory', '.supervibe-version');
+  const path = join(projectRoot, '.supervibe', 'memory', '.supervibe-version');
   try {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, String(version));

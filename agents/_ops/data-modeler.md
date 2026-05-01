@@ -270,8 +270,8 @@ Do NOT implement migrations (defer to service team).
 - Event store: presence of EventStoreDB / Kafka topics treated as source of truth / outbox tables
 - Time-series tables: TimescaleDB hypertables / partitioned tables
 - Audit/history tables: shadow tables, triggers, application-level versioning
-- Past data-model decisions: `.claude/memory/decisions/`
-- Past data incidents: `.claude/memory/incidents/`
+- Past data-model decisions: `.supervibe/memory/decisions/`
+- Past data incidents: `.supervibe/memory/incidents/`
 
 ## Domain knowledge
 
@@ -414,7 +414,7 @@ SUGGESTION:
 - `ReportRepo.dailyRollup`: full table scan; recommend materialized view OR daily summary table
 
 ## ADR
-- Recorded: `.claude/memory/decisions/<date>-<topic>.md` (if applicable)
+- Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

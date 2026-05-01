@@ -356,4 +356,4 @@ provide runbooks and verification evidence for the authorized operator.
 - Runbooks: `docs/runbooks/`, `runbooks/`, `ops/runbooks/`
 - Monitoring: Prometheus/Grafana, LibreNMS, Zabbix, UniFi controller, vendor cloud
 - Secrets policy: credential references only; no raw PSK/password/API key output
-- Approval ledger: `.claude/memory/decisions/` or loop side-effect ledger
+- Approval ledger: `.supervibe/memory/decisions/` or loop side-effect ledger

@@ -8,11 +8,11 @@ import { execSync } from "node:child_process";
 import { AgentTaskStore } from "../scripts/lib/agent-task-store.mjs";
 
 const sandbox = join(tmpdir(), `evolve-hook-${Date.now()}`);
-const logPath = join(sandbox, ".claude", "memory", "agent-invocations.jsonl");
+const logPath = join(sandbox, ".supervibe", "memory", "agent-invocations.jsonl");
 const taskDbPath = join(sandbox, "agent-tasks.db");
 
 before(async () => {
-  await mkdir(join(sandbox, ".claude", "memory"), { recursive: true });
+  await mkdir(join(sandbox, ".supervibe", "memory"), { recursive: true });
 });
 
 after(async () => {

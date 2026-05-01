@@ -58,9 +58,9 @@ export function createQuickstartPlan({ rootDir = process.cwd() } = {}) {
   return {
     rootDir,
     directories: [
-      ".claude/memory/loops",
-      ".claude/memory/work-items",
-      ".claude/memory/bundles",
+      ".supervibe/memory/loops",
+      ".supervibe/memory/work-items",
+      ".supervibe/memory/bundles",
     ],
     safeDefaults: {
       executionMode: "dry-run",

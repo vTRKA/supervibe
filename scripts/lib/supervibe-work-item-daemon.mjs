@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 export function defaultWorkItemDaemonPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "work-items", "watch-daemon.json");
+  return join(rootDir, ".supervibe", "memory", "work-items", "watch-daemon.json");
 }
 
 export function createWorkItemWatchRecord({

@@ -9,14 +9,21 @@ const sandboxRoot = join(tmpdir(), `evolve-detector-${Date.now()}`);
 
 async function makeProject(name, opts = {}) {
   const root = join(sandboxRoot, name);
-  await mkdir(join(root, ".claude", "memory"), { recursive: true });
+  await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
   if (opts.scaffolded) {
-    await mkdir(join(root, ".claude", "agents"), { recursive: true });
-    await writeFile(join(root, "CLAUDE.md"), "# Project context\n");
+    await mkdir(join(root, ".codex", "agents"), { recursive: true });
+    await writeFile(join(root, "AGENTS.md"), [
+      "# Project context",
+      "",
+      "<!-- SUPERVIBE:BEGIN managed-context codex -->",
+      "managed by Supervibe",
+      "<!-- SUPERVIBE:END managed-context codex -->",
+      "",
+    ].join("\n"));
   }
   if (opts.versionSeen) {
     await writeFile(
-      join(root, ".claude", "memory", ".supervibe-version"),
+      join(root, ".supervibe", "memory", ".supervibe-version"),
       opts.versionSeen,
     );
   }
@@ -24,14 +31,14 @@ async function makeProject(name, opts = {}) {
     const lines =
       opts.invocations.map((e) => JSON.stringify(e)).join("\n") + "\n";
     await writeFile(
-      join(root, ".claude", "memory", "agent-invocations.jsonl"),
+      join(root, ".supervibe", "memory", "agent-invocations.jsonl"),
       lines,
     );
   }
   if (opts.overrides) {
     const lines =
       opts.overrides.map((e) => JSON.stringify(e)).join("\n") + "\n";
-    await writeFile(join(root, ".claude", "confidence-log.jsonl"), lines);
+    await writeFile(join(root, ".supervibe", "confidence-log.jsonl"), lines);
   }
   return root;
 }
@@ -69,12 +76,23 @@ after(async () => {
   await rm(sandboxRoot, { recursive: true, force: true });
 });
 
-test("detector: project-not-scaffolded fires when .claude/agents/ + CLAUDE.md absent", async () => {
+test("detector: project-not-scaffolded fires when no host adapter scaffold exists", async () => {
   const project = await makeProject("p-bare");
   const plugin = await makePlugin("plugin-bare");
   const r = await detectNextPhase(project, plugin);
   assert.strictEqual(r.proposed.command, "/supervibe-genesis");
   assert.strictEqual(r.proposed.signal, "project-not-scaffolded");
+});
+
+test("detector: codex scaffold counts as scaffolded without .claude/", async () => {
+  const project = await makeProject("p-codex-scaffold", {
+    scaffolded: true,
+    versionSeen: "1.7.0",
+  });
+  const plugin = await makePlugin("plugin-codex-scaffold", { version: "1.7.0" });
+  const r = await detectNextPhase(project, plugin);
+  assert.strictEqual(r.proposed.signal, "all-green");
+  assert.strictEqual(r.proposed.command, null);
 });
 
 test("detector: upstream-behind takes priority over project-not-scaffolded", async () => {

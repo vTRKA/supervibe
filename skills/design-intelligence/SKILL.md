@@ -41,7 +41,7 @@ Design-facing outputs must include a compact `Design Intelligence Evidence` sect
 Design Intelligence Evidence:
   query: "<user/design query>"
   memory:
-    - path: ".claude/memory/decisions/example.md"
+    - path: ".supervibe/memory/decisions/example.md"
       relevance: "accepted or rejected design decision"
   lookup:
     - id: "style:12:example"

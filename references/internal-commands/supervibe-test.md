@@ -32,7 +32,7 @@ Runs `npm run test:watch`. Stays running, re-runs tests on file change.
 
 ### `/supervibe-test --failing` — re-run only previously-failing items
 
-Reads `.claude/memory/.test-results.json` (last run state). Re-runs only what was failing. Useful in tight iteration loops.
+Reads `.supervibe/memory/.test-results.json` (last run state). Re-runs only what was failing. Useful in tight iteration loops.
 
 ### `/supervibe-test --validator <name>` — single validator
 
@@ -46,7 +46,7 @@ Example: `/supervibe-test --file tests/feedback-channel.test.mjs`
 
 ### `/supervibe-test --regression` — diff against baseline
 
-Compares current `npm run check` output against `.claude/memory/.test-baseline.json` (saved by previous green run). Reports:
+Compares current `npm run check` output against `.supervibe/memory/.test-baseline.json` (saved by previous green run). Reports:
 - New failures
 - Newly passing (regression FIXED)
 - Test count delta
@@ -81,7 +81,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
 
 2. **Pre-flight:**
    - Check `package.json` `scripts.check` exists. If missing → print actionable error + exit.
-   - If `--regression`: check `.claude/memory/.test-baseline.json` exists. If not, suggest running full `/supervibe-test` to establish baseline first.
+   - If `--regression`: check `.supervibe/memory/.test-baseline.json` exists. If not, suggest running full `/supervibe-test` to establish baseline first.
 
 3. **Run the appropriate command:**
    ```bash
@@ -94,7 +94,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
    - On failure: extract failing test names + first 200 chars of error.
 
 5. **Persist results:**
-   - Write `.claude/memory/.test-results.json`:
+   - Write `.supervibe/memory/.test-results.json`:
      ```json
      {
        "timestamp": "<ISO>",
@@ -106,7 +106,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
        "tests": [ { "file": "<path>", "name": "<test>", "status": "pass|fail", "error": "<excerpt>" } ]
      }
      ```
-   - On full success: copy to `.claude/memory/.test-baseline.json` (becomes new regression baseline).
+   - On full success: copy to `.supervibe/memory/.test-baseline.json` (becomes new regression baseline).
 
 6. **Format output:**
 
@@ -118,7 +118,7 @@ If the user adds new validators (Phase 6 in token-economy plan etc.), this comma
    Duration:      17.3s
 
    ✓ All checks pass.
-   Baseline updated: .claude/memory/.test-baseline.json
+   Baseline updated: .supervibe/memory/.test-baseline.json
    ```
 
    Failure:
@@ -183,6 +183,6 @@ See "Format output" above. Key invariants:
 - `package.json` `scripts:` — source of truth for what `check` composes
 - `/supervibe-score` — per-artifact scoring (complementary)
 - `/supervibe-execute-plan` — runs plugin QA only when the plan touches Supervibe itself; otherwise it should use the target project's test runner
-- `.claude/memory/.test-baseline.json` — regression baseline (auto-managed)
-- `.claude/memory/.test-results.json` — last-run state (auto-managed)
+- `.supervibe/memory/.test-baseline.json` — regression baseline (auto-managed)
+- `.supervibe/memory/.test-results.json` — last-run state (auto-managed)
 - `confidence-rubrics/*.yaml` — what `validate:*` checks against

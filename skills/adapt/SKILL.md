@@ -23,7 +23,7 @@ last-verified: 2026-04-27
 
 ## Shared Dialogue Contract
 
-Lifecycle: `scan -> plan -> review -> approved -> applied -> verified`. Persist state in `.claude/memory/adapt/state.json` before every lifecycle transition.
+Lifecycle: `scan -> plan -> review -> approved -> applied -> verified`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition.
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 

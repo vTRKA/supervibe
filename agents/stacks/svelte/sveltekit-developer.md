@@ -119,7 +119,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions before writing code
    - For modify-existing-route tasks: also run `--callers "<load-or-action-name>"` to know who depends on this
    - For new shared component / rune module: `--neighbors "<related-symbol>" --depth 2`
@@ -238,7 +238,7 @@ For each feature delivery:
 3. Update consumers: drop `$store` auto-subscriptions, read the rune accessor directly
 4. Verify `svelte-check` passes — runes have stricter typing
 5. Update tests; rune state needs to be exercised through component renders or `$effect.root` test wrappers
-6. Document in `.claude/memory/patterns/` if the migration pattern will repeat
+6. Document in `.supervibe/memory/patterns/` if the migration pattern will repeat
 
 ### Adapter switch (e.g., adapter-node → adapter-vercel)
 1. Defer the decision itself to architect (ADR) — this workflow handles the implementation only
@@ -288,7 +288,7 @@ Do NOT decide on: deployment, container, edge config, CDN topology (defer to dev
 - Lint: `eslint . --ext .ts,.svelte`, `prettier --check .`
 - Type-check: `svelte-check --tsconfig ./tsconfig.json`
 - Adapter: `svelte.config.js` — `adapter-node` / `adapter-vercel` / `adapter-cloudflare` / `adapter-static`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

@@ -251,10 +251,10 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     <section class="panel">
       <h2>Start</h2>
       <label for="graphPath">Work graph</label>
-      <input id="graphPath" value="${escapeHtml(graphPath || "")}" placeholder=".claude/memory/work-items/<epic>/graph.json">
+      <input id="graphPath" value="${escapeHtml(graphPath || "")}" placeholder=".supervibe/memory/work-items/<epic>/graph.json">
       <div class="button-row"><button class="primary" id="loadGraphBtn">Load graph</button><button class="ghost" id="refreshStatusBtn">Refresh indexes</button></div>
       <label for="statePath">Loop state</label>
-      <input id="statePath" placeholder=".claude/memory/loops/<run-id>/state.json">
+      <input id="statePath" placeholder=".supervibe/memory/loops/<run-id>/state.json">
       <div class="button-row"><button id="loadRunBtn">Load run</button><button id="loadReportBtn">SLA report</button><button id="loadGcBtn">GC preview</button></div>
     </section>
     <section class="panel">
@@ -791,8 +791,8 @@ function kanbanColumnFor(item, status) {
 }
 
 async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
-  const codeDbPath = resolve(rootDir, ".claude", "memory", "code.db");
-  const memoryDbPath = resolve(rootDir, ".claude", "memory", "memory.db");
+  const codeDbPath = resolve(rootDir, ".supervibe", "memory", "code.db");
+  const memoryDbPath = resolve(rootDir, ".supervibe", "memory", "memory.db");
   const sqliteAvailable = hasNodeSqliteSupport();
   const result = {
     generatedAt: new Date().toISOString(),

@@ -168,9 +168,9 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Search project memory** via `supervibe:project-memory` for prior architectural decisions in this area, rejected alternatives, and past coupling incidents:
-   - `.claude/memory/architecture/`
-   - `.claude/memory/adr/` or `docs/adr/`
-   - `.claude/memory/incidents/` filtered for coupling/boundary-related entries
+   - `.supervibe/memory/architecture/`
+   - `.supervibe/memory/adr/` or `docs/adr/`
+   - `.supervibe/memory/incidents/` filtered for coupling/boundary-related entries
 2. **Read declared architecture**:
    - `CLAUDE.md` — top-level style declaration
    - `.claude/rules/*.md` with `mandatory: true` — enforced layer rules
@@ -337,8 +337,8 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 - Architecture style declared in `CLAUDE.md` (modular monolith, hexagonal, FSD, Clean, DDD-tactical, etc.)
 - Layer boundaries described in `.claude/rules/modular-backend.md`, `.claude/rules/architecture.md`, or equivalent (mandatory rules with `mandatory: true` frontmatter take precedence)
 - Module dependency rules per architecture style (e.g., FSD `shared <- entities <- features <- widgets <- pages <- app`)
-- ADR archive: `docs/adr/` or `.claude/memory/adr/` — historical decisions and rationale
-- Architectural decisions memory: `.claude/memory/architecture/` — patterns adopted, alternatives rejected, with reasoning
+- ADR archive: `docs/adr/` or `.supervibe/memory/adr/` — historical decisions and rationale
+- Architectural decisions memory: `.supervibe/memory/architecture/` — patterns adopted, alternatives rejected, with reasoning
 - Dep-graph tooling available (if any): `madge`, `dep-cruiser`, `arch-unit`, `pydeps`, `cargo-modules` — read from `package.json`/scripts
 - Public API surface markers: `index.ts` re-exports, `__init__.py`, `mod.rs` `pub use` — these define the module's contract
 

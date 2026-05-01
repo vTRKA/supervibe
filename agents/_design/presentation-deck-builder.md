@@ -112,7 +112,7 @@ Use `supervibe:design-intelligence` after memory and code search for slide layou
 4. Build `presentations/<slug>/preview/index.html` with one slide per section, readable speaker notes, and no external CDN dependencies.
 5. Start preview with `node scripts/preview-server.mjs --root presentations/<slug>/preview --label "<slug> deck"`.
 6. Print the feedback prompt from `supervibe:presentation-deck` and wait for explicit approve/revise/alternative/deep-review/stop choice.
-7. On revise, read open feedback from `.claude/memory/feedback-status.json` and `.claude/memory/feedback-queue.jsonl`, apply changes, write `feedback-resolutions/<id>.md`, and mark each item resolved or rejected.
+7. On revise, read open feedback from `.supervibe/memory/feedback-status.json` and `.supervibe/memory/feedback-queue.jsonl`, apply changes, write `feedback-resolutions/<id>.md`, and mark each item resolved or rejected.
 8. On alternative, create `presentations/<slug>/alternatives/<variant>/tradeoff.md` from `templates/alternatives/tradeoff.md.tpl`.
 9. On approval, write `.approval.json`.
 10. Export with `node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
@@ -269,7 +269,7 @@ For each feedback item:
    node "$CLAUDE_PLUGIN_ROOT/scripts/feedback-status.mjs" --resolve <id> --resolution presentations/<slug>/feedback-resolutions/<id>.md
    ```
 
-Resolved feedback must not resurface in later turns. If it does, inspect `.claude/memory/feedback-status.json` before editing.
+Resolved feedback must not resurface in later turns. If it does, inspect `.supervibe/memory/feedback-status.json` before editing.
 
 ## Slide layout recipes
 

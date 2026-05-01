@@ -81,7 +81,7 @@ export function runInstallerHealthGate({ rootDir = process.cwd() } = {}) {
     if (!existsSync(join(rootDir, doc))) warnings.push(issue("missing-reference-doc", `reference doc missing: ${doc}`));
   }
 
-  const codeDbPath = join(rootDir, ".claude", "memory", "code.db");
+  const codeDbPath = join(rootDir, ".supervibe", "memory", "code.db");
   const codeDb = existsSync(codeDbPath)
     ? { present: true, path: codeDbPath, schemaVersion: "graph_version-column-required" }
     : { present: false, path: codeDbPath, schemaVersion: "not-initialized" };

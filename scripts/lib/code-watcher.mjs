@@ -20,7 +20,7 @@ export async function startWatcher(projectRoot, opts = {}) {
 
   if (verbose) console.log(`[supervibe-watcher] starting; root=${projectRoot}`);
 
-  const memWatcher = chokidar.watch(join(projectRoot, '.claude', 'memory'), {
+  const memWatcher = chokidar.watch(join(projectRoot, '.supervibe', 'memory'), {
     ignored: /(^|[/\\])\..*\.swp$|memory\.db|code\.db$/,
     persistent: true,
     ignoreInitial: true,
@@ -87,10 +87,10 @@ export async function startWatcher(projectRoot, opts = {}) {
     .on('change', (p) => handleCode('change', p))
     .on('unlink', (p) => handleCode('unlink', p));
 
-  if (verbose) console.log(`[supervibe-watcher] watching .claude/memory/ + project source files`);
+  if (verbose) console.log(`[supervibe-watcher] watching .supervibe/memory/ + project source files`);
 
   // Heartbeat file: status command uses this to confirm watcher is alive.
-  const heartbeatPath = join(projectRoot, '.claude', 'memory', '.watcher-heartbeat');
+  const heartbeatPath = join(projectRoot, '.supervibe', 'memory', '.watcher-heartbeat');
   const heartbeatTimer = setInterval(async () => {
     try { await writeFile(heartbeatPath, String(Date.now())); } catch {}
   }, 5000);

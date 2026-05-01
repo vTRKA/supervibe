@@ -25,7 +25,7 @@ This is methodology — used by the `code-reviewer` agent (Phase 3) AND can be a
 1. Read the change scope (all files modified/created/deleted)
 2. Read the spec/plan that motivated the change
 3. Read project's `CLAUDE.md` for conventions
-4. Read `.claude/rules/*` for mandatory standards
+4. Read selected host adapter rules for mandatory standards
 5. Run typecheck + tests + lint and capture output
 
 ## Decision tree

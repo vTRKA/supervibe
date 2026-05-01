@@ -17,7 +17,7 @@ export const BUILT_IN_WORK_ITEM_VIEWS = Object.freeze([
 ]);
 
 export function defaultSavedViewsPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "work-item-views.json");
+  return join(rootDir, ".supervibe", "memory", "work-item-views.json");
 }
 
 export function createSavedViewStore({ customViews = [], updatedAt = "deterministic-local" } = {}) {
@@ -100,7 +100,7 @@ export function exportSavedViewsForSyncBundle(store = createSavedViewStore()) {
   };
 }
 
-export function savedViewsToPaletteActions(store = createSavedViewStore(), { graphPath = ".claude/memory/work-items/<epic-id>/graph.json" } = {}) {
+export function savedViewsToPaletteActions(store = createSavedViewStore(), { graphPath = ".supervibe/memory/work-items/<epic-id>/graph.json" } = {}) {
   return listSavedViews(store).map((view) => ({
     id: `view:${view.name}`,
     label: `View ${view.name}`,

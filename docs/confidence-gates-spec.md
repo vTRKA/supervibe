@@ -47,7 +47,7 @@ Loose `block-below: 8` allowed only with explicit rationale in rubric file.
 When score = `block`, the artifact's owner can override IF:
 
 1. **Justification is captured** as text (≥10 chars per `supervibe:_core:quality-gate-reviewer` enforcement).
-2. **Logged to `.claude/confidence-log.jsonl`** with structured record:
+2. **Logged to `.supervibe/confidence-log.jsonl`** with structured record:
    ```jsonl
    {
      "id": "<uuid>",
@@ -136,7 +136,7 @@ If `gate-on-exit: true` AND `score < block-below` → skill emits `BLOCKED` stat
 
 ## Telemetry contract
 
-Every gate decision (pass / warn / block / override) flows into `.claude/memory/score-log.jsonl`:
+Every gate decision (pass / warn / block / override) flows into `.supervibe/memory/score-log.jsonl`:
 
 ```jsonl
 {
@@ -199,7 +199,7 @@ This makes memory integration **uniform**: any command that produces a new artif
 ## Anti-patterns this spec prevents
 
 - **Implicit gates** — every command must declare its gate in this spec.
-- **Silent override** — every override hits `.claude/confidence-log.jsonl`.
+- **Silent override** — every override hits `.supervibe/confidence-log.jsonl`.
 - **Override creep** — 5% budget hard-gated; `/supervibe-audit` flags violators.
 - **Vague remediation** — every dimension in every rubric must have an `evidence-required` field that names the specific evidence (file:line / artifact / output) the score depended on.
 - **Inconsistent thresholds** — defaults are 9 / 10 unless rubric has explicit reason to deviate (documented in rubric YAML).
@@ -212,7 +212,7 @@ This makes memory integration **uniform**: any command that produces a new artif
 If any command/skill predates this spec:
 1. Identify its rubric (or add one if missing)
 2. Set `gates.block-below: 9` and `gates.warn-below: 10` (defaults)
-3. Wire it to log to `.claude/memory/score-log.jsonl`
+3. Wire it to log to `.supervibe/memory/score-log.jsonl`
 4. If it's an artifact-producing command, add memory pre-flight
 5. Update its frontmatter to declare gate behavior
 
@@ -229,6 +229,6 @@ no-unshipped-placeholder rule during `npm run check`.
 - `supervibe:confidence-scoring` skill — the universal scoring mechanism
 - `scripts/lib/load-rubrics.mjs` — programmatic rubric access
 - `scripts/lib/append-override-log.mjs` — override telemetry writer
-- `.claude/memory/score-log.jsonl` — unified gate telemetry
-- `.claude/confidence-log.jsonl` — override-specific log (subset of score-log)
+- `.supervibe/memory/score-log.jsonl` — unified gate telemetry
+- `.supervibe/confidence-log.jsonl` — override-specific log (subset of score-log)
 - `references/internal-commands/supervibe-override.md` — internal override-with-rationale spec

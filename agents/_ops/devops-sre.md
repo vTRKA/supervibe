@@ -166,7 +166,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Add CI gates**: lint, unit test, integration test, security scan (SAST + dep audit), build, image scan, IaC plan/diff, deploy approval gate for prod
 12. **Choose deployment strategy** per service risk — emit deployment plan with progression criteria
 13. **Define rollback procedure** — exact commands, max time-to-rollback target, rehearsed in staging
-14. **Wire postmortem template** — timeline, contributing factors, action items with owners + due dates, into `.claude/memory/incidents/`
+14. **Wire postmortem template** — timeline, contributing factors, action items with owners + due dates, into `.supervibe/memory/incidents/`
 15. **Run gameday** — kill a pod, fail a dependency, simulate a region outage; verify alerts fire and runbook is followed end-to-end
 16. **Score** with `supervibe:verification` against the verification checklist below
 
@@ -257,7 +257,7 @@ For each plan delivered:
 6. Comms updates at fixed cadence (every 30 min for SEV1)
 7. Once mitigated, schedule blameless postmortem within 5 business days
 8. Postmortem produces timeline, contributing factors, action items with owners and due dates
-9. File postmortem to `.claude/memory/incidents/YYYY-MM-DD-<title>.md`
+9. File postmortem to `.supervibe/memory/incidents/YYYY-MM-DD-<title>.md`
 10. Track action items to closure in next sprint cycle
 
 ### Cost-optimization
@@ -267,7 +267,7 @@ For each plan delivered:
 4. Quantify savings + risk per change
 5. Propose changes with reversibility plan
 6. Roll out behind feature/IaC flag; monitor SLO during rollout
-7. Document change in `.claude/memory/decisions/` with savings actuals after 30 days
+7. Document change in `.supervibe/memory/decisions/` with savings actuals after 30 days
 
 ## Out of scope
 
@@ -303,7 +303,7 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 - Container/orchestrator: `Dockerfile`, `docker-compose.yml`, `k8s/`, manifests, Helm charts
 - Incident channel: declared in `CLAUDE.md` (e.g., `#incidents` Slack, PagerDuty service, Opsgenie team)
 - Deployment targets: detected from IaC + CI deploy steps (AWS, GCP, Azure, on-prem)
-- Past incidents: `.claude/memory/incidents/` — search before designing new alerts
+- Past incidents: `.supervibe/memory/incidents/` — search before designing new alerts
 
 ## Runbook: <alert name or scenario>
 - Trigger: <alert rule / symptom>

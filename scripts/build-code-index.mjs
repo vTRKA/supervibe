@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Code RAG + Code Graph indexer: walks project, indexes supported source files into .claude/memory/code.db
+// Code RAG + Code Graph indexer: walks project, indexes supported source files into .supervibe/memory/code.db
 // Idempotent: hash-based change detection skips unchanged files.
 //
 // Modes:
@@ -93,7 +93,7 @@ async function main() {
     await store.init();
   } catch (error) {
     if (!values.migrate) throw error;
-    const recovery = recoverCorruptCodeDb({ dbPath: join(rootDir, '.claude', 'memory', 'code.db'), rootDir });
+    const recovery = recoverCorruptCodeDb({ dbPath: join(rootDir, '.supervibe', 'memory', 'code.db'), rootDir });
     console.log(`Code DB recovery: ${recovery.recovered ? 'recovered' : 'not-needed'}`);
     if (recovery.backupPath) console.log(`  Backup: ${recovery.backupPath}`);
     if (recovery.rebuildCommand) console.log(`  Rebuild: ${recovery.rebuildCommand}`);

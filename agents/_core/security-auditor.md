@@ -265,7 +265,7 @@ For each audit:
 2. Map blast radius
 3. Patch immediate vulnerability
 4. Add detection alert
-5. Add to `.claude/memory/incidents/`
+5. Add to `.supervibe/memory/incidents/`
 
 ### Dependency upgrade triage
 1. Run audit tool
@@ -306,7 +306,7 @@ Do NOT decide on: compliance scope (defer to product-manager).
 - Auth code paths: detected via Grep for auth/middleware/policy/guard
 - Secrets sources: `.env*`, `config/`, vault references (HashiCorp Vault, AWS Secrets Manager, etc.)
 - Dep manifests: `package.json` / `composer.json` / `Cargo.toml` / `requirements.txt`
-- Audit history: `.claude/memory/incidents/` — past security incidents
+- Audit history: `.supervibe/memory/incidents/` — past security incidents
 - Compliance scope: GDPR, CCPA, HIPAA, PCI DSS, SOC2 (if applicable, declared in CLAUDE.md)
 
 ## OWASP Top 10 (2021) checklist

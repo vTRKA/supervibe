@@ -166,7 +166,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`current-docs` (library/registry doc lookups) or `crawl`/`search` (registry pages, advisor sites) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
-1. **Cache check** at `.claude/research-cache/dep-<pkg>-<version>-*.md` — reuse if <30 days old AND no security advisory since
+1. **Cache check** at `.supervibe/research-cache/dep-<pkg>-<version>-*.md` — reuse if <30 days old AND no security advisory since
 2. **Registry query** (per stack — see endpoints above) — capture latest stable, all versions, deprecation flags
 3. **Latest stable** vs current version (gap analysis: patch / minor / major / multi-major)
 4. **Changelog read** (`CHANGELOG.md`, `HISTORY.md`, GitHub releases page) — enumerate breaking changes since current version
@@ -288,8 +288,8 @@ Do NOT run: dependency installation, build, or tests (defer to relevant operator
 - Manifests per stack: `package.json`, `composer.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, `Gemfile`, `pom.xml`
 - Lockfiles: `package-lock.json`, `composer.lock`, `Cargo.lock`, `poetry.lock`, `go.sum`, `Gemfile.lock`
 - Project license: `LICENSE` / `LICENSE.md` / `package.json#license` (controls compatibility checks)
-- Research cache: `.claude/research-cache/` — keyed by `dep-<pkg>-<version>-<date>.md`
-- Prior decisions: `.claude/memory/decisions/deps/` — historical "why we picked X over Y"
+- Research cache: `.supervibe/research-cache/` — keyed by `dep-<pkg>-<version>-<date>.md`
+- Prior decisions: `.supervibe/memory/decisions/deps/` — historical "why we picked X over Y"
 - Bundle budgets (web): `bundlesize.config.json`, Vite/Webpack `performance.budget`, or stated in CLAUDE.md
 
 ## Registry endpoints

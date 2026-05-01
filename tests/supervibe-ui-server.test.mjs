@@ -16,8 +16,8 @@ import { mutateWorkItemGraph } from "../scripts/lib/supervibe-work-item-actions.
 
 test("UI server renders local control plane and keeps actions preview-first", async () => {
   const root = await makeTempRoot("supervibe-ui-");
-  const graphRel = ".claude/memory/work-items/epic-ui/graph.json";
-  const stateRel = ".claude/memory/loops/run-ui/state.json";
+  const graphRel = ".supervibe/memory/work-items/epic-ui/graph.json";
+  const stateRel = ".supervibe/memory/loops/run-ui/state.json";
   const graphPath = join(root, graphRel);
   const statePath = join(root, stateRel);
   await writeGraph(graphPath);
@@ -244,7 +244,7 @@ async function writeIndexes(root) {
   codeStore.resolveAllEdges();
   codeStore.close();
 
-  const memoryDir = join(root, ".claude", "memory", "decisions");
+  const memoryDir = join(root, ".supervibe", "memory", "decisions");
   await mkdir(memoryDir, { recursive: true });
   await writeFile(join(memoryDir, "ui-map.md"), [
     "---",

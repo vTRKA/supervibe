@@ -241,7 +241,7 @@ For each PRD output:
 5. Draft sunset plan: deprecation notice, data export, migration path, final removal date
 6. Stakeholder review with exec sponsor
 7. Write postmortem: what we learned, what we'd do differently
-8. Add to `.claude/memory/killed-features/` for institutional memory
+8. Add to `.supervibe/memory/killed-features/` for institutional memory
 
 ### Quarterly roadmap planning
 1. Review last quarter's OKRs: what hit, what missed, why
@@ -298,8 +298,8 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns �
 - Genesis questionnaires: `/supervibe-genesis` outputs in `.claude/genesis/` — captured product intent at project start
 - User research: `docs/research/` — interview notes, survey results, usability studies
 - Analytics baseline: dashboards, KPI tracker, north-star metric definition
-- Decision log: `.claude/memory/decisions/` — past product decisions with rationale
-- Kill log: `.claude/memory/killed-features/` — features that did not ship and why
+- Decision log: `.supervibe/memory/decisions/` — past product decisions with rationale
+- Kill log: `.supervibe/memory/killed-features/` — features that did not ship and why
 
 ## Problem
 One paragraph. [Persona] cannot [JTBD] because [obstacle], costing [quantified impact].

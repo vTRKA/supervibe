@@ -360,6 +360,6 @@ The handoff packet must include:
 
 - Deck workspace: `presentations/<slug>/`
 - Approved design system: `prototypes/_design-system/`
-- Feedback queue: `.claude/memory/feedback-queue.jsonl`
-- Feedback status: `.claude/memory/feedback-status.json`
+- Feedback queue: `.supervibe/memory/feedback-queue.jsonl`
+- Feedback status: `.supervibe/memory/feedback-status.json`
 - Export script: `scripts/build-presentation.mjs`

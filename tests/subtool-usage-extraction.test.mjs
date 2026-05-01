@@ -11,7 +11,7 @@ const SUBTOOL_PATTERNS = {
     /\bsupervibe:project-memory\b/i,
     /\bsearch-memory\.mjs\b/i,
     /\bmemory:preflight\b/i,
-    /\.claude\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
+    /\.supervibe\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
   ],
   "code-search": [
     /\bsupervibe:code-search\b/i,
@@ -71,7 +71,7 @@ test("counts multiple invocations", () => {
 
 test("detects memory file path references", () => {
   const out = extractSubtoolUsage(
-    "Read .claude/memory/decisions/2026-04-foo.md",
+    "Read .supervibe/memory/decisions/2026-04-foo.md",
   );
   assert.equal(out.memory, 1);
 });

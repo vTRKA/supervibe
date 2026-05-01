@@ -22,14 +22,14 @@ saved views, and render local redacted daily/weekly/SLA reports.
 
 ```bash
 /supervibe-status
-/supervibe-status --dashboard --file .claude/memory/loops/<run-id>/state.json --out .claude/memory/loops/<run-id>/dashboard.html
+/supervibe-status --dashboard --file .supervibe/memory/loops/<run-id>/state.json --out .supervibe/memory/loops/<run-id>/dashboard.html
 /supervibe-status --integrations
 /supervibe-status --integrations --json
-/supervibe-status --view ready-now --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-status --query "status:blocked label:integration sort:age" --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-status --save-view release-risk --query "risk:high status:not-done" --views-file .claude/memory/work-item-views.json
-/supervibe-status --report daily --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-status --report sla --file .claude/memory/work-items/<epic-id>/graph.json --out .claude/memory/reports/sla.md
+/supervibe-status --view ready-now --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-status --query "status:blocked label:integration sort:age" --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-status --save-view release-risk --query "risk:high status:not-done" --views-file .supervibe/memory/work-item-views.json
+/supervibe-status --report daily --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-status --report sla --file .supervibe/memory/work-items/<epic-id>/graph.json --out .supervibe/memory/reports/sla.md
 /supervibe-status --interactive
 /supervibe-status --eval-report
 /supervibe-status --eval-report --file .supervibe/audits/autonomous-loop-evals/latest-report.json --json
@@ -37,8 +37,8 @@ saved views, and render local redacted daily/weekly/SLA reports.
 /supervibe-status --policy --policy-profile CI-readonly --json
 /supervibe-status --role
 /supervibe-status --anchors --file src/example.ts
-/supervibe-status --waves --file .claude/memory/loops/<run-id>/state.json
-/supervibe-status --assignment task-123 --file .claude/memory/loops/<run-id>/state.json
+/supervibe-status --waves --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-status --assignment task-123 --file .supervibe/memory/loops/<run-id>/state.json
 ```
 
 `--dashboard` writes a static offline HTML run dashboard from an existing loop

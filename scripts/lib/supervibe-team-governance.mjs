@@ -10,49 +10,49 @@ export const ROLE_NAMES = Object.freeze([
 
 const ROLE_DEFAULTS = Object.freeze({
   owner: {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["local-write", "metadata-branch", "federated-bundle"],
     reviewRequired: false,
     metadataVisibility: "full",
     mutation: "local-write",
   },
   maintainer: {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["local-write", "metadata-branch", "federated-bundle"],
     reviewRequired: false,
     metadataVisibility: "full",
     mutation: "local-write",
   },
   contributor: {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["metadata-branch", "federated-bundle", "local-preview"],
     reviewRequired: true,
     metadataVisibility: "limited",
     mutation: "review-gated-local-write",
   },
   reviewer: {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["review-notes", "federated-bundle"],
     reviewRequired: false,
     metadataVisibility: "review",
     mutation: "review-notes-only",
   },
   worker: {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["local-write", "local-preview"],
     reviewRequired: true,
     metadataVisibility: "limited",
     mutation: "local-write",
   },
   CI: {
-    storageLocation: ".claude/memory/ci-artifacts",
+    storageLocation: ".supervibe/memory/ci-artifacts",
     allowedSync: ["read-only-status", "local-artifact-output"],
     reviewRequired: false,
     metadataVisibility: "minimal",
     mutation: "artifact-output-only",
   },
   "read-only observer": {
-    storageLocation: ".claude/memory/work-items",
+    storageLocation: ".supervibe/memory/work-items",
     allowedSync: ["read-only-status"],
     reviewRequired: true,
     metadataVisibility: "minimal",
@@ -163,5 +163,5 @@ function decision(allowed, governance, reason, noTty) {
 
 function isArtifactTarget(target = "") {
   const value = String(target || "").replace(/\\/g, "/");
-  return value.startsWith(".claude/memory/") || value.startsWith(".supervibe/audits/");
+  return value.startsWith(".supervibe/memory/") || value.startsWith(".supervibe/audits/");
 }

@@ -7,7 +7,7 @@ import { createEvidenceRecord } from './supervibe-evidence-ledger.mjs';
 
 const PROJECT_ROOT = process.cwd();
 let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
-  || join(PROJECT_ROOT, '.claude', 'memory', 'agent-invocations.jsonl');
+  || join(PROJECT_ROOT, '.supervibe', 'memory', 'agent-invocations.jsonl');
 
 export function INVOCATION_LOG_PATH_FOR_TEST(path) { _logPath = path; }
 

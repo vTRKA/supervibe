@@ -20,7 +20,7 @@ before(async () => {
     join(pluginRoot, '.claude-plugin', 'plugin.json'),
     JSON.stringify({ name: 'evolve', version: '1.7.0' })
   );
-  await mkdir(join(projectRoot, '.claude', 'memory'), { recursive: true });
+  await mkdir(join(projectRoot, '.supervibe', 'memory'), { recursive: true });
 });
 
 after(async () => { await rm(sandbox, { recursive: true, force: true }); });

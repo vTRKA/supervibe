@@ -17,8 +17,8 @@ const execFileAsync = promisify(execFile);
 test("IDE bridge descriptor exposes localhost webview contract", async () => {
   const descriptor = createIdeBridgeDescriptor({
     rootDir: process.cwd(),
-    graphPath: ".claude/memory/work-items/epic/graph.json",
-    statePath: ".claude/memory/loops/run/state.json",
+    graphPath: ".supervibe/memory/work-items/epic/graph.json",
+    statePath: ".supervibe/memory/loops/run/state.json",
     port: 3999,
     generatedAt: "2026-04-30T00:00:00.000Z",
   });
@@ -45,7 +45,7 @@ test("IDE bridge CLI writes JSON descriptor for IDE wrappers", async () => {
     const { stdout } = await execFileAsync(process.execPath, [
       join(process.cwd(), "scripts", "supervibe-ide-bridge.mjs"),
       "--file",
-      ".claude/memory/work-items/epic/graph.json",
+      ".supervibe/memory/work-items/epic/graph.json",
     ], { cwd: process.cwd() });
     assert.match(stdout, /SUPERVIBE_IDE_BRIDGE/);
     assert.match(stdout, /PREVIEW_FIRST: true/);

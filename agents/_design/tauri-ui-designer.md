@@ -298,7 +298,7 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - Mockup output dir: `prototypes/<feature>/tauri/{main-window,secondary,tray}/`
 - Webview compat notes: `docs/webview-compat.md` (per-engine min versions + known bugs)
 - Auto-updater config: `src-tauri/tauri.conf.json` `updater` block
-- Prior Tauri decisions: `.claude/memory/decisions/` (search by tag `tauri`, `webview`, `wkwebview`, `webview2`)
+- Prior Tauri decisions: `.supervibe/memory/decisions/` (search by tag `tauri`, `webview`, `wkwebview`, `webview2`)
 
 ## Decision tree (window architecture + webview compatibility)
 

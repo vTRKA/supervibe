@@ -149,7 +149,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Cache check** at `.claude/research-cache/comp-design-<category>-*.md` — if a report ≤90 days old exists, decide refresh-vs-reuse with the user
+1. **Cache check** at `.supervibe/research-cache/comp-design-<category>-*.md` — if a report ≤90 days old exists, decide refresh-vs-reuse with the user
 2. **Search project memory** via `supervibe:project-memory` for prior reports + brand briefs in this category
 3. **Identify category + 5-10 competitors** from PRD, brand brief, or user input; confirm with user before capture
 4. **Choose mode** from decision tree (single-competitor-deep / category-survey / pattern-extraction / trend-tracking)
@@ -159,7 +159,7 @@ Before producing any artifact or making any structural recommendation:
    - Public, logged-out flows: returned `crawl` MCP screenshot tool (or WebFetch + manual capture fallback)
    - Authenticated or multi-step flows: returned `browser` MCP with explicit user-supplied test account (with consent confirmed)
    - Required attribution per screenshot: company, page URL, capture date (YYYY-MM-DD), flow label, viewport size
-   - Store at `.claude/research-cache/screenshots/<competitor>/<flow>-<date>.png`
+   - Store at `.supervibe/research-cache/screenshots/<competitor>/<flow>-<date>.png`
 8. **Annotate each screenshot** with one-sentence "what this is doing" + one-sentence "why this is doing it" hypothesis
 9. **Classify patterns** (convention / emerging / idiosyncratic / anti-pattern) — count adoption across competitors
 10. **Draft DO/DON'T table** with rationale tied to user need or strategic positioning
@@ -295,8 +295,8 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 
 - Product category + competitor list (from PRD, brand brief, or user input)
 - Public design systems referenced: Material, Carbon, Polaris, Atlassian, Salesforce Lightning, Apple HIG, Fluent (Microsoft)
-- Research cache: `.claude/research-cache/comp-design-<category>-<YYYY-MM-DD>.md`
-- Screenshot store: `.claude/research-cache/screenshots/<competitor>/<flow>-<YYYY-MM-DD>.png`
+- Research cache: `.supervibe/research-cache/comp-design-<category>-<YYYY-MM-DD>.md`
+- Screenshot store: `.supervibe/research-cache/screenshots/<competitor>/<flow>-<YYYY-MM-DD>.png`
 - Prior reports: searched via `supervibe:project-memory` for the same category
 - Tooling: Firecrawl for headless scrape + screenshot, Playwright for interactive flows requiring login or multi-step state
 

@@ -40,7 +40,7 @@ test("evidence ledger passes cited, redacted and verified delivery", async () =>
     ragChunkIds: ["chunk-1"],
     graphSymbols: ["evaluateEvidenceGate"],
     citations: [
-      { id: "memory-1", source: "memory", path: ".claude/memory/decisions/a.md", redacted: true },
+      { id: "memory-1", source: "memory", path: ".supervibe/memory/decisions/a.md", redacted: true },
       { id: "chunk-1", source: "rag", path: "scripts/lib/supervibe-evidence-ledger.mjs", redacted: true },
     ],
     verificationCommands: ["node --test tests/agent-tool-use-gates.test.mjs"],

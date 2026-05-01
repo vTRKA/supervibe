@@ -21,7 +21,7 @@ BEFORE picking a tool for current-docs research / browser automation / design ex
 ## Step 0 — Read source of truth
 
 1. Run `node $CLAUDE_PLUGIN_ROOT/scripts/discover-mcps.mjs` (or rely on SessionStart having done it)
-2. Read `.claude/memory/mcp-registry.json`
+2. Read `.supervibe/memory/mcp-registry.json`
 
 ## Decision tree — task → MCP preference
 

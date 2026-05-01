@@ -60,7 +60,7 @@ If score < 10:
 - Print the failing dimensions with file:line of the gap
 - Offer 3 paths:
   - **A) Fix the gap** — propose specific edits to bring plan to 10/10
-  - **B) Override** — proceed at current score, log to `.claude/memory/incidents/<id>-plan-override.md` with rationale
+  - **B) Override** — proceed at current score, log to `.supervibe/memory/incidents/<id>-plan-override.md` with rationale
   - **C) Cancel** — exit, user can iterate on plan
 
 Default: A. Override requires explicit user typed confirmation.
@@ -75,7 +75,7 @@ Score the executed work against 10 completion dimensions. Each is binary.
 | 2 | **All verifications ran** | Every "Run X, expect Y" step shows actual output matching expected |
 | 3 | **All tests pass** | If plan added tests → `npm test` (or stack equivalent) green; pre-existing tests unchanged or improved |
 | 4 | **No regressions** | If plan has Phase 7 / regression suite → diff against baseline shows no degradation |
-| 5 | **Memory updated** | Decisions / learnings / patterns captured in `.claude/memory/` per plan's intent |
+| 5 | **Memory updated** | Decisions / learnings / patterns captured in `.supervibe/memory/` per plan's intent |
 | 6 | **Files created exist** | Every "Create: <path>" file exists on disk |
 | 7 | **Files modified are minimal** | Modified files only changed sections plan declared; no scope creep |
 | 8 | **Confidence rubric scored** | Final delivery scored against the right rubric (`agent-delivery` / `framework` / per plan); ≥9 |
@@ -86,7 +86,7 @@ If score < 10:
 - Print the failing dimensions
 - Offer 3 paths:
   - **A) Fix the gap** — go back, complete missing pieces; re-audit
-  - **B) Document partial completion** — write `.claude/memory/learnings/<id>-partial-execution.md` with what was/wasn't done; user accepts partial state
+  - **B) Document partial completion** — write `.supervibe/memory/learnings/<id>-partial-execution.md` with what was/wasn't done; user accepts partial state
   - **C) Revert** — `git reset` / `git revert` everything from this execution
 
 Default: A.
@@ -107,7 +107,7 @@ Before any execution audit, confirm the plan has:
 If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --from-plan --atomize <plan-path>` after review passes.
 
 For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree --max-duration 3h` so the run has an active session registry, heartbeat, and cleanup-safe worktree path.
-For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .claude/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.
+For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.
 
 ### 0. Resolve plan path
 
@@ -210,7 +210,7 @@ If <10 → present options A/B/C.
 
 ### 6. Optional: persist execution record
 
-Write `.claude/memory/solutions/<plan-slug>-executed-<ISO-date>.md` with:
+Write `.supervibe/memory/solutions/<plan-slug>-executed-<ISO-date>.md` with:
 - Plan path
 - Readiness score (Stage A)
 - Completion score (Stage B)

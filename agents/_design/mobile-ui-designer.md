@@ -320,7 +320,7 @@ Do NOT skip platform-divergence documentation when policy is parity — every di
 - Viewport preset: `templates/viewport-presets/mobile-native.json`
 - Mockup output dir: `prototypes/<feature>/mobile/{ios,android}/<screen>/`
 - Per-platform divergence log: `docs/platform-divergence.md`
-- Prior mobile decisions: `.claude/memory/decisions/` (search by tag `mobile`, `ios`, `android`, `react-native`, `flutter`)
+- Prior mobile decisions: `.supervibe/memory/decisions/` (search by tag `mobile`, `ios`, `android`, `react-native`, `flutter`)
 
 ## Decision tree (platform policy + navigation pattern)
 

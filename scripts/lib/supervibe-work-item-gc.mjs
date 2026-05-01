@@ -11,7 +11,7 @@ export async function scanWorkItemGc({
   includeStaleOpen = false,
   now = new Date().toISOString(),
 } = {}) {
-  const workItemsDir = join(rootDir, ".claude", "memory", "work-items");
+  const workItemsDir = join(rootDir, ".supervibe", "memory", "work-items");
   const graphPaths = await findGraphFiles(workItemsDir);
   const candidates = [];
   const active = [];
@@ -103,7 +103,7 @@ export function classifyWorkItemGraphForGc(graph = {}, {
 export async function archiveWorkItemGcCandidates(scan, {
   rootDir = scan.rootDir || process.cwd(),
   dryRun = true,
-  archiveRoot = join(rootDir, ".claude", "memory", "work-items", ".archive"),
+  archiveRoot = join(rootDir, ".supervibe", "memory", "work-items", ".archive"),
   now = scan.now || new Date().toISOString(),
 } = {}) {
   const results = [];
@@ -155,7 +155,7 @@ export async function archiveWorkItemGraph(candidate, { archiveRoot, dryRun = tr
 
 export async function restoreWorkItemGraph({ rootDir = process.cwd(), graphId }) {
   if (!graphId) throw new Error("restore requires graphId");
-  const archiveRoot = join(rootDir, ".claude", "memory", "work-items", ".archive");
+  const archiveRoot = join(rootDir, ".supervibe", "memory", "work-items", ".archive");
   const logEntries = await readArchiveLog(archiveRoot);
   const logged = [...logEntries]
     .reverse()
@@ -164,7 +164,7 @@ export async function restoreWorkItemGraph({ rootDir = process.cwd(), graphId })
   if (!fallback) throw new Error(`archived work-item graph not found: ${graphId}`);
 
   const archivePath = fallback.archivePath || fallback.archiveDir;
-  const restorePath = fallback.originalPath || join(rootDir, ".claude", "memory", "work-items", String(graphId));
+  const restorePath = fallback.originalPath || join(rootDir, ".supervibe", "memory", "work-items", String(graphId));
   if (existsSync(restorePath)) throw new Error(`restore target already exists: ${restorePath}`);
   await mkdir(dirname(restorePath), { recursive: true });
   await rename(archivePath, restorePath);

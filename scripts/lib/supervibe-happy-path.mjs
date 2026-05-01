@@ -9,7 +9,7 @@ export function createHappyPathPlan({
   dryRun = true,
 } = {}) {
   const source = planPath || prdPath || request || "<request>";
-  const graph = graphPath || `.claude/memory/work-items/${epicId}/graph.json`;
+  const graph = graphPath || `.supervibe/memory/work-items/${epicId}/graph.json`;
   const atomizeCommand = planPath
     ? `npm run supervibe:loop -- --atomize-plan ${planPath} ${dryRun ? "--dry-run" : "--plan-review-passed"}`
     : prdPath

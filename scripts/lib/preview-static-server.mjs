@@ -53,7 +53,7 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
   let lastActivityAt = Date.now();
   function touch() { lastActivityAt = Date.now(); }
 
-  const feedbackQueuePath = join(projectRoot, '.claude', 'memory', 'feedback-queue.jsonl');
+  const feedbackQueuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
   const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath }) : null;
 
   const httpServer = createHttpServer(async (req, res) => {

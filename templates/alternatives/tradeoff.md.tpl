@@ -35,4 +35,4 @@
 - Date: <ISO-date>
 - Rejected by: <user|agent>
 - Reason: <one sentence>
-- Lessons saved to: .claude/memory/learnings/<slug>.md
+- Lessons saved to: .supervibe/memory/learnings/<slug>.md

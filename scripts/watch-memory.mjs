@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // File-watcher daemon entry. Run via `npm run memory:watch`.
-// Auto-reindexes memory entries (.claude/memory/**) AND source code on change.
+// Auto-reindexes memory entries (.supervibe/memory/**) AND source code on change.
 // Stop with Ctrl+C.
 
 import { startWatcher } from './lib/code-watcher.mjs';

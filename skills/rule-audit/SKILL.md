@@ -1,7 +1,7 @@
 ---
 name: rule-audit
 namespace: process
-description: "Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across .claude/rules/* OR after sync-rules. RU: Используется КОГДА rules-curator должен найти противоречия/избыточность/пробелы среди .claude/rules/* ИЛИ после sync-rules. Trigger phrases: 'аудит правил', 'rules check', 'проверь правила', 'rule audit'."
+description: "Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across host adapter rules OR after sync-rules. RU: Используется КОГДА rules-curator должен найти противоречия/избыточность/пробелы среди правил host adapter ИЛИ после sync-rules. Trigger phrases: 'аудит правил', 'rules check', 'проверь правила', 'rule audit'."
 allowed-tools: [Read, Grep, Glob, Bash]
 phase: review
 prerequisites: []
@@ -22,7 +22,7 @@ last-verified: 2026-04-27
 
 ## Step 0 — Read source of truth (required)
 
-1. Read all `.claude/rules/*.md`
+1. Read all selected host adapter rule files, e.g. `.codex/rules/*.md` in Codex or `.claude/rules/*.md` in Claude Code
 2. Read MEMORY.md for prior incidents
 3. Read CLAUDE.md for mandatory rule references
 

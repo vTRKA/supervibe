@@ -114,7 +114,7 @@ function walkTextFiles(dir, textExtensions, out = []) {
     if ([".git", "node_modules", "models"].includes(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (full.includes(`${join(".claude", "memory")}`)) continue;
+      if (full.includes(`${join(".supervibe", "memory")}`)) continue;
       walkTextFiles(full, textExtensions, out);
       continue;
     }

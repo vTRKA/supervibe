@@ -13,7 +13,7 @@ Update the installed Supervibe plugin to the latest commit. Wraps `npm run super
 ## Difference from `/supervibe-adapt`
 
 - `/supervibe-update` updates the **plugin source** in `~/.claude/plugins/marketplaces/supervibe-marketplace/` (global, single install per machine).
-- `/supervibe-adapt` propagates upstream agent improvements into a **specific project's** `.claude/` overrides.
+- `/supervibe-adapt` propagates upstream agent improvements into a **specific project's** selected host adapter overrides.
 
 Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.
 
@@ -58,7 +58,7 @@ Print: current version, target version, changelog summary between them, breaking
    PRE_SHA=$(git -C $CLAUDE_PLUGIN_ROOT rev-parse HEAD)
    PRE_VERSION=$(node -p "require('$CLAUDE_PLUGIN_ROOT/.claude-plugin/plugin.json').version")
    ```
-   Save to `.claude/memory/.evolve-update-state.json`:
+   Save to `.supervibe/memory/.evolve-update-state.json`:
    ```json
    { "preSha": "<sha>", "preVersion": "<ver>", "startedAt": "<ISO>" }
    ```
@@ -101,7 +101,7 @@ npm ci                       # restore old node_modules from package-lock.json
    Investigate failure: <error log path>
    ```
 
-   Save the failure record to `.claude/memory/incidents/upgrade-failure-<ISO>.md`:
+   Save the failure record to `.supervibe/memory/incidents/upgrade-failure-<ISO>.md`:
    ```markdown
    # Upgrade failure: <pre-version> → <target-version>
    Date: <ISO>
@@ -118,12 +118,12 @@ npm ci                       # restore old node_modules from package-lock.json
    - Confirm `.supervibe/audits/install-lifecycle/latest.json` exists and has `score: 10`.
    - Print version diff: `vX.Y.Z → vA.B.C`.
    - Clean up `.evolve-update-state.json` (no longer needed for rollback).
-   - Append success record to `.claude/memory/decisions/upgrades.md`.
+   - Append success record to `.supervibe/memory/decisions/upgrades.md`.
 
 7. **Print next steps:**
    - Restart the AI CLI to pick up new plugin code.
    - Each project sees `[evolve] ⬆ plugin upgraded ...` on next session.
-   - If project has `.claude/` overrides → run `/supervibe-adapt`.
+   - If project has host adapter overrides → run `/supervibe-adapt`.
    - To see what changed → read `CHANGELOG.md` or use `/supervibe-update --dry-run`.
 
 ## Error recovery
@@ -145,7 +145,7 @@ If a hard machine crash or interrupt happens mid-upgrade:
 
 ```bash
 cd $CLAUDE_PLUGIN_ROOT
-cat .claude/memory/.evolve-update-state.json   # find preSha
+cat .supervibe/memory/.evolve-update-state.json   # find preSha
 git reset --hard <preSha>
 npm ci
 ```
@@ -190,7 +190,7 @@ Error excerpt: [first 500 chars]
   - LFS restored
 
 Plugin remains on vX.Y.Z.
-Failure log: .claude/memory/incidents/upgrade-failure-2026-04-28T15-30-00.md
+Failure log: .supervibe/memory/incidents/upgrade-failure-2026-04-28T15-30-00.md
 
 Next:
   1. File issue: https://github.com/vTRKA/supervibe/issues
@@ -226,6 +226,6 @@ Run `/supervibe-update` to apply (auto-rollback on failure).
 - `/supervibe-update --rollback` — explicit revert to last good state
 - `CHANGELOG.md` — what changed
 - `/supervibe-adapt` — propagate upstream changes into a specific project
-- `.claude/memory/.evolve-update-state.json` — rollback anchor (transient)
-- `.claude/memory/incidents/upgrade-failure-*.md` — failure forensics
-- `.claude/memory/decisions/upgrades.md` — success log
+- `.supervibe/memory/.evolve-update-state.json` — rollback anchor (transient)
+- `.supervibe/memory/incidents/upgrade-failure-*.md` — failure forensics
+- `.supervibe/memory/decisions/upgrades.md` — success log

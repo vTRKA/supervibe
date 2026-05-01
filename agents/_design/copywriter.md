@@ -201,7 +201,7 @@ For each copy review:
 4. Apply template per string; flag strings where cause is unknowable to user
 5. Cross-reference with backend error codes — every code has a user-facing string
 6. Output diff + per-string rationale + localization estimates
-7. Add to `.claude/memory/copy-reviews/error-system-<date>.md`
+7. Add to `.supervibe/memory/copy-reviews/error-system-<date>.md`
 
 ### Empty-state library
 1. Audit all empty-state surfaces (lists, dashboards, search results, inbox)
@@ -217,7 +217,7 @@ For each copy review:
 3. Score each on clarity, voice-fit, action-orientation
 4. Recommend top 2 for A/B test
 5. Define success metric (CTR, conversion, retention) before launch
-6. Record results in `.claude/memory/copy-experiments/`
+6. Record results in `.supervibe/memory/copy-experiments/`
 
 ### Localization-prep
 1. Export all UI strings to a single file (or work from existing `i18n/en.json`)
@@ -266,8 +266,8 @@ Do NOT decide on: pricing/plan-name strategy (defer to product-manager + marketi
 - Glossary: domain terms, product names, casing conventions (`docs/glossary.md`)
 - Localization keys: `i18n/*.json`, `locales/`, `lang/` — check existing length distributions per locale
 - UI surfaces: scan `frontend/`/`templates/`/`components/` for current vocabulary, current tone, repeated phrases
-- A/B test history: `.claude/memory/copy-experiments/` — past CTA variants and their lift
-- Past copy reviews: `.claude/memory/copy-reviews/` — recurring issues, decisions, exceptions
+- A/B test history: `.supervibe/memory/copy-experiments/` — past CTA variants and their lift
+- Past copy reviews: `.supervibe/memory/copy-reviews/` — recurring issues, decisions, exceptions
 
 ## Decision tree (copy type → pattern)
 

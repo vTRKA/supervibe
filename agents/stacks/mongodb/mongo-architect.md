@@ -178,7 +178,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Read CLAUDE.md** for declared MongoDB flavour, version, replica set / sharding topology, deploy cadence, ODM choice, and Atlas tier
-2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this collection/area; check `.claude/memory/incidents/` for unbounded-array, hot-shard, or `$lookup` regressions
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this collection/area; check `.supervibe/memory/incidents/` for unbounded-array, hot-shard, or `$lookup` regressions
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for MongoDB release notes and Atlas API docs
 4. **Read existing schema** — ODM model files / migration scripts / `db.collection.findOne()` sample — understand current shape before proposing change; verify schema validator presence
 5. **Grep call sites** (`supervibe:code-search`) for every field/collection involved; find every `$lookup`, `aggregate`, `findOneAndUpdate`, `bulkWrite` reference; rename without this is malpractice
@@ -248,7 +248,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each schema change:
-- ADR signed with confidence ≥9 and stored under `.claude/memory/decisions/`
+- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Schema validator (`$jsonSchema`) installed via `collMod`; `validationLevel` and `validationAction` documented
 - `explain("executionStats")` captured before and after for every query whose plan should change; `IXSCAN` confirmed for hot paths; `totalDocsExamined / nReturned` ratio bounded
 - Migration tested end-to-end in staging against a copy of production-scale data
@@ -350,7 +350,7 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 - **Change streams**: consumers under `consumers/`, `workers/`, or framework-specific job runners; cursor resume tokens persisted under `state/` or in the metadata collection
 - **TTL collections**: enumerated via `db.collection.getIndexes()` filtering for `expireAfterSeconds` — sessions, password-reset tokens, idempotency keys, ephemeral cache
 - **Backup**: Atlas continuous backup, `mongodump` schedule, or `mongorestore` from S3 declared in CLAUDE.md
-- **Audit history**: `.claude/memory/decisions/` — prior schema/index/sharding ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior schema/index/sharding ADRs
 
 ## Context
 <what problem, what data, what query patterns, what scale, what flavour/version>

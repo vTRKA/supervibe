@@ -22,7 +22,7 @@ last-verified: 2026-04-27
 
 ## Step 0 — Read source of truth (required)
 
-1. Read `.claude/effectiveness.jsonl` for prior entries
+1. Read `.supervibe/memory/effectiveness.jsonl` for prior entries
 2. Read agent's `effectiveness:` frontmatter section
 3. Read recent confidence-log entries
 
@@ -34,7 +34,7 @@ last-verified: 2026-04-27
    - `failed` — task abandoned OR score <7
 2. Identify blockers if any:
    - `none` / `stale-context` / `missing-skill` / `wrong-approach` / `user-correction`
-3. Append entry to `.claude/effectiveness.jsonl`:
+3. Append entry to `.supervibe/memory/effectiveness.jsonl`:
    ```json
    {"ts":"<ISO>","agent":"<id>","task":"<text>","outcome":"...","iterations":N,"blockers":[...],"confidence":N,"user-corrections":N}
    ```

@@ -20,7 +20,7 @@ WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe
 
 ## Shared Dialogue Contract
 
-Lifecycle: `intake -> plan -> review -> approved -> applied -> verified`. Persist state in `.claude/memory/strengthen/state.json` before every lifecycle transition.
+Lifecycle: `intake -> plan -> review -> approved -> applied -> verified`. Persist state in `.supervibe/memory/strengthen/state.json` before every lifecycle transition.
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -36,10 +36,10 @@ After every material delivery, ask one explicit next-step question with choices:
 ## Step 0 — Read source of truth (required)
 
 1. Read MEMORY.md for prior feedback
-2. Read `.claude/rules/` for project standards
+2. Read selected host adapter rules for project standards
 3. Read recent commits for active patterns
-4. Read `.claude/confidence-log.jsonl` for override patterns
-5. Read `.claude/effectiveness.jsonl` for agent failure patterns
+4. Read `.supervibe/confidence-log.jsonl` for override patterns
+5. Read `.supervibe/memory/effectiveness.jsonl` for agent failure patterns
 6. If audit flagged code index health, run `node scripts/build-code-index.mjs --root . --force --health` and re-check with `node scripts/supervibe-status.mjs --index-health --no-gc-hints`
 7. Run or consult `node scripts/supervibe-status.mjs --capabilities` before editing agents, rules, commands or skills so every strengthened artifact stays linked to a capability and verification hook.
 

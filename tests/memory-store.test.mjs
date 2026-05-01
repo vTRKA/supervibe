@@ -15,7 +15,7 @@ before(async () => {
   await store.init();
 
   // Seed memory entries
-  const decisions = join(SANDBOX, '.claude', 'memory', 'decisions');
+  const decisions = join(SANDBOX, '.supervibe', 'memory', 'decisions');
   await mkdir(decisions, { recursive: true });
   await writeFile(
     join(decisions, '2026-03-15-billing-idempotency.md'),
@@ -36,7 +36,7 @@ Tradeoff: we depend on Redis availability for new payment processing.
 `
   );
 
-  const patterns = join(SANDBOX, '.claude', 'memory', 'patterns');
+  const patterns = join(SANDBOX, '.supervibe', 'memory', 'patterns');
   await mkdir(patterns, { recursive: true });
   await writeFile(
     join(patterns, 'queue-job-with-idempotency.md'),
@@ -55,7 +55,7 @@ Pattern: every job declares idempotency key via Cache::lock with 5min TTL. Faile
 `
   );
 
-  const solutions = join(SANDBOX, '.claude', 'memory', 'solutions');
+  const solutions = join(SANDBOX, '.supervibe', 'memory', 'solutions');
   await mkdir(solutions, { recursive: true });
   await writeFile(
     join(solutions, 'stripe-webhook-replay-protection.md'),
@@ -156,7 +156,7 @@ test('Hybrid mode: semantic search reranks results when embeddings enabled', asy
   // CHUNKING TEST: long entries split into multiple chunks (no truncation)
   const sandbox2 = join(tmpdir(), `evolve-chunk-test-${Date.now()}`);
   await mkdir(sandbox2, { recursive: true });
-  const decisions2 = join(sandbox2, '.claude', 'memory', 'decisions');
+  const decisions2 = join(sandbox2, '.supervibe', 'memory', 'decisions');
   await mkdir(decisions2, { recursive: true });
   const longBody = `# Long entry
 

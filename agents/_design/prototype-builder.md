@@ -331,7 +331,7 @@ Do NOT touch: production CSS, design system source code, or anything outside `pr
 - Design tokens canonical source: `design-tokens/` (Style Dictionary, Theo, or hand-authored CSS variables)
 - Figma source-of-truth: linked via `recommended-mcps: [figma]` for token sync + asset extraction
 - Browsers tested: latest Chrome, Firefox, Safari (desktop + iOS); Edge as Chromium proxy
-- Prior decisions: `.claude/memory/prototype-decisions/` — token interpretation choices that affected production
+- Prior decisions: `.supervibe/memory/prototype-decisions/` — token interpretation choices that affected production
 
 ## Decision tree (prototype shape)
 

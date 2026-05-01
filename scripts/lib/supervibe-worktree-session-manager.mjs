@@ -416,7 +416,7 @@ export function formatWorktreeSessionStatus(registry = createSessionRegistry()) 
 }
 
 export function defaultWorktreeRegistryPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "worktree-sessions", "registry.json");
+  return join(rootDir, ".supervibe", "memory", "worktree-sessions", "registry.json");
 }
 
 async function readGitIgnore(rootDir) {

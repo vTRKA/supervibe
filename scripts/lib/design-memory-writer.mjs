@@ -74,7 +74,7 @@ export async function writeDesignMemoryEntry(entryInput, { projectRoot = ROOT } 
   const entry = typeof entryInput.content === "string" && entryInput.fileName
     ? entryInput
     : buildDesignMemoryEntry(entryInput);
-  const dir = join(projectRoot, ".claude", "memory", entry.category);
+  const dir = join(projectRoot, ".supervibe", "memory", entry.category);
   await mkdir(dir, { recursive: true });
   const path = join(dir, entry.fileName);
   await writeFile(path, entry.content, "utf8");

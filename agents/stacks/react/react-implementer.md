@@ -113,7 +113,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.claude/memory/decisions/` for state-management ADRs, naming conventions, and Suspense rollout policies. Note any constraints before designing.
+1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.supervibe/memory/decisions/` for state-management ADRs, naming conventions, and Suspense rollout policies. Note any constraints before designing.
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, and related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits in full before writing code; reuse hooks and components rather than duplicating.
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -264,7 +264,7 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 - Component library / design tokens: `src/components/ui/` or `src/design-system/` (detected via Grep)
 - Routing: React Router, TanStack Router, or file-based (Vite plugin) — detected via dependency manifest
 - Data layer: TanStack Query, SWR, Zustand, Jotai, or vanilla `useState` — detected via imports
-- Memory: `.claude/memory/decisions/` for prior architecture choices on state management, hook patterns, and Suspense rollout
+- Memory: `.supervibe/memory/decisions/` for prior architecture choices on state management, hook patterns, and Suspense rollout
 
 ## Decision tree (component archetype)
 

@@ -221,7 +221,7 @@ For each observability review:
 3. Identify debuggability gap (was the trace there? was the log there?)
 4. Add detection + add instrumentation
 5. Update runbook with findings
-6. Save to `.claude/memory/incidents/`
+6. Save to `.supervibe/memory/incidents/`
 
 ### SLO definition workshop
 1. Identify user-visible flows
@@ -268,10 +268,10 @@ Do NOT implement instrumentation (defer to devops-sre + service team).
 - Trace backend: Jaeger / Tempo / Datadog APM / Honeycomb
 - Sampling strategy: head-based / tail-based / probabilistic / rule-based
 - Correlation id propagation: detected via Grep for trace headers (`traceparent`, `x-request-id`)
-- SLO documents: `docs/slo/` or `.claude/memory/slo/`
+- SLO documents: `docs/slo/` or `.supervibe/memory/slo/`
 - Alert rules: `prometheus-rules/` / `datadog-monitors/` / Terraform definitions
 - Runbooks: `runbooks/` directory or wiki link in alert annotation
-- Past incidents: `.claude/memory/incidents/` for postmortems
+- Past incidents: `.supervibe/memory/incidents/` for postmortems
 
 ## Domain knowledge
 
@@ -391,7 +391,7 @@ SUGGESTION:
 - /api/users GET: SLO not defined — recommend 99.95% / P99 200ms
 
 ## ADR
-- Recorded: `.claude/memory/decisions/<date>-<topic>.md` (if applicable)
+- Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

@@ -124,7 +124,7 @@ MIGRATION (URL change, framework swap, domain move):
   - Update canonical to new URL on day-of
   - Submit new sitemap; keep old reachable for 24-48h with 301
   - Monitor GSC Coverage + Core Web Vitals + rankings daily for 30 days
-  - Postmortem at day 30 — log to .claude/memory/seo-incidents/
+  - Postmortem at day 30 — log to .supervibe/memory/seo-incidents/
 
 HREFLANG ROLLOUT (new locale or fixing existing):
   - Confirm self-referencing tag present in EVERY locale
@@ -168,7 +168,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Search project memory** for prior SEO incidents in this area (`.claude/memory/seo-incidents/`) and prior migration playbooks.
+1. **Search project memory** for prior SEO incidents in this area (`.supervibe/memory/seo-incidents/`) and prior migration playbooks.
 2. **Inventory render mode per route** — Grep for `'use client'`, `dynamic = 'force-dynamic'`, `revalidate`, `generateStaticParams`, `getServerSideProps`, `getStaticProps`. Map each public route to SSG / ISR / SSR / CSR.
 3. **Curl-render check** — for each representative URL: `curl -A "Googlebot" -L <url> | grep -E "(<title|canonical|hreflang|ld\+json|h1)"`. Confirm primary signals exist in initial HTML, not post-hydration.
 4. **Audit page meta** — title ≤60 chars, description ≤155 chars, OG tags (`og:title`, `og:description`, `og:image`, `og:url`, `og:type`), Twitter Cards (`twitter:card`, `twitter:image`). No duplicates across pages.
@@ -273,7 +273,7 @@ For each audit:
 3. For INP: profile main-thread on slowest interaction; break up long tasks, defer non-critical JS, use `useDeferredValue`/`startTransition` (React) or equivalent, audit third-party tags.
 4. For CLS: reserve space for images (width/height attrs), reserve space for ad slots, swap web fonts via `font-display: optional`/`swap` with size-adjust.
 5. Re-measure in field — 28 days of RUM, not single lab run. CrUX data updates monthly.
-6. Document fix + before/after metric in `.claude/memory/seo-incidents/`.
+6. Document fix + before/after metric in `.supervibe/memory/seo-incidents/`.
 
 ### Migration canonical mapping (URL change, framework swap, domain move)
 1. Inventory every URL: union of (current sitemap) ∪ (last 90-day GSC URL list) ∪ (last 90-day analytics top-10K) ∪ (full crawl).
@@ -283,7 +283,7 @@ For each audit:
 5. Update canonical tags on new pages — self-canonical to new URL, never old.
 6. Keep old URL set reachable (with 301) for 24-48 hours minimum to allow crawl propagation.
 7. Monitor GSC Coverage daily for 30 days — watch for spikes in `Page with redirect`, `Crawled - currently not indexed`, `Excluded by noindex tag` (signals).
-8. Postmortem at day-30 — ranking delta vs pre-migration, indexed-URL delta, CWV delta. Log to `.claude/memory/seo-incidents/`.
+8. Postmortem at day-30 — ranking delta vs pre-migration, indexed-URL delta, CWV delta. Log to `.supervibe/memory/seo-incidents/`.
 
 ## Out of scope
 
@@ -325,7 +325,7 @@ For each audit:
 - **Canonical strategy**: Next.js `metadata.alternates.canonical` exports, OR explicit `<link rel="canonical">` in head — Grep for `canonical`.
 - **Render mode per route**: SSR / SSG / ISR / RSC / CSR — detected via `dynamic`, `revalidate`, `generateStaticParams`, `'use client'`.
 - **CWV instrumentation**: `web-vitals` package, RUM provider (Vercel Speed Insights, SpeedCurve, Cloudflare Web Analytics), CrUX dataset reference.
-- **Audit history**: `.claude/memory/seo-incidents/` — past deindexations, ranking drops, migration outcomes.
+- **Audit history**: `.supervibe/memory/seo-incidents/` — past deindexations, ranking drops, migration outcomes.
 - **Locales / hreflang map**: declared in CLAUDE.md (e.g., `en-US`, `en-GB`, `de-DE`, `fr-FR`, `x-default`).
 
 ## Render-mode inventory

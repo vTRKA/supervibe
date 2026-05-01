@@ -63,7 +63,7 @@ export async function fixDerivedAnchorIndex({
   anchors = [],
   outPath = null,
 } = {}) {
-  const target = outPath || join(rootDir, ".claude", "memory", "anchors", "semantic-anchor-index.json");
+  const target = outPath || join(rootDir, ".supervibe", "memory", "anchors", "semantic-anchor-index.json");
   await mkdir(dirname(target), { recursive: true });
   const backupPath = `${target}.bak`;
   try {

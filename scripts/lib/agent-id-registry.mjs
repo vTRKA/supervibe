@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import matter from 'gray-matter';
+import { getHostAdapterMatrix } from './supervibe-host-adapters.mjs';
 
 async function walkMarkdown(dir) {
   const out = [];
@@ -17,7 +18,7 @@ async function walkMarkdown(dir) {
 export async function listKnownAgentIds({ rootDir = process.cwd(), extraDirs = [] } = {}) {
   const dirs = [
     join(rootDir, 'agents'),
-    join(rootDir, '.claude', 'agents'),
+    ...getHostAdapterMatrix().map((adapter) => join(rootDir, adapter.agentsFolder)),
     ...extraDirs,
   ];
   const ids = new Set();

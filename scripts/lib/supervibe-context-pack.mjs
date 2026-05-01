@@ -159,7 +159,7 @@ export function selectActiveItem(index = [], itemId = null) {
 }
 
 async function findRelevantMemory({ rootDir, terms, limit, now = new Date().toISOString() }) {
-  const memoryDir = join(rootDir, ".claude", "memory");
+  const memoryDir = join(rootDir, ".supervibe", "memory");
   const entries = [];
   for (const category of MEMORY_CATEGORIES) {
     const dir = join(memoryDir, category);

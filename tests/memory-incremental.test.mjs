@@ -9,7 +9,7 @@ const sandbox = join(tmpdir(), `evolve-memory-incr-${Date.now()}`);
 let store;
 
 before(async () => {
-  await mkdir(join(sandbox, '.claude', 'memory', 'decisions'), { recursive: true });
+  await mkdir(join(sandbox, '.supervibe', 'memory', 'decisions'), { recursive: true });
   store = new MemoryStore(sandbox, { useEmbeddings: false });
   await store.init();
 });
@@ -20,7 +20,7 @@ after(async () => {
 });
 
 test('incrementalUpdate: indexes new file', async () => {
-  const f = join(sandbox, '.claude', 'memory', 'decisions', '2026-01-01-foo.md');
+  const f = join(sandbox, '.supervibe', 'memory', 'decisions', '2026-01-01-foo.md');
   await writeFile(f, `---\nid: foo\ntype: decision\ndate: 2026-01-01\ntags: [test]\nagent: test\nconfidence: 9\n---\n\nBody about foo.`);
   const result = await store.incrementalUpdate(f);
   assert.strictEqual(result.indexed, true);
@@ -30,7 +30,7 @@ test('incrementalUpdate: indexes new file', async () => {
 });
 
 test('incrementalUpdate: skips unchanged file', async () => {
-  const f = join(sandbox, '.claude', 'memory', 'decisions', '2026-01-01-foo.md');
+  const f = join(sandbox, '.supervibe', 'memory', 'decisions', '2026-01-01-foo.md');
   const before = store.db.prepare('SELECT indexed_at FROM entries WHERE id = ?').get('foo');
   await new Promise(r => setTimeout(r, 1100));
   const result = await store.incrementalUpdate(f);
@@ -40,7 +40,7 @@ test('incrementalUpdate: skips unchanged file', async () => {
 });
 
 test('incrementalUpdate: re-indexes changed file', async () => {
-  const f = join(sandbox, '.claude', 'memory', 'decisions', '2026-01-01-foo.md');
+  const f = join(sandbox, '.supervibe', 'memory', 'decisions', '2026-01-01-foo.md');
   await writeFile(f, `---\nid: foo\ntype: decision\ndate: 2026-01-01\ntags: [test, updated]\nagent: test\nconfidence: 10\n---\n\nUpdated body.`);
   const result = await store.incrementalUpdate(f);
   assert.strictEqual(result.indexed, true);
@@ -49,7 +49,7 @@ test('incrementalUpdate: re-indexes changed file', async () => {
 });
 
 test('removeEntryByPath: deletes entry on file delete', async () => {
-  const f = join(sandbox, '.claude', 'memory', 'decisions', '2026-01-01-foo.md');
+  const f = join(sandbox, '.supervibe', 'memory', 'decisions', '2026-01-01-foo.md');
   await unlink(f);
   await store.removeEntryByPath(f);
   const entry = store.db.prepare('SELECT * FROM entries WHERE id = ?').get('foo');

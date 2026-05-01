@@ -166,7 +166,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Search project memory first** — `supervibe:project-memory` query the research goal against `.claude/memory/learnings/`. If a recent map (<180d) exists, start there and only update stale sections.
+1. **Search project memory first** — `supervibe:project-memory` query the research goal against `.supervibe/memory/learnings/`. If a recent map (<180d) exists, start there and only update stale sections.
 2. **Glob top-level structure** — get the lay of the land: `**/*.json`, `**/*.toml`, `**/*.yaml` for manifests; top-level dirs (`src/`, `app/`, `tests/`, `docs/`, `scripts/`, `packages/`, `services/`).
 3. **Read manifest files** for stack, dependencies, scripts, workspace layout, monorepo structure.
 4. **Invoke `supervibe:code-search` semantically** with the research question phrased in domain language ("authentication middleware", "pagination logic", "feature flag evaluation"). Capture top 10 hits.
@@ -187,7 +187,7 @@ Before producing any artifact or making any structural recommendation:
     - This makes the pattern queryable in future sessions via `supervibe:project-memory`.
 14. **Self-verify citations** — for each `file:line` in the report, confirm via `Read` that it still resolves to the cited symbol. Hallucinated citations are a critical failure mode.
 15. **Score with `supervibe:confidence-scoring`** — agent-output rubric ≥9. If <9, identify the weak section and re-map before shipping.
-16. **Persist to memory** — if mapping took >30 min or covered ≥3 modules, write a learning note to `.claude/memory/learnings/<topic>.md` so future research starts ahead.
+16. **Persist to memory** — if mapping took >30 min or covered ≥3 modules, write a learning note to `.supervibe/memory/learnings/<topic>.md` so future research starts ahead.
 
 ## Output contract
 
@@ -322,7 +322,7 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 ## Skills
 
 - **`supervibe:code-search`** (PRIMARY) — semantic search over the project's `code.db` index. First-class entry point: turns natural-language goals ("auth flow", "where pagination happens", "all hooks in profile module") into ranked file:line hits. Always preferred over raw `Grep` for conceptual queries; raw `Grep` reserved for exact symbol/string lookups.
-- **`supervibe:project-memory`** — search `.claude/memory/learnings/` for prior research on the same module before re-doing work; persist new findings on completion if scope was substantial (>30 min of mapping)
+- **`supervibe:project-memory`** — search `.supervibe/memory/learnings/` for prior research on the same module before re-doing work; persist new findings on completion if scope was substantial (>30 min of mapping)
 - **`supervibe:verification`** — every claim verified by `code-search` hit + `Read` confirmation; output cites resolvable evidence (file:line that another agent can open)
 - **`supervibe:confidence-scoring`** — agent-output rubric ≥9 (research must be reliable; below 9 means re-map before shipping)
 
@@ -336,8 +336,8 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - **Build manifest(s)**: `package.json` / `composer.json` / `Cargo.toml` / `pyproject.toml` / `go.mod` / `pom.xml` / etc.
 - **Architecture style**: declared in `CLAUDE.md` if present; otherwise inferred from directory layout
 - **code-search index**: `.claude/code.db` (SQLite) — semantic embeddings + symbol table maintained by `supervibe:code-search`
-- **Memory of prior research**: `.claude/memory/learnings/` — re-using prior maps saves hours; check before fresh exploration
-- **Prior incident notes**: `.claude/memory/incidents/` — flag any module touched by past incidents as `[CAUTION]`
+- **Memory of prior research**: `.supervibe/memory/learnings/` — re-using prior maps saves hours; check before fresh exploration
+- **Prior incident notes**: `.supervibe/memory/incidents/` — flag any module touched by past incidents as `[CAUTION]`
 - **Recent change context**: `git log --since=...` window relevant to research goal
 
 ## Summary
@@ -368,7 +368,7 @@ For traced flows:
 
 ## Observations
 - [RISK]      <description> at `file:line` — severity HIGH/MEDIUM/LOW
-- [CAUTION]   prior incident touched this area — see `.claude/memory/incidents/<file>`
+- [CAUTION]   prior incident touched this area — see `.supervibe/memory/incidents/<file>`
 - [ANECDOTE]  <description> at `file:line` — only 1-2 instances, not a pattern
 - [SMELL]     <description> at `file:line` — informational
 

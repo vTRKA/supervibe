@@ -242,7 +242,7 @@ For each requirement package:
 1. Load existing AC set + test list
 2. Walk seven-dimension grid against AC coverage
 3. For each gap, draft new edge-case AC + Gherkin scenario
-4. Cross-check against incident log (`.claude/memory/incidents/`) for past production bugs in this area — every past bug should map to an existing AC; if not, the AC was missing
+4. Cross-check against incident log (`.supervibe/memory/incidents/`) for past production bugs in this area — every past bug should map to an existing AC; if not, the AC was missing
 5. Output gap report + new ACs + missing-test list
 
 ### State-machine design (entity lifecycle)
@@ -286,8 +286,8 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 - Acceptance-criteria corpus: `acceptance-criteria/`, `tests/acceptance/`, `*.feature` (Gherkin)
 - Domain glossary: `docs/glossary.md` — canonical term definitions
 - System integration map: `docs/architecture/integrations.md`
-- Memory: `.claude/memory/decisions/` (prior requirement decisions), `.claude/memory/edge-cases/` (catalog)
-- Open questions log: `.claude/memory/open-questions.md`
+- Memory: `.supervibe/memory/decisions/` (prior requirement decisions), `.supervibe/memory/edge-cases/` (catalog)
+- Open questions log: `.supervibe/memory/open-questions.md`
 - Stakeholder roster: `docs/stakeholders.md` — who signs off on what
 
 ## 1. Objective

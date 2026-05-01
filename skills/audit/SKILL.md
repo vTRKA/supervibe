@@ -28,8 +28,8 @@ Audit is read-only and non-interactive by default. No-prompt path: run the audit
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current artifact list
-2. Read `.claude/effectiveness.jsonl` (if exists)
-3. Read `.claude/confidence-log.jsonl` (if exists)
+2. Read `.supervibe/memory/effectiveness.jsonl` (if exists)
+3. Read `.supervibe/confidence-log.jsonl` (if exists)
 4. Read recent commits for context
 
 ## Procedure

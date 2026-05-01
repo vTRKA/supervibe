@@ -112,8 +112,8 @@ Before producing any artifact or making any structural recommendation:
 
 1. **Step 0 — Read source of truth**:
    - `git status` and `git log --oneline -10`
-   - `.claude/effectiveness.jsonl` (last 20 entries)
-   - `.claude/confidence-log.jsonl` (last 100 entries; compute override-rate)
+   - `.supervibe/memory/effectiveness.jsonl` (last 20 entries)
+   - `.supervibe/confidence-log.jsonl` (last 100 entries; compute override-rate)
    - `registry.yaml` (parse for last-verified per artifact)
    - System-reminders from current conversation
 2. **Apply decision cascade** (above) — first match wins
@@ -179,7 +179,7 @@ Rubric: agent-delivery
 - **Re-propose declined decisions**: track recent declines (in-conversation) and back off.
 - **Skip-confidence-gate**: dispatching with confidence <9 because "it seems obvious" — every dispatch must be scored, no exceptions.
 - **Wrong-phase-routing**: routing a refactor request to `genesis`, or a fresh-feature request to `audit`. The decision matrix exists for this; consult it.
-- **No-pre-task-memory-search**: dispatching to a sub-agent without first checking `.claude/memory/` for prior decisions in the same area — risks re-litigating settled questions.
+- **No-pre-task-memory-search**: dispatching to a sub-agent without first checking `.supervibe/memory/` for prior decisions in the same area — risks re-litigating settled questions.
 - **No-blast-radius-check**: proposing an action without naming what it will touch. The user can't grant informed consent without knowing the scope.
 - **Dispatch-without-context**: handing the sub-agent only the user's raw message instead of the full snapshot (memory hits, effectiveness tail, stack fingerprint).
 - **Silent-rule-bypass**: ignoring an explicit `.claude/rules/*.md` directive because the user's request seems to imply the override. Surface the conflict; let the user decide.
@@ -294,11 +294,11 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - System-reminders source: hook scripts (`session-start-check.mjs`, `post-edit-stack-watch.mjs`, `effectiveness-tracker.mjs`)
-- Effectiveness log: `.claude/effectiveness.jsonl` (append-only)
-- Confidence log: `.claude/confidence-log.jsonl` (append-only override audit)
+- Effectiveness log: `.supervibe/memory/effectiveness.jsonl` (append-only)
+- Confidence log: `.supervibe/confidence-log.jsonl` (append-only override audit)
 - Stack-fingerprint: built by `supervibe:stack-discovery`, cached in `.claude/stack-fingerprint.yaml`
 - Registry: `registry.yaml` (auto-generated)
-- Project memory: `.claude/memory/` — prior decisions, incidents, conventions
+- Project memory: `.supervibe/memory/` — prior decisions, incidents, conventions
 - Agent catalog: `agents/_core/`, `agents/_meta/`, `agents/_ops/`, `agents/_stack/`
 
 ## Decision tree (full implementation, Phase 7)

@@ -11,7 +11,7 @@ npm run supervibe:loop -- --plan docs/plans/payment-integration.md
 ```
 
 The loop runs preflight first, asks for missing server or access references
-when needed, records state under `.claude/memory/loops/<run-id>/`, and only
+when needed, records state under `.supervibe/memory/loops/<run-id>/`, and only
 completes tasks at score `>= 9.0`. Production deploy, destructive migration,
 credential mutation, billing, account, DNS, and remote server mutations require
 explicit approval.
@@ -70,17 +70,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.19
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.20
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.19
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.19"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.20
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.20"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.19
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.20
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.19" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.20" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -95,7 +95,7 @@ After restart, in a Claude Code session:
 /supervibe
 ```
 
-Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/supervibe-genesis if `.claude/agents/` empty").
+Expected response: orchestrator analyzes current project state and proposes next phase (e.g., "/supervibe-genesis" if no Supervibe host adapter scaffold exists).
 
 From the plugin checkout, the lifecycle audit should also be green:
 
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.19/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.20/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -119,12 +119,12 @@ mkdir my-saas && cd my-saas
 git init
 ```
 
-### 2. Open Claude Code in this dir
+### 2. Open your AI CLI in this dir
 
-The orchestrator detects empty `.claude/` and proposes:
+The orchestrator detects that no Supervibe host scaffold exists and proposes:
 
 ```
-📊 Discovered: empty project (no .claude/agents/, no CLAUDE.md routing)
+📊 Discovered: empty project (no Supervibe host adapter folders or managed instruction block)
 ⚡ Recommend: /supervibe-genesis
 🎯 Why: bootstrap stack-aware scaffold from empty repo
 ⏭ Run? (y/n)
@@ -147,10 +147,10 @@ Type `y`.
 
 `supervibe:genesis` composes the matching pack (`laravel-nextjs-postgres-redis`):
 
-- Copies all 32 attached agents to `.claude/agents/`
-- Copies all 16 attached rules to `.claude/rules/`
-- Generates `.claude/settings.json` with full deny-list (50+ entries)
-- Generates `CLAUDE.md` with routing table for all 32 agents
+- Copies attached agents to the selected host adapter folder, for example `.codex/agents/` in Codex or `.claude/agents/` in Claude Code
+- Copies attached rules to the selected host adapter folder, for example `.codex/rules/` in Codex or `.claude/rules/` in Claude Code
+- Generates the selected host settings file when supported, e.g. `.codex/config.json` or `.claude/settings.json`
+- Generates or updates the selected host instruction file, e.g. `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursor/rules/supervibe.mdc`, or `opencode.json`
 - Sets up husky + commitlint + lint-staged
 - Creates skeleton dirs: `backend/`, `frontend/`, `prototypes/`, `docs/`
 
@@ -203,10 +203,10 @@ Plugin agents have `recommended-mcps:` frontmatter for capability boost:
 
 ## Memory system (SQLite FTS5)
 
-After completing significant work (decision, fix, pattern), the framework writes to `.claude/memory/`:
+After completing significant work (decision, fix, pattern), the framework writes to `.supervibe/memory/`:
 
 ```
-.claude/memory/
+.supervibe/memory/
 ├── memory.db               # SQLite FTS5 index (gitignored, auto-rebuild)
 ├── decisions/              # Architecture / library / pattern choices
 ├── patterns/               # Reusable patterns established
@@ -254,7 +254,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --context "auth login flow" --l
 
 **Auto-index on changes:** Three paths, all automatic by default:
 
-1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.claude/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
+1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.supervibe/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
 2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
 3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar long-running with embeddings.
 
@@ -262,7 +262,7 @@ For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is 
 
 Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Without any path: re-run `npm run code:index` after major changes.
 
-**Storage:** `.claude/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
+**Storage:** `.supervibe/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
 ## Code Graph (structural relationships)
 
@@ -284,7 +284,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --files "src/app"
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --top-symbols 20
 ```
 
-**Storage:** same `.claude/memory/code.db` — extra `code_symbols` + `code_edges` tables.
+**Storage:** same `.supervibe/memory/code.db` — extra `code_symbols` + `code_edges` tables.
 
 **Languages:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby, Vue, and Svelte.
 
@@ -329,7 +329,7 @@ npm run supervibe:preview -- --kill-all
 **Что под капотом:**
 - Pure `node:http` + Server-Sent Events (SSE) — никаких новых dep
 - chokidar следит за файлами, на change → SSE push → `location.reload()` в браузере
-- Реестр `.claude/memory/preview-servers.json` чтобы статус-команда и другие сессии видели запущенные серверы
+- Реестр `.supervibe/memory/preview-servers.json` чтобы статус-команда и другие сессии видели запущенные серверы
 - 127.0.0.1 only — без network access
 - SIGINT cleanup на завершение сессии
 - Idle-shutdown после 30 мин неактивности (--idle-timeout configurable)
@@ -344,7 +344,7 @@ npm run supervibe:preview -- --kill-all
 **Опциональная интеграция с Playwright MCP:**
 Если у пользователя есть Playwright MCP, skill после спавна сервера может:
 - Открыть URL в browser
-- Сделать скриншот → `.claude/memory/previews/<label>-<timestamp>.png`
+- Сделать скриншот → `.supervibe/memory/previews/<label>-<timestamp>.png`
 - Прикрепить в output агента как evidence
 
 ## Reference document templates
@@ -368,7 +368,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 | Component | Path |
 |-----------|------|
-| Invocation log (JSONL) | `.claude/memory/agent-invocations.jsonl` |
+| Invocation log (JSONL) | `.supervibe/memory/agent-invocations.jsonl` |
 | Logger | `scripts/lib/agent-invocation-logger.mjs` |
 | `PostToolUse` hook | `scripts/hooks/post-tool-use-log.mjs` (matcher `Task`) |
 | Effectiveness tracker | `scripts/effectiveness-tracker.mjs` (runs on `Stop`) |
@@ -385,7 +385,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.19/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.20/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -416,9 +416,9 @@ Expected Codex checks include `local-registration`, `codex-plugin-config`, `code
 
 ### Genesis fails partway
 
-- Check `.claude/confidence-log.jsonl` for last successful step
+- Check `.supervibe/confidence-log.jsonl` for last successful step
 - Don't manually clean up — re-run `/supervibe-genesis`; it skips existing files
-- If broken: `mv .claude .claude.bak` and start fresh
+- If broken: move the selected host adapter folder aside and re-run genesis; keep `.supervibe/` if you want existing state
 
 ### Windows path issues
 
@@ -429,8 +429,8 @@ Expected Codex checks include `local-registration`, `codex-plugin-config`, `code
 ### Plugin updates breaking existing scaffolds
 
 - v1.x → v1.x updates: safe; rules/agents may be re-strengthened
-- v1.x → v2.x: breaking changes possible; backup `.claude/` first
-- Generated `.claude/` in target projects is independent — won't break on plugin update
+- v1.x → v2.x: breaking changes possible; backup the selected host adapter folder and `.supervibe/` first
+- Generated host adapter folders in target projects are independent — they won't break on plugin update
 
 ## Uninstall
 
@@ -442,10 +442,10 @@ rm -rf ~/.claude/plugins/cache/local/supervibe
 # /plugin uninstall supervibe   # if marketplace install was used
 
 # Per-project cleanup (only if removing Supervibe from a specific project):
-rm -rf <project>/.claude/agents
-rm -rf <project>/.claude/rules
-rm -rf <project>/.claude/skills
-# Keep .claude/settings.json + memory + confidence-log if you want
+rm -rf <project>/<adapter>/agents
+rm -rf <project>/<adapter>/rules
+rm -rf <project>/<adapter>/skills
+# Keep .supervibe/ and host settings if you want local state/history
 ```
 
 ## Upgrade guide
@@ -460,13 +460,13 @@ rm -rf <project>/.claude/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.19
+  - Manifest auto-updated; ensure your install path has v2.0.20
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.19 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.20 dir, restart Claude Code
 
 ## Where to next
 

@@ -20,11 +20,11 @@ Design audit mode uses the same command surface: `/supervibe-audit --design`. It
 
 5. **Stale artifacts.** Walk `agents/`, `rules/`, `skills/` for files whose frontmatter `last-verified` is older than 30 days. List each with its age.
 
-6. **Project-level overrides.** If `.claude/agents/` exists in the current project, diff each file against the upstream version in `$CLAUDE_PLUGIN_ROOT/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
+6. **Project-level overrides.** If the selected host adapter's agents folder exists in the current project (`.claude/agents`, `.codex/agents`, `.cursor/agents`, `.gemini/agents` or `.opencode/agents`), diff each file against the upstream version in `$CLAUDE_PLUGIN_ROOT/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
 
-7. **Memory hygiene.** List memory categories under `.claude/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
+7. **Memory hygiene.** List memory categories under `.supervibe/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
 
-8. **Override-rate check.** Read `.claude/confidence-log.jsonl`. If override rate over the last 100 entries exceeds 5%, escalate as a finding.
+8. **Override-rate check.** Read `.supervibe/confidence-log.jsonl`. If override rate over the last 100 entries exceeds 5%, escalate as a finding.
 
 9. **Underperformer scan.** Run `node $CLAUDE_PLUGIN_ROOT/scripts/lib/auto-strengthen-trigger.mjs` (via require), get the suggestions list. Surface flagged agents.
 

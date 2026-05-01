@@ -158,7 +158,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Read CLAUDE.md** for declared Postgres version, replication topology, partitioning conventions, ORM, deploy cadence
-2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.claude/memory/incidents/` for migration regressions
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions in this table/area; check `.supervibe/memory/incidents/` for migration regressions
 3. **Read existing schema** — `db.schema.ts` / `schema.sql` / migration history — understand the current shape before proposing change
 4. **Grep call sites** (`supervibe:code-search`) for every column/table involved; rename/drop without this is malpractice
 5. **Choose schema shape**: 3NF for OLTP entities, star schema for reporting, materialized view for read-mostly aggregates; document why
@@ -224,7 +224,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each schema change:
-- ADR signed with confidence ≥9 and stored under `.claude/memory/decisions/`
+- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Migration tested end-to-end in staging against a copy of production-scale data
 - Lock duration measured: `SELECT * FROM pg_locks` snapshot during the change shows no `AccessExclusiveLock` held for >500ms on a hot table
 - Replication lag during/after migration <2s on async replicas; sync replicas never blocked beyond commit-budget
@@ -302,7 +302,7 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 - **Metrics**: Telegraf with `postgresql` input plugin emitting to InfluxDB / Prometheus; dashboards for replication lag, lock wait time, buffer cache hit ratio, transaction-id wraparound headroom
 - **Replication**: streaming primary -> hot standby (sync or async per CLAUDE.md), logical replication slots if CDC in use
 - **Extensions in use**: detected via `\dx` (commonly `pg_stat_statements`, `pgcrypto`, `pgvector`, `pg_partman`, `pg_repack`)
-- **Audit history**: `.claude/memory/decisions/` — prior schema/migration ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration ADRs
 
 ## Context
 <what problem, what data, what query patterns, what scale>

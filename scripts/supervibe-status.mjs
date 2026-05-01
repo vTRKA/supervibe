@@ -64,7 +64,7 @@ async function main() {
   if (args.interactive) {
     const result = runInteractiveCli({
       mode: 'status',
-      graphPath: args.file || '.claude/memory/work-items/<epic-id>/graph.json',
+      graphPath: args.file || '.supervibe/memory/work-items/<epic-id>/graph.json',
       isTTY: process.stdin.isTTY && process.stdout.isTTY,
     });
     console.log(result.output);
@@ -377,7 +377,7 @@ async function main() {
   console.log(`Project root: ${PROJECT_ROOT}\n`);
 
   // Code RAG + Graph
-  const codeDbPath = join(PROJECT_ROOT, '.claude', 'memory', 'code.db');
+  const codeDbPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'code.db');
   if (!existsSync(codeDbPath)) {
     console.log(color('✗ Code RAG + Graph: NOT INITIALIZED', 'red'));
     console.log(color('  Run: npm run code:index', 'dim'));
@@ -438,7 +438,7 @@ async function main() {
   console.log();
 
   // Memory
-  const memDbPath = join(PROJECT_ROOT, '.claude', 'memory', 'memory.db');
+  const memDbPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'memory.db');
   if (!existsSync(memDbPath)) {
     console.log(color('○ Memory: not yet built (no entries indexed)', 'yellow'));
   } else if (!sqliteAvailable) {
@@ -457,7 +457,7 @@ async function main() {
   console.log();
 
   // Watcher status (heartbeat-based)
-  const heartbeatPath = join(PROJECT_ROOT, '.claude', 'memory', '.watcher-heartbeat');
+  const heartbeatPath = join(PROJECT_ROOT, '.supervibe', 'memory', '.watcher-heartbeat');
   if (existsSync(heartbeatPath)) {
     let ts;
     try { ts = parseInt(readFileSync(heartbeatPath, 'utf8'), 10); } catch { ts = 0; }
@@ -500,7 +500,7 @@ async function main() {
 
   // Durable task tracker mapping
   console.log();
-  const trackerMapPath = join(PROJECT_ROOT, '.claude', 'memory', 'loops', 'task-tracker-map.json');
+  const trackerMapPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'loops', 'task-tracker-map.json');
   if (!existsSync(trackerMapPath)) {
     console.log(color('Task tracker sync: native graph only (no mapping yet)', 'dim'));
   } else {
@@ -574,7 +574,7 @@ function parseArgs(argv) {
 }
 
 function loadGraphForStatusArgs(statusArgs) {
-  const graphPath = statusArgs.file || (statusArgs.epic ? join(PROJECT_ROOT, '.claude', 'memory', 'work-items', statusArgs.epic, 'graph.json') : null);
+  const graphPath = statusArgs.file || (statusArgs.epic ? join(PROJECT_ROOT, '.supervibe', 'memory', 'work-items', statusArgs.epic, 'graph.json') : null);
   if (!graphPath) throw new Error('--view, --query, and --report require --file <graph.json|state.json> or --epic <id>');
   const raw = JSON.parse(readFileSync(graphPath, 'utf8'));
   return normalizeGraph(raw);

@@ -30,7 +30,7 @@ const SUBTOOL_PATTERNS = {
     /\bevolve:project-memory\b/i,
     /\bsearch-memory\.mjs\b/i,
     /\bmemory:preflight\b/i,
-    /\.claude\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
+    /\.supervibe\/memory\/(decisions|patterns|incidents|learnings|solutions)\b/i,
   ],
   'code-search': [
     /\bevolve:code-search\b/i,

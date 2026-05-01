@@ -20,7 +20,7 @@ dimensions:
   - id: evidence-trail
     weight: 1
     question: "Are memory entries (decisions/learnings/patterns) and audit logs in place per plan's intent so future runs can find this execution as prior art?"
-    evidence-required: "List of files added under .claude/memory/, audit log file under .supervibe/audits/ if plan declared one, solution record at .claude/memory/solutions/<plan-slug>-executed-<date>.md"
+    evidence-required: "List of files added under .supervibe/memory/, audit log file under .supervibe/audits/ if plan declared one, solution record at .supervibe/memory/solutions/<plan-slug>-executed-<date>.md"
 gates:
   block-below: 9
   warn-below: 10

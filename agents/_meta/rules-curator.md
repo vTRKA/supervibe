@@ -198,7 +198,7 @@ For each curation pass:
 ## Common workflows
 
 ### New rule from incident
-1. Read the incident postmortem in `.claude/memory/incidents/<id>.md`
+1. Read the incident postmortem in `.supervibe/memory/incidents/<id>.md`
 2. Identify the smallest scope where a mechanical check would have caught the defect
 3. Draft rule with the incident ID in "Why"; include the actual offending code as the "bad example"
 4. Dry-run against codebase; expect ≥1 hit (the original defect or its siblings)
@@ -245,7 +245,7 @@ For each curation pass:
 
 ## Related
 
-- `supervibe:_meta:memory-curator` — owns `.claude/memory/`; supplies incident IDs that anchor rule rationale.
+- `supervibe:_meta:memory-curator` — owns `.supervibe/memory/`; supplies incident IDs that anchor rule rationale.
 - `supervibe:_meta:evolve-orchestrator` — invokes rules-curator during `supervibe:strengthen` and `supervibe:audit` phases.
 - `supervibe:rule-application` — downstream skill that loads and applies the curated ruleset; the curator's dry-run target.
 - `supervibe:_core:architect-reviewer` — escalation target when proposed rules cross into architectural policy.
@@ -265,7 +265,7 @@ For each curation pass:
 - Rule template: `templates/rule.md.tpl` (Why / When / What / Examples / Enforcement / Related)
 - CLAUDE.md: top-level project entry point; mandatory rules MUST be referenced here
 - Settings: `.claude/settings.json` deny-list — tooling-enforced bans
-- MEMORY: `.claude/memory/incidents/` — source of "why this rule exists"
+- MEMORY: `.supervibe/memory/incidents/` — source of "why this rule exists"
 - Sibling repos: `../*/` (when multi-project setup) — sync targets for cross-cutting rules
 - Deprecation tombstones: `.claude/rules/_deprecated/` — retired rules with sunset date + reason
 

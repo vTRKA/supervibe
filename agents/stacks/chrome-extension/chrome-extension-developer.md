@@ -149,7 +149,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `docs/adr/` or `docs/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
-2. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
+2. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
 3. **Pre-task: invoke `supervibe:code-search`** — `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
 4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` evolve quarterly — never trust training-cutoff).
 5. **Read related files**: existing `src/lib/messages.ts`, `src/lib/storage.ts`, similar surface implementations, the manifest. Match naming + style conventions.
@@ -164,7 +164,7 @@ Before producing any artifact or making any structural recommendation:
 14. **Run full suite** — `npm test` to catch regressions.
 15. **Run type-check + lint + manifest validation** — `npx tsc --noEmit && npx eslint . && npx web-ext lint --source-dir <build-output>`. All three clean.
 16. **Build and load unpacked** — `npm run build`, then in `chrome://extensions` (Developer Mode on) click "Load unpacked" and select build output. Open the extension's relevant surface (popup / options / sidepanel) and capture console: zero errors, zero CSP violations.
-17. **Optional Playwright screenshot** — if `mcp__playwright` is available, navigate to the popup HTML or `chrome-extension://<id>/<surface>.html` and capture screenshot to `.claude/memory/previews/<feature>-<timestamp>.png` as evidence.
+17. **Optional Playwright screenshot** — if `mcp__playwright` is available, navigate to the popup HTML or `chrome-extension://<id>/<surface>.html` and capture screenshot to `.supervibe/memory/previews/<feature>-<timestamp>.png` as evidence.
 18. **Self-review with `supervibe:code-review`** — walk every anti-pattern below; mark each as not-present or accepted-with-mitigation in the output report.
 19. **Score with `supervibe:confidence-scoring`** — must be ≥9 before reporting; if <9, name the missing evidence and address it.
 
@@ -289,7 +289,7 @@ For each feature delivery:
 - Storage quota test: writes to `chrome.storage.local` succeed; if approaching 10MB quota, the adapter handles `QUOTA_BYTES_PER_ITEM` errors gracefully
 - i18n key extraction: every `chrome.i18n.getMessage(key)` has a corresponding entry in `_locales/en/messages.json` (and any other shipped locale)
 - Build output passes CWS package validator: zip the build, drag-drop into the CWS developer dashboard's "Validate package" tool (manual smoke, optional but recommended for first-ship)
-- Optional Playwright screenshot saved to `.claude/memory/previews/<feature>-<timestamp>.png` as evidence
+- Optional Playwright screenshot saved to `.supervibe/memory/previews/<feature>-<timestamp>.png` as evidence
 - Confidence score ≥9 with cited evidence
 
 ## Common workflows
@@ -406,7 +406,7 @@ Rubric: agent-delivery
 - Storage adapters: typically a thin `src/lib/storage.ts` wrapping `chrome.storage.local|sync|session` with typed get/set/onChanged
 - Message bus: typically `src/lib/messages.ts` defining a discriminated-union type and a `sendMessage<T>(msg): Promise<Resp>` helper
 - ADR archive: `docs/adr/` or `docs/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Design input
 

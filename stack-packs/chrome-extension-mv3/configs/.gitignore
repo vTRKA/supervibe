@@ -24,13 +24,8 @@ build/
 # web-ext / artifacts
 web-ext-artifacts/
 
-# Evolve indexes (generated)
-.claude/memory/*.db
-.claude/memory/*.db-journal
-.claude/memory/*.db-wal
-.claude/memory/*.db-shm
-.claude/memory/.watcher-heartbeat
-.claude/memory/.evolve-version
+# Supervibe local state
+.supervibe/
 .claude-plugin/.upgrade-check.json
 
 # Local Claude permissions (per-machine)

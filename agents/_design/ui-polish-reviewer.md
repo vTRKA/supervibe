@@ -261,7 +261,7 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 - Component library: `components/`, `src/ui/`, `packages/ui/`
 - Screen specs: `screen-specs/`, design-tool URLs (Figma) referenced in tickets
 - Visual regression baselines: `tests/visual/`, `__screenshots__/`, Chromatic / Percy / Loki output
-- Prior review notes: `.claude/memory/decisions/` — past polish decisions and rationale
+- Prior review notes: `.supervibe/memory/decisions/` — past polish decisions and rationale
 - Accessibility scope: WCAG 2.1 AA minimum (declared in CLAUDE.md if stricter)
 
 ## 8 Dimensions — decision tree

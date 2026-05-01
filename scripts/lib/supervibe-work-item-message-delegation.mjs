@@ -12,7 +12,7 @@ export const DELEGATED_MESSAGE_TYPES = Object.freeze([
 export const DELEGATED_MESSAGE_TARGETS = Object.freeze(["user", "reviewer", "worker", "future-session"]);
 
 export function defaultDelegatedInboxPath(rootDir = process.cwd()) {
-  return join(rootDir, ".claude", "memory", "work-items", "inbox.jsonl");
+  return join(rootDir, ".supervibe", "memory", "work-items", "inbox.jsonl");
 }
 
 export function createDelegatedMessage({

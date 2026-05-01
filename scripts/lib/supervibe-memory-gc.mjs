@@ -19,7 +19,7 @@ export async function scanMemoryGc({
   policy = createMemoryGcPolicy(),
   now = new Date().toISOString(),
 } = {}) {
-  const memoryDir = join(rootDir, ".claude", "memory");
+  const memoryDir = join(rootDir, ".supervibe", "memory");
   const categories = category === "all" ? [...MEMORY_GC_CATEGORIES] : [category];
   const entries = [];
   const idIndex = new Map();
@@ -143,7 +143,7 @@ export async function archiveMemoryEntry(candidate, { archiveRoot, dryRun = true
 
 export async function restoreMemoryEntry({ rootDir = process.cwd(), id }) {
   if (!id) throw new Error("restore requires id");
-  const archiveRoot = join(rootDir, ".claude", "memory", ".archive");
+  const archiveRoot = join(rootDir, ".supervibe", "memory", ".archive");
   for (const category of MEMORY_GC_CATEGORIES) {
     const dir = join(archiveRoot, category);
     if (!existsSync(dir)) continue;
@@ -154,7 +154,7 @@ export async function restoreMemoryEntry({ rootDir = process.cwd(), id }) {
       if (String(parsed.data.id || "") !== String(id)) continue;
       delete parsed.data.archivedAt;
       delete parsed.data.archiveReason;
-      const restoreDir = join(rootDir, ".claude", "memory", category);
+      const restoreDir = join(rootDir, ".supervibe", "memory", category);
       const restorePath = join(restoreDir, entry.name);
       await mkdir(restoreDir, { recursive: true });
       await writeFile(archivePath, matter.stringify(parsed.content, parsed.data), "utf8");
@@ -174,7 +174,7 @@ export async function restoreMemoryEntry({ rootDir = process.cwd(), id }) {
 }
 
 export async function memoryGcStats({ rootDir = process.cwd() } = {}) {
-  const memoryDir = join(rootDir, ".claude", "memory");
+  const memoryDir = join(rootDir, ".supervibe", "memory");
   const stats = {};
   for (const category of MEMORY_GC_CATEGORIES) {
     stats[category] = (await readMemoryCategory(memoryDir, category)).length;

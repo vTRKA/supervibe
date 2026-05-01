@@ -315,7 +315,7 @@ Do NOT decide on: data model in primary DB (defer to db-reviewer).
 - Eviction policy: explicit in config, otherwise default `noeviction` (will OOM on full memory)
 - Persistence mode: RDB-only / AOF-only / both / none — captured from `redis.conf`
 - Memory budget: `maxmemory` setting vs container/host limits
-- Past incidents: `.claude/memory/incidents/` — prior Redis outages, hot-key events, failover failures
+- Past incidents: `.supervibe/memory/incidents/` — prior Redis outages, hot-key events, failover failures
 
 ## Context
 - Workload: <r/w ratio, QPS peak, dataset size, growth>

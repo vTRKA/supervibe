@@ -33,7 +33,7 @@ Inferred from path conventions:
 - `rules/*.md` → `rule-quality`
 - `prototypes/<slug>/*.html` → `prototype`
 - `prototypes/_brandbook/*` → `brandbook`
-- `.claude/memory/<category>/*.md` → `memory-entry`
+- `.supervibe/memory/<category>/*.md` → `memory-entry`
 
 If type cannot be inferred → ask user with the valid types listed.
 
@@ -56,7 +56,7 @@ Print the rubric dimensions + evidence requirements WITHOUT actually scoring. Us
 
 ### `/supervibe-score --record [<artifact-type>] [<path>]` — score and persist
 
-Scores the artifact, then writes the accepted/review/rejected outcome to `.claude/memory/agent-invocations.jsonl` via the telemetry logger. This is the mode `/supervibe` proposes when it detects `pending-evaluation`.
+Scores the artifact, then writes the accepted/review/rejected outcome to `.supervibe/memory/agent-invocations.jsonl` via the telemetry logger. This is the mode `/supervibe` proposes when it detects `pending-evaluation`.
 
 When the user correction identifies a missed route, skipped context source, wrong citation, unclear lifecycle choice or failed verification, record it as a feedback review item. Accepted feedback is promoted through the feedback learning loop into memory candidates, eval candidates and high-severity regression fixtures.
 
@@ -116,11 +116,11 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 
 6. **Persistence:**
    - DO NOT modify the artifact.
-   - Always append the score to `.claude/memory/score-log.jsonl` for score trends:
+   - Always append the score to `.supervibe/memory/score-log.jsonl` for score trends:
      ```jsonl
      {"id":"<uuid>","timestamp":"<ISO>","path":"<path>","type":"<type>","score":N,"gate":"<verdict>","dimensions":{...}}
      ```
-   - If `--record` is present, also update the latest matching invocation outcome in `.claude/memory/agent-invocations.jsonl`.
+   - If `--record` is present, also update the latest matching invocation outcome in `.supervibe/memory/agent-invocations.jsonl`.
 
 7. **Offer follow-up actions** based on verdict:
    - If `block` (score < gate): offer `/supervibe-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
@@ -164,7 +164,7 @@ Gaps + remediation:
 Confidence: 9.2/10
 Override: false
 Rubric: plan
-Score logged: .claude/memory/score-log.jsonl#<uuid>
+Score logged: .supervibe/memory/score-log.jsonl#<uuid>
 
 Next:
   • Apply remediation (raises to 9.7) → re-score with /supervibe-score
@@ -220,4 +220,4 @@ Dimensions:
 - `references/internal-commands/supervibe-evaluate.md` — legacy telemetry alias spec
 - `/supervibe-strengthen` — if score is `block`, this is the agent-improvement path
 - `references/internal-commands/supervibe-override.md` — internal override logging spec
-- `.claude/memory/score-log.jsonl` — telemetry trail for score trends over time
+- `.supervibe/memory/score-log.jsonl` — telemetry trail for score trends over time

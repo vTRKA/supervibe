@@ -4,8 +4,8 @@ import { dirname, join } from "node:path";
 
 import { classifyIndexPath } from "./supervibe-index-policy.mjs";
 
-const HEARTBEAT_REL = ".claude/memory/.watcher-heartbeat";
-const LOCK_REL = ".claude/memory/.code-index.lock";
+const HEARTBEAT_REL = ".supervibe/memory/.watcher-heartbeat";
+const LOCK_REL = ".supervibe/memory/.code-index.lock";
 
 export function createIndexWatcherLifecycle({ rootDir = process.cwd(), codeStore, now = () => Date.now() } = {}) {
   if (!codeStore) throw new Error("codeStore is required");

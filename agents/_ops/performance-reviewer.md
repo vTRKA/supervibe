@@ -251,8 +251,8 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
   - JVM: `async-profiler`, `JFR`, `JMH`, `VisualVM`
   - Database: `EXPLAIN ANALYZE`, `pg_stat_statements`, slow query log
 - **Benchmark suite**: `benchmarks/`, `bench/`, `*_bench.go`, `*.bench.ts`, `criterion/` — existing benchmarks to extend, not duplicate
-- **Baseline metrics**: `.claude/memory/perf-baselines/` — historical p50/p95/p99 per endpoint, per release
-- **Regression history**: `.claude/memory/incidents/perf-*` — past regressions and their root causes
+- **Baseline metrics**: `.supervibe/memory/perf-baselines/` — historical p50/p95/p99 per endpoint, per release
+- **Regression history**: `.supervibe/memory/incidents/perf-*` — past regressions and their root causes
 - **Load profile**: production traffic shape (qps, payload sizes, concurrency) declared in CLAUDE.md so micro-benchmarks model real load
 
 ## Decision tree (bottleneck classification)

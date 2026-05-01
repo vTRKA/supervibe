@@ -1,7 +1,7 @@
 ---
 description: >-
   Strengthen underperforming agents/skills using telemetry from
-  .claude/memory/agent-invocations.jsonl with quantitative metric thresholds.
+  .supervibe/memory/agent-invocations.jsonl with quantitative metric thresholds.
   Detects: avg-confidence <8.5 over last 10, override-rate ≥40% delta over 50/50
   split, repeated stale-context (≥2/10 invocations). Triggers: 'strengthen
   agent', 'усиль агента', '/supervibe-strengthen'.
@@ -49,7 +49,7 @@ Directly strengthen the named agent regardless of metrics. Useful when user has 
 
 Procedure:
 1. Read `agents/**/<agent_id>.md` (locate by frontmatter `name:`).
-2. Read last 100 invocations from `.claude/memory/agent-invocations.jsonl`.
+2. Read last 100 invocations from `.supervibe/memory/agent-invocations.jsonl`.
 3. Run `detectUnderperformers([this_agent], { logPath: ... })` to identify which metrics fired.
 4. Map firing metrics to recommended edits (table above).
 5. Show user the current weakness summary + proposed edits with diff.
@@ -95,7 +95,7 @@ Print the threshold table above. Useful for documentation.
 ## Hard rules
 
 - **Never auto-modify agent files.** User must approve each diff.
-- **Never invent metrics.** All numbers come from `.claude/memory/agent-invocations.jsonl` via `detectUnderperformers()`. If sample size insufficient (e.g., <10 invocations), command says "insufficient data" and exits.
+- **Never invent metrics.** All numbers come from `.supervibe/memory/agent-invocations.jsonl` via `detectUnderperformers()`. If sample size insufficient (e.g., <10 invocations), command says "insufficient data" and exits.
 - **Preserve canonical sections.** Persona / Project Context / Skills / Decision tree / Procedure / Output contract / Anti-patterns / Verification / Common workflows / Out of scope / Related must remain. The validator `validate-frontmatter.mjs` enforces this.
 - **Test after every edit.** Run `npm test` before declaring done; if test fails, revert and report.
 - **One agent per commit.** Never bundle multiple strengthens — debugging regression is impossible across N agents in one commit.
@@ -120,7 +120,7 @@ Print the threshold table above. Useful for documentation.
    - Bump agent's `version` (semver minor)
    - Update `last-verified` to today
    - Update `verified-against` to current HEAD SHA
-   - Append strengthen-record to `.claude/memory/learnings/strengthen-<agent>-<date>.md`
+   - Append strengthen-record to `.supervibe/memory/learnings/strengthen-<agent>-<date>.md`
 
 ## Error recovery
 
@@ -130,7 +130,7 @@ Print the threshold table above. Useful for documentation.
 | <10 invocations available | Print "Insufficient data — wait for more usage or use `<agent_id>` form to skip threshold gate" |
 | All metrics within threshold | Print "Agent above all thresholds" + suggest `/supervibe-strengthen --metrics <id>` to verify |
 | Test fails after edit | Revert via `git restore`; print error; offer to retry with narrower edit scope |
-| User rejects diff | Save proposal to `.claude/memory/learnings/rejected-strengthen-<agent>-<date>.md` for future reference |
+| User rejects diff | Save proposal to `.supervibe/memory/learnings/rejected-strengthen-<agent>-<date>.md` for future reference |
 
 ## Output contract
 
@@ -150,9 +150,9 @@ Firing metrics: low-avg-confidence
 Recommended edit type: Decision tree + Anti-patterns
 
 Failure invocations cited:
-  - .claude/memory/agent-invocations.jsonl:142  task: "add validation"  conf: 7.2  blocker: wrong-approach
-  - .claude/memory/agent-invocations.jsonl:156  task: "model relationships"  conf: 6.9  blocker: stale-context
-  - .claude/memory/agent-invocations.jsonl:198  task: "queue setup"  conf: 7.5  blocker: none
+  - .supervibe/memory/agent-invocations.jsonl:142  task: "add validation"  conf: 7.2  blocker: wrong-approach
+  - .supervibe/memory/agent-invocations.jsonl:156  task: "model relationships"  conf: 6.9  blocker: stale-context
+  - .supervibe/memory/agent-invocations.jsonl:198  task: "queue setup"  conf: 7.5  blocker: none
 
 Proposed edits:
   1. Decision tree: add branch for "validation logic placement" (form requests vs controllers vs requests classes)
@@ -176,6 +176,6 @@ Apply? [y / n / modify]
 - `scripts/lib/underperformer-detector.mjs` — metric calculation
 - `scripts/lib/auto-strengthen-trigger.mjs` — flagged-list builder
 - `tests/underperformer-detector.test.mjs` — threshold tests
-- `.claude/memory/agent-invocations.jsonl` — telemetry source
+- `.supervibe/memory/agent-invocations.jsonl` — telemetry source
 - `/supervibe-score --record` — closes the loop after strengthen by re-scoring
 - `/supervibe-score agent-quality <path>` — score agent file quality independently

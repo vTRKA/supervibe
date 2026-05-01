@@ -22,7 +22,7 @@ Concrete consequence of NOT following: lost commits (irrecoverable without reflo
 - Any branch (main and feature alike — the rule prevents both push --force and stash)
 - Both interactive (developer) and automated (CI) contexts
 
-This rule does NOT apply when: explicit user override with documented reason in `.claude/confidence-log.jsonl`.
+This rule does NOT apply when: explicit user override with documented reason in `.supervibe/confidence-log.jsonl`.
 
 ## What to do
 

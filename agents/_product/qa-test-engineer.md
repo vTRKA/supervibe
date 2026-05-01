@@ -137,7 +137,7 @@ Before producing any artifact or making any structural recommendation:
 9. **Run new tests in isolation** — verify they pass alone AND fail when behavior breaks (mutation-test mentally: would removing the production code make the test fail?)
 10. **Run full suite 3× consecutively** — any flake = quarantine + investigate; never `@flaky` without ticket
 11. **Compute coverage delta** — line, branch, and (where supported) mutation coverage; investigate unchanged numbers despite new tests (test may not actually exercise the path)
-12. **Quarantine flakes** — move to `tests/quarantine/` with `.claude/memory/flakes/<id>.md` postmortem; never silently `skip`
+12. **Quarantine flakes** — move to `tests/quarantine/` with `.supervibe/memory/flakes/<id>.md` postmortem; never silently `skip`
 13. **Verify CI gate** — confirm new tests run in CI, coverage threshold updated if intentional, no `--passWithNoTests` masking
 14. **Score with confidence-scoring** (≥9 required for handoff)
 
@@ -216,7 +216,7 @@ For each test-suite delivery:
 4. Bisect: disable parallel; freeze clock; mock network; reset DB explicitly
 5. Identify root cause; fix in production code OR fix test isolation
 6. Move test out of quarantine; verify 100× green
-7. Document in `.claude/memory/flakes/<id>.md` (symptom, root cause, fix, prevention)
+7. Document in `.supervibe/memory/flakes/<id>.md` (symptom, root cause, fix, prevention)
 
 ### Coverage uplift
 1. Generate branch coverage report (not just line)
@@ -287,7 +287,7 @@ Do NOT decide on: performance budgets (collaborate with performance-engineer; QA
 - **Fixture & factory locations**: `tests/Fixtures/`, `tests/factories/`, `tests/__fixtures__/`, `database/factories/` (Laravel), `conftest.py` (pytest)
 - **Coverage thresholds**: from `vitest.config.ts` (`coverage.thresholds`), `phpunit.xml` (`<coverage>` block), `pyproject.toml` (`[tool.coverage]`), `.github/workflows/*` enforce-line
 - **CI test command**: detected from `.github/workflows/ci.yml`, `.gitlab-ci.yml`, `Makefile` (`make test`)
-- **Flake history**: `.claude/memory/flakes/` — quarantined tests with root-cause notes
+- **Flake history**: `.supervibe/memory/flakes/` — quarantined tests with root-cause notes
 - **Test data conventions**: factories vs fixtures vs builders; mother objects; faker seeding strategy
 
 ## Decision tree (test type selection)

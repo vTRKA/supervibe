@@ -18,7 +18,7 @@ export function buildPerformanceSloReport({
   measurements = {},
   machineProfile = defaultMachineProfile(),
 } = {}) {
-  const codeDbPath = join(rootDir, ".claude", "memory", "code.db");
+  const codeDbPath = join(rootDir, ".supervibe", "memory", "code.db");
   const codeDbBytes = measurements.codeDbBytes ?? (existsSync(codeDbPath) ? statSync(codeDbPath).size : 0);
   const metrics = {
     contextPackP50Ms: measurements.contextPackP50Ms ?? 250,

@@ -7,15 +7,18 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { migratePrototypeConfigs } from "./migrate-prototype-configs.mjs";
+import { getHostAdapterMatrix } from "./lib/supervibe-host-adapters.mjs";
 
 const PROJECT_ROOT = process.cwd();
 const STALE_DAYS = 30;
 const OVERRIDE_RATE_THRESHOLD = 0.05;
 
 async function checkStaleArtifacts() {
-  const dirs = ["agents", "rules", "skills"].map((d) =>
-    join(PROJECT_ROOT, ".claude", d),
-  );
+  const dirs = getHostAdapterMatrix().flatMap((adapter) => [
+    join(PROJECT_ROOT, adapter.agentsFolder),
+    join(PROJECT_ROOT, adapter.rulesFolder),
+    join(PROJECT_ROOT, adapter.skillsFolder),
+  ]);
   const stale = [];
   const cutoff = new Date(Date.now() - STALE_DAYS * 86400000);
 
@@ -43,7 +46,7 @@ async function checkStaleArtifacts() {
 }
 
 async function checkOverrideRate() {
-  const logPath = join(PROJECT_ROOT, ".claude", "confidence-log.jsonl");
+  const logPath = join(PROJECT_ROOT, ".supervibe", "confidence-log.jsonl");
   if (!existsSync(logPath)) return { rate: 0, count: 0 };
   const content = await readFile(logPath, "utf8");
   const lines = content.split("\n").filter(Boolean);
@@ -63,7 +66,7 @@ async function checkOverrideRate() {
 async function ensureCodeIndexFresh(projectRoot) {
   const { CodeStore } = await import("./lib/code-store.mjs");
 
-  const dbPath = join(projectRoot, ".claude", "memory", "code.db");
+  const dbPath = join(projectRoot, ".supervibe", "memory", "code.db");
   const indexExists = existsSync(dbPath);
 
   let action = "skip";
@@ -287,10 +290,10 @@ async function main() {
   }
   await reportWatcherDiagnostics();
 
-  // Memory mtime-scan: catch external edits to .claude/memory/ between sessions.
+  // Memory mtime-scan: catch external edits to .supervibe/memory/ between sessions.
   async function reportMemoryScan() {
     try {
-      const memDbPath = join(PROJECT_ROOT, ".claude", "memory", "memory.db");
+      const memDbPath = join(PROJECT_ROOT, ".supervibe", "memory", "memory.db");
       if (!existsSync(memDbPath)) return;
       const { MemoryStore } = await import("./lib/memory-store.mjs");
       const { scanMemoryChanges } = await import("./lib/mtime-scan.mjs");

@@ -1,7 +1,7 @@
 ---
 description: >-
   Debug a failed agent invocation by replaying the task with structured
-  root-cause analysis. Reads .claude/memory/agent-invocations.jsonl, identifies
+  root-cause analysis. Reads .supervibe/memory/agent-invocations.jsonl, identifies
   failure pattern, dispatches root-cause-debugger, proposes fix. Triggers:
   'почему упал', 'debug agent', 'invocation failed', 'replay task',
   '/supervibe-debug'.
@@ -49,7 +49,7 @@ Shows top 20 invocations where confidence < 8 across all agents in last 30 days.
 ## Procedure
 
 1. **Resolve invocation:**
-   a. If `<invocation-id>` → look up directly in `.claude/memory/agent-invocations.jsonl`.
+   a. If `<invocation-id>` → look up directly in `.supervibe/memory/agent-invocations.jsonl`.
    b. If `<agent-id>` → grep latest invocation matching agent + low-confidence/override/failed.
    c. If no args → most recent failure across all agents.
    d. If not found → list recent failures with `--all-failed` view.
@@ -95,7 +95,7 @@ Shows top 20 invocations where confidence < 8 across all agents in last 30 days.
    - If improved by ≥0.5 confidence → suggest closing the failure case (memory entry: `solutions/<topic>.md`)
 
 8. **Persist debug record:**
-   `.claude/memory/incidents/debug-<invocation-id>-<ISO>.md`:
+   `.supervibe/memory/incidents/debug-<invocation-id>-<ISO>.md`:
    ```markdown
    # Debug: <agent-id> on "<task-snippet>"
    Invocation ID: <id>
@@ -136,7 +136,7 @@ Signal: agent placed validation in controller method instead of FormRequest clas
 Decision tree branch missed: "Where does validation live?" (request | controller | service)
 
 Prior similar failure: yes
-  - .claude/memory/incidents/debug-abc123-2026-04-15.md
+  - .supervibe/memory/incidents/debug-abc123-2026-04-15.md
   - Same agent, same wrong approach, fix was: add Decision tree branch + anti-pattern
   - Was fix applied? NO (commit history shows agent file unchanged since)
 
@@ -150,7 +150,7 @@ Specific edit:
 Alternative: replay this task to verify reproducibility
   Run: /supervibe-debug --replay <invocation-id>
 
-Debug record saved: .claude/memory/incidents/debug-<id>-<date>.md
+Debug record saved: .supervibe/memory/incidents/debug-<id>-<date>.md
 ```
 
 ## When NOT to invoke
@@ -166,5 +166,5 @@ Debug record saved: .claude/memory/incidents/debug-<id>-<date>.md
 - `/supervibe-strengthen <agent>` — applies fix proposed by debug
 - `/supervibe-score --record` — closes loop after fix verified
 - `/supervibe-adapt` — fix for `stale-context` blockers
-- `.claude/memory/agent-invocations.jsonl` — telemetry source
-- `.claude/memory/incidents/debug-*.md` — debug record persistence
+- `.supervibe/memory/agent-invocations.jsonl` — telemetry source
+- `.supervibe/memory/incidents/debug-*.md` — debug record persistence

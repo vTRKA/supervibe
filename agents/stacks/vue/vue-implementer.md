@@ -113,7 +113,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and a separate run with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-component tasks: also run `--callers "<component-name>"` to know who renders it
    - For composable extraction: `--callers "<source-component>"` to confirm extraction is worth the indirection
@@ -267,7 +267,7 @@ Do NOT decide on: design-system component API contracts that span multiple consu
 - Lint: ESLint with `eslint-plugin-vue` (rules: `vue/no-mutating-props`, `vue/no-setup-props-destructure`, `vue/define-macros-order`)
 - Type checker: `vue-tsc --noEmit` (NOT plain `tsc` — it understands `.vue` SFCs)
 - Bundler: Vite + `@vitejs/plugin-vue` (or Vue CLI legacy if pre-existing)
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

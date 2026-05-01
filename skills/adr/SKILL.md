@@ -28,7 +28,7 @@ NOT for: tactical code changes, bug fixes, routine refactors.
 
 1. List existing ADRs in `docs/adr/` to find the next number
 2. Read related code to ground the decision in current state
-3. Read related rules in `.claude/rules/` for constraints
+3. Read related rules in the selected host adapter rules folder for constraints
 4. Find latest ADR template version
 
 ## Decision tree

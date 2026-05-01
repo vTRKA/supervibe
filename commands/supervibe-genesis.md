@@ -8,7 +8,7 @@ Set up Supervibe for a fresh project or an existing project that needs host-awar
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.claude/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text.
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -38,7 +38,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 3. **Confirm intent.** Show the user the detected fingerprint and ask exactly one `Step N/M` question at a time (e.g. monorepo vs single-app first, deployment environments only if still needed). Wait for the answer before the next question.
 
-4. **Choose agent install profile.** Before writing `.claude/agents/`, present profile choices and wait for explicit selection:
+4. **Choose agent install profile.** Before writing host adapter agents (`.claude/agents`, `.codex/agents`, `.cursor/agents`, `.gemini/agents` or `.opencode/agents`), present profile choices and wait for explicit selection:
    - `minimal` — core router, repo research, code review, quality gate, stack developer(s). Fastest install; recommended default.
    - `product-design` — minimal + product manager, systems analyst, UX/UI designer, prototype builder, presentation agents, copywriter, accessibility/polish reviewers.
    - `full-stack` — product-design + ops/security/data/performance specialists for larger teams.
@@ -65,7 +65,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 6. **Apply scaffold (with diff gate).** Before any write, present a file-by-file diff for the selected host adapter:
    - `<adapter agents folder>` — copies of profile-selected agents only
    - `<adapter rules folder>` — project-applicable rules
-   - `<adapter memory/model folder>` — empty category dirs where the host supports them
+   - `.supervibe/memory/` — Supervibe-owned project memory, indexes and lifecycle state
    - `<adapter instruction file>` — generated or updated with the adapter managed block marker
    - `<adapter settings file>` — host-specific config only when supported
    Wait for user "yes" before writing.
@@ -76,7 +76,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
-8. **Verify.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
+8. **Initialize and verify indexes.** From the target project root, run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` before the final status check, then run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
 
 ## Output contract
 
@@ -92,7 +92,7 @@ Next:              open the project, restart your AI CLI, watch for [evolve] wel
 
 ## When NOT to invoke
 
-- Project already has `.claude/agents/` with custom edits — use `/supervibe-adapt` instead
+- Project already has host adapter agents with custom edits — use `/supervibe-adapt` instead
 - User just wants to score an existing artifact — use `/supervibe-score`
 - User wants per-feature scaffolding (not the whole project) — use the `supervibe:new-feature` skill directly
 

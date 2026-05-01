@@ -16,11 +16,11 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN `rules-curator` updated a rule in one project AND multi-project sync is configured (opt-in via `.claude/sync-config.yaml`).
+WHEN `rules-curator` updated a rule in one project AND multi-project sync is configured (opt-in via `.supervibe/sync-config.yaml`).
 
 ## Step 0 — Read source of truth (required)
 
-1. Read `.claude/sync-config.yaml` for sibling project paths
+1. Read `.supervibe/sync-config.yaml` for sibling project paths
 2. Read updated rule file
 3. Read sibling projects' versions of same rule (diff source)
 

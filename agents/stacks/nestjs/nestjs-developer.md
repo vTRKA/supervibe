@@ -113,7 +113,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar modules, services, repositories, custom decorators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature: `--callers "<ServiceName>"` and `--callers "<ProviderToken>"`
    - For new-shared-provider: `--neighbors "<RelatedModule>" --depth 2` to confirm import boundaries
@@ -282,7 +282,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Lint: `eslint` (`@typescript-eslint`), `prettier --check`
 - Type-check: `tsc --noEmit` (strict mode mandatory: `strict: true`, `noUncheckedIndexedAccess: true`)
 - Config: `@nestjs/config` with `validationSchema` (Joi) or `validate` callback (zod) — boot fails fast on bad env
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

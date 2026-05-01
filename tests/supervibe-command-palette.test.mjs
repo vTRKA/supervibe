@@ -17,7 +17,7 @@ test("command palette exposes required actions and exact non-interactive command
     index,
     state: { run_id: "run1" },
     planPath: "docs/plans/example.md",
-    graphPath: ".claude/memory/work-items/epic/graph.json",
+    graphPath: ".supervibe/memory/work-items/epic/graph.json",
     selectedItemId: "ready-1",
   });
 

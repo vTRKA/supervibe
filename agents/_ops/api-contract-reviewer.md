@@ -209,7 +209,7 @@ For each review:
 5. Add deprecation metadata + headers to the old version surface
 6. Add changelog entries under "Deprecated" (old) AND "Added" (new)
 7. Consumer impact: enumerate internal callers + SDK pins + external partners; coordinate notices
-8. Schedule the removal task past the sunset date in `.claude/memory/deprecations/`
+8. Schedule the removal task past the sunset date in `.supervibe/memory/deprecations/`
 9. Output: APPROVED-WITH-NOTES once all of the above are present
 
 ### Deprecation cycle (announce → sunset → remove)
@@ -218,7 +218,7 @@ For each review:
 3. **Nag**: emit warning logs / response headers on every call to the deprecated surface
 4. **Verify near-zero usage** before removal; extend window if active consumers remain
 5. **Remove**: in a release explicitly tagged as removing the deprecated surface, with the removal in the changelog under "Removed"
-6. **Postmortem entry**: file in `.claude/memory/deprecations/` with timeline + lessons
+6. **Postmortem entry**: file in `.supervibe/memory/deprecations/` with timeline + lessons
 
 ### Version-bump decision
 1. List every change in the diff
@@ -262,7 +262,7 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
   - GraphQL: `schema.graphql`, `schema.gql`, `**/*.graphql`, codegen artifacts
   - gRPC: `**/*.proto`, `buf.yaml`, `buf.gen.yaml`
 - Versioning strategy: URL prefix (`/v1/`, `/v2/`), media-type/Accept-Version header, GraphQL field-level `@deprecated`, gRPC package suffix (`v1`, `v1beta1`, `v2`)
-- Deprecation log: `docs/deprecations.md`, `CHANGELOG.md`, `.claude/memory/deprecations/`
+- Deprecation log: `docs/deprecations.md`, `CHANGELOG.md`, `.supervibe/memory/deprecations/`
 - Consumer registry: SDKs, mobile clients with min-version, internal services with explicit contract dependencies, public partners under SLA
 - Tooling on hand: `openapi-diff`, `oasdiff`, `graphql-inspector diff`, `buf breaking`, `protolock`, `swagger-cli validate`
 - Conventions doc: `docs/api-conventions.md` (pagination, error envelope, auth scheme, naming)

@@ -45,7 +45,7 @@ test("memory GC archives superseded decisions and restores by memory id", async 
     });
     assert.equal(directClassification.reason, "superseded");
     assert.equal((await archiveMemoryEntry(scan.candidates[0], {
-      archiveRoot: join(root, ".claude", "memory", ".archive"),
+      archiveRoot: join(root, ".supervibe", "memory", ".archive"),
       dryRun: true,
     })).status, "preview");
     assert.deepEqual(scan.candidates.map((candidate) => candidate.id), ["decision-old"]);
@@ -56,8 +56,8 @@ test("memory GC archives superseded decisions and restores by memory id", async 
     });
     assert.equal(archiveResult.archived, 1);
     await assert.rejects(access(oldPath));
-    await access(join(root, ".claude", "memory", ".archive", "decisions", basename(oldPath)));
-    assert.match(await readFile(join(root, ".claude", "memory", ".archive", "_archive-log.jsonl"), "utf8"), /decision-old/);
+    await access(join(root, ".supervibe", "memory", ".archive", "decisions", basename(oldPath)));
+    assert.match(await readFile(join(root, ".supervibe", "memory", ".archive", "_archive-log.jsonl"), "utf8"), /decision-old/);
 
     const restored = await restoreMemoryEntry({ rootDir: root, id: "decision-old" });
     assert.equal(restored.restored, true);
@@ -98,7 +98,7 @@ test("memory GC candidates low-confidence old learnings but keeps high-confidenc
 });
 
 async function writeMemory(root, category, fileName, frontmatter, body) {
-  const dir = join(root, ".claude", "memory", category);
+  const dir = join(root, ".supervibe", "memory", category);
   await mkdir(dir, { recursive: true });
   const filePath = join(dir, fileName);
   const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${value}`).join("\n");

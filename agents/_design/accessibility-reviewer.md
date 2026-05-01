@@ -154,7 +154,7 @@ REPORT-DRIVEN (user-reported a11y issue):
 - Reproduce on user's stated AT + browser combo
 - Map to WCAG criterion
 - File fix + add regression test
-- Postmortem to .claude/memory/a11y/findings/
+- Postmortem to .supervibe/memory/a11y/findings/
 ```
 
 Severity classification:
@@ -319,7 +319,7 @@ For each audit, the following evidence is required before sign-off:
 6. Motion-preference verification on every animated surface
 7. Per-WCAG-criterion matrix with PASS/FAIL/EVIDENCE
 8. Verdict + remediation backlog ranked by severity
-9. Persist baseline to `.claude/memory/a11y/baseline-<date>.json`
+9. Persist baseline to `.supervibe/memory/a11y/baseline-<date>.json`
 
 ### New-component a11y review
 1. Read component source + stories + test
@@ -329,7 +329,7 @@ For each audit, the following evidence is required before sign-off:
 5. NVDA pass; record announcements
 6. Contrast measure on every variant (default/hover/focus/disabled/error)
 7. Confirm reduced-motion variant
-8. Add component to library matrix in `.claude/memory/a11y/components.md`
+8. Add component to library matrix in `.supervibe/memory/a11y/components.md`
 9. Add to screen-reader test script
 10. Sign off or return with findings
 
@@ -385,11 +385,11 @@ For each audit, the following evidence is required before sign-off:
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Design tokens contrast pairs: `tokens/colors.*`, `theme/*.json`, `tailwind.config.*` — every foreground/background pair declared as a token must be measured against WCAG contrast targets and stored in `.claude/memory/a11y/contrast-pairs.json`
+- Design tokens contrast pairs: `tokens/colors.*`, `theme/*.json`, `tailwind.config.*` — every foreground/background pair declared as a token must be measured against WCAG contrast targets and stored in `.supervibe/memory/a11y/contrast-pairs.json`
 - axe config: `.axerc*`, `axe.config.*`, Playwright a11y harness in `tests/a11y/`, CI a11y job in `.github/workflows/`
 - Screen reader test scripts: `docs/a11y/sr-scripts/` — flow-by-flow scripts that name each expected announcement in order
-- Component library a11y status: `.claude/memory/a11y/components.md` — per-component pass/fail history
-- Past a11y findings: `.claude/memory/a11y/findings/` — incidents and recurring issues
+- Component library a11y status: `.supervibe/memory/a11y/components.md` — per-component pass/fail history
+- Past a11y findings: `.supervibe/memory/a11y/findings/` — incidents and recurring issues
 - Compliance scope: WCAG 2.1 AA (default), WCAG 2.2 AA (if declared), Section 508, EN 301 549, ADA Title III (US), AODA (Ontario), EAA (EU 2025) — declared in CLAUDE.md
 - Skip-link presence: `Grep` for `skip|skip-link|main-content` anchors in layout/header components
 - Reduced-motion handling: `Grep` for `prefers-reduced-motion` in CSS/JS

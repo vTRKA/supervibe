@@ -123,7 +123,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ruby --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who breaks
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -304,7 +304,7 @@ Do NOT decide on: deployment, container, infra topology (defer to devops-sre).
 - Security: `bundle exec brakeman --no-pager`, `bundle exec bundle-audit check --update`
 - N+1 detection: `bullet` gem in dev/test, or `prosopite` for production sampling
 - Hotwire: `app/javascript/controllers/` (Stimulus), `app/views/**/*.turbo_stream.erb`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

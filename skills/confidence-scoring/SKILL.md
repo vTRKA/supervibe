@@ -24,7 +24,7 @@ Direct invocation: `/supervibe-score <artifact-type> [path-to-artifact]` from th
 
 1. Read `confidence-rubrics/<artifact-type>.yaml` for the rubric matching the artifact being scored.
 2. Read the artifact itself.
-3. Read `.claude/confidence-log.jsonl` (if exists) for context on prior scoring history.
+3. Read `.supervibe/confidence-log.jsonl` (if exists) for context on prior scoring history.
 
 If rubric file does not exist: STOP — caller passed an unknown artifact type.
 
@@ -99,7 +99,7 @@ If status is BLOCK and no explicit override was recorded by the calling command,
 
 ## Override interaction
 
-If a confidence gate accepts an explicit override reason, the caller appends to `.claude/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
+If a confidence gate accepts an explicit override reason, the caller appends to `.supervibe/confidence-log.jsonl`. This skill does NOT consult or alter the override log — overrides are a caller-side decision to ignore the BLOCK return.
 
 The append-only log allows `/supervibe-audit` to compute override-rate later.
 

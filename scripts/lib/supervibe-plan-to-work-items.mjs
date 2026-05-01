@@ -313,7 +313,7 @@ export function workItemsToLoopTasks(items = []) {
 
 export async function writeWorkItemGraph(graph, options = {}) {
   const rootDir = options.rootDir ?? process.cwd();
-  const outDir = options.outDir ?? join(rootDir, ".claude", "memory", "work-items", graph.epicId);
+  const outDir = options.outDir ?? join(rootDir, ".supervibe", "memory", "work-items", graph.epicId);
   await mkdir(outDir, { recursive: true });
   const graphPath = join(outDir, "graph.json");
   const previewPath = join(outDir, "preview.txt");

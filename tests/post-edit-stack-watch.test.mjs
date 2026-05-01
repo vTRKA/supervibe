@@ -26,7 +26,7 @@ function runHook(env = {}) {
 
 before(async () => {
   await mkdir(join(sandbox, 'src'), { recursive: true });
-  await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
+  await mkdir(join(sandbox, '.supervibe', 'memory'), { recursive: true });
 
   await writeFile(fileA, `export function hello(name: string) { return 'hi ' + name; }\n`);
   await writeFile(fileB, `export function world() { return 42; }\n`);
@@ -84,8 +84,8 @@ test('hook: empty CLAUDE_FILE_PATHS is a no-op', () => {
   assert.strictEqual(out.trim(), '');
 });
 
-test('hook: re-indexes memory entry when path under .claude/memory/', async () => {
-  const memDir = join(sandbox, '.claude', 'memory', 'decisions');
+test('hook: re-indexes memory entry when path under .supervibe/memory/', async () => {
+  const memDir = join(sandbox, '.supervibe', 'memory', 'decisions');
   await mkdir(memDir, { recursive: true });
   const memEntry = join(memDir, 'auth.md');
   await writeFile(memEntry, `---\nid: auth-decision\ntype: decision\ndate: 2026-04-28\ntags: [auth]\n---\n\n# Auth decision\n\nUse JWT with refresh-token rotation.\n`);

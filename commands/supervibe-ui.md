@@ -14,7 +14,7 @@ webviews can wrap it without changing the canonical JSON graph.
 ## Invocation
 
 ```bash
-/supervibe-ui --file .claude/memory/work-items/<epic-id>/graph.json
+/supervibe-ui --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-ui --port 3057
 /supervibe-ui --daemon
 /supervibe-ui --foreground
@@ -23,9 +23,9 @@ webviews can wrap it without changing the canonical JSON graph.
 Equivalent local command:
 
 ```bash
-npm run supervibe:ui -- --file .claude/memory/work-items/<epic-id>/graph.json --daemon
-npm run supervibe:ui -- --foreground --file .claude/memory/work-items/<epic-id>/graph.json
-npm run supervibe:ide-bridge -- --file .claude/memory/work-items/<epic-id>/graph.json --out .supervibe/ide-bridge.json
+npm run supervibe:ui -- --file .supervibe/memory/work-items/<epic-id>/graph.json --daemon
+npm run supervibe:ui -- --foreground --file .supervibe/memory/work-items/<epic-id>/graph.json
+npm run supervibe:ide-bridge -- --file .supervibe/memory/work-items/<epic-id>/graph.json --out .supervibe/ide-bridge.json
 ```
 
 `--daemon` is the normal local control-plane launch: it starts a detached hidden

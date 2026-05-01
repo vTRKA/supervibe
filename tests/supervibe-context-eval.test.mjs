@@ -22,7 +22,7 @@ test("context eval verifies memory, evidence, anchors, and token budget", async 
     await writeFile(casesPath, `${JSON.stringify({
       cases: [{
         id: "checkout-context",
-        graphPath: ".claude/memory/work-items/epic/graph.json",
+        graphPath: ".supervibe/memory/work-items/epic/graph.json",
         itemId: "T1",
         expectMemoryIds: ["checkout-memory"],
         expectEvidence: ["npm test -- checkout"],
@@ -42,7 +42,7 @@ test("context eval verifies memory, evidence, anchors, and token budget", async 
       rootDir: root,
       testCase: {
         id: "single",
-        graphPath: ".claude/memory/work-items/epic/graph.json",
+        graphPath: ".supervibe/memory/work-items/epic/graph.json",
         itemId: "T1",
         expectMemoryIds: ["checkout-memory"],
       },
@@ -71,8 +71,8 @@ async function writeFixture(root) {
     "export function checkout() { return true; }",
     "",
   ].join("\n"), "utf8");
-  await mkdir(join(root, ".claude", "memory", "work-items", "epic"), { recursive: true });
-  await writeFile(join(root, ".claude", "memory", "work-items", "epic", "graph.json"), `${JSON.stringify({
+  await mkdir(join(root, ".supervibe", "memory", "work-items", "epic"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "memory", "work-items", "epic", "graph.json"), `${JSON.stringify({
     kind: "supervibe-work-item-graph",
     graph_id: "epic",
     items: [
@@ -89,8 +89,8 @@ async function writeFixture(root) {
     tasks: [{ id: "T1", status: "open" }],
     evidence: [{ workItemId: "T1", kind: "test", command: "npm test -- checkout" }],
   }, null, 2)}\n`, "utf8");
-  await mkdir(join(root, ".claude", "memory", "decisions"), { recursive: true });
-  await writeFile(join(root, ".claude", "memory", "decisions", "checkout.md"), [
+  await mkdir(join(root, ".supervibe", "memory", "decisions"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "memory", "decisions", "checkout.md"), [
     "---",
     "id: checkout-memory",
     "confidence: 9",

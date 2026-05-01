@@ -80,7 +80,7 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
    ```
 
 After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`.
-External tracker sync is optional after atomization: `/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/<epic-id>/graph.json`. The native work-item graph remains canonical if no tracker adapter is available.
+External tracker sync is optional after atomization: `/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json`. The native work-item graph remains canonical if no tracker adapter is available.
 Atomized items are templated by work type and preserve labels, severity, owner/component/stack, required gates, verification hints, comments, and repo/package/workspace/subproject routing metadata for status queries.
 
 ## Output contract

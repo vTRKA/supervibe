@@ -114,7 +114,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar routes, middleware, validators. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-route tasks: also run `--callers "<controllerName>"` and `--callers "<serviceName>"`
    - For new-middleware touching shared pipeline: `--neighbors "errorHandler" --depth 2`
@@ -278,7 +278,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Logging: `pino` + `pino-http` with redaction of `authorization`, `cookie`, `password`, `token`
 - Validation: `zod` schemas under `src/validators/`, applied via shared `validate(schema, target)` middleware (`target` = `body|query|params`)
 - Error model: `AppError extends Error { statusCode, isOperational, code }` in `src/errors/AppError.ts`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

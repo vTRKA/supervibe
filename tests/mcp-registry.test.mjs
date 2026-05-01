@@ -11,8 +11,8 @@ import {
 const sandbox = join(tmpdir(), `supervibe-mcp-${Date.now()}`);
 
 before(async () => {
-  await mkdir(join(sandbox, '.claude', 'memory'), { recursive: true });
-  REGISTRY_PATH_FOR_TEST(join(sandbox, '.claude', 'memory', 'mcp-registry.json'));
+  await mkdir(join(sandbox, '.supervibe', 'memory'), { recursive: true });
+  REGISTRY_PATH_FOR_TEST(join(sandbox, '.supervibe', 'memory', 'mcp-registry.json'));
 });
 
 after(async () => {

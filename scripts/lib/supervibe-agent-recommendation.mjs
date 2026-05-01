@@ -184,6 +184,10 @@ export function buildGenesisDryRunReport({
   const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack });
   const optionalAgents = unique(addOns.flatMap((id) => ADD_ON_AGENTS[id] || []));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
+  const supervibeStateArtifacts = [
+    { path: ".supervibe/memory/", reason: "Supervibe-owned project state root" },
+    { path: ".supervibe/memory/genesis/state.json", reason: "genesis lifecycle state" },
+  ];
   const managedInstruction = renderManagedInstruction({ hostSelection, fingerprint, agentProfile, recommendedAgents, optionalAgents });
   const contextMigration = planContextMigration({
     rootDir: targetRoot,
@@ -196,6 +200,7 @@ export function buildGenesisDryRunReport({
     ...rulesPlan.selectedRules.map((ruleId) => ({ path: `${adapter.rulesFolder}/${ruleId}.md`, reason: "selected rule" })),
     ...skillsPlan.selectedSkills.map((skillId) => ({ path: `${adapter.skillsFolder}/${skillId}/SKILL.md`, reason: "supporting skill" })),
     { path: adapter.settingsFile, reason: "host settings when supported" },
+    ...supervibeStateArtifacts,
     ...scaffoldPlan.files.map((entry) => ({ path: entry.path, reason: entry.reason })),
   ].filter((entry) => !existsSync(join(targetRoot, entry.path)));
   const filesToModify = existsSync(contextMigration.absolutePath)
@@ -232,7 +237,18 @@ export function buildGenesisDryRunReport({
     optionalAgents,
     selectedRules: rulesPlan.selectedRules,
     selectedSkills: skillsPlan.selectedSkills,
+    supervibeStateArtifacts,
     scaffoldArtifacts: scaffoldPlan.files,
+    postApplyCommands: [
+      {
+        command: "node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health",
+        reason: "initialize Code RAG + Graph in .supervibe/memory/code.db before status verification",
+      },
+      {
+        command: "node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs",
+        reason: "verify Code RAG + Graph and memory status after genesis",
+      },
+    ],
     missingArtifacts: [
       ...agentProfile.missingSpecialists.map((entry) => ({ type: "agent", id: entry.agentId, reason: entry.reason })),
       ...rulesPlan.missingRules.map((id) => ({ type: "rule", id, reason: "referenced by stack pack or mandatory policy but missing from plugin rules" })),
@@ -268,6 +284,7 @@ export function formatGenesisDryRunReport(report) {
     `MISSING_ARTIFACTS: ${report.missingArtifacts.length}`,
     `PRESERVED_SECTIONS: ${report.preservedSections.join(", ") || "none"}`,
     `SKIPPED_GENERATED_FOLDERS: ${report.skippedGeneratedFolders.map((entry) => entry.path).join(", ")}`,
+    `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
   ];
   for (const entry of report.filesToModify) lines.push(`MODIFY: ${entry.path} - ${entry.reason}`);
   for (const entry of report.filesToCreate.slice(0, 10)) lines.push(`CREATE: ${entry.path} - ${entry.reason}`);

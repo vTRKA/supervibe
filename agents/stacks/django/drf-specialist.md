@@ -116,7 +116,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar endpoints, serializers, permissions, callers. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`
 3. **Discover MCPs** (`supervibe:mcp-discovery`) — confirm context7 availability for current DRF / simple-jwt / drf-spectacular docs
 4. **For non-trivial DRF API**: invoke `best-practices-researcher` (uses context7 MCP) — DRF 3.x semantics shift in subtle ways across releases
@@ -289,7 +289,7 @@ Do NOT decide on: pagination strategy when externally consumed clients exist and
 - Schema: `<project>/urls.py` — `drf-spectacular` registered (`/schema/`, `/schema/swagger-ui/`, `/schema/redoc/`)
 - Tests: `apps/<name>/tests/test_api.py` — `APIClient`, `APITestCase`, JWT helper, query-count budget assertions
 - Lint: `ruff check`, `mypy --strict`
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (which DRF tool here?)
 

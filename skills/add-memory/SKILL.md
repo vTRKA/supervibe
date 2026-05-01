@@ -28,7 +28,7 @@ NOT for: routine commits, doc edits, trivial bug fixes.
 ## Step 0 — Read source of truth (required)
 
 1. Read existing entries in target category to avoid duplication
-2. Read project's `.claude/memory/index.json` for tag conventions (use existing tags where possible)
+2. Read project's `.supervibe/memory/index.json` for tag conventions (use existing tags where possible)
 3. Read `confidence-rubrics/memory-entry.yaml` for quality bar
 
 ## Decision tree
@@ -52,7 +52,7 @@ Confidence self-assessment:
 1. **Step 0** — read existing entries
 2. **Choose category** (decision tree)
 3. **Generate slug** from topic (kebab-case, ≤50 chars)
-4. **Create file** at `.claude/memory/<category>/[<date>-]<slug>.md` (date prefix for time-sensitive types)
+4. **Create file** at `.supervibe/memory/<category>/[<date>-]<slug>.md` (date prefix for time-sensitive types)
 5. **Fill frontmatter**:
    ```yaml
    ---

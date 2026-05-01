@@ -50,7 +50,7 @@ test("work-item GC archives only completed retained epics by default", async () 
     });
     assert.equal(directClassification.archiveCandidate, true);
     assert.equal((await archiveWorkItemGraph(directClassification, {
-      archiveRoot: join(root, ".claude", "memory", "work-items", ".archive"),
+      archiveRoot: join(root, ".supervibe", "memory", "work-items", ".archive"),
       dryRun: true,
     })).status, "preview");
     assert.deepEqual(dryScan.candidates.map((candidate) => candidate.graphId), ["epic-done"]);
@@ -72,7 +72,7 @@ test("work-item GC archives only completed retained epics by default", async () 
     assert.equal(archiveResult.archived, 1);
     await assert.rejects(access(donePath));
     await access(archiveResult.results[0].archiveDir);
-    assert.match(await readFile(join(root, ".claude", "memory", "work-items", ".archive", "_archive-log.jsonl"), "utf8"), /epic-done/);
+    assert.match(await readFile(join(root, ".supervibe", "memory", "work-items", ".archive", "_archive-log.jsonl"), "utf8"), /epic-done/);
 
     const restored = await restoreWorkItemGraph({ rootDir: root, graphId: "epic-done" });
     assert.equal(restored.restored, true);
@@ -84,7 +84,7 @@ test("work-item GC archives only completed retained epics by default", async () 
 });
 
 async function writeGraph(root, epicId, graph) {
-  const dir = join(root, ".claude", "memory", "work-items", epicId);
+  const dir = join(root, ".supervibe", "memory", "work-items", epicId);
   await mkdir(dir, { recursive: true });
   const graphPath = join(dir, "graph.json");
   await writeFile(graphPath, `${JSON.stringify({ kind: "supervibe-work-item-graph", ...graph }, null, 2)}\n`, "utf8");

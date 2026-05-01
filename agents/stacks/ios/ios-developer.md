@@ -116,7 +116,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.claude/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface ADRs (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface ADRs (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar views, view models, services. Run `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "<task topic>" --lang swift --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this view/viewmodel/service
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -285,7 +285,7 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 - Build: `xcodebuild build test -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest'`
 - Resources: localized strings in `*.xcstrings` (or `Localizable.strings`), assets in `Assets.xcassets`, info plist in `Info.plist` per target
 - App Intents: `Sources/<Module>/AppIntents/` — entities, intents, shortcut providers
-- Memory: `.claude/memory/decisions/`, `.claude/memory/patterns/`, `.claude/memory/solutions/`
+- Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Decision tree (where does this code go?)
 

@@ -279,7 +279,7 @@ For each model design pass:
    a. Design `*_type` + `*_id` columns + composite index
    b. Define `morphTo` on child, `morphMany` on each parent
    c. Define `Relation::enforceMorphMap([...])` to lock the type strings
-   d. Document the polymorphic rationale in `.claude/memory/decisions/`
+   d. Document the polymorphic rationale in `.supervibe/memory/decisions/`
    e. Add tests covering each parent type's traversal
 4. Audit query plans — polymorphic queries often need a covering index
 
@@ -326,7 +326,7 @@ Do NOT decide on: queue infrastructure, broadcast channels (defer to laravel-arc
 - Policies: `app/Policies/` — authorization adjacent to models
 - Debugbar: `barryvdh/laravel-debugbar` (dev) — query log per request
 - Telescope: `laravel/telescope` (dev/staging) — query monitor + slow-query flags
-- Memory: `.claude/memory/` — prior model decisions, polymorphic justifications, N+1 incidents
+- Memory: `.supervibe/memory/` — prior model decisions, polymorphic justifications, N+1 incidents
 
 ## Schema Anchors
 - Table: `<table>`

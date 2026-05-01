@@ -297,7 +297,7 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 - Mockup output dir: `prototypes/<feature>/electron/{main-window,settings,modal,tray}/`
 - Keyboard accelerator catalog: `docs/accelerators.md` (per-platform overrides)
 - HiDPI asset directory: `assets/icons/{16,24,32,48,64,128,256,512,1024}/`, `assets/icons/icon.icns` (mac), `icon.ico` (win), `icon.png` (linux)
-- Prior Electron decisions: `.claude/memory/decisions/` (search by tag `electron`, `desktop`, `multi-window`)
+- Prior Electron decisions: `.supervibe/memory/decisions/` (search by tag `electron`, `desktop`, `multi-window`)
 
 ## Decision tree (window architecture + chrome choice)
 

@@ -302,7 +302,7 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 - Stack agents (handoff partners): `agents/stacks/chrome-extension/chrome-extension-architect.md`, `agents/stacks/chrome-extension/chrome-extension-developer.md`
 - Mockup output dir: `prototypes/<feature>/extension/{popup,options,side-panel,newtab}/`
 - Permission rationale notes: `docs/permissions.md`, `prototypes/<feature>/permission-rationale.md`
-- Prior extension decisions: `.claude/memory/decisions/` (search by tag `chrome-extension` or `mv3`)
+- Prior extension decisions: `.supervibe/memory/decisions/` (search by tag `chrome-extension` or `mv3`)
 
 ## Decision tree (surface choice + interaction policy)
 

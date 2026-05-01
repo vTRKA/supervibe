@@ -65,7 +65,7 @@ export async function importLoopBundle(bundleDir, { targetRoot } = {}) {
   const state = JSON.parse(await readFile(join(sourceDir, "state.json"), "utf8"));
   const root = resolve(targetRoot || process.cwd());
   const runId = state.run_id || basename(sourceDir).replace(/\.bundle$/, "");
-  const targetDir = join(root, ".claude", "memory", "loops", runId);
+  const targetDir = join(root, ".supervibe", "memory", "loops", runId);
   await mkdir(targetDir, { recursive: true });
   for (const file of await readdir(sourceDir)) {
     if (file === "checksums.json") continue;

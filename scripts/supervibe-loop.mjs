@@ -183,7 +183,7 @@ async function main() {
     const result = runInteractiveCli({
       mode: "loop",
       planPath: args["atomize-plan"] || args.plan || null,
-      graphPath: args.file || ".claude/memory/work-items/<epic-id>/graph.json",
+      graphPath: args.file || ".supervibe/memory/work-items/<epic-id>/graph.json",
       selectedAction: args["create-work-item"] ? "create-work-item" : null,
       isTTY: process.stdin.isTTY && process.stdout.isTTY,
       confirmed: Boolean(args.yes),
@@ -243,7 +243,7 @@ async function main() {
   }
 
   if (args["anchor-doctor"]) {
-    const indexPath = args.file || join(rootDir, ".claude", "memory", "anchors", "semantic-anchor-index.json");
+    const indexPath = args.file || join(rootDir, ".supervibe", "memory", "anchors", "semantic-anchor-index.json");
     const index = await readDerivedAnchorIndex(indexPath);
     const drift = detectAnchorDrift({ anchors: index.anchors || [] });
     console.log(formatAnchorDriftReport(drift));
@@ -319,9 +319,9 @@ async function main() {
   if (args.onboard) {
     const report = createOnboardingReport({
       rootDir,
-      hasWorkItems: await pathExists(join(rootDir, ".claude", "memory", "work-items")),
-      hasLoopState: await pathExists(join(rootDir, ".claude", "memory", "loops")),
-      hasTrackerMapping: await pathExists(join(rootDir, ".claude", "memory", "loops", "task-tracker-map.json")),
+      hasWorkItems: await pathExists(join(rootDir, ".supervibe", "memory", "work-items")),
+      hasLoopState: await pathExists(join(rootDir, ".supervibe", "memory", "loops")),
+      hasTrackerMapping: await pathExists(join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json")),
     });
     console.log(formatOnboarding(report));
     return;
@@ -482,7 +482,7 @@ async function main() {
 
   if (args.status) {
     if (args.epic && !args.file) {
-      const graphPath = join(rootDir, ".claude", "memory", "work-items", args.epic, "graph.json");
+      const graphPath = join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
       try {
         const graph = JSON.parse(await readFile(graphPath, "utf8"));
         const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
@@ -504,7 +504,7 @@ async function main() {
         return;
       }
     }
-    const stateFile = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "", "state.json");
+    const stateFile = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "", "state.json");
     try {
       const result = await runAutonomousLoop({ rootDir, statusFile: stateFile });
       console.log(result.statusText);
@@ -519,14 +519,14 @@ async function main() {
   }
 
   if (args.graph || args._[0] === "graph") {
-    const stateFile = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "", "state.json");
+    const stateFile = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "", "state.json");
     const state = await loadStateForGraphExport(resolve(rootDir, stateFile));
     process.stdout.write(exportGraph(state, { format: args.format || "text" }));
     return;
   }
 
   if (args.doctor || args._[0] === "doctor") {
-    const target = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "", "state.json");
+    const target = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "", "state.json");
     if (args.fix) {
       const result = await repairLoopRun(resolve(rootDir, target), { fix: true });
       console.log(`SUPERVIBE_LOOP_REPAIR\nCHANGED: ${result.changed}\nBACKUP: ${result.backupPath}`);
@@ -537,20 +537,20 @@ async function main() {
   }
 
   if (args.prime || args._[0] === "prime") {
-    const target = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "", "state.json");
+    const target = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "", "state.json");
     console.log(await primeLoopRun(resolve(rootDir, target)));
     return;
   }
 
   if (args.archive || args._[0] === "archive") {
-    const target = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "");
+    const target = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "");
     const result = await archiveLoopRun(resolve(rootDir, target), { archiveRoot: args.out, label: args.label });
     console.log(`SUPERVIBE_LOOP_ARCHIVE\nBUNDLE: ${result.bundleDir}\nRUN_ID: ${result.runId}`);
     return;
   }
 
   if (args.export || args._[0] === "export") {
-    const target = args.file || join(rootDir, ".claude", "memory", "loops", args.loop || "");
+    const target = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "");
     const result = await exportLoopBundle(resolve(rootDir, target), { outDir: args.out });
     console.log(`SUPERVIBE_LOOP_EXPORT\nBUNDLE: ${result.bundleDir}\nRUN_ID: ${result.runId}`);
     return;
@@ -677,7 +677,7 @@ async function main() {
   }
 
   if (args.stop) {
-    const stateFile = args.file || join(rootDir, ".claude", "memory", "loops", args.stop, "state.json");
+    const stateFile = args.file || join(rootDir, ".supervibe", "memory", "loops", args.stop, "state.json");
     const state = await stopAutonomousLoop(stateFile);
     console.log(`Stopped ${state.run_id}: ${state.stop_reason}`);
     return;
@@ -744,7 +744,7 @@ async function pathExists(path) {
 }
 
 async function findGraphContainingItem(rootDir, itemId) {
-  const base = join(rootDir, ".claude", "memory", "work-items");
+  const base = join(rootDir, ".supervibe", "memory", "work-items");
   const candidates = [];
   async function walk(dir, depth = 0) {
     if (depth > 3) return;
@@ -872,10 +872,10 @@ Primary:
   supervibe-loop --plan docs/plans/example.md
   supervibe-loop --from-prd docs/specs/example.md
   supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
-  supervibe-loop --status --file .claude/memory/loops/<run-id>/state.json
+  supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --status --epic <epic-id>
   supervibe-loop --stop <run-id>
-  supervibe-loop --watch --file .claude/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --create-work-item --interactive
   supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
   supervibe-loop --quickstart
@@ -884,7 +884,7 @@ Primary:
   supervibe-loop --worktree-status
   supervibe-loop --eval
   supervibe-loop --eval --case plan-review-loop
-  supervibe-loop --eval --replay .claude/memory/loops/<run-id>
+  supervibe-loop --eval --replay .supervibe/memory/loops/<run-id>
   supervibe-loop --eval-live --case worktree-run --max-runtime-minutes 30 --max-iterations 3 --provider-budget 1
   supervibe-loop --policy-profile guided --request "validate integrations"
   supervibe-loop --approval-receipts
@@ -895,22 +895,22 @@ Primary:
   supervibe-loop --anchor-doctor --fix-derived
   supervibe-loop --summarize-changes --task task-123 --file src/example.ts --summary "Changed parser"
   supervibe-loop --plan-waves docs/plans/example.md
-  supervibe-loop --assign-ready --explain --file .claude/memory/loops/<run-id>/state.json
+  supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --setup-worker-presets
 
 Advanced:
   supervibe-loop --readiness --plan docs/plans/example.md
-  supervibe-loop graph --file .claude/memory/loops/<run-id>/state.json --format text|json|mermaid|dot
-  supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json [--fix]
-  supervibe-loop prime --file .claude/memory/loops/<run-id>/state.json
+  supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format text|json|mermaid|dot
+  supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json [--fix]
+  supervibe-loop prime --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --import-tasks docs/plans/example.md --dry-run
   supervibe-loop --atomize-plan docs/plans/example.md --preview
-  supervibe-loop --priority --file .claude/memory/work-items/<epic-id>/graph.json
-  supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .claude/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --priority --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --notify terminal,inbox --request "validate integrations"
-  supervibe-loop --export-sync-bundle .claude/memory/loops/<run-id>
+  supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id>
   supervibe-loop --import-sync-bundle path/to/sync-bundle --dry-run
-  supervibe-loop export --file .claude/memory/loops/<run-id>/state.json --out <bundle-dir>
+  supervibe-loop export --file .supervibe/memory/loops/<run-id>/state.json --out <bundle-dir>
   supervibe-loop import --file <bundle-dir> --out <target-root>
 
 Execution modes:

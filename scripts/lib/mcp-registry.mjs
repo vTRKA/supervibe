@@ -1,5 +1,5 @@
 // MCP Registry — discover available MCPs from user's Claude Code config,
-// persist to .claude/memory/mcp-registry.json so agents can query.
+// persist to .supervibe/memory/mcp-registry.json so agents can query.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 
 const PROJECT_ROOT = process.cwd();
-let _registryPath = join(PROJECT_ROOT, '.claude', 'memory', 'mcp-registry.json');
+let _registryPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'mcp-registry.json');
 
 export function REGISTRY_PATH_FOR_TEST(path) { _registryPath = path; }
 

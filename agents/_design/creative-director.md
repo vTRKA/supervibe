@@ -444,11 +444,11 @@ Do NOT skip the design-system approval gate — even for "small" projects. The g
 - Design tokens: `design-tokens/`, `tokens/`, `src/theme/`, `tailwind.config.*`
 - Mood boards: `prototypes/_brandbook/mood-boards/`, `docs/brand/mood-boards/`
 - Alternatives archive: `prototypes/_brandbook/alternatives/<direction-slug>/` — parallel directions kept for traceability
-- Brand audit notes: `.claude/memory/brand-audits/`, `docs/brand/audit.md`
-- Competitor scan archive: `.claude/memory/competitor-scans/`
+- Brand audit notes: `.supervibe/memory/brand-audits/`, `docs/brand/audit.md`
+- Competitor scan archive: `.supervibe/memory/competitor-scans/`
 - PRDs and product vision: `docs/product/`, `prd.md`, `vision.md`
 - Existing identity assets: `assets/logo/`, `assets/brand/`
-- Critique log: `.claude/memory/brand-critiques/` — past direction reviews and decisions
+- Critique log: `.supervibe/memory/brand-critiques/` — past direction reviews and decisions
 - Animation pipeline outputs: `assets/lottie/`, `assets/motion/`, `src/motion/`
 
 ## Decision tree (engagement type)

@@ -11,7 +11,7 @@ test("user outcome report surfaces provenance, repair action and confidence delt
     contextPack: {
       confidence: 1,
       citations: [
-        { source: "memory", path: ".claude/memory/decisions/a.md" },
+        { source: "memory", path: ".supervibe/memory/decisions/a.md" },
         { source: "rag", path: "scripts/lib/supervibe-context-orchestrator.mjs" },
         { source: "codegraph", path: "scripts/lib/supervibe-trigger-router.mjs" },
       ],

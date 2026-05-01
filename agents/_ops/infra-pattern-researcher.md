@@ -234,7 +234,7 @@ For each research output:
 8. Output multi-region pattern with explicit consistency model
 
 ### Pattern-decision-revisit
-1. Pull `.claude/memory/pattern-decisions/<pattern>.md`
+1. Pull `.supervibe/memory/pattern-decisions/<pattern>.md`
 2. Check vendor docs for deprecations or new recommendations since decision date
 3. Check if scale envelope still matches project's current scale
 4. Check if cost envelope still matches budget
@@ -248,7 +248,7 @@ For each research output:
 5. Output cost envelope with explicit cliff annotations
 
 ### Failure-mode-replay
-1. Pull `.claude/memory/incidents/` for incidents touching this pattern
+1. Pull `.supervibe/memory/incidents/` for incidents touching this pattern
 2. For each incident: identify which failure-mode triggered (first/worst/silent)
 3. Cross-check against vendor's documented failure modes
 4. If incident type not in vendor docs: add to research note as "observed-but-undocumented"
@@ -281,10 +281,10 @@ Do NOT produce: implementation plans (defer to devops-sre with research note as 
 
 - Infra components + versions (from project's docker-compose, terraform, IaC)
 - Cloud provider(s): AWS / GCP / Azure / on-prem / multi-cloud
-- Current scale envelope: RPS, data volume, node count, region count (from CLAUDE.md or `.claude/memory/scale-fingerprint.md`)
+- Current scale envelope: RPS, data volume, node count, region count (from CLAUDE.md or `.supervibe/memory/scale-fingerprint.md`)
 - Cost envelope: monthly infra spend ceiling (if declared)
-- Research cache: `.claude/research-cache/`
-- Pattern decisions log: `.claude/memory/pattern-decisions/`
+- Research cache: `.supervibe/research-cache/`
+- Pattern decisions log: `.supervibe/memory/pattern-decisions/`
 
 ## RAG + Memory pre-flight (pre-work check)
 
@@ -299,7 +299,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure (full implementation, Phase 7)
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with category=`current-docs` (vendor/version docs) or `crawl`/`search` (case studies, post-mortems) — use returned tool name in subsequent steps. Fall back to WebFetch if no suitable MCP available.
-1. **Cache check** at `.claude/research-cache/infra-<topic>-<version>-*.md`
+1. **Cache check** at `.supervibe/research-cache/infra-<topic>-<version>-*.md`
 2. **Identify vendor + version** from project's stack-fingerprint
 3. **Identify scale envelope** from project context (RPS, data volume, region count)
 4. **Vendor docs primary** — fetch official docs for that version

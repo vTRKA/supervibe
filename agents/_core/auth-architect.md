@@ -214,7 +214,7 @@ For each auth review:
 2. Revoke entire token family for affected user(s)
 3. Force re-auth + MFA
 4. Add detection (refresh-reuse alert)
-5. Postmortem to `.claude/memory/incidents/`
+5. Postmortem to `.supervibe/memory/incidents/`
 
 ## Out of scope
 
@@ -254,7 +254,7 @@ Do NOT implement audit logging (defer to observability-architect).
 - Refresh token storage: server-side rotation table / cookie / mobile keychain
 - MFA mechanisms: TOTP / WebAuthn / SMS / email magic link / backup codes
 - Recovery flow: support reset / email link / admin override — read end-to-end
-- Past auth incidents: `.claude/memory/incidents/` — credential stuffing, token theft, IDP outage
+- Past auth incidents: `.supervibe/memory/incidents/` — credential stuffing, token theft, IDP outage
 - Compliance scope: GDPR, HIPAA, SOC2, PCI DSS — affects logging and retention
 
 ## Domain knowledge
@@ -389,7 +389,7 @@ SUGGESTION:
 - MFA reset: identity verify (KBA + manual review) — strength matches primary
 
 ## ADR
-- Recorded: `.claude/memory/decisions/<date>-<topic>.md` (if applicable)
+- Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

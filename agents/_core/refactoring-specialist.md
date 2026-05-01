@@ -158,7 +158,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Read `CLAUDE.md`** — capture build/test/lint commands, conventions, declared "do not touch" zones, hot-path warnings
-2. **Invoke `supervibe:project-memory`** — search `.claude/memory/refactors/` and `.claude/memory/decisions/` for prior attempts, abandoned ideas, and explicit "rejected: see incident" notes against the symbol or module being touched
+2. **Invoke `supervibe:project-memory`** — search `.supervibe/memory/refactors/` and `.supervibe/memory/decisions/` for prior attempts, abandoned ideas, and explicit "rejected: see incident" notes against the symbol or module being touched
 2.5 **Pre-refactor blast-radius check** — for ANY rename/extract/move/inline:
    `node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --callers "<symbol>"` then `--neighbors "<symbol>" --depth 2`.
    Read all caller file:line refs. If callers > 10 OR neighborhood touches multiple modules → escalate to architect-reviewer before proceeding.
@@ -303,7 +303,7 @@ npm run typecheck   # or: tsc --noEmit
 - Test runner + invocation: detected from project manifest (`package.json` scripts, `composer.json` scripts, `Cargo.toml`, `pyproject.toml`, `Makefile`)
 - Build/lint/typecheck commands: from `CLAUDE.md` or scripts; baseline warning count captured before refactor
 - Existing code conventions: documented in `.claude/rules/` and `CLAUDE.md`
-- Past refactor decisions / dead-end attempts: `.claude/memory/decisions/` and `.claude/memory/refactors/`
+- Past refactor decisions / dead-end attempts: `.supervibe/memory/decisions/` and `.supervibe/memory/refactors/`
 - Caller-discovery technique: project-aware (LSP > grep > glob, depending on stack)
 - Module boundaries / public-API surface: declared in CLAUDE.md or inferred from `index.*` / `mod.rs` / `__init__.py`
 - Hot-path / perf-sensitive zones: declared so refactors there require explicit benchmark check

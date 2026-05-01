@@ -27,7 +27,7 @@ Concrete consequence of NOT following: shipped half-done features, plans skippin
   - research-output (after research agents)
   - brandbook (after brandbook skill)
 
-This rule does NOT apply when: an explicit override reason was recorded in `.claude/confidence-log.jsonl`.
+This rule does NOT apply when: an explicit override reason was recorded in `.supervibe/confidence-log.jsonl`.
 
 ## What to do
 
@@ -35,7 +35,7 @@ This rule does NOT apply when: an explicit override reason was recorded in `.cla
 2. If score <9 → loop back, identify gaps, address, re-score
 3. If a confidence gate offers an override path and the user explicitly accepts:
    - Reason ≥10 chars REQUIRED
-   - Entry appended to `.claude/confidence-log.jsonl`
+   - Entry appended to `.supervibe/confidence-log.jsonl`
    - User-confirmed flag set
 4. If override rate >5% over last 100 entries → `supervibe:audit` flags systemic issue
 
@@ -82,7 +82,7 @@ Why this is good: override recorded with reason ≥10 chars, traceable in audit.
 - `supervibe:confidence-scoring` skill performs the scoring
 - Skills with `gate-on-exit: true` cannot exit without invoking it
 - Internal override logging requires reason ≥10 chars
-- `.claude/confidence-log.jsonl` is append-only (rule itself + git commits)
+- `.supervibe/confidence-log.jsonl` is append-only (rule itself + git commits)
 - `supervibe:audit` periodically checks override rate
 
 ## Related rules

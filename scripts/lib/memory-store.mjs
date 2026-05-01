@@ -7,7 +7,7 @@
 //   entries_fts (FTS5 virtual table for content+summary+tags_csv)
 //   tags(tag, entry_id) — for tag-overlap fast lookup
 //
-// Index file: .claude/memory/memory.db  (gitignored)
+// Index file: .supervibe/memory/memory.db  (gitignored)
 
 import { mkdir, readdir, readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -22,7 +22,7 @@ const CATEGORIES = ['decisions', 'patterns', 'incidents', 'learnings', 'solution
 export class MemoryStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
-    this.memoryDir = join(projectRoot, '.claude', 'memory');
+    this.memoryDir = join(projectRoot, '.supervibe', 'memory');
     this.dbPath = join(this.memoryDir, 'memory.db');
     this.db = null;
     // useEmbeddings: enable semantic search (downloads ~25MB model first time)

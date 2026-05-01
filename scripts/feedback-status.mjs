@@ -27,8 +27,8 @@ Usage:
 }
 
 const projectRoot = values.project;
-const queuePath = join(projectRoot, '.claude', 'memory', 'feedback-queue.jsonl');
-const statusPath = join(projectRoot, '.claude', 'memory', 'feedback-status.json');
+const queuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
+const statusPath = join(projectRoot, '.supervibe', 'memory', 'feedback-status.json');
 
 if (values.resolve) {
   const row = await markFeedbackStatus(statusPath, values.resolve, 'resolved', { resolution: values.resolution || null });

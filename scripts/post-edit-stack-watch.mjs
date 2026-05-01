@@ -40,13 +40,13 @@ for (const raw of editedPaths) {
   if (MANIFESTS.has(name)) {
     reminders.push(`Discovered: edit to ${name}. If a major dependency was added/upgraded, recommend /supervibe-adapt to update agent context.`);
   }
-  if (fwdPath.includes('/.claude/rules/') && path.endsWith('.md')) {
-    reminders.push(`Discovered: edit to .claude/rules/. Recommend rules-curator review + /supervibe-sync-rules if multi-project setup.`);
+  if (/\/\.(claude|codex|cursor|gemini|opencode)\/rules\//.test(fwdPath) && path.endsWith('.md')) {
+    reminders.push(`Discovered: edit to host adapter rules. Recommend rules-curator review + /supervibe-sync-rules if multi-project setup.`);
   }
   if (SUPPORTED_CODE_EXT.test(path) && existsSync(path)) {
     sourceFiles.push(path);
   }
-  if (fwdPath.includes('/.claude/memory/') && path.endsWith('.md')) {
+  if (fwdPath.includes('/.supervibe/memory/') && path.endsWith('.md')) {
     memoryFiles.push(path);
   }
 }
@@ -59,7 +59,7 @@ if (reminders.length > 0 && !SILENT) {
 // Open each store ONCE for the batch (cheap), update sequentially, close.
 async function reindexCode() {
   if (NO_INDEX || sourceFiles.length === 0) return 0;
-  const dbPath = resolve(PROJECT_ROOT, '.claude', 'memory', 'code.db');
+  const dbPath = resolve(PROJECT_ROOT, '.supervibe', 'memory', 'code.db');
   if (!existsSync(dbPath)) return 0;
 
   let store;
@@ -85,7 +85,7 @@ async function reindexCode() {
 
 async function reindexMemory() {
   if (NO_INDEX || memoryFiles.length === 0) return 0;
-  const dbPath = resolve(PROJECT_ROOT, '.claude', 'memory', 'memory.db');
+  const dbPath = resolve(PROJECT_ROOT, '.supervibe', 'memory', 'memory.db');
   if (!existsSync(dbPath)) return 0;
 
   let store;

@@ -60,7 +60,7 @@ The same six core principles from `CLAUDE.md` apply — these override Gemini de
 1. **Persona over generic agents** — every agent is a specialist with explicit decision tree.
 2. **Evidence over assertion** — cite file:line, test output, graph evidence, or memory entry.
 3. **Confidence-gated delivery** — score against rubric, gate at ≥9.
-4. **Memory beats re-derivation** — find prior decisions in `.claude/memory/decisions/` before re-deriving.
+4. **Memory beats re-derivation** — find prior decisions in `.supervibe/memory/decisions/` before re-deriving.
 5. **Graph before refactor** — `--callers` evidence before any rename / move / extract.
 6. **Anti-half-finished** — no commented-out code, no orphan TODOs, no half-applied refactors.
 

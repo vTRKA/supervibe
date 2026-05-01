@@ -8,8 +8,8 @@ const REQUIRED_FIELDS = [
 const MIN_REASON_LENGTH = 10;
 
 /**
- * Append a single override entry to .claude/confidence-log.jsonl in the given project root.
- * Creates .claude/ and the log file if they don't exist.
+ * Append a single override entry to .supervibe/confidence-log.jsonl in the given project root.
+ * Creates .supervibe/ and the log file if they don't exist.
  */
 export async function appendOverrideEntry(projectRoot, entry) {
   const missing = REQUIRED_FIELDS.filter(f => !(f in entry));
@@ -20,20 +20,20 @@ export async function appendOverrideEntry(projectRoot, entry) {
     throw new Error(`reason must be at least ${MIN_REASON_LENGTH} characters`);
   }
 
-  const claudeDir = join(projectRoot, '.claude');
-  await mkdir(claudeDir, { recursive: true });
+  const supervibeDir = join(projectRoot, '.supervibe');
+  await mkdir(supervibeDir, { recursive: true });
 
   const fullEntry = {
     timestamp: new Date().toISOString(),
     ...entry
   };
 
-  const logPath = join(claudeDir, 'confidence-log.jsonl');
+  const logPath = join(supervibeDir, 'confidence-log.jsonl');
   await appendFile(logPath, JSON.stringify(fullEntry) + '\n', 'utf8');
 }
 
 export async function readOverrideLog(projectRoot) {
-  const logPath = join(projectRoot, '.claude', 'confidence-log.jsonl');
+  const logPath = join(projectRoot, '.supervibe', 'confidence-log.jsonl');
   try {
     await access(logPath);
   } catch {

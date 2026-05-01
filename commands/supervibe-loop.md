@@ -30,7 +30,7 @@ Primary path:
 /supervibe-loop --epic SV-123 --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
 /supervibe-loop --worktree-existing .worktrees/loop-upgrade --resume-session session-loop-upgrade
 /supervibe-loop --worktree-status
-/supervibe-loop --watch --file .claude/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --quickstart
 /supervibe-loop --onboard
 /supervibe-loop --completion bash
@@ -38,14 +38,14 @@ Primary path:
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
 /supervibe-loop --import-tasks docs/plans/example.md --dry-run
 /supervibe-loop --import-tasks tasks.md --interactive
-/supervibe-loop --priority --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .claude/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --priority --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --request "validate integrations" --notify terminal,inbox
-/supervibe-loop --export-sync-bundle .claude/memory/loops/<run-id> --out .claude/memory/bundles/<run-id>-sync
-/supervibe-loop --import-sync-bundle .claude/memory/bundles/<run-id>-sync --dry-run
+/supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
+/supervibe-loop --import-sync-bundle .supervibe/memory/bundles/<run-id>-sync --dry-run
 /supervibe-loop --eval
 /supervibe-loop --eval --case plan-review-loop
-/supervibe-loop --eval --replay .claude/memory/loops/example-run
+/supervibe-loop --eval --replay .supervibe/memory/loops/example-run
 /supervibe-loop --eval-live --case worktree-run --max-runtime-minutes 30 --max-iterations 3 --provider-budget 1
 /supervibe-loop --policy-profile guided --request "validate integrations"
 /supervibe-loop --approval-receipts
@@ -56,11 +56,11 @@ Primary path:
 /supervibe-loop --anchor-doctor --fix-derived
 /supervibe-loop --summarize-changes --task task-123 --file src/example.ts --summary "Changed parser"
 /supervibe-loop --plan-waves docs/plans/example.md
-/supervibe-loop --assign-ready --explain --file .claude/memory/loops/<run-id>/state.json
+/supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --setup-worker-presets
 /supervibe-loop --status --epic example-epic
-/supervibe-loop --resume .claude/memory/loops/<run-id>/state.json
-/supervibe-loop --status --file .claude/memory/loops/<run-id>/state.json
+/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json
+/supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --stop <run-id>
 ```
 
@@ -69,18 +69,18 @@ Advanced diagnostics:
 ```bash
 /supervibe-loop --readiness --plan docs/plans/payment-integration.md
 /supervibe-loop --atomize-plan docs/plans/payment-integration.md --preview
-/supervibe-loop --graph --file .claude/memory/loops/<run-id>/state.json --format text
-/supervibe-loop graph --file .claude/memory/loops/<run-id>/state.json --format mermaid
-/supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json
-/supervibe-loop doctor --file .claude/memory/loops/<run-id>/state.json --fix
-/supervibe-loop prime --file .claude/memory/loops/<run-id>/state.json
-/supervibe-loop export --file .claude/memory/loops/<run-id>/state.json --out .claude/memory/bundles/<run-id>
-/supervibe-loop import --file .claude/memory/bundles/<run-id> --out .
-/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-loop --tracker-sync-pull --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-loop --tracker-doctor --file .claude/memory/work-items/<epic-id>/graph.json --fix
-/supervibe-loop --export-sync-bundle .claude/memory/loops/<run-id> --out .claude/memory/bundles/<run-id>-sync
-/supervibe-loop --import-sync-bundle .claude/memory/bundles/<run-id>-sync --dry-run
+/supervibe-loop --graph --file .supervibe/memory/loops/<run-id>/state.json --format text
+/supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format mermaid
+/supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json --fix
+/supervibe-loop prime --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-loop export --file .supervibe/memory/loops/<run-id>/state.json --out .supervibe/memory/bundles/<run-id>
+/supervibe-loop import --file .supervibe/memory/bundles/<run-id> --out .
+/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-sync-pull --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-doctor --file .supervibe/memory/work-items/<epic-id>/graph.json --fix
+/supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
+/supervibe-loop --import-sync-bundle .supervibe/memory/bundles/<run-id>-sync --dry-run
 /supervibe-loop --eval --case plan-review-loop --out .supervibe/audits/autonomous-loop-evals/latest-report.json
 ```
 
@@ -100,14 +100,14 @@ stop after a code-only slice.
 Durable tracker sync:
 
 ```bash
-/supervibe-loop --tracker-sync-push --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-loop --tracker-sync-pull --file .claude/memory/work-items/<epic-id>/graph.json
-/supervibe-loop --tracker-doctor --file .claude/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-sync-pull --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-doctor --file .supervibe/memory/work-items/<epic-id>/graph.json
 ```
 
 The native graph remains canonical. External CLI or MCP trackers are optional;
 if no adapter is available, sync falls back to the native JSON graph and writes
-a reversible mapping at `.claude/memory/loops/task-tracker-map.json`.
+a reversible mapping at `.supervibe/memory/loops/task-tracker-map.json`.
 
 External ecosystem integration stays provider-safe by default. `--notify` can
 route completion and failure events to terminal and delegated inbox targets.
@@ -200,7 +200,7 @@ Use the current-session command when the user is working alone in one checkout
 and does not want isolation. Worktree-backed runs are opt-in for parallel
 sessions, risky changes, or explicit isolation.
 
-Worktree-backed runs use an active session registry at `.claude/memory/worktree-sessions/registry.json`. Each session records `sessionId`, `epicId`, `branchName`, `worktreePath`, `baselineCommit`, `baselineChecks`, `activeAgentIds`, `status`, `cleanupPolicy`, heartbeat, stop, resume, and cleanup commands. Cleanup is blocked until the worktree is clean and archived.
+Worktree-backed runs use an active session registry at `.supervibe/memory/worktree-sessions/registry.json`. Each session records `sessionId`, `epicId`, `branchName`, `worktreePath`, `baselineCommit`, `baselineChecks`, `activeAgentIds`, `status`, `cleanupPolicy`, heartbeat, stop, resume, and cleanup commands. Cleanup is blocked until the worktree is clean and archived.
 Parallel sessions on one epic must declare task and write-set ownership. The
 registry write path is lock-protected and atomically replaces the registry file,
 so separate CLI processes do not lose each other's claims. `--worktree-status`
@@ -231,7 +231,7 @@ Execution modes:
   state, network/MCP approval state, and next safe action.
 - Dispatch specialist chains by task type.
 - Keep structured handoffs, scores, audit events, side-effect ledger entries,
-  and a final report under `.claude/memory/loops/<run-id>/`.
+  and a final report under `.supervibe/memory/loops/<run-id>/`.
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
   so the worker and reviewer see the current project/epic/task phase, claim,
   gate, and next action before acting.
@@ -269,15 +269,15 @@ Execution modes:
 npm run supervibe:loop -- --dry-run --request "validate integrations"
 npm run supervibe:loop -- --happy-path --plan docs/plans/example.md
 npm run supervibe:loop -- --dry-run --request "validate integrations" --notify terminal,inbox
-npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .claude/memory/work-items/<epic-id>/graph.json
+npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
 npm run supervibe:loop -- --create-work-item --title "Fix checkout bug" --template bug --dry-run
 npm run supervibe:loop -- --atomize-plan docs/plans/example.md --preview
 npm run supervibe:eval -- --case plan-review-loop
-npm run supervibe:loop -- graph --file .claude/memory/loops/<run-id>/state.json --format dot
-npm run supervibe:loop -- doctor --file .claude/memory/loops/<run-id>/state.json
-npm run supervibe:loop -- prime --file .claude/memory/loops/<run-id>/state.json
-npm run supervibe:loop -- --export-sync-bundle .claude/memory/loops/<run-id> --out .claude/memory/bundles/<run-id>-sync
-npm run supervibe:context-pack -- --file .claude/memory/work-items/<epic-id>/graph.json --item T1
-npm run supervibe:ui -- --file .claude/memory/work-items/<epic-id>/graph.json
+npm run supervibe:loop -- graph --file .supervibe/memory/loops/<run-id>/state.json --format dot
+npm run supervibe:loop -- doctor --file .supervibe/memory/loops/<run-id>/state.json
+npm run supervibe:loop -- prime --file .supervibe/memory/loops/<run-id>/state.json
+npm run supervibe:loop -- --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
+npm run supervibe:context-pack -- --file .supervibe/memory/work-items/<epic-id>/graph.json --item T1
+npm run supervibe:ui -- --file .supervibe/memory/work-items/<epic-id>/graph.json
 npm run supervibe:gc -- --all --dry-run
 ```

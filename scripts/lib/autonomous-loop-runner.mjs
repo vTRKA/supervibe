@@ -38,7 +38,7 @@ import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
   const runId = options.runId || createRunId(options.request || options.plan || nowIso());
-  const loopDir = join(rootDir, ".claude", "memory", "loops", runId);
+  const loopDir = join(rootDir, ".supervibe", "memory", "loops", runId);
   await mkdir(loopDir, { recursive: true });
   const executionMode = normalizeExecutionMode(options.executionMode || (options.dryRun ? "dry-run" : "dry-run"));
   const commitPerTask = Boolean(options.commitPerTask || options["commit-per-task"]);

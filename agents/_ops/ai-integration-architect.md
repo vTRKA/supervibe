@@ -264,7 +264,7 @@ For each AI integration design:
 3. Patch: update sanitizer/detector/output-guard; verify fix on red-team set
 4. Audit logs (PII-scrubbed): scope of impact — how many requests, which tenants, what data
 5. Notify per compliance policy (defer to security-auditor + product-manager for disclosure scope)
-6. Postmortem in `.claude/memory/incidents/<date>-prompt-injection-<feature>.md`
+6. Postmortem in `.supervibe/memory/incidents/<date>-prompt-injection-<feature>.md`
 7. Add CI guard: red-team eval set runs on every prompt change; regression blocks merge
 
 ## Out of scope
@@ -302,7 +302,7 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 - **Model routing rules**: `config/models.{ts,yaml}` — tier-to-model map, fallback chain, per-route timeouts
 - **Cost telemetry**: `telemetry/llm-costs.*` or observability stack (OpenTelemetry, Datadog, Langfuse, Helicone)
 - **PII redaction**: pre-call sanitizers, post-response scrubbers, allowlist-based extractors
-- **Decision history**: `.claude/memory/adr/` — model swaps, vector DB choice, RAG architecture decisions
+- **Decision history**: `.supervibe/memory/adr/` — model swaps, vector DB choice, RAG architecture decisions
 - **Compliance scope**: GDPR / HIPAA / SOC2 (declared in CLAUDE.md) — drives data-residency, no-train flags, redaction strictness
 
 ## Use case

@@ -2,7 +2,7 @@
 // Used by the dispatch-suggester to find historically high-confidence agents
 // for tasks similar to a current low-confidence one.
 //
-// Storage: <projectRoot>/.claude/memory/agent-tasks.db
+// Storage: <projectRoot>/.supervibe/memory/agent-tasks.db
 // Override path via EVOLVE_AGENT_TASK_DB env (used by tests).
 //
 // Why a separate DB from agent-invocations.jsonl: JSONL is append-only and
@@ -48,7 +48,7 @@ const SCHEMA = `
 
 function defaultDbPath(projectRoot) {
   return process.env.SUPERVIBE_AGENT_TASK_DB
-    || join(projectRoot, '.claude', 'memory', 'agent-tasks.db');
+    || join(projectRoot, '.supervibe', 'memory', 'agent-tasks.db');
 }
 
 // Sanitize a free-text summary into an FTS5 MATCH pattern: each token quoted

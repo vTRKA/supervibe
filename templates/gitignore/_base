@@ -13,7 +13,5 @@ Thumbs.db
 !.vscode/launch.json
 *.swp
 
-# Evolve runtime
-.claude/research-cache/
-.claude/effectiveness.jsonl
-# .claude/confidence-log.jsonl   # Track this — audit trail
+# Supervibe local state
+.supervibe/

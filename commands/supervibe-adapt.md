@@ -22,22 +22,22 @@ Pull upstream improvements from the installed plugin into the selected host adap
    - **Identical** → skip (no action).
    - **Upstream-only change** (project file unchanged from prior version baseline) → propose direct update.
    - **Both changed** (project has local customizations + upstream evolved) → propose 3-way merge with conflict markers, ask user to resolve manually.
-   - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.claude/_archive/`, or delete.
+   - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
 
 3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
 
 4. **Show summary.** Before any write, print a table:
    ```
    File                                  Upstream   Project   Action
-   .claude/agents/_core/code-reviewer.md upgrade-A  unchanged direct-update
-   .claude/agents/_design/copywriter.md  upgrade-B  edited    3-way merge
-   .claude/rules/no-half-finished.md     unchanged  unchanged skip
-   .claude/agents/_legacy/*.md           DELETED    present   ask user
+   <adapter>/agents/_core/code-reviewer.md upgrade-A  unchanged direct-update
+   <adapter>/agents/_design/copywriter.md  upgrade-B  edited    3-way merge
+   <adapter>/rules/no-half-finished.md     unchanged  unchanged skip
+   <adapter>/agents/_legacy/*.md           DELETED    present   ask user
    ```
 
 5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval.
 
-6. **Update version marker.** After all approved writes, refresh `.claude/memory/.evolve-version` to the current plugin version.
+6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.evolve-version` to the current plugin version.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
@@ -60,13 +60,13 @@ Host instruction content outside Supervibe managed blocks is user-owned. This
 includes `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, and
 `opencode.json`.
 
-- `.claude/memory/decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/` — your project data
-- `.claude/memory/*.db` — indexes (regenerated automatically)
+- `.supervibe/memory/decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/` — your project data
+- `.supervibe/memory/*.db` — indexes (regenerated automatically)
 - `CLAUDE.md` if it was hand-edited beyond the generated template — manual review required
 
 ## Related
 
 - `supervibe:adapt` skill — the underlying diff/merge methodology
 - `CHANGELOG.md` — see what upstream changed before adapting
-- `/supervibe-genesis` — for projects without `.claude/` yet
+- `/supervibe-genesis` — for projects without a Supervibe host adapter scaffold yet
 - `/supervibe-audit` — to discover drift in the first place

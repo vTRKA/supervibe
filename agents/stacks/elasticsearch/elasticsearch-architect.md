@@ -121,7 +121,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - **Shard allocation**: hot-warm-cold via `node.attr.data` and `index.routing.allocation.require.data`
 - **Snapshot repository**: S3 / GCS / Azure Blob; schedule via SLM (snapshot lifecycle management) or cron
 - **Search applications**: search-as-you-type, faceted search, log search (Kibana / OpenSearch Dashboards), analytics dashboards
-- **Audit history**: `.claude/memory/decisions/` — prior mapping/analyzer/sharding/ILM ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior mapping/analyzer/sharding/ILM ADRs
 
 ## Skills
 
@@ -217,7 +217,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Read CLAUDE.md** for declared distribution (Elasticsearch vs OpenSearch), version, cluster topology, fork-specific features in use, deploy cadence, and snapshot policy
-2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this index/area; check `.claude/memory/incidents/` for mapping explosions, hot-shard incidents, ILM gaps, reindex regressions
+2. **Search project memory** (`supervibe:project-memory`) for prior decisions on this index/area; check `.supervibe/memory/incidents/` for mapping explosions, hot-shard incidents, ILM gaps, reindex regressions
 3. **Inspect MCP availability** (`supervibe:mcp-discovery`) — confirm context7 for Elasticsearch/OpenSearch release notes and fork feature matrices
 4. **Read existing index templates / mappings / ILM policies** — understand current shape before proposing change; capture `GET <index>/_mapping`, `GET <index>/_settings`, `GET _ilm/policy/<policy>` baselines
 5. **Grep call sites** (`supervibe:code-search`) for every index/alias/field referenced; find every `match`, `term`, `aggs`, `script`, `painless` reference; rename without this is malpractice
@@ -343,7 +343,7 @@ Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the
 ## Verification
 
 For each mapping/index change:
-- ADR signed with confidence ≥9 and stored under `.claude/memory/decisions/`
+- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Mapping validated via `POST /_index_template/_simulate` (Elasticsearch) or equivalent (OpenSearch); resulting index settings inspected
 - Analyzer tested via `GET <index>/_analyze?text=<sample>`; tokens captured and compared against expectation; per-language samples used for multilingual indices
 - Shard sizing checked: `GET _cat/shards?v` shows shards within target band (30-50GB for logs, 10-30GB for search)
