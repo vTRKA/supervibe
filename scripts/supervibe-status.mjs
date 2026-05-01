@@ -392,7 +392,7 @@ async function main() {
     const s = store.stats();
     const health = store.getGrammarHealth();
     const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
-    const indexGate = evaluateIndexHealthGate(indexHealth);
+    const indexGate = evaluateIndexHealthGate(indexHealth, { strictGraph: args['strict-index-health'] });
     store.close();
 
     const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
@@ -407,8 +407,8 @@ async function main() {
     // Grammar health
     const broken = health.filter(h => !h.healthy);
     if (broken.length > 0) {
-      console.log(color(`✗ Grammar queries broken for: ${broken.map(b => b.language).join(', ')}`, 'red'));
-      console.log(color('  Files indexed but no symbols extracted — check grammars/queries/<lang>.scm', 'dim'));
+      console.log(color(`! Graph extraction degraded for: ${broken.map(b => b.language).join(', ')}`, 'yellow'));
+      console.log(color('  Files indexed; source RAG remains available. Check grammars/queries/<lang>.scm for graph repair.', 'dim'));
     } else if (health.length > 0) {
       console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
     }

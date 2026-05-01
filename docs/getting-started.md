@@ -70,17 +70,17 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.23
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.24
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.23
-xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.23"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.24
+xcopy /E /I "D:\ggsel projects\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.24"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.23
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.24
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.23" "D:\ggsel projects\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.24" "D:\ggsel projects\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.23/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.24/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -239,7 +239,10 @@ Beyond markdown memory, Supervibe indexes your source code for semantic search. 
 
 ```bash
 # One-time full index (after install or major refactor)
-node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs
+node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health
+
+# BM25-only source-readiness fallback when embeddings are the slow part
+node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 # Manual semantic search (optional — agents auto-invoke this)
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication is handled"
@@ -248,7 +251,9 @@ node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --query "where authentication i
 node $CLAUDE_PLUGIN_ROOT/scripts/search-code.mjs --context "auth login flow" --limit 8
 ```
 
-**What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `dist/`, `.next/`, `__pycache__/`, etc.
+**What gets indexed:** `.ts/.tsx/.js/.jsx/.py/.php/.rs/.go/.java/.rb/.vue/.svelte`. Skips `node_modules/`, `bower_components/`, `site-packages/`, `dist/`, `.next/`, `.nuxt/`, `.svelte-kit/`, `__pycache__/`, `Pods/`, `bin/`, `obj/`, and generated/cache folders.
+
+**Large projects:** the indexer has no fixed total timeout and prints progress every N files (`SUPERVIBE_INDEX_PROGRESS_EVERY` or `--progress-every`). Graph warnings do not fail default source RAG readiness when source coverage is healthy; `--strict-index-health` is for explicit graph audits.
 
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
@@ -385,7 +390,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.23/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.24/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -460,13 +465,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1 → v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.23
+  - Manifest auto-updated; ensure your install path has v2.0.24
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.23 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.24 dir, restart Claude Code
 
 ## Where to next
 

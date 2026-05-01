@@ -85,7 +85,7 @@ Match exact pack?
 11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
-13. Run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check.
+13. Run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health` from the target project root before the final `/supervibe-status` check. For large projects, execute the command with no fixed total timeout; progress lines are the liveness evidence. If embeddings are suspected to be the slow part, run `node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health --no-embeddings` as a BM25-only source-readiness fallback, then run the full index later. Graph warning output does not fail genesis when source RAG coverage is healthy; use `--strict-index-health` only for explicit graph audits.
 13a. Keep app builds separate from genesis success. Only run `npm run build` or equivalent when the user explicitly asks or the stack-pack marks it as a required post-genesis check. If it fails in existing project code, report `Project verification failed after genesis` with command, exit code, and repo-relative error paths only; do not include absolute local paths, project names, or call it unrelated without a captured pre-genesis baseline.
 14. If <9 → list gaps, ask user to confirm or remediate
 

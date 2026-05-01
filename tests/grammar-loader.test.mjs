@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { Query } from 'web-tree-sitter';
 import { getParser, getLanguage, listSupportedLanguages, isLanguageSupported, getBrokenLanguages } from '../scripts/lib/grammar-loader.mjs';
+import { compileQueryWithFallback } from '../scripts/lib/code-graph.mjs';
 
 test('grammar-loader: lists supported languages', () => {
   const langs = listSupportedLanguages();
@@ -63,4 +64,14 @@ test('grammar-loader: getBrokenLanguages reports state', () => {
   const state = getBrokenLanguages();
   assert.ok(Array.isArray(state.broken));
   assert.ok(Array.isArray(state.pointers));
+});
+
+test('code graph query compiler falls back when primary Python query is incompatible', async () => {
+  const result = await compileQueryWithFallback('python', '(definitely_not_a_python_node) @symbol.function', [
+    '(function_definition name: (identifier) @name) @symbol.function',
+  ]);
+
+  assert.ok(result.query);
+  assert.equal(result.degraded, true);
+  assert.match(result.reason, /primary query failed/);
 });

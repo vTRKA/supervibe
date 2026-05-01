@@ -57,6 +57,18 @@ test('CodeStore.indexFile: skips unchanged file (hash check)', async () => {
   assert.strictEqual(after.totalChunks, before.totalChunks);
 });
 
+test('CodeStore.indexFile: force refreshes unchanged file rows', async () => {
+  const absPath = join(sandbox, 'src', 'auth.ts');
+  await store.indexFile(absPath);
+  store.db.prepare("UPDATE code_chunks SET chunk_text = 'stale chunk' WHERE path = ? AND chunk_idx = 0").run('src/auth.ts');
+
+  const result = await store.indexFile(absPath, { force: true });
+  const row = store.db.prepare('SELECT chunk_text AS chunkText FROM code_chunks WHERE path = ? AND chunk_idx = 0').get('src/auth.ts');
+
+  assert.equal(result.indexed, true);
+  assert.notEqual(row.chunkText, 'stale chunk');
+});
+
 test('CodeStore.indexAll: walks directory and indexes supported files', async () => {
   await store.indexAll(sandbox);
   const stats = store.stats();

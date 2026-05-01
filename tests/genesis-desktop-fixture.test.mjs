@@ -88,6 +88,61 @@ test("add-ons are explicit and explain why they are recommended", async () => {
   });
 });
 
+test("genesis fingerprint detects polyglot web and API stacks", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-polyglot-"));
+  try {
+    await writeFile(join(rootDir, "package.json"), JSON.stringify({
+      dependencies: {
+        next: "^15.0.0",
+        react: "^19.0.0",
+        "react-dom": "^19.0.0",
+        "@apollo/client": "^3.0.0",
+        pg: "^8.0.0",
+        redis: "^4.0.0",
+      },
+      devDependencies: {
+        tailwindcss: "^4.0.0",
+      },
+    }, null, 2));
+    await writeFile(join(rootDir, "pyproject.toml"), [
+      "[project]",
+      "dependencies = [",
+      "  \"django>=5\",",
+      "  \"fastapi>=0.115\",",
+      "  \"sqlalchemy\",",
+      "  \"psycopg\",",
+      "  \"celery\",",
+      "  \"redis\",",
+      "]",
+    ].join("\n"));
+    await writeFile(join(rootDir, "docker-compose.yml"), [
+      "services:",
+      "  postgres:",
+      "    image: postgres:16",
+      "  redis:",
+      "    image: redis:7",
+    ].join("\n"));
+
+    const fingerprint = discoverGenesisStackFingerprint({ rootDir });
+    for (const tag of ["nextjs", "react", "python", "django", "fastapi", "postgres", "redis", "graphql"]) {
+      assert.ok(fingerprint.tags.includes(tag), `missing stack tag: ${tag}`);
+    }
+
+    const recommendation = buildGenesisAgentRecommendation({
+      rootDir: process.cwd(),
+      fingerprint,
+      selectedProfile: "minimal",
+      addOns: [],
+    });
+    for (const agent of ["nextjs-developer", "django-developer", "fastapi-developer", "postgres-architect", "redis-architect", "graphql-schema-designer"]) {
+      assert.ok(recommendation.selectedAgents.includes(agent), `missing selected agent: ${agent}`);
+    }
+    assert.deepEqual(recommendation.missingSpecialists, []);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("full genesis dry run includes host adapter, context migration and agent profile", async () => {
   await withDesktopLikeFixture(async (rootDir) => {
     const report = buildGenesisDryRunReport({

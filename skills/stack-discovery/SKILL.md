@@ -69,6 +69,8 @@ Infra inferred from?
 ## Procedure
 
 1. Scan manifests (Step 0)
+   - Use the same broad evidence model as `scripts/lib/supervibe-agent-recommendation.mjs`: `package.json`, `composer.json`, `pyproject.toml`, `requirements.txt`, `go.mod`, `Cargo.toml`, `Gemfile`, `pom.xml`, Gradle files, `*.csproj`, `pubspec.yaml`, Chrome `manifest.json`, Docker Compose services, and migration/cache evidence.
+   - Skip dependency/cache/generated directories while scanning (`node_modules`, package stores, virtualenvs, `site-packages`, `Pods`, build output, framework caches).
 2. Build initial stack-fingerprint:
    ```yaml
    stack-fingerprint:
@@ -83,6 +85,7 @@ Infra inferred from?
 4. Confirm fingerprint with user
 5. Score with confidence-scoring (requirements-spec rubric)
 6. Hand off to `supervibe:genesis` (if scaffolding) or `supervibe:requirements-intake` (if working in existing project)
+   - Include selected stack tags so genesis can attach the matching frontend, backend, data, cache, mobile, extension, GraphQL, agent, skill, and rule groups without silent omissions.
 
 ## Output contract
 

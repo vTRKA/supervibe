@@ -193,6 +193,7 @@ export function evaluateIndexHealthGate(health = {}, {
   coverageThreshold = health.coverageThreshold || DEFAULT_COVERAGE_THRESHOLD,
   minSymbolCoverage = 0.2,
   minCrossResolvedRate = 0.05,
+  strictGraph = false,
 } = {}) {
   const failedGates = [];
   const warnings = [];
@@ -225,13 +226,15 @@ export function evaluateIndexHealthGate(health = {}, {
     const indexed = numberOrZero(value.indexed);
     const symbolCoverage = numberOrZero(value.symbolCoverage);
     if (indexed >= 5 && symbolCoverage < minSymbolCoverage) {
-      failedGates.push({
+      const item = {
         code: 'symbol-coverage',
         language,
         message: 'language symbol coverage below threshold',
         expected: minSymbolCoverage,
         actual: symbolCoverage,
-      });
+      };
+      if (strictGraph) failedGates.push(item);
+      else warnings.push(item);
     }
   }
   if ((health.symbolQuality?.minifiedTopSymbols || []).length > 0) {
@@ -257,6 +260,7 @@ export function evaluateIndexHealthGate(health = {}, {
     failedGates,
     warnings,
     repairCommand: 'node scripts/build-code-index.mjs --root . --force --health',
+    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --force --health --no-embeddings',
   };
 }
 
@@ -269,6 +273,7 @@ export function formatIndexHealthGate(gate = {}) {
     `FAILED: ${failed}`,
     `WARNINGS: ${warnings}`,
     `REPAIR: ${gate.repairCommand || 'node scripts/build-code-index.mjs --root . --force --health'}`,
+    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --force --health --no-embeddings'}`,
   ].join('\n');
 }
 

@@ -58,6 +58,29 @@ test('index health gate does not mark unhealthy index as ready', async () => {
   assert.match(gate.repairCommand, /build-code-index\.mjs --root \. --force --health/);
 });
 
+test('graph-only symbol degradation warns by default but fails strict graph gate', () => {
+  const health = buildIndexHealthSnapshot({
+    manifest: {
+      eligibleSourceFiles: 20,
+      indexedSourceFiles: 20,
+      languageCoverage: {
+        python: { eligible: 20, indexed: 20, filesWithSymbols: 0 },
+      },
+      generatedIndexedFiles: [],
+      staleRows: [],
+      crossResolvedEdges: { resolved: 0, total: 0 },
+    },
+  });
+
+  const defaultGate = evaluateIndexHealthGate(health);
+  assert.equal(defaultGate.ready, true, 'source RAG should be ready when only graph symbols are degraded');
+  assert.ok(defaultGate.warnings.some((item) => item.code === 'symbol-coverage'));
+
+  const strictGate = evaluateIndexHealthGate(health, { strictGraph: true });
+  assert.equal(strictGate.ready, false, 'strict graph mode should still fail on symbol degradation');
+  assert.ok(strictGate.failedGates.some((item) => item.code === 'symbol-coverage'));
+});
+
 test('mtime repair discovers new source files when code.db already exists', async () => {
   const root = join(tmpdir(), `supervibe-index-health-${Date.now()}`);
   await mkdir(join(root, 'src'), { recursive: true });

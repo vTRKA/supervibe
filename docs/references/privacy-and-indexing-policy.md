@@ -19,7 +19,13 @@ Diagnostics:
 ```bash
 node scripts/supervibe-status.mjs --index-policy-diagnostics
 node scripts/build-code-index.mjs --root . --explain-policy
+node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 ```
 
 Genesis and audit output should explain skipped classes by path and reason
 without printing secret contents.
+
+Graph extraction warnings are reported separately from source RAG readiness.
+Healthy source coverage can pass the default index gate even when a language
+grammar query needs repair; strict graph checks are opt-in with
+`--strict-index-health`.

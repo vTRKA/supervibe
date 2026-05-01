@@ -6,6 +6,8 @@
 //   default              full project walk
 //   --since=<git-rev>    lazy mode — only files changed since given git rev (e.g. HEAD~50)
 //   --no-embeddings      BM25-only (skip semantic embeddings)
+// Runtime:
+//   no total timeout — large projects run until complete; progress is logged periodically
 
 import { CodeStore } from './lib/code-store.mjs';
 import { collectIndexHealthFromStore, formatIndexHealth } from './lib/supervibe-index-health.mjs';
@@ -20,6 +22,34 @@ import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
 const PROJECT_ROOT = process.cwd();
+const DEFAULT_INDEX_PROGRESS_EVERY = 25;
+
+function positiveInt(value, fallback) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? Math.trunc(num) : fallback;
+}
+
+function createProgressLogger({ progressEvery = DEFAULT_INDEX_PROGRESS_EVERY } = {}) {
+  let lastLogged = 0;
+  return (event = {}) => {
+    if (event.phase === 'discovered') {
+      console.log(`[supervibe:index] discovered ${event.total || 0} eligible source file(s); no total timeout; progress every ${progressEvery} file(s)`);
+      return;
+    }
+    if (event.phase === 'file') {
+      const current = Number(event.current || 0);
+      const total = Number(event.total || 0);
+      if (current === total || current - lastLogged >= progressEvery) {
+        lastLogged = current;
+        console.log(`[supervibe:index] ${current}/${total} files, indexed=${event.indexed || 0}, skipped=${event.skipped || 0}, errors=${event.errors || 0}, last=${event.path || 'unknown'}`);
+      }
+      return;
+    }
+    if (event.phase === 'resolving-edges') {
+      console.log('[supervibe:index] resolving graph edges');
+    }
+  };
+}
 
 async function main() {
   const { values } = parseArgs({
@@ -32,13 +62,16 @@ async function main() {
       health: { type: 'boolean', default: false },
       'explain-policy': { type: 'boolean', default: false },
       'watcher-diagnostics': { type: 'boolean', default: false },
-      'repo-map': { type: 'boolean', default: false }
+      'repo-map': { type: 'boolean', default: false },
+      'progress-every': { type: 'string', default: '' }
     },
     strict: false
   });
 
   const noEmbeddings = values['no-embeddings'];
   const rootDir = values.root ? resolve(PROJECT_ROOT, values.root) : PROJECT_ROOT;
+  const progressEvery = positiveInt(values['progress-every'] || process.env.SUPERVIBE_INDEX_PROGRESS_EVERY, DEFAULT_INDEX_PROGRESS_EVERY);
+  const onProgress = createProgressLogger({ progressEvery });
 
   if (values['watcher-diagnostics']) {
     console.log(formatWatcherDiagnostics(readWatcherDiagnostics({ rootDir })));
@@ -84,7 +117,7 @@ async function main() {
     }
   }
 
-  console.log(`Indexing code in ${rootDir}${noEmbeddings ? ' (BM25 only, embeddings disabled)' : ''}${values.force ? ' (force full discovery)' : ''}...`);
+  console.log(`Indexing code in ${rootDir}${noEmbeddings ? ' (BM25 only, embeddings disabled)' : ''}${values.force ? ' (force refresh)' : ''}...`);
   console.log(`Workspace namespace: ${createWorkspaceNamespace({ projectRoot: rootDir }).workspaceId}`);
   const t0 = Date.now();
 
@@ -102,8 +135,8 @@ async function main() {
   }
 
   const counts = filesToIndex
-    ? await store.indexFiles(filesToIndex)
-    : await store.indexAll(rootDir);
+    ? await store.indexFiles(filesToIndex, { onProgress, force: values.force })
+    : await store.indexAll(rootDir, { onProgress, force: values.force });
 
   const stats = store.stats();
   const health = values.health ? await collectIndexHealthFromStore(store, { rootDir }) : null;

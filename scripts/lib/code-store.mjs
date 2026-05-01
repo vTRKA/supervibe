@@ -306,7 +306,7 @@ export class CodeStore {
   }
 
   /** Index a single file. Skips if hash unchanged (idempotent). */
-  async indexFile(absPath) {
+  async indexFile(absPath, { force = false } = {}) {
     const policy = classifyIndexPath(absPath, { rootDir: this.projectRoot });
     if (!policy.included) return { skipped: policy.reason };
     const lang = policy.language || detectLanguage(absPath);
@@ -323,13 +323,13 @@ export class CodeStore {
 
     const hash = await hashFile(absPath);
     const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
-    if (existing && existing.content_hash === hash) {
+    if (existing && existing.content_hash === hash && !force) {
       // Hash unchanged, but extractor/query semantics may have changed across
       // plugin versions. Rebuild only graph rows while preserving expensive RAG
       // chunks and embeddings.
       if (Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
         try {
-          const result = await this.indexGraphFor(absPath, content);
+        const result = await this.indexGraphFor(absPath, content);
           this.markGraphCurrent(relPath);
           return { skipped: 'unchanged-graph-reindexed', ...result };
         } catch (err) {
@@ -532,22 +532,34 @@ export class CodeStore {
   }
 
   /** Walk project directory, index all supported files. */
-  async indexAll(rootDir) {
+  async indexAll(rootDir, { onProgress = null, force = false } = {}) {
     const inventory = await discoverSourceFiles(rootDir);
     const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0 };
-    for (const file of inventory.files) {
+    onProgress?.({ phase: 'discovered', total: inventory.files.length });
+    for (const [index, file] of inventory.files.entries()) {
       try {
-        const result = await this.indexFile(file.absPath);
+      const result = await this.indexFile(file.absPath, { force });
         if (result.indexed) counts.indexed++;
         else counts.skipped++;
       } catch {
         counts.errors++;
       }
+      onProgress?.({
+        phase: 'file',
+        current: index + 1,
+        total: inventory.files.length,
+        path: file.relPath,
+        indexed: counts.indexed,
+        skipped: counts.skipped,
+        errors: counts.errors,
+      });
     }
     const prune = await this.pruneToInventory(inventory, rootDir);
     counts.pruned = prune.removed;
+    onProgress?.({ phase: 'resolving-edges', total: inventory.files.length });
     // Phase D: resolve cross-file edges after full pass
     counts.edgesResolved = this.resolveAllEdges();
+    onProgress?.({ phase: 'done', total: inventory.files.length, ...counts });
     return counts;
   }
 
@@ -556,15 +568,27 @@ export class CodeStore {
   }
 
   /** Index a specific list of absolute file paths (lazy mode). */
-  async indexFiles(absPaths) {
+  async indexFiles(absPaths, { onProgress = null, force = false } = {}) {
     const counts = { indexed: 0, skipped: 0, errors: 0 };
-    for (const absPath of absPaths) {
+    onProgress?.({ phase: 'discovered', total: absPaths.length });
+    for (const [index, absPath] of absPaths.entries()) {
       try {
-        const r = await this.indexFile(absPath);
+        const r = await this.indexFile(absPath, { force });
         if (r.indexed) counts.indexed++; else counts.skipped++;
       } catch { counts.errors++; }
+      onProgress?.({
+        phase: 'file',
+        current: index + 1,
+        total: absPaths.length,
+        path: this.toRel(absPath),
+        indexed: counts.indexed,
+        skipped: counts.skipped,
+        errors: counts.errors,
+      });
     }
+    onProgress?.({ phase: 'resolving-edges', total: absPaths.length });
     counts.edgesResolved = this.resolveAllEdges();
+    onProgress?.({ phase: 'done', total: absPaths.length, ...counts });
     return counts;
   }
 

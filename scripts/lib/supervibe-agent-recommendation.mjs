@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import { planContextMigration } from "./supervibe-context-migrator.mjs";
@@ -24,9 +24,31 @@ const ADD_ON_CHOICES = Object.freeze([
 const GROUPS = Object.freeze([
   group("core", "Core orchestration", ["supervibe-orchestrator", "repo-researcher", "code-reviewer", "quality-gate-reviewer", "root-cause-debugger"], ["minimal", "product-design", "full-stack", "research-heavy"]),
   group("react-frontend", "React frontend", ["react-implementer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["react", "vite", "tanstack-router", "tailwind"]),
+  group("nextjs-web", "Next.js web app", ["nextjs-architect", "nextjs-developer", "server-actions-specialist"], ["minimal", "product-design", "full-stack"], ["nextjs"]),
+  group("vue-web", "Vue frontend", ["vue-implementer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["vue"]),
+  group("nuxt-web", "Nuxt web app", ["nuxt-architect", "nuxt-developer"], ["minimal", "product-design", "full-stack"], ["nuxt"]),
+  group("sveltekit-web", "SvelteKit web app", ["sveltekit-developer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["sveltekit"]),
+  group("chrome-extension", "Chrome extension", ["chrome-extension-architect", "chrome-extension-developer", "extension-ui-designer"], ["minimal", "product-design", "full-stack"], ["chrome-extension"]),
+  group("django-backend", "Django backend", ["django-architect", "django-developer"], ["minimal", "full-stack"], ["django"]),
+  group("fastapi-backend", "FastAPI backend", ["fastapi-architect", "fastapi-developer"], ["minimal", "full-stack"], ["fastapi"]),
+  group("express-backend", "Express backend", ["express-developer", "api-designer"], ["minimal", "full-stack"], ["express"]),
+  group("nestjs-backend", "NestJS backend", ["nestjs-developer", "api-designer"], ["minimal", "full-stack"], ["nestjs"]),
+  group("laravel-backend", "Laravel backend", ["laravel-architect", "laravel-developer", "eloquent-modeler"], ["minimal", "full-stack"], ["laravel"]),
+  group("rails-backend", "Rails backend", ["rails-architect", "rails-developer"], ["minimal", "full-stack"], ["rails"]),
+  group("go-backend", "Go backend", ["go-service-developer", "api-designer"], ["minimal", "full-stack"], ["go"]),
+  group("spring-backend", "Spring backend", ["spring-architect", "spring-developer"], ["minimal", "full-stack"], ["spring"]),
+  group("aspnet-backend", "ASP.NET backend", ["aspnet-developer", "api-designer"], ["minimal", "full-stack"], ["aspnet"]),
   group("tauri-desktop", "Tauri desktop", ["tauri-ui-designer", "tauri-rust-engineer"], ["minimal", "full-stack"], ["tauri"]),
   group("rust-backend", "Rust backend and IPC", ["tauri-rust-engineer", "ipc-contract-reviewer", "api-contract-reviewer"], ["minimal", "full-stack"], ["rust", "tauri"]),
-  group("data-postgres", "Postgres data layer", ["data-modeler", "db-reviewer"], ["full-stack"], ["postgres", "sqlx"]),
+  group("mobile-android", "Android app", ["android-developer", "mobile-ui-designer"], ["minimal", "product-design", "full-stack"], ["android"]),
+  group("mobile-ios", "iOS app", ["ios-developer", "mobile-ui-designer"], ["minimal", "product-design", "full-stack"], ["ios"]),
+  group("mobile-flutter", "Flutter app", ["flutter-developer", "mobile-ui-designer"], ["minimal", "product-design", "full-stack"], ["flutter"]),
+  group("data-postgres", "Postgres data layer", ["postgres-architect", "data-modeler", "db-reviewer"], ["minimal", "full-stack"], ["postgres", "sqlx"]),
+  group("data-mysql", "MySQL data layer", ["mysql-architect", "data-modeler", "db-reviewer"], ["minimal", "full-stack"], ["mysql"]),
+  group("data-mongodb", "MongoDB data layer", ["mongo-architect", "data-modeler", "db-reviewer"], ["minimal", "full-stack"], ["mongodb"]),
+  group("cache-redis", "Redis cache and queues", ["redis-architect", "job-scheduler-architect"], ["minimal", "full-stack"], ["redis"]),
+  group("search-elasticsearch", "Elasticsearch search", ["elasticsearch-architect"], ["minimal", "full-stack"], ["elasticsearch"]),
+  group("graphql-api", "GraphQL API", ["graphql-schema-designer", "api-contract-reviewer"], ["minimal", "full-stack"], ["graphql"]),
   group("product-design", "Product and design", ["product-manager", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer"], ["product-design", "full-stack"]),
   group("ops-security", "Operations and security", ["security-auditor", "performance-reviewer", "dependency-reviewer"], ["full-stack"]),
   group("research", "Research-heavy support", ["repo-researcher", "security-researcher", "dependency-reviewer"], ["research-heavy"]),
@@ -60,33 +82,92 @@ const ADAPTATION_RULES = Object.freeze([
 export function discoverGenesisStackFingerprint({ rootDir = process.cwd() } = {}) {
   const facts = [];
   const tags = new Set();
-  const packagePath = join(rootDir, "package.json");
-  if (existsSync(packagePath)) {
-    const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
+
+  const addTag = (tag, source, name = tag) => {
+    if (!tag) return;
+    tags.add(tag);
+    facts.push({ source: toRel(rootDir, source), name, tag });
+  };
+
+  for (const packagePath of findManifestFiles(rootDir, "package.json")) {
+    const pkg = readJson(packagePath);
+    if (!pkg) continue;
     const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
     for (const name of Object.keys(deps)) {
       const normalized = normalizeStackTag(name);
-      if (normalized) {
-        tags.add(normalized);
-        facts.push({ source: "package.json", name, tag: normalized });
-      }
+      if (normalized) addTag(normalized, packagePath, name);
     }
+    detectPackageStack(deps, packagePath, addTag);
   }
-  const cargoPath = join(rootDir, "src-tauri", "Cargo.toml");
-  if (existsSync(cargoPath)) {
+
+  for (const cargoPath of findManifestFiles(rootDir, "Cargo.toml")) {
     const cargo = readFileSync(cargoPath, "utf8");
-    tags.add("rust");
-    facts.push({ source: "src-tauri/Cargo.toml", name: "cargo", tag: "rust" });
+    addTag("rust", cargoPath, "cargo");
     if (/^\s*tauri\s*=/m.test(cargo)) {
-      tags.add("tauri");
-      facts.push({ source: "src-tauri/Cargo.toml", name: "tauri", tag: "tauri" });
+      addTag("tauri", cargoPath, "tauri");
     }
     if (/sqlx|postgres/i.test(cargo)) {
-      tags.add("postgres");
-      tags.add("sqlx");
-      facts.push({ source: "src-tauri/Cargo.toml", name: "sqlx/postgres", tag: "postgres" });
+      addTag("postgres", cargoPath, "sqlx/postgres");
+      addTag("sqlx", cargoPath, "sqlx");
     }
   }
+
+  for (const pyprojectPath of findManifestFiles(rootDir, "pyproject.toml")) {
+    addTag("python", pyprojectPath, "pyproject.toml");
+    detectPythonStack(readFileSync(pyprojectPath, "utf8"), pyprojectPath, addTag);
+  }
+  for (const requirementsPath of findManifestFiles(rootDir, "requirements.txt")) {
+    addTag("python", requirementsPath, "requirements.txt");
+    detectPythonStack(readFileSync(requirementsPath, "utf8"), requirementsPath, addTag);
+  }
+  for (const composerPath of findManifestFiles(rootDir, "composer.json")) {
+    const composer = readJson(composerPath);
+    const deps = { ...(composer?.require || {}), ...(composer?.["require-dev"] || {}) };
+    addTag("php", composerPath, "composer");
+    detectComposerStack(deps, composerPath, addTag);
+  }
+  for (const goModPath of findManifestFiles(rootDir, "go.mod")) {
+    addTag("go", goModPath, "go.mod");
+    detectGoStack(readFileSync(goModPath, "utf8"), goModPath, addTag);
+  }
+  for (const gemfilePath of findManifestFiles(rootDir, "Gemfile")) {
+    addTag("ruby", gemfilePath, "Gemfile");
+    detectRubyStack(readFileSync(gemfilePath, "utf8"), gemfilePath, addTag);
+  }
+  for (const pubspecPath of findManifestFiles(rootDir, "pubspec.yaml")) {
+    addTag("dart", pubspecPath, "pubspec.yaml");
+    if (/^\s*flutter\s*:/m.test(readFileSync(pubspecPath, "utf8"))) addTag("flutter", pubspecPath, "flutter");
+  }
+  for (const pomPath of findManifestFiles(rootDir, "pom.xml")) {
+    const text = readFileSync(pomPath, "utf8");
+    addTag("java", pomPath, "pom.xml");
+    if (/spring-boot|org\.springframework/i.test(text)) addTag("spring", pomPath, "spring");
+  }
+  for (const gradlePath of [...findManifestFiles(rootDir, "build.gradle"), ...findManifestFiles(rootDir, "build.gradle.kts")]) {
+    const text = readFileSync(gradlePath, "utf8");
+    addTag(/com\.android|android\s*\{/i.test(text) ? "android" : "java", gradlePath, "gradle");
+    if (/spring-boot|org\.springframework/i.test(text)) addTag("spring", gradlePath, "spring");
+  }
+  for (const csprojPath of findManifestFiles(rootDir, ".csproj", { suffix: true })) {
+    const text = readFileSync(csprojPath, "utf8");
+    addTag("dotnet", csprojPath, ".csproj");
+    if (/Microsoft\.AspNetCore|Sdk\.Web/i.test(text)) addTag("aspnet", csprojPath, "aspnet");
+  }
+  for (const manifestPath of findManifestFiles(rootDir, "manifest.json")) {
+    const manifest = readJson(manifestPath);
+    if (manifest?.manifest_version === 2 || manifest?.manifest_version === 3) {
+      addTag("chrome-extension", manifestPath, `manifest_version:${manifest.manifest_version}`);
+    }
+  }
+  for (const composePath of [
+    ...findManifestFiles(rootDir, "docker-compose.yml"),
+    ...findManifestFiles(rootDir, "docker-compose.yaml"),
+    ...findManifestFiles(rootDir, "compose.yml"),
+    ...findManifestFiles(rootDir, "compose.yaml"),
+  ]) {
+    detectComposeStack(readFileSync(composePath, "utf8"), composePath, addTag);
+  }
+
   return {
     rootDir,
     tags: [...tags].sort(),
@@ -242,7 +323,7 @@ export function buildGenesisDryRunReport({
     postApplyCommands: [
       {
         command: "node $CLAUDE_PLUGIN_ROOT/scripts/build-code-index.mjs --root . --force --health",
-        reason: "initialize Code RAG + Graph in .supervibe/memory/code.db before status verification",
+        reason: "initialize Code RAG + Graph with progress logging and no fixed total timeout before status verification",
       },
       {
         command: "node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs",
@@ -261,8 +342,10 @@ export function buildGenesisDryRunReport({
     skippedGeneratedFolders: [
       { path: "dist", reason: "generated output" },
       { path: "dist-check", reason: "generated output" },
+      { path: ".next/.nuxt/.svelte-kit", reason: "framework caches and generated output" },
       { path: "target", reason: "Rust build output" },
       { path: "node_modules", reason: "dependency cache" },
+      { path: "bower_components/jspm_packages/site-packages/Pods", reason: "vendored dependencies" },
     ],
   };
 }
@@ -390,15 +473,160 @@ function materializeGroup(groupEntry, availableAgents, stackTags) {
   };
 }
 
+const STACK_SCAN_SKIP_DIRS = new Set([
+  "node_modules",
+  "bower_components",
+  "jspm_packages",
+  ".git",
+  ".supervibe",
+  ".claude",
+  ".codex",
+  ".cursor",
+  ".gemini",
+  ".opencode",
+  "dist",
+  "build",
+  "out",
+  "coverage",
+  "target",
+  "vendor",
+  "venv",
+  ".venv",
+  "__pycache__",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".tox",
+  ".nox",
+  ".next",
+  ".nuxt",
+  ".svelte-kit",
+  ".turbo",
+  ".cache",
+  ".gradle",
+  "Pods",
+  "DerivedData",
+]);
+
+function findManifestFiles(rootDir, name, { maxDepth = 4, suffix = false } = {}) {
+  const found = [];
+  const visit = (dir, depth) => {
+    if (depth > maxDepth) return;
+    let entries = [];
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (STACK_SCAN_SKIP_DIRS.has(entry.name) || (entry.name.startsWith(".") && ![".github"].includes(entry.name))) continue;
+        visit(path, depth + 1);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (suffix ? entry.name.endsWith(name) : entry.name === name) found.push(path);
+    }
+  };
+  visit(rootDir, 0);
+  return found.sort((a, b) => toRel(rootDir, a).localeCompare(toRel(rootDir, b)));
+}
+
+function toRel(rootDir, path) {
+  return relative(rootDir, path).split(sep).join("/") || path;
+}
+
+function readJson(path) {
+  try { return JSON.parse(readFileSync(path, "utf8")); }
+  catch { return null; }
+}
+
+function hasDep(deps, patterns) {
+  const names = Object.keys(deps || {}).map((name) => name.toLowerCase());
+  return patterns.some((pattern) => names.some((name) => typeof pattern === "string" ? name === pattern : pattern.test(name)));
+}
+
+function detectPackageStack(deps, source, addTag) {
+  if (hasDep(deps, ["next"])) addTag("nextjs", source, "next");
+  if (hasDep(deps, ["react", "react-dom"])) addTag("react", source, "react");
+  if (hasDep(deps, ["vue"])) addTag("vue", source, "vue");
+  if (hasDep(deps, ["nuxt"])) addTag("nuxt", source, "nuxt");
+  if (hasDep(deps, ["svelte", "@sveltejs/kit"])) addTag("sveltekit", source, "sveltekit");
+  if (hasDep(deps, ["express"])) addTag("express", source, "express");
+  if (hasDep(deps, ["@nestjs/core", "nestjs"])) addTag("nestjs", source, "nestjs");
+  if (hasDep(deps, ["@tauri-apps/api"])) addTag("tauri", source, "@tauri-apps/api");
+  if (hasDep(deps, ["electron"])) addTag("electron", source, "electron");
+  if (hasDep(deps, ["tailwindcss", "@tailwindcss/vite"])) addTag("tailwind", source, "tailwindcss");
+  if (hasDep(deps, ["vite", /vite-plugin/])) addTag("vite", source, "vite");
+  if (hasDep(deps, [/@tanstack\/react-router/])) addTag("tanstack-router", source, "@tanstack/react-router");
+  if (hasDep(deps, ["pg", "postgres", "postgresql", "@prisma/client", "drizzle-orm"])) addTag("postgres", source, "postgres dependency");
+  if (hasDep(deps, ["mysql2", "mysql"])) addTag("mysql", source, "mysql dependency");
+  if (hasDep(deps, ["mongodb", "mongoose"])) addTag("mongodb", source, "mongodb dependency");
+  if (hasDep(deps, ["redis", "ioredis", "bull", "bullmq"])) addTag("redis", source, "redis dependency");
+  if (hasDep(deps, ["graphql", "@apollo/client", "@apollo/server", "apollo-server", "urql"])) addTag("graphql", source, "graphql dependency");
+  if (hasDep(deps, ["@crxjs/vite-plugin", "wxt", "plasmo"])) addTag("chrome-extension", source, "extension bundler");
+}
+
+function detectPythonStack(text, source, addTag) {
+  const value = text.toLowerCase();
+  if (/\bdjango\b/.test(value)) addTag("django", source, "django");
+  if (/\bfastapi\b/.test(value)) addTag("fastapi", source, "fastapi");
+  if (/\bflask\b/.test(value)) addTag("flask", source, "flask");
+  if (/\bsqlalchemy\b|\bpsycopg\b|\basyncpg\b/.test(value)) addTag("postgres", source, "python postgres dependency");
+  if (/\bredis\b/.test(value)) addTag("redis", source, "redis");
+  if (/\bcelery\b|\brq\b/.test(value)) addTag("queue", source, "python queue dependency");
+}
+
+function detectComposerStack(deps, source, addTag) {
+  if (hasDep(deps, ["laravel/framework"])) addTag("laravel", source, "laravel/framework");
+  if (hasDep(deps, ["symfony/framework-bundle", "symfony/http-kernel"])) addTag("symfony", source, "symfony");
+  if (hasDep(deps, ["doctrine/dbal"])) addTag("sql", source, "doctrine/dbal");
+  if (hasDep(deps, ["predis/predis"])) addTag("redis", source, "predis");
+}
+
+function detectGoStack(text, source, addTag) {
+  const value = text.toLowerCase();
+  if (/github\.com\/gin-gonic\/gin/.test(value)) addTag("gin", source, "gin");
+  if (/github\.com\/labstack\/echo/.test(value)) addTag("echo", source, "echo");
+  if (/github\.com\/go-chi\/chi/.test(value)) addTag("chi", source, "chi");
+  if (/google\.golang\.org\/grpc/.test(value)) addTag("grpc", source, "grpc");
+  if (/jackc\/pgx|lib\/pq|sqlc-dev\/sqlc/.test(value)) addTag("postgres", source, "go postgres dependency");
+  if (/redis\/go-redis/.test(value)) addTag("redis", source, "go-redis");
+}
+
+function detectRubyStack(text, source, addTag) {
+  const value = text.toLowerCase();
+  if (/gem ["']rails["']/.test(value)) addTag("rails", source, "rails");
+  if (/gem ["']pg["']/.test(value)) addTag("postgres", source, "pg");
+  if (/gem ["']redis["']/.test(value)) addTag("redis", source, "redis");
+  if (/gem ["']sidekiq["']/.test(value)) addTag("queue", source, "sidekiq");
+}
+
+function detectComposeStack(text, source, addTag) {
+  const value = text.toLowerCase();
+  if (/postgres/.test(value)) addTag("postgres", source, "compose postgres service");
+  if (/\bredis\b/.test(value)) addTag("redis", source, "compose redis service");
+  if (/mysql|mariadb/.test(value)) addTag("mysql", source, "compose mysql service");
+  if (/mongo/.test(value)) addTag("mongodb", source, "compose mongodb service");
+  if (/elastic/.test(value)) addTag("elasticsearch", source, "compose elasticsearch service");
+}
+
 function normalizeStackTag(name) {
   const value = String(name).toLowerCase();
   if (value === "react") return "react";
+  if (value === "next") return "nextjs";
+  if (value === "vue") return "vue";
+  if (value === "nuxt") return "nuxt";
+  if (value === "svelte" || value === "@sveltejs/kit") return "sveltekit";
+  if (value === "express") return "express";
+  if (value === "@nestjs/core" || value === "nestjs") return "nestjs";
   if (value.includes("vite")) return "vite";
   if (value.includes("tailwind")) return "tailwind";
   if (value.includes("tauri")) return "tauri";
   if (value.includes("tanstack") && value.includes("router")) return "tanstack-router";
   if (value.includes("playwright")) return "playwright";
-  if (value.includes("postgres")) return "postgres";
+  if (["pg", "postgres"].includes(value) || value.includes("postgres")) return "postgres";
+  if (["redis", "ioredis", "bull", "bullmq"].includes(value)) return "redis";
+  if (["mongodb", "mongoose"].includes(value)) return "mongodb";
+  if (["mysql", "mysql2"].includes(value)) return "mysql";
+  if (value.includes("graphql") || value.includes("apollo")) return "graphql";
   return null;
 }
 
@@ -409,11 +637,8 @@ function resolveGenesisStackPack({ pluginRoot, fingerprint }) {
     { id: "laravel-nextjs-postgres-redis", path: "stack-packs/laravel-nextjs-postgres-redis/manifest.yaml", requiredTags: ["laravel", "nextjs", "postgres"], exactTags: ["laravel", "nextjs", "postgres"] },
     { id: "chrome-extension-mv3", path: "stack-packs/chrome-extension-mv3/manifest.yaml", requiredTags: ["chrome-extension"], exactTags: ["chrome-extension"] },
   ];
-  const match = candidates.find((candidate) => candidate.requiredTags.every((tag) => tags.has(tag)))
-    || candidates
-      .map((candidate) => ({ ...candidate, overlap: candidate.exactTags.filter((tag) => tags.has(tag)).length }))
-      .sort((a, b) => b.overlap - a.overlap)[0];
-  if (!match || match.overlap === 0 && !match.requiredTags.every((tag) => tags.has(tag))) return null;
+  const match = candidates.find((candidate) => candidate.requiredTags.every((tag) => tags.has(tag)));
+  if (!match) return null;
   const absolutePath = join(pluginRoot, match.path);
   if (!existsSync(absolutePath)) return null;
   const data = parseYaml(readFileSync(absolutePath, "utf8")) || {};

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.24] - 2026-05-02
+
+### Fixed
+
+- Made code indexing safer for large projects by skipping additional framework
+  cache, generated, dependency, package-store, Python, .NET, iOS, and build
+  output directories.
+- Added periodic index progress logging and documented the no-fixed-total-timeout
+  runtime contract for genesis and repair flows.
+- Added Python tree-sitter query fallback handling so graph extraction can
+  degrade gracefully instead of blocking source RAG readiness.
+- Changed default index health so graph-only symbol coverage degradation is a
+  warning; strict graph failures remain available through `--strict-index-health`.
+
+### Changed
+
+- Expanded genesis stack fingerprinting beyond `package.json` to Python,
+  Composer, Go, Ruby, Rust, Java, .NET, Flutter, Chrome Extension manifests, and
+  Docker Compose services.
+- Expanded genesis agent recommendations for detected frontend, backend, data,
+  cache, GraphQL, mobile, and extension stacks.
+
+### Added
+
+- Added large-project indexing audit/todo coverage and regression tests for
+  cache exclusions, graph-degraded gates, no-total-timeout guidance, Python query
+  fallback, and polyglot stack detection.
+
 ## [2.0.23] - 2026-05-01
 
 ### Fixed

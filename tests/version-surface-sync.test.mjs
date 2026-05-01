@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const TARGET_VERSION = "2.0.23";
+const TARGET_VERSION = "2.0.24";
 const TARGET_VERSION_PATTERN = TARGET_VERSION.replaceAll(".", "\\.");
 
-test("release-facing version surfaces are synchronized to 2.0.23", async () => {
+test("release-facing version surfaces are synchronized to 2.0.24", async () => {
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   const packageLock = JSON.parse(await readFile("package-lock.json", "utf8"));
   const codex = JSON.parse(await readFile(".codex-plugin/plugin.json", "utf8"));
@@ -29,7 +29,7 @@ test("release-facing version surfaces are synchronized to 2.0.23", async () => {
   assert.match(opencode, new RegExp(`version:\\s*"${TARGET_VERSION_PATTERN}"`));
   assert.match(readme, /\*\*v2\.0\*\*/);
   assert.match(readme, new RegExp(`plugin v${TARGET_VERSION_PATTERN} initialized`));
-  assert.match(changelog, new RegExp(`## \\[${TARGET_VERSION_PATTERN}\\] - 2026-05-01`));
+  assert.match(changelog, new RegExp(`## \\[${TARGET_VERSION_PATTERN}\\] - 2026-05-02`));
 });
 
 test("Codex plugin manifest stays on supported skills surface", async () => {
@@ -96,7 +96,7 @@ test("tracked release docs and command examples do not advertise stale 1.9.0 tar
   }
 });
 
-test("getting-started local install examples use the current 2.0.23 cache path", async () => {
+test("getting-started local install examples use the current 2.0.24 cache path", async () => {
   const text = await readFile("docs/getting-started.md", "utf8");
   assert.match(text, new RegExp(`plugins/cache/local/supervibe/${TARGET_VERSION_PATTERN}`));
   assert.doesNotMatch(text, /plugins[\\/]+cache[\\/]+local[\\/]+supervibe[\\/]+1\.2\.0/);

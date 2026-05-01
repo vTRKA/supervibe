@@ -67,20 +67,60 @@ function loadQueryText(lang) {
 }
 
 const _queryObjectCache = new Map();
+const QUERY_FALLBACKS = Object.freeze({
+  python: [
+    [
+      '(function_definition',
+      '  name: (identifier) @name) @symbol.function',
+      '',
+      '(class_definition',
+      '  name: (identifier) @name) @symbol.class',
+      '',
+      '(call',
+      '  function: (identifier) @target) @edge.calls',
+    ].join('\n'),
+  ],
+});
+
+export async function compileQueryWithFallback(lang, primaryText, fallbackTexts = []) {
+  if (!primaryText) return { query: null, degraded: false, reason: 'missing query text' };
+  const language = await getLanguage(lang);
+  const attempts = [
+    { text: primaryText, fallback: false },
+    ...fallbackTexts.filter(Boolean).map((text) => ({ text, fallback: true })),
+  ];
+  let firstError = null;
+  for (const attempt of attempts) {
+    try {
+      return {
+        query: new Query(language, attempt.text),
+        degraded: attempt.fallback,
+        reason: attempt.fallback && firstError
+          ? `primary query failed: ${firstError.message}`
+          : 'primary query compiled',
+      };
+    } catch (err) {
+      firstError ||= err;
+    }
+  }
+  return {
+    query: null,
+    degraded: true,
+    reason: `all query attempts failed: ${firstError?.message || 'unknown error'}`,
+  };
+}
+
 async function getCompiledQuery(lang) {
   const key = queryKeyForLang(lang);
   if (_queryObjectCache.has(key)) return _queryObjectCache.get(key);
   const text = loadQueryText(lang);
   if (!text) return null;
-  const language = await getLanguage(lang);
-  try {
-    const q = new Query(language, text);
-    _queryObjectCache.set(key, q);
-    return q;
-  } catch {
-    _queryObjectCache.set(key, null);
-    return null;
+  const compiled = await compileQueryWithFallback(lang, text, QUERY_FALLBACKS[key] || QUERY_FALLBACKS[lang] || []);
+  if (compiled.degraded && process.env.SUPERVIBE_VERBOSE === '1') {
+    console.warn(`[code-graph] ${lang} query degraded: ${compiled.reason}`);
   }
+  _queryObjectCache.set(key, compiled.query);
+  return compiled.query;
 }
 
 function makeId(path, kind, name, startLine) {
@@ -139,7 +179,13 @@ export async function extractGraph(code, filePath) {
     return { symbols: [], edges: [] };
   }
 
-  const matches = query.matches(tree.rootNode);
+  let matches;
+  try {
+    matches = query.matches(tree.rootNode);
+  } catch {
+    if (typeof tree.delete === 'function') tree.delete();
+    return { symbols: [], edges: [] };
+  }
   const symbols = [];
   const edges = [];
   const symbolStack = []; // [{id, startByte, endByte}]

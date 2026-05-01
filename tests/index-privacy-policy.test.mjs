@@ -35,6 +35,24 @@ test("source files remain indexable and graphable", () => {
   assert.equal(policy.included, true);
 });
 
+test("index policy skips framework dependency and cache directories", () => {
+  const cases = [
+    "frontend/bower_components/pkg/index.js",
+    "frontend/jspm_packages/pkg/index.js",
+    "backend/site-packages/pkg/module.py",
+    "backend/__generated__/client.ts",
+    "ios/Pods/Generated/index.js",
+    "app/obj/Debug/generated.cs",
+    "app/bin/Debug/app.js",
+  ];
+
+  for (const path of cases) {
+    const policy = classifyIndexPath(path, { rootDir: process.cwd() });
+    assert.equal(policy.included, false, `cache/dependency path should not be indexed: ${path}`);
+    assert.match(policy.reason, /skip-dir|generated-dir|privacy:generated/);
+  }
+});
+
 test("privacy diagnostics summarize skipped classes without values", () => {
   const summary = summarizePrivacyPolicy([".env", "backup.zip", "src/main.ts"]);
   const output = formatPrivacyPolicyDiagnostics(summary);
