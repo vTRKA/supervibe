@@ -1,10 +1,10 @@
 ---
-description: "Sync project-level .claude/ artifacts to upstream plugin changes (new agent versions, deprecated rules, renamed files). Diff-driven, user-gated."
+description: "Sync project-level host artifacts to upstream plugin changes or user-requested project-fit changes for agents, rules, and skills. Diff-driven, user-gated."
 ---
 
 # /supervibe-adapt
 
-Pull upstream improvements from the installed plugin into the project's `.claude/` directory without losing local customizations.
+Pull upstream improvements from the installed plugin into the selected host adapter (`.claude/`, `.codex/`, `.cursor/`, `.gemini/`, or `.opencode/`) without losing local customizations.
 
 ## When to invoke
 
@@ -12,10 +12,11 @@ Pull upstream improvements from the installed plugin into the project's `.claude
 - The SessionStart banner shows `[evolve] ⬆ plugin upgraded N → M`.
 - An audit (`/supervibe-audit`) flagged drift between upstream and project copies.
 - The project has been on the same plugin version for >90 days and you want to refresh.
+- The user explicitly asks to adapt rules or agents to the current project so gaps can be closed deliberately.
 
 ## Procedure
 
-1. **Read upstream.** For each file in `.claude/agents/`, `.claude/rules/`, `.claude/skills/`, find the matching upstream file in `$CLAUDE_PLUGIN_ROOT/<namespace>/<name>.md`.
+1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in `$CLAUDE_PLUGIN_ROOT/<namespace>/<name>.md`.
 
 2. **Three-way classification.** For each pair:
    - **Identical** → skip (no action).
@@ -23,7 +24,7 @@ Pull upstream improvements from the installed plugin into the project's `.claude
    - **Both changed** (project has local customizations + upstream evolved) → propose 3-way merge with conflict markers, ask user to resolve manually.
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.claude/_archive/`, or delete.
 
-3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. It already encodes the methodology.
+3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
 
 4. **Show summary.** Before any write, print a table:
    ```
@@ -54,6 +55,10 @@ Confidence:  N/10  Rubric: agent-delivery
 ```
 
 ## What is NOT touched
+
+Host instruction content outside Supervibe managed blocks is user-owned. This
+includes `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, and
+`opencode.json`.
 
 - `.claude/memory/decisions/`, `patterns/`, `incidents/`, `learnings/`, `solutions/` — your project data
 - `.claude/memory/*.db` — indexes (regenerated automatically)

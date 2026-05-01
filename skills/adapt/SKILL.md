@@ -42,6 +42,7 @@ After every material delivery, ask one explicit next-step question with choices:
 2. Run `git diff <verified-against>..HEAD --stat` to find changes
 3. Read changed manifest files for new deps
 4. Run or consult `node scripts/supervibe-status.mjs --capabilities` so proposed agent, rule and skill updates are grounded in the capability registry.
+5. Resolve the active host adapter before reading or planning writes; use the same precedence as genesis: explicit override -> active runtime/current chat -> filesystem markers.
 
 ## Procedure
 
@@ -54,13 +55,15 @@ After every material delivery, ask one explicit next-step question with choices:
 5. **Deleted files** — remove references from artifacts
 6. **Host context migration** — if `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules` or `opencode.json` changes, use `scripts/lib/supervibe-context-migrator.mjs` dry-run planning and never overwrite user-owned sections.
 7. **Capability registry** — propose affected agents, rules and skills together, including registry evidence and confidence for each linked artifact.
-8. **Bump versions** + update `last-verified` + `verified-against`
-9. Run `supervibe:audit` to verify clean state
+8. **User-requested project fit** - when the user asks to adapt rules or agents to the project, compare stack tags, selected install profile, existing host artifacts, and capability registry links; then produce an add/keep/defer plan with reasons.
+9. **Bump versions** + update `last-verified` + `verified-against`
+10. Run `supervibe:audit` to verify clean state
 
 ## Output contract
 
 Returns:
 - List of updated artifacts
+- List of project-fit agent/rule/skill recommendations with evidence
 - List of suggestions (where genesis is needed for major changes)
 - Pre/post audit diff
 

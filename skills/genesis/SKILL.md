@@ -38,7 +38,7 @@ After every material delivery, ask one explicit next-step question with choices:
 1. Read stack-fingerprint from `supervibe:stack-discovery`
 2. Read `stack-packs/` to find matching pack
 3. Read `templates/` for host instruction and settings templates
-4. Run `node scripts/supervibe-status.mjs --host-diagnostics` or call `scripts/lib/supervibe-host-detector.mjs` logic before selecting an output layout.
+4. Run `node scripts/supervibe-status.mjs --host-diagnostics` or call `scripts/lib/supervibe-host-detector.mjs` logic before selecting an output layout. Host precedence is explicit override (`SUPERVIBE_HOST`) -> active runtime/current chat -> filesystem markers.
 4. Read target project's existing files (NEVER overwrite)
 
 ## Decision tree
@@ -69,17 +69,20 @@ Match exact pack?
 5. Resolve optional add-ons before copying agents. Default: `none`.
    - `security-audit`: adds the `/supervibe-security-audit` chain agents.
    - `ai-prompting`: adds `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
+   - `project-adaptation`: adds `rules-curator`, `memory-curator`, and `repo-researcher` when the user explicitly asks to adapt project rules or agents and close coverage gaps.
    - `network-ops`: adds `network-router-engineer`; high-risk and never default.
    - `custom`: user explicitly selects add-on agents.
 6. Resolve the host adapter from `CLAUDE.md`, `.claude`, `AGENTS.md`, `.codex`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json` and active CLI hints.
 7. If multiple adapters are plausible, ask one host-selection question and do not write until answered.
 8. For each profile-selected and add-on-selected `agents-attach` / `agent-addons` entry → copy agent file to the selected adapter's agents folder.
 9. For each `rules-attach` → copy rule file to the selected adapter's rules folder.
-10. Generate or update the selected adapter's settings file only if supported.
+10. Copy support skills referenced by selected agents or the bootstrap/adapt flow to the selected adapter's skills folder.
+10a. Generate or update the selected adapter's settings file only if supported.
 11. Generate or update the selected adapter's instruction file through `scripts/lib/supervibe-context-migrator.mjs`, using managed block markers and preserving user-owned content.
 9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
 10. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
 11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
+11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
 13. If <9 → list gaps, ask user to confirm or remediate
 
@@ -88,6 +91,7 @@ Match exact pack?
 Returns:
 - Generated host adapter folders, settings and instruction file for Claude, Codex, Cursor, Gemini or OpenCode
 - Selected install profile, selected add-ons, and final agent list
+- Selected rules, selected support skills, stack-pack scaffold artifacts, and missingArtifacts
 - Husky + commitlint + lint-staged configs
 - Project skeleton dirs
 - Confidence score

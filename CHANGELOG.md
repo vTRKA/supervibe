@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.19] - 2026-05-01
+
+### Added
+
+- Added `ui-review-and-polish` and `rule-application` support skills so
+  genesis/adapt selected agents do not reference missing skills.
+- Added genesis dry-run coverage for selected rules, support skills,
+  stack-pack scaffold artifacts, and explicit `missingArtifacts`.
+
+### Fixed
+
+- Fixed host detection so active runtime/current chat hints, including Codex
+  `CODEX_THREAD_ID`, take precedence over stale project files such as
+  `.opencode` and `opencode.json`.
+
+### Changed
+
+- Added explicit `project-adaptation` add-on guidance for user-requested
+  project-specific rules and agent gap closing.
+
 ## [2.0.18] - 2026-05-01
 
 ### Fixed

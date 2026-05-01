@@ -76,11 +76,13 @@ test("add-ons are explicit and explain why they are recommended", async () => {
       rootDir: process.cwd(),
       fingerprint: discoverGenesisStackFingerprint({ rootDir }),
       selectedProfile: "minimal",
-      addOns: ["security-audit", "ai-prompting"],
+      addOns: ["security-audit", "ai-prompting", "project-adaptation"],
     });
 
     assert.ok(recommendation.selectedAgents.includes("security-auditor"));
     assert.ok(recommendation.selectedAgents.includes("prompt-ai-engineer"));
+    assert.ok(recommendation.selectedAgents.includes("rules-curator"));
+    assert.ok(recommendation.addOnChoices.find((choice) => choice.id === "project-adaptation"));
     assert.ok(recommendation.addOnChoices.find((choice) => choice.id === "network-ops").defaultSelected === false);
     assert.ok(recommendation.explanations.some((entry) => /explicit add-on/.test(entry.reason)));
   });
@@ -97,14 +99,24 @@ test("full genesis dry run includes host adapter, context migration and agent pr
     });
 
     assert.equal(report.host.adapterId, "codex", "dry run did not include host adapter, context migration and agent profile");
+    assert.equal(report.stackPack.id, "tauri-react-rust-postgres", "dry run did not resolve the matching stack pack");
     assert.equal(report.agentProfile.selectedProfile, "minimal", "dry run did not include host adapter, context migration and agent profile");
     assert.ok(report.contextMigration.afterContent.includes("## Custom Project Rules"), "custom project instruction section was not preserved");
     assert.ok(report.contextMigration.afterContent.includes("SUPERVIBE:BEGIN managed-context codex"));
     assert.ok(report.filesToModify.some((entry) => entry.path === "AGENTS.md"));
     assert.ok(report.filesToCreate.some((entry) => entry.path.includes(".codex/agents")));
+    assert.ok(report.selectedRules.includes("operational-safety"));
+    assert.ok(report.selectedRules.includes("use-codegraph-before-refactor"));
+    assert.ok(report.filesToCreate.some((entry) => entry.path === ".codex/rules/operational-safety.md"));
+    assert.ok(report.selectedSkills.includes("genesis"));
+    assert.ok(report.selectedSkills.includes("ui-review-and-polish"));
+    assert.ok(report.filesToCreate.some((entry) => entry.path === ".codex/skills/genesis/SKILL.md"));
+    assert.deepEqual(report.missingArtifacts, []);
     assert.ok(report.skippedGeneratedFolders.some((entry) => /dist|target/.test(entry.path)));
     assert.ok(report.recommendedAgents.includes("tauri-rust-engineer"));
     assert.ok(report.optionalAgents.includes("prompt-ai-engineer"));
     assert.match(formatGenesisDryRunReport(report), /SUPERVIBE_GENESIS_DRY_RUN/);
+    assert.match(formatGenesisDryRunReport(report), /SELECTED_RULES:/);
+    assert.match(formatGenesisDryRunReport(report), /SELECTED_SKILLS:/);
   });
 });

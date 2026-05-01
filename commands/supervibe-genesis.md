@@ -30,6 +30,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 1. **Pre-flight check.** Run host detection before assuming `.claude`:
    - Read `CLAUDE.md`, `.claude`, `AGENTS.md`, `.codex`, `.cursor`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json` and active CLI hints.
+   - Precedence is explicit user override (`SUPERVIBE_HOST`) -> active runtime/current chat hints -> project filesystem markers. Do not select OpenCode only because `.opencode` or `opencode.json` exists when the current chat is running in Codex.
    - If more than one host has strong evidence, ask exactly one host-selection question and stop until the user chooses.
    - If an existing host instruction file already has custom content, plan a dry-run managed-block update instead of overwriting it.
 
@@ -48,6 +49,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 4a. **Choose optional add-ons.** After the base profile, ask one explicit add-on question. Default is `none`.
    - `ai-prompting` - installs `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
+   - `project-adaptation` - installs `rules-curator`, `memory-curator`, and supporting research so user-requested project-specific rule/agent gap closing is deliberate.
    - `security-audit` — installs the multi-agent security audit chain used by `/supervibe-security-audit`.
    - `network-ops` — installs `network-router-engineer`; never default because router/server mutations require scoped approval.
    - `none` — keep the base profile only.
@@ -68,6 +70,10 @@ Scenario evals assert this post-delivery menu and persisted command state via
    - `<adapter settings file>` — host-specific config only when supported
    Wait for user "yes" before writing.
 
+   The dry-run artifact plan must also list selected rules, selected support skills,
+   stack-pack root files, husky hooks, directories, and `missingArtifacts`. If
+   `missingArtifacts` is non-empty, remediate or ask before applying.
+
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
 8. **Verify.** Run `npm run supervibe:status` (or `node $CLAUDE_PLUGIN_ROOT/scripts/supervibe-status.mjs`). The banner should show fresh code RAG + graph counts for the project.
@@ -78,7 +84,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 Detected stack:    <fingerprint summary>
 Pack chosen:       <pack name>  (composition score: X.X/10)
 Install profile:   <minimal | product-design | full-stack | research-heavy | custom>
-Add-ons:           <none | security-audit | ai-prompting | network-ops | custom list>
+Add-ons:           <none | security-audit | ai-prompting | project-adaptation | network-ops | custom list>
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
 Next:              open the project, restart your AI CLI, watch for [evolve] welcome banner

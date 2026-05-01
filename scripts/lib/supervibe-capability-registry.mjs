@@ -22,8 +22,8 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     intents: ["agent_strengthen"],
     commands: ["/supervibe-adapt"],
     skills: ["supervibe:adapt"],
-    agents: [],
-    rules: ["operational-safety", "single-question-discipline"],
+    agents: ["rules-curator", "memory-curator", "repo-researcher"],
+    rules: ["operational-safety", "single-question-discipline", "rule-maintenance", "agent-excellence-baseline", "agent-install-profiles"],
     verificationHooks: [
       "node scripts/validate-question-discipline.mjs",
       "node scripts/supervibe-status.mjs --capabilities",

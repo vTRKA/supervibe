@@ -1,9 +1,9 @@
 # Host Adapter Matrix
 
 Supervibe genesis must choose the target AI host before planning writes. The
-host detector reads filesystem markers and active CLI hints, then returns either
-a confident adapter or a one-question selection state when multiple hosts are
-present.
+host detector reads explicit overrides, active runtime/current-chat hints, and
+filesystem markers, then returns either a confident adapter or a one-question
+selection state when multiple hosts are present.
 
 | Host | Primary instruction file | Model folder | Agents | Rules | Skills | Strategy |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -13,8 +13,10 @@ present.
 | Gemini | `GEMINI.md` | `.gemini` | `.gemini/agents` | `.gemini/rules` | `.gemini/skills` | `GEMINI.md` managed section |
 | OpenCode | `opencode.json`, `AGENTS.md` | `.opencode` | `.opencode/agents` | `.opencode/rules` | `.opencode/skills` | JSON config plus `AGENTS.md` |
 
-Detection order is evidence-based, not hard-coded to Claude. If `CLAUDE.md`,
-`AGENTS.md` and `.cursor/rules` coexist without `SUPERVIBE_HOST`, genesis must
+Detection order is evidence-based, not hard-coded to Claude. Precedence is:
+`SUPERVIBE_HOST` / `SUPERVIBE_TARGET_HOST`, then active runtime hints such as
+`CODEX_THREAD_ID`, then project files. If `CLAUDE.md`, `AGENTS.md` and
+`.cursor/rules` coexist without an active runtime or explicit host, genesis must
 ask one host-selection question before writing. Use
 `node scripts/supervibe-status.mjs --host-diagnostics` to inspect the selected
 adapter, confidence and evidence.

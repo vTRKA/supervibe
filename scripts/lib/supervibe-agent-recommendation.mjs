@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
 
 import { planContextMigration } from "./supervibe-context-migrator.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
@@ -16,6 +17,7 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("none", "Keep the selected profile only.", true),
   choice("security-audit", "Explicit add-on for vulnerability review and prioritized remediation."),
   choice("ai-prompting", "Explicit add-on for prompts, agent instructions, intent routing and evals."),
+  choice("project-adaptation", "Explicit add-on for adapting project rules and agents when the user requests gap-closing."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
 
@@ -33,8 +35,27 @@ const GROUPS = Object.freeze([
 const ADD_ON_AGENTS = Object.freeze({
   "security-audit": ["security-auditor"],
   "ai-prompting": ["prompt-ai-engineer"],
+  "project-adaptation": ["rules-curator", "memory-curator", "repo-researcher"],
   "network-ops": ["network-router-engineer"],
 });
+
+const BASE_REQUIRED_SKILLS = Object.freeze([
+  "genesis",
+  "stack-discovery",
+  "project-memory",
+  "code-search",
+  "systematic-debugging",
+  "verification",
+  "confidence-scoring",
+  "adapt",
+  "strengthen",
+]);
+
+const ADAPTATION_RULES = Object.freeze([
+  "agent-excellence-baseline",
+  "agent-install-profiles",
+  "rule-maintenance",
+]);
 
 export function discoverGenesisStackFingerprint({ rootDir = process.cwd() } = {}) {
   const facts = [];
@@ -157,6 +178,10 @@ export function buildGenesisDryRunReport({
     selectedProfile,
     addOns,
   });
+  const stackPack = resolveGenesisStackPack({ pluginRoot, fingerprint });
+  const rulesPlan = resolveGenesisRules({ pluginRoot, fingerprint, stackPack, addOns });
+  const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
+  const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack });
   const optionalAgents = unique(addOns.flatMap((id) => ADD_ON_AGENTS[id] || []));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
   const managedInstruction = renderManagedInstruction({ hostSelection, fingerprint, agentProfile, recommendedAgents, optionalAgents });
@@ -168,8 +193,10 @@ export function buildGenesisDryRunReport({
   const adapter = hostSelection.adapter;
   const filesToCreate = [
     ...agentProfile.selectedAgents.map((agentId) => ({ path: `${adapter.agentsFolder}/${agentId}.md`, reason: "selected agent" })),
-    { path: adapter.rulesFolder, reason: "selected rules folder" },
+    ...rulesPlan.selectedRules.map((ruleId) => ({ path: `${adapter.rulesFolder}/${ruleId}.md`, reason: "selected rule" })),
+    ...skillsPlan.selectedSkills.map((skillId) => ({ path: `${adapter.skillsFolder}/${skillId}/SKILL.md`, reason: "supporting skill" })),
     { path: adapter.settingsFile, reason: "host settings when supported" },
+    ...scaffoldPlan.files.map((entry) => ({ path: entry.path, reason: entry.reason })),
   ].filter((entry) => !existsSync(join(targetRoot, entry.path)));
   const filesToModify = existsSync(contextMigration.absolutePath)
     ? [{ path: contextMigration.instructionPath, reason: "managed context block update" }]
@@ -194,10 +221,23 @@ export function buildGenesisDryRunReport({
         skills: adapter.skillsFolder,
       },
     },
+    stackPack: {
+      id: stackPack?.id || "composed",
+      path: stackPack?.path || null,
+      exact: Boolean(stackPack?.exact),
+    },
     fingerprint,
     agentProfile,
     recommendedAgents,
     optionalAgents,
+    selectedRules: rulesPlan.selectedRules,
+    selectedSkills: skillsPlan.selectedSkills,
+    scaffoldArtifacts: scaffoldPlan.files,
+    missingArtifacts: [
+      ...agentProfile.missingSpecialists.map((entry) => ({ type: "agent", id: entry.agentId, reason: entry.reason })),
+      ...rulesPlan.missingRules.map((id) => ({ type: "rule", id, reason: "referenced by stack pack or mandatory policy but missing from plugin rules" })),
+      ...skillsPlan.missingSkills.map((id) => ({ type: "skill", id, reason: "referenced by selected agents or bootstrap flow but missing from plugin skills" })),
+    ],
     contextMigration,
     filesToCreate,
     filesToModify,
@@ -216,12 +256,16 @@ export function formatGenesisDryRunReport(report) {
     "SUPERVIBE_GENESIS_DRY_RUN",
     `DRY_RUN: ${report.dryRun}`,
     `HOST: ${report.host.adapterId} (${report.host.confidence})`,
+    `PACK: ${report.stackPack.id}`,
     `PROFILE: ${report.agentProfile.selectedProfile}`,
     `STACK: ${report.fingerprint.tags.join(", ") || "unknown"}`,
     `FILES_TO_CREATE: ${report.filesToCreate.length}`,
     `FILES_TO_MODIFY: ${report.filesToModify.length}`,
     `RECOMMENDED_AGENTS: ${report.recommendedAgents.join(", ") || "none"}`,
     `OPTIONAL_AGENTS: ${report.optionalAgents.join(", ") || "none"}`,
+    `SELECTED_RULES: ${report.selectedRules.join(", ") || "none"}`,
+    `SELECTED_SKILLS: ${report.selectedSkills.join(", ") || "none"}`,
+    `MISSING_ARTIFACTS: ${report.missingArtifacts.length}`,
     `PRESERVED_SECTIONS: ${report.preservedSections.join(", ") || "none"}`,
     `SKIPPED_GENERATED_FOLDERS: ${report.skippedGeneratedFolders.map((entry) => entry.path).join(", ")}`,
   ];
@@ -231,11 +275,54 @@ export function formatGenesisDryRunReport(report) {
 }
 
 function listAvailableAgents(rootDir) {
+  return new Set(listAvailableAgentRecords(rootDir).map((agent) => agent.id));
+}
+
+function listAvailableAgentRecords(rootDir) {
   const agentsDir = join(rootDir, "agents");
-  const ids = new Set();
-  if (!existsSync(agentsDir)) return ids;
+  const records = [];
+  if (!existsSync(agentsDir)) return records;
   for (const file of listMarkdownFiles(agentsDir)) {
+    const id = file.replace(/\.md$/, "");
+    records.push({
+      id,
+      path: findMarkdownFilePath(agentsDir, file),
+    });
+  }
+  return records.filter((entry) => entry.path);
+}
+
+function listAvailableRules(rootDir) {
+  const rulesDir = join(rootDir, "rules");
+  const ids = new Set();
+  if (!existsSync(rulesDir)) return ids;
+  for (const file of listMarkdownFiles(rulesDir)) {
     ids.add(file.replace(/\.md$/, ""));
+  }
+  return ids;
+}
+
+function listMandatoryRules(rootDir) {
+  const rulesDir = join(rootDir, "rules");
+  if (!existsSync(rulesDir)) return [];
+  return listMarkdownFiles(rulesDir)
+    .map((file) => {
+      const id = file.replace(/\.md$/, "");
+      const path = findMarkdownFilePath(rulesDir, file);
+      const frontmatter = path ? parseFrontmatter(readFileSync(path, "utf8")) : {};
+      return { id, mandatory: Boolean(frontmatter.mandatory) };
+    })
+    .filter((entry) => entry.mandatory)
+    .map((entry) => entry.id);
+}
+
+function listAvailableSkills(rootDir) {
+  const skillsDir = join(rootDir, "skills");
+  const ids = new Set();
+  if (!existsSync(skillsDir)) return ids;
+  for (const name of readdirSync(skillsDir)) {
+    const path = join(skillsDir, name, "SKILL.md");
+    if (existsSync(path)) ids.add(name);
   }
   return ids;
 }
@@ -249,6 +336,20 @@ function listMarkdownFiles(dir) {
     else if (name.endsWith(".md")) files.push(name);
   }
   return files;
+}
+
+function findMarkdownFilePath(dir, fileName) {
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    const stat = statSync(path);
+    if (stat.isDirectory()) {
+      const found = findMarkdownFilePath(path, fileName);
+      if (found) return found;
+    } else if (name === fileName) {
+      return path;
+    }
+  }
+  return null;
 }
 
 function groupApplies(groupEntry, selectedProfile, stackTags) {
@@ -284,6 +385,70 @@ function normalizeStackTag(name) {
   return null;
 }
 
+function resolveGenesisStackPack({ pluginRoot, fingerprint }) {
+  const tags = new Set(fingerprint.tags || []);
+  const candidates = [
+    { id: "tauri-react-rust-postgres", path: "stack-packs/tauri-react-rust-postgres/pack.yaml", requiredTags: ["tauri"], exactTags: ["tauri", "react", "rust", "postgres"] },
+    { id: "laravel-nextjs-postgres-redis", path: "stack-packs/laravel-nextjs-postgres-redis/manifest.yaml", requiredTags: ["laravel", "nextjs", "postgres"], exactTags: ["laravel", "nextjs", "postgres"] },
+    { id: "chrome-extension-mv3", path: "stack-packs/chrome-extension-mv3/manifest.yaml", requiredTags: ["chrome-extension"], exactTags: ["chrome-extension"] },
+  ];
+  const match = candidates.find((candidate) => candidate.requiredTags.every((tag) => tags.has(tag)))
+    || candidates
+      .map((candidate) => ({ ...candidate, overlap: candidate.exactTags.filter((tag) => tags.has(tag)).length }))
+      .sort((a, b) => b.overlap - a.overlap)[0];
+  if (!match || match.overlap === 0 && !match.requiredTags.every((tag) => tags.has(tag))) return null;
+  const absolutePath = join(pluginRoot, match.path);
+  if (!existsSync(absolutePath)) return null;
+  const data = parseYaml(readFileSync(absolutePath, "utf8")) || {};
+  return {
+    id: data.id || match.id,
+    path: match.path,
+    exact: match.exactTags.every((tag) => tags.has(tag)),
+    data,
+  };
+}
+
+function resolveGenesisRules({ pluginRoot, stackPack, addOns = [] }) {
+  const availableRules = listAvailableRules(pluginRoot);
+  const packRules = asArray(stackPack?.data?.["rules-attach"]);
+  const requestedAdaptationRules = addOns.includes("project-adaptation") ? ADAPTATION_RULES : [];
+  const wantedRules = unique([
+    ...listMandatoryRules(pluginRoot),
+    ...packRules,
+    ...requestedAdaptationRules,
+  ]);
+  return {
+    selectedRules: wantedRules.filter((id) => availableRules.has(id)),
+    missingRules: wantedRules.filter((id) => !availableRules.has(id)),
+  };
+}
+
+function resolveGenesisSkills({ pluginRoot, selectedAgents }) {
+  const availableSkills = listAvailableSkills(pluginRoot);
+  const agentRecords = new Map(listAvailableAgentRecords(pluginRoot).map((agent) => [agent.id, agent]));
+  const agentSkills = selectedAgents.flatMap((agentId) => {
+    const path = agentRecords.get(agentId)?.path;
+    if (!path) return [];
+    return asArray(parseFrontmatter(readFileSync(path, "utf8")).skills)
+      .map((skillId) => String(skillId).replace(/^supervibe:/, ""));
+  });
+  const wantedSkills = unique([...BASE_REQUIRED_SKILLS, ...agentSkills]);
+  return {
+    selectedSkills: wantedSkills.filter((id) => availableSkills.has(id)),
+    missingSkills: wantedSkills.filter((id) => !availableSkills.has(id)),
+  };
+}
+
+function resolveStackPackScaffoldArtifacts({ stackPack }) {
+  const scaffold = stackPack?.data?.scaffold || {};
+  const rootFiles = asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, reason: "stack-pack root file" }));
+  const directories = asArray(scaffold.directories).map((entry) => ({ path: entry.path, reason: entry.purpose || "stack-pack directory" }));
+  const husky = Object.keys(scaffold.husky || {}).map((name) => ({ path: `.husky/${name}`, reason: "stack-pack git hook" }));
+  return {
+    files: [...rootFiles, ...directories, ...husky].filter((entry) => entry.path),
+  };
+}
+
 function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, recommendedAgents, optionalAgents }) {
   return [
     `# Supervibe Managed Context (${hostSelection.adapter.displayName})`,
@@ -309,6 +474,50 @@ function copyChoice(item) {
   return { ...item };
 }
 
+function parseFrontmatter(raw) {
+  if (!String(raw).startsWith("---")) return {};
+  const end = String(raw).indexOf("\n---", 3);
+  if (end === -1) return {};
+  const block = String(raw).slice(3, end).replace(/\r\n/g, "\n");
+  const metadata = {};
+  let currentKey = null;
+  for (const line of block.split("\n")) {
+    const keyMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (keyMatch) {
+      currentKey = keyMatch[1];
+      const value = keyMatch[2].trim();
+      metadata[currentKey] = value === "" ? [] : parseScalar(value);
+      continue;
+    }
+    const listMatch = line.match(/^\s*-\s*(.*)$/);
+    if (listMatch && currentKey) {
+      if (!Array.isArray(metadata[currentKey])) metadata[currentKey] = [];
+      metadata[currentKey].push(parseScalar(listMatch[1].trim()));
+    }
+  }
+  return metadata;
+}
+
+function parseScalar(value) {
+  const trimmed = String(value).trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    return trimmed.slice(1, -1).split(",").map((item) => stripQuotes(item.trim())).filter(Boolean);
+  }
+  return stripQuotes(trimmed);
+}
+
+function stripQuotes(value) {
+  return String(value).replace(/^['"]|['"]$/g, "");
+}
+
+function asArray(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (value === undefined || value === null || value === "") return [];
+  return [value];
+}
+
 function unique(values) {
-  return [...new Set(values)];
+  return [...new Set(values.filter(Boolean))];
 }

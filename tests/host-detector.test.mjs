@@ -69,6 +69,38 @@ test("environment host hint resolves ambiguous projects", async () => {
   });
 });
 
+test("active Codex runtime wins over stale OpenCode project files", async () => {
+  await withTempProject({
+    "opencode.json": "{}\n",
+    ".opencode/settings.json": "{}\n",
+  }, async (rootDir) => {
+    const selection = selectHostAdapter({ rootDir, env: { CODEX_THREAD_ID: "active-codex-chat" } });
+
+    assert.equal(selection.adapter.id, "codex");
+    assert.equal(selection.activeRuntimeHost, "codex");
+    assert.equal(selection.requiresSelection, false);
+    assert.ok(selection.evidence.some((entry) => entry.source === "runtime" && entry.marker === "CODEX_THREAD_ID"));
+    assert.ok(selection.candidates.some((candidate) => candidate.id === "opencode"));
+  });
+});
+
+test("forced host still overrides active runtime hints", async () => {
+  await withTempProject({
+    "AGENTS.md": "# Codex\n",
+    ".codex/config.json": "{}\n",
+  }, async (rootDir) => {
+    const selection = selectHostAdapter({
+      rootDir,
+      env: { CODEX_THREAD_ID: "active-codex-chat", SUPERVIBE_HOST: "opencode" },
+    });
+
+    assert.equal(selection.adapter.id, "opencode");
+    assert.equal(selection.forcedHost, "opencode");
+    assert.equal(selection.requiresSelection, false);
+    assert.equal(selection.evidence[0].marker, "SUPERVIBE_HOST");
+  });
+});
+
 test("adapter matrix declares host-specific folders and managed markers", () => {
   const matrix = getHostAdapterMatrix();
   const ids = matrix.map((adapter) => adapter.id);
