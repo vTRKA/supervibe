@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.34] - 2026-05-02
+
+### Added
+
+- Added `scripts/supervibe-commands.mjs` and a deterministic command catalog
+  for matching command-like maintenance requests before broad project search.
+- Added a direct route for "запусти индексирование rag/codegraph" to the
+  bounded RAG/CodeGraph indexer command with JSON progress and single-run lock
+  support.
+
+### Changed
+
+- Genesis managed context now instructs agents to use command lookup before
+  scanning a project for known Supervibe maintenance commands.
+- The command palette now exposes the RAG/CodeGraph indexing shortcut.
+
 ## [2.0.33] - 2026-05-02
 
 ### Added

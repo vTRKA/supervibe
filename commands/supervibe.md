@@ -29,6 +29,22 @@ statements such as "роутер падает", "настроить маршру
 работает", and "стабилизировать Wi-Fi" route to `network-router-engineer` in
 read-only diagnostics mode first.
 
+Command-like maintenance requests use the deterministic command catalog before
+any broad project search. Run:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "<user request>"
+```
+
+Example: "запусти индексирование rag/codegraph" routes directly to:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --no-embeddings --graph --max-files 200 --max-seconds 120 --health --json-progress
+```
+
+If the catalog prints `SUPERVIBE_COMMAND_MATCH`, run the exact command from the
+project root instead of searching the whole repository for command docs.
+
 Design requests route to existing commands only:
 - new UI, prototype, mockup, professional polish request -> `/supervibe-design`
 - design review, UI polish, token drift, accessibility review -> `/supervibe-audit --design`

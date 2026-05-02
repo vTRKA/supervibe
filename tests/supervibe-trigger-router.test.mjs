@@ -54,6 +54,17 @@ describe("supervibe trigger router", () => {
     assert.equal(route.intent, "trigger_diagnostics");
     assert.equal(route.command, "/supervibe --diagnose-trigger");
   });
+  it("routes direct RAG and CodeGraph indexing requests to the bounded indexer command", () => {
+    const route = routeTriggerRequest("запусти индексирование rag/codegraph");
+
+    assert.equal(route.intent, "code_index_build");
+    assert.match(route.command, /build-code-index\.mjs --root \. --resume --no-embeddings --graph/);
+    assert.match(route.command, /--max-files 200 --max-seconds 120 --health --json-progress/);
+    assert.equal(route.skill, "supervibe:code-search");
+    assert.equal(route.mutationRisk, "writes-generated-index");
+    assert.deepEqual(route.safetyBlockers, []);
+  });
+
   it("routes security, network, prompt, and kanban requests through specialized flows", () => {
     const security = routeTriggerRequest("security audit should scan vulnerabilities and prioritize remediation", {
       artifacts: { userRequest: true },

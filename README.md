@@ -118,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.33 initialized for this project
+[supervibe] welcome — plugin v2.0.34 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -207,6 +207,18 @@ The trigger-safe path is explicit and chainable:
 5. `/supervibe-loop --guided --max-duration 3h` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
+
+For command-like maintenance requests, agents can ask the deterministic catalog before searching the repo:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "запусти индексирование rag/codegraph"
+```
+
+That request resolves to the bounded RAG/CodeGraph indexer:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --no-embeddings --graph --max-files 200 --max-seconds 120 --health --json-progress
+```
 
 Unreleased capability label: the durable autonomous loop is implemented in this
 workspace and remains opt-in until the release gate publishes it. Autonomous execution is opt-in, not the default.

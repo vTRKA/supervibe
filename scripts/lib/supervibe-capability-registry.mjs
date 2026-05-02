@@ -86,6 +86,20 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     ],
   },
   {
+    id: "maintenance.code-index-build",
+    title: "Bounded RAG and CodeGraph indexing",
+    intents: ["code_index_build"],
+    commands: ["/supervibe", "/supervibe-status"],
+    skills: ["supervibe:code-search", "supervibe:verification"],
+    agents: [],
+    rules: ["operational-safety", "anti-hallucination"],
+    verificationHooks: [
+      "node scripts/supervibe-commands.mjs --match \"run rag codegraph indexing\"",
+      "node scripts/build-code-index.mjs --help",
+      "node --test tests/supervibe-command-catalog.test.mjs tests/supervibe-trigger-router.test.mjs",
+    ],
+  },
+  {
     id: "preview.silent-daemon",
     title: "Silent preview daemon",
     intents: ["preview_server"],

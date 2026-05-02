@@ -1,6 +1,7 @@
 import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
 import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
 import { getCapabilityRouteHint } from "./supervibe-capability-registry.mjs";
+import { findCommandShortcut, RAG_CODEGRAPH_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
 const ROUTES = {
@@ -18,6 +19,14 @@ const ROUTES = {
     skill: "supervibe:project-memory",
     nextQuestionRu: "Шаг 1/1: показать index health gate и repair command?",
     nextQuestionEn: "Step 1/1: show the index health gate and repair command?",
+    prerequisites: [],
+  },
+  code_index_build: {
+    phase: "maintenance",
+    command: RAG_CODEGRAPH_INDEX_COMMAND,
+    skill: "supervibe:code-search",
+    nextQuestionRu: "Шаг 1/1: запустить bounded RAG/CodeGraph indexing команду без поиска по всему проекту?",
+    nextQuestionEn: "Step 1/1: run the bounded RAG/CodeGraph indexing command without searching the whole project?",
     prerequisites: [],
   },
   preview_server: {
@@ -454,6 +463,34 @@ export function routeTriggerRequest(input, options = {}) {
     );
   }
 
+  const commandShortcut = findCommandShortcut(text);
+  if (commandShortcut && commandShortcut.directRoute !== false && ROUTES[commandShortcut.intent]) {
+    const route = ROUTES[commandShortcut.intent];
+    return withArtifactStatus(
+      withRoutingEvidence({
+        intent: commandShortcut.intent,
+        phase: route.phase,
+        command: commandShortcut.command,
+        skill: route.skill,
+        confidence: commandShortcut.confidence,
+        confidenceFloor: 0.9,
+        mutationRisk: mutationRiskFor(commandShortcut.intent),
+        prerequisites: route.prerequisites,
+        requiredSafety: requiredSafetyFor(commandShortcut.intent),
+        nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+        alternatives: alternativesFromRoutes(commandShortcut.intent),
+        matchedPhrase: commandShortcut.matchedAlias || null,
+        source: "command-catalog",
+        reason: commandShortcut.reason,
+      }, [{
+        source: "command-catalog",
+        reason: commandShortcut.reason,
+        matchedPhrase: commandShortcut.matchedAlias || null,
+      }], alternativesFromRoutes(commandShortcut.intent)),
+      artifacts,
+    );
+  }
+
   const exact = corpus.find((entry) => normalize(entry.phrase) === text);
   if (exact) {
     return withArtifactStatus(
@@ -634,7 +671,7 @@ function artifactSatisfied(name, artifacts) {
 
 function safetyBlockersFor(route, artifacts) {
   const blockers = [];
-  if (route.mutationRisk !== "none" && artifacts.confirmedMutation !== true) {
+  if (route.mutationRisk !== "none" && route.mutationRisk !== "writes-generated-index" && artifacts.confirmedMutation !== true) {
     blockers.push("needs-explicit-user-confirmation");
   }
   if (route.requiredSafety?.includes("bounded-runtime") && !artifacts.maxDuration && !artifacts.durationBudget) {
@@ -671,6 +708,7 @@ function localizeQuestion(entry, locale) {
 }
 
 function mutationRiskFor(intent) {
+  if (intent === "code_index_build") return "writes-generated-index";
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
@@ -680,6 +718,7 @@ function mutationRiskFor(intent) {
 
 function requiredSafetyFor(intent) {
   const base = ["no-provider-bypass", "no-hidden-background-work", "confirm-before-mutation"];
+  if (intent === "code_index_build") return [...base, "bounded-index-run", "single-run-lock", "generated-state-only"];
   if (intent === "genesis_setup") return [...base, "dry-run-before-host-file-write", "preserve-existing-host-files"];
   if (["autonomous_epic_run", "worktree_autonomous_run"].includes(intent)) {
     return [...base, "bounded-runtime", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
