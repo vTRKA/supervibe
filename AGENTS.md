@@ -27,6 +27,7 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 - Preserve user-owned sections in host instruction files. Supervibe managed blocks are updated through `scripts/lib/supervibe-context-migrator.mjs`.
 - Use host-neutral wording in shared agents, skills and rules. Do not assume any provider-specific folder, instruction file, or plugin root unless the artifact is explicitly adapter-specific.
 - Keep generated project state under `.supervibe/memory/`.
+- On Windows, write JSON/Markdown/YAML/evidence files as UTF-8. Prefer Node `fs.writeFile(..., "utf8")`; avoid legacy PowerShell redirection for non-ASCII text. Machine-readable approval evidence should use ASCII strings unless preserving exact user text is required.
 - Do not claim completion without a verification command.
 - Do not revert unrelated user changes.
 

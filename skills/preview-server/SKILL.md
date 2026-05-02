@@ -57,9 +57,9 @@ Always prefer the project's own dev script when one exists; fall back to `live-s
 
 1. Complete Step 0 (verification + `--list` check).
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
-3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>" --daemon`; capture the PID. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them. Use `--foreground` only when the user explicitly asks to debug server output.
+3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>" --daemon`; capture the PID. For prototype roots that import shared `_design-system` files, prefer root `.supervibe/artifacts/prototypes` with `--label <slug>` and return `http://localhost:<port>/<slug>/`. If a `<slug>` root is served, the static server maps `/_design-system/*` to the sibling folder so token imports still work. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them. Use `--foreground` only when the user explicitly asks to debug server output.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
-5. For a design root, verify the response body contains `supervibe-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
+5. For a design root, verify the response body contains `supervibe-fb-toggle`, the visible `Feedback` button is available, and any shared `_design-system` token URL returns HTTP 200. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 6. Hand the URL to the user using the Output contract template below.
 7. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
 8. Continue the surrounding task — keep the server alive only while the user is reviewing.
@@ -100,7 +100,8 @@ After spawn, before reporting success, confirm:
 1. `curl -sS http://localhost:<port>/ | head -n 5` returns HTML (HTTP 200, `<!doctype html>` or `<html` present).
 2. The response body contains the hot-reload `EventSource` / WebSocket injection (skip for framework dev servers that use their own HMR channel).
 3. For design roots, the response body contains `supervibe-fb-toggle` and the visible button text `Feedback`.
-4. `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --list` now shows the preview-server entry with the same PID.
+4. For prototypes importing shared tokens, `curl -sS http://localhost:<port>/_design-system/tokens.css` or the parent-root equivalent returns HTTP 200.
+5. `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --list` now shows the preview-server entry with the same PID.
 
 If any check fails, kill the PID and surface the error — do not return a half-working URL.
 

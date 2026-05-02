@@ -48,6 +48,7 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
   if (!existsSync(absRoot)) {
     throw new Error(`Preview server root does not exist: ${absRoot}`);
   }
+  const designSystemAliasRoot = findSiblingDesignSystemRoot(absRoot);
 
   const sseClients = new Set();
   let lastActivityAt = Date.now();
@@ -81,8 +82,13 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
     let urlPath = decodeURIComponent(req.url.split('?')[0]);
     if (urlPath === '/') urlPath = '/index.html';
 
-    const requestedPath = normalize(join(absRoot, urlPath));
-    if (!requestedPath.startsWith(absRoot + sep) && requestedPath !== absRoot) {
+    let requestedPath = normalize(join(absRoot, urlPath));
+    const aliasedPath = resolveDesignSystemAliasPath({ urlPath, designSystemAliasRoot });
+    if (aliasedPath) {
+      requestedPath = aliasedPath;
+    }
+
+    if (!aliasedPath && !requestedPath.startsWith(absRoot + sep) && requestedPath !== absRoot) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       res.end('403 Forbidden (path traversal blocked)');
       return;
@@ -186,4 +192,23 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
     getLastActivityAt: () => lastActivityAt,
     hasActiveSseClients: () => sseClients.size > 0,
   };
+}
+
+function findSiblingDesignSystemRoot(absRoot) {
+  const normalized = absRoot.split(sep).join('/');
+  const match = normalized.match(/^(.*\/\.supervibe\/artifacts\/prototypes)\/([^/]+)(?:\/.*)?$/);
+  if (!match || match[2] === '_design-system') return null;
+  const candidate = resolve(match[1].split('/').join(sep), '_design-system');
+  return existsSync(candidate) ? candidate : null;
+}
+
+function resolveDesignSystemAliasPath({ urlPath, designSystemAliasRoot }) {
+  if (!designSystemAliasRoot) return null;
+  if (urlPath !== '/_design-system' && !urlPath.startsWith('/_design-system/')) return null;
+  const rest = urlPath.replace(/^\/_design-system\/?/, '');
+  const requestedPath = normalize(join(designSystemAliasRoot, rest));
+  if (!requestedPath.startsWith(designSystemAliasRoot + sep) && requestedPath !== designSystemAliasRoot) {
+    return null;
+  }
+  return requestedPath;
 }

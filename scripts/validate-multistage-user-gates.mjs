@@ -8,7 +8,7 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
     file: "commands/supervibe-design.md",
     label: "design command feedback gate",
     required: [
-      /Preference Intake Gate/i,
+      /Preference Coverage Matrix Gate/i,
       /chat-level feedback prompt is canonical/i,
       /browser feedback overlay is supplemental/i,
       /delegated approval markers cannot satisfy/i,
@@ -20,7 +20,7 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
     file: "skills/brandbook/SKILL.md",
     label: "brandbook preference gate",
     required: [
-      /Preference Intake Gate/i,
+      /Preference Coverage Matrix Gate/i,
       /This gate cannot be satisfied by delegated approval markers/i,
       /Only the visual approval\/finalize step is a chat-level gate/i,
     ],

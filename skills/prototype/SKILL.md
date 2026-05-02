@@ -168,8 +168,8 @@ Wait for explicit answer. Then next question. Never combine.
 
 ### Stage 4 — Live preview
 
-1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes/<slug>/ --daemon`. It spawns `http://localhost:NNNN` silently with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
-2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
+1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes --label <slug> --daemon` when the prototype imports the shared `_design-system`; present `http://localhost:NNNN/<slug>/` as the URL. Serving `--root .supervibe/artifacts/prototypes/<slug>/ --daemon` is allowed only because the server maps `/_design-system/*` to the sibling folder. It spawns silently with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
+2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button and that shared design-system tokens return HTTP 200. If missing, fix the preview setup before presenting the URL. Never use `file://` as delivery verification because it bypasses the feedback overlay.
 3. Print URL to user. Hand-off to user for visual review.
 4. Ensure server stays alive while feedback loop runs.
 
@@ -244,6 +244,7 @@ Rubric:     prototype
 - DO NOT proceed past delivery without explicit feedback choice.
 - DO NOT reuse or edit an old design artifact without the artifact-mode question when the brief is ambiguous.
 - DO NOT disable preview feedback overlay for prototype previews.
+- DO NOT verify design delivery through `file://`; use the Supervibe preview server so the feedback button and shared tokens are checked in the same mode the user sees.
 - DO NOT build or preview from a candidate or needs_revision design system.
 - DO NOT mark approved without `.approval.json` artifact.
 - DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.

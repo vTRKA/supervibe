@@ -32,7 +32,7 @@ const TEXT_EXTENSIONS = new Set([
 
 const LANGUAGE_POLICY_SURFACES_RE = /^(?:agents|skills|commands|rules|docs)\//;
 const QUESTION_MARK_POLICY_SURFACES_RE =
-  /^(?:agents|skills|commands|rules|docs|templates|scripts|README\.md|CHANGELOG\.md|registry\.yaml)(?:\/|$)/;
+  /^(?:agents|skills|commands|rules|docs|templates|scripts|\.supervibe\/artifacts|\.supervibe\/memory|README\.md|CHANGELOG\.md|registry\.yaml)(?:\/|$)/;
 const SKIP_DIRS = new Set([
   ".git",
   "build",

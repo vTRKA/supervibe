@@ -23,6 +23,8 @@ Any agent, command, or skill that engages the user in clarification, requirement
 
 Questions must be easy to answer. Prefer 2-4 choices for ordinary clarifications; delivery gates use the standard 5-action menu. Put the recommended/default choice first and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
 
+A `Step N/M:` line without explicit choices is not a valid question. Do not ask bare binary prompts such as `Step 3/6: main screen or shell?`; render the choices as bullets with the recommended one first, include what each choice unlocks, and include the stop option.
+
 Every question must be transparent about why the user is being asked. The question body must include:
 - `Why:` one sentence about user-visible impact.
 - `Decision unlocked:` the artifact, route, scope, or implementation choice this answer decides.
@@ -72,6 +74,7 @@ The agent's `## Anti-patterns` section MUST list:
 - `fixed-stage-gauntlet` - forcing a user through a stale or maximum step count when triage, approved artifacts, or explicit delegation make stages reusable or N/A.
 - `lost-topic-resume` - dropping a saved handoff/workflow stage when the user changes topic instead of asking continue, skip/delegate, pause/switch, or stop.
 - `dumping-options-without-rationale` — listing 6 choices with no one-line trade-off.
+- `bare-step-question` - showing a `Step N/M:` prompt without bullet choices and tradeoffs.
 - `too-many-options` — presenting a menu so large the user must design the system themselves; split into follow-up questions.
 - `hidden-default` — asking a question without naming the recommended/default path.
 

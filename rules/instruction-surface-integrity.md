@@ -49,6 +49,15 @@ used for routing and agent behavior.
 - Store all instruction surfaces as UTF-8.
 - Never write Cyrillic or other non-ASCII trigger phrases through a lossy shell
   path that can collapse them to repeated question marks.
+- On Windows, do not create JSON, markdown, YAML, or evidence files with
+  legacy PowerShell redirection or default-encoded `Set-Content`. Prefer Node
+  `fs.writeFile(..., "utf8")`; if PowerShell is unavoidable, set
+  `$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)`
+  and use `Set-Content -Encoding utf8`.
+- Machine-readable state and approval evidence should use ASCII strings for
+  generated evidence fields unless the user supplied the exact non-ASCII text
+  being recorded. This prevents approval JSON from depending on the local
+  Windows code page.
 - Treat three-or-more question-mark runs in instruction surfaces as a release
   blocker unless the file is a tokenizer/model artifact explicitly excluded from
   instruction scans.
@@ -84,8 +93,8 @@ used for routing and agent behavior.
 
 - `npm run validate:text-encoding` must pass before commit, release, or project
   adaptation. It rejects mojibake, replacement characters, repeated
-  question-mark text loss, redundant bilingual descriptions, and Cyrillic
-  outside quoted `Triggers:`.
+  question-mark text loss in instruction and `.supervibe` state surfaces,
+  redundant bilingual descriptions, and Cyrillic outside quoted `Triggers:`.
 - `npm run validate:workflow-continuation` must pass for workflow commands and
   skills.
 - `npm run validate:multistage-user-gates` must pass for design and delivery
@@ -97,6 +106,8 @@ used for routing and agent behavior.
 
 - `question-mark-trigger-loss` - accepting repeated question marks as a trigger
   phrase.
+- `powershell-encoding-loss` - writing state/evidence through a Windows shell
+  path that replaces text with repeated question marks or mojibake.
 - `mixed-language-description` - putting translated behavior paragraphs into
   frontmatter descriptions.
 - `localized-runtime-copy-in-docs` - hard-coding localized visible labels in

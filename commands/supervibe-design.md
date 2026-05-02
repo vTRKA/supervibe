@@ -14,13 +14,13 @@ Single entry-point for the adaptive design pipeline. Orchestrates 6 design agent
 
 Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `.supervibe/artifacts/prototypes/<slug>/config.json`, `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`, explicit design-system section approvals, and `.supervibe/artifacts/prototypes/<slug>/.approval.json`.
 
-Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question must include explicit answer choices: the recommended/default option first, one-line tradeoff summary for every option, a free-form answer path, and the stop condition. A bare line such as `Step 3/6: main screen or shell?` is invalid until it lists concrete choices.
 
 ## Continuation Contract
 
 `/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the next mandatory approval gate, prototype feedback gate, or explicit blocker. Continue through all applicable non-blocking stages when the next stage can be completed from the current brief, approved artifacts, and documented safe defaults; stages may be marked `reuse`, `delegated`, `skipped`, or `N/A` only through documented triage. Delegated design decisions can fill safe defaults, but they cannot satisfy creative-direction selection, required design-system section approval, prototype approval, safety/policy gates, production approvals, or destructive-operation consent.
 
-Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Intake Gate has not captured a user preference for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
+Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Coverage Matrix Gate is incomplete for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
 
 Every run must persist a `stageTriage` map in `.supervibe/artifacts/prototypes/<slug>/config.json`. Mark each stage as `required`, `reuse`, `delegated`, `skipped`, or `N/A` with rationale. Existing approved design systems enter `system-reuse mode` by default for prototype/refinement work, so the command reuses prior preference and visual-system decisions instead of forcing the user through a fresh eight-stage path. Existing candidate systems enter design-system review/resume mode and cannot unlock prototype generation.
 
@@ -138,7 +138,7 @@ Run a product-fit style matrix before committing to a visual direction: product 
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
 4. **Design system lifecycle is explicit.** Start with candidate tokens for design-system review only, approve required sections explicitly, then unlock prototypes only when `design_system.status = approved`. Every visual decision references the current approved system instead of inventing one-off values.
 4a. **Design system is project-level, not per-mockup.** Build it once at `.supervibe/artifacts/prototypes/_design-system/`, then reuse it for every future mockup. New work may extend the system through an explicit extension request; it must not rebuild palette/type/components from scratch unless the user asked for a rebrand.
-4b. **Preference intake before tokens.** A new product, new visual direction, or rebrand MUST ask at least one explicit user preference question before brand direction or candidate tokens are written. Save the answer to `.supervibe/artifacts/brandbook/preferences.json`; delegated approval markers cannot satisfy this gate.
+4b. **Preference coverage before tokens.** A new product, new visual direction, or rebrand MUST satisfy the Preference Coverage Matrix before brand direction, candidate tokens, or design-system section markers are written. Save the matrix to `.supervibe/artifacts/brandbook/preferences.json`; delegated approval markers cannot satisfy this gate.
 5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks design-system state in `design-flow-state.json` and prototype state in `.approval.json`; it knows when something is ready for backend/frontend integration.
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
@@ -258,13 +258,20 @@ node id, variables export, component library, or Code Connect metadata:
    action type, and timebox. If writeback is unavailable, write
    `figma-source/manual-patch.md` instead.
 
-**Stage 0f — Preference Intake Gate (required before brand direction or design-system writes).**
+**Stage 0f — Preference Coverage Matrix Gate (required before brand direction or design-system writes).**
 
-For a new product, new visual direction, or rebrand, ask one explicit preference question before writing `.supervibe/artifacts/brandbook/direction.md`, `.supervibe/artifacts/prototypes/_design-system/tokens.css`, or any delegated section marker.
+For a new product, new visual direction, or rebrand, capture these eight preference axes before writing `.supervibe/artifacts/brandbook/direction.md`, `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `manifest.json`, or any delegated section marker:
 
-Use the Standard Question Template and start with the highest-impact preference, for example: visual direction/tone, audience trust level, density, reference brands to borrow from or avoid, or component feel. Do not create candidate tokens until the answer is saved to `.supervibe/artifacts/brandbook/preferences.json`, or until the user explicitly says they have no preference and wants safe defaults. The saved file must include the prompt, answer, chosen default if any, source (`user` or `explicit-default`), and timestamp.
+- visual direction and tone
+- audience and trust/risk posture
+- information density
+- typography personality
+- palette mood
+- motion intensity
+- component feel
+- reference borrow/avoid
 
-If the brief already states clear preferences, persist them to `.supervibe/artifacts/brandbook/preferences.json` and ask one confirmation or priority question before writing brand direction or candidate tokens. Existing approved design systems can skip this gate unless the request changes direction, audience, brand personality, or target surface.
+Use the Standard Question Template and ask one question at a time. Start with the highest-impact missing axis instead of dumping all eight questions. If the brief already states clear preferences, persist those axes with source=`user` and ask one confirmation or priority question for the remaining ambiguity. If the user explicitly says they have no preference and wants safe defaults, persist source=`explicit-default` for the missing axes and name each default. Do not create candidate tokens until `.supervibe/artifacts/brandbook/preferences.json` contains the matrix with prompt, answer/default, source, timestamp, and decision unlocked for every axis. Existing approved design systems can skip this gate unless the request changes direction, audience, brand personality, or target surface.
 
 ### Stage 1 — Brand direction (conditional)
 
@@ -274,12 +281,12 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 2. If brief named a competitor reference, invoke `supervibe:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
 3. Dispatch `creative-director` agent.
 4. Run the **Taste Alignment Gate** before any screen work: document audience, product personality, reference set, what to borrow, what to avoid, and how the selected direction differs from older prototypes in this project.
-5. Output: `.supervibe/artifacts/brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords, old-prototype differentiation notes. Score against `brandbook` rubric ≥9.
+5. Output: `.supervibe/artifacts/brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords, old-prototype differentiation notes. Score against `brandbook` rubric ≥9. This file is mandatory for new/rebrand runs before any token or prototype write.
 6. **Feedback gate** — present direction to user. Options:
-   - ✅ approve direction → write `creative_direction.status = selected` in `design-flow-state.json`, then ask one explicit continuation question before Stage 2
-   - 🔀 alternative → creative-director generates 2 alternatives with documented tradeoffs (not random regen)
-   - ✎ refine — user describes one specific change
-   - 🛑 stop
+   - Approve direction - write `creative_direction.status = selected` in `design-flow-state.json`, then ask one explicit continuation question before Stage 2.
+   - Compare another direction - creative-director generates 2 alternatives with documented tradeoffs, not random regeneration.
+   - Refine direction - user describes one specific change.
+   - Stop here - persist `direction.md` as draft and do not write tokens.
 
 A selected creative direction is not design-system approval. It must not create a prototype, unlock preview, or mark palette, typography, density, radius, motion, components, copy language, or platform constraints as approved.
 
@@ -287,13 +294,13 @@ A selected creative direction is not design-system approval. It must not create 
 
 If design system missing OR Stage 1 just produced a new direction OR the user explicitly asked for rebrand:
 
-0. Verify `.supervibe/artifacts/brandbook/preferences.json` exists for new/rebrand runs. Do not create candidate tokens, `manifest.json`, or section completion markers until the Preference Intake Gate is satisfied.
+0. Verify `.supervibe/artifacts/prototypes/<slug>/config.json.stageTriage`, `.supervibe/artifacts/brandbook/preferences.json`, and `.supervibe/artifacts/brandbook/direction.md` exist for new/rebrand runs. Do not create candidate tokens, `manifest.json`, or section completion markers until the Preference Coverage Matrix and selected creative direction are satisfied.
 1. Invoke `supervibe:brandbook` skill in full-pass mode only when Stage 2 triage is `required` (up to 8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
 2. Each sub-section is a separate decision record (one question at a time only when clarification is actually needed, markdown with `Step N/M` progress).
 3. Each sub-section writes a `draft`, `candidate`, `needs_revision`, or `approved` marker. Candidate markers are completion/proposal records, not user approval.
 4. Output: `.supervibe/artifacts/prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json, design-flow-state.json}` with candidate tokens and `design_system.status === "candidate"` until explicit section approvals are complete.
-5. Show a review packet/styleboard and ask explicit approval for every required section: `palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, and `accessibility-platform`.
-6. Only after every required section is explicitly approved, write `design_system.status = "approved"` with `approved_at`, `approved_by`, `approved_sections`, and `feedback_hash` or equivalent evidence in `design-flow-state.json`.
+5. Show a review packet/styleboard and ask explicit approval for every required section: `palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, and `accessibility-platform`. Every section must have a visible summary plus `approve / revise / compare alternative / stop` choices. A bulk phrase such as "approve all 8 sections" is valid only after that packet was already shown in the current run and all eight section summaries are visible in chat.
+6. Only after every required section is explicitly approved, write `design_system.status = "approved"` with `approved_at`, `approved_by`, `approved_sections`, per-section evidence, and `feedback_hash` or equivalent user-message evidence in `design-flow-state.json`.
 
 After candidate completion: design system is a **review packet**, not a prototype source of truth. It blocks downstream prototype stages until `design_system.status = "approved"` and every required section is approved. No preview server starts while the system is candidate or needs_revision.
 
@@ -355,7 +362,7 @@ Output: `.supervibe/artifacts/prototypes/<slug>/index.html` + supporting files. 
 
 ### Stage 6 — Live preview + parallel review
 
-1. Only start preview after Stage 5 has written a draft prototype under an allowed transition. Skill auto-spawns `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon` with feedback overlay enabled and no attached console. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#supervibe-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
+1. Only start preview after Stage 5 has written a draft prototype under an allowed transition. Preferred command for prototypes that import the shared `_design-system` is `supervibe:preview-server --root .supervibe/artifacts/prototypes --label <slug> --daemon`, and the user URL is `http://localhost:NNNN/<slug>/`. The server also maps `/_design-system/*` when a `<slug>` root is served, but the parent-root URL is the canonical workflow. Never use `file://` verification for design delivery and never use `--no-feedback` for design previews. Print the URL only after verifying the page contains the visible `Feedback` button (`#supervibe-fb-toggle`) and shared tokens load with HTTP 200. User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `.supervibe/artifacts/prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `.supervibe/artifacts/prototypes/<slug>/_reviews/a11y.md`.

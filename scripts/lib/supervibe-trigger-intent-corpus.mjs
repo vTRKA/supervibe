@@ -1,4 +1,10 @@
 const baseSafety = ["no-provider-bypass", "no-hidden-background-work", "confirm-before-mutation"];
+const designNewSafety = [
+  ...baseSafety,
+  "creative-direction-first",
+  "preference-coverage-matrix",
+  "design-system-approval-gate",
+];
 
 const TRIGGER_INTENT_CORPUS = Object.freeze([
   {
@@ -372,12 +378,12 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     intent: "design_new",
     phase: "design",
     command: "/supervibe-design",
-    skill: "supervibe:prototype",
+    skill: "supervibe:brandbook",
     confidenceFloor: 0.9,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Шаг 1/1: запустить дизайн-пайплайн с memory, code и design lookup preflight?",
-    requiredSafety: baseSafety,
+    nextQuestionIncludes: "Шаг 1/1: запустить полный дизайн-пайплайн с creative direction и brandbook до прототипа?",
+    requiredSafety: designNewSafety,
   },
   {
     id: "ru-design-audit",
@@ -442,12 +448,12 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     intent: "design_new",
     phase: "design",
     command: "/supervibe-design",
-    skill: "supervibe:prototype",
+    skill: "supervibe:brandbook",
     confidenceFloor: 0.9,
     mutationRisk: "writes-docs",
     prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Step 1/1: run the design pipeline with memory, code, and design lookup preflight?",
-    requiredSafety: baseSafety,
+    nextQuestionIncludes: "Step 1/1: run the full design pipeline with creative direction and brandbook before prototype work?",
+    requiredSafety: designNewSafety,
   },
   {
     id: "en-design-audit",

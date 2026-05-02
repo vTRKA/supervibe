@@ -141,8 +141,21 @@ describe("supervibe trigger router", () => {
 
     assert.equal(route.intent, "design_continue");
     assert.equal(route.command, "/supervibe-design --continue");
-    assert.equal(route.skill, "supervibe:prototype");
+    assert.equal(route.skill, "supervibe:brandbook");
     assert.match(route.nextQuestion, /продолжить оставшиеся этапы/i);
+    assert.deepEqual(route.missingArtifacts, []);
+  });
+
+  it("routes new design requests through brandbook before prototype work", () => {
+    const route = routeTriggerRequest("make a new design system for dashboard", {
+      artifacts: { designBrief: true },
+    });
+
+    assert.equal(route.intent, "design_new");
+    assert.equal(route.command, "/supervibe-design");
+    assert.equal(route.skill, "supervibe:brandbook");
+    assert.match(route.nextQuestion, /brandbook before prototype/i);
+    assert.equal(route.requiredSafety.includes("creative-direction-first"), true);
     assert.deepEqual(route.missingArtifacts, []);
   });
 });

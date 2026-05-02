@@ -451,38 +451,43 @@ function normalize(value) {
 }
 
 function intentForCommand(command) {
-  if (command.includes("--review")) return "plan_review";
-  if (command.includes("--atomize")) return "atomize_plan";
-  if (command.includes("--worktree")) return "worktree_autonomous_run";
-  if (command.includes("--epic")) return "autonomous_epic_run";
-  if (command.includes("execute-plan")) return "execute_plan";
-  if (command.includes("brainstorm")) return "feature_brainstorm";
-  if (command.includes("plan")) return "brainstorm_to_plan";
+  const value = String(command || "");
+  if (value.includes("--review")) return "plan_review";
+  if (value.includes("--atomize")) return "atomize_plan";
+  if (value.includes("--worktree")) return "worktree_autonomous_run";
+  if (value.includes("--epic")) return "autonomous_epic_run";
+  if (value.includes("execute-plan")) return "execute_plan";
+  if (value.includes("brainstorm")) return "feature_brainstorm";
+  if (value.includes("plan")) return "brainstorm_to_plan";
   return "workflow_continuation";
 }
 
 function mutationRiskForCommand(command) {
-  if (command.includes("--worktree")) return "creates-worktree";
-  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return "executes-code";
-  if (command.includes("--atomize") || command.includes("--create-epic")) return "writes-tracker";
-  if (command.includes("plan") || command.includes("brainstorm")) return "writes-docs";
+  const value = String(command || "");
+  if (value.includes("--worktree")) return "creates-worktree";
+  if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return "executes-code";
+  if (value.includes("--atomize") || value.includes("--create-epic")) return "writes-tracker";
+  if (value.includes("plan") || value.includes("brainstorm")) return "writes-docs";
   return "none";
 }
 
 function safetyForCommand(command) {
+  const value = String(command || "");
   const base = ["confirm-before-mutation", "no-provider-bypass", "no-hidden-background-work"];
-  if (command.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "bounded-runtime"];
-  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "bounded-runtime"];
-  if (command.includes("--atomize") || command.includes("--create-epic")) return [...base, "plan-review-pass-required"];
-  if (command.includes("--review")) return [...base, "review-evidence-required"];
+  if (value.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "bounded-runtime"];
+  if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "bounded-runtime"];
+  if (value.includes("--atomize") || value.includes("--create-epic")) return [...base, "plan-review-pass-required"];
+  if (value.includes("--review")) return [...base, "review-evidence-required"];
   return base;
 }
 
 function stopConditionForCommand(command) {
-  if (command.includes("--review")) return "ask-before-plan-review";
-  if (command.includes("--atomize") || command.includes("--create-epic")) return "ask-before-work-item-write";
-  if (command.includes("--worktree")) return "ask-before-worktree-run";
-  if (command.includes("--epic") || command.includes("execute-plan") || command.includes("--guided") || command.includes("--manual") || command.includes("--fresh-context")) return "ask-before-execution";
-  if (command.includes("plan")) return "ask-before-plan";
+  const value = String(command || "");
+  if (!value) return "ask-before-command-resolution";
+  if (value.includes("--review")) return "ask-before-plan-review";
+  if (value.includes("--atomize") || value.includes("--create-epic")) return "ask-before-work-item-write";
+  if (value.includes("--worktree")) return "ask-before-worktree-run";
+  if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return "ask-before-execution";
+  if (value.includes("plan")) return "ask-before-plan";
   return "ask-before-next-step";
 }

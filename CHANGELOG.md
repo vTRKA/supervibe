@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.54] - 2026-05-03
+
+### Added
+
+- Added design-flow gate validation for preference coverage, creative
+  direction, section approval, and preview feedback/token checks.
+- Added preview URL helpers so shared prototype roots return
+  `http://localhost:<port>/<slug>/` when the label matches a child prototype.
+
+### Changed
+
+- Strengthened `/supervibe-design` and `supervibe:brandbook` so new/rebrand
+  runs require a full preference coverage matrix and `direction.md` before
+  candidate tokens or prototypes.
+- Reformatted post-delivery questions into separated recommended and alternate
+  option blocks to avoid collapsed answer blobs.
+- Routed new design requests through `supervibe:brandbook` before prototype
+  work.
+
+### Fixed
+
+- Fixed preview serving for prototype roots that import sibling
+  `_design-system` tokens.
+- Fixed workflow routing for resolved commands with no runnable command.
+- Extended text-loss validation to `.supervibe` state/evidence artifacts and
+  documented Windows UTF-8 writing rules.
+
 ## [2.0.53] - 2026-05-03
 
 ### Added

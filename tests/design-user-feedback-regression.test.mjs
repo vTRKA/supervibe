@@ -2,21 +2,22 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("design pipeline requires user preference intake before candidate tokens", async () => {
+test("design pipeline requires preference coverage before candidate tokens", async () => {
   const design = await readFile("commands/supervibe-design.md", "utf8");
   const brandbook = await readFile("skills/brandbook/SKILL.md", "utf8");
 
-  assert.match(design, /Preference Intake Gate/);
+  assert.match(design, /Preference Coverage Matrix Gate/);
+  assert.match(design, /visual direction and tone/);
+  assert.match(design, /reference borrow\/avoid/);
   assert.match(design, /Do not create candidate tokens/i);
   assert.match(design, /\.supervibe\/artifacts\/brandbook\/preferences\.json/);
-  assert.ok(
-    design.indexOf("Preference Intake Gate") < design.indexOf("Stage 2"),
-    "preference intake must happen before design-system materialization",
-  );
+  assert.match(design, /\.supervibe\/artifacts\/brandbook\/direction\.md.*mandatory/i);
+  assert.ok(design.indexOf("Preference Coverage Matrix Gate") < design.indexOf("### Stage 2"));
 
-  assert.match(brandbook, /Preference Intake Gate/);
-  assert.match(brandbook, /at least one explicit user preference question/i);
+  assert.match(brandbook, /Preference Coverage Matrix Gate/);
+  assert.match(brandbook, /Preference Coverage Matrix/);
   assert.match(brandbook, /\.supervibe\/artifacts\/brandbook\/preferences\.json/);
+  assert.match(brandbook, /Do not accept blanket approval/i);
 });
 
 test("design feedback loop keeps chat feedback canonical and browser feedback stateful", async () => {

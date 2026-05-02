@@ -511,17 +511,30 @@ export function formatTransparentStepQuestion(question) {
 }
 
 export function formatPostDeliveryQuestion(question) {
+  const recommended = (question.choices || []).find((choice) => choice.recommended) || (question.choices || [])[0];
+  const others = (question.choices || []).filter((choice) => choice !== recommended);
+  const recommendedHeading = question.locale === 'ru' ? 'Рекомендуемый вариант:' : 'Recommended option:';
+  const otherHeading = question.locale === 'ru' ? 'Другие варианты:' : 'Other options:';
+  const freeFormHeading = question.locale === 'ru' ? 'Свободный ответ:' : 'Free-form answer:';
+  const stopHeading = question.locale === 'ru' ? 'Условие остановки:' : 'Stop condition:';
   const lines = [
     `**${question.prompt}**`,
     '',
     question.recommendation,
     '',
+    recommendedHeading,
   ];
-  for (const choice of question.choices || []) {
-    const suffix = choice.recommended ? (question.locale === 'ru' ? ' (рекомендуется)' : ' (recommended)') : '';
-    lines.push(`- ${choice.label}${suffix} - ${choice.tradeoff}`);
+  if (recommended) {
+    const suffix = question.locale === 'ru' ? ' (рекомендуется)' : ' (recommended)';
+    lines.push(`- **${recommended.label}**${suffix} - ${recommended.tradeoff}`);
   }
-  lines.push('', question.freeFormPath, question.stopCondition);
+  if (others.length > 0) {
+    lines.push('', otherHeading);
+    for (const choice of others) {
+      lines.push(`- **${choice.label}** - ${choice.tradeoff}`);
+    }
+  }
+  lines.push('', `${freeFormHeading} ${question.freeFormPath}`, `${stopHeading} ${question.stopCondition}`);
   return lines.join('\n');
 }
 

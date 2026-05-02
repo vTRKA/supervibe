@@ -175,3 +175,12 @@ test("russian topic drift resume question is localized", () => {
   assert.match(route.nextQuestion, /Шаг 1\/1/);
   assert.match(route.nextQuestion, /пропустить\/делегировать/i);
 });
+
+test("missing resolved commands do not crash workflow routing", () => {
+  const route = routeWorkflowIntent("npm run deploy:prod please");
+
+  assert.equal(route.intent, "missing_npm_script");
+  assert.equal(route.command, null);
+  assert.equal(route.stopCondition, "ask-before-command-resolution");
+  assert.match(route.nextQuestion, /missing command/i);
+});

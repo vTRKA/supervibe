@@ -33,7 +33,16 @@ test("routes Russian and English design intents without adding lookup commands",
   });
   assert.equal(design.intent, "design_new");
   assert.equal(design.command, "/supervibe-design");
-  assert.equal(design.skill, "supervibe:prototype");
+  assert.equal(design.skill, "supervibe:brandbook");
+  assert.match(design.nextQuestion, /creative direction.*brandbook.*(prototype|прототип)/i);
+  assert.equal(design.requiredSafety.includes("creative-direction-first"), true);
+
+  const englishDesign = routeTriggerRequest("make the ui look professional", {
+    artifacts: { request: true, confirmedMutation: true },
+  });
+  assert.equal(englishDesign.intent, "design_new");
+  assert.equal(englishDesign.skill, "supervibe:brandbook");
+  assert.match(englishDesign.nextQuestion, /creative direction.*brandbook.*prototype/i);
 
   const audit = routeTriggerRequest("run a design audit", {
     artifacts: { designArtifact: ".supervibe/artifacts/prototypes/app/index.html" },

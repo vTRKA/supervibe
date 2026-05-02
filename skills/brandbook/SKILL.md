@@ -80,11 +80,13 @@ The design-system review packet is a chat-level gate. Ask explicit approval/revi
 3. Read `supervibe:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
 4. Read user's brief / requirements doc if pointed at one.
 
-**Step 0b — Preference Intake Gate.**
+**Step 0b — Preference Coverage Matrix Gate.**
 
-Before writing candidate tokens, `manifest.json`, `design-flow-state.json`, or section markers for a new product, new visual direction, or rebrand, ask at least one explicit user preference question. Save the answer to `.supervibe/artifacts/brandbook/preferences.json` with prompt, answer, source, timestamp, and the design decision it unlocks.
+Before writing candidate tokens, `manifest.json`, `design-flow-state.json`, or section markers for a new product, new visual direction, or rebrand, satisfy the Preference Coverage Matrix. The saved `.supervibe/artifacts/brandbook/preferences.json` must cover: visual direction and tone, audience/trust posture, information density, typography personality, palette mood, motion intensity, component feel, and reference borrow/avoid.
 
-This gate cannot be satisfied by delegated approval markers. If the user already gave clear preferences in the brief, persist those as source=`user` and ask one confirmation or priority question before writing candidate tokens. If the user explicitly says "no preference" or "use defaults", persist source=`explicit-default`, name the default, and continue. Only the visual approval/finalize step is a chat-level gate; candidate markers and delegated defaults cannot replace it.
+Ask one question at a time only for missing or ambiguous axes; do not dump all eight questions. If the user already gave clear preferences in the brief, persist those as source=`user` and ask one confirmation or priority question before writing candidate tokens. If the user explicitly says "no preference" or "use defaults", persist source=`explicit-default`, name each default, and continue. This gate cannot be satisfied by delegated approval markers. Only the visual approval/finalize step is a chat-level gate; candidate markers and delegated defaults cannot replace it.
+
+For new product, new visual direction, or rebrand runs, `.supervibe/artifacts/brandbook/direction.md` must exist and `creative_direction.status = selected` must be recorded before candidate tokens, section markers, or prototype unlock. Direction output must show 3 candidate directions, references, borrow/avoid notes, and why the selected direction is not just a repaint of older prototypes.
 
 **Step 0a — Determine target baseline.**
 
@@ -305,7 +307,7 @@ Candidate output: `.supervibe/artifacts/prototypes/_design-system/manifest.json`
 }
 ```
 
-The design-system approval record is stored in `design-flow-state.json`:
+The design-system approval record is stored in `design-flow-state.json`. Do not accept blanket approval unless the review packet/styleboard was shown first in the current run and every required section summary is visible with an approve/revise/compare alternative/stop choice:
 
 ```json
 {
@@ -379,11 +381,14 @@ Rubric:     brandbook
 
 - ONE question per message. Always.
 - DO NOT stop after internal section drafting when the next section can proceed with safe defaults, but DO stop for the design-system review packet before writing approved state.
+- DO NOT treat a single broad style choice as complete preference intake for a new design system; the Preference Coverage Matrix must be complete before candidate tokens.
+- DO NOT write candidate tokens or section markers for a new/rebrand run until `.supervibe/artifacts/brandbook/direction.md` exists and the creative direction is selected.
 - DO NOT inline raw hex / magic numbers anywhere. Tokens or it's not done.
 - DO NOT advance to component design before palette + type + spacing have candidate markers (downstream depends on these).
 - DO NOT unlock prototype work from candidate or needs_revision design-system state.
 - DO NOT mark final handoff metadata without visual approval on an approved prototype.
 - DO NOT mark approved without `design-flow-state.json`, `manifest.json`, per-section markers in `.approvals/`, `approved_by`, `approved_at`, `approved_sections`, and feedback evidence.
+- DO NOT accept bulk approval unless the user has already seen a full review packet/styleboard with all required section summaries and explicit choices.
 - DO NOT delete rejected alternatives — keep them in `.alternatives/` for future reference.
 
 ## Verification

@@ -168,15 +168,15 @@ const ROUTES = {
   design_new: {
     phase: "design",
     command: "/supervibe-design",
-    skill: "supervibe:prototype",
-    nextQuestionRu: "Шаг 1/1: запустить дизайн-пайплайн с memory, code и design lookup preflight?",
-    nextQuestionEn: "Step 1/1: run the design pipeline with memory, code, and design lookup preflight?",
+    skill: "supervibe:brandbook",
+    nextQuestionRu: "Шаг 1/1: запустить полный дизайн-пайплайн с creative direction и brandbook до прототипа?",
+    nextQuestionEn: "Step 1/1: run the full design pipeline with creative direction and brandbook before prototype work?",
     prerequisites: ["design-brief"],
   },
   design_continue: {
     phase: "design",
     command: "/supervibe-design --continue",
-    skill: "supervibe:prototype",
+    skill: "supervibe:brandbook",
     nextQuestionRu: "Шаг 1/1: продолжить оставшиеся этапы дизайн-пайплайна до следующего реального gate?",
     nextQuestionEn: "Step 1/1: continue the remaining design pipeline stages until the next real gate?",
     prerequisites: ["design-brief"],
@@ -827,6 +827,8 @@ function requiredSafetyFor(intent) {
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];
   if (intent === "prompt_ai_engineering") return [...base, "eval-before-claim", "tool-boundary-review"];
+  if (intent === "design_new") return [...base, "creative-direction-first", "preference-coverage-matrix", "design-system-approval-gate"];
+  if (intent === "design_continue") return [...base, "resume-design-flow-state", "final-gates-cannot-be-delegated"];
   return base;
 }
 

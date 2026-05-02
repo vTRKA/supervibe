@@ -124,3 +124,29 @@ test('derivePreviewArtifactSlug supports design preview roots', () => {
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/.supervibe/artifacts/presentations/investor/preview/index.html'), 'presentation:investor');
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/public/index.html'), 'unknown');
 });
+
+test('prototype slug roots can serve sibling design-system token imports', async () => {
+  const root = join(tmpdir(), `supervibe-preview-alias-${Date.now()}`);
+  const prototypesRoot = join(root, '.supervibe', 'artifacts', 'prototypes');
+  const slugRoot = join(prototypesRoot, 'chat-workbench');
+  await mkdir(join(prototypesRoot, '_design-system'), { recursive: true });
+  await mkdir(slugRoot, { recursive: true });
+  await writeFile(join(prototypesRoot, '_design-system', 'tokens.css'), ':root { --color-bg: #fff; }', 'utf8');
+  await writeFile(join(slugRoot, 'index.html'), '<html><body>Alias</body></html>', 'utf8');
+
+  const aliasServer = await startStaticServer({ root: slugRoot, port: 0, projectRoot: root });
+  const aliasPort = aliasServer.port;
+  const result = await new Promise((resolve, reject) => {
+    request({ host: '127.0.0.1', port: aliasPort, path: '/_design-system/tokens.css', method: 'GET' }, res => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    }).on('error', reject).end();
+  });
+
+  await aliasServer.stop();
+  await rm(root, { recursive: true, force: true });
+
+  assert.strictEqual(result.status, 200);
+  assert.match(result.body, /--color-bg/);
+});

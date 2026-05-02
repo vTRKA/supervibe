@@ -56,7 +56,7 @@ test('post-delivery question uses beginner-friendly labels instead of raw ids', 
   assert.deepEqual(labels, ['Применить', 'Доработать', 'Другой вариант', 'Проверить глубже', 'Остановиться']);
   assert.equal(question.choices[0].recommended, true);
   assert.ok(question.choices.every((choice) => choice.label !== choice.id), 'visible labels must not equal internal ids');
-  assert.match(formatPostDeliveryQuestion(question), /Рекомендуемый путь указан первым/);
+  assert.match(formatPostDeliveryQuestion(question), /Рекомендуемый вариант:/);
 });
 
 test('genesis post-delivery question is scaffold-specific, not a generic next-step menu', () => {
@@ -78,7 +78,7 @@ test('genesis post-delivery question is scaffold-specific, not a generic next-st
     'Проверить dry-run глубже',
     'Остановиться без установки',
   ]);
-  assert.match(formatted, /Применить scaffold \(рекомендуется\)/);
+  assert.match(formatted, /Рекомендуемый вариант:\n- \*\*Применить scaffold\*\* \(рекомендуется\)/);
   assert.doesNotMatch(formatted, /Применить \(recommended\)/);
 });
 
@@ -97,7 +97,7 @@ test('prototype post-delivery question uses prototype-specific actions', () => {
     'Run deeper review',
     'Keep draft',
   ]);
-  assert.match(formatPostDeliveryQuestion(question), /Approve prototype \(recommended\)/);
+  assert.match(formatPostDeliveryQuestion(question), /Recommended option:\n- \*\*Approve prototype\*\* \(recommended\)/);
 });
 
 test('requirements post-delivery question uses requirements-specific actions', () => {
@@ -115,7 +115,7 @@ test('requirements post-delivery question uses requirements-specific actions', (
     'Review risks deeper',
     'Keep as draft',
   ]);
-  assert.match(formatPostDeliveryQuestion(question), /Approve requirements \(recommended\)/);
+  assert.match(formatPostDeliveryQuestion(question), /Recommended option:\n- \*\*Approve requirements\*\* \(recommended\)/);
 });
 
 test('adaptation, strengthening and design post-delivery contexts localize visible labels', () => {
@@ -128,7 +128,7 @@ test('adaptation, strengthening and design post-delivery contexts localize visib
     'Проверить адаптацию глубже',
     'Остановиться без адаптации',
   ]);
-  assert.match(formatPostDeliveryQuestion(adaptation), /Применить адаптацию \(рекомендуется\)/);
+  assert.match(formatPostDeliveryQuestion(adaptation), /Рекомендуемый вариант:\n- \*\*Применить адаптацию\*\* \(рекомендуется\)/);
   assert.doesNotMatch(formatPostDeliveryQuestion(adaptation), /Apply adaptation/);
 
   const strengthening = buildPostDeliveryQuestion({ intent: 'strengthening_delivery' }, { locale: 'en' });
@@ -241,6 +241,20 @@ test('dialogue UX validator rejects mixed-language visible action menus', async 
 
   assert.equal(result.pass, false);
   assert.ok(result.issues.some((issue) => issue.code === 'mixed-language-visible-action-menu'), JSON.stringify(result.issues));
+});
+
+test('dialogue UX validator rejects collapsed recommended and other option blobs', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'supervibe-dialogue-collapsed-options-'));
+  await mkdir(join(root, 'commands'), { recursive: true });
+  await writeFile(join(root, 'commands', 'bad.md'), [
+    'Step 1/1: choose what to do.',
+    'Recommended option: **Apply adaptation** -- writes files; Other options: **Stop** -- no changes; **Review deeper** -- inspect first.',
+  ].join('\n'), 'utf8');
+
+  const result = await validateDialogueUx(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'collapsed-option-blob'), JSON.stringify(result.issues));
 });
 
 test('dialogue UX validator passes current tracked dialogue surfaces', async () => {

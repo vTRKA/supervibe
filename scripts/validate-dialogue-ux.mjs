@@ -55,6 +55,11 @@ const STALE_DIALOGUE_PATTERNS = Object.freeze([
     pattern: /(?:^|\n)\s*-\s*(?:Apply|Approve|Adjust|Revise|Refine|Compare|Review|Stop|Try another option|Explore another direction|Run deeper review|Keep)[^/\n]{0,80}\/\s*[А-ЯЁа-яё][^\n]*(?:\s[-\u2013\u2014]\s|\s-\s)/,
     message: 'Do not render bilingual "English / Russian" action labels in visible menus; choose labels for the user locale only.',
   },
+  {
+    code: 'collapsed-option-blob',
+    pattern: /(?:Recommended option|Other options|Рекомендуемый вариант|Другие варианты)\s*:[^\n]*(?:;|\u2014|--)[^\n]*(?:;|\u2014|--)/i,
+    message: 'Render recommended and alternative choices as separate markdown bullets, not as a semicolon/collapsed paragraph.',
+  },
 ]);
 
 const ALLOWED_STALE_DIALOGUE_FILES = new Set([

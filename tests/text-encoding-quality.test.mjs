@@ -50,6 +50,10 @@ test("text encoding validator rejects mojibake and redundant bilingual descripti
       "description: \"Use WHEN testing. Triggers: '?????', 'score'.\"",
       "---",
     ].join("\n"),
+    ".supervibe/artifacts/prototypes/demo/.approval.json": JSON.stringify({
+      status: "approved",
+      evidence: "????",
+    }, null, 2),
     "skills/mixed.md": [
       "---",
       "description: \"Use WHEN testing. Русская переводная фраза вне triggers. Triggers: 'тест'\"",
@@ -69,5 +73,6 @@ test("text encoding validator rejects mojibake and redundant bilingual descripti
   assert.ok(result.issues.some((issue) => issue.code === "repairable-mojibake"));
   assert.ok(result.issues.some((issue) => issue.code === "redundant-bilingual-description"));
   assert.ok(result.issues.some((issue) => issue.code === "cyrillic-outside-trigger"));
-  assert.ok(result.issues.some((issue) => issue.code === "question-mark-text-loss"));
+  assert.ok(result.issues.some((issue) => issue.code === "question-mark-text-loss" && issue.file === "commands/lost.md"));
+  assert.ok(result.issues.some((issue) => issue.code === "question-mark-text-loss" && issue.file === ".supervibe/artifacts/prototypes/demo/.approval.json"));
 });

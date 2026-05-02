@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { startStaticServer } from './lib/preview-static-server.mjs';
 import { attachHotReload } from './lib/preview-hot-reload.mjs';
 import { assertFeedbackAllowed, isFeedbackRequiredPreviewRoot } from './lib/preview-feedback-policy.mjs';
+import { formatPreviewUrl } from './lib/preview-url.mjs';
 import { activateDaemonLoggingFromEnv, startBackgroundNodeScript } from './lib/supervibe-process-manager.mjs';
 import {
   findFreePort,
@@ -151,7 +152,7 @@ if (daemonMode) {
     port,
   });
   console.log('SUPERVIBE_PREVIEW_DAEMON');
-  console.log(`URL: http://localhost:${port}`);
+  console.log(`URL: ${formatPreviewUrl({ port, root: absRoot, label })}`);
   console.log(`PID: ${child.pid}`);
   console.log(`ROOT: ${absRoot}`);
   console.log(`LOG_STDOUT: ${child.logs.stdout}`);
@@ -180,7 +181,7 @@ await registerServer({
   logs: daemonLogs,
 });
 
-const url = `http://localhost:${server.port}`;
+const url = formatPreviewUrl({ port: server.port, root: absRoot, label });
 console.log(`[supervibe-preview] ${label} → ${url}`);
 console.log(`[supervibe-preview] root: ${absRoot}`);
 console.log(`[supervibe-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
