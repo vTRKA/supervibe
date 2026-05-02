@@ -313,3 +313,7 @@ Sum = 10. Gate at ≥9 for non-blocking; override allowed once-per-plan.
 - `supervibe:executing-plans` — inline execution methodology
 - `docs/templates/plan-template.md` — the plan format this command parses
 - `confidence-rubrics/execute-plan.yaml` — scoring rubric (created when this command ships)
+
+## Workflow Invocation Receipts
+
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` before claiming the command, delegated stage, or produced artifact is complete.

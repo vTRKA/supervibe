@@ -20,6 +20,18 @@ const REQUIRED_SECTIONS = Object.freeze([
     code: "safety",
     pattern: /^##\s+(Guard rails|Guard Rails|Safety Boundaries|Policy|Hard rules|When NOT to invoke)\b/im,
   },
+  {
+    code: "workflow-invocation-receipts",
+    pattern: /^##\s+Workflow Invocation Receipts\b/im,
+  },
+]);
+
+const WORKFLOW_RECEIPT_COMMAND_PATTERNS = Object.freeze([
+  /workflow-receipt\.mjs issue/i,
+  /Hand-written receipts are untrusted/i,
+  /workflow-invocation-ledger\.jsonl/i,
+  /artifact-links\.json/i,
+  /validate:workflow-receipts/i,
 ]);
 
 const CONTINUATION_COMMAND_RULES = Object.freeze([
@@ -62,12 +74,15 @@ const CONTINUATION_COMMAND_RULES = Object.freeze([
 const COMMAND_LOOKUP_RULES = Object.freeze([
   {
     file: "scripts/lib/supervibe-agent-recommendation.mjs",
-    label: "managed fast command lookup hard stop",
+    label: "managed fast command lookup and workflow receipt hard stop",
     required: [
       /INTENT: missing_slash_command/i,
       /HARD_STOP: true/i,
       /do not inspect source files/i,
       /repository paths to emulate it/i,
+      /workflow-receipt\.mjs issue/i,
+      /hand-written receipts are untrusted/i,
+      /validate:workflow-receipts/i,
     ],
   },
   {
@@ -78,6 +93,17 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
       /hardStop/i,
       /Hard stop: report the missing slash command/i,
       /HARD_STOP: true/i,
+    ],
+  },
+  {
+    file: "rules/workflow-invocation-receipts.md",
+    label: "shared workflow receipt rule",
+    required: [
+      /workflow-receipt\.mjs issue/i,
+      /_workflow-invocations/i,
+      /workflow-invocation-ledger\.jsonl/i,
+      /Hand-written receipts/i,
+      /validate:workflow-receipts/i,
     ],
   },
 ]);
@@ -110,6 +136,15 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
           file: relPath,
           code: `missing-${section.code}`,
           message: `${relPath}: missing required command section ${section.pattern}`,
+        });
+      }
+    }
+    for (const pattern of WORKFLOW_RECEIPT_COMMAND_PATTERNS) {
+      if (!pattern.test(text)) {
+        issues.push({
+          file: relPath,
+          code: "missing-workflow-receipt-contract",
+          message: `${relPath}: command must require runtime workflow receipts via ${pattern}`,
         });
       }
     }

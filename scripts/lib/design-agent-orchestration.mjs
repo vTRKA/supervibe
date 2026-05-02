@@ -1,7 +1,9 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-
-const RECEIPT_DIR = "_agent-invocations";
+import { existsSync, readdirSync } from "node:fs";
+import { join, sep } from "node:path";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./supervibe-workflow-receipt-runtime.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -108,12 +110,12 @@ export function buildDesignAgentPlan({
     target,
     flowType,
     requiresReceipts: true,
-    receiptDirectory: `.supervibe/artifacts/prototypes/<slug>/${RECEIPT_DIR}/`,
+    receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
     stages: dedupeStages(stages),
   };
 }
 
-export function validateDesignAgentInvocationReceipts(rootDir = process.cwd()) {
+export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readAllReceipts(rootDir);
   const expected = expectedReceiptsForDurableOutputs(rootDir);
   const issues = [];
@@ -130,12 +132,12 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd()) {
       continue;
     }
     for (const receipt of matching) {
-      for (const message of validateReceiptShape(receipt, item)) {
+      for (const problem of validateReceiptShape(rootDir, receipt, item, options)) {
         issues.push({
-          code: "invalid-design-agent-receipt",
+          code: problem.code,
           file: receipt.__file,
           expectedAgentId: item.agentId,
-          message,
+          message: problem.message,
         });
       }
     }
@@ -205,35 +207,7 @@ function listPrototypeDirs(rootDir) {
 }
 
 function readAllReceipts(rootDir) {
-  const root = join(rootDir, ".supervibe", "artifacts");
-  if (!existsSync(root)) return [];
-  const files = [];
-  walk(root, files);
-  return files
-    .filter((file) => normalizeRelPath(file).includes(`/${RECEIPT_DIR}/`) && file.endsWith(".json"))
-    .map((file) => {
-      try {
-        return {
-          ...JSON.parse(readFileSync(file, "utf8")),
-          __file: normalizeRelPath(relative(rootDir, file)),
-        };
-      } catch {
-        return { __file: normalizeRelPath(relative(rootDir, file)), __invalidJson: true };
-      }
-    });
-}
-
-function walk(dir, files) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walk(full, files);
-      continue;
-    }
-    if (!entry.isFile()) continue;
-    if (statSync(full).size > 1_000_000) continue;
-    files.push(full);
-  }
+  return readWorkflowReceipts(rootDir).filter((receipt) => receipt.command === "/supervibe-design");
 }
 
 function receiptMatches(receipt, expected) {
@@ -244,25 +218,34 @@ function receiptMatches(receipt, expected) {
   return outputs.some((output) => sameArtifact(output, expected.outputArtifact));
 }
 
-function validateReceiptShape(receipt, expected) {
+function validateReceiptShape(rootDir, receipt, expected, options = {}) {
   const issues = [];
-  if (receipt.__invalidJson) return ["receipt is not valid JSON"];
+  if (receipt.__invalidJson) return [{ code: "invalid-design-agent-receipt", message: "receipt is not valid JSON" }];
   for (const field of REQUIRED_RECEIPT_FIELDS) {
     if (receipt[field] === undefined || receipt[field] === null || receipt[field] === "") {
-      issues.push(`${receipt.__file}: missing ${field}`);
+      issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: missing ${field}` });
     }
   }
   if (receipt.invokedBy !== "supervibe-design") {
-    issues.push(`${receipt.__file}: invokedBy must be supervibe-design`);
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: invokedBy must be supervibe-design` });
   }
   if (receipt.status !== "completed") {
-    issues.push(`${receipt.__file}: status must be completed for durable output ${expected.outputArtifact}`);
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: status must be completed for durable output ${expected.outputArtifact}` });
   }
   if (!Array.isArray(receipt.inputEvidence) || receipt.inputEvidence.length === 0) {
-    issues.push(`${receipt.__file}: inputEvidence must be a non-empty array`);
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: inputEvidence must be a non-empty array` });
   }
   if (!Array.isArray(receipt.outputArtifacts) || receipt.outputArtifacts.length === 0) {
-    issues.push(`${receipt.__file}: outputArtifacts must be a non-empty array`);
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: outputArtifacts must be a non-empty array` });
+  }
+  const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
+  for (const message of trust.issues) {
+    issues.push({
+      code: /artifact link manifest missing|artifact link missing/i.test(message)
+        ? "missing-design-artifact-receipt-link"
+        : "untrusted-design-agent-receipt",
+      message: `${receipt.__file}: ${message}`,
+    });
   }
   return issues;
 }

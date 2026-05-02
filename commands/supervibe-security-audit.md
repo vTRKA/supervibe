@@ -239,3 +239,7 @@ Rubric: agent-delivery
 - `/supervibe-plan`
 - `/supervibe-execute-plan`
 - `/supervibe-loop`
+
+## Workflow Invocation Receipts
+
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` before claiming the command, delegated stage, or produced artifact is complete.

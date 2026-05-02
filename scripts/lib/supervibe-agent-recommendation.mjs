@@ -824,6 +824,7 @@ function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, re
     "- If the catalog returns `SUPERVIBE_COMMAND_MATCH`, run the printed `COMMAND:` from the project root or invoke the printed slash command in the active AI CLI. Do not search the whole project for command docs first.",
     "- If the catalog returns `INTENT: missing_slash_command` or `HARD_STOP: true`, stop immediately, report the missing command, and do not inspect source files, marketplace command files, or repository paths to emulate it.",
     "- Treat `PROJECT_SCRIPT: missing` plus `PLUGIN_SCRIPT: present/known-shortcut` as a portable Supervibe command, not as a project package.json failure.",
+    "- For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`; hand-written receipts are untrusted and `npm run validate:workflow-receipts` must pass before claiming delegated work is complete.",
     "",
     "## Update Path",
     "- Plugin update: run `/supervibe-update` or the installer update command for this host.",

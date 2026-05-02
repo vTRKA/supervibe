@@ -26,7 +26,7 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 Same Supervibe project context, adapted for Gemini CLI:
 - 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - 55 process skills in `./skills/`
-- 28 project rules in `./rules/`
+- 29 project rules in `./rules/`
 - 17 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
@@ -42,6 +42,8 @@ Before broad source search for command-like requests, run:
 node ./scripts/supervibe-commands.mjs --match "<user request>"
 ```
 If the output says `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
+
+For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node ./scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
 
 Reference any agent by file path:
 ```
@@ -71,6 +73,8 @@ The same six core principles apply across host instruction files — these overr
 6. **Anti-half-finished** — no commented-out code, no orphan TODOs, no half-applied refactors.
 
 7. **UTF-8 file discipline** - follow `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md`: write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
+
+8. **Workflow receipts** - follow `rules/workflow-invocation-receipts.md`: runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
 
 ## Reference
 

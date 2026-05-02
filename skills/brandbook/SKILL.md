@@ -92,6 +92,8 @@ If the brief points at a website, PDF, image/screenshot, Figma link, or other ex
 
 Use dry-run mode for uncertain or first-pass generation: show the review packet in chat or write it to `.supervibe/artifacts/prototypes/_design-system/.scratch/<run-id>/` only. Promote to `.supervibe/artifacts/brandbook/` or `_design-system/` after `first_user_design_gate_ack=true` and the complete matrix evidence exist.
 
+When the brandbook skill produces durable design-system outputs for `/supervibe-design`, do not hand-write invocation receipts. Use `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook ...` so the receipt is runtime-issued with HMAC provenance, artifact hashes, ledger entry, and the shared workflow `artifact-links.json`.
+
 For new product, new visual direction, or rebrand runs, `.supervibe/artifacts/brandbook/direction.md` must exist and `creative_direction.status = selected` must be recorded before candidate tokens, section markers, or prototype unlock. Direction output must show 3 candidate directions, references, borrow/avoid notes, and why the selected direction is not just a repaint of older prototypes.
 
 **Step 0a — Determine target baseline.**

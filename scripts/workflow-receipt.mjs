@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+import { fileURLToPath } from "node:url";
+import {
+  issueWorkflowInvocationReceipt,
+  validateWorkflowReceipts,
+} from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  formatWorkflowReceiptsReport,
+} from "./validate-workflow-receipts.mjs";
+
+function parseArgs(argv) {
+  const operation = argv[2] || "help";
+  const options = { operation, input: [], output: [] };
+  for (let index = 3; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (!item.startsWith("--")) continue;
+    const key = item.slice(2);
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      options[key] = true;
+      continue;
+    }
+    index += 1;
+    if (key === "input" || key === "output") {
+      options[key].push(...value.split(",").map((part) => part.trim()).filter(Boolean));
+    } else {
+      options[key] = value;
+    }
+  }
+  return options;
+}
+
+function usage() {
+  return `SUPERVIBE_WORKFLOW_RECEIPT
+USAGE:
+  node scripts/workflow-receipt.mjs issue --command /supervibe-plan --subject-type skill --subject-id supervibe:writing-plans --stage <stage> --reason <text> --output <path> --handoff <id>
+  node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
+  node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
+  node scripts/workflow-receipt.mjs validate
+
+NOTES:
+  issue writes a runtime-signed receipt, appends the hash-chain ledger, and updates artifact-links.json.`;
+}
+
+function inferSubjectType(options) {
+  if (options["subject-type"]) return options["subject-type"];
+  if (options.agent) return "agent";
+  if (options.skill) return "skill";
+  if (options.reviewer) return "reviewer";
+  if (options.worker) return "worker";
+  if (options.validator) return "validator";
+  if (options.tool) return "tool";
+  return "command";
+}
+
+function inferSubjectId(options) {
+  return options["subject-id"]
+    || options.agent
+    || options.skill
+    || options.reviewer
+    || options.worker
+    || options.validator
+    || options.tool
+    || options["workflow-command"]
+    || options.command
+    || options.cmd;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const options = parseArgs(process.argv);
+  const rootDir = options.root || process.cwd();
+
+  if (options.operation === "issue") {
+    const command = options.command || options["workflow-command"] || options.cmd;
+    const subjectType = inferSubjectType(options);
+    const subjectId = inferSubjectId(options);
+    const result = await issueWorkflowInvocationReceipt({
+      rootDir,
+      command,
+      subjectType,
+      subjectId,
+      agentId: options.agent || null,
+      skillId: options.skill || null,
+      stage: options.stage,
+      invocationReason: options.reason,
+      inputEvidence: options.input,
+      outputArtifacts: options.output,
+      startedAt: options.startedAt || new Date().toISOString(),
+      completedAt: options.completedAt || new Date().toISOString(),
+      handoffId: options.handoff || options.slug,
+      receiptDir: options["receipt-dir"] || null,
+    });
+    console.log("SUPERVIBE_WORKFLOW_RECEIPT_ISSUED");
+    console.log(`RECEIPT_ID: ${result.receipt.receiptId}`);
+    console.log(`RECEIPT_PATH: ${result.receiptPath}`);
+    console.log(`ARTIFACT_LINKS: ${result.artifactLinksPath}`);
+    console.log(`LEDGER_ENTRY: ${result.ledgerEntry.entryHash}`);
+    process.exit(0);
+  }
+
+  if (options.operation === "validate") {
+    const result = validateWorkflowReceipts(rootDir);
+    console.log(formatWorkflowReceiptsReport(result));
+    process.exit(result.pass ? 0 : 1);
+  }
+
+  console.log(usage());
+  process.exit(options.operation === "help" ? 0 : 1);
+}

@@ -25,6 +25,7 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 - Check project memory, code search and code graph before non-trivial code changes.
 - For command-like user requests, run `node scripts/supervibe-commands.mjs --match "<user request>"` before broad source search. If the result is `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
+- For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, create a runtime-issued workflow receipt with `node scripts/workflow-receipt.mjs issue ...`; hand-written receipts are untrusted and `npm run validate:workflow-receipts` must pass before claiming delegated work is complete.
 - Preserve user-owned sections in host instruction files. Supervibe managed blocks are updated through `scripts/lib/supervibe-context-migrator.mjs`.
 - Use host-neutral wording in shared agents, skills and rules. Do not assume any provider-specific folder, instruction file, or plugin root unless the artifact is explicitly adapter-specific.
 - Keep generated project state under `.supervibe/memory/`.
@@ -36,7 +37,7 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 - Agents: 89 files under `agents/`; human-readable role map in `docs/agent-roster.md`.
 - Skills: 55 folders under `skills/`.
-- Rules: 28 files under `rules/`.
+- Rules: 29 files under `rules/`.
 - Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.
 - Core libraries: `scripts/lib/`.

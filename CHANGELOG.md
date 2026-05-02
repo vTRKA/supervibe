@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.57] - 2026-05-03
+
+### Added
+
+- Added a shared workflow receipt runtime, CLI, validator, HMAC provenance,
+  hash-chain ledger, artifact hash checks, and artifact link manifests for all
+  Supervibe command flows.
+- Added the mandatory `workflow-invocation-receipts` rule so every claimed
+  command, skill, agent, reviewer, worker, validator, or tool invocation needs
+  a runtime-issued receipt before delegated work can be claimed complete.
+- Added command contract validation that requires the workflow receipt section
+  across every Supervibe slash command.
+
+### Changed
+
+- Moved `/supervibe-design` invocation proof onto the shared
+  `.supervibe/artifacts/_workflow-invocations/<command>/<handoff-id>/` receipt
+  store and `.supervibe/memory/workflow-invocation-ledger.jsonl` ledger.
+- Replaced design-only receipt issuing with `scripts/workflow-receipt.mjs`,
+  while keeping design-specific coverage validation as a consumer of the shared
+  receipt runtime.
+
 ## [2.0.56] - 2026-05-03
 
 ### Added

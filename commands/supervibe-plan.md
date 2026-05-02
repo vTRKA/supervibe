@@ -131,3 +131,7 @@ Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>
 - `/supervibe-brainstorm` — what produces the spec
 - `supervibe:executing-plans` / `supervibe:subagent-driven-development` — execution skills
 - `docs/templates/plan-template.md` — plan format
+
+## Workflow Invocation Receipts
+
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` before claiming the command, delegated stage, or produced artifact is complete.

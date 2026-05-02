@@ -46,7 +46,7 @@ supervibe/
 ├── agents/                        89 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        55 process skills
 ├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
-├── rules/                         28 project rules
+├── rules/                         29 project rules
 ├── confidence-rubrics/            17 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars
 ├── models/Xenova/...              Embedding model metadata; ONNX is downloaded by installer
@@ -64,6 +64,8 @@ supervibe/
 ## Common workflows (orchestrator routing)
 
 Before broad source search for any command-like request, run `node scripts/supervibe-commands.mjs --match "<user request>"`. If it returns `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
+
+For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
 
 When user asks X, route as follows:
 
@@ -103,6 +105,7 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 - **Pre-commit / Pre-push**: Husky + `npm run check` (validators, audits, knip, and the full node:test suite)
 - **Imports**: ESM only; `node:sqlite`, `node:crypto`, etc.
 - **Terminal/file I/O**: `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md` are authoritative. Write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
+- **Workflow receipts**: `rules/workflow-invocation-receipts.md` is authoritative. Runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)
 - **Agents**: ≥250 lines + cache-friendly section order (Persona before Project Context, validated by `npm run validate:agent-section-order`)
