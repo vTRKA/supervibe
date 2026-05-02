@@ -19,6 +19,7 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("security-audit", "Explicit add-on for vulnerability review and prioritized remediation."),
   choice("ai-prompting", "Explicit add-on for prompts, agent instructions, intent routing and evals."),
   choice("project-adaptation", "Explicit add-on for adapting project rules and agents when the user requests gap-closing."),
+  choice("product-design-extended", "Legacy-compatible add-on for creative direction, copy, accessibility, presentation and target-specific UI designers."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
 
@@ -59,7 +60,23 @@ const ADD_ON_AGENTS = Object.freeze({
   "security-audit": ["security-auditor"],
   "ai-prompting": ["prompt-ai-engineer"],
   "project-adaptation": ["rules-curator", "memory-curator", "repo-researcher"],
+  "product-design-extended": [
+    "creative-director",
+    "copywriter",
+    "accessibility-reviewer",
+    "extension-ui-designer",
+    "electron-ui-designer",
+    "tauri-ui-designer",
+    "mobile-ui-designer",
+    "presentation-director",
+    "presentation-deck-builder",
+    "competitive-design-researcher",
+  ],
   "network-ops": ["network-router-engineer"],
+});
+
+const LEGACY_PROFILE_COMPATIBILITY = Object.freeze({
+  "custom-minimal-product-design": ["minimal", "product-design"],
 });
 
 const BASE_REQUIRED_SKILLS = Object.freeze([
@@ -185,11 +202,13 @@ export function buildGenesisAgentRecommendation({
   const availableAgents = listAvailableAgents(rootDir);
   const agentRoster = loadAgentRosterSync({ rootDir });
   const stackTags = new Set(fingerprint.tags || []);
+  const profileSelection = normalizeProfileSelection(selectedProfile);
+  const normalizedAddOns = normalizeAddOns(addOns);
   const selectedGroups = GROUPS
-    .filter((entry) => groupApplies(entry, selectedProfile, stackTags))
+    .filter((entry) => groupApplies(entry, profileSelection.effectiveProfiles, stackTags))
     .map((entry) => materializeGroup(entry, availableAgents, stackTags, agentRoster));
   const selectedFromGroups = selectedGroups.flatMap((entry) => entry.agents.filter((agent) => agent.available).map((agent) => agent.id));
-  const selectedAddOns = addOns.flatMap((id) => ADD_ON_AGENTS[id] || []);
+  const selectedAddOns = addOnAgents(normalizedAddOns);
   const selectedAgents = unique([...selectedFromGroups, ...selectedAddOns].filter((id) => availableAgents.has(id)));
   const agentResponsibilities = pickAgentRoleSummaries(selectedAgents, agentRoster);
   const missingSpecialists = selectedGroups.flatMap((entry) => entry.agents.filter((agent) => !agent.available).map((agent) => ({
@@ -199,11 +218,19 @@ export function buildGenesisAgentRecommendation({
   })));
   const explanations = [
     ...selectedGroups.map((entry) => ({ groupId: entry.id, reason: entry.reason })),
-    ...addOns.map((id) => ({ addOnId: id, reason: `${id} selected as explicit add-on` })),
+    ...normalizedAddOns.map((id) => ({ addOnId: id, reason: `${id} selected as explicit add-on` })),
   ];
+  if (profileSelection.legacy) {
+    explanations.unshift({
+      profileId: selectedProfile,
+      reason: `legacy profile preserved as ${profileSelection.effectiveProfiles.join(" + ")} compatibility profile`,
+    });
+  }
 
   return {
     selectedProfile,
+    effectiveProfiles: profileSelection.effectiveProfiles,
+    legacyProfile: profileSelection.legacy,
     profileChoices: PROFILE_CHOICES.map(copyChoice),
     addOnChoices: ADD_ON_CHOICES.map((item) => ({ ...copyChoice(item), defaultSelected: item.id === "none" })),
     customizationQuestion: {
@@ -269,7 +296,7 @@ export function buildGenesisDryRunReport({
   const rulesPlan = resolveGenesisRules({ pluginRoot, fingerprint, stackPack, addOns });
   const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
   const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack });
-  const optionalAgents = unique(addOns.flatMap((id) => ADD_ON_AGENTS[id] || []));
+  const optionalAgents = unique(addOnAgents(addOns));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
   const supervibeStateArtifacts = [
     { path: ".supervibe/memory/", reason: "Supervibe-owned project state root" },
@@ -471,8 +498,8 @@ function findMarkdownFilePath(dir, fileName) {
   return null;
 }
 
-function groupApplies(groupEntry, selectedProfile, stackTags) {
-  if (!groupEntry.profiles.includes(selectedProfile)) return false;
+function groupApplies(groupEntry, effectiveProfiles, stackTags) {
+  if (!groupEntry.profiles.some((profile) => effectiveProfiles.includes(profile))) return false;
   if (groupEntry.stackTags.length === 0) return true;
   return groupEntry.stackTags.some((tag) => stackTags.has(tag));
 }
@@ -700,6 +727,24 @@ function resolveGenesisSkills({ pluginRoot, selectedAgents }) {
     selectedSkills: wantedSkills.filter((id) => availableSkills.has(id)),
     missingSkills: wantedSkills.filter((id) => !availableSkills.has(id)),
   };
+}
+
+function normalizeProfileSelection(selectedProfile) {
+  const id = selectedProfile || "minimal";
+  const effectiveProfiles = LEGACY_PROFILE_COMPATIBILITY[id] || [id];
+  return {
+    requestedProfile: id,
+    effectiveProfiles,
+    legacy: Object.hasOwn(LEGACY_PROFILE_COMPATIBILITY, id),
+  };
+}
+
+function normalizeAddOns(addOns = []) {
+  return unique(asArray(addOns).filter((id) => id && id !== "none"));
+}
+
+function addOnAgents(addOns = []) {
+  return normalizeAddOns(addOns).flatMap((id) => ADD_ON_AGENTS[id] || []);
 }
 
 function resolveStackPackScaffoldArtifacts({ stackPack }) {

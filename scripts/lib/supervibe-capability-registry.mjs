@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { buildLocalToolMetadataContract, validateLocalToolMetadataContract } from "./supervibe-tool-metadata-contract.mjs";
+import { resolveHostAdapter } from "./supervibe-host-adapters.mjs";
+import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
 const CAPABILITY_DEFINITIONS = Object.freeze([
   {
@@ -136,11 +138,27 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
   },
 ]);
 
-export function buildCapabilityRegistry({ rootDir = process.cwd() } = {}) {
-  const commands = readCommandArtifacts(rootDir);
-  const skills = readSkillArtifacts(rootDir);
-  const agents = readAgentArtifacts(rootDir);
-  const rules = readRuleArtifacts(rootDir);
+export function buildCapabilityRegistry({
+  rootDir = process.cwd(),
+  pluginRoot = rootDir,
+  projectRoot = rootDir,
+  adapterId = null,
+  env = process.env,
+} = {}) {
+  const adapter = resolveProjectAdapter({ projectRoot, adapterId, env });
+  const commands = readCommandArtifacts(pluginRoot);
+  const skills = mergeArtifacts(
+    readSkillArtifacts(pluginRoot),
+    adapter ? readProjectSkillArtifacts(projectRoot, adapter) : [],
+  );
+  const agents = mergeArtifacts(
+    readAgentArtifacts(pluginRoot),
+    adapter ? readProjectAgentArtifacts(projectRoot, adapter) : [],
+  );
+  const rules = mergeArtifacts(
+    readRuleArtifacts(pluginRoot),
+    adapter ? readProjectRuleArtifacts(projectRoot, adapter) : [],
+  );
   const capabilities = CAPABILITY_DEFINITIONS.map((definition) => ({
     ...definition,
     commands: [...definition.commands],
@@ -149,7 +167,7 @@ export function buildCapabilityRegistry({ rootDir = process.cwd() } = {}) {
     rules: [...definition.rules],
     verificationHooks: [...definition.verificationHooks],
   }));
-  const packageJson = readPackageJson(rootDir);
+  const packageJson = readPackageJson(pluginRoot);
   const toolMetadata = buildLocalToolMetadataContract({
     registry: { commands, skills, agents, rules, capabilities },
     packageJson,
@@ -158,6 +176,9 @@ export function buildCapabilityRegistry({ rootDir = process.cwd() } = {}) {
   return {
     schemaVersion: 1,
     rootDir,
+    pluginRoot,
+    projectRoot,
+    hostAdapter: adapter?.id || null,
     generatedAt: "deterministic-local",
     commands,
     skills,
@@ -273,6 +294,7 @@ function readCommandArtifacts(rootDir) {
         id,
         type: "command",
         path: toRepoPath(rootDir, path),
+        source: "plugin",
         description: metadata.description || "",
         linkedSkills: unique([...extractSkillIds(raw), inferredSkillForCommand(id)]).filter(Boolean),
       };
@@ -289,6 +311,7 @@ function readSkillArtifacts(rootDir) {
         id: `supervibe:${name}`,
         type: "skill",
         path: toRepoPath(rootDir, path),
+        source: "plugin",
         namespace: metadata.namespace || "",
         description: metadata.description || "",
         linkedSkills: unique(extractSkillIds(raw).filter((id) => id !== `supervibe:${name}`)),
@@ -307,6 +330,7 @@ function readAgentArtifacts(rootDir) {
         id,
         type: "agent",
         path: toRepoPath(rootDir, path),
+        source: "plugin",
         namespace: metadata.namespace || "",
         capabilities: asArray(metadata.capabilities),
         skills: asArray(metadata.skills),
@@ -324,11 +348,102 @@ function readRuleArtifacts(rootDir) {
         id: metadata.name || basename(path, ".md"),
         type: "rule",
         path: toRepoPath(rootDir, path),
+        source: "plugin",
         description: metadata.description || "",
         mandatory: Boolean(metadata.mandatory),
       };
     })
     .sort(byId);
+}
+
+function readProjectAgentArtifacts(projectRoot, adapter) {
+  return readMarkdownFiles(join(projectRoot, adapter.agentsFolder), { recursive: true })
+    .map(({ path, raw }) => {
+      const metadata = parseFrontmatter(raw);
+      const id = metadata.name || basename(path, ".md");
+      return {
+        id,
+        type: "agent",
+        path: toRepoPath(projectRoot, path),
+        source: "project",
+        namespace: metadata.namespace || "",
+        capabilities: asArray(metadata.capabilities),
+        skills: asArray(metadata.skills),
+        verificationHooks: asArray(metadata.verification),
+      };
+    })
+    .sort(byId);
+}
+
+function readProjectRuleArtifacts(projectRoot, adapter) {
+  return readMarkdownFiles(join(projectRoot, adapter.rulesFolder), { recursive: false })
+    .map(({ path, raw }) => {
+      const metadata = parseFrontmatter(raw);
+      return {
+        id: metadata.name || basename(path, ".md"),
+        type: "rule",
+        path: toRepoPath(projectRoot, path),
+        source: "project",
+        description: metadata.description || "",
+        mandatory: Boolean(metadata.mandatory),
+      };
+    })
+    .sort(byId);
+}
+
+function readProjectSkillArtifacts(projectRoot, adapter) {
+  return readMarkdownFiles(join(projectRoot, adapter.skillsFolder), { recursive: true, fileName: "SKILL.md" })
+    .map(({ path, raw }) => {
+      const metadata = parseFrontmatter(raw);
+      const name = metadata.name || basename(join(path, ".."));
+      return {
+        id: `supervibe:${name}`,
+        type: "skill",
+        path: toRepoPath(projectRoot, path),
+        source: "project",
+        namespace: metadata.namespace || "",
+        description: metadata.description || "",
+        linkedSkills: unique(extractSkillIds(raw).filter((id) => id !== `supervibe:${name}`)),
+        verificationHooks: extractVerificationHooks(raw),
+      };
+    })
+    .sort(byId);
+}
+
+function mergeArtifacts(pluginArtifacts, projectArtifacts) {
+  const artifactsById = new Map();
+  for (const artifact of pluginArtifacts || []) {
+    artifactsById.set(artifact.id, {
+      ...artifact,
+      pluginPath: artifact.path,
+      sources: ["plugin"],
+    });
+  }
+  for (const artifact of projectArtifacts || []) {
+    const existing = artifactsById.get(artifact.id);
+    if (!existing) {
+      artifactsById.set(artifact.id, {
+        ...artifact,
+        projectPath: artifact.path,
+        sources: ["project"],
+      });
+      continue;
+    }
+    artifactsById.set(artifact.id, {
+      ...existing,
+      ...artifact,
+      pluginPath: existing.pluginPath || existing.path,
+      projectPath: artifact.path,
+      sources: unique([...(existing.sources || ["plugin"]), "project"]),
+    });
+  }
+  return [...artifactsById.values()].sort(byId);
+}
+
+function resolveProjectAdapter({ projectRoot, adapterId, env }) {
+  if (!projectRoot) return null;
+  if (adapterId) return resolveHostAdapter(adapterId);
+  return selectHostAdapter({ rootDir: projectRoot, env }).adapter;
 }
 
 function buildLinks(capabilities) {

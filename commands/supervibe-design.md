@@ -16,6 +16,22 @@ Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `prototype
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
+### Standard Question Template
+
+Every design question must use this structure, with the labels translated to the user's language when needed:
+
+```markdown
+**Step N/M: <single decision question>**
+
+Why: <one sentence explaining user-visible impact>
+Decision unlocked: <artifact, scope, target surface, token, component, or lifecycle state this answer changes>
+If skipped: <safe default or stop condition>
+
+- <Recommended option> (recommended) - <one-line tradeoff>
+- <Alternative option> - <one-line tradeoff>
+- Stop here - save current state and make no hidden progress
+```
+
 After every material delivery, ask one explicit next-step question about the design artifact. Use language-matched, domain-specific labels; keep internal action ids only in saved state.
 - Approve design / Утвердить дизайн - recommended when the current artifact looks right; move to the next lifecycle state.
 - Revise design / Доработать дизайн - user gives one focused visual, UX, content or accessibility change; apply one iteration.
@@ -31,7 +47,7 @@ Design intelligence is an internal evidence source for this existing command, no
 2. code search over tokens, components, prototypes, and brand assets
 3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup
 
-The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but approved design-system tokens, project memory, codebase patterns, and accessibility constraints take precedence.
+The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but the precedence order is strict: **approved design system > project memory > codebase patterns > accessibility constraints > external references**. The design system line item is valid only when `prototypes/_design-system/manifest.json` has `status: approved`.
 
 ## Hard rules (the user feedback that drives this command)
 
@@ -43,7 +59,7 @@ The output must include `Design Intelligence Evidence` when retrieved rows influ
 5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks state in `.approval.json` artifacts; it knows when something is ready for backend/frontend integration.
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
-8. **Approved → handoff** automatically copies prototype to `prototypes/<slug>/handoff/` ready to be promoted into chosen stack later.
+8. **Approved → handoff** automatically invokes `supervibe:prototype-handoff` and copies prototype to `prototypes/<slug>/handoff/` ready for development and promotion into the chosen stack later.
 9. **Existing design files are never reused silently.** If any `prototypes/`, `mockups/`, or `presentations/` artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
 10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `prototypes/`, `mockups/`, or `presentations/`; verify the visible `Feedback` button before presenting the preview URL.
 
@@ -275,7 +291,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
 
 2. **Update `config.json`** → `"approval": "approved"`.
 
-3. **Build handoff bundle** at `prototypes/<slug>/handoff/`:
+3. **Invoke `supervibe:prototype-handoff` and build the ready for development handoff bundle** at `prototypes/<slug>/handoff/`:
    ```
    prototypes/<slug>/handoff/
    ├── README.md                  ← what this is, when approved, by whom, viewport list

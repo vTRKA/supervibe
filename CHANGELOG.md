@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.32] - 2026-05-02
+
+### Added
+
+- Added `scripts/supervibe-adapt.mjs` as the real host-aware project artifact
+  updater with dry-run output, explicit per-file `--include` approval, baseline
+  tracking, and `.supervibe/memory/.supervibe-version` refresh.
+- Added regression coverage for running `supervibe-status --capabilities` and
+  `--genesis-dry-run` from a project directory while resolving plugin artifacts
+  from the installed plugin root.
+
+### Changed
+
+- `supervibe-status` now separates project root from plugin root for
+  capabilities, stack-pack diagnostics, and genesis dry-runs.
+- Capability registry now merges plugin-level commands with active host adapter
+  project artifacts such as `.codex/agents`, `.codex/rules`, and
+  `.codex/skills`.
+- `/supervibe-design` now standardizes every design question around
+  `Why:`, `Decision unlocked:`, and `If skipped:` and makes approved prototype
+  handoff through `supervibe:prototype-handoff` explicit.
+
+### Fixed
+
+- Preserved legacy genesis profile `custom-minimal-product-design` and add-on
+  `product-design-extended` by mapping them to the current minimal plus product
+  design agent selection without dropping selected specialists.
+- Prevented `supervibe-status --genesis-dry-run` from treating an arbitrary
+  project cwd as the plugin root, which could otherwise produce `none` agent and
+  skill recommendations.
+
 ## [2.0.31] - 2026-05-02
 
 ### Added

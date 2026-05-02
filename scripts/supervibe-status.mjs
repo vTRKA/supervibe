@@ -8,6 +8,7 @@ import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from './lib/node-sqlite
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
 import { getRegistry as getMcpRegistry } from './lib/mcp-registry.mjs';
 import { defaultWorkItemDaemonPath, formatWorkItemWatchStatus, readWorkItemDaemonState } from './lib/supervibe-work-item-daemon.mjs';
@@ -41,10 +42,13 @@ import { buildUserOutcomeReportFromContextPack, formatUserOutcomeReport } from '
 import { buildPerformanceSloReport, formatPerformanceSloReport } from './lib/supervibe-performance-slo.mjs';
 import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from './lib/supervibe-workspace-isolation.mjs';
 import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-config.mjs';
+import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 
-const PROJECT_ROOT = process.cwd();
-const noColor = process.argv.includes('--no-color') || !process.stdout.isTTY;
 const args = parseArgs(process.argv.slice(2));
+const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PROJECT_ROOT = resolveSupervibeProjectRoot({ env: process.env, cwd: process.cwd() });
+const PLUGIN_ROOT = args['plugin-root'] || resolveSupervibePluginRoot({ env: process.env, cwd: SCRIPT_PLUGIN_ROOT });
+const noColor = args['no-color'] || !process.stdout.isTTY;
 const sqliteAvailable = hasNodeSqliteSupport();
 
 function color(s, c) {
@@ -74,7 +78,7 @@ async function main() {
   }
 
   if (args['intent-diagnostics']) {
-    const fixturePath = args.file || join(PROJECT_ROOT, 'tests', 'fixtures', 'intent-router', 'golden-corpus.json');
+    const fixturePath = args.file || join(PLUGIN_ROOT, 'tests', 'fixtures', 'intent-router', 'golden-corpus.json');
     const corpus = JSON.parse(readFileSync(fixturePath, 'utf8'));
     const evaluation = evaluateIntentGoldenCorpus(corpus);
     if (args.json) console.log(renderTerminalOutput({ data: evaluation, json: true }, { json: true }));
@@ -84,7 +88,13 @@ async function main() {
   }
 
   if (args.capabilities) {
-    const registry = buildCapabilityRegistry({ rootDir: PROJECT_ROOT });
+    const registry = buildCapabilityRegistry({
+      rootDir: PLUGIN_ROOT,
+      pluginRoot: PLUGIN_ROOT,
+      projectRoot: PROJECT_ROOT,
+      adapterId: args.host,
+      env: process.env,
+    });
     const validation = validateCapabilityRegistry(registry);
     if (args.json) console.log(renderTerminalOutput({ data: { registry, validation }, json: true }, { json: true }));
     else console.log(formatCapabilityRegistryReport(registry, validation));
@@ -106,7 +116,7 @@ async function main() {
     const targetRoot = args['genesis-dry-run'];
     const report = buildGenesisDryRunReport({
       targetRoot,
-      pluginRoot: PROJECT_ROOT,
+      pluginRoot: PLUGIN_ROOT,
       env: process.env,
       selectedProfile: args.profile || 'minimal',
       addOns: args.addons ? String(args.addons).split(',').filter(Boolean) : [],
@@ -118,10 +128,10 @@ async function main() {
 
   if (args['stack-pack-diagnostics']) {
     const targetRoot = args.target || PROJECT_ROOT;
-    const packPath = join(PROJECT_ROOT, 'stack-packs', 'tauri-react-rust-postgres', 'pack.yaml');
+    const packPath = join(PLUGIN_ROOT, 'stack-packs', 'tauri-react-rust-postgres', 'pack.yaml');
     const fingerprint = discoverGenesisStackFingerprint({ rootDir: targetRoot });
     const recommendation = buildGenesisAgentRecommendation({
-      rootDir: PROJECT_ROOT,
+      rootDir: PLUGIN_ROOT,
       fingerprint,
       selectedProfile: args.profile || 'minimal',
       addOns: [],

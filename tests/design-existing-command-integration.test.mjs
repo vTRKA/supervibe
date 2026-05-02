@@ -18,3 +18,19 @@ test("existing command docs document enhanced design behavior", async () => {
   assert.match(design, /Design Intelligence Integration/);
   assert.match(audit, /\/supervibe-audit --design/);
 });
+
+test("design command standardizes questions and makes approved handoff mandatory", async () => {
+  const design = await readFile("commands/supervibe-design.md", "utf8");
+
+  assert.match(design, /Standard Question Template/);
+  assert.match(design, /Why:/);
+  assert.match(design, /Decision unlocked:/);
+  assert.match(design, /If skipped:/);
+  assert.match(design, /approved design system > project memory > codebase patterns > accessibility constraints > external references/i);
+  assert.match(design, /prototypes\/_design-system\/manifest\.json.*status.*approved/i);
+  assert.match(design, /supervibe:prototype-handoff/);
+  assert.match(design, /prototypes\/<slug>\/handoff\//);
+  assert.match(design, /ready for development/i);
+  assert.match(design, /components-used\.json/);
+  assert.match(design, /tokens-used\.json/);
+});

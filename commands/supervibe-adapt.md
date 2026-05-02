@@ -18,6 +18,12 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
 
 ## Procedure
 
+0. **Run the real dry-run implementation.** Use:
+   ```bash
+   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
+   ```
+   The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute.
+
 1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in the resolved Supervibe plugin root under `agents/`, `rules/`, or `skills/`.
 
 2. **Three-way classification.** For each pair:
@@ -26,7 +32,7 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
    - **Both changed** (project has local customizations + upstream changed) → propose 3-way merge with conflict markers, ask user to resolve manually.
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
 
-3. **Use the `supervibe:adapt` skill** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
+3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
 
 4. **Show summary.** Before any write, print a table:
    ```
@@ -37,7 +43,10 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
    <adapter>/agents/_legacy/*.md           DELETED    present   ask user
    ```
 
-5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval.
+5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval. Apply only approved files:
+   ```bash
+   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
+   ```
 
 6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version.
 
