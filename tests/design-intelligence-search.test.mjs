@@ -46,7 +46,7 @@ test("manifest records duplicate source divergence before import", async () => {
   assert.ok(appInterface.duplicateSources.src);
   assert.ok(appInterface.duplicateSources.cliAssets);
   assert.notEqual(appInterface.duplicateSources.src, appInterface.duplicateSources.cliAssets);
-  assert.equal(appInterface.canonicalSourceTree, "src/ui-ux-pro-max/data");
+  assert.equal(appInterface.canonicalSourceTree, "source-pack/data");
 });
 
 test("manifest row counts and checksums match imported design data", async () => {

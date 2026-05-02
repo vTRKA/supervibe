@@ -135,6 +135,14 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for style, component, token, stack, state, chart, and interaction evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when lookup influences prototype structure or visual decisions.
 
+## Local Design Expert Reference
+
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run the `Eight-Pass Expert Routine` unless the user explicitly asks to skip a stage or delegates decisions to the agent. The required passes are preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback.
+
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
@@ -164,7 +172,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `.supervibe/artifacts/prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 7a. **Critique Gate after first screen** — after the first representative screen renders, compare it to older prototypes and ask: "is this a new product direction or a repainted old shell?" If the answer is repaint, revise the direction/tokens before expanding. If it passes, continue the remaining screens.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
-9. **Spawn preview** — invoke `supervibe:preview-server --root .supervibe/artifacts/prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
+9. **Spawn preview** — invoke `supervibe:preview-server --root .supervibe/artifacts/prototypes/<feature>/ --daemon` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
 12. **Motion pass** — add transitions/animations using token durations + easings from `.supervibe/artifacts/prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.

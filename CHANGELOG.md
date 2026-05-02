@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.51] - 2026-05-03
+
+### Added
+
+- Added design expert knowledge, source coverage, and design preview daemon
+  validators to keep local design expertise, adapted data coverage, and silent
+  preview launches from regressing.
+
+### Changed
+
+- Strengthened all design agents with a local design knowledge folder map and
+  mandatory eight-pass expert routine unless the user explicitly skips or
+  delegates decisions.
+- Replaced public design coverage terminology with neutral Design Expert
+  Knowledge wording and made local design intelligence the baseline evidence
+  source.
+- Made design preview roots default to silent daemon mode while keeping
+  foreground mode available for explicit debugging.
+
 ## [2.0.50] - 2026-05-02
 
 ### Added

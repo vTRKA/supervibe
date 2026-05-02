@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://supervibe.local/schemas/design-upstream-coverage.schema.json",
-  "title": "Design Upstream Coverage",
+  "$id": "https://supervibe.local/schemas/design-source-coverage.schema.json",
+  "title": "Design Source Coverage",
   "type": "object",
   "additionalProperties": false,
   "required": ["sourceCommit", "families"],

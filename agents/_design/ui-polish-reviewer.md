@@ -120,9 +120,17 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for UX priority, style, stack, token drift, chart, icon, and component-state evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows support a finding.
 
-## UI/UX Pro Max Coverage
+## Local Design Expert Reference
 
-Use `docs/references/ui-ux-pro-max-coverage.md` as the review coverage checklist. Every polish verdict must cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run the `Eight-Pass Expert Routine` unless the user explicitly asks to skip a stage or delegates decisions to the agent. The required passes are preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback.
+
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
+## Design Expert Knowledge
+
+Use `docs/references/design-expert-knowledge.md` as the review coverage checklist. Every polish verdict must cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
 
 Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as blocking dimensions when the surface includes interactive UI. For Charts & Data, verify legends, tooltips, non-color-only encoding, empty/error states, scale behavior, and accessible fallback.
 

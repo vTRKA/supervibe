@@ -50,7 +50,7 @@ Always prefer the project's own dev script when one exists; fall back to `live-s
 
 1. Complete Step 0 (verification + `--list` check).
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
-3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>"`; capture the PID. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them.
+3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>" --daemon`; capture the PID. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them. Use `--foreground` only when the user explicitly asks to debug server output.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
 5. For a design root, verify the response body contains `supervibe-fb-toggle` and tell the user the visible `Feedback` button is available in the preview. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 6. Hand the URL to the user using the Output contract template below.
@@ -84,6 +84,7 @@ The Supervibe orchestrator consumes this block to populate `emits-artifact: prev
 - ALWAYS bind to `127.0.0.1` only — never `0.0.0.0` and never an externally routable interface.
 - ALWAYS include both the port and PID in the output block so the user (and subsequent skills) can clean up manually if needed.
 - NEVER disable the feedback overlay for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/`; missing `Feedback` button is a blocking preview setup bug.
+- ALWAYS use `--daemon` for design roots so the server runs silently in the background; foreground mode is debugging-only.
 
 ## Verification
 

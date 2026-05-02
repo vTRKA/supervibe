@@ -20,6 +20,10 @@ Build a **native HTML / CSS / JS** prototype that materializes an approved desig
 
 Before prototype structure or visual decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use retrieved rows for style, UX, chart, icon, app-interface, and stack evidence, but never override approved `.supervibe/artifacts/prototypes/_design-system/` tokens without an explicit extension approval.
 
+## Local Design Expert Reference
+
+Read `docs/references/design-expert-knowledge.md` before building. For substantial prototypes, honor the `Eight-Pass Expert Routine`: preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+
 ## When to invoke
 
 AFTER `supervibe:brandbook` has produced an approved design system at `.supervibe/artifacts/prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
@@ -150,7 +154,7 @@ Wait for explicit answer. Then next question. Never combine.
 
 ### Stage 4 — Live preview
 
-1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
+1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes/<slug>/ --daemon`. It spawns `http://localhost:NNNN` silently with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
 2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
 3. Print URL to user. Hand-off to user for visual review.
 4. Ensure server stays alive while feedback loop runs.

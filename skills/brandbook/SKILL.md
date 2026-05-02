@@ -18,6 +18,10 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 Before brand direction, palette, typography, or collateral recommendations, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use product, style, color, typography, brand, logo, icon, and CIP rows as advisory evidence only; approved memory and user feedback take precedence.
 
+## Local Design Expert Reference
+
+Read `docs/references/design-expert-knowledge.md` before writing direction or candidate tokens. For new products and rebrands, honor the `Eight-Pass Expert Routine` through the passes owned by brand work: preference intake and product fit, local evidence lookup, reference scan, visual system, quality, and feedback/approval. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+
 Materialize a brand into an **explicit, machine-readable design system lifecycle** at `.supervibe/artifacts/prototypes/_design-system/`. Candidate tokens are the source for draft prototypes and visual proof; final tokens are the source for development handoff only after visual approval of an approved prototype.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.

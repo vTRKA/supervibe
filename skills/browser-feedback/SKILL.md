@@ -21,7 +21,7 @@ When feedback affects design quality, run project memory, code search, and inter
 ## When to invoke
 Trigger source: `<system-reminder>` containing `[supervibe] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id. Slugs can be plain prototype slugs, `mockup:<slug>`, or `presentation:<slug>`.
 
-Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/` without `--no-feedback`, verify `#supervibe-fb-toggle` appears in served HTML, and only then continue design review.
+Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon` without `--no-feedback`, verify `#supervibe-fb-toggle` appears in served HTML, and only then continue design review.
 
 If user invokes manually with no pending feedback, run `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list` first, then inspect `.supervibe/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
 

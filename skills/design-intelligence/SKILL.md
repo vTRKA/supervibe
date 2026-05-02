@@ -40,7 +40,15 @@ Required preflight order:
 1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, or `rejected`.
 2. Code search: inspect existing tokens, components, prototypes, routes, stack conventions, and brand assets.
 3. Internal lookup: call `designContextPreflight()` or `searchDesignIntelligence()` for the relevant domains.
-4. Optional external references: use Figma/browser/search only when available and relevant.
+4. Optional external references: use Figma/browser/search only when available and relevant. External references are supplemental; use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+## Local Expert Routine
+
+Before design-facing outputs, read `docs/references/design-expert-knowledge.md`
+and apply its `Eight-Pass Expert Routine` where the owning command or agent is
+doing substantial design work. This skill supplies the local evidence lookup
+pass; it does not replace preference intake, reference scan, IA/user-flow,
+visual-system, responsive/platform, quality, or feedback/approval passes.
 
 ## Evidence Contract
 
@@ -81,11 +89,18 @@ Generic retrieved guidance is advisory. It cannot override approved tokens, prio
 - `icons`: icon library/import guidance, adapted to Supervibe's local icon policy.
 - `google-fonts`: font pairing and font availability evidence.
 - `react-performance`: UI performance rules for React surfaces.
+- `ui-reasoning`: decision framing, critique, and recommendation quality evidence.
 - `stack:*`: implementation guidance for React, Next.js, Vue, Svelte, Angular, Flutter, SwiftUI, Shadcn, Tailwind, Three.js, and related stacks.
 - `slides:*`: presentation strategy, layout, copy, chart, typography, color, and background guidance.
 - `collateral:*`: logo, icon, CIP, brand asset, and mockup context guidance.
 
-## UI/UX Pro Max Coverage Matrix
+Domain aliases `stack`, `slides`, and `collateral` expand to the corresponding
+prefixed local domain families during lookup.
+
+Use the local knowledge pack first. Do not instruct design agents to fetch a
+remote repository or remote skill for baseline expertise.
+
+## Design Expert Knowledge Matrix
 
 For design-facing lookups, map retrieved evidence to this coverage matrix before making a recommendation:
 

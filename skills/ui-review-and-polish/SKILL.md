@@ -37,6 +37,15 @@ the design or prototype flow first.
 4. Read existing UI tests, screenshots, preview notes, and open feedback if
    present.
 
+## Local Design Expert Reference
+
+Read `docs/references/design-expert-knowledge.md` before review. Use the
+`Eight-Pass Expert Routine` as a completeness map for the evidence that should
+exist: preference/product fit, local evidence, reference scan, IA/user-flow,
+visual system, responsive/platform, quality, and feedback/approval. External
+references are supplemental; use the internet only for current references or
+official platform evidence after local data has been checked.
+
 ## Review Dimensions
 
 Evaluate these eight dimensions in order:
@@ -58,9 +67,9 @@ Evaluate these eight dimensions in order:
 8. Handoff readiness: findings are specific enough for a developer or designer
    to fix without re-discovery.
 
-## UI/UX Pro Max Coverage
+## Design Expert Knowledge
 
-Use `docs/references/ui-ux-pro-max-coverage.md` to make the review complete, not just visually tasteful. Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
+Use `docs/references/design-expert-knowledge.md` to make the review complete, not just visually tasteful. Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
 
 For Accessibility, verify keyboard, focus, labels, contrast, semantics, target size, and reduced motion. For Performance, verify image sizing, layout shift risk, font loading, main-thread cost, and list virtualization where relevant. For Charts & Data, verify chart fit, legends, tooltips, non-color-only encoding, scale behavior, and empty/error states.
 

@@ -20,6 +20,10 @@ Build a presentation deck through the same visible review loop as design prototy
 
 Before storyboard or visual direction, run project memory, code search, and internal `supervibe:design-intelligence` lookup for slide strategy, layout, copy, chart, typography, color, background, brand, and token evidence. Presentation-director owns narrative; presentation-deck-builder owns implementation.
 
+## Local Design Expert Reference
+
+Read `docs/references/design-expert-knowledge.md` before deck structure or visual direction. For substantial decks, honor the `Eight-Pass Expert Routine` through the deck-owned passes: preference intake and product/audience fit, local evidence lookup, reference scan, storyboard/flow, visual system, responsive slide preview, quality review, and feedback/approval. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+
 ## When to invoke
 
 Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, report deck, product demo deck, sales deck, training deck, or a `.pptx` deliverable. This skill is for presentation artifacts, not production UI.
@@ -52,12 +56,12 @@ Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, 
 ## Procedure
 
 1. **Intake.** Capture deck type, audience, desired action, source materials, language, slide count, deadline, and final destination. Ask one missing item at a time.
-2. **Research.** Search project memory and, when useful, the web for 5-10 relevant references. Record what to borrow and what to avoid.
+2. **Research.** Search project memory and local design intelligence first; when useful, use the web for 5-10 current references. Record what to borrow and what to avoid.
 3. **Design alignment.** Reuse `.supervibe/artifacts/prototypes/_design-system/` if present. If missing, ask whether to run `/supervibe-design` first or create a presentation-only direction.
 4. **Storyboard.** Write slide-by-slide intent: title, message, evidence, visual, speaker note, and transition.
 5. **Deck spec.** Fill `deck.json` using `templates/presentation/deck-spec.json`.
 6. **HTML preview.** Build `preview/index.html` so the user can inspect slides in a browser with the feedback overlay.
-7. **Preview server.** Start `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
+7. **Preview server.** Start `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck" --daemon`.
 8. **Feedback prompt.** After sharing the URL, ask:
 
 ```markdown

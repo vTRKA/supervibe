@@ -147,13 +147,21 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for product, style, color, typography, brand, and collateral evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Retrieved rows can support options, but they cannot override an approved brandbook or prior rejected direction.
 
+## Local Design Expert Reference
+
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run the `Eight-Pass Expert Routine` unless the user explicitly asks to skip a stage or delegates decisions to the agent. The required passes are preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback.
+
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
 ## Procedure
 
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".
 2. **Read PRD / vision / audience docs** — a direction without an audience is decoration; capture primary persona, primary moment, primary emotion target.
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason.
 4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch/WebSearch and explicitly note `MCP unavailable; competitor scan limited to manually fetched/searchable URLs`.
-5. **Reference scan** — use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Never copy a brand wholesale; extract patterns.
+5. **Reference scan** — start from local design intelligence evidence, then use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Never copy a brand wholesale; extract patterns.
 5a. **Media capability check** — run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
 6. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.

@@ -113,6 +113,14 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for slide copy, landing copy, UX feedback, and product-context evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows influence copy structure.
 
+## Local Design Expert Reference
+
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run the `Eight-Pass Expert Routine` unless the user explicitly asks to skip a stage or delegates decisions to the agent. The required passes are preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback.
+
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
 ## Procedure
 
 1. **Read voice & tone doc** first — capture register (formal/casual), persona ("we" vs. "the system"), forbidden words, required phrasings

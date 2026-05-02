@@ -65,13 +65,15 @@ Design intelligence is an internal evidence source for this existing command, no
 
 1. project memory preflight for accepted and rejected design decisions
 2. code search over tokens, components, prototypes, and brand assets
-3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup
+3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup over the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`
 
-The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but the precedence order is strict: **approved design system > project memory > codebase patterns > accessibility constraints > external references**. The design system line item is valid only when `.supervibe/artifacts/prototypes/_design-system/manifest.json` has `status: approved`.
+The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but the precedence order is strict: **approved design system > project memory > codebase patterns > accessibility constraints > external references**. The design system line item is valid only when `.supervibe/artifacts/prototypes/_design-system/manifest.json` has `status: approved`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-## UI/UX Pro Max Coverage Gate
+## Design Expert Knowledge Gate
 
-Use `docs/references/ui-ux-pro-max-coverage.md` as the adapted UI/UX coverage checklist. This gate does not replace Supervibe tokens or approval flow; it ensures designers do not miss critical review dimensions.
+Use `docs/references/design-expert-knowledge.md` as the adapted UI/UX coverage checklist. This gate does not replace Supervibe tokens or approval flow; it ensures designers do not miss critical review dimensions.
+
+Run the `Eight-Pass Expert Routine` from that reference for every substantial design request unless the user explicitly asks to skip a stage or delegates decisions to the agents. The routine is: preference intake and product fit, local evidence lookup, reference scan, IA/user-flow pass, visual system pass, responsive/platform pass, quality pass, and prototype/review/feedback pass.
 
 Before finalizing direction, spec, prototype, review, or handoff, confirm the relevant domains are either covered or explicitly marked N/A with rationale:
 
@@ -103,6 +105,7 @@ Run a product-fit style matrix before committing to a visual direction: product 
 9. **Existing design files are never reused silently.** If any `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
 10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/`; verify the visible `Feedback` button before presenting the preview URL.
 11. **Draft-to-dev boundary is mandatory.** Draft visuals are not production guidance. Stack agents only implement from `approved prototype + final tokens` in the handoff bundle.
+12. **Design previews are silent by default.** Use `--daemon` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, and `.supervibe/artifacts/presentations/` preview servers. Use `--foreground` only for an explicit debugging request.
 
 ## Invocation forms
 
@@ -257,7 +260,7 @@ Output: `.supervibe/artifacts/prototypes/<slug>/spec.md` with:
 - Component inventory (every component referenced from `.supervibe/artifacts/prototypes/_design-system/components/`)
 - States matrix per screen (loading / empty / error / success / partial)
 - Interaction notes (which animations from `motion.css`, which microcopy from `voice.md`)
-- Reference scan: 5-8 external references when web/search tools are available, with source URLs and what to borrow vs avoid. If no search tool is available, explicitly write `reference scan skipped: no web/search MCP or WebFetch available`.
+- Reference scan: local design intelligence evidence first, then 5-8 external references when web/search tools are available, with source URLs and what to borrow vs avoid. If no search tool is available, explicitly write `reference scan skipped: no web/search MCP or WebFetch available`.
 
 **Feedback gate:** approve spec / refine / try alternative / stop.
 
@@ -289,7 +292,7 @@ Output: `.supervibe/artifacts/prototypes/<slug>/index.html` + supporting files. 
 
 ### Stage 6 — Live preview + parallel review
 
-1. Skill auto-spawns `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/` with feedback overlay enabled. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#supervibe-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
+1. Skill auto-spawns `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon` with feedback overlay enabled and no attached console. Never use `--no-feedback` for design previews. Print `http://localhost:NNNN` to user only after verifying the page contains the visible `Feedback` button (`#supervibe-fb-toggle`). User can click regions to comment; comments arrive as system-reminder on next user prompt where hooks are supported, and remain available to any IDE through `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 2. Dispatch in parallel:
    - `ui-polish-reviewer` — 8-dimension review (hierarchy, spacing rhythm, alignment, state coverage, keyboard, responsive at both viewports, copy precision, token compliance). Writes to `.supervibe/artifacts/prototypes/<slug>/_reviews/polish.md`.
    - `accessibility-reviewer` — WCAG AA via Playwright + axe-core if browser-automation MCP available; static review otherwise. Writes to `.supervibe/artifacts/prototypes/<slug>/_reviews/a11y.md`.

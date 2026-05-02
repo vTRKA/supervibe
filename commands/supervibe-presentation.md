@@ -23,6 +23,13 @@ Intermediate story and slide decisions can be recorded as delegated decisions wh
 
 ## What I do when invoked
 
+Before story or visuals, run the local design expert reference path from
+`docs/references/design-expert-knowledge.md`: preference/audience fit, local
+design intelligence lookup, current reference scan when available, storyboard
+flow, visual system, responsive preview, quality review, and explicit
+feedback/approval. External references are supplemental and never replace local
+design-system, memory, code, or design-intelligence evidence.
+
 1. Parse the user's request into a single deck objective: sales, investor, product demo, internal update, training, proposal, report, or custom.
 2. Ask one clarification at a time if the brief is missing audience, outcome, deadline, source materials, or export requirement.
 3. Dispatch:
@@ -39,7 +46,7 @@ Intermediate story and slide decisions can be recorded as delegated decisions wh
    - `feedback-resolutions/`
    - `export/`
    - `google-drive-handoff.md`
-5. Start preview with `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
+5. Start preview with `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck" --daemon`.
 6. Prompt the user for explicit feedback choice after the preview and reviews exist: approve, revise, alternative, deeper review, or stop.
 7. On approval, run `node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.
 8. If Google Drive is requested, fill `templates/presentation/google-drive-handoff.md.tpl` with target folder, file name, owner, exported PPTX path, and upload instructions.

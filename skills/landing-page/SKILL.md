@@ -18,6 +18,10 @@ last-verified: 2026-04-28
 
 Before section order, CTA, style, typography, conversion, or visual treatment decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup for product, landing, style, color, typography, UX, and stack evidence.
 
+## Local Design Expert Reference
+
+Read `docs/references/design-expert-knowledge.md` before building. For substantial landing work, honor the `Eight-Pass Expert Routine`: preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+
 Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `supervibe:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
 
 ## When to invoke
@@ -136,7 +140,7 @@ Each question waits for explicit answer. Save all to `.supervibe/artifacts/proto
 
 ### Stage 4 — Live preview
 
-Same as `supervibe:prototype` — `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
+Same as `supervibe:prototype` — `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/ --daemon` with mandatory feedback overlay and no attached console. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
 
 ### Stage 5 — Feedback loop (required)
 

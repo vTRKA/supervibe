@@ -654,7 +654,7 @@ But for Supervibe prototypes default to **native CSS + Web Animations API + Inte
 8. **DevTools Performance audit** — confirm stable 60fps, no purple/green bars during animation
 9. **ui-polish-reviewer** check: feels right, not gratuitous
 10. **Score** with prototype rubric
-11. **Auto-spawn preview** (required): invoke `supervibe:preview-server` skill with `--root <output-dir>` after files are written. Hand URL to user with hot-reload note.
+11. **Auto-spawn preview** (required): invoke `supervibe:preview-server` skill with `--root <output-dir> --daemon` after files are written. Hand URL to user with hot-reload note.
 
 ## Output contract
 

@@ -165,9 +165,17 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for product, UX, landing, chart, navigation, form, app-interface, and platform evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows shape IA, state matrices, or UX priority.
 
-## UI/UX Pro Max Coverage
+## Local Design Expert Reference
 
-Before writing the screen spec, read `docs/references/ui-ux-pro-max-coverage.md` and apply a product-fit style matrix: product category, trust/risk level, density, platform, interaction mode, and data intensity must explain the chosen style, palette, type, motion, and component density.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run the `Eight-Pass Expert Routine` unless the user explicitly asks to skip a stage or delegates decisions to the agent. The required passes are preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback.
+
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
+## Design Expert Knowledge
+
+Before writing the screen spec, read `docs/references/design-expert-knowledge.md` and apply a product-fit style matrix: product category, trust/risk level, density, platform, interaction mode, and data intensity must explain the chosen style, palette, type, motion, and component density.
 
 Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data. For stack handoff, include stack-aware UI guidance so framework or component-library adapters implement approved tokens instead of replacing them with defaults.
 
@@ -177,7 +185,7 @@ Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performanc
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
 2. **Artifact mode gate**: if existing `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, `.supervibe/artifacts/presentations/`, or prior specs match the brief and the user did not explicitly say continue existing vs new from scratch, ask one question before treating old files as source. Prior files are evidence, not permission to reuse.
 3. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
-4. **Reference scan**: collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
+4. **Reference scan**: start from local design intelligence evidence, then collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns when web/search tools are available. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
 4. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
 4. **Map information architecture**: list every piece of information the screen owes the user; rank primary / secondary / tertiary by JTBD priority, not by what the API returns.
 5. **Wireframe** at low fidelity: blocks-and-arrows. Validate hierarchy reads correctly without color, type weight, or imagery.

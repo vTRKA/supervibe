@@ -6,7 +6,7 @@
 //   --port <N>              Specific port (default: auto-allocate 3047-3099 then OS)
 //   --label "<name>"        Friendly label for the registry
 //   --daemon                Start silently in the background and return the URL
-//   --foreground            Keep the server attached for debugging (default)
+//   --foreground            Keep the server attached for debugging (default for non-design roots)
 //   --no-watch              Disable hot-reload (static-only)
 //   --idle-timeout <min>    Auto-shutdown after N minutes of inactivity (default 30; 0 = disable)
 //   --force                 Bypass max-servers limit
@@ -21,7 +21,7 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { startStaticServer } from './lib/preview-static-server.mjs';
 import { attachHotReload } from './lib/preview-hot-reload.mjs';
-import { assertFeedbackAllowed } from './lib/preview-feedback-policy.mjs';
+import { assertFeedbackAllowed, isFeedbackRequiredPreviewRoot } from './lib/preview-feedback-policy.mjs';
 import { activateDaemonLoggingFromEnv, startBackgroundNodeScript } from './lib/supervibe-process-manager.mjs';
 import {
   findFreePort,
@@ -61,7 +61,8 @@ Usage:
   preview-server.mjs --kill <port>
   preview-server.mjs --kill-all
 
-Note: --no-feedback is blocked for .supervibe/artifacts/prototypes/, .supervibe/artifacts/mockups/, and .supervibe/artifacts/presentations/ roots.`);
+Note: --no-feedback is blocked for .supervibe/artifacts/prototypes/, .supervibe/artifacts/mockups/, and .supervibe/artifacts/presentations/ roots.
+Design preview roots default to --daemon unless --foreground is passed explicitly.`);
   process.exit(0);
 }
 
@@ -128,8 +129,10 @@ try {
 const portArg = values.port ? parseInt(values.port, 10) : 0;
 const port = portArg || await findFreePort();
 const label = values.label || basename(absRoot);
+const designRoot = isFeedbackRequiredPreviewRoot(absRoot);
+const daemonMode = (values.daemon || designRoot) && !values.foreground;
 
-if (values.daemon && !values.foreground) {
+if (daemonMode) {
   const childArgs = [
     '--root', absRoot,
     '--port', String(port),

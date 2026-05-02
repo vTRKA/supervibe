@@ -20,7 +20,7 @@ const INTERNAL_DEV_PATHS = [
   /^docs\/internal-commands\//,
   /^docs\/audits\//,
   /^docs\/plugin-strengthening-todo\.md$/,
-  /^docs\/.*upstream-coverage\.md$/,
+  /^docs\/.*source-coverage\.md$/,
 ];
 
 export async function auditDocsRelevance({ rootDir = process.cwd(), docsDir = "docs" } = {}) {
