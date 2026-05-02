@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.43] - 2026-05-02
+
+### Fixed
+
+- Changed required ONNX model preparation to reuse an already-ready local model,
+  download directly from HuggingFace before Git LFS, and keep direct downloads
+  free of default stall or total timeouts.
+- Kept Git LFS as a bounded fallback only after direct HuggingFace download
+  failure, reducing accidental repository LFS bandwidth consumption during
+  installs and upgrades.
+
 ## [2.0.42] - 2026-05-02
 
 ### Added

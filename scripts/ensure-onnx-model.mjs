@@ -11,7 +11,6 @@ export const MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/multilingual-e5
 export const MIN_MODEL_BYTES = 100_000_000;
 
 const DEFAULT_LFS_STALL_MS = 120_000;
-const DEFAULT_DOWNLOAD_STALL_MS = 180_000;
 const DEFAULT_DOWNLOAD_RETRIES = 4;
 const LOG_PREFIX = "[supervibe:model]";
 
@@ -39,7 +38,7 @@ function downloadStallMs() {
   if (milliseconds > 0) return milliseconds;
   const seconds = envPositiveInt("SUPERVIBE_MODEL_STALL_TIMEOUT_SECONDS", 0);
   if (seconds > 0) return seconds * 1000;
-  return DEFAULT_DOWNLOAD_STALL_MS;
+  return 0;
 }
 
 function downloadRetries() {
@@ -104,7 +103,7 @@ function tryGitLfsPull(rootDir, modelPath, log) {
     stdio: "ignore",
   });
   if (lfsCheck.status !== 0) {
-    logTo(log, "warn", "git-lfs not available; falling back to direct HuggingFace download");
+    logTo(log, "warn", "git-lfs not available for ONNX model fallback");
     return false;
   }
 
@@ -205,6 +204,7 @@ function downloadFile(urlString, destination, { stallMs, log, redirects = 0 } = 
       resolve(value);
     };
     const resetStallTimer = () => {
+      if (!stallMs || stallMs <= 0) return;
       cleanup();
       stallTimer = setTimeout(() => {
         if (request) request.destroy(new Error(`download stalled with no progress for ${stallMs}ms`));
@@ -276,10 +276,11 @@ function downloadFile(urlString, destination, { stallMs, log, redirects = 0 } = 
 async function downloadWithRetries(url, destination, log) {
   const retries = downloadRetries();
   const stallMs = downloadStallMs();
+  const stallPolicy = stallMs > 0 ? `stalls after ${stallMs}ms without progress` : "stall timeout disabled by default";
   let lastError = null;
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
-      logTo(log, "log", `downloading required ONNX model from HuggingFace (attempt ${attempt}/${retries}; no total timeout; stalls after ${stallMs}ms without progress)`);
+      logTo(log, "log", `downloading required ONNX model from HuggingFace (attempt ${attempt}/${retries}; no total timeout; ${stallPolicy})`);
       await downloadFile(url, destination, { stallMs, log });
       return;
     } catch (err) {
@@ -298,18 +299,24 @@ export async function ensureOnnxModel({ rootDir = process.cwd(), log = console }
   }
 
   logTo(log, "warn", `required ONNX model is missing, incomplete, or still a Git LFS pointer: ${modelPath}`);
+  const downloadUrl = process.env.SUPERVIBE_ONNX_MODEL_URL || MODEL_DOWNLOAD_URL;
+  try {
+    await downloadWithRetries(downloadUrl, modelPath, log);
+    if (!isModelUsable(modelPath)) {
+      throw new Error(`download completed but ONNX model is not usable: ${modelPath}`);
+    }
+    logTo(log, "log", "required ONNX model ready via direct HuggingFace download");
+    return { source: "huggingface", path: modelPath };
+  } catch (err) {
+    logTo(log, "warn", `direct HuggingFace model download failed; trying Git LFS fallback: ${err.message}`);
+  }
+
   if ((await tryGitLfsPull(rootDir, modelPath, log)) && isModelUsable(modelPath)) {
-    logTo(log, "log", "required ONNX model ready via Git LFS");
+    logTo(log, "log", "required ONNX model ready via Git LFS fallback");
     return { source: "git-lfs", path: modelPath };
   }
 
-  const downloadUrl = process.env.SUPERVIBE_ONNX_MODEL_URL || MODEL_DOWNLOAD_URL;
-  await downloadWithRetries(downloadUrl, modelPath, log);
-  if (!isModelUsable(modelPath)) {
-    throw new Error(`download completed but ONNX model is not usable: ${modelPath}`);
-  }
-  logTo(log, "log", "required ONNX model ready via direct HuggingFace download");
-  return { source: "huggingface", path: modelPath };
+  throw new Error("required ONNX model could not be prepared via direct HuggingFace download or Git LFS fallback");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

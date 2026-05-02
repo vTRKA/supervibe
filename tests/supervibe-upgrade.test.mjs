@@ -83,11 +83,11 @@ test("supervibe-upgrade requires ONNX model setup before npm ci", async () => {
   assert.doesNotMatch(source, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS/, "upgrade must not let users skip the required ONNX model");
   assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_MS/, "shared setup should support a millisecond LFS stall override");
   assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_SECONDS/, "shared setup should support a seconds-based LFS stall override");
-  assert.match(modelScript, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, "shared setup should support a direct download stall override");
+  assert.match(modelScript, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, "shared setup should support opt-in direct download stall diagnostics");
   assert.match(modelScript, /no total timeout/, "shared setup should not impose a total model download limit");
-  assert.match(modelScript, /download stalled with no progress/, "shared setup should fail only on stalled direct download progress");
+  assert.match(modelScript, /stall timeout disabled by default/, "shared setup should not interrupt direct downloads by default");
   assert.match(modelScript, /content-length/, "shared setup should report percent when the server provides model size");
-  assert.doesNotMatch(modelScript, /SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/, "direct model download must not use an absolute timeout");
+  assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/, "direct model download must not use default stall or absolute timeouts");
   assert.match(modelScript, /join\(rootDir, "\.git", "lfs", "incomplete"\)/, "shared setup should clean incomplete LFS downloads");
   assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, "shared setup should remove incomplete LFS downloads safely");
 });

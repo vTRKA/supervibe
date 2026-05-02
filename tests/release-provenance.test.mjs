@@ -5,12 +5,12 @@ import { auditReleaseSecurityData } from "../scripts/lib/supervibe-release-secur
 
 test("release security report includes provenance and rollback manifest status", () => {
   const audit = auditReleaseSecurityData({
-    packageJson: { version: "2.0.42" },
-    packageLock: { version: "2.0.42" },
-    readme: "v2.0.42 docs/release-security.md docs/third-party-licenses.md docs/install-integrity.md",
+    packageJson: { version: "2.0.43" },
+    packageLock: { version: "2.0.43" },
+    readme: "v2.0.43 docs/release-security.md docs/third-party-licenses.md docs/install-integrity.md",
     changelog: "Release security and install integrity updates.",
     releaseDocs: {
-      releaseSecurity: "v2.0.42 commit SHA npm run audit:release-security vulnerability exceptions",
+      releaseSecurity: "v2.0.43 commit SHA npm run audit:release-security vulnerability exceptions",
       thirdPartyLicenses: "package-lock.json",
       installIntegrity: "SUPERVIBE_EXPECTED_COMMIT SUPERVIBE_EXPECTED_PACKAGE_SHA256 path traversal",
     },
@@ -20,7 +20,7 @@ test("release security report includes provenance and rollback manifest status",
     contextThreatModel: { pass: true, failed: [], total: 1 },
     commitSha: "abc123",
     artifactChecksums: { "package.json": "checksum" },
-    releaseManifest: { status: "local-dev", packageVersion: "2.0.42" },
+    releaseManifest: { status: "local-dev", packageVersion: "2.0.43" },
     rollbackManifest: { commands: ["git revert abc123"] },
   });
 

@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
-**v2.0** - MIT - Windows / macOS / Linux - 919 tests
+**v2.0** - MIT - Windows / macOS / Linux - 1005 tests
 
 ---
 
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.42 initialized for this project
+[supervibe] welcome  plugin v2.0.43 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -130,7 +130,7 @@ Check multi-host readiness at any time:
 npm run supervibe:doctor -- --host all
 ```
 
-**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional, but the ONNX embedding model is not: the installer prepares it before registration, using Git LFS when available and a direct HuggingFace download fallback otherwise. No Docker, no Python, no native compile step.
+**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional, but the ONNX embedding model is not: the installer first reuses an already-downloaded usable model, then downloads the model directly from HuggingFace without a default stall or total timeout, and only falls back to Git LFS if the direct download fails. No Docker, no Python, no native compile step.
 
 For unattended installs, set `SUPERVIBE_INSTALL_NODE=1` to allow Node bootstrap or `SUPERVIBE_INSTALL_NODE=0` to fail fast with manual instructions.
 
@@ -471,9 +471,9 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **Zed with Codex ACP does not show Supervibe after typing `/`.** Current `codex-acp` advertises only its own built-in commands to Zed. Supervibe follows the Codex-supported route instead: Codex sees the plugin through `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local` plus `~/.codex/config.toml`, and Zed/Codex ACP sessions get Supervibe behavior through native skills linked at `~/.agents/skills/supervibe`. Re-run the installer, restart the Zed external-agent session, then check `npm run supervibe:doctor -- --host codex --strict`.
 
-**`Protobuf parsing failed`.** The embedding model is missing or still an LFS pointer. Re-run the current installer; it verifies the ONNX file, tries bounded Git LFS, then downloads the model directly from HuggingFace before registration.
+**`Protobuf parsing failed`.** The embedding model is missing or still an LFS pointer. Re-run the current installer; it verifies the ONNX file, reuses it when ready, otherwise downloads the model directly from HuggingFace before registration. Git LFS is only used as a fallback if the direct download fails.
 
-**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge, and the required ONNX setup uses bounded Git LFS plus direct HuggingFace fallback so the plugin is not registered until the model is ready.
+**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge, and the required ONNX setup uses direct HuggingFace download first so normal installs do not consume repository Git LFS bandwidth; bounded Git LFS remains a fallback.
 
 **Windows install starts in WSL.** If `install.sh` runs under `C:\Windows\System32\bash.exe`, it uses WSL `$HOME` and WSL Node, not the Windows Codex/Claude/Gemini profile. Use PowerShell `install.ps1` for Windows, or set `SUPERVIBE_ALLOW_WSL_INSTALL=1` only when you intentionally want a separate WSL install.
 
