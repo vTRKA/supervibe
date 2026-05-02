@@ -222,17 +222,23 @@ Rubric: agent-delivery
 
 ## User dialogue discipline
 
-When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option:
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+
+Every question must show the user why it matters and what will happen with the answer:
 
 > **Step N/M:** <one focused question>
 >
-> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what it costs>
-> - <Second action> - <what happens and what it costs>
+> Why: <one sentence explaining the user-visible impact>
+> Decision unlocked: <what artifact, route, scope, or implementation choice this decides>
+> If skipped: <safe default or stop condition>
+>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what tradeoff it carries>
+> - <Second action> - <what happens and what tradeoff it carries>
 > - <Stop here> - <what is saved and what will not happen>
 >
 > Free-form answer also accepted.
 
-Use `Шаг N/M:` when the conversation is in Russian. Do not show internal lifecycle ids as visible labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
+Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
 
 ## Verification
 

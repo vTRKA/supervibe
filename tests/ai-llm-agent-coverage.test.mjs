@@ -27,7 +27,7 @@ test("AI/LLM specialist agents are senior, gated, and production-oriented", asyn
     assert.ok(data.verification.length >= 4, `${file} needs verification gates`);
     assert.ok(parsed.content.includes("## RAG + Memory pre-flight"), `${file} missing RAG pre-flight`);
     assert.ok(parsed.content.includes("Production") || parsed.content.includes("release"), `${file} missing production/release framing`);
-    assert.ok(parsed.content.includes("Confidence: <score>/10"), `${file} missing confidence footer`);
+    assert.match(parsed.content, /Confidence: (?:<N>\.<dd>|<score>)\/10/, `${file} missing confidence footer`);
     assert.ok(parsed.content.includes("Rubric: agent-delivery"), `${file} missing rubric footer`);
   }
 });

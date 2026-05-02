@@ -7,7 +7,7 @@ phase: design-system
 prerequisites:
   - design-system-approved
 emits-artifact: prototypes/_design-system/library-bridge/<library>/
-confidence-rubric: framework
+confidence-rubric: confidence-rubrics/framework.yaml
 gate-on-exit: design-system
 version: 1.0
 last-verified: 2026-04-28

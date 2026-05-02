@@ -45,6 +45,59 @@ last-verified: 2026-04-27
    - 2+ failed with `wrong-approach` → flag for Persona review
 6. Output: log entry + pattern detection
 
+## Decision tree
+
+```
+Was the task verified with command output?
+  yes -> success is possible if confidence >=9 and user made no correction
+  no  -> classify as partial unless the task was explicitly read-only/advisory
+
+Did the user correct the agent?
+  yes -> record user-correction and classify success only if correction was optional polish
+  no  -> continue
+
+Did the agent skip required memory/RAG/codegraph?
+  yes -> blocker includes stale-context or missing-context
+  no  -> continue
+
+Did the final output omit confidence footer?
+  yes -> blocker includes missing-confidence-footer
+  no  -> continue
+```
+
+## Effectiveness schema
+
+Each JSONL row must include:
+- `ts`: ISO timestamp.
+- `agent`: stable agent id or skill id.
+- `task`: short task summary.
+- `outcome`: `success`, `partial`, or `failed`.
+- `iterations`: count of meaningful correction loops.
+- `blockers`: array of normalized blocker tags.
+- `confidence`: numeric confidence or null.
+- `userCorrections`: count of user corrections.
+- `verification`: command names or `read-only`.
+- `notes`: short explanation when outcome is not success.
+
+## Blocker taxonomy
+
+- `stale-context`: memory, RAG, graph, or docs were stale.
+- `missing-skill`: correct skill was absent or not invoked.
+- `wrong-approach`: agent chose an approach that did not fit the task.
+- `missing-verification`: agent claimed done without evidence.
+- `missing-artifact`: required spec, plan, diff, screenshot, or test output was absent.
+- `user-correction`: user corrected scope, quality, or behavior.
+- `tool-failure`: tool or environment prevented completion.
+- `scope-creep`: agent expanded task without explicit approval.
+
+## Verification
+
+- `.supervibe/memory/effectiveness.jsonl` exists or is created append-only.
+- New row is valid JSON.
+- Agent frontmatter was updated only for the targeted agent.
+- Prior JSONL rows are unchanged.
+- Pattern detection ran after the append.
+
 ## Output contract
 
 Returns:

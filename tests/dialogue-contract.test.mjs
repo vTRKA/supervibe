@@ -82,6 +82,42 @@ test('genesis post-delivery question is scaffold-specific, not a generic next-st
   assert.doesNotMatch(formatted, /Применить \(recommended\)/);
 });
 
+test('prototype post-delivery question uses prototype-specific actions', () => {
+  const question = buildPostDeliveryQuestion({
+    intent: 'prototype_delivery',
+    nextQuestion: 'Prototype review',
+  });
+  const labels = question.choices.map((choice) => choice.label);
+
+  assert.equal(question.context, 'prototype_delivery');
+  assert.deepEqual(labels, [
+    'Approve prototype',
+    'Refine prototype',
+    'Explore another direction',
+    'Run deeper review',
+    'Keep draft',
+  ]);
+  assert.match(formatPostDeliveryQuestion(question), /Approve prototype \(recommended\)/);
+});
+
+test('requirements post-delivery question uses requirements-specific actions', () => {
+  const question = buildPostDeliveryQuestion({
+    intent: 'requirements_delivery',
+    nextQuestion: 'Requirements review',
+  });
+  const labels = question.choices.map((choice) => choice.label);
+
+  assert.equal(question.context, 'requirements_delivery');
+  assert.deepEqual(labels, [
+    'Approve requirements',
+    'Revise requirements',
+    'Compare another scope',
+    'Review risks deeper',
+    'Keep as draft',
+  ]);
+  assert.match(formatPostDeliveryQuestion(question), /Approve requirements \(recommended\)/);
+});
+
 test('transparent step questions expose why, decision, and skip assumption', () => {
   const question = buildTransparentStepQuestion({
     step: 2,

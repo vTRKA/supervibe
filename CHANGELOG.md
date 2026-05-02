@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.30] - 2026-05-02
+
+### Added
+
+- Added `supervibe:trigger-diagnostics` skill and `validate:artifact-links`
+  to catch missing routed skills, skill rubrics, and rule links.
+- Added an agent-system hardening audit covering dialogue, agent maturity,
+  skill maturity, artifact links, and Code RAG/Graph readiness.
+
+### Changed
+
+- Standardized interactive agent dialogue around `Why:`,
+  `Decision unlocked:`, and `If skipped:` question anatomy.
+- Added prototype and requirements post-delivery contexts to the shared
+  dialogue contract.
+- Strengthened compact ops and Tauri agents with production playbooks,
+  evidence gates, failure modes, self-review, and completion discipline.
+- Strengthened compact process skills with clearer decision trees, safety
+  policy, output evidence, and verification expectations.
+
+### Fixed
+
+- Fixed malformed structural links in rule and skill frontmatter discovered by
+  artifact-link validation.
+
 ## [2.0.29] - 2026-05-02
 
 ### Fixed
@@ -550,7 +575,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.7.0] — 2026-04-27
 
-**Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent improvement loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused comparison vs superpowers.**
+**Phase E + F + G + H + I. Live mockup preview server (idle-shutdown, max-concurrent gate) + 6 strengthened planning skills + 22 new stack agents + 5 app-excellence agents + 4 new skills + dynamic MCP discovery + closed agent improvement loop (logger + PostToolUse hook + effectiveness tracker → frontmatter writes + underperformer detector + auto-strengthen trigger + canonical output footer + build-time validator) + README focused capability comparison.**
 
 ### Added — Preview Server (Phase E1)
 
@@ -600,7 +625,7 @@ Each ≥250 lines, full canonical structure (Persona / Project Context / Skills 
 
 ### Added — README rewrite (Phase F5)
 
-- Removed "15-year-persona" marketing language; comparison table focused on Supervibe vs superpowers
+- Removed "15-year-persona" marketing language; comparison table focused on Supervibe capability coverage
 - Cookbook with 5 end-to-end scenarios (Laravel feature / refactor blast-radius / debug incident / brand redesign / DB migration safety)
 
 ### Added — Agent Improvement Loop (Phase G + H)
@@ -828,7 +853,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - Lazy model load (first search downloads model; subsequent are instant)
 - 1 new hybrid test (gracefully skips if model unavailable in test env)
 - **Compared to v1.2 BM25-only**: now finds "Redis lock for unique transactions" → matches "billing-idempotency-via-redis-lock" even though "billing" not in query
-- This is real semantic memory — proper LightRAG-class capability for plugin context
+- This is real semantic memory — proper project-context memory capability
 
 ### Added — Real MCP tool wiring (not just informational)
 
@@ -881,20 +906,20 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ## [1.2.0] — 2026-04-27
 
-**Production-readiness pass. Plugin format verified against working voltagent-lang reference. Memory system upgraded from markdown+grep to real SQLite FTS5 with BM25 ranking. Install docs rewritten with verified commands. 51/51 tests pass.**
+**Production-readiness pass. Plugin format verified against the namespaced-agent manifest contract. Memory system upgraded from markdown+grep to real SQLite FTS5 with BM25 ranking. Install docs rewritten with verified commands. 51/51 tests pass.**
 
 ### CRITICAL FIX — Plugin manifest
 
 - **Added `agents:[]` array to `.claude-plugin/plugin.json`** explicitly listing all 46 agent file paths
 - Without this, **nested agents (`agents/_core/`, `agents/stacks/laravel/`, etc.) would NOT load** in Claude Code — silent failure
-- Verified format against `voltagent-lang` plugin (which uses identical pattern for namespaced agents)
+- Verified format against the namespaced-agent registration pattern
 - `validate-plugin-json.mjs` updated to allow `agents`, `skills`, `commands`, `hooks` fields
 - Added test `plugin.json agents array references existing files` (≥30 paths required)
 - **MIGRATION**: re-symlink plugin to v1.2.0 — without this, v1.1.0 install may have unloadable agents
 
 ### Added — `.claude-plugin/marketplace.json`
 
-- Local marketplace registration matching superpowers convention
+- Local marketplace registration matching the plugin marketplace convention
 - Enables future `/plugin install supervibe@supervibe-marketplace` flow when published
 
 ### Added — Memory v2: SQLite FTS5 (replaces v1 markdown+grep)
@@ -934,7 +959,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - **18 rules**
 - **12 confidence rubrics**
 - **51/51 tests pass** (42 from v1.1 + 9 new memory-store tests)
-- **Plugin install verified** by structural diff against voltagent-lang
+- **Plugin install verified** by structural package audit
 - **Memory v2 working** — FTS5 search with BM25 in <10ms typical
 
 ### Per-criterion final score (against user's audit)
@@ -967,7 +992,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 **Major capability expansion. Closes 8 advanced gaps from user audit (memory v1, MCP awareness, hardcode/half-finished bans, alternative-exploration, interaction patterns, tokens export). 41/41 tests pass.**
 
-### Added — Project Memory v1 (LightRAG-inspired)
+### Added — Project Memory v1
 
 - `supervibe:project-memory` skill — search prior decisions/patterns/incidents/learnings/solutions before any non-trivial task
 - `supervibe:add-memory` skill — write memory entries after significant work
@@ -1023,7 +1048,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 | 4 | MCP awareness | 5 | 9 |
 | 5 | No hardcode/half-finished | 7 | 10 |
 | 6 | Alternatives + audit | 7 | 10 |
-| 7 | LightRAG-like memory | 0 | 8 |
+| 7 | Project memory | 0 | 8 |
 | 8 | Safe foundation | 10 | 10 |
 | 9 | Prototyping + WOW | 8 | 10 |
 | 10 | Mockup → tokens → dev | 8 | 10 |
@@ -1043,7 +1068,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 
 ### Added — Phase 0+1: Foundation & Confidence Core
 
-- Canonical Claude Code plugin manifest at `.claude-plugin/plugin.json` (verified against superpowers reference)
+- Canonical Claude Code plugin manifest at `.claude-plugin/plugin.json` (verified against plugin manifest contract)
 - MIT LICENSE
 - Dev tooling: `package.json`, `.nvmrc`, husky+commitlint+lint-staged dogfood
 - Plugin-dev provider settings JSON with 27-entry deny-list
@@ -1057,7 +1082,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 - GitHub Actions check workflow (Linux + Windows runners)
 - PR template
 
-### Added — Phase 2: Process Skills (own brainstorming/plan/exec replacing superpowers)
+### Added — Phase 2: Process Skills (brainstorming/plan/exec lifecycle)
 
 - 14 process skills: brainstorming, writing-plans, executing-plans, tdd, systematic-debugging, code-review, requirements-intake, requesting-code-review, receiving-code-review, dispatching-parallel-agents, subagent-driven-development, using-git-worktrees, finishing-a-development-branch, pre-pr-check
 - 6 capability skills: adr, prd, new-feature, landing-page, incident-response, experiment

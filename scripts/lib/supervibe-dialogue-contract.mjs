@@ -127,6 +127,122 @@ const POST_DELIVERY_CONTEXTS = Object.freeze({
       },
     },
   },
+  prototype_delivery: {
+    en: {
+      prompt: 'Step 1/1: approve this prototype for handoff, or choose the next design step?',
+      recommendation: 'Recommended path: approve only after the preview URL, declared viewports, state matrix, feedback button, and review evidence look correct.',
+      freeFormPath: 'You can answer in your own words, for example: "approve desktop only, refine mobile spacing".',
+      stopCondition: 'Keep draft: I will persist the current prototype state and will not create an approval marker or handoff bundle.',
+      actions: {
+        approve: {
+          label: 'Approve prototype',
+          tradeoff: 'Write the approval marker and prepare the handoff bundle for production transfer.',
+        },
+        refine: {
+          label: 'Refine prototype',
+          tradeoff: 'Name one focused change; I will run one iteration and keep the prototype in draft/review state.',
+        },
+        alternative: {
+          label: 'Explore another direction',
+          tradeoff: 'Park the current version and create a compared alternative with explicit gains and tradeoffs.',
+        },
+        'deeper-review': {
+          label: 'Run deeper review',
+          tradeoff: 'Run additional UI, accessibility, token, or viewport checks before changing approval state.',
+        },
+        stop: {
+          label: 'Keep draft',
+          tradeoff: 'Save the current state and exit without approval or handoff.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: утверждаем прототип для handoff или выбираем следующий дизайн-шаг?',
+      recommendation: 'Рекомендуемый путь: утверждать только если preview URL, viewports, state matrix, feedback button и review evidence выглядят корректно.',
+      freeFormPath: 'Можно ответить своими словами, например: "утвердить desktop, но доработать mobile spacing".',
+      stopCondition: 'Оставить draft: сохраню текущее состояние прототипа и не создам approval marker или handoff bundle.',
+      actions: {
+        approve: {
+          label: 'Утвердить прототип',
+          tradeoff: 'Запишу approval marker и подготовлю handoff bundle для production transfer.',
+        },
+        refine: {
+          label: 'Доработать прототип',
+          tradeoff: 'Укажи одно точечное изменение; сделаю один проход и оставлю прототип в draft/review.',
+        },
+        alternative: {
+          label: 'Показать другое направление',
+          tradeoff: 'Сохраню текущую версию и создам сравнимую альтернативу с явными плюсами и компромиссами.',
+        },
+        'deeper-review': {
+          label: 'Проверить прототип глубже',
+          tradeoff: 'Запущу дополнительные UI, accessibility, token или viewport проверки до изменения approval state.',
+        },
+        stop: {
+          label: 'Оставить draft',
+          tradeoff: 'Сохраню текущее состояние и выйду без утверждения или handoff.',
+        },
+      },
+    },
+  },
+  requirements_delivery: {
+    en: {
+      prompt: 'Step 1/1: approve this requirements package for planning, or choose the next analysis step?',
+      recommendation: 'Recommended path: approve only when scope, acceptance criteria, edge cases, state model, and traceability are reviewable.',
+      freeFormPath: 'You can answer in your own words, for example: "approve scope, but add billing edge cases".',
+      stopCondition: 'Keep as draft: I will persist the current package and will not route it into planning.',
+      actions: {
+        approve: {
+          label: 'Approve requirements',
+          tradeoff: 'Mark the package ready for planning or implementation handoff.',
+        },
+        refine: {
+          label: 'Revise requirements',
+          tradeoff: 'Name one ambiguity, edge case, or acceptance criterion to tighten before approval.',
+        },
+        alternative: {
+          label: 'Compare another scope',
+          tradeoff: 'Produce a smaller, larger, or safer scope variant with explicit tradeoffs.',
+        },
+        'deeper-review': {
+          label: 'Review risks deeper',
+          tradeoff: 'Run another pass over edge cases, non-functional risks, traceability, or stakeholder gaps.',
+        },
+        stop: {
+          label: 'Keep as draft',
+          tradeoff: 'Save the package and exit without planning handoff.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: утверждаем требования для планирования или выбираем следующий аналитический шаг?',
+      recommendation: 'Рекомендуемый путь: утверждать только если scope, acceptance criteria, edge cases, state model и traceability готовы к review.',
+      freeFormPath: 'Можно ответить своими словами, например: "утвердить scope, но добавить billing edge cases".',
+      stopCondition: 'Оставить draft: сохраню текущий пакет и не передам его в планирование.',
+      actions: {
+        approve: {
+          label: 'Утвердить требования',
+          tradeoff: 'Помечу пакет готовым для planning или implementation handoff.',
+        },
+        refine: {
+          label: 'Уточнить требования',
+          tradeoff: 'Укажи одну неоднозначность, edge case или acceptance criterion для доработки перед approval.',
+        },
+        alternative: {
+          label: 'Сравнить другой scope',
+          tradeoff: 'Подготовлю меньший, больший или более безопасный вариант scope с явными компромиссами.',
+        },
+        'deeper-review': {
+          label: 'Проверить риски глубже',
+          tradeoff: 'Сделаю еще один проход по edge cases, non-functional risks, traceability или stakeholder gaps.',
+        },
+        stop: {
+          label: 'Оставить draft',
+          tradeoff: 'Сохраню пакет и выйду без handoff в планирование.',
+        },
+      },
+    },
+  },
 });
 
 function getPostDeliveryActions(locale = 'en', context = null) {
@@ -324,11 +440,11 @@ function hasBeginnerFriendlyActionLabels(text) {
     /другой вариант/.test(lower) &&
     /проверить глубже/.test(lower) &&
     /остановиться/.test(lower);
-  const domainSpecific = /(apply|approve|применить|утверд)[^\n]*(scaffold|adaptation|strengthening|design|адаптац|усилен|дизайн)/.test(lower) &&
-    /(adjust|revise|изменить|доработ)[^\n]*(plan|diff|design|план|адаптац|усилен|дизайн)/.test(lower) &&
-    /(compare another|сравнить друг)/.test(lower) &&
-    /(review|проверить)[^\n]*(deeper|глубже|dry-run|adaptation|strengthening|design|адаптац|усилен|дизайн)/.test(lower) &&
-    /(stop|останов)[^\n]*(without|save|install|adapt|strengthen|state|без|сохран)/.test(lower);
+  const domainSpecific = /(apply|approve|применить|утверд)[^\n]*(scaffold|adaptation|strengthening|design|prototype|requirements|scope|адаптац|усилен|дизайн|прототип|требован)/.test(lower) &&
+    /(adjust|revise|refine|изменить|доработ|уточнить)[^\n]*(plan|diff|design|prototype|requirements|scope|план|адаптац|усилен|дизайн|прототип|требован|scope)/.test(lower) &&
+    /(compare another|explore another|another direction|сравнить друг|другое направ)/.test(lower) &&
+    /(review|run deeper|проверить)[^\n]*(deeper|глубже|dry-run|adaptation|strengthening|design|prototype|risk|риски|прототип|адаптац|усилен|дизайн)/.test(lower) &&
+    /(stop|keep|оставить|останов)[^\n]*(without|save|install|adapt|strengthen|state|draft|без|сохран)/.test(lower);
   return english || russian || domainSpecific;
 }
 

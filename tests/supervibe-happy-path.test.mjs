@@ -11,7 +11,7 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-test("happy path exposes Ralph-style phases with Supervibe guardrails", () => {
+test("happy path exposes guided phases with Supervibe guardrails", () => {
   const plan = createHappyPathPlan({
     planPath: "docs/plans/example.md",
     epicId: "epic-example",

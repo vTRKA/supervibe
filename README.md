@@ -118,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.29 initialized for this project
+[supervibe] welcome — plugin v2.0.30 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -427,7 +427,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run supervibe:gc -- --all --dry-run` | Reversible cleanup preview for work-item graphs and memory |
 | `npm run supervibe:context-pack -- --file <graph.json> --item T1` | Compact high-signal context pack for one active task |
 | `npm run supervibe:context-eval -- --case-file <cases.json>` | Retrieval/context-pack evals for required memory, evidence, anchors, and token budgets |
-| `npm run supervibe:happy-path -- --plan <plan.md>` | Ralph-style happy path: PRD/plan -> atomize -> execute -> verify -> archive |
+| `npm run supervibe:happy-path -- --plan <plan.md>` | Guided happy path: PRD/plan -> atomize -> execute -> verify -> archive |
 | `npm run supervibe:docs-audit` | User-facing docs relevance audit; flags internal dev files if they drift into `docs/` |
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
 | `npm run supervibe:upgrade` | clean checkout, git pull, required ONNX model setup, npm ci, rebuild registry, run install doctor |

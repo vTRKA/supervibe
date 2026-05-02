@@ -27,6 +27,9 @@ test('agent with discipline section passes', () => {
   const body = [
     '## User dialogue discipline',
     'Шаг N/M format used with outcome-oriented labels.',
+    'Why: this answer changes scope.',
+    'Decision unlocked: select the safest path.',
+    'If skipped: use the documented default.',
     '## Anti-patterns',
     '- asking-multiple-questions-at-once',
     '',
@@ -53,6 +56,9 @@ test('stale placeholders outside dialogue section do not fail dialogue check', (
   const body = [
     '## User dialogue discipline',
     'Шаг N/M format used with outcome-oriented labels.',
+    'Why: this answer changes scope.',
+    'Decision unlocked: select the safest path.',
+    'If skipped: use the documented default.',
     '',
     '## Alternatives considered',
     '- <option A>: rejected because <reason>',
@@ -62,6 +68,20 @@ test('stale placeholders outside dialogue section do not fail dialogue check', (
   ].join('\n');
   const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
   assert.equal(issues.length, 0, JSON.stringify(issues));
+});
+
+test('agent dialogue section must explain why, decision, and skip default', () => {
+  const body = [
+    '## User dialogue discipline',
+    'Шаг N/M format used with outcome-oriented labels.',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
+  const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
+  assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-why'), JSON.stringify(issues));
+  assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-decision'), JSON.stringify(issues));
+  assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-skip-assumption'), JSON.stringify(issues));
 });
 
 test('noninteractive frontmatter override skips check', () => {

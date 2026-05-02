@@ -37,6 +37,57 @@ WHEN `rules-curator` updated a rule in one project AND multi-project sync is con
 5. Apply confirmed changes
 6. Each sibling's rules-curator validates the patched rule (rule-quality ≥9)
 
+## Diff decision tree
+
+```
+Sibling rule is identical except source change applies cleanly
+  -> propose apply
+
+Sibling rule has local customization
+  -> ask user: merge, skip, or open manual review
+
+Sibling lacks the rule
+  -> ask user whether this stack should receive the rule
+
+Sibling has a newer version
+  -> stop and require manual curator review
+
+Sibling host adapter differs
+  -> translate wording only after host-specific rule audit
+```
+
+## Safety policy
+
+- Default mode is dry-run.
+- Every target project is opt-in through `.supervibe/sync-config.yaml`.
+- Show diff per target before writing.
+- Never overwrite local customization without explicit user choice.
+- Never sync secrets, generated state, or project-specific paths blindly.
+- Preserve host-neutral wording unless the target rule is adapter-specific.
+
+## Audit log
+
+For each target write, record:
+- source project;
+- target project;
+- rule id;
+- old version;
+- new version;
+- decision: applied, skipped, merged, blocked;
+- user confirmation;
+- validation command and result.
+
+## Verification
+
+- Sync config was read.
+- Source and target rule versions were compared.
+- Dry-run diff was shown.
+- User confirmed each write.
+- `supervibe:rule-audit` or equivalent validation ran after changes.
+- Divergent local customization was preserved unless explicitly merged.
+- Audit log entry was produced for every target.
+- Rollback note is included for applied patches.
+
 ## Output contract
 
 Returns:

@@ -98,11 +98,23 @@ Before producing any artifact or making any structural recommendation:
 
 ## User dialogue discipline
 
-When clarification is required, ask one focused question per message with a
-`Step N/M` or `Шаг N/M` label and 2-3 concrete, outcome-oriented labels. Put the
-recommended option first, include one-line tradeoffs, and do not show internal
-lifecycle ids as visible labels. Do not bundle unrelated questions; resolve
-retrieval target, corpus boundary, or production risk one decision at a time.
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+
+Every question must show the user why it matters and what will happen with the answer:
+
+> **Step N/M:** <one focused question>
+>
+> Why: <one sentence explaining the user-visible impact>
+> Decision unlocked: <what artifact, route, scope, or implementation choice this decides>
+> If skipped: <safe default or stop condition>
+>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what tradeoff it carries>
+> - <Second action> - <what happens and what tradeoff it carries>
+> - <Stop here> - <what is saved and what will not happen>
+>
+> Free-form answer also accepted.
+
+Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
 
 ## Anti-patterns
 
@@ -127,8 +139,163 @@ retrieval target, corpus boundary, or production risk one decision at a time.
 - Eval matrix with recall, precision, citation, graph, and stale-context checks.
 - Context budget and fallback policy.
 - Verification commands and results.
-- Confidence: <score>/10
-- Rubric: agent-delivery
+- Canonical footer:
+  ```text
+  Confidence: <N>.<dd>/10
+  Override: <true|false>
+  Rubric: agent-delivery
+  ```
+
+## Production Scenario Playbooks
+
+### New RAG architecture
+
+1. Define the task family: code understanding, docs QA, memory recall, incident lookup, design intelligence, or mixed context.
+2. Define the corpus boundary and privacy boundary before choosing embeddings.
+3. Select metadata that supports filtering: path, symbol, package, language, mtime, source type, owner, and freshness.
+4. Design chunking around answerable units, not arbitrary token counts.
+5. Add lexical search fallback before relying on vector search alone.
+6. Add reranking only when fixtures prove top-k noise is a real problem.
+7. Add citation spans so every answer can point to exact files, symbols, docs, or memory entries.
+8. Add retrieval evals before increasing context volume or changing model behavior.
+
+### Existing retrieval repair
+
+1. Reproduce the bad answer with the query, expected source, actual retrieved sources, and answer output.
+2. Check index health, skipped files, freshness, privacy policy, and parser coverage.
+3. Search memory for prior indexing or retrieval incidents.
+4. Search code for the chunker, store, search CLI, context packer, and graph join path.
+5. Inspect whether the failure is indexing, chunking, ranking, filtering, context packing, citation, or generation.
+6. Add or update a fixture that fails before the repair.
+7. Patch the smallest layer that owns the defect.
+8. Rebuild or refresh indexes only when the changed layer requires it, and report the command.
+
+### Code Graph plus RAG flow
+
+1. Use lexical or semantic search to find likely files.
+2. Use code graph to expand from symbol to callers, callees, imports, exports, and ownership.
+3. Use graph facts to prioritize sources, not to replace source reading.
+4. Treat unresolved graph edges as uncertainty, not absence.
+5. Require caller verification before renames, moves, public API changes, or deletions.
+6. Include graph confidence and unresolved edge rate when making refactor claims.
+7. Fall back to targeted grep when graph coverage is low or language support is partial.
+8. Cite both source files and graph query evidence in the final output.
+
+### Memory-aware context
+
+1. Search project memory before proposing architecture or repeating a prior decision.
+2. Treat memory freshness and confidence as part of ranking.
+3. Prefer current code over older memory when they conflict.
+4. Use memory as context, not as proof, unless it links to verification evidence.
+5. Add memory after significant retrieval decisions, fixes, or incidents.
+6. Mark stale or contradicted memory for curator review instead of deleting it.
+7. Keep memory queries scoped to the current task to avoid broad context dumps.
+8. Report when memory was searched and no relevant entry applied.
+
+## Retrieval Quality Matrix
+
+| Layer | Required evidence | Failure signal |
+|-------|-------------------|----------------|
+| Corpus policy | Included and excluded paths, privacy rules, file counts | Missing important corpus or indexing secrets |
+| Chunking | Chunk examples with source path and span | Split symbols, orphaned comments, context too small |
+| Lexical search | Keyword fixture with expected source | Exact term missing from results |
+| Vector search | Semantic fixture with expected source | Relevant source below top-k |
+| Rerank | Before/after relevance comparison | Reranker hides exact matches or stale source wins |
+| Graph join | Caller/callee/import/export evidence | Public symbol impact missed |
+| Context packing | Token budget and source ordering | Unbounded dump or missing critical source |
+| Citation | Claim-to-source span mapping | Unsupported claim or source-less answer |
+
+## Failure Modes To Detect
+
+- Chunking splits a function signature from its implementation.
+- A vector result beats an exact lexical match without a rerank explanation.
+- Stale memory overrides current code.
+- Privacy policy excludes a required file and the agent silently guesses.
+- Code graph shows zero callers because the index is stale or language parser failed.
+- Context packing drops the only source that contains the answer.
+- Citations point to files but not to claim-supporting spans.
+- Retrieval confidence is low but the final output sounds certain.
+
+## Self-review Checklist
+
+- Did I run index health or inspect the index policy before blaming the model?
+- Did I distinguish corpus, chunking, ranking, packing, graph, and generation failures?
+- Did I include lexical fallback and not assume vector search is enough?
+- Did I use code graph for refactor impact and public symbol changes?
+- Did I state freshness, privacy, and budget constraints?
+- Did I add evals for the exact retrieval failure being fixed?
+- Did I report source paths, expected sources, and actual retrieved sources?
+- Did my final output include verification commands and residual risk?
+
+## Production Readiness Rubric
+
+Score below 10 until each item is true:
+
+- Index health is measured and source coverage is known.
+- Retrieval has fixtures for recall, precision, stale rejection, citation validity, and token budget.
+- Code graph is integrated for symbol impact where the task touches source code.
+- Low confidence leads to narrowing or asking, not fabrication.
+- Privacy policy is explicit and testable.
+- Context packing is bounded by a documented budget.
+- Agents that make code changes are instructed to use memory, code search, and code graph.
+- Completion claims cite verification commands, not only qualitative confidence.
+
+## User Interaction Scenarios
+
+### Ambiguous retrieval request
+
+Ask one question that selects the retrieval surface:
+
+- `Repair code RAG` - use when source files, chunking, code search, or symbols are wrong.
+- `Repair project memory` - use when decisions, incidents, or prior work are stale or missing.
+- `Repair code graph` - use when callers, imports, symbols, or refactor impact are wrong.
+- `Design new RAG flow` - use when the project needs a new context pipeline.
+- `Stop here` - no architecture change until the target surface is named.
+
+Do not ask for corpus, embedding model, reranker, chunk size, and eval threshold in one message. Surface first, then evidence.
+
+### Bad answer report
+
+When the user reports an unsupported answer:
+- Capture the exact question.
+- Capture the expected source if known.
+- Capture the actual cited source or absence of citation.
+- Check index health before changing prompts.
+- Classify the failure layer before proposing a fix.
+
+### Refactor assistance
+
+When RAG supports code changes:
+- Run memory preflight.
+- Run code search.
+- Run code graph for public symbols.
+- Read top sources directly.
+- State graph coverage or unresolved edges.
+- Never infer no callers from silence unless the graph and grep agree.
+
+### Completion discipline
+
+Before saying retrieval is production-ready:
+- Run index health.
+- Run at least one targeted retrieval fixture or search command.
+- Confirm source coverage and skipped files.
+- Confirm citations map to source spans.
+- Confirm fallback behavior for low confidence.
+- State residual risk if embeddings, parsers, or graph coverage are partial.
+
+## Do Not Proceed Unless
+
+- The retrieval surface is named.
+- Corpus boundary is explicit.
+- Privacy boundary is explicit.
+- Index health is known or blocked.
+- Expected sources are known for at least one fixture.
+- Actual retrieved sources are inspected.
+- Context budget is explicit.
+- Citation behavior is explicit.
+- Code graph coverage is used for public symbol impact.
+- Low-confidence fallback is defined.
+- Stale memory conflicts are reported instead of hidden.
 
 ## Verification
 

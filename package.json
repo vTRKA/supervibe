@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.29",
+  "version": "2.0.30",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -67,6 +67,7 @@
     "measure:tokens": "node scripts/measure-token-footprint.mjs",
     "validate:no-deep-refs": "node scripts/validate-no-deep-refs.mjs",
     "validate:agent-section-order": "node scripts/validate-agent-section-order.mjs",
+    "validate:artifact-links": "node scripts/validate-artifact-links.mjs",
     "validate:trigger-metadata": "node scripts/validate-trigger-metadata.mjs",
     "validate:trigger-replay": "node scripts/validate-trigger-replay.mjs",
     "validate:confidence-gates": "node scripts/validate-confidence-gates.mjs",
@@ -77,7 +78,7 @@
     "audit:evidence": "node scripts/audit-evidence-citations.mjs",
     "rollout:rag-procedure": "node scripts/apply-rag-memory-procedure.mjs",
     "lint:dead-code": "knip --no-progress --no-config-hints",
-    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:artifact-links && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {

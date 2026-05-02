@@ -38,6 +38,36 @@ Need general web search?
   Preference order: firecrawl-search > WebSearch
 ```
 
+## Capability matrix
+
+| Task | Preferred MCP | Fallback | Must report |
+|------|---------------|----------|-------------|
+| Current library docs | context7 | official docs via web | library id and version if known |
+| Browser interaction | playwright | static scrape or manual instructions | URL, viewport, screenshot path when used |
+| Figma/design extraction | figma | screenshot or exported assets | file key, node id, downloaded assets |
+| Web crawl | firecrawl | targeted scrape/search | URL set and extraction format |
+| Search/news | firecrawl-search | web search | recency and source links |
+| Local document parse | firecrawl-parse | direct file read if plain text | path and parser choice |
+| Calendar/mail/drive | installed app connector | ask user to enable/install | connector availability |
+
+## No-prompt path
+
+If discovery was already run by session startup, do not interrupt the user.
+Read the registry and choose the best available tool. Ask only when:
+- the task requires a connector that is not installed,
+- the user must provide a URL, file, or Figma node,
+- the fallback would materially reduce quality,
+- using a tool would mutate external state.
+
+## Output evidence
+
+Always include:
+- selected MCP or `none`,
+- fallback reason if no MCP was used,
+- exact tool family used,
+- whether the result is current or cached,
+- any limitation that affects confidence.
+
 ## Procedure
 
 1. Identify the task category (current-docs / browser / figma / crawl / search)

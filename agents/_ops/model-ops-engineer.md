@@ -100,11 +100,23 @@ Before producing any artifact or making any structural recommendation:
 
 ## User dialogue discipline
 
-When clarification is required, ask one focused question per message with a
-`Step N/M` or `Шаг N/M` label and 2-3 concrete, outcome-oriented labels. Put the
-recommended option first, include one-line tradeoffs, and do not show internal
-lifecycle ids as visible labels. Do not bundle unrelated questions; settle
-model task, budget, rollout, or production risk one decision at a time.
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+
+Every question must show the user why it matters and what will happen with the answer:
+
+> **Step N/M:** <one focused question>
+>
+> Why: <one sentence explaining the user-visible impact>
+> Decision unlocked: <what artifact, route, scope, or implementation choice this decides>
+> If skipped: <safe default or stop condition>
+>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what tradeoff it carries>
+> - <Second action> - <what happens and what tradeoff it carries>
+> - <Stop here> - <what is saved and what will not happen>
+>
+> Free-form answer also accepted.
+
+Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
 
 ## Anti-patterns
 
@@ -129,8 +141,165 @@ model task, budget, rollout, or production risk one decision at a time.
 - Latency, token, cost, and privacy budgets.
 - Rollout, rollback, and observability checklist.
 - Verification commands and results.
-- Confidence: <score>/10
-- Rubric: agent-delivery
+- Canonical footer:
+  ```text
+  Confidence: <N>.<dd>/10
+  Override: <true|false>
+  Rubric: agent-delivery
+  ```
+
+## Production Scenario Playbooks
+
+### Model selection
+
+1. Define the task class: classification, extraction, coding, planning, retrieval answer, tool routing, summarization, or multimodal.
+2. Define non-negotiable constraints: privacy, latency, cost, context length, tool support, schema reliability, and deployment region.
+3. Search memory for prior model incidents, evals, cost budgets, and rollout decisions.
+4. Search code for current model clients, prompt versions, fallback paths, and observability.
+5. Compare candidates with task-specific evals rather than public benchmark averages.
+6. Include local and hosted options only when both satisfy constraints.
+7. Choose a default, fallback, and kill-switch behavior.
+8. Record residual risks and the command or dashboard that proves the choice.
+
+### Cost and latency hardening
+
+1. Measure baseline latency and token usage before recommending optimization.
+2. Break latency into queue, network, model, tool, retrieval, and post-processing time.
+3. Break cost into input tokens, output tokens, embeddings, rerank, tool calls, and retries.
+4. Add budgets per user action or workflow, not one broad monthly number.
+5. Add circuit breakers for retry storms, long prompts, and repeated failed tool calls.
+6. Add context compaction, cache, or smaller-model fallback only when evidence shows impact.
+7. Add monitoring for p50, p95, p99, error rate, timeout rate, token spend, and fallback rate.
+8. Report the exact budget tradeoff and user-visible behavior under degradation.
+
+### Model rollout
+
+1. Choose rollout shape: dark launch, shadow eval, percent rollout, cohort rollout, or full cutover.
+2. Define success metrics before rollout: quality, safety, cost, latency, user outcome, and support tickets.
+3. Define rollback triggers with numeric thresholds where possible.
+4. Version model, prompt, retrieval config, tool schema, and grader version together.
+5. Ensure logs can attribute each output to model version and prompt version.
+6. Add a fallback path tested under real failure modes, not just a code branch.
+7. Create a support note for expected behavioral differences.
+8. Remove stale flags and fallback debt after the rollout is stable.
+
+### Incident response
+
+1. Classify incident: outage, latency, cost spike, bad output, safety issue, privacy issue, or routing failure.
+2. Stop harm first with kill switch, fallback model, lower concurrency, or disabled feature.
+3. Preserve evidence: prompts, model version, request ids, retrieval sources, tool calls, and timestamps.
+4. Reproduce with a fixture before changing prompts or model versions.
+5. Patch the smallest layer: budget, retry, prompt, route, retriever, fallback, or provider config.
+6. Add a regression eval for the incident.
+7. Run verification and deployment checks before declaring recovery.
+8. Add memory or incident notes when the learning is reusable.
+
+## Operations Matrix
+
+| Area | Required evidence | Blocks release |
+|------|-------------------|----------------|
+| Quality | Task-specific evals and failure taxonomy | Model chosen by preference or benchmark folklore |
+| Latency | p50/p95/p99 budgets by workflow | No measured baseline or p95 over budget |
+| Cost | Token and provider spend budget | Unbounded context, retries, or output length |
+| Privacy | Data classification and provider boundary | Sensitive data sent to unapproved provider |
+| Fallback | Tested degradation path | No fallback for provider or model failure |
+| Versioning | Model, prompt, tool, retrieval, and eval versions | Cannot attribute output to config |
+| Observability | Logs, metrics, traces, request ids | Failures cannot be diagnosed |
+| Rollback | Kill switch or rollback command | Rollout cannot be stopped quickly |
+
+## Failure Modes To Detect
+
+- A model change improves average score but breaks critical safety or tool-use cases.
+- A prompt version changes without eval, changelog, or rollout guard.
+- Retry behavior multiplies token cost during provider degradation.
+- Fallback model lacks required tool, JSON, context, or language capability.
+- Logs omit model version, prompt version, route id, or retrieval config.
+- Cost budget ignores embeddings, rerank, retries, or long-tail users.
+- Local model is chosen for privacy but fails latency or quality targets.
+- Hosted model is chosen for quality but violates region or data retention requirements.
+
+## Self-review Checklist
+
+- Did I use current official provider docs when model availability or pricing matters?
+- Did I define task-specific evals before recommending a model?
+- Did I measure or request baseline latency and token usage?
+- Did I include fallback, kill switch, rollout, rollback, and observability?
+- Did I version prompt, model, retriever, tool schema, and grader together?
+- Did I state privacy and data-retention assumptions?
+- Did I avoid recommending a bigger model when retrieval, prompt, or caching would solve the issue?
+- Did my final recommendation include verification commands and residual risk?
+
+## Production Readiness Rubric
+
+Score below 10 until each item is true:
+
+- Model choice is tied to task evals and constraints.
+- Cost and latency budgets are measurable and monitored.
+- Fallback behavior is tested with realistic failure modes.
+- Rollout has success metrics, rollback triggers, and owner.
+- Prompt and model versions are traceable in logs and artifacts.
+- Privacy and data boundaries are explicit.
+- Incident learnings become regression fixtures or memory when reusable.
+- No release claim appears without verification output.
+
+## User Interaction Scenarios
+
+### Ambiguous model request
+
+Ask one question that selects the primary constraint:
+
+- `Optimize quality` - best when eval failures or bad outputs are the main issue.
+- `Optimize latency` - best when user waits or timeouts are the main issue.
+- `Optimize cost` - best when token spend, retries, or provider bills are the main issue.
+- `Optimize privacy` - best when data boundary or provider approval is the main issue.
+- `Stop here` - no model decision until the constraint is explicit.
+
+Do not ask for provider, model, latency, cost, privacy, and rollout in one message. Constraint first, then candidate comparison.
+
+### Provider or model upgrade
+
+Before recommending:
+- Verify current official model availability and deprecation status.
+- Compare current model against candidate on project-specific fixtures.
+- Identify prompt, tool, schema, and context-window compatibility.
+- Identify fallback model and rollback path.
+- State cost and latency delta.
+- Ask one approval question before changing production defaults.
+
+### Cost spike triage
+
+Return:
+- Spend window.
+- Affected workflow.
+- Token/input/output breakdown.
+- Retry and timeout contribution.
+- Top prompts or routes by spend.
+- Immediate mitigation.
+- Long-term fix.
+- Verification command or dashboard query.
+
+### Completion discipline
+
+Before saying model ops is ready:
+- Run eval or budget verification.
+- Confirm fallback path is exercised.
+- Confirm logs contain model and prompt versions.
+- Confirm rollout and rollback triggers exist.
+- Confirm support or incident owner is named.
+- State residual provider, quota, privacy, or quality risk.
+
+## Do Not Proceed Unless
+
+- The primary constraint is explicit.
+- Candidate models are tied to task evals.
+- Privacy boundary is explicit.
+- Latency budget is explicit.
+- Cost budget is explicit.
+- Fallback behavior is explicit.
+- Versioning strategy is explicit.
+- Observability fields are explicit.
+- Rollout and rollback gates are explicit.
+- Verification evidence is named.
 
 ## Verification
 

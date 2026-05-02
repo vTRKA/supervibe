@@ -37,6 +37,52 @@ last-verified: 2026-04-27
 7. Output ranked findings (CRITICAL contradictions → MAJOR redundancy → MINOR gap)
 8. Score with confidence-scoring
 
+## Audit dimensions
+
+| Dimension | What to inspect | Evidence |
+|-----------|-----------------|----------|
+| Contradiction | Two rules require incompatible behavior for the same context | rule path, heading, quoted short phrase |
+| Redundancy | Rules repeat the same requirement with different wording | canonical rule candidate |
+| Coverage gap | Known incident or anti-pattern lacks a rule | memory entry or incident id |
+| Host drift | Host instruction file omits mandatory rule | host file path and missing rule |
+| Deny mismatch | Rule bans an action but settings do not enforce it | rule path and settings path |
+| Link integrity | `related-rules` points nowhere | missing rule id |
+| Severity mismatch | rule severity does not match risk | proposed severity and rationale |
+| Staleness | rule references deleted paths, old commands, or old host names | grep evidence |
+
+## Finding format
+
+Each finding must include:
+- severity: `CRITICAL`, `MAJOR`, or `MINOR`;
+- category: contradiction, redundancy, gap, drift, deny-mismatch, link, severity, stale;
+- affected files;
+- direct evidence;
+- recommended remediation;
+- whether the remediation is safe to automate.
+
+## Safety policy
+
+This skill audits and recommends. It does not merge, delete, or rewrite rules by default.
+Escalate to `rules-curator` for edits and require explicit approval before:
+- deleting a rule,
+- merging two rules,
+- propagating through `sync-rules`,
+- changing a mandatory rule,
+- changing deny settings.
+
+## Verification
+
+- All selected rule files were read.
+- Active host instruction file was checked for mandatory references.
+- `related-rules` were resolved.
+- Findings cite concrete files and sections.
+- False-positive risk is stated when wording is similar but not contradictory.
+- Recommended follow-up owner is named.
+- Audit scope and skipped files are stated.
+- Confidence score reflects evidence quality.
+- Remediation risk is stated.
+- Re-audit command is named.
+
 ## Output contract
 
 Returns:

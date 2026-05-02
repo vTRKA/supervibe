@@ -176,20 +176,13 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 16. **Write README.md** — what to view, in what order; viewport list; tab-order map; known drifts (with rationale); browsers tested.
 16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, etc.). If creative-director persisted `prototypes/<feature>/decisions/animation.md`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
 17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `prototypes/<feature>/_reviews/`.
-18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the prompt:
-    ```markdown
-    **Прототип готов:** http://localhost:NNNN
-    **Viewports:** <list>
-    **Состояние:** draft
-
-    Что делаем дальше?
-
-    - ✅ **Утвердить** — фиксирую approval, готовлю handoff/
-    - ✎ **Доработать** — расскажи что поменять (одной мыслью)
-    - 🔀 **Альтернатива** — предложу 2 другие визуальные направления
-    - 📊 **Углублённый review** — позову ещё агентов
-    - 🛑 **Стоп** — оставить как draft
-    ```
+18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the preview summary, lifecycle state, persisted state artifact path, and the shared post-delivery question from `scripts/lib/supervibe-dialogue-contract.mjs` with `intent="prototype_delivery"`.
+    Required summary fields:
+    - `Prototype`: `http://localhost:NNNN`
+    - `Viewports`: exact list from `config.json`
+    - `State`: `draft` or `review`
+    - `State artifact`: `prototypes/<feature>/config.json` plus `.approval.json` only after explicit approval
+    - `Question`: formatted via `buildPostDeliveryQuestion({ intent: "prototype_delivery" }, { locale })`
     Wait for explicit choice. Do NOT advance silently to handoff.
 
     If user picks "🔀 Альтернатива": spawn `prototypes/<feature>/alternatives/<variant-name>/` and copy `templates/alternatives/tradeoff.md.tpl` to each variant directory. Fill all sections with explicit "differs because X / gives up Y to gain Z" framing. Never delete a parked variant — convert to `Status: rejected` with a Rejection note instead.
@@ -230,17 +223,23 @@ Rubric: prototype
 
 ## User dialogue discipline
 
-When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option:
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+
+Every question must show the user why it matters and what will happen with the answer:
 
 > **Step N/M:** <one focused question>
 >
-> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what it costs>
-> - <Second action> - <what happens and what it costs>
+> Why: <one sentence explaining the user-visible impact>
+> Decision unlocked: <what artifact, route, scope, or implementation choice this decides>
+> If skipped: <safe default or stop condition>
+>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what tradeoff it carries>
+> - <Second action> - <what happens and what tradeoff it carries>
 > - <Stop here> - <what is saved and what will not happen>
 >
 > Free-form answer also accepted.
 
-Use `Шаг N/M:` when the conversation is in Russian. Do not show internal lifecycle ids as visible labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
+Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
 
 ## Verification
 

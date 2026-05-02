@@ -41,6 +41,47 @@ last-verified: 2026-04-27
 5. Check Core Web Vitals impact
 6. Score with confidence-scoring
 
+## Audit dimensions
+
+| Dimension | Checks |
+|-----------|--------|
+| Crawlability | robots.txt, sitemap, canonical, status codes, no accidental noindex |
+| Metadata | title, description, open graph, twitter cards, locale alternates |
+| Structured data | Schema.org type, required fields, validation result |
+| Content | search intent fit, headings, internal links, duplicate/thin content |
+| Performance | Core Web Vitals, image weight, render blocking, mobile layout |
+| Accessibility | semantic headings, alt text, meaningful link text |
+| International | hreflang, canonical per locale, localized metadata |
+| Freshness | lastmod, stale claims, publication/update dates |
+
+## Current-research policy
+
+SEO guidance changes. Use current primary or reputable sources when:
+- the page targets search traffic,
+- schema requirements are uncertain,
+- Google or other search guidance may have changed,
+- the user asks for "latest" or "2026" practice.
+
+Record the source or research-cache entry used. If no current lookup is possible, label the audit as baseline technical SEO and do not claim current best-practice completeness.
+
+## Output severity
+
+- `CRITICAL`: page may not be indexed or may point search engines to the wrong URL.
+- `MAJOR`: ranking, snippet quality, schema eligibility, or Core Web Vitals likely harmed.
+- `MINOR`: polish, consistency, or opportunity item.
+
+## Verification
+
+- The scoped page list is explicit.
+- Lighthouse or equivalent technical audit was run when a runnable page exists.
+- Schema validation was run or blocked with reason.
+- Sitemap, robots, canonical, and metadata were checked.
+- Best-practice source or research-cache entry is cited.
+- Core Web Vitals risk is stated.
+- Indexing blockers are separated from ranking opportunities.
+- Public-page scope is explicit.
+- Recheck command or browser URL is included.
+
 ## Output contract
 
 Returns:

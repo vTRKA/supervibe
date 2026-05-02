@@ -23,6 +23,11 @@ Any agent, command, or skill that engages the user in clarification, requirement
 
 Questions must be easy to answer. Prefer 2-4 choices for ordinary clarifications; delivery gates use the standard 5-action menu. Put the recommended/default choice first and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
 
+Every question must be transparent about why the user is being asked. The question body must include:
+- `Why:` one sentence about user-visible impact.
+- `Decision unlocked:` the artifact, route, scope, or implementation choice this answer decides.
+- `If skipped:` the safe default, persisted assumption, or stop condition.
+
 Delivery-style flows must also declare lifecycle states, a persisted state artifact path, default behavior, free-form path, stop condition, and a post-delivery menu. Visible choices must be language-matched, outcome-oriented, and domain-specific while mapping to the internal lifecycle actions. Generic fallback labels (`Apply / Применить`, `Revise / Доработать`, `Try another option / Другой вариант`, `Review deeper / Проверить глубже`, `Stop here / Остановиться`) are acceptable only when no better domain noun exists. Genesis must use scaffold-specific labels such as `Apply scaffold / Применить scaffold`, `Adjust install plan / Изменить план установки`, `Compare another set / Сравнить другой набор`, `Review dry-run deeper / Проверить dry-run глубже`, and `Stop without installing / Остановиться без установки`. Internal action ids may remain in saved state, but must not be shown as the labels. Shared reusable wording lives in `scripts/lib/supervibe-dialogue-contract.mjs`.
 
 Genesis-style install flows must split selection into separate questions: host adapter, install profile, optional add-ons, then custom group edits. Presets such as `minimal`, `product-design`, `full-stack`, `research-heavy`, and `custom` must include one-line tradeoffs and a stop condition before any file write.
@@ -46,13 +51,17 @@ Ask one question per message. Format:
 
 > **Шаг N/M:** <one focused question>
 >
-> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what it costs>
-> - <Second action> - <what happens and what it costs>
+> Why: <one sentence explaining the user-visible impact>
+> Decision unlocked: <what artifact, route, scope, or implementation choice this decides>
+> If skipped: <safe default or stop condition>
+>
+> - <Recommended action> (<recommended marker in the user's language>) - <what happens and what tradeoff it carries>
+> - <Second action> - <what happens and what tradeoff it carries>
 > - <Stop here> - <what is saved and what will not happen>
 >
 > Свободный ответ тоже принимается.
 
-Match the user's language, use outcome-oriented labels, and never show internal lifecycle ids as visible labels. Use `(recommended)` in English and `(рекомендуется)` in Russian. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message.
+Match the user's language, use outcome-oriented labels, and never show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Use `(recommended)` in English and `(рекомендуется)` in Russian. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message.
 ```
 
 The agent's `## Anti-patterns` section MUST list:
@@ -71,7 +80,8 @@ The agent's `## Anti-patterns` section MUST list:
 Validator `scripts/validate-question-discipline.mjs` (run in `npm run check`) checks that every agent file matching `applies-to` contains either:
 - the literal string `## User dialogue discipline`, OR
 - the literal string `Шаг N/M`, AND
-- the anti-pattern `asking-multiple-questions-at-once`.
+- the anti-pattern `asking-multiple-questions-at-once`, AND
+- transparent markers for `Why:`, `Decision unlocked:`, and `If skipped:`.
 
 Failures block commit.
 

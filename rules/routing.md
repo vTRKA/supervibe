@@ -5,7 +5,7 @@ applies-to: [any]
 mandatory: false
 version: 1.0
 last-verified: 2026-04-27
-related-rules: [api-contract-reviewer]
+related-rules: [operational-safety]
 ---
 
 # Routing
