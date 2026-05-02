@@ -22,6 +22,20 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after typography, palette, spacing, storyboard, first screen, first review, or any other intermediate phase if the next stage can be completed with the current brief and safe defaults.
 
+## Design Readiness Contract
+
+Draft prototypes are not implementation contracts. A draft may provide the product model only: `agent workflow = intent + tool call + evidence/sources + human decision + result`. Treat every visual decision in a draft as temporary taste exploration until the user approves the prototype and the design system writes final tokens.
+
+Developers must wait for **approved prototype + final tokens** in `prototypes/<slug>/handoff/`. Until that bundle exists, stack agents may read the product model, user flow, states, and evidence sources, but they must not copy draft colors, spacing, typography, layout taste, or component styling into production code.
+
+**Taste Alignment Gate** runs before screen production. It defines direction, audience, reference set, what to borrow vs avoid, and how this direction differs from older prototypes. A design that merely recolors an old shell is not aligned.
+
+Tokens have a two-step lifecycle: `candidate tokens` are allowed for visual proof and token discipline while building the draft prototype; `final tokens` are written only after visual approval. Do not stamp tokens as final just because Stage 2 completed.
+
+**Critique Gate** runs after the first representative screen: ask whether this feels like a new product direction or a repainted old shell. If the answer is "repaint", revise the direction before expanding to the rest of the flow.
+
+Before dev handoff, collapse alternatives into **one source of truth**: one approved prototype, one final design-system manifest, one final token set, and parked/rejected alternatives with rationale. Competing prototypes cannot all be "ready for development".
+
 ### Standard Question Template
 
 Every design question must use this structure, with the labels translated to the user's language when needed:
@@ -60,7 +74,7 @@ The output must include `Design Intelligence Evidence` when retrieved rows influ
 1. **Native HTML/CSS/JS only** for prototypes. No React, Vue, Svelte, Next.js, Nuxt. Pure web platform. Frameworks come AFTER approval, in the handoff-to-stack step.
 2. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user upfront if they want different, but never silently expand.
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
-4. **Design system is source of truth.** Approved FIRST, before any prototype. Every visual decision references it.
+4. **Design system lifecycle is explicit.** Start with candidate tokens for visual proof, then finalize tokens only after visual approval. Every visual decision references the current candidate/final system instead of inventing one-off values.
 4a. **Design system is project-level, not per-mockup.** Build it once at `prototypes/_design-system/`, then reuse it for every future mockup. New work may extend the system through an explicit extension request; it must not rebuild palette/type/components from scratch unless the user asked for a rebrand.
 5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks state in `.approval.json` artifacts; it knows when something is ready for backend/frontend integration.
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
@@ -68,6 +82,7 @@ The output must include `Design Intelligence Evidence` when retrieved rows influ
 8. **Approved → handoff** automatically invokes `supervibe:prototype-handoff` and copies prototype to `prototypes/<slug>/handoff/` ready for development and promotion into the chosen stack later.
 9. **Existing design files are never reused silently.** If any `prototypes/`, `mockups/`, or `presentations/` artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
 10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `prototypes/`, `mockups/`, or `presentations/`; verify the visible `Feedback` button before presenting the preview URL.
+11. **Draft-to-dev boundary is mandatory.** Draft visuals are not production guidance. Stack agents only implement from `approved prototype + final tokens` in the handoff bundle.
 
 ## Invocation forms
 
@@ -130,7 +145,7 @@ Read `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`
 - Is this a marketing landing page → uses `supervibe:landing-page` skill
 - Is this an in-product flow → uses `supervibe:prototype` skill
 - Does brand direction exist (`prototypes/_brandbook/direction.md`) → if yes reuse it by default and skip Stage 1
-- Does design system exist (`prototypes/_design-system/manifest.json` with `status: approved`) → if yes enter **system-reuse mode** and skip the full Stage 2 dialogue
+- Does design system exist (`prototypes/_design-system/manifest.json` with `status: candidate`, `approved`, or final token metadata) → if yes enter **system-reuse mode** and skip the full Stage 2 dialogue
 - Does the brief require a token/component not present in the existing system → create a narrow extension request instead of rebuilding the system
 - For non-web targets dispatch the corresponding specialist designer (`extension-ui-designer` / `electron-ui-designer` / `tauri-ui-designer` / `mobile-ui-designer`) instead of `ux-ui-designer` for spec/review.
 - Multi-language UI? Reduced-motion sensitive? Touch / pointer device target? Save to brief metadata.
@@ -171,8 +186,9 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 1. Invoke `supervibe:project-memory --query brand` to surface prior brand decisions.
 2. If brief named a competitor reference, invoke `supervibe:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
 3. Dispatch `creative-director` agent.
-4. Output: `prototypes/_brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords. Score against `brandbook` rubric ≥9.
-5. **Feedback gate** — present direction to user. Options:
+4. Run the **Taste Alignment Gate** before any screen work: document audience, product personality, reference set, what to borrow, what to avoid, and how the selected direction differs from older prototypes in this project.
+5. Output: `prototypes/_brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords, old-prototype differentiation notes. Score against `brandbook` rubric ≥9.
+6. **Feedback gate** — present direction to user. Options:
    - ✅ approve direction → continue Stage 2
    - 🔀 alternative → creative-director generates 2 alternatives with documented tradeoffs (not random regen)
    - ✎ refine — user describes one specific change
@@ -185,11 +201,11 @@ If design system missing OR Stage 1 just produced a new direction OR the user ex
 1. Invoke `supervibe:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
 2. Each sub-section is a separate decision record (one question at a time only when clarification is actually needed, markdown with "Шаг N/8" progress).
 3. Each sub-section writes a completion/approval marker before the next section; when the user has not asked to review every section manually, use delegated approval markers with rationale in `prototypes/_design-system/.approvals/<section>.json` and continue.
-4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with `manifest.json.status === 'approved'`.
+4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with candidate tokens and `manifest.json.status === 'candidate'` until visual approval.
 
-After completion: design system is the **source of truth** for all downstream stages. No prototype invents tokens.
+After completion: design system is the **candidate source of truth** for downstream prototype stages. No prototype invents tokens, but no downstream developer treats these as final tokens until Stage 8 approval.
 
-If `prototypes/_design-system/manifest.json` exists with `status: approved`:
+If `prototypes/_design-system/manifest.json` exists with `status: approved` or final token metadata:
 
 1. Read `manifest.json`, `tokens.css`, `motion.css`, `voice.md`, `components/*.md`, and any `extensions/*.md`.
 2. Print a short reuse summary: system version, approved sections, component count, token families, last extension.
@@ -237,6 +253,8 @@ Both skills enforce:
 - All animations from `prototypes/_design-system/motion.css` (no inline cubic-beziers)
 - Video only if `config.json.mediaCapabilities.video === true`; otherwise use CSS/WAAPI, SVG/Lottie specs, storyboard frames, or static poster alternatives.
 - One question at a time when clarification needed
+
+After the first representative screen is rendered, run the **Critique Gate** before expanding the rest of the flow: "is this a new product direction or a repainted old shell?" If it reads as a repaint, revise brand direction/tokens first. If the critique passes, continue building the remaining screens without turning the gate into an unnecessary stop.
 
 Output: `prototypes/<slug>/index.html` + supporting files. `config.json` with `approval: 'draft'`.
 
@@ -289,6 +307,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
      "approvedBy": "<user from git config user.name>",
      "viewports": [375, 1440],
      "designSystemVersion": "<commit-sha of _design-system/>",
+     "tokensState": "final",
      "previewUrl": "http://localhost:NNNN",
      "feedbackRounds": <count>,
      "approvalScope": "full | viewport-mobile | layout-only"
@@ -297,7 +316,9 @@ When user explicitly says "утвердить" / "approve" / "✅":
 
 2. **Update `config.json`** → `"approval": "approved"`.
 
-3. **Invoke `supervibe:prototype-handoff` and build the ready for development handoff bundle** at `prototypes/<slug>/handoff/`:
+3. **Finalize design-system tokens**: update `prototypes/_design-system/manifest.json` from candidate to approved/final state, record `visualApprovalPrototype: "prototypes/<slug>/"`, and mark `tokensState: "final"`. If alternatives exist, mark every non-selected direction as parked or rejected before continuing.
+
+4. **Invoke `supervibe:prototype-handoff` and build the ready for development handoff bundle** at `prototypes/<slug>/handoff/`:
    ```
    prototypes/<slug>/handoff/
    ├── README.md                  ← what this is, when approved, by whom, viewport list
@@ -311,7 +332,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
    └── stack-agnostic.md          ← per-stack adapter hints (React component skeleton, Vue SFC skeleton, Next.js page skeleton — all derivable from this prototype)
    ```
 
-4. **Print handoff summary**:
+5. **Print handoff summary**:
    ```
    ✅ Утверждено: prototypes/<slug>/
    Готово к интеграции: prototypes/<slug>/handoff/
@@ -320,7 +341,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
            передай путь handoff/, он промоутит в production.
    ```
 
-5. **Score** the bundle against `prototype.yaml` rubric ≥9.
+6. **Score** the bundle against `prototype.yaml` rubric ≥9.
 
 ## Output contract
 
@@ -328,7 +349,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
 === Supervibe Design ===
 Brief:        <one-line>
 Brand:        prototypes/_brandbook/direction.md     (score: X.X/10)
-System:       prototypes/_design-system/manifest.json (approved)
+System:       prototypes/_design-system/manifest.json (candidate | approved/final)
 Spec:         prototypes/<slug>/spec.md
 Copy:         prototypes/<slug>/content/copy.md
 Prototype:    prototypes/<slug>/index.html
@@ -337,6 +358,7 @@ Preview URL:  http://localhost:NNNN  (PID: ...; idle-shutdown 30 min)
 Reviews:      polish (N issues) + a11y (M violations) [+ seo if landing]
 Feedback rounds: <count>
 Approval:     <draft | approved>     ← prototypes/<slug>/.approval.json
+Tokens:       <candidate | final>
 Handoff:      <pending | prototypes/<slug>/handoff/>
 
 Confidence: <N>.<dd>/10

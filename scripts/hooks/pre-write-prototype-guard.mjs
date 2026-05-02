@@ -30,13 +30,14 @@ function emit(decision, reason) {
   process.exit(decision === 'block' ? 2 : 0);
 }
 
-function hasApprovedDesignSystem(projectRoot) {
+function hasActiveDesignSystem(projectRoot) {
   const manifestPath = resolve(projectRoot, 'prototypes', '_design-system', 'manifest.json');
   if (!existsSync(manifestPath)) return false;
   try {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    return manifest.status === 'approved' ||
-      Object.values(manifest.sections || {}).some(value => String(value).includes('approved'));
+    return ['candidate', 'approved', 'final'].includes(String(manifest.status || '').toLowerCase()) ||
+      ['candidate', 'final'].includes(String(manifest.tokensState || '').toLowerCase()) ||
+      Object.values(manifest.sections || {}).some(value => /candidate|approved|final/i.test(String(value)));
   } catch {
     return false;
   }
@@ -46,12 +47,12 @@ function detectDesignTokenBypass(content) {
   const text = String(content || '');
   const rawHex = text.match(RAW_HEX_RE)?.[0];
   if (rawHex) {
-    return `Raw color ${rawHex} detected in prototype write while an approved design system exists. Use prototypes/_design-system/tokens.css variables or request a design-system extension.`;
+    return `Raw color ${rawHex} detected in prototype write while a candidate or final design system exists. Use prototypes/_design-system/tokens.css variables or request a design-system extension.`;
   }
 
   const magicLine = text.split(/\r?\n/).find(line => TOKENIZED_PX_PROPERTY_RE.test(line) && !line.includes('var('));
   if (magicLine) {
-    return `Hardcoded layout pixel value detected in prototype write while an approved design system exists: ${magicLine.trim().slice(0, 160)}. Use spacing/radius/type tokens or request a design-system extension.`;
+    return `Hardcoded layout pixel value detected in prototype write while a candidate or final design system exists: ${magicLine.trim().slice(0, 160)}. Use spacing/radius/type tokens or request a design-system extension.`;
   }
 
   return null;
@@ -66,7 +67,7 @@ const projectRoot = resolveSupervibeProjectRoot();
 const content = event.tool_input?.content || event.tool_input?.new_string || '';
 
 if (!PROTOTYPE_DIR_RE.test(path)) {
-  if (UI_SOURCE_RE.test(path) && hasApprovedDesignSystem(projectRoot)) {
+  if (UI_SOURCE_RE.test(path) && hasActiveDesignSystem(projectRoot)) {
     const bypassReason = detectDesignTokenBypass(content);
     if (bypassReason) emit('block', bypassReason);
   }
@@ -96,7 +97,7 @@ for (const pat of FRAMEWORK_PATTERNS) {
 
 // Item 7 — approved design-system gate: once tokens/components are approved,
 // prototype surfaces must consume them instead of inventing visual values.
-if (PROTOTYPE_SURFACE_RE.test(path) && hasApprovedDesignSystem(projectRoot)) {
+if (PROTOTYPE_SURFACE_RE.test(path) && hasActiveDesignSystem(projectRoot)) {
   const bypassReason = detectDesignTokenBypass(content);
   if (bypassReason) emit('block', bypassReason);
 }

@@ -1,7 +1,7 @@
 ---
 name: brandbook
 namespace: process
-description: "Use WHEN starting new product OR major brand reset BEFORE any prototype to materialize an explicit design system as source of truth (tokens, components, voice, motion, accessibility) at prototypes/_design-system/. The system is approved by the user FIRST; every prototype downstream consumes it without invention. RU: используется КОГДА запускается новый продукт ИЛИ крупный rebrand ДО любого прототипа — материализует явную дизайн-систему как источник истины (tokens, components, voice, motion, accessibility) в prototypes/_design-system/. Система утверждается пользователем ПЕРВЫМ; каждый downstream-прототип потребляет её без выдумывания. Trigger phrases: 'нужен бренд', 'разработай бренд', 'фирстиль', 'брендбук', 'rebrand', 'design system', 'дизайн-система'."
+description: "Use WHEN starting new product OR major brand reset BEFORE production handoff to materialize an explicit design-system lifecycle at prototypes/_design-system/. Candidate tokens guide visual proof; final tokens are stamped only after visual approval. RU: используется КОГДА запускается новый продукт ИЛИ крупный rebrand ДО production handoff — материализует lifecycle дизайн-системы. Candidate tokens ведут прототип, final tokens появляются только после визуального approval. Trigger phrases: 'нужен бренд', 'разработай бренд', 'фирстиль', 'брендбук', 'rebrand', 'design system', 'дизайн-система'."
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
 phase: brainstorm
 prerequisites: []
@@ -18,7 +18,7 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 Before brand direction, palette, typography, or collateral recommendations, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use product, style, color, typography, brand, logo, icon, and CIP rows as advisory evidence only; approved memory and user feedback take precedence.
 
-Materialize a brand into an **explicit, approved, machine-readable design system** at `prototypes/_design-system/`. The system is the ONLY source of visual truth — every prototype, every component, every animation downstream consumes it. The user approves the system FIRST, before any pixel of UI is built.
+Materialize a brand into an **explicit, machine-readable design system lifecycle** at `prototypes/_design-system/`. Candidate tokens are the source for draft prototypes and visual proof; final tokens are the source for development handoff only after visual approval of an approved prototype.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.
 
@@ -39,7 +39,7 @@ NOT for:
 
 1. **One question at a time.** Brand work is deeply collaborative; never overwhelm with a 5-question dump.
 2. **Markdown-formatted dialogue** with progress indicator: "Шаг 3/8: палитра — primary".
-3. **Approval is explicit** at the SYSTEM level. Section markers (palette, type, spacing, radius, motion, voice, components-baseline) must be recorded so the user can change their mind on type without redoing palette, but the default full-pass flow does not stop after each section.
+3. **Approval is explicit** at the SYSTEM level and split into candidate vs final. Section markers (palette, type, spacing, radius, motion, voice, components-baseline) must be recorded so the user can change their mind on type without redoing palette, but the default full-pass flow does not stop after each section.
 4. **Output is machine-readable** — `tokens.css` parseable by any tool; `components/<name>.md` parseable for component cards; `motion.css` consumable by every prototype.
 5. **Versioned + reversible** — each approved section gets a git commit; reverting is git revert, not "undo".
 6. **Alternatives are first-class** — when user rejects a direction, this skill produces 2 alternatives with explicit tradeoffs documented, never random regen.
@@ -50,13 +50,13 @@ Full-pass mode continues through all eight sections in one run when the user inv
 
 Use delegated approval markers for intermediate sections when the recommended/default choice is clear. A delegated marker must record the rationale, source evidence, and what the user can revise later in `prototypes/_design-system/.approvals/<section>.json`. Ask the user only for decisions that are ambiguous, risky, legally/licensing-sensitive, destructive to an existing approved system, or explicitly requested for manual review.
 
-Only the final system approval is a chat-level gate in the normal flow. If the user says stop, pause, skip, or asks to review a specific section manually, honor that instruction and persist partial state.
+Only the visual approval/finalize step is a chat-level gate in the normal flow. Intermediate sections create candidate tokens and delegated markers; final tokens are not stamped until an approved prototype proves the visual direction. If the user says stop, pause, skip, or asks to review a specific section manually, honor that instruction and persist partial state.
 
 ## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/_brandbook/direction.md` if exists (creative-director's moodboard + intent doc).
 2. Read `prototypes/_design-system/` if exists — discover what's already approved vs what needs work.
-   - If `manifest.json.status === "approved"`, enter **reuse/extension mode** by default.
+   - If `manifest.json.status === "candidate"` or `"approved"`, enter **reuse/extension mode** by default.
    - In reuse/extension mode, print a short system summary and ask only about the missing token/component/asset capability needed for the current brief.
    - Full rebuild is allowed only when the user says rebrand, major reset, or explicitly approves replacing the system.
 3. Read `supervibe:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
@@ -260,25 +260,27 @@ Output to `prototypes/_design-system/accessibility.md`.
 
 ### Section 8 — System manifest
 
-Final output: `prototypes/_design-system/manifest.json`:
+Candidate output: `prototypes/_design-system/manifest.json`. The `/supervibe-design` approval step later finalizes it after visual approval:
 ```json
 {
   "version": "1.0.0",
-  "status": "approved",
-  "approvedAt": "<ISO>",
-  "approvedBy": "<user>",
+  "status": "candidate",
+  "tokensState": "candidate",
+  "visualApprovalRequired": true,
   "sections": {
-    "palette": "approved",
-    "typography": "approved",
-    "spacing": "approved",
-    "motion": "approved",
-    "voice": "approved",
-    "components": "approved (button, input, ...)",
-    "accessibility": "approved (WCAG AA)"
+    "palette": "candidate",
+    "typography": "candidate",
+    "spacing": "candidate",
+    "motion": "candidate",
+    "voice": "candidate",
+    "components": "candidate (button, input, ...)",
+    "accessibility": "candidate (WCAG AA)"
   },
   "extensionPolicy": "extensions require user approval; ad-hoc tokens forbidden in prototypes"
 }
 ```
+
+After an approved prototype proves the visual direction, `/supervibe-design` must finalize this manifest by setting `status: "approved"`, `tokensState: "final"`, `visualApprovalPrototype: "prototypes/<slug>/"`, `approvedAt`, and `approvedBy`.
 
 ### Approval markers per section
 
@@ -286,7 +288,7 @@ After each section completes, write a per-section approval/completion marker to 
 
 ### Extension mode (fast path for later mockups)
 
-When an approved system already exists:
+When a candidate or approved system already exists:
 
 1. Read current system files and manifest.
 2. Identify the smallest missing unit: token, component variant, motion recipe, copy pattern, asset treatment, or target-specific override.
@@ -310,11 +312,11 @@ Output each alternative to `prototypes/_design-system/.alternatives/<section>-<v
 === Brandbook ===
 Location:       prototypes/_design-system/
 Sections:       palette / typography / spacing / motion / voice / components (N) / accessibility
-Approval:       <full | partial: palette+type only | etc.>
+Approval:       <candidate | final after visual approval | partial: palette+type only | etc.>
 Components:     button, input, ... (N total)
 Tokens:         tokens.css (X lines), motion.css (Y lines)
 Accessibility:  WCAG AA (or AAA per project)
-Approved at:    <ISO>
+Approved at:    <ISO when final; candidate runs use generatedAt>
 Manifest:       prototypes/_design-system/manifest.json
 
 Confidence: <N>.<dd>/10
@@ -327,7 +329,8 @@ Rubric:     brandbook
 - ONE question per message. Always.
 - DO NOT stop after an intermediate section when the next section can proceed with safe defaults and delegated approval markers.
 - DO NOT inline raw hex / magic numbers anywhere. Tokens or it's not done.
-- DO NOT advance to component design before palette + type + spacing approved (downstream depends on these).
+- DO NOT advance to component design before palette + type + spacing have candidate markers (downstream depends on these).
+- DO NOT mark final tokens without visual approval on an approved prototype.
 - DO NOT mark approved without `manifest.json` + per-section markers in `.approvals/`.
 - DO NOT delete rejected alternatives — keep them in `.alternatives/` for future reference.
 

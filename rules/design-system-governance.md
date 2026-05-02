@@ -16,6 +16,8 @@ Design work becomes slow and inconsistent when every mockup recreates palette, t
 
 Concrete consequence of NOT following: five prototypes for one product use five subtly different button styles, and production engineers cannot tell which one is canonical.
 
+The system has two states: candidate tokens for visual proof, then final tokens after visual approval. Candidate tokens keep draft prototypes disciplined; final tokens are the only token set developers may treat as production guidance.
+
 ## When this rule applies
 
 - Any `/supervibe-design` run after the first approved project design system exists.
@@ -26,13 +28,14 @@ This rule does NOT apply when the user explicitly asks for a rebrand, major rese
 
 ## What to do
 
-- Treat `prototypes/_design-system/manifest.json` with `status: approved` as the default source of truth.
+- Treat `prototypes/_design-system/manifest.json` with `status: candidate` as source for prototype proof, and `status: approved` plus `tokensState: final` as source for development handoff.
 - Reuse existing `tokens.css`, `motion.css`, `voice.md`, `accessibility.md`, and `components/*.md`.
 - If a prototype needs something missing, create a narrow extension request at `prototypes/_design-system/extensions/<date>-<slug>.md`.
 - Ask one approval question for the extension only.
 - Update the relevant token/component file and append the extension id to `manifest.json.extensions`.
 - Do not reopen palette/type/spacing/component baseline approval unless the user asked for a rebrand.
 - Classify feedback as system-level or instance-level before changing tokens.
+- Do not stamp final tokens until visual approval of the selected prototype. If multiple prototypes compete, park/reject alternatives before finalizing.
 
 ## Examples
 

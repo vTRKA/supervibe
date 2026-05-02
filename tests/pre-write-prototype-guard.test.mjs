@@ -7,15 +7,16 @@ import test from "node:test";
 
 const hookPath = join(process.cwd(), "scripts", "hooks", "pre-write-prototype-guard.mjs");
 
-async function fixture({ approved = true } = {}) {
+async function fixture({ approved = true, status = "approved", tokensState = undefined } = {}) {
   const root = await mkdtemp(join(tmpdir(), "supervibe-prototype-guard-"));
   await mkdir(join(root, "prototypes", "checkout"), { recursive: true });
   await writeFile(join(root, "prototypes", "checkout", "config.json"), "{}");
   if (approved) {
     await mkdir(join(root, "prototypes", "_design-system"), { recursive: true });
     await writeFile(join(root, "prototypes", "_design-system", "manifest.json"), JSON.stringify({
-      status: "approved",
-      sections: { palette: "approved", spacing: "approved" },
+      status,
+      ...(tokensState ? { tokensState } : {}),
+      sections: { palette: status, spacing: status },
     }));
   }
   return root;
@@ -67,6 +68,24 @@ test("prototype guard allows tokenized prototype values after design system appr
 
     assert.equal(result.code, 0);
     assert.match(result.stdout, /"allow"/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype guard blocks raw design values after candidate design system exists", async () => {
+  const root = await fixture({ status: "candidate", tokensState: "candidate" });
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, "prototypes", "checkout", "index.html"),
+        content: "<style>.btn{color:#ff00aa;padding:18px}</style>",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /candidate or final design system exists/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

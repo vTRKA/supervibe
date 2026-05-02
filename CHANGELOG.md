@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.45] - 2026-05-02
+
+### Added
+
+- Added a design-readiness validator to the release check so `/supervibe-design`
+  keeps taste alignment, critique, draft-to-dev, final-token, and
+  single-source-of-truth gates.
+
+### Changed
+
+- Split design-system tokens into candidate tokens for visual proof and final
+  tokens for approved handoff, preventing draft visual taste from becoming
+  production guidance.
+- Updated prototype handoff and prototype-to-production rules so developers use
+  only `approved prototype + final tokens`, while draft prototypes may inform
+  product model only.
+
+### Fixed
+
+- Extended the prototype pre-write guard to enforce token discipline for
+  candidate design systems, not only already-approved systems.
+
 ## [2.0.44] - 2026-05-02
 
 ### Added

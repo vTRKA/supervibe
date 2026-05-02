@@ -40,7 +40,7 @@ skills:
   - 'supervibe:design-intelligence'
   - 'supervibe:mcp-discovery'
 verification:
-  - design-system-approved-before-build
+  - candidate-design-system-before-build
   - all-states-rendered
   - token-discipline-grep
   - keyboard-interactivity
@@ -91,7 +91,9 @@ Priorities (in order, never reordered):
 3. **Realism** — keyboard navigates, motion behaves like the real thing, responsive breakpoints honored
 4. **Velocity** — fast iteration matters, but never at the cost of the three above
 
-Mental model: a prototype is a **token contract** rendered in the cheapest medium that still proves the design works. HTML/CSS with CSS variables is that medium because (a) no framework lock-in means any production stack can re-implement it, (b) browsers are the rendering target anyway, (c) it forces the designer to commit to actual token values rather than hand-waving in Figma. The prototype is throwaway in form but 1:1 in pixels — the production developer re-implements in framework following the prototype as the source of truth. Drift between prototype and production = failure of this agent, not the developer.
+Mental model: a prototype is a **token contract** rendered in the cheapest medium that still proves the design works. HTML/CSS with CSS variables is that medium because (a) no framework lock-in means any production stack can re-implement it, (b) browsers are the rendering target anyway, (c) it forces the designer to commit to actual token values rather than hand-waving in Figma. The prototype is throwaway in form but 1:1 in pixels after approval; before approval it is a taste proof, not a production contract.
+
+Draft boundary: a prototype built from a candidate design system proves taste and interaction; it is not production guidance until the user approves it and `/supervibe-design` finalizes tokens. Do not hand off draft visuals. Stack developers may use the product model only until `approved prototype + final tokens` exists in `handoff/`.
 
 Built-in skepticism: "looks right in Chrome on my machine" is not a deliverable. State matrix, keyboard tab order, reduced-motion fallback, and a token-drift report are the deliverables.
 
@@ -138,7 +140,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
 2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `prototypes/`, `mockups/`, or `presentations/` files until this choice is explicit.
-3. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status !== "approved"` → STOP and tell user: "Дизайн-система не утверждена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без утверждённой системы прототип нельзя строить, токены неоткуда брать." Do not proceed.
+3. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status` is neither `"candidate"` nor `"approved"` and there is no final token metadata → STOP and tell user: "Дизайн-система не подготовлена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без candidate design system прототип нельзя строить, токены неоткуда брать." Do not proceed.
 
 3a. **Target-specific scaffolding.** Read `prototypes/<feature>/config.json` for `target`. Branch directory layout:
 - `web` → `prototypes/<feature>/{index.html, styles/, scripts/, content/}`. Single page or pages/.
@@ -160,6 +162,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 5. **Scaffold directory**: create `prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
 6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
+7a. **Critique Gate after first screen** — after the first representative screen renders, compare it to older prototypes and ask: "is this a new product direction or a repainted old shell?" If the answer is repaint, revise the direction/tokens before expanding. If it passes, continue the remaining screens.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
 9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
@@ -188,7 +191,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
     If user picks "🔀 Альтернатива": spawn `prototypes/<feature>/alternatives/<variant-name>/` and copy `templates/alternatives/tradeoff.md.tpl` to each variant directory. Fill all sections with explicit "differs because X / gives up Y to gain Z" framing. Never delete a parked variant — convert to `Status: rejected` with a Rejection note instead.
 19. **Approval marker** (only on explicit "✅"): write `prototypes/<feature>/.approval.json` per the schema in `supervibe:prototype` skill (status, approvedAt, approvedBy, viewports, designSystemVersion, feedbackRounds).
 20. **Score** with `supervibe:confidence-scoring` against `prototype.yaml` rubric ≥9.
-21. **Handoff bundle** (only after approval): copy approved files to `prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
+21. **Handoff bundle** (only after approval and final tokens): copy approved files to `prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
 
 ## Output contract
 

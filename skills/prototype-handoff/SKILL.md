@@ -16,6 +16,8 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 Package an approved native HTML/CSS/JS prototype into a **ready-for-development bundle** that any stack-developer agent (`laravel-developer`, `nextjs-developer`, `vue-implementer`, etc.) can pick up and promote into a real framework. The handoff bundle is stack-agnostic — it documents WHAT to build, not in which framework.
 
+Readiness boundary: handoff requires **approved prototype + final tokens**. Draft prototypes may inform the product model, but their visual taste is not implementation guidance. The handoff bundle must be the single source of truth for developers.
+
 ## When to invoke
 
 - After `supervibe:prototype` or `supervibe:landing-page` produced a prototype AND user explicitly approved it (`prototypes/<slug>/.approval.json` exists with `status: "approved"`)
@@ -29,16 +31,19 @@ NOT for:
 ## Hard constraints
 
 1. **Approval marker required.** No `prototypes/<slug>/.approval.json` with `status: "approved"` → refuse to run.
-2. **Stack-agnostic output.** Bundle does NOT pick a framework. It describes the prototype in framework-neutral terms; per-stack adapter hints are notes, not code.
-3. **Verbatim copy of approved files.** No "improvements" during handoff — the prototype is already approved as-is.
-4. **Inventory + traceability.** Every component used + every token consumed listed with file:line refs so downstream developer doesn't have to grep.
+2. **Final tokens required.** `prototypes/_design-system/manifest.json` must show final token metadata (`tokensState: "final"` or equivalent approved/final state) tied to the approved prototype.
+3. **Stack-agnostic output.** Bundle does NOT pick a framework. It describes the prototype in framework-neutral terms; per-stack adapter hints are notes, not code.
+4. **Verbatim copy of approved files.** No "improvements" during handoff — the prototype is already approved as-is.
+5. **Inventory + traceability.** Every component used + every token consumed listed with file:line refs so downstream developer doesn't have to grep.
+6. **No competing prototypes.** If multiple alternatives remain active, pick one approved prototype and mark the rest parked/rejected before claiming ready-for-development.
 
 ## Step 0 — Read source of truth (required)
 
 1. Read `prototypes/<slug>/.approval.json`. Parse `status`, `viewports`, `designSystemVersion`, `approvedAt`. If `status !== "approved"` → STOP.
 2. Read `prototypes/<slug>/config.json` for declared viewports, interaction depth, structure.
-3. Read `prototypes/_design-system/manifest.json` to confirm system version matches `approval.designSystemVersion`. If mismatch (system was updated after approval) → WARN user; ask whether to re-approve against new system OR proceed with stale snapshot.
-4. Read every file in `prototypes/<slug>/` to inventory components and tokens used.
+3. Read `prototypes/_design-system/manifest.json` to confirm system version matches `approval.designSystemVersion` and tokens are final. If mismatch (system was updated after approval) → WARN user; ask whether to re-approve against new system OR proceed with stale snapshot only when final token state is preserved.
+4. Check `prototypes/<slug>/alternatives/` and sibling candidate prototypes. If competing prototypes are still active, STOP until exactly one source is approved and the rest are parked/rejected.
+5. Read every file in `prototypes/<slug>/` to inventory components and tokens used.
 
 ## Procedure
 
@@ -47,7 +52,9 @@ NOT for:
 1. Confirm `.approval.json` exists and parses.
 2. Confirm `status === "approved"`.
 3. Confirm `prototypes/_design-system/` still exists at the recorded `designSystemVersion`.
-4. If any check fails, refuse and tell user what's missing.
+4. Confirm final tokens exist and are tied to this visual approval.
+5. Confirm there is one selected prototype and no active competing prototypes.
+6. If any check fails, refuse and tell user what's missing.
 
 ### Stage 2 — Build handoff directory
 
@@ -246,9 +253,11 @@ Rubric:     prototype
 ## Guard rails
 
 - DO NOT run on un-approved prototypes. `.approval.json` with `status: "approved"` is the gate.
+- DO NOT run without final tokens. Candidate tokens are for visual proof, not production handoff.
 - DO NOT modify the prototype during handoff. Copy verbatim.
 - DO NOT pick a framework. Bundle is stack-agnostic.
 - DO NOT skip the design-system version check. If system drifted post-approval, WARN.
+- DO NOT claim ready-for-development while competing prototypes remain active.
 - DO NOT delete the source `prototypes/<slug>/` files — handoff is a copy, not a move.
 
 ## Verification
@@ -256,7 +265,8 @@ Rubric:     prototype
 - `prototypes/<slug>/handoff/` exists with all 9 expected files/dirs
 - `components-used.json` enumerates ≥1 component per page
 - `tokens-used.json.rawValues.{hex,px,cubicBezier}` are empty arrays
-- Design-system version recorded matches `prototypes/_design-system/` HEAD
+- Design-system version recorded matches `prototypes/_design-system/` HEAD and final token state
+- No active competing prototypes remain for the same surface
 - README explains the bundle in ≤2 minutes of reading
 
 ## Related
