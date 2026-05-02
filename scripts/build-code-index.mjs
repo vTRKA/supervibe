@@ -49,8 +49,13 @@ Large-project controls:
   --resume                  Index only missing/stale files from the policy inventory
   --list-missing            Print missing/stale files and exit without indexing
   --max-files <n>           Cap this run to n selected files for batch indexing
-  --max-seconds <n>         Gracefully stop after the current file when elapsed time reaches n seconds
+  --max-seconds <n>         Hard watchdog limit; stops even inside the first active file phase
   --since <git-rev>         Index files changed in git history range <git-rev>..HEAD
+  --language <name>         Repair only one detected language, e.g. rust, python, typescript
+  --path <path>             Repair only files under this repo-relative path
+  --file <path>             Repair exactly one repo-relative source file
+  --debug-file <path>       Debug exactly one file with phase-level progress
+  --trace-phases            Emit JSON progress/checkpoint updates for file phases
 
 Observability:
   --progress-every <n>      Print completed-file progress every n files (default: 25)
@@ -58,6 +63,8 @@ Observability:
   --json-progress           Emit SUPERVIBE_INDEX_PROGRESS JSON lines and update code-index-checkpoint.json
   --explain-policy          Show included/excluded source policy decisions and exit
   --watcher-diagnostics     Show watcher diagnostics and exit
+  --clean-stale-lock        Inspect code-index.lock, remove it only when proven stale, and exit
+  --verbose                 Include stack traces in failed_files.json
   --repo-map                Print a compact repo map and exit
   --help, -h                Show this help and exit
 
@@ -94,12 +101,47 @@ function formatElapsed(ms) {
   return `${hours}h${(minutes % 60).toString().padStart(2, '0')}m`;
 }
 
+function normalizeRelPath(path = '') {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
+}
+
+function buildRepairFilter({ language = '', path = '', file = '', debugFile = '' } = {}) {
+  const exact = normalizeRelPath(debugFile || file);
+  const prefix = normalizeRelPath(path);
+  const lang = String(language || '').trim().toLowerCase();
+  return {
+    language: lang,
+    path: prefix,
+    file: exact,
+    debugFile: normalizeRelPath(debugFile),
+    active: Boolean(lang || prefix || exact),
+    matches(item = {}) {
+      const relPath = normalizeRelPath(item.relPath || item.path || '');
+      const itemLang = String(item.language || '').toLowerCase();
+      if (lang && itemLang !== lang) return false;
+      if (prefix && relPath !== prefix && !relPath.startsWith(`${prefix}/`)) return false;
+      if (exact && relPath !== exact) return false;
+      return true;
+    },
+  };
+}
+
+function applyRepairFilterToInventory(inventory, filter) {
+  if (!filter?.active) return inventory;
+  return {
+    ...inventory,
+    files: inventory.files.filter((file) => filter.matches(file)),
+  };
+}
+
 function createProgressLogger({
   rootDir,
   progressEvery = DEFAULT_INDEX_PROGRESS_EVERY,
   heartbeatSeconds = DEFAULT_HEARTBEAT_SECONDS,
   jsonProgress = false,
   maxSeconds = 0,
+  tracePhases = false,
+  onStateChange = null,
 } = {}) {
   const startedAt = Date.now();
   const checkpointPath = rootDir ? join(rootDir, '.supervibe', 'memory', 'code-index-checkpoint.json') : null;
@@ -112,6 +154,9 @@ function createProgressLogger({
     errors: 0,
     resolved: 0,
     path: '',
+    selectionFile: null,
+    activeIndexFile: null,
+    completed: 0,
   };
   let lastLoggedFile = 0;
   let lastStage = '';
@@ -127,8 +172,11 @@ function createProgressLogger({
     return {
       kind,
       stage: state.phase,
-      currentFile: state.path || null,
-      processed: current,
+      phase: state.phase,
+      currentFile: state.activeIndexFile || state.selectionFile || state.path || null,
+      selectionFile: state.selectionFile || null,
+      activeIndexFile: state.activeIndexFile || null,
+      processed: Number(state.completed || 0),
       total,
       remaining,
       indexed: Number(state.indexed || 0),
@@ -174,14 +222,34 @@ function createProgressLogger({
 
   return {
     onProgress(event = {}) {
+      const phase = event.phase || state.phase;
+      const path = event.path || state.path;
+      if (phase === 'selection' || (phase === 'hashing' && !state.activeIndexFile)) {
+        state.selectionFile = path || state.selectionFile;
+      }
+      if (phase === 'file-start') {
+        state.activeIndexFile = path || state.activeIndexFile;
+        state.completed = Math.max(0, Number(event.current || 1) - 1);
+      }
+      if (['reading', 'hashing', 'chunking', 'db-write', 'embeddings', 'fts-write', 'graph-extraction'].includes(phase)) {
+        state.activeIndexFile = path || state.activeIndexFile;
+      }
+      if (phase === 'file') {
+        state.completed = Number(event.current || state.completed || 0);
+      }
+      if (phase === 'done') {
+        state.completed = Number(event.processed || event.current || event.total || state.completed || 0);
+      }
       Object.assign(state, {
         ...event,
-        phase: event.phase || state.phase,
-        path: event.path || state.path,
+        phase,
+        path,
       });
+      onStateChange?.(snapshot(phase));
 
-      if (event.phase === 'discovered') {
+      if (phase === 'discovered') {
         state.current = 0;
+        state.completed = 0;
         state.total = Number(event.total || 0);
         console.log(`[supervibe:index] stage=discovery discovered ${state.total} eligible source file(s); progress every ${progressEvery} file(s); heartbeat every ${heartbeatSeconds}s${maxSeconds ? `; bounded max ${maxSeconds}s` : ''}`);
         persistCheckpoint('discovered');
@@ -189,17 +257,22 @@ function createProgressLogger({
         return;
       }
 
-      if (event.phase === 'done' && typeof event.current !== 'number') {
+      if (phase === 'done' && typeof event.current !== 'number') {
         state.current = Number(event.total || state.total || 0);
       }
 
-      if (event.phase && event.phase !== lastStage && ['selection', 'health', 'resolving-edges', 'bounded-timeout', 'done'].includes(event.phase)) {
-        lastStage = event.phase;
-        if (['health', 'bounded-timeout', 'done'].includes(event.phase)) persistCheckpoint(event.phase);
+      if (phase && phase !== lastStage && ['selection', 'health', 'resolving-edges', 'bounded-timeout', 'done'].includes(phase)) {
+        lastStage = phase;
+        if (['selection', 'health', 'bounded-timeout', 'done'].includes(phase)) persistCheckpoint(phase);
         render('stage');
       }
 
-      if (event.phase === 'file') {
+      if (tracePhases && phase && ['file-start', 'reading', 'hashing', 'chunking', 'db-write', 'embeddings', 'fts-write', 'graph-extraction'].includes(phase)) {
+        persistCheckpoint(phase);
+        emitJson(phase);
+      }
+
+      if (phase === 'file') {
         const current = Number(event.current || 0);
         const total = Number(event.total || 0);
         persistCheckpoint('file');
@@ -210,7 +283,7 @@ function createProgressLogger({
         }
       }
 
-      if (event.phase === 'resolving-edges' && typeof event.current === 'number') {
+      if (phase === 'resolving-edges' && typeof event.current === 'number') {
         const current = Number(event.current || 0);
         const total = Number(event.total || 0);
         if (current === total || current - lastLoggedFile >= 1000) {
@@ -223,6 +296,7 @@ function createProgressLogger({
     },
     render,
     persistCheckpoint,
+    snapshot,
   };
 }
 
@@ -244,6 +318,64 @@ function readLock(lockPath) {
   }
 }
 
+function inspectIndexLock({ rootDir, staleHeartbeatMs = 120000 } = {}) {
+  const lockPath = join(rootDir, '.supervibe', 'memory', 'code-index.lock');
+  const lock = readLock(lockPath);
+  if (!lock) {
+    return { path: lockPath, present: false, status: 'absent', pidRunning: false, safeToResume: true, action: 'none' };
+  }
+  const pid = Number(lock.pid);
+  const pidRunning = isPidRunning(pid);
+  const heartbeatAt = Date.parse(lock.heartbeatAt || '');
+  const heartbeatAgeMs = Number.isFinite(heartbeatAt) ? Math.max(0, Date.now() - heartbeatAt) : null;
+  const heartbeatStale = heartbeatAgeMs !== null && heartbeatAgeMs > staleHeartbeatMs;
+  const stale = !pidRunning || heartbeatStale;
+  return {
+    path: lockPath,
+    present: true,
+    status: stale ? 'stale' : 'live',
+    pid,
+    pidRunning,
+    heartbeatAt: lock.heartbeatAt || null,
+    heartbeatAgeMs,
+    heartbeatStale,
+    phase: lock.phase || null,
+    activeIndexFile: lock.activeIndexFile || null,
+    safeToResume: stale,
+    action: 'none',
+  };
+}
+
+function formatIndexLockStatus(status) {
+  return [
+    'SUPERVIBE_INDEX_LOCK',
+    `PATH: ${status.path}`,
+    `STATUS: ${status.status}`,
+    `PID: ${status.pid || 'none'}`,
+    `PID_RUNNING: ${status.pidRunning ? 'true' : 'false'}`,
+    `HEARTBEAT_AT: ${status.heartbeatAt || 'none'}`,
+    `HEARTBEAT_AGE_MS: ${status.heartbeatAgeMs ?? 'unknown'}`,
+    `PHASE: ${status.phase || 'none'}`,
+    `ACTIVE_INDEX_FILE: ${status.activeIndexFile || 'none'}`,
+    `ACTION: ${status.action || 'none'}`,
+    `SAFE_TO_RESUME: ${status.safeToResume ? 'true' : 'false'}`,
+  ].join('\n');
+}
+
+function cleanStaleIndexLock({ rootDir } = {}) {
+  const status = inspectIndexLock({ rootDir });
+  if (status.present && status.status === 'stale') {
+    try {
+      unlinkSync(status.path);
+      status.action = 'removed';
+    } catch (error) {
+      status.action = `remove-failed:${error.code || error.message}`;
+      status.safeToResume = false;
+    }
+  }
+  return status;
+}
+
 function acquireIndexLock({ rootDir }) {
   const lockPath = join(rootDir, '.supervibe', 'memory', 'code-index.lock');
   mkdirSync(dirname(lockPath), { recursive: true });
@@ -255,11 +387,27 @@ function acquireIndexLock({ rootDir }) {
       writeFileSync(fd, JSON.stringify({
         pid: process.pid,
         startedAt: new Date().toISOString(),
+        heartbeatAt: new Date().toISOString(),
+        root: rootDir,
         command: process.argv.join(' '),
+        phase: 'starting',
+        activeIndexFile: null,
       }, null, 2));
       closeSync(fd);
       return {
         path: lockPath,
+        update(details = {}) {
+          const current = readLock(lockPath);
+          if (current?.pid !== process.pid) return;
+          try {
+            writeFileSync(lockPath, JSON.stringify({
+              ...current,
+              heartbeatAt: new Date().toISOString(),
+              phase: details.phase || details.stage || current.phase || 'running',
+              activeIndexFile: details.activeIndexFile || current.activeIndexFile || null,
+            }, null, 2));
+          } catch {}
+        },
         release() {
           const current = readLock(lockPath);
           if (current?.pid === process.pid) {
@@ -273,7 +421,8 @@ function acquireIndexLock({ rootDir }) {
       }
       if (error.code !== 'EEXIST') throw error;
       const lock = readLock(lockPath);
-      if (lock?.pid && isPidRunning(Number(lock.pid))) {
+      const inspected = inspectIndexLock({ rootDir });
+      if (lock?.pid && inspected.status === 'live') {
         const err = new Error(`another code indexer is already running (pid=${lock.pid}, startedAt=${lock.startedAt || 'unknown'}). Lock: ${lockPath}`);
         err.code = 'SUPERVIBE_INDEX_LOCKED';
         throw err;
@@ -290,8 +439,9 @@ async function collectMissingOrStaleFiles(store, rootDir, {
   selectionLimit = 0,
   prioritizeMissing = false,
   onProgress = null,
+  filter = null,
 } = {}) {
-  const inventory = await discoverSourceFiles(rootDir);
+  const inventory = applyRepairFilterToInventory(await discoverSourceFiles(rootDir), filter);
   onProgress?.({ phase: 'discovery', total: inventory.files.length });
   const rows = store.db.prepare('SELECT path, content_hash AS contentHash, graph_version AS graphVersion FROM code_files').all();
   const byPath = new Map(rows.map((row) => [row.path, row]));
@@ -404,8 +554,15 @@ async function main() {
       'list-missing': { type: 'boolean', default: false },
       'max-files': { type: 'string', default: '' },
       'max-seconds': { type: 'string', default: '' },
+      language: { type: 'string', default: '' },
+      path: { type: 'string', default: '' },
+      file: { type: 'string', default: '' },
+      'debug-file': { type: 'string', default: '' },
+      'trace-phases': { type: 'boolean', default: false },
       'explain-policy': { type: 'boolean', default: false },
       'watcher-diagnostics': { type: 'boolean', default: false },
+      'clean-stale-lock': { type: 'boolean', default: false },
+      verbose: { type: 'boolean', default: false },
       'repo-map': { type: 'boolean', default: false },
       'json-progress': { type: 'boolean', default: false },
       'progress-every': { type: 'string', default: '' },
@@ -422,15 +579,29 @@ async function main() {
   const maxFiles = nonNegativeInt(values['max-files'], 0);
   const maxSeconds = positiveNumber(values['max-seconds'] || process.env.SUPERVIBE_INDEX_MAX_SECONDS, 0);
   const graphEnabled = sourceOnly ? false : (values['no-graph'] ? false : (noEmbeddings && !values.graph ? false : true));
+  const repairFilter = buildRepairFilter({
+    language: values.language,
+    path: values.path,
+    file: values.file,
+    debugFile: values['debug-file'],
+  });
   const progress = createProgressLogger({
     rootDir,
     progressEvery,
     heartbeatSeconds,
     jsonProgress: values['json-progress'],
     maxSeconds,
+    tracePhases: Boolean(values['trace-phases'] || values['debug-file']),
+    onStateChange: (state) => lock?.update?.(state),
   });
   const runStartedAt = Date.now();
   const shouldStop = () => maxSeconds > 0 && Date.now() - runStartedAt >= maxSeconds * 1000;
+
+  if (values['clean-stale-lock']) {
+    console.log(formatIndexLockStatus(cleanStaleIndexLock({ rootDir })));
+    progress.stop();
+    return;
+  }
 
   if (values['watcher-diagnostics']) {
     console.log(formatWatcherDiagnostics(readWatcherDiagnostics({ rootDir })));
@@ -461,9 +632,11 @@ async function main() {
   let lock = null;
   let store = null;
   let cleanedUp = false;
+  let watchdogTimer = null;
   const cleanup = () => {
     if (cleanedUp) return;
     cleanedUp = true;
+    if (watchdogTimer) clearTimeout(watchdogTimer);
     progress.stop();
     try { store?.close(); } catch {}
     try { lock?.release(); } catch {}
@@ -476,6 +649,36 @@ async function main() {
   };
   process.once('SIGINT', signalHandler);
   process.once('SIGTERM', signalHandler);
+
+  if (maxSeconds > 0) {
+    watchdogTimer = setTimeout(() => {
+      const snap = progress.snapshot('bounded-timeout');
+      progress.onProgress({
+        phase: 'bounded-timeout',
+        current: snap.processed,
+        total: snap.total,
+        indexed: snap.indexed,
+        skipped: snap.skipped,
+        errors: snap.errors,
+      });
+      const checkpointPath = join(rootDir, '.supervibe', 'memory', 'code-index-checkpoint.json');
+      console.log([
+        'SUPERVIBE_INDEX_BOUNDED_TIMEOUT',
+        `MAX_SECONDS: ${maxSeconds}`,
+        `PROCESSED: ${snap.processed}`,
+        `TOTAL: ${snap.total || 0}`,
+        `CHECKPOINT: ${checkpointPath}`,
+        'NEXT: rerun the same command with --resume to continue',
+      ].join('\n'));
+      console.log(`\nDone in ${maxSeconds.toFixed(1)}s.`);
+      console.log(`  Files indexed: ${snap.indexed}`);
+      console.log(`  Files skipped (unchanged/unsupported): ${snap.skipped}`);
+      console.log(`  Errors: ${snap.errors}`);
+      cleanup();
+      process.exit(0);
+    }, Math.max(1, Math.ceil(maxSeconds * 1000)));
+    watchdogTimer.unref?.();
+  }
 
   try {
     lock = acquireIndexLock({ rootDir });
@@ -499,6 +702,7 @@ async function main() {
     if (values['list-missing']) {
       const report = await collectMissingOrStaleFiles(store, rootDir, {
         includeGraph: graphEnabled,
+        filter: repairFilter,
         onProgress: progress.onProgress,
       });
       console.log(formatMissingList(report, { maxFiles: maxFiles || DEFAULT_LIST_MISSING_LIMIT }));
@@ -512,6 +716,7 @@ async function main() {
         includeGraph: graphEnabled,
         selectionLimit: maxFiles,
         prioritizeMissing: maxFiles > 0,
+        filter: repairFilter,
         onProgress: progress.onProgress,
       });
       const capped = capFiles(report.files, maxFiles);
@@ -524,7 +729,7 @@ async function main() {
           cwd: rootDir,
           encoding: 'utf8',
         });
-        const inventory = await discoverSourceFiles(rootDir);
+        const inventory = applyRepairFilterToInventory(await discoverSourceFiles(rootDir), repairFilter);
         const eligible = new Map(inventory.files.map((file) => [file.relPath, file.absPath]));
         const changed = [...new Set(out.split('\n').map((line) => line.trim()).filter(Boolean))]
           .filter((relPath) => eligible.has(relPath))
@@ -537,11 +742,13 @@ async function main() {
         console.error(`--since=${values.since} failed: ${err.message}`);
         console.error('Falling back to full index.');
       }
-    } else if (maxFiles) {
-      const inventory = await discoverSourceFiles(rootDir);
+    } else if (maxFiles || repairFilter.active) {
+      const inventory = applyRepairFilterToInventory(await discoverSourceFiles(rootDir), repairFilter);
       const capped = capFiles(inventory.files, maxFiles);
       filesToIndex = capped.files.map((file) => file.absPath);
-      modeLabel = `batch first ${filesToIndex.length}/${inventory.files.length} eligible file(s)`;
+      modeLabel = repairFilter.debugFile
+        ? `debug-file ${repairFilter.debugFile}`
+        : `batch first ${filesToIndex.length}/${inventory.files.length} eligible file(s)`;
     }
 
     const modeParts = [];
@@ -550,14 +757,17 @@ async function main() {
     if (!graphEnabled) modeParts.push('graph disabled');
     if (values.force) modeParts.push('force refresh');
     if (maxSeconds) modeParts.push(`bounded max ${maxSeconds}s`);
+    if (repairFilter.language) modeParts.push(`language=${repairFilter.language}`);
+    if (repairFilter.path) modeParts.push(`path=${repairFilter.path}`);
+    if (repairFilter.file) modeParts.push(`${repairFilter.debugFile ? 'debug-file' : 'file'}=${repairFilter.file}`);
     console.log(`Indexing code in ${rootDir} (${modeLabel}${modeParts.length ? `; ${modeParts.join('; ')}` : ''})...`);
     console.log(`Workspace namespace: ${createWorkspaceNamespace({ projectRoot: rootDir }).workspaceId}`);
     console.log(`Index lock: ${lock.path}`);
     const t0 = Date.now();
 
     const counts = filesToIndex
-      ? await store.indexFiles(filesToIndex, { onProgress: progress.onProgress, force: values.force, shouldStop })
-      : await store.indexAll(rootDir, { onProgress: progress.onProgress, force: values.force, shouldStop });
+      ? await store.indexFiles(filesToIndex, { onProgress: progress.onProgress, force: values.force, shouldStop, verbose: values.verbose })
+      : await store.indexAll(rootDir, { onProgress: progress.onProgress, force: values.force, shouldStop, verbose: values.verbose });
 
     if (counts.bounded) {
       console.log([
@@ -583,6 +793,9 @@ async function main() {
     console.log(`  Files indexed: ${counts.indexed}`);
     console.log(`  Files skipped (unchanged/unsupported): ${counts.skipped}`);
     console.log(`  Errors: ${counts.errors}`);
+    if (counts.errors > 0) {
+      console.log(`  Failed files report: ${join(rootDir, '.supervibe', 'memory', 'failed_files.json')}`);
+    }
     if (typeof counts.pruned === 'number') console.log(`  Stale rows pruned: ${counts.pruned}`);
     if (typeof counts.edgesResolved === 'number') {
       console.log(`  Edges resolved cross-file: ${counts.edgesResolved}${graphEnabled ? '' : ' (graph disabled)'}`);

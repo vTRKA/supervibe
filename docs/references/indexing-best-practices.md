@@ -17,22 +17,26 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 
 ## Runtime
 
-- `build-code-index.mjs` is unbounded by default and supports bounded batches
-  with `--max-seconds <N>` plus `--max-files <N>`. When the time budget is
-  reached, the current file finishes, the DB/checkpoint are closed cleanly, and
-  the command prints `SUPERVIBE_INDEX_BOUNDED_TIMEOUT`.
+- `build-code-index.mjs` is unbounded by default and supports hard bounded
+  batches with `--max-seconds <N>` plus `--max-files <N>`. When the time budget
+  is reached, the watchdog writes a bounded-timeout checkpoint, closes the
+  DB/lock path, and prints `SUPERVIBE_INDEX_BOUNDED_TIMEOUT` even if the first
+  active file is still in `reading`, `hashing`, `chunking`, `db-write`,
+  `fts-write`, or graph work.
 - Use `SUPERVIBE_INDEX_PROGRESS_EVERY=<N>` or `--progress-every <N>` to tune
   progress logging for very large repositories.
 - Use `SUPERVIBE_INDEX_HEARTBEAT_SECONDS=<N>` or `--heartbeat-seconds <N>` to
   print current stage, current file, processed/remaining counts, and elapsed
   time during long hashing, chunking, embedding, graph, or health stages.
 - Use `--json-progress` to emit machine-readable `SUPERVIBE_INDEX_PROGRESS`
-  JSON lines. `.supervibe/memory/code-index-checkpoint.json` is updated after
-  each file/batch with stage, current file, processed/remaining, elapsed time,
-  ETA, and the last persisted checkpoint timestamp.
+  JSON lines. Add `--trace-phases` or `--debug-file <path>` to persist every
+  active file phase. `.supervibe/memory/code-index-checkpoint.json` includes
+  `selectionFile`, `activeIndexFile`, `phase`, `stage`, processed/remaining,
+  elapsed time, ETA, and the last persisted checkpoint timestamp.
 - A project-local `.supervibe/memory/code-index.lock` prevents overlapping
-  indexer runs. If a process is killed, the next run removes stale locks whose
-  PID is no longer alive.
+  indexer runs and stores `pid`, `startedAt`, `heartbeatAt`, `phase`, and
+  `activeIndexFile`. Use `--clean-stale-lock` to print whether the PID is dead,
+  whether the heartbeat is stale, and whether it is safe to resume.
 - `--source-only` is the plain text/BM25 source-readiness path. It skips
   embeddings, graph extraction, and cross-file edge resolution so source RAG can
   reach full coverage first. `--no-embeddings` remains as a compatibility alias
@@ -50,6 +54,8 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 - Repair must prune deleted rows, generated rows that were previously indexed, and rows outside the current source inventory.
 - `node scripts/build-code-index.mjs --root . --list-missing` prints missing/stale policy-eligible files without indexing them.
 - `node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` batches missing/stale files without redoing the whole project and prioritizes missing rows before stale hash checks.
+- `node scripts/build-code-index.mjs --root . --resume --source-only --language rust --path src-tauri/src --max-files 50 --max-seconds 30 --health --json-progress --trace-phases` repairs one language/path slice without hiding global readiness.
+- `node scripts/build-code-index.mjs --root . --source-only --debug-file src-tauri/src/commands/chat.rs --trace-phases --verbose` debugs one file and writes `.supervibe/memory/failed_files.json` with path, phase, error name/message, and stack when verbose.
 - `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` catches graph extraction and cross-file resolution up after source RAG is healthy.
 - `node scripts/build-code-index.mjs --root . --force --health` is a deliberate full rebuild path, not the default repair path.
 - `node scripts/build-code-index.mjs --root . --explain-policy` prints include and exclude reasons for auditing.

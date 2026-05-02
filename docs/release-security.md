@@ -1,6 +1,6 @@
 # Release Security
 
-Supervibe v2.0.35 release candidates must pass the local release security gate before publishing or tagging.
+Supervibe v2.0.36 release candidates must pass the local release security gate before publishing or tagging.
 
 ## Release Provenance
 
@@ -11,6 +11,8 @@ Every release candidate must record:
 - generated timestamp from the release audit
 - manifest paths for Claude, Codex, Cursor, Gemini, and marketplace metadata
 - checksums for package, lockfile, installers, update scripts, README, changelog, and release integrity docs
+- release manifest status distinguishing unsigned local-dev builds from signed release builds
+- rollback manifest commands such as `git revert <commit>` for local release candidates
 
 The deterministic report is produced by:
 
@@ -56,8 +58,12 @@ Known vulnerability exceptions are allowed only when each exception includes:
 
 Expired vulnerability exceptions fail the release gate. High or critical npm audit findings without an exception fail the release gate.
 
-Current v2.0.35 status: no active vulnerability exceptions are recorded.
+Current v2.0.36 status: no active vulnerability exceptions are recorded.
 
 ## Release Notes Requirement
 
 Release notes must mention release security and install integrity when these gates change. The changelog entry must stay synchronized with README install links, manifest versions, registry metadata, and this document.
+
+The release audit report includes artifact checksums, release manifest status,
+rollback manifest availability, dependency provenance, install integrity,
+plugin package audit, and context threat model gates.

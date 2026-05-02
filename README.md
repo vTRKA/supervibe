@@ -12,31 +12,32 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 89 specialist agents | ≥250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
+| 89 specialist agents | 250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
-| Confidence engine | Seventeen rubrics. Gate at score ≥9. Override rate above 5% triggers an audit |
+| Confidence engine | Seventeen rubrics. Gate at score 9. Override rate above 5% triggers an audit |
 | 26 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent improvement loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
-| Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents — never auto-dispatches |
+| Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents  never auto-dispatches |
 | Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
 | Security audit loop | `/supervibe-security-audit` runs read-only multi-agent AppSec/dependency/ops/AI security review, ranks vulnerabilities, then optionally plans, executes, and re-audits remediation to a 10/10 gate |
 | Prompt AI engineering | Optional `prompt-ai-engineer` add-on strengthens prompts, agent instructions, intent routing, structured outputs, tool policies, evals, and prompt-injection defenses |
 | Visible context intelligence | Context packs show memory/RAG/codegraph/repo-map citations, confidence delta, omitted context, repair actions, and no-silent-done lifecycle evidence |
 | Performance SLOs | Local release gates report context-pack latency, token ceilings, watcher overhead, index size, eval runtime, and resource drift |
+| Final upgrade gates | Hard-bounded indexing repair, flight recorder telemetry, task-level evals, MCP broker/scanner, Context MCP, runtime doctor, and release provenance checks |
 | Feedback learning loop | User corrections become reviewed memory candidates, eval cases, and high-severity regression fixtures instead of disappearing in chat history |
 | Network/router agent | Optional `network-router-engineer` add-on handles routers, VPN, firewall, Wi-Fi, DNS/DHCP, and routing stability with read-only diagnostics first and scoped approval before mutations |
 | Live preview server | `localhost:PORT` with SSE hot reload, idle shutdown, and a max-server limit |
-| Browser feedback channel | 💬 click-to-comment overlay injected into preview pages — comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
-| Design pipeline (5 targets) | web · chrome-extension · electron · tauri · mobile-native — specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
+| Browser feedback channel |  click-to-comment overlay injected into preview pages  comments arrive as `<system-reminder>` on next user prompt via UserPromptSubmit hook (zero-dep WebSocket via `node:net`) |
+| Design pipeline (5 targets) | web  chrome-extension  electron  tauri  mobile-native  specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
 | Design intelligence (2.0) | Internal RAG data pack for designer agents: memory + code + retrieval-backed style, UX, charts, decks, collateral, and stack UI evidence through existing `/supervibe-design` and `/supervibe-audit` flows |
-| Component library bridges | shadcn / MUI / Mantine / Radix / HeadlessUI — token bridge generated from approved design system |
-| Pre-write prototype guard | `PreToolUse` hook blocks writes to `prototypes/<slug>/` until `config.json` exists AND blocks framework imports — prototypes stay native HTML/CSS/JS |
+| Component library bridges | shadcn / MUI / Mantine / Radix / HeadlessUI  token bridge generated from approved design system |
+| Pre-write prototype guard | `PreToolUse` hook blocks writes to `prototypes/<slug>/` until `config.json` exists AND blocks framework imports  prototypes stay native HTML/CSS/JS |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
-24 stacks supported: PHP (Laravel) · TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS) · Python (FastAPI, Django + DRF) · Ruby (Rails) · Java / Kotlin (Spring) · C# (ASP.NET) · Go · Mobile (Flutter, iOS, Android) · Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS) · GraphQL · PostgreSQL · MySQL · MongoDB · Elasticsearch · Redis.
+24 stacks supported: PHP (Laravel)  TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS)  Python (FastAPI, Django + DRF)  Ruby (Rails)  Java / Kotlin (Spring)  C# (ASP.NET)  Go  Mobile (Flutter, iOS, Android)  Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS)  GraphQL  PostgreSQL  MySQL  MongoDB  Elasticsearch  Redis.
 
 ---
 
@@ -118,9 +119,9 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.35 initialized for this project
-[supervibe] code RAG ✓ N files / M chunks (fresh)
-[supervibe] code graph ✓ N symbols / M edges (X% resolved)
+[supervibe] welcome  plugin v2.0.36 initialized for this project
+[supervibe] code RAG  N files / M chunks (fresh)
+[supervibe] code graph  N symbols / M edges (X% resolved)
 ```
 
 Check multi-host readiness at any time:
@@ -211,7 +212,7 @@ Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase d
 For command-like requests, agents ask the deterministic catalog before searching the repo. This covers explicit slash commands, explicit `npm run ...` phrases, bare `supervibe:<script>` names, and English/Russian natural-language requests for the primary workflows:
 
 ```bash
-node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "npm run code:index вот запусти индексацию"
+node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "npm run code:index   "
 ```
 
 That request resolves to the same source-first bounded index flow used by genesis:
@@ -330,47 +331,47 @@ worker/reviewer reasoning, and `/supervibe-status --assignment <task-id> --file
 <state.json>` to answer why a task was assigned or serialized. Details are in
 [multi-agent orchestration](docs/multi-agent-orchestration.md).
 
-Three named flows cover most of the day-to-day use. Each has an explicit slash-command entry point — no need to remember the right phrase to make the AI pick the right skill.
+Three named flows cover most of the day-to-day use. Each has an explicit slash-command entry point  no need to remember the right phrase to make the AI pick the right skill.
 
-### Brainstorm → Plan → Execute
+### Brainstorm  Plan  Execute
 
 For any new feature, component, or behavior change.
 
 ```
 /supervibe-brainstorm payment idempotency
-  ↓ collaborative dialogue, kill criteria, decision matrix
-  ↓ saves docs/specs/2026-04-28-payment-idempotency-design.md
-  ↓ score ≥9 against requirements rubric
+   collaborative dialogue, kill criteria, decision matrix
+   saves docs/specs/2026-04-28-payment-idempotency-design.md
+   score 9 against requirements rubric
 /supervibe-plan docs/specs/2026-04-28-payment-idempotency-design.md
-  ↓ phased TDD plan, parallelization batches, risk register
-  ↓ saves docs/plans/2026-04-28-payment-idempotency.md
-  ↓ score ≥9 against plan rubric
-  ↓ choose: subagent-driven OR inline execution
+   phased TDD plan, parallelization batches, risk register
+   saves docs/plans/2026-04-28-payment-idempotency.md
+   score 9 against plan rubric
+   choose: subagent-driven OR inline execution
 ```
 
 You can skip `/supervibe-brainstorm` if you already have an approved spec, or skip `/supervibe-plan` for trivial one-line changes.
 
-### Design pipeline → Live preview → Browser feedback
+### Design pipeline  Live preview  Browser feedback
 
-For any visual surface — web landing, in-product flow, browser extension, Electron / Tauri desktop, or mobile native.
+For any visual surface  web landing, in-product flow, browser extension, Electron / Tauri desktop, or mobile native.
 
 ```
 /supervibe-design landing in the style of Linear, focused on dev-tool buyers
-  ↓ Stage 0: target surface (web | chrome-extension | electron | tauri | mobile-native)
-  ↓ creative-director: brand direction (mood-board, tokens, animation library, graphics medium)
-  ↓ brandbook: target-aware baselines + Section 6.5 component library decision
-  ↓ optional: component-library-integration (shadcn / MUI / Mantine / Radix / HeadlessUI bridge)
-  ↓ specialist designer per target (extension-ui-designer / electron / tauri / mobile / ux-ui)
-  ↓ copywriter: every visible string nailed
-  ↓ prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/ (native only — pre-write hook enforces)
-  ↓ AUTO: supervibe:preview-server spawns http://localhost:NNNN with hot reload + 💬 feedback overlay
-  ↓ ui-polish-reviewer + accessibility-reviewer in parallel
-  ↓ feedback loop (✅ / ✎ / 🔀 / 📊 / 🛑) — never silent
-  ↓ on approval: handoff bundle with target-specific adapter (RN / Flutter / Electron / Tauri / MV3)
-  ↓ score ≥9 against prototype rubric
+   Stage 0: target surface (web | chrome-extension | electron | tauri | mobile-native)
+   creative-director: brand direction (mood-board, tokens, animation library, graphics medium)
+   brandbook: target-aware baselines + Section 6.5 component library decision
+   optional: component-library-integration (shadcn / MUI / Mantine / Radix / HeadlessUI bridge)
+   specialist designer per target (extension-ui-designer / electron / tauri / mobile / ux-ui)
+   copywriter: every visible string nailed
+   prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/ (native only  pre-write hook enforces)
+   AUTO: supervibe:preview-server spawns http://localhost:NNNN with hot reload +  feedback overlay
+   ui-polish-reviewer + accessibility-reviewer in parallel
+   feedback loop ( /  /  /  / )  never silent
+   on approval: handoff bundle with target-specific adapter (RN / Flutter / Electron / Tauri / MV3)
+   score 9 against prototype rubric
 ```
 
-**Browser feedback in real time:** click the 💬 button in the preview, select any region, type a comment. Hits `.supervibe/memory/feedback-queue.jsonl`; the `UserPromptSubmit` hook injects new entries as `<system-reminder>` on your next prompt — the `supervibe:browser-feedback` skill triages and dispatches to the right designer.
+**Browser feedback in real time:** click the  button in the preview, select any region, type a comment. Hits `.supervibe/memory/feedback-queue.jsonl`; the `UserPromptSubmit` hook injects new entries as `<system-reminder>` on your next prompt  the `supervibe:browser-feedback` skill triages and dispatches to the right designer.
 
 Manage running servers with `/supervibe-preview --list` / `--kill <port>`. Disable the overlay with `--no-feedback`.
 
@@ -380,17 +381,17 @@ For any rename / move / extract / delete on a public symbol.
 
 ```
 ask: who calls processPayment?
-  ↓ AI runs supervibe:code-search --callers "processPayment"
-  ↓ shows N callers with file:line
+   AI runs supervibe:code-search --callers "processPayment"
+   shows N callers with file:line
 if N > 10:
-  ↓ rule use-codegraph-before-refactor escalates → architect-reviewer
-  ↓ migration ADR
+   rule use-codegraph-before-refactor escalates  architect-reviewer
+   migration ADR
 refactoring-specialist makes the rename in one PR
-  ↓ verifies --callers "processPayment" returns 0
-  ↓ score ≥9, no missed call sites
+   verifies --callers "processPayment" returns 0
+   score 9, no missed call sites
 ```
 
-This flow has no slash command — you trigger it by asking the question. The graph + the discipline rules handle the rest.
+This flow has no slash command  you trigger it by asking the question. The graph + the discipline rules handle the rest.
 
 ---
 
@@ -411,8 +412,8 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | `/supervibe-security-audit` | Read-only multi-agent security audit, prioritized vulnerability backlog, optional remediation plan, execute, and re-audit loop to 10/10 |
 | `/supervibe-ui` | Local browser/IDE-webview control plane with Kanban for epics, tasks, agent claims, loop state, waves, context packs, reports, and safe local actions |
 | `/supervibe-gc` | Reversible dry-run-first cleanup for completed work-item graphs and stale/superseded memory |
-| `/supervibe-design <brief>` | End-to-end design pipeline with memory/code/design-intelligence preflight: brand → spec → prototype → live preview → approval |
-| `/supervibe-presentation <brief>` | Presentation pipeline: storyboard → slide preview → feedback → approved `.pptx` → Google Drive handoff |
+| `/supervibe-design <brief>` | End-to-end design pipeline with memory/code/design-intelligence preflight: brand  spec  prototype  live preview  approval |
+| `/supervibe-presentation <brief>` | Presentation pipeline: storyboard  slide preview  feedback  approved `.pptx`  Google Drive handoff |
 | `/supervibe-preview` | Manage live preview servers |
 | `/supervibe-update` | Update the plugin itself. Idempotent, with rollback on failed checks |
 | `/supervibe-adapt` | Pull upstream agent/rule/skill improvements into the current project after plugin updates |
@@ -462,7 +463,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 
 ## Troubleshooting
 
-**No banner after install.** Re-run the installer — it is idempotent and refreshes the detected host registration files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).
+**No banner after install.** Re-run the installer  it is idempotent and refreshes the detected host registration files. Then fully restart the AI CLI (close the desktop app, do not just open a new chat).
 
 The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if the banner is still absent, check that report for stale files or missing host registration.
 
@@ -480,7 +481,13 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **Stale or partial code index.** The mtime scan on session start catches most external edits. For source RAG repair from a user project, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`. Large projects can be processed in bounded atomic batches; the indexer prints heartbeat lines with stage/current file/progress, emits machine-readable `SUPERVIBE_INDEX_PROGRESS` with `--json-progress`, persists `.supervibe/memory/code-index-checkpoint.json`, and uses `.supervibe/memory/code-index.lock` to block duplicate runs and clean stale dead-PID locks. Build graph separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; graph warnings do not fail the default source RAG gate when coverage is healthy. Use `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` only for a deliberate full rebuild.
 
-**Windows.** If PowerShell rejects the installer with an Execution Policy error: `Set-ExecutionPolicy -Scope Process Bypass`. The Codex symlink needs Developer Mode — without it, the installer falls back to a directory copy.
+For stuck files, use `--debug-file <path> --trace-phases --verbose`; checkpoints
+now separate `selectionFile` from `activeIndexFile`, failed files go to
+`.supervibe/memory/failed_files.json`, and `--clean-stale-lock` reports whether
+the lock PID is dead, stale, and safe to resume. Rust/Tauri repair can be
+targeted with `--language rust --path src-tauri/src`.
+
+**Windows.** If PowerShell rejects the installer with an Execution Policy error: `Set-ExecutionPolicy -Scope Process Bypass`. The Codex symlink needs Developer Mode  without it, the installer falls back to a directory copy.
 
 ---
 
@@ -524,4 +531,4 @@ sed -i.bak '/<!-- supervibe-plugin-include: do-not-edit -->/,/<!-- supervibe-plu
 
 Windows equivalent: replace `rm -rf` with `Remove-Item -Recurse -Force` and run the same node `-e` blocks (paths via `$HOME` work in PowerShell too).
 
-Project indexes are your data — remove only when sure: `rm -rf .supervibe/memory/code.db .supervibe/memory/memory.db`.
+Project indexes are your data  remove only when sure: `rm -rf .supervibe/memory/code.db .supervibe/memory/memory.db`.

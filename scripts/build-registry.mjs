@@ -105,21 +105,37 @@ async function loadStackPacks() {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     if (entry.name.startsWith('_')) continue;
-    const manifestPath = join(packsDir, entry.name, 'manifest.yaml');
+    const manifestPath = await resolveStackPackManifestPath(join(packsDir, entry.name));
     try {
       const content = await readFile(manifestPath, 'utf8');
       const data = parseYaml(content);
+      const profileNames = Object.keys(data.profiles || data['agent-profiles'] || {});
       packs[data.id || entry.name] = {
         manifest: toRepoRelative(manifestPath),
         stacks: Object.values(data.matches?.required || {}).flat(),
         architectures: data.matches?.optional?.architecture || [],
-        'agent-profiles': Object.keys(data['agent-profiles'] || {})
+        profiles: profileNames,
+        'agent-profiles': profileNames
       };
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
     }
   }
   return packs;
+}
+
+async function resolveStackPackManifestPath(packDir) {
+  const candidates = ['manifest.yaml', 'pack.yaml'];
+  for (const file of candidates) {
+    const path = join(packDir, file);
+    try {
+      await readFile(path, 'utf8');
+      return path;
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
+  }
+  return join(packDir, 'manifest.yaml');
 }
 
 async function main() {

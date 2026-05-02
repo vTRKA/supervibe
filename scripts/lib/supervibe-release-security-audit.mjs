@@ -230,6 +230,15 @@ function buildReleaseSecurityReport(data, details) {
       "npm run check",
     ],
     artifactChecksums: data.artifactChecksums || {},
+    releaseManifest: data.releaseManifest || {
+      status: data.commitSha && data.commitSha !== "unknown" ? "local-dev" : "unknown",
+      packageVersion: details.packageVersion,
+      signed: false,
+    },
+    rollbackManifest: {
+      available: Boolean(data.rollbackManifest?.commands?.length || data.commitSha),
+      commands: data.rollbackManifest?.commands || (data.commitSha ? [`git revert ${data.commitSha}`] : []),
+    },
     gates: {
       dependencyProvenance: Boolean(details.dependencyProvenance?.pass),
       installIntegrity: Boolean(details.installIntegrity?.pass),

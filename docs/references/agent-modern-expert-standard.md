@@ -43,6 +43,25 @@ modern standards to map into concrete task behavior.
 7. Use a 10/10 standard only when evidence proves it: passing verification,
    no known blockers, explicit tradeoffs, and no hidden safety or quality gaps.
 
+## Final Upgrade Operating Standard
+
+- Retrieval is a dependency, not a convenience. Agents must surface source
+  coverage, per-language readiness, graph warnings, failed file diagnostics,
+  and repair commands before relying on Code RAG or CodeGraph for major work.
+- Agent quality changes need measurement. Use the flight recorder and
+  task-level evals to record task id, skill route, retrieval evidence, tool
+  class, approval state, verification command, score, outcome, and redaction
+  status.
+- MCP usage is capability-based. Prefer tools with clear purpose, inputs, side
+  effects, auth, failure modes, examples, and cost. High-risk external writes
+  need a human approval checkpoint.
+- Beginner bootstrap must be dry-run first: stack-pack registry evidence,
+  runtime doctor output, exact next repair action, and no project mutation
+  until the user approves.
+- Release readiness requires provenance evidence: package/version alignment,
+  checksums, rollback manifest, install integrity, dependency provenance,
+  plugin package audit, and release security audit at 10/10.
+
 ## Source Links
 
 - https://csrc.nist.gov/pubs/sp/800/218/final

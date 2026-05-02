@@ -17,7 +17,9 @@ test("code indexer uses progress logging plus opt-in bounded mode", async () => 
   assert.match(source, /--resume/);
   assert.match(source, /progress every/);
   assert.match(source, /Usage:/);
-  assert.doesNotMatch(source, /DEFAULT_INDEX_TIMEOUT_MS|SUPERVIBE_INDEX_TIMEOUT_MS|setTimeout\(\s*.*build-code-index/s);
+  assert.match(source, /setTimeout/);
+  assert.match(source, /process\.exit\(0\)/);
+  assert.doesNotMatch(source, /DEFAULT_INDEX_TIMEOUT_MS|SUPERVIBE_INDEX_TIMEOUT_MS/);
 });
 
 test("genesis instructions document bounded source-readiness indexing", async () => {

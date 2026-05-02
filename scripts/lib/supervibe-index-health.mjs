@@ -256,6 +256,26 @@ export function evaluateIndexHealthGate(health = {}, {
     });
   }
 
+  const languageReadiness = {};
+  for (const [language, value] of Object.entries(health.languageCoverage || {})) {
+    const eligibleForLanguage = numberOrZero(value.eligible);
+    const indexedForLanguage = numberOrZero(value.indexed);
+    const sourceCoverageForLanguage = numberOrZero(value.coverage);
+    const symbolCoverageForLanguage = numberOrZero(value.symbolCoverage);
+    const sourceReady = eligibleForLanguage === 0 || sourceCoverageForLanguage >= coverageThreshold;
+    const graphReady = indexedForLanguage === 0 ? sourceReady : symbolCoverageForLanguage >= minSymbolCoverage;
+    languageReadiness[language] = {
+      sourceReady,
+      graphReady,
+      eligible: eligibleForLanguage,
+      indexed: indexedForLanguage,
+      sourceCoverage: sourceCoverageForLanguage,
+      symbolCoverage: symbolCoverageForLanguage,
+      repairCommand: `${SOURCE_RAG_INDEX_COMMAND} --language ${language}`,
+      graphRepairCommand: `${CODEGRAPH_INDEX_COMMAND} --language ${language}`,
+    };
+  }
+
   return {
     ready: failedGates.length === 0,
     eligibleSourceFiles: health.eligibleSourceFiles || 0,
@@ -263,6 +283,7 @@ export function evaluateIndexHealthGate(health = {}, {
     sourceCoverage,
     failedGates,
     warnings,
+    languageReadiness,
     repairCommand: SOURCE_RAG_INDEX_COMMAND,
     bm25RepairCommand: SOURCE_RAG_INDEX_COMMAND,
     graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
@@ -284,7 +305,17 @@ export function formatIndexHealthGate(gate = {}) {
     `REPAIR: ${gate.repairCommand || SOURCE_RAG_INDEX_COMMAND}`,
     `BM25_REPAIR: ${gate.bm25RepairCommand || SOURCE_RAG_INDEX_COMMAND}`,
     `GRAPH_REPAIR: ${gate.graphRepairCommand || CODEGRAPH_INDEX_COMMAND}`,
+    'LANGUAGE_READY:',
+    ...formatLanguageReadinessLines(gate.languageReadiness || {}),
   ].join('\n');
+}
+
+function formatLanguageReadinessLines(languageReadiness) {
+  const entries = Object.entries(languageReadiness);
+  if (entries.length === 0) return ['  - none'];
+  return entries.map(([language, value]) => {
+    return `  - ${language}: source=${value.sourceReady ? 'true' : 'false'} graph=${value.graphReady ? 'true' : 'false'} indexed=${value.indexed}/${value.eligible} repair=${value.repairCommand}`;
+  });
 }
 
 function normalizeIndexedPaths(paths) {

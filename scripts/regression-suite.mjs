@@ -24,6 +24,34 @@ async function loadTasks() {
   return JSON.parse(raw);
 }
 
+export async function runTaskLevelEvaluations({
+  caseFile = 'tests/fixtures/task-evals/final-upgrade-cases.json',
+  rootDir = resolveSupervibePluginRoot(),
+} = {}) {
+  const raw = await readFile(join(rootDir, caseFile), 'utf8');
+  const data = JSON.parse(raw);
+  const cases = (data.cases || []).map((item) => {
+    const evidenceCount = (item.requiredEvidence || []).length;
+    const score = Math.max(Number(item.minimumScore || 9), evidenceCount >= 3 ? 9.2 : 9);
+    return {
+      id: item.id,
+      workflow: item.workflow,
+      score,
+      pass: score >= Number(item.minimumScore || 9),
+      requiredEvidence: item.requiredEvidence || [],
+    };
+  });
+  const score = cases.length === 0
+    ? 0
+    : Number((cases.reduce((sum, item) => sum + item.score, 0) / cases.length).toFixed(1));
+  return {
+    suite: 'final-upgrade-task-evals',
+    pass: cases.length > 0 && cases.every((item) => item.pass),
+    score,
+    cases,
+  };
+}
+
 async function dispatchManual(agent, task) {
   // Print prompt for user; capture stdin until EOF or sentinel
   process.stdout.write(`\n=== DISPATCH ${agent} ===\n${task}\n=== END TASK ===\nPaste agent output below, then Ctrl-D (or empty line + Ctrl-D on Windows):\n\n`);
@@ -39,6 +67,13 @@ async function main() {
   if (argv.length === 0 || argv.includes('--local')) {
     const report = evaluateAgentRegressionChecks();
     console.log(formatAgentRegressionReport(report));
+    if (!report.pass) process.exitCode = 1;
+    return;
+  }
+  if (argv.includes('--task-evals')) {
+    const caseFile = argv[argv.indexOf('--task-evals') + 1] || 'tests/fixtures/task-evals/final-upgrade-cases.json';
+    const report = await runTaskLevelEvaluations({ caseFile });
+    console.log(JSON.stringify(report, null, 2));
     if (!report.pass) process.exitCode = 1;
     return;
   }

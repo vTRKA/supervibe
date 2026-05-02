@@ -7,7 +7,8 @@ import { loadIndexConfig } from "./supervibe-index-config.mjs";
 import { LIST_MISSING_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 
 const HEARTBEAT_REL = ".supervibe/memory/.watcher-heartbeat";
-const LOCK_REL = ".supervibe/memory/.code-index.lock";
+const LOCK_REL = ".supervibe/memory/code-index.lock";
+const LEGACY_LOCK_REL = ".supervibe/memory/.code-index.lock";
 
 export function createIndexWatcherLifecycle({ rootDir = process.cwd(), codeStore, now = () => Date.now() } = {}) {
   if (!codeStore) throw new Error("codeStore is required");
@@ -52,6 +53,7 @@ function watcherPaths(rootDir = process.cwd()) {
   return {
     heartbeatPath: join(rootDir, HEARTBEAT_REL),
     lockPath: join(rootDir, LOCK_REL),
+    legacyLockPath: join(rootDir, LEGACY_LOCK_REL),
   };
 }
 
@@ -67,27 +69,35 @@ export async function writeIndexLock({ rootDir = process.cwd(), ownerPid = proce
   await mkdir(dirname(lockPath), { recursive: true });
   const lock = {
     ownerPid,
+    pid: ownerPid,
     operation,
     heartbeat: now,
+    heartbeatAt: new Date(now).toISOString(),
     createdAt: new Date(now).toISOString(),
+    phase: operation,
+    activeIndexFile: null,
   };
   await writeFile(lockPath, `${JSON.stringify(lock, null, 2)}\n`, "utf8");
   return { path: lockPath, lock };
 }
 
 function readIndexLock({ rootDir = process.cwd(), now = Date.now() } = {}) {
-  const { lockPath } = watcherPaths(rootDir);
-  if (!existsSync(lockPath)) return { status: "absent", path: lockPath };
+  const { lockPath, legacyLockPath } = watcherPaths(rootDir);
+  const selectedLockPath = existsSync(lockPath) ? lockPath : legacyLockPath;
+  if (!existsSync(selectedLockPath)) return { status: "absent", path: lockPath };
   try {
-    const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+    const lock = JSON.parse(readFileSync(selectedLockPath, "utf8"));
+    const heartbeat = Number(lock.heartbeat || Date.parse(lock.heartbeatAt || lock.startedAt || "") || 0);
     return {
       status: "present",
-      path: lockPath,
+      path: selectedLockPath,
       lock,
-      ageMs: Math.max(0, now - Number(lock.heartbeat || 0)),
+      ageMs: Math.max(0, now - heartbeat),
+      phase: lock.phase || lock.operation || null,
+      activeIndexFile: lock.activeIndexFile || null,
     };
   } catch (error) {
-    return { status: "corrupt", path: lockPath, error: error.message };
+    return { status: "corrupt", path: selectedLockPath, error: error.message };
   }
 }
 
@@ -132,6 +142,8 @@ export function formatWatcherDiagnostics(diagnostics) {
     "SUPERVIBE_WATCHER_DIAGNOSTICS",
     `HEARTBEAT: ${diagnostics.heartbeat.status}`,
     `LOCK: ${diagnostics.lock.status}`,
+    `LOCK_PHASE: ${diagnostics.lock.phase || "none"}`,
+    `LOCK_ACTIVE_INDEX_FILE: ${diagnostics.lock.activeIndexFile || "none"}`,
     `REFRESH_INTERVAL_MS: ${diagnostics.indexConfig.refreshIntervalMs}`,
     `REPAIR_ACTIONS: ${diagnostics.repairActions.join(" | ") || "none"}`,
   ].join("\n");

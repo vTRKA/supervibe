@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.36] - 2026-05-02
+
+### Added
+
+- Added hard-bounded Code RAG/CodeGraph repair with phase checkpoints,
+  per-language/path/file repair filters, failed file diagnostics, and explicit
+  stale-lock cleanup.
+- Added flight recorder telemetry, task-level eval fixtures, MCP capability and
+  tool-description checks, agentic security validation, read-only Context MCP
+  self-test, beginner runtime doctor, and release provenance report fields.
+
+### Changed
+
+- Source-only indexing now lazy-loads embeddings so BM25/source readiness does
+  not initialize the ML stack.
+- Stack-pack registry generation now accepts both `manifest.yaml` and
+  `pack.yaml` golden-path packs.
+
 ## [2.0.35] - 2026-05-02
 
 ### Added

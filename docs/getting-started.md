@@ -24,9 +24,9 @@ project memory, confidence gates, and stack-aware scaffolding backed by SQLite.
 - **Claude Code** (latest)
 - **Node.js 22.5+** for SQLite-backed semantic RAG, code graph, project memory, and agent task memory. The installer can offer to install/upgrade Node with explicit consent.
 - **Git**
-- **Git LFS** *(recommended, not required)* — the embedding model (`model_quantized.onnx`, 113 MB) is stored via Git LFS because GitHub cannot store it as a normal blob. The installer still requires the model before registration: it tries bounded Git LFS first, then downloads the ONNX file directly from HuggingFace (~118 MB) if LFS is unavailable or incomplete.
+- **Git LFS** *(recommended, not required)*  the embedding model (`model_quantized.onnx`, 113 MB) is stored via Git LFS because GitHub cannot store it as a normal blob. The installer still requires the model before registration: it tries bounded Git LFS first, then downloads the ONNX file directly from HuggingFace (~118 MB) if LFS is unavailable or incomplete.
   - Check: `git lfs version` (should print `git-lfs/X.Y.Z ...`)
-  - Install: macOS `brew install git-lfs`; Windows already bundled with Git for Windows ≥2.x; Linux see [git-lfs.com](https://git-lfs.com)
+  - Install: macOS `brew install git-lfs`; Windows already bundled with Git for Windows 2.x; Linux see [git-lfs.com](https://git-lfs.com)
   - After install (once per machine): `git lfs install`
 
 ## Install (verified)
@@ -38,7 +38,7 @@ runs the install lifecycle doctor, and wires the plugin into the available
 targets. User install/update scripts intentionally do not run the developer
 test suite; `npm run check` stays manual/CI-only.
 
-### Option A — Installer (recommended for users)
+### Option A  Installer (recommended for users)
 
 macOS / Linux:
 
@@ -52,7 +52,7 @@ Windows PowerShell:
 irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 ```
 
-### Option B — Local install (current; for early adopters and developers)
+### Option B  Local install (current; for early adopters and developers)
 
 ```bash
 # 1. Clone or download Supervibe
@@ -70,21 +70,21 @@ npm run check    # all validators, audits, dead-code checks, and tests must pass
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.35
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.36
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.35
-xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.35"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.36
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.36"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.35
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.36
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.35" "C:\path\to\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.36" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
-# Verify: type /supervibe — should respond with auto-detect dispatcher
+# Verify: type /supervibe  should respond with auto-detect dispatcher
 ```
 
 ### Verify install
@@ -104,7 +104,7 @@ npm run supervibe:install-doctor
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.35/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.36/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -124,10 +124,10 @@ git init
 The orchestrator detects that no Supervibe host scaffold exists and proposes:
 
 ```
-📊 Discovered: empty project (no Supervibe host adapter folders or managed instruction block)
-⚡ Recommend: /supervibe-genesis
-🎯 Why: bootstrap stack-aware scaffold from empty repo
-⏭ Run? (y/n)
+ Discovered: empty project (no Supervibe host adapter folders or managed instruction block)
+ Recommend: /supervibe-genesis
+ Why: bootstrap stack-aware scaffold from empty repo
+ Run? (y/n)
 ```
 
 Type `y`.
@@ -136,11 +136,11 @@ Type `y`.
 
 `supervibe:stack-discovery` asks one question at a time:
 
-- "What are you building?" → `web-app`
-- "Backend stack?" → `laravel`
-- "Frontend stack?" → `nextjs`
-- "Primary data store?" → `postgres`
-- "Infrastructure features?" → `redis-cache`, `queue`
+- "What are you building?"  `web-app`
+- "Backend stack?"  `laravel`
+- "Frontend stack?"  `nextjs`
+- "Primary data store?"  `postgres`
+- "Infrastructure features?"  `redis-cache`, `queue`
 - ... (architecture, design, testing, deployment)
 
 ### 4. Genesis
@@ -161,20 +161,20 @@ After ~30-60 seconds: scaffolded project ready.
 Tell Claude: "Add a user-billing module with subscription plans."
 
 Orchestrator proposes:
-> ⚡ Recommend: supervibe:requirements-intake (complexity ≥4)
+>  Recommend: supervibe:requirements-intake (complexity 4)
 
 Type `y`. The framework chains:
 1. **`supervibe:project-memory`** searches prior decisions (empty for first task)
 2. **`supervibe:requirements-intake`** asks clarifying questions
-3. **`supervibe:brainstorming`** (if complexity ≥7) → spec
-4. **`supervibe:explore-alternatives`** for any decision complexity ≥5
-5. **`supervibe:writing-plans`** → phased plan
-6. **`supervibe:executing-plans`** → executes with TDD per task
-7. **`supervibe:_core:code-reviewer`** → review across 8 dimensions
-8. **`supervibe:_core:quality-gate-reviewer`** → final ≥9 gate
-9. **`supervibe:add-memory`** → records this decision for future
+3. **`supervibe:brainstorming`** (if complexity 7)  spec
+4. **`supervibe:explore-alternatives`** for any decision complexity 5
+5. **`supervibe:writing-plans`**  phased plan
+6. **`supervibe:executing-plans`**  executes with TDD per task
+7. **`supervibe:_core:code-reviewer`**  review across 8 dimensions
+8. **`supervibe:_core:quality-gate-reviewer`**  final 9 gate
+9. **`supervibe:add-memory`**  records this decision for future
 
-Every artifact confidence-scored ≥9 before progression. If a gate blocks and the user accepts the risk, the caller records an explicit override reason.
+Every artifact confidence-scored 9 before progression. If a gate blocks and the user accepts the risk, the caller records an explicit override reason.
 
 ## Command reference
 
@@ -194,12 +194,39 @@ Plugin agents have `recommended-mcps:` frontmatter for capability boost:
 
 | MCP | Boosts which agents |
 |-----|---------------------|
-| `context7` | All stack devs (laravel/nextjs/fastapi/react), researchers — current API docs |
-| `figma` | creative-director, ux-ui-designer, prototype-builder — design files |
-| `playwright` | qa-test-engineer, accessibility-reviewer, ui-polish-reviewer — browser automation |
-| `firecrawl` | researchers — scraping/searching authoritative sources |
+| `context7` | All stack devs (laravel/nextjs/fastapi/react), researchers  current API docs |
+| `figma` | creative-director, ux-ui-designer, prototype-builder  design files |
+| `playwright` | qa-test-engineer, accessibility-reviewer, ui-polish-reviewer  browser automation |
+| `firecrawl` | researchers  scraping/searching authoritative sources |
 
 `supervibe:mcp-discovery` skill detects available MCPs and proactively maps them. Without MCPs, agents fall back to WebFetch (slower, limited).
+
+The MCP broker records capabilities and risk classes instead of treating tools
+as host-specific names. Inspect it with `node
+<resolved-supervibe-plugin-root>/scripts/discover-mcps.mjs`. Tool descriptions
+must state purpose, inputs, side effects, auth, failure modes, examples, and
+cost before agents should rely on them for high-confidence execution.
+
+## Runtime Doctor And Context MCP
+
+For a beginner-safe dry run, use:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/supervibe-runtime-doctor.mjs --dry-run
+```
+
+It checks Node SQLite readiness, stack-pack/registry presence, scaffold
+readiness, likely dev-server command, smoke-test status, optional browser/MCP
+capability, and the next repair action without mutating the project.
+
+Optional read-only context export is available for MCP-aware hosts:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/supervibe-context-mcp.mjs --self-test
+```
+
+The first version exposes read-only memory, Code RAG, CodeGraph, host context,
+and tool metadata resources only.
 
 ## Memory system (SQLite FTS5)
 
@@ -207,12 +234,12 @@ After completing significant work (decision, fix, pattern), the framework writes
 
 ```
 .supervibe/memory/
-├── memory.db               # SQLite FTS5 index (gitignored, auto-rebuild)
-├── decisions/              # Architecture / library / pattern choices
-├── patterns/               # Reusable patterns established
-├── incidents/              # Postmortems
-├── learnings/              # Project insights
-└── solutions/              # How-we-solved-X catalog
+ memory.db               # SQLite FTS5 index (gitignored, auto-rebuild)
+ decisions/              # Architecture / library / pattern choices
+ patterns/               # Reusable patterns established
+ incidents/              # Postmortems
+ learnings/              # Project insights
+ solutions/              # How-we-solved-X catalog
 ```
 
 Each entry = markdown with frontmatter (id/type/date/tags/related/agent/confidence).
@@ -231,11 +258,11 @@ node <resolved-supervibe-plugin-root>/scripts/search-memory.mjs \
 node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs
 ```
 
-**Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `supervibe:add-memory` skill — writes markdown + auto-rebuilds index.
+**Add entry** (typically auto-invoked by `quality-gate-reviewer`): use `supervibe:add-memory` skill  writes markdown + auto-rebuilds index.
 
 ## Code Search (RAG over your source code)
 
-Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently — agents use it under the hood; you don't manage it directly.
+Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently  agents use it under the hood; you don't manage it directly.
 
 ```bash
 # Source RAG readiness after install or on a large existing project
@@ -248,7 +275,7 @@ node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --re
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 
-# Manual semantic search (optional — agents auto-invoke this)
+# Manual semantic search (optional  agents auto-invoke this)
 node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "where authentication is handled"
 
 # Agent-ready context pack (RAG chunks + graph + anchors)
@@ -259,13 +286,22 @@ node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --context "auth lo
 
 **Large projects:** use `--max-files` and `--max-seconds` for bounded atomic batches. The indexer blocks duplicate runs with `.supervibe/memory/code-index.lock`, removes stale locks whose PID is gone, prints heartbeat lines with stage/current file/progress (`SUPERVIBE_INDEX_HEARTBEAT_SECONDS` or `--heartbeat-seconds`), emits machine-readable `SUPERVIBE_INDEX_PROGRESS` lines with `--json-progress`, and persists `.supervibe/memory/code-index-checkpoint.json` after each file/batch. Tune completed-file progress with `SUPERVIBE_INDEX_PROGRESS_EVERY` or `--progress-every`. Graph warnings do not fail default source RAG readiness when source coverage is healthy; `--strict-index-health` is for explicit graph audits.
 
+**Repair diagnostics:** `--max-seconds` is a hard watchdog, including the first
+active file. For language-specific repair use `--language rust`, `--language
+python`, `--path src-tauri/src`, or `--file <path>`. For one-file diagnosis use
+`--debug-file <path> --trace-phases --verbose`; checkpoints separate
+`selectionFile` from `activeIndexFile`, and failures are written to
+`.supervibe/memory/failed_files.json`. If a killed process leaves a lock, run
+`node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root .
+--clean-stale-lock` before resuming.
+
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
 **Auto-index on changes:** Three paths, all automatic by default:
 
-1. **Pseudo-watcher (in-session)** — `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50–500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.supervibe/memory/**/*.md` → FTS5 in `memory.db`). Embeddings skipped for speed.
-2. **mtime-scan on SessionStart** — catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
-3. **Watcher daemon (optional)** — `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes. Chokidar long-running with embeddings.
+1. **Pseudo-watcher (in-session)**  `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.supervibe/memory/**/*.md`  FTS5 in `memory.db`). Embeddings skipped for speed.
+2. **mtime-scan on SessionStart**  catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
+3. **Watcher daemon (optional)**  `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes. Chokidar long-running with embeddings.
 
 For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is opt-in.
 
@@ -277,7 +313,7 @@ Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_
 
 Beyond semantic similarity, Supervibe builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
 
-This is automatic — built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on every `Write`/`Edit` without any daemon.
+This is automatic  built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on every `Write`/`Edit` without any daemon.
 
 ```bash
 # Status check (built into SessionStart, also runnable manually)
@@ -293,7 +329,7 @@ node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --files "src/app"
 node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --top-symbols 20
 ```
 
-**Storage:** same `.supervibe/memory/code.db` — extra `code_symbols` + `code_edges` tables.
+**Storage:** same `.supervibe/memory/code.db`  extra `code_symbols` + `code_edges` tables.
 
 **Languages:** TypeScript, JavaScript, TSX, JSX, Python, PHP, Go, Rust, Java, Ruby, Vue, and Svelte.
 
@@ -308,26 +344,25 @@ npm run code:index -- --since=HEAD~100   # only files changed in last 100 commit
 
 ## Preview Server (live mockup hosting)
 
-Когда design / prototype агенты генерируют HTML/CSS, плагин может запустить локальный сервер `http://localhost:NNNN` с **auto-reload** — пользователь открывает в браузере, агент правит файлы, страница обновляется автоматически.
+Use the preview server when a design, prototype, or static HTML/CSS mockup needs a local browser URL with auto-reload and shareable evidence.
 
-**Запуск вручную:**
+**Start:**
 
 ```bash
-# Из проекта где лежат мокапы:
 npm run supervibe:preview -- --root mockups/checkout
 
 # Output:
-# [supervibe-preview] checkout → http://localhost:3047
+# [supervibe-preview] checkout  http://localhost:3047
 # [supervibe-preview] hot-reload: on
 ```
 
-**Список запущенных:**
+**List active previews:**
 
 ```bash
 npm run supervibe:preview -- --list
 ```
 
-**Kill:**
+**Kill a preview:**
 
 ```bash
 npm run supervibe:preview -- --kill 3047
@@ -335,41 +370,38 @@ npm run supervibe:preview -- --kill 3047
 npm run supervibe:preview -- --kill-all
 ```
 
-**Что под капотом:**
-- Pure `node:http` + Server-Sent Events (SSE) — никаких новых dep
-- chokidar следит за файлами, на change → SSE push → `location.reload()` в браузере
-- Реестр `.supervibe/memory/preview-servers.json` чтобы статус-команда и другие сессии видели запущенные серверы
-- 127.0.0.1 only — без network access
-- SIGINT cleanup на завершение сессии
-- Idle-shutdown после 30 мин неактивности (--idle-timeout configurable)
-- Max 10 параллельных серверов (--force чтобы превысить)
+**Implementation details:**
+- Pure `node:http` plus Server-Sent Events (SSE); no framework runtime is required.
+- `chokidar` watches files and pushes `location.reload()` to the browser on changes.
+- Active preview state is stored in `.supervibe/memory/preview-servers.json`.
+- The server binds to `127.0.0.1` only by default.
+- SIGINT cleanup removes preview state.
+- Idle shutdown defaults to 30 minutes and can be changed with `--idle-timeout`.
+- At most 10 previews run at once unless `--force` is passed.
 
-**Использование агентами:**
-- `prototype-builder` агент автоматически дёргает skill `supervibe:preview-server` после генерации мокапа
-- `supervibe:landing-page` skill — то же
-- `supervibe:interaction-design-patterns` skill — то же
-- Агент печатает URL пользователю в output: "**Preview ready:** http://localhost:3047"
+**Skill integration:**
+- `prototype-builder` can hand off to `supervibe:preview-server`.
+- `supervibe:landing-page` uses the preview server for browser review.
+- `supervibe:interaction-design-patterns` can capture motion and interaction evidence from the preview URL.
+- Agent output should include the final preview URL, for example: `Preview ready: http://localhost:3047`.
 
-**Опциональная интеграция с Playwright MCP:**
-Если у пользователя есть Playwright MCP, skill после спавна сервера может:
-- Открыть URL в browser
-- Сделать скриншот → `.supervibe/memory/previews/<label>-<timestamp>.png`
-- Прикрепить в output агента как evidence
+**Playwright MCP evidence:**
+When Playwright MCP is available, preview-aware skills should open the URL, capture screenshots into `.supervibe/memory/previews/<label>-<timestamp>.png`, and cite the screenshot path in their verification output.
 
 ## Reference document templates
 
-В `docs/templates/` лежат скелеты для всех типов проектных документов:
+Use `docs/templates/` for durable project artifacts:
 
-| Файл | Скилл | Что внутри |
-|------|-------|------------|
-| `PRD-template.md` | `supervibe:prd` | Полный PRD с Gherkin ACs / metrics / launch checklist |
-| `ADR-template.md` | `supervibe:adr` | Architecture decision с alternatives matrix + review trigger |
-| `plan-template.md` | `supervibe:writing-plans` | TDD план с critical path + parallelization batches |
-| `RFC-template.md` | RFC для cross-team | Motivation + detailed design + prior art |
-| `brainstorm-output-template.md` | `supervibe:brainstorming` | First-principle decomp + decision matrix |
-| `intake-template.md` | `supervibe:requirements-intake` | Personas + constraints + success criteria |
+| Template | Primary skill | Purpose |
+|----------|---------------|---------|
+| `PRD-template.md` | `supervibe:prd` | Product requirements with Gherkin acceptance criteria, metrics, and launch checklist |
+| `ADR-template.md` | `supervibe:adr` | Architecture decision with alternatives matrix and review trigger |
+| `plan-template.md` | `supervibe:writing-plans` | TDD implementation plan with critical path and parallelization batches |
+| `RFC-template.md` | Cross-team RFC | Motivation, detailed design, and prior art |
+| `brainstorm-output-template.md` | `supervibe:brainstorming` | First-principles decomposition and decision matrix |
+| `intake-template.md` | `supervibe:requirements-intake` | Personas, constraints, and success criteria |
 
-Скиллы автоматически заполняют эти шаблоны и проверяют что все обязательные секции присутствуют. Запустить вручную можно скопировав шаблон в `docs/specs/YYYY-MM-DD-<topic>-<type>.md` и наполнив.
+Store approved artifacts under `docs/specs/YYYY-MM-DD-<topic>-<type>.md`.
 
 ## Agent improvement loop
 
@@ -384,17 +416,17 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 | Underperformer detector | `scripts/lib/underperformer-detector.mjs` |
 | Auto-strengthen trigger | `scripts/lib/auto-strengthen-trigger.mjs` |
 
-**How it closes the loop:** every `Task` call → logged with extracted confidence score → on session stop, frontmatter `effectiveness:` blocks updated per agent → on next SessionStart, agents with `avg-confidence < 8.5` or rising override-rate are shown in the banner → user runs `/supervibe-strengthen` (with or without explicit agent_id) → confirms diff per agent → improvements persist.
+**How it closes the loop:** every `Task` call  logged with extracted confidence score  on session stop, frontmatter `effectiveness:` blocks updated per agent  on next SessionStart, agents with `avg-confidence < 8.5` or rising override-rate are shown in the banner  user runs `/supervibe-strengthen` (with or without explicit agent_id)  confirms diff per agent  improvements persist.
 
 **Inspect:** `npm run supervibe:status` shows current telemetry counts + flagged agents.
 
-**No surprises:** strengthen never modifies agent files without explicit user confirmation. Detector requires ≥10 invocations before flagging.
+**No surprises:** strengthen never modifies agent files without explicit user confirmation. Detector requires 10 invocations before flagging.
 
 ## Troubleshooting
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.35/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.36/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -415,7 +447,7 @@ Expected Codex checks include `local-registration`, `codex-plugin-config`, `code
 
 - Verify `agents:[]` array in `.claude-plugin/plugin.json` lists actual file paths
 - Each path must start with `./agents/` and end `.md`
-- Run `npm run validate:frontmatter` — every agent file must have valid frontmatter
+- Run `npm run validate:frontmatter`  every agent file must have valid frontmatter
 
 ### SQLite memory errors
 
@@ -426,7 +458,7 @@ Expected Codex checks include `local-registration`, `codex-plugin-config`, `code
 ### Genesis fails partway
 
 - Check `.supervibe/confidence-log.jsonl` for last successful step
-- Don't manually clean up — re-run `/supervibe-genesis`; it skips existing files
+- Don't manually clean up  re-run `/supervibe-genesis`; it skips existing files
 - If broken: move the selected host adapter folder aside and re-run genesis; keep `.supervibe/` if you want existing state
 
 ### Windows path issues
@@ -437,9 +469,9 @@ Expected Codex checks include `local-registration`, `codex-plugin-config`, `code
 
 ### Plugin updates breaking existing scaffolds
 
-- v1.x → v1.x updates: safe; rules/agents may be re-strengthened
-- v1.x → v2.x: breaking changes possible; backup the selected host adapter folder and `.supervibe/` first
-- Generated host adapter folders in target projects are independent — they won't break on plugin update
+- v1.x  v1.x updates: safe; rules/agents may be re-strengthened
+- v1.x  v2.x: breaking changes possible; backup the selected host adapter folder and `.supervibe/` first
+- Generated host adapter folders in target projects are independent  they won't break on plugin update
 
 ## Uninstall
 
@@ -459,29 +491,29 @@ rm -rf <project>/<adapter>/skills
 
 ## Upgrade guide
 
-### v1.0 → v1.1
+### v1.0  v1.1
 
 - New: `supervibe:project-memory`, `supervibe:add-memory`, `supervibe:mcp-discovery`, `supervibe:explore-alternatives`, `supervibe:interaction-design-patterns`, `supervibe:tokens-export`
 - New rules: `no-hardcode`, `no-half-finished`
 - Stack agents got `WebFetch` + `recommended-mcps` frontmatter
-- **No action needed** — just update plugin version in install path
+- **No action needed**  just update plugin version in install path
 
-### v1.1 → v1.2
+### v1.1  v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.35
+  - Manifest auto-updated; ensure your install path has v2.0.36
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.35 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.36 dir, restart Claude Code
 
 ## Where to next
 
-- `CONTRIBUTING.md` — add agents/skills/rules
-- `docs/skill-authoring.md` — write a new skill
-- `docs/agent-authoring.md` — write a new agent
-- `docs/rule-authoring.md` — write a new rule
-- `docs/specs/2026-04-27-supervibe-framework-design.md` — full architecture spec
+- `CONTRIBUTING.md`  add agents/skills/rules
+- `docs/skill-authoring.md`  write a new skill
+- `docs/agent-authoring.md`  write a new agent
+- `docs/rule-authoring.md`  write a new rule
+- `docs/specs/2026-04-27-supervibe-framework-design.md`  full architecture spec
 - GitHub issues for support

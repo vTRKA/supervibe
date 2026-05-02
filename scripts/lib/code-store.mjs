@@ -2,12 +2,11 @@
 // Mirrors MemoryStore but for source code: per-file rows + per-chunk embeddings.
 // Hash-based change detection skips unchanged files on re-index.
 
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { hashFile } from './file-hash.mjs';
 import { chunkCode, detectLanguage } from './code-chunker.mjs';
-import { embed, cosineSimilarity, vectorToBuffer, bufferToVector } from './embeddings.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
 import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedSymbolName, pruneCodeIndex } from './supervibe-index-policy.mjs';
@@ -29,6 +28,12 @@ const EXTENSION_RESOLUTION = {
 };
 
 const JS_LIKE_LANGUAGES = new Set(['typescript', 'tsx', 'javascript', 'jsx']);
+let embeddingsModulePromise = null;
+
+async function loadEmbeddingHelpers() {
+  embeddingsModulePromise ||= (async () => await import('./embeddings.mjs'))();
+  return embeddingsModulePromise;
+}
 
 function normalizeRelPath(path) {
   return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
@@ -267,11 +272,32 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
+function deadlineExceededError(phase, relPath) {
+  const error = new Error(`index deadline exceeded during ${phase}${relPath ? ` for ${relPath}` : ''}`);
+  error.code = 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED';
+  error.phase = phase;
+  error.relPath = relPath;
+  return error;
+}
+
+async function maybeTestPhaseHook(phase) {
+  if (process.env.SUPERVIBE_INDEX_TEST_THROW_PHASE === phase) {
+    throw new Error(`SUPERVIBE_INDEX_TEST_THROW_PHASE ${phase}`);
+  }
+  if (process.env.SUPERVIBE_INDEX_TEST_DELAY_PHASE === phase) {
+    const delayMs = Number(process.env.SUPERVIBE_INDEX_TEST_DELAY_MS || 0);
+    if (Number.isFinite(delayMs) && delayMs > 0) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
+    }
+  }
+}
+
 export class CodeStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
     this.dbDir = join(projectRoot, '.supervibe', 'memory');
     this.dbPath = join(this.dbDir, 'code.db');
+    this.failedFilesPath = join(this.dbDir, 'failed_files.json');
     this.db = null;
     this.useEmbeddings = opts.useEmbeddings !== false;
     this.useGraph = opts.useGraph !== false;
@@ -382,11 +408,12 @@ export class CodeStore {
   }
 
   /** Index a single file. Skips if hash unchanged (idempotent). */
-  async indexFile(absPath, { force = false, onProgress = null, current = 0, total = 0 } = {}) {
+  async indexFile(absPath, { force = false, onProgress = null, current = 0, total = 0, shouldStop = null } = {}) {
     const policy = classifyIndexPath(absPath, { rootDir: this.projectRoot });
     if (!policy.included) return { skipped: policy.reason };
     const lang = policy.language || detectLanguage(absPath);
     const relPath = this.toRel(absPath);
+    let activePhase = 'file-start';
     const emit = (phase, extra = {}) => onProgress?.({
       phase,
       current,
@@ -394,8 +421,17 @@ export class CodeStore {
       path: relPath,
       ...extra,
     });
+    const enter = async (phase, extra = {}) => {
+      activePhase = phase;
+      if (shouldStop?.()) throw deadlineExceededError(phase, relPath);
+      emit(phase, extra);
+      await maybeTestPhaseHook(phase);
+      if (shouldStop?.()) throw deadlineExceededError(phase, relPath);
+    };
+
+    try {
     let content;
-    emit('reading');
+    await enter('reading');
     try { content = await readFile(absPath, 'utf8'); }
     catch (err) {
       if (err.code === 'ENOENT') {
@@ -405,7 +441,7 @@ export class CodeStore {
       throw err;
     }
 
-    emit('hashing');
+    await enter('hashing');
     const hash = await hashFile(absPath);
     const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
     if (existing && existing.content_hash === hash && !force) {
@@ -414,7 +450,7 @@ export class CodeStore {
       // chunks and embeddings.
       if (this.useGraph && Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
         try {
-          emit('graph-extraction');
+          await enter('graph-extraction');
           const result = await this.indexGraphFor(absPath, content);
           this.markGraphCurrent(relPath);
           return { skipped: 'unchanged-graph-reindexed', ...result };
@@ -430,10 +466,11 @@ export class CodeStore {
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
 
-    emit('chunking');
+    await enter('chunking');
     const chunks = await chunkCode(content, absPath);
     const lines = content.split('\n').length;
 
+    await enter('db-write');
     this.db.prepare(`
       INSERT OR REPLACE INTO code_files (path, language, content_hash, line_count, indexed_at, graph_version)
       VALUES (?, ?, ?, ?, datetime('now'), 0)
@@ -451,13 +488,15 @@ export class CodeStore {
       const c = chunks[i];
       let embeddingBuf = null;
       if (this.useEmbeddings) {
-        emit('embeddings', { chunk: i + 1, chunks: chunks.length });
+        await enter('embeddings', { chunk: i + 1, chunks: chunks.length });
         try {
+          const { embed, vectorToBuffer } = await loadEmbeddingHelpers();
           const vec = await embed(c.text, 'passage');
           embeddingBuf = vectorToBuffer(vec);
         } catch {}
       }
       insertChunk.run(relPath, i, c.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
+      await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
       insertFTS.run(relPath, i, c.text, c.name || '');
     }
 
@@ -465,7 +504,7 @@ export class CodeStore {
     // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
     if (this.useGraph) {
       try {
-        emit('graph-extraction');
+        await enter('graph-extraction');
         await this.indexGraphFor(absPath, content);
         this.markGraphCurrent(relPath);
       } catch (err) {
@@ -478,6 +517,11 @@ export class CodeStore {
     }
 
     return { indexed: true, chunks: chunks.length };
+    } catch (err) {
+      err.phase ||= activePhase;
+      err.relPath ||= relPath;
+      throw err;
+    }
   }
 
   markGraphCurrent(relPath) {
@@ -644,12 +688,12 @@ export class CodeStore {
   }
 
   /** Walk project directory, index all supported files. */
-  async indexAll(rootDir, { onProgress = null, force = false, shouldStop = null } = {}) {
+  async indexAll(rootDir, { onProgress = null, force = false, shouldStop = null, verbose = false } = {}) {
     const inventory = await discoverSourceFiles(rootDir);
     const counts = { indexed: 0, skipped: 0, errors: 0, discovered: inventory.files.length, pruned: 0, processed: 0, bounded: false };
     onProgress?.({ phase: 'discovered', total: inventory.files.length });
     for (const [index, file] of inventory.files.entries()) {
-      if (index > 0 && shouldStop?.()) {
+      if (shouldStop?.()) {
         counts.bounded = true;
         break;
       }
@@ -668,11 +712,17 @@ export class CodeStore {
           onProgress,
           current: index + 1,
           total: inventory.files.length,
+          shouldStop,
         });
         if (result.indexed) counts.indexed++;
         else counts.skipped++;
-      } catch {
+      } catch (err) {
+        if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
+          counts.bounded = true;
+          break;
+        }
         counts.errors++;
+        await this.recordFailedFile({ absPath: file.absPath, phase: err.phase || 'file', error: err, verbose });
       }
       counts.processed = index + 1;
       onProgress?.({
@@ -708,11 +758,11 @@ export class CodeStore {
   }
 
   /** Index a specific list of absolute file paths (lazy mode). */
-  async indexFiles(absPaths, { onProgress = null, force = false, shouldStop = null } = {}) {
+  async indexFiles(absPaths, { onProgress = null, force = false, shouldStop = null, verbose = false } = {}) {
     const counts = { indexed: 0, skipped: 0, errors: 0, discovered: absPaths.length, processed: 0, bounded: false };
     onProgress?.({ phase: 'discovered', total: absPaths.length });
     for (const [index, absPath] of absPaths.entries()) {
-      if (index > 0 && shouldStop?.()) {
+      if (shouldStop?.()) {
         counts.bounded = true;
         break;
       }
@@ -731,9 +781,17 @@ export class CodeStore {
           onProgress,
           current: index + 1,
           total: absPaths.length,
+          shouldStop,
         });
         if (r.indexed) counts.indexed++; else counts.skipped++;
-      } catch { counts.errors++; }
+      } catch (err) {
+        if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
+          counts.bounded = true;
+          break;
+        }
+        counts.errors++;
+        await this.recordFailedFile({ absPath, phase: err.phase || 'file', error: err, verbose });
+      }
       counts.processed = index + 1;
       onProgress?.({
         phase: 'file',
@@ -766,6 +824,35 @@ export class CodeStore {
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.clearGraphFor(relPath);
     this.db.prepare('DELETE FROM code_files WHERE path = ?').run(relPath);
+  }
+
+  async recordFailedFile({ absPath, phase = 'file', error, verbose = false } = {}) {
+    const relPath = normalizeRelPath(absPath ? this.toRel(absPath) : error?.relPath);
+    const existing = await this.readFailedFilesReport();
+    const files = existing.files.filter((item) => item.path !== relPath);
+    files.push({
+      path: relPath,
+      phase,
+      errorName: error?.name || 'Error',
+      message: error?.message || String(error || 'unknown error'),
+      stack: verbose ? (error?.stack || '') : undefined,
+      failedAt: new Date().toISOString(),
+    });
+    await mkdir(dirname(this.failedFilesPath), { recursive: true });
+    await writeFile(this.failedFilesPath, JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      files,
+    }, null, 2));
+  }
+
+  async readFailedFilesReport() {
+    try {
+      const raw = await readFile(this.failedFilesPath, 'utf8');
+      const parsed = JSON.parse(raw);
+      return { files: Array.isArray(parsed.files) ? parsed.files : [] };
+    } catch {
+      return { files: [] };
+    }
   }
 
   stats() {
@@ -893,13 +980,17 @@ export class CodeStore {
     }
 
     let queryVec;
-    try { queryVec = queryVector || await embed(query, 'query'); }
+    let embeddingHelpers;
+    try {
+      embeddingHelpers = await loadEmbeddingHelpers();
+      queryVec = queryVector || await embeddingHelpers.embed(query, 'query');
+    }
     catch { return this._aggregateByFile(rows, limit); }
 
     const k = 60;
     const semanticRows = this._loadSemanticCandidates({ language, kind, limit: Math.max(limit * 50, 200) });
     for (const r of semanticRows) {
-      r.semanticScore = r.embedding ? cosineSimilarity(queryVec, bufferToVector(r.embedding)) : 0;
+      r.semanticScore = r.embedding ? embeddingHelpers.cosineSimilarity(queryVec, embeddingHelpers.bufferToVector(r.embedding)) : 0;
     }
     semanticRows.sort((a, b) => b.semanticScore - a.semanticScore);
 
@@ -926,7 +1017,7 @@ export class CodeStore {
     for (const r of rows) {
       const key = `${r.path}#${r.chunk_idx}`;
       const semanticRow = semanticByKey.get(key);
-      const semanticScore = semanticRow?.semanticScore || (r.embedding ? cosineSimilarity(queryVec, bufferToVector(r.embedding)) : 0);
+      const semanticScore = semanticRow?.semanticScore || (r.embedding ? embeddingHelpers.cosineSimilarity(queryVec, embeddingHelpers.bufferToVector(r.embedding)) : 0);
       combined.set(key, {
         ...r,
         semanticScore,

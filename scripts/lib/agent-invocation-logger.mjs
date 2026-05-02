@@ -8,8 +8,11 @@ import { createEvidenceRecord } from './supervibe-evidence-ledger.mjs';
 const PROJECT_ROOT = process.cwd();
 let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
   || join(PROJECT_ROOT, '.supervibe', 'memory', 'agent-invocations.jsonl');
+let _flightRecorderPath = process.env.SUPERVIBE_FLIGHT_RECORDER_LOG
+  || join(PROJECT_ROOT, '.supervibe', 'memory', 'telemetry', 'flight-recorder.jsonl');
 
 export function INVOCATION_LOG_PATH_FOR_TEST(path) { _logPath = path; }
+export function FLIGHT_RECORDER_PATH_FOR_TEST(path) { _flightRecorderPath = path; }
 
 export async function logInvocation(entry) {
   if (!entry.agent_id) throw new Error('agent_id required');
@@ -71,4 +74,67 @@ export async function updateLatestInvocation(patch, { matchAgentId = null } = {}
   if (updatedLineIdx < 0) return false;
   await writeFile(_logPath, lines.join('\n') + '\n');
   return true;
+}
+
+export async function logFlightRecorderEvent(entry = {}) {
+  for (const field of ['traceId', 'spanId', 'agentId', 'taskId', 'toolClass', 'approvalState', 'outcome']) {
+    if (!entry[field]) throw new Error(`${field} required`);
+  }
+  const redacted = redactFlightRecorderEntry(entry);
+  const record = {
+    schemaVersion: 1,
+    ts: new Date().toISOString(),
+    traceId: redacted.traceId,
+    spanId: redacted.spanId,
+    agentId: redacted.agentId,
+    taskId: redacted.taskId,
+    skillId: redacted.skillId || null,
+    modelClass: redacted.modelClass || 'unknown',
+    toolClass: redacted.toolClass,
+    approvalState: redacted.approvalState,
+    retrievalIds: redacted.retrievalIds || [],
+    verificationCommands: redacted.verificationCommands || [],
+    score: typeof redacted.score === 'number' ? redacted.score : null,
+    outcome: redacted.outcome,
+    redactionStatus: redacted.redactionStatus,
+    otel: {
+      name: 'supervibe.agent.task',
+      trace_id: redacted.traceId,
+      span_id: redacted.spanId,
+      attributes: {
+        'supervibe.agent.id': redacted.agentId,
+        'supervibe.task.id': redacted.taskId,
+        'supervibe.tool.class': redacted.toolClass,
+        'supervibe.approval.state': redacted.approvalState,
+      },
+    },
+  };
+  await mkdir(dirname(_flightRecorderPath), { recursive: true });
+  await appendFile(_flightRecorderPath, JSON.stringify(record) + '\n');
+  return record;
+}
+
+export async function readFlightRecorderEvents({ limit = 1000 } = {}) {
+  if (!existsSync(_flightRecorderPath)) return [];
+  const raw = await readFile(_flightRecorderPath, 'utf8');
+  return raw.split('\n').filter(Boolean).slice(-limit).map((line) => JSON.parse(line));
+}
+
+function redactFlightRecorderEntry(entry) {
+  let redactionStatus = 'clean';
+  const sanitize = (value) => {
+    if (typeof value !== 'string') return value;
+    const next = value
+      .replace(/\bsk-[A-Za-z0-9_-]{6,}\b/g, '[REDACTED_SECRET]')
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]');
+    if (next !== value) redactionStatus = 'redacted';
+    return next;
+  };
+  const out = {};
+  for (const [key, value] of Object.entries(entry)) {
+    if (Array.isArray(value)) out[key] = value.map(sanitize);
+    else out[key] = sanitize(value);
+  }
+  out.redactionStatus = redactionStatus;
+  return out;
 }
