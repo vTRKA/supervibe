@@ -1,7 +1,7 @@
 import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
 import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
 import { getCapabilityRouteHint } from "./supervibe-capability-registry.mjs";
-import { findCommandShortcut, RAG_CODEGRAPH_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
+import { findCommandShortcut, resolveCommandRequest, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
 const ROUTES = {
@@ -23,7 +23,7 @@ const ROUTES = {
   },
   code_index_build: {
     phase: "maintenance",
-    command: RAG_CODEGRAPH_INDEX_COMMAND,
+    command: SOURCE_RAG_INDEX_COMMAND,
     skill: "supervibe:code-search",
     nextQuestionRu: "Шаг 1/1: запустить bounded RAG/CodeGraph indexing команду без поиска по всему проекту?",
     nextQuestionEn: "Step 1/1: run the bounded RAG/CodeGraph indexing command without searching the whole project?",
@@ -463,6 +463,14 @@ export function routeTriggerRequest(input, options = {}) {
     );
   }
 
+  const resolvedCommand = resolveCommandRequest(text);
+  if (resolvedCommand?.doNotSearchProject && shouldPreemptTriggerRouting(resolvedCommand)) {
+    if (resolvedCommand.directRoute !== false && ROUTES[resolvedCommand.intent]) {
+      return routeResolvedKnownCommand(resolvedCommand, artifacts, locale);
+    }
+    return routeGenericResolvedCommand(resolvedCommand, artifacts, locale);
+  }
+
   const commandShortcut = findCommandShortcut(text);
   if (commandShortcut && commandShortcut.directRoute !== false && ROUTES[commandShortcut.intent]) {
     const route = ROUTES[commandShortcut.intent];
@@ -471,6 +479,7 @@ export function routeTriggerRequest(input, options = {}) {
         intent: commandShortcut.intent,
         phase: route.phase,
         command: commandShortcut.command,
+        followUpCommands: commandShortcut.followUpCommands || [],
         skill: route.skill,
         confidence: commandShortcut.confidence,
         confidenceFloor: 0.9,
@@ -555,6 +564,10 @@ export function routeTriggerRequest(input, options = {}) {
       }))),
       artifacts,
     );
+  }
+
+  if (resolvedCommand?.doNotSearchProject && resolvedCommand.semanticScriptMatch) {
+    return routeGenericResolvedCommand(resolvedCommand, artifacts, locale);
   }
 
   return withRoutingEvidence({
@@ -642,6 +655,71 @@ export function formatIntentGoldenEvaluation(evaluation) {
   return lines.join("\n");
 }
 
+function routeResolvedKnownCommand(resolvedCommand, artifacts, locale) {
+  const route = ROUTES[resolvedCommand.intent];
+  return withArtifactStatus(
+    withRoutingEvidence({
+      intent: resolvedCommand.intent,
+      phase: route.phase,
+      command: resolvedCommand.command,
+      followUpCommands: resolvedCommand.followUpCommands || [],
+      skill: route.skill,
+      confidence: resolvedCommand.confidence,
+      confidenceFloor: 0.9,
+      mutationRisk: mutationRiskFor(resolvedCommand.intent),
+      prerequisites: route.prerequisites,
+      requiredSafety: requiredSafetyFor(resolvedCommand.intent),
+      nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+      alternatives: alternativesFromRoutes(resolvedCommand.intent),
+      matchedPhrase: resolvedCommand.matchedAlias || resolvedCommand.requestedCommand || null,
+      source: "command-catalog",
+      reason: resolvedCommand.reason,
+      doNotSearchProject: resolvedCommand.doNotSearchProject === true,
+    }, [{
+      source: "command-catalog",
+      reason: resolvedCommand.reason,
+      matchedPhrase: resolvedCommand.matchedAlias || resolvedCommand.requestedCommand || null,
+    }], alternativesFromRoutes(resolvedCommand.intent)),
+    artifacts,
+  );
+}
+
+function routeGenericResolvedCommand(resolvedCommand, artifacts, locale) {
+  const alternatives = alternativesFromRoutes(resolvedCommand.intent);
+  return withArtifactStatus(
+    withRoutingEvidence({
+      intent: resolvedCommand.intent,
+      phase: "command",
+      command: resolvedCommand.command,
+      followUpCommands: resolvedCommand.followUpCommands || [],
+      skill: null,
+      confidence: resolvedCommand.confidence,
+      confidenceFloor: 0.9,
+      mutationRisk: mutationRiskForResolvedCommand(resolvedCommand),
+      prerequisites: [],
+      requiredSafety: requiredSafetyForResolvedCommand(resolvedCommand),
+      nextQuestion: nextQuestionForResolvedCommand(resolvedCommand, locale),
+      alternatives,
+      matchedPhrase: resolvedCommand.matchedAlias || resolvedCommand.requestedCommand || null,
+      source: "command-catalog",
+      reason: resolvedCommand.reason,
+      doNotSearchProject: resolvedCommand.doNotSearchProject === true,
+    }, [{
+      source: "command-catalog",
+      reason: resolvedCommand.reason,
+      matchedPhrase: resolvedCommand.matchedAlias || resolvedCommand.requestedCommand || null,
+    }], alternatives),
+    artifacts,
+  );
+}
+
+function shouldPreemptTriggerRouting(resolvedCommand) {
+  if (resolvedCommand.semanticScriptMatch) return false;
+  if (resolvedCommand.requestedCommand) return true;
+  if (resolvedCommand.intent === "code_index_build") return true;
+  return ["slash_command", "missing_slash_command", "project_npm_script", "plugin_npm_script", "missing_npm_script"].includes(resolvedCommand.intent);
+}
+
 function withArtifactStatus(route, artifacts) {
   const missingArtifacts = route.prerequisites.filter((name) => !artifactSatisfied(name, artifacts));
   const safetyBlockers = safetyBlockersFor(route, artifacts);
@@ -671,7 +749,7 @@ function artifactSatisfied(name, artifacts) {
 
 function safetyBlockersFor(route, artifacts) {
   const blockers = [];
-  if (route.mutationRisk !== "none" && route.mutationRisk !== "writes-generated-index" && artifacts.confirmedMutation !== true) {
+  if (!["none", "writes-generated-index", "explicit-user-command", "delegates-to-command"].includes(route.mutationRisk) && artifacts.confirmedMutation !== true) {
     blockers.push("needs-explicit-user-confirmation");
   }
   if (route.requiredSafety?.includes("bounded-runtime") && !artifacts.maxDuration && !artifacts.durationBudget) {
@@ -716,6 +794,14 @@ function mutationRiskFor(intent) {
   return "none";
 }
 
+function mutationRiskForResolvedCommand(resolvedCommand) {
+  if (!resolvedCommand.command) return "none";
+  if (resolvedCommand.mutationRisk === "writes-generated-index") return "writes-generated-index";
+  if (["slash_command", "plugin_npm_script"].includes(resolvedCommand.intent)) return "delegates-to-command";
+  if (resolvedCommand.intent === "project_npm_script") return "explicit-user-command";
+  return resolvedCommand.mutationRisk || "explicit-user-command";
+}
+
 function requiredSafetyFor(intent) {
   const base = ["no-provider-bypass", "no-hidden-background-work", "confirm-before-mutation"];
   if (intent === "code_index_build") return [...base, "bounded-index-run", "single-run-lock", "generated-state-only"];
@@ -728,6 +814,30 @@ function requiredSafetyFor(intent) {
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];
   if (intent === "prompt_ai_engineering") return [...base, "eval-before-claim", "tool-boundary-review"];
   return base;
+}
+
+function requiredSafetyForResolvedCommand(resolvedCommand) {
+  if (!resolvedCommand.command) return ["do-not-search-project", "report-missing-command"];
+  if (resolvedCommand.intent === "slash_command") return ["do-not-search-project", "slash-command-owns-safety"];
+  if (resolvedCommand.intent === "plugin_npm_script") return ["do-not-search-project", "portable-plugin-command"];
+  if (resolvedCommand.intent === "project_npm_script") return ["do-not-search-project", "explicit-user-command"];
+  return ["do-not-search-project", "run-resolved-command"];
+}
+
+function nextQuestionForResolvedCommand(resolvedCommand, locale) {
+  if (!resolvedCommand.command) {
+    return locale === "ru"
+      ? "Шаг 1/1: сообщить, что команда не найдена, и не искать её по всему проекту?"
+      : "Step 1/1: report the missing command and avoid a repo-wide search?";
+  }
+  if (resolvedCommand.intent === "slash_command") {
+    return locale === "ru"
+      ? "Шаг 1/1: выполнить найденную slash-команду без поиска по проекту?"
+      : "Step 1/1: run the resolved slash command without searching the project?";
+  }
+  return locale === "ru"
+    ? "Шаг 1/1: выполнить найденную команду без поиска по проекту?"
+    : "Step 1/1: run the resolved command without searching the project?";
 }
 
 function sourcePriority(source) {

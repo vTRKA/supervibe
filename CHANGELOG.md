@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.35] - 2026-05-02
+
+### Added
+
+- Added broad command-intent resolution for slash commands, project npm scripts,
+  Supervibe plugin npm scripts, and English/Russian semantic package-script
+  names before any repository-wide search.
+- Added regression coverage for missing project `npm run code:index`, portable
+  plugin-root fallbacks, semantic npm script requests, trigger replay boundaries,
+  and unchanged-file `--resume` indexing.
+
+### Changed
+
+- RAG/CodeGraph indexing requests now resolve to the genesis-compatible bounded
+  source RAG command first, with list-missing and graph follow-up commands.
+- Agents and status/audit/strengthen/adapt surfaces now print portable
+  `<resolved-supervibe-plugin-root>` repair commands instead of assuming
+  project-local Supervibe scripts.
+- Trigger routing now lets explicit commands run immediately while keeping
+  high-level safety, audit, design, and memory workflows above semantic npm
+  script matches.
+
 ## [2.0.34] - 2026-05-02
 
 ### Added

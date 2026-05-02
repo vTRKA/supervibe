@@ -58,11 +58,49 @@ describe("supervibe trigger router", () => {
     const route = routeTriggerRequest("запусти индексирование rag/codegraph");
 
     assert.equal(route.intent, "code_index_build");
-    assert.match(route.command, /build-code-index\.mjs --root \. --resume --no-embeddings --graph/);
+    assert.match(route.command, /build-code-index\.mjs --root \. --resume --source-only/);
     assert.match(route.command, /--max-files 200 --max-seconds 120 --health --json-progress/);
+    assert.ok(route.followUpCommands.some((command) => /--resume --graph --max-files 200 --health/.test(command)));
     assert.equal(route.skill, "supervibe:code-search");
     assert.equal(route.mutationRisk, "writes-generated-index");
     assert.deepEqual(route.safetyBlockers, []);
+  });
+
+  it("routes explicit npm run code:index phrasing without requiring a project package script", () => {
+    const route = routeTriggerRequest("npm run code:index вот запусти индексацию");
+
+    assert.equal(route.intent, "code_index_build");
+    assert.match(route.command, /build-code-index\.mjs --root \. --resume --source-only/);
+    assert.equal(route.source, "command-catalog");
+    assert.deepEqual(route.safetyBlockers, []);
+  });
+
+  it("routes explicit slash and package commands through command catalog without repo search", () => {
+    const slash = routeTriggerRequest("supervibe-status --capabilities");
+    const packageScript = routeTriggerRequest("pnpm run supervibe:status -- --json");
+    const semanticScript = routeTriggerRequest("validate frontmatter");
+    const missing = routeTriggerRequest("npm run deploy:prod пожалуйста");
+
+    assert.equal(slash.intent, "slash_command");
+    assert.equal(slash.command, "/supervibe-status --capabilities");
+    assert.equal(slash.doNotSearchProject, true);
+    assert.deepEqual(slash.safetyBlockers, []);
+
+    assert.equal(packageScript.intent, "project_npm_script");
+    assert.equal(packageScript.command, "pnpm run supervibe:status -- --json");
+    assert.equal(packageScript.doNotSearchProject, true);
+    assert.deepEqual(packageScript.safetyBlockers, []);
+
+    assert.equal(semanticScript.intent, "project_npm_script");
+    assert.equal(semanticScript.command, "npm run validate:frontmatter");
+    assert.equal(semanticScript.source, "command-catalog");
+    assert.equal(semanticScript.doNotSearchProject, true);
+    assert.deepEqual(semanticScript.safetyBlockers, []);
+
+    assert.equal(missing.intent, "missing_npm_script");
+    assert.equal(missing.command, null);
+    assert.equal(missing.doNotSearchProject, true);
+    assert.deepEqual(missing.safetyBlockers, []);
   });
 
   it("routes security, network, prompt, and kanban requests through specialized flows", () => {
@@ -90,5 +128,9 @@ describe("supervibe trigger router", () => {
     const kanban = routeTriggerRequest("show tasks epics projects and agents on a kanban board");
     assert.equal(kanban.intent, "work_control_ui");
     assert.equal(kanban.command, "/supervibe-ui");
+
+    const memoryAudit = routeTriggerRequest("audit memory rag codegraph context quality");
+    assert.equal(memoryAudit.intent, "memory_audit");
+    assert.equal(memoryAudit.command, "/supervibe-audit --memory");
   });
 });

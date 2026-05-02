@@ -33,7 +33,7 @@ This skill replaces blind grep. It surfaces conceptually-related code even when 
 ## Step 0 — Read source of truth (required)
 
 1. Verify code index exists: `.supervibe/memory/code.db`
-2. If missing → run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs` first
+2. If missing → run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` from the project root first; after source coverage is healthy, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` when graph data is needed
 3. If memory watcher is running, file changes are auto-indexed; otherwise re-run after edits
 
 ## Decision tree
@@ -63,7 +63,7 @@ What's the search intent?
    - Then graph expand: `--callers "<top-hit-name>"` then `--neighbors "<top-hit-name>" --depth 2`
    - Read top file:line refs in full for context
 8. **Disambiguation**: if a name has multiple definitions, the CLI prints all candidates. Re-run with full ID `path:kind:name:line` to pin down one
-9. If hits stale (file changed since index): re-run `npm run code:index` (or wait for watcher), then retry
+9. If hits stale (file changed since index): run `node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "run code:index"` and execute the printed `COMMAND:` from the project root, or wait for the watcher, then retry
 
 ## Additional agent modes
 

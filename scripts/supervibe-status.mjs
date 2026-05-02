@@ -43,6 +43,7 @@ import { buildPerformanceSloReport, formatPerformanceSloReport } from './lib/sup
 import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from './lib/supervibe-workspace-isolation.mjs';
 import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-config.mjs';
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
+import { CODEGRAPH_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './lib/supervibe-command-catalog.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -391,7 +392,7 @@ async function main() {
   const codeDbPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'code.db');
   if (!existsSync(codeDbPath)) {
     console.log(color('✗ Code RAG + Graph: NOT INITIALIZED', 'red'));
-    console.log(color('  Run: npm run code:index', 'dim'));
+    console.log(color(`  Run: ${SOURCE_RAG_INDEX_COMMAND}`, 'dim'));
     console.log(color('  Language coverage: NOT INITIALIZED', 'dim'));
   } else if (!sqliteAvailable) {
     console.log(color(`! Code RAG + Graph: requires Node.js ${SQLITE_NODE_MIN_VERSION}+ for node:sqlite`, 'yellow'));
@@ -425,7 +426,7 @@ async function main() {
     console.log(color(`  Source coverage: ${coverageSummary}`, codeRagReady ? 'dim' : 'yellow'));
     console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
     if (graphNotBuilt) {
-      console.log(color('  Graph note: run `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` when graph data is needed.', 'yellow'));
+      console.log(color(`  Graph note: run \`${CODEGRAPH_INDEX_COMMAND}\` when graph data is needed.`, 'yellow'));
     }
     if (graphWarnings.has('cross-resolution')) {
       console.log(color('  Graph warning: cross-file edge resolution is low; source RAG can still be ready.', 'yellow'));
@@ -507,10 +508,10 @@ async function main() {
       console.log(color(`✓ File watcher: running (heartbeat ${ageStr(age)})`, 'green'));
     } else {
       console.log(color(`⚠  File watcher: stale heartbeat (${ageStr(age)}); may have crashed`, 'yellow'));
-      console.log(color('   Run `npm run memory:watch` to restart', 'dim'));
+      console.log(color(`   Run \`${MEMORY_WATCH_COMMAND}\` to restart`, 'dim'));
     }
   } else {
-    console.log(color('○ File watcher: not running. Run `npm run memory:watch` for auto-reindex', 'dim'));
+    console.log(color(`○ File watcher: not running. Run \`${MEMORY_WATCH_COMMAND}\` for auto-reindex`, 'dim'));
   }
 
   // Preview servers

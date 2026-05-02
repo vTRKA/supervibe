@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 import { classifyIndexPath } from "./supervibe-index-policy.mjs";
 import { loadIndexConfig } from "./supervibe-index-config.mjs";
+import { LIST_MISSING_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 
 const HEARTBEAT_REL = ".supervibe/memory/.watcher-heartbeat";
 const LOCK_REL = ".supervibe/memory/.code-index.lock";
@@ -122,7 +123,7 @@ export function readWatcherDiagnostics({ rootDir = process.cwd(), now = Date.now
     lock: readIndexLock({ rootDir, now }),
     repairActions: heartbeat.status === "running"
       ? []
-      : ["npm run memory:watch", "node scripts/build-code-index.mjs --root . --list-missing", "node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health"],
+      : [MEMORY_WATCH_COMMAND, LIST_MISSING_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND],
   };
 }
 

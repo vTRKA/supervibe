@@ -1,6 +1,6 @@
 import { groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
 import { listSavedViews } from "./supervibe-work-item-saved-views.mjs";
-import { RAG_CODEGRAPH_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
+import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 
 export const COMMAND_PALETTE_ACTION_IDS = Object.freeze([
   "view-ready-work",
@@ -32,7 +32,7 @@ export function buildCommandPalette({ index = [], state = {}, planPath = null, g
     action("defer-task", "Defer task", `/supervibe-loop --defer ${selectedItemId || "<item-id>"} --until <timestamp> --file ${graphPath}`, { enabled: Boolean(selectedItemId), mutates: true, blockedReason: selectedItemId ? null : "select a task first" }),
     action("export-dashboard", "Export dashboard", `/supervibe-status --dashboard --file ${stateFile}`, { enabled: Boolean(runId || stateFile), mutates: false }),
     action("run-doctor", "Run doctor", `/supervibe-loop doctor --file ${stateFile}`, { enabled: Boolean(runId || stateFile), mutates: false }),
-    action("index-rag-codegraph", "Index RAG + CodeGraph", RAG_CODEGRAPH_INDEX_COMMAND, { enabled: true }),
+    action("index-rag-codegraph", "Index RAG + CodeGraph", SOURCE_RAG_INDEX_COMMAND, { enabled: true }),
     action("open-review-package", "Open review package", `/supervibe-status --report sla --file ${graphPath}`, { enabled: true, mutates: false }),
     action("stop-run", "Stop run", `/supervibe-loop --stop ${runId || "<run-id>"}`, { enabled: Boolean(runId), mutates: true, risky: true, blockedReason: runId ? null : "no active run selected" }),
   ];

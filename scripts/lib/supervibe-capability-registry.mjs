@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { buildLocalToolMetadataContract, validateLocalToolMetadataContract } from "./supervibe-tool-metadata-contract.mjs";
+import { CODEGRAPH_INDEX_COMMAND, LIST_MISSING_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { resolveHostAdapter } from "./supervibe-host-adapters.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
@@ -80,9 +81,9 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     rules: ["operational-safety", "anti-hallucination"],
     verificationHooks: [
       "node scripts/supervibe-status.mjs --index-health --strict-index-health --no-gc-hints",
-      "node scripts/build-code-index.mjs --root . --list-missing",
-      "node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health",
-      "node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health",
+      LIST_MISSING_INDEX_COMMAND,
+      SOURCE_RAG_INDEX_COMMAND,
+      CODEGRAPH_INDEX_COMMAND,
     ],
   },
   {
@@ -95,7 +96,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     rules: ["operational-safety", "anti-hallucination"],
     verificationHooks: [
       "node scripts/supervibe-commands.mjs --match \"run rag codegraph indexing\"",
-      "node scripts/build-code-index.mjs --help",
+      "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --help",
       "node --test tests/supervibe-command-catalog.test.mjs tests/supervibe-trigger-router.test.mjs",
     ],
   },

@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { SOURCE_RAG_INDEX_COMMAND } from "../scripts/lib/supervibe-command-catalog.mjs";
+
 const ROOT = process.cwd();
 const ADAPT_SCRIPT = join(ROOT, "scripts", "supervibe-adapt.mjs");
 const CURRENT_VERSION = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
@@ -95,7 +97,7 @@ test("supervibe-adapt --apply --all separates adapt success from index repair an
     assert.match(out, /ADAPT_CLEAN: true/);
     assert.match(out, /POST_APPLY_UPDATES: 0/);
     assert.match(out, /INDEX_REPAIR_NEEDED: true/);
-    assert.match(out, /NEXT_INDEX_REPAIR: node scripts\/build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
+    assert.match(out, new RegExp(`NEXT_INDEX_REPAIR: ${escapeRegExp(SOURCE_RAG_INDEX_COMMAND)}`));
 
     const baseline = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), "utf8"));
     const updatedAt = baseline.artifacts[".codex/agents/repo-researcher.md"].updatedAt;
@@ -105,3 +107,7 @@ test("supervibe-adapt --apply --all separates adapt success from index repair an
     rmSync(projectRoot, { recursive: true, force: true });
   }
 });
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

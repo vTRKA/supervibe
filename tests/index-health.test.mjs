@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { buildIndexHealthSnapshot, evaluateIndexHealthGate, formatIndexHealth } from '../scripts/lib/supervibe-index-health.mjs';
 import { CodeStore } from '../scripts/lib/code-store.mjs';
 import { scanCodeChanges } from '../scripts/lib/mtime-scan.mjs';
+import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from '../scripts/lib/supervibe-command-catalog.mjs';
 
 async function loadFixture() {
   const raw = await readFile('tests/fixtures/sanitized-index-health/manifest.json', 'utf8');
@@ -55,9 +56,10 @@ test('index health gate does not mark unhealthy index as ready', async () => {
   assert.equal(gate.ready, false, 'status marked unhealthy index as ready');
   assert.ok(gate.failedGates.some((item) => item.code === 'source-coverage'));
   assert.ok(gate.failedGates.some((item) => item.code === 'generated-leakage'));
-  assert.match(gate.repairCommand, /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
+  assert.equal(gate.repairCommand, SOURCE_RAG_INDEX_COMMAND);
   assert.doesNotMatch(gate.repairCommand, /--force/);
-  assert.match(gate.graphRepairCommand, /build-code-index\.mjs --root \. --resume --graph --max-files 200 --max-seconds 120 --health --json-progress/);
+  assert.equal(gate.graphRepairCommand, CODEGRAPH_INDEX_COMMAND);
+  assert.match(gate.repairCommand, /<resolved-supervibe-plugin-root>/);
 });
 
 test('graph-only symbol degradation warns by default but fails strict graph gate', () => {

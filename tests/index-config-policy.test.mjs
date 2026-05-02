@@ -13,6 +13,11 @@ import {
 } from "../scripts/lib/supervibe-index-config.mjs";
 import { classifyIndexPath, discoverSourceFiles } from "../scripts/lib/supervibe-index-policy.mjs";
 import { readWatcherDiagnostics } from "../scripts/lib/supervibe-index-watcher.mjs";
+import {
+  LIST_MISSING_INDEX_COMMAND,
+  MEMORY_WATCH_COMMAND,
+  SOURCE_RAG_INDEX_COMMAND,
+} from "../scripts/lib/supervibe-command-catalog.mjs";
 
 async function withIndexFixture(fn) {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-index-config-"));
@@ -66,6 +71,12 @@ test("watcher diagnostics expose the five minute periodic scan policy", async ()
     const diagnostics = readWatcherDiagnostics({ rootDir, now: 1_000_000 });
 
     assert.equal(diagnostics.indexConfig.refreshIntervalMs, 300_000);
+    assert.deepEqual(diagnostics.repairActions, [
+      MEMORY_WATCH_COMMAND,
+      LIST_MISSING_INDEX_COMMAND,
+      SOURCE_RAG_INDEX_COMMAND,
+    ]);
+    assert.doesNotMatch(diagnostics.repairActions.join("\n"), /npm run (code:index|memory:watch)/);
     assert.equal(DEFAULT_INDEX_REFRESH_INTERVAL_MS, 300_000);
     assert.equal(typeof startWatcher, "function");
   });

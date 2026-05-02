@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildProjectCommandCatalog,
-  findCommandShortcut,
   formatCommandCatalog,
   formatCommandMatch,
+  resolveCommandRequest,
 } from "./lib/supervibe-command-catalog.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
 
@@ -19,7 +19,7 @@ try {
   if (args.help) {
     console.log(formatHelp());
   } else if (args.match) {
-    const match = findCommandShortcut(args.match);
+    const match = resolveCommandRequest(args.match, { pluginRoot, projectRoot });
     if (args.json) console.log(JSON.stringify({ match }, null, 2));
     else console.log(formatCommandMatch(match));
     if (!match) process.exitCode = 2;
@@ -58,11 +58,13 @@ function formatHelp() {
     "SUPERVIBE_COMMANDS_HELP",
     "Usage:",
     "  node scripts/supervibe-commands.mjs",
-    "  node scripts/supervibe-commands.mjs --match \"запусти индексирование rag/codegraph\"",
+    "  node scripts/supervibe-commands.mjs --match \"npm run code:index вот запусти индексацию\"",
+    "  node scripts/supervibe-commands.mjs --match \"сделай дизайн макет UI\"",
+    "  node scripts/supervibe-commands.mjs --match \"pnpm run supervibe:status -- --json\"",
     "  node scripts/supervibe-commands.mjs --json",
     "",
     "Purpose:",
-    "  Print deterministic Supervibe command shortcuts, slash commands, and npm scripts.",
-    "  Use --match before broad project search when the user asks to run a known maintenance command.",
+    "  Print deterministic Supervibe command shortcuts, slash commands, project npm scripts, and plugin npm scripts.",
+    "  Use --match before broad project search when the user asks to run a known command or describes a primary workflow.",
   ].join("\n");
 }

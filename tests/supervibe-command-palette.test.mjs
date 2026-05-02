@@ -23,7 +23,7 @@ test("command palette exposes required actions and exact non-interactive command
 
   for (const id of COMMAND_PALETTE_ACTION_IDS) assert.ok(palette.actions.some((action) => action.id === id), id);
   assert.match(formatCommandPalette(palette), /view-ready-work: ready -> \/supervibe-status --view ready-now/);
-  assert.match(formatCommandPalette(palette), /index-rag-codegraph: ready -> node <resolved-supervibe-plugin-root>\/scripts\/build-code-index\.mjs --root \. --resume --no-embeddings --graph/);
+  assert.match(formatCommandPalette(palette), /index-rag-codegraph: ready -> node <resolved-supervibe-plugin-root>\/scripts\/build-code-index\.mjs --root \. --resume --source-only/);
   assert.match(palette.actions.find((action) => action.id === "atomize-plan").command, /--preview/);
 });
 

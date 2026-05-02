@@ -13,6 +13,7 @@ import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
 import { buildExecutionWaves } from "./supervibe-wave-controller.mjs";
 import { buildRunDashboardModel } from "./supervibe-run-dashboard.mjs";
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown } from "./supervibe-work-item-sla-reports.mjs";
+import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 
 export { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
@@ -804,8 +805,8 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
 
   if (!sqliteAvailable) {
     const message = `Node.js ${SQLITE_NODE_MIN_VERSION}+ is required for node:sqlite. Current runtime: ${process.version}.`;
-    result.codeRag = { ...result.codeRag, status: "unavailable", message, nextAction: "Upgrade Node.js and run npm run code:index." };
-    result.codeGraph = { ...result.codeGraph, status: "unavailable", message, nextAction: "Upgrade Node.js and run npm run code:index." };
+    result.codeRag = { ...result.codeRag, status: "unavailable", message, nextAction: `Upgrade Node.js and run ${SOURCE_RAG_INDEX_COMMAND}.` };
+    result.codeGraph = { ...result.codeGraph, status: "unavailable", message, nextAction: `Upgrade Node.js and run ${CODEGRAPH_INDEX_COMMAND}.` };
     result.memory = { ...result.memory, status: "unavailable", message, nextAction: "Upgrade Node.js and rebuild memory." };
     result.overall.status = "unavailable";
     return result;
@@ -816,13 +817,13 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
       ...result.codeRag,
       status: "not_initialized",
       message: "No code.db found.",
-      nextAction: "Run npm run code:index from the project root.",
+      nextAction: `Run ${SOURCE_RAG_INDEX_COMMAND} from the project root.`,
     };
     result.codeGraph = {
       ...result.codeGraph,
       status: "not_initialized",
       message: "No code.db found.",
-      nextAction: "Run npm run code:index from the project root.",
+      nextAction: `Run ${CODEGRAPH_INDEX_COMMAND} after source RAG coverage is healthy.`,
     };
   } else {
     const store = new CodeStore(rootDir, { useEmbeddings: false });
@@ -836,7 +837,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         ...result.codeRag,
         status: stats.totalChunks > 0 ? "ready" : "empty",
         message: `${stats.totalFiles} file(s), ${stats.totalChunks} chunk(s).`,
-        nextAction: stats.totalChunks > 0 ? "Code retrieval is available." : "Run npm run code:index to populate chunks.",
+        nextAction: stats.totalChunks > 0 ? "Code retrieval is available." : `Run ${SOURCE_RAG_INDEX_COMMAND} to populate chunks.`,
         files: stats.totalFiles,
         chunks: stats.totalChunks,
         languages: stats.byLang.map((row) => ({ language: row.language, files: row.n })),
@@ -847,7 +848,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         ...result.codeGraph,
         status: stats.totalSymbols > 0 ? "ready" : "empty",
         message: `${stats.totalSymbols} symbol(s), ${stats.totalEdges} edge(s).`,
-        nextAction: stats.totalSymbols > 0 ? "Code graph is available." : "Run npm run code:index and check grammar coverage.",
+        nextAction: stats.totalSymbols > 0 ? "Code graph is available." : `Run ${CODEGRAPH_INDEX_COMMAND} and check grammar coverage.`,
         symbols: stats.totalSymbols,
         edges: stats.totalEdges,
         resolvedEdges: stats.resolvedEdges,
@@ -857,8 +858,8 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         map: maps.codeGraph,
       };
     } catch (error) {
-      result.codeRag = { ...result.codeRag, status: "error", message: error.message, nextAction: "Run npm run code:index or inspect code.db." };
-      result.codeGraph = { ...result.codeGraph, status: "error", message: error.message, nextAction: "Run npm run code:index or inspect grammar files." };
+      result.codeRag = { ...result.codeRag, status: "error", message: error.message, nextAction: `Run ${SOURCE_RAG_INDEX_COMMAND} or inspect code.db.` };
+      result.codeGraph = { ...result.codeGraph, status: "error", message: error.message, nextAction: `Run ${CODEGRAPH_INDEX_COMMAND} or inspect grammar files.` };
     } finally {
       store.close();
     }

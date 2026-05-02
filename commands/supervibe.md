@@ -29,21 +29,27 @@ statements such as "роутер падает", "настроить маршру
 работает", and "стабилизировать Wi-Fi" route to `network-router-engineer` in
 read-only diagnostics mode first.
 
-Command-like maintenance requests use the deterministic command catalog before
-any broad project search. Run:
+Command-like requests use the deterministic command catalog before any broad
+project search. This includes explicit slash commands, explicit `npm run ...`
+phrases, bare `supervibe:<script>` names, and English/Russian natural-language
+requests for primary workflows. Run:
 
 ```bash
 node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "<user request>"
 ```
 
-Example: "запусти индексирование rag/codegraph" routes directly to:
+Example: "`npm run code:index` вот запусти индексацию" routes to the same
+source-first flow used by genesis:
 
 ```bash
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --no-embeddings --graph --max-files 200 --max-seconds 120 --health --json-progress
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 ```
 
 If the catalog prints `SUPERVIBE_COMMAND_MATCH`, run the exact command from the
-project root instead of searching the whole repository for command docs.
+project root or invoke the printed slash command in the active AI CLI instead
+of searching the whole repository for command docs. If it prints
+`PROJECT_SCRIPT: missing` for a known Supervibe command, do not retry the missing
+project package script; use the printed portable plugin command.
 
 Design requests route to existing commands only:
 - new UI, prototype, mockup, professional polish request -> `/supervibe-design`

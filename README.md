@@ -66,7 +66,7 @@ Stack examples include React, Next.js, Vue, Nuxt, SvelteKit, Laravel, Django, Fa
 
 ## Indexing config
 
-Code RAG + Code Graph use `.supervibe/memory/index-config.json` for project-owned indexing settings. `exclude` patterns hide files from indexing; privacy blocks for secrets, archives, binaries and local config always win. The optional `npm run memory:watch` daemon reacts to file events immediately and runs a 5-minute safety refresh.
+Code RAG + Code Graph use `.supervibe/memory/index-config.json` for project-owned indexing settings. `exclude` patterns hide files from indexing; privacy blocks for secrets, archives, binaries and local config always win. The optional `node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs` daemon reacts to file events immediately and runs a 5-minute safety refresh.
 
 ## Install
 
@@ -118,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.34 initialized for this project
+[supervibe] welcome — plugin v2.0.35 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -208,17 +208,19 @@ The trigger-safe path is explicit and chainable:
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
 
-For command-like maintenance requests, agents can ask the deterministic catalog before searching the repo:
+For command-like requests, agents ask the deterministic catalog before searching the repo. This covers explicit slash commands, explicit `npm run ...` phrases, bare `supervibe:<script>` names, and English/Russian natural-language requests for the primary workflows:
 
 ```bash
-node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "запусти индексирование rag/codegraph"
+node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "npm run code:index вот запусти индексацию"
 ```
 
-That request resolves to the bounded RAG/CodeGraph indexer:
+That request resolves to the same source-first bounded index flow used by genesis:
 
 ```bash
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --no-embeddings --graph --max-files 200 --max-seconds 120 --health --json-progress
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 ```
+
+If the user's project does not define `code:index`, `supervibe:status`, or another Supervibe script in its own `package.json`, the catalog returns `PROJECT_SCRIPT: missing` and a portable plugin-root command instead of letting the agent fail on `Missing script`.
 
 Unreleased capability label: the durable autonomous loop is implemented in this
 workspace and remains opt-in until the release gate publishes it. Autonomous execution is opt-in, not the default.
@@ -444,7 +446,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
 | `npm run supervibe:upgrade` | clean checkout, git pull, required ONNX model setup, npm ci, rebuild registry, run install doctor |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
-| `npm run code:index` | Code RAG + graph indexer with heartbeat/progress logging, single-run lock, and optional bounded batches |
+| `npm run code:index` | Plugin-directory alias for the Code RAG + graph indexer; from a user project prefer the portable command printed by `supervibe-commands --match "run code:index"` |
 | `npm run code:search -- --query "..."` | Semantic search |
 | `npm run code:search -- --context "..."` | Agent-ready RAG + graph + anchor context |
 | `npm run code:search -- --symbol-search "Symbol"` | Graph: ranked symbol lookup |
@@ -452,7 +454,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run code:search -- --impact "Symbol" --depth 2` | Graph: inbound blast radius before refactor |
 | `npm run code:search -- --files "src"` | Graph: indexed files with language and symbol counts |
 | `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
-| `npm run memory:watch` | Optional watcher daemon |
+| `npm run memory:watch` | Plugin-directory alias for the optional watcher daemon; from a user project prefer `node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs` |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
 | `npm run check` | Full test suite plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
 
@@ -476,7 +478,7 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **SQLite errors.** Node.js 22.5+ is required for the built-in `node:sqlite` used by semantic RAG, code graph, project memory, and agent task memory. Re-run the installer and approve the Node upgrade prompt, or install Node.js 22.5+ manually and then re-run.
 
-**Stale or partial code index.** The mtime scan on session start catches most external edits. For source RAG repair, run `node scripts/build-code-index.mjs --root . --list-missing`, then `node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` from your project directory. Large projects can be processed in bounded atomic batches; the indexer prints heartbeat lines with stage/current file/progress, emits machine-readable `SUPERVIBE_INDEX_PROGRESS` with `--json-progress`, persists `.supervibe/memory/code-index-checkpoint.json`, and uses `.supervibe/memory/code-index.lock` to block duplicate runs and clean stale dead-PID locks. Build graph separately with `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; graph warnings do not fail the default source RAG gate when coverage is healthy. Use `npm run code:index -- --root . --force --health` only for a deliberate full rebuild.
+**Stale or partial code index.** The mtime scan on session start catches most external edits. For source RAG repair from a user project, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`. Large projects can be processed in bounded atomic batches; the indexer prints heartbeat lines with stage/current file/progress, emits machine-readable `SUPERVIBE_INDEX_PROGRESS` with `--json-progress`, persists `.supervibe/memory/code-index-checkpoint.json`, and uses `.supervibe/memory/code-index.lock` to block duplicate runs and clean stale dead-PID locks. Build graph separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; graph warnings do not fail the default source RAG gate when coverage is healthy. Use `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --force --health` only for a deliberate full rebuild.
 
 **Windows.** If PowerShell rejects the installer with an Execution Policy error: `Set-ExecutionPolicy -Scope Process Bypass`. The Codex symlink needs Developer Mode — without it, the installer falls back to a directory copy.
 

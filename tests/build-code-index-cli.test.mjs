@@ -109,6 +109,38 @@ test("build-code-index --source-only indexes BM25 chunks without graph work", as
   });
 });
 
+test("build-code-index --resume skips already indexed unchanged files", async () => {
+  await withFixture(async (rootDir) => {
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const beforeStore = new CodeStore(rootDir, { useEmbeddings: false });
+    await beforeStore.init();
+    const before = beforeStore.db.prepare("SELECT content_hash AS contentHash, indexed_at AS indexedAt FROM code_files WHERE path = ?").get("src/main.ts");
+    beforeStore.close();
+
+    const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--resume", "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.match(out, /resume mode: 0 missing\/stale file\(s\), 0 selected/);
+    assert.match(out, /Files indexed: 0/);
+    assert.match(out, /Files skipped \(unchanged\/unsupported\): 0/);
+
+    const afterStore = new CodeStore(rootDir, { useEmbeddings: false });
+    await afterStore.init();
+    try {
+      const after = afterStore.db.prepare("SELECT content_hash AS contentHash, indexed_at AS indexedAt FROM code_files WHERE path = ?").get("src/main.ts");
+      assert.deepEqual(after, before);
+    } finally {
+      afterStore.close();
+    }
+  });
+});
+
 test("build-code-index writes JSON progress and a persisted checkpoint per batch", async () => {
   await withFixture(async (rootDir) => {
     const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--source-only", "--json-progress", "--max-files", "1", "--heartbeat-seconds", "0"], {

@@ -8,10 +8,11 @@ import { hasNodeSqliteSupport, SQLITE_NODE_MIN_VERSION } from "./node-sqlite-run
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 import { collectIndexHealthFromStore, evaluateIndexHealthGate } from "./supervibe-index-health.mjs";
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
+import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
-const DEFAULT_INDEX_REPAIR_COMMAND = "node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress";
+const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
 
 export async function createAdaptPlan({
   projectRoot = process.cwd(),

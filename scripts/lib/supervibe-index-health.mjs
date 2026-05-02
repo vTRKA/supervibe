@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { discoverSourceFiles, GENERATED_DIRS } from './supervibe-index-policy.mjs';
+import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './supervibe-command-catalog.mjs';
 
 const DEFAULT_COVERAGE_THRESHOLD = 0.9;
 function isGeneratedSourcePath(filePath = '') {
@@ -262,9 +263,9 @@ export function evaluateIndexHealthGate(health = {}, {
     sourceCoverage,
     failedGates,
     warnings,
-    repairCommand: 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress',
-    bm25RepairCommand: 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress',
-    graphRepairCommand: 'node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --max-seconds 120 --health --json-progress',
+    repairCommand: SOURCE_RAG_INDEX_COMMAND,
+    bm25RepairCommand: SOURCE_RAG_INDEX_COMMAND,
+    graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
   };
 }
 
@@ -280,9 +281,9 @@ export function formatIndexHealthGate(gate = {}) {
     `SOURCE_COVERAGE: ${coverage}`,
     `FAILED: ${failed}`,
     `WARNINGS: ${warnings}`,
-    `REPAIR: ${gate.repairCommand || 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress'}`,
-    `BM25_REPAIR: ${gate.bm25RepairCommand || 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress'}`,
-    `GRAPH_REPAIR: ${gate.graphRepairCommand || 'node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --max-seconds 120 --health --json-progress'}`,
+    `REPAIR: ${gate.repairCommand || SOURCE_RAG_INDEX_COMMAND}`,
+    `BM25_REPAIR: ${gate.bm25RepairCommand || SOURCE_RAG_INDEX_COMMAND}`,
+    `GRAPH_REPAIR: ${gate.graphRepairCommand || CODEGRAPH_INDEX_COMMAND}`,
   ].join('\n');
 }
 
