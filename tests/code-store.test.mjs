@@ -207,6 +207,28 @@ test('CodeStore.getGrammarHealth: reports per-language coverage', () => {
   }
 });
 
+test('CodeStore.getGrammarHealth: explains zero-symbol language degradation', async () => {
+  const root = join(tmpdir(), `supervibe-code-store-grammar-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const degraded = new CodeStore(root, { useEmbeddings: false });
+  try {
+    await mkdir(join(root, "tools"), { recursive: true });
+    await writeFile(join(root, "tools", "evaluate.py"), "def evaluate():\n    return 1\n");
+    await degraded.init();
+    degraded.db.prepare(`
+      INSERT INTO code_files (path, language, content_hash, line_count, indexed_at, graph_version)
+      VALUES (?, ?, ?, ?, datetime('now'), ?)
+    `).run("tools/evaluate.py", "python", "hash", 2, CODE_GRAPH_EXTRACTOR_VERSION);
+
+    const health = degraded.getGrammarHealth();
+    const python = health.find((item) => item.language === "python");
+    assert.equal(python.healthy, false);
+    assert.match(python.reason, /zero symbols extracted/);
+  } finally {
+    degraded.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('CodeStore.removeFile: cascades symbols + edges', async () => {
   // Re-index to ensure symbols exist, then remove
   await store.indexFile(join(sandbox, 'src', 'billing.ts'));

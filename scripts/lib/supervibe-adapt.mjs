@@ -37,6 +37,9 @@ export async function createAdaptPlan({
     baselineHash: baseline.artifacts?.[artifact.projectRel]?.hash || null,
   }));
   const counts = countPlanItems(items);
+  const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
+  const baselineVersionDrift = Boolean(currentVersion && baseline.pluginVersion !== currentVersion);
+  const metadataUpdateRequired = versionDrift || baselineVersionDrift;
 
   return {
     kind: "adapt-plan",
@@ -50,6 +53,9 @@ export async function createAdaptPlan({
     currentVersion,
     lastSeenVersion,
     baselineVersion: baseline.pluginVersion || null,
+    versionDrift,
+    baselineVersionDrift,
+    metadataUpdateRequired,
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update"),
     counts,
@@ -83,7 +89,9 @@ export async function applyAdaptPlan(plan, {
     applied.push(item);
   }
 
-  if (applied.length > 0 && plan.currentVersion) {
+  const metadataOnlyUpdate = plan.counts.update === 0 && plan.metadataUpdateRequired;
+  const metadataUpdated = Boolean(plan.currentVersion && (applied.length > 0 || metadataOnlyUpdate));
+  if (metadataUpdated) {
     await writeBaseline(plan, applied);
     await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
   }
@@ -105,6 +113,7 @@ export async function applyAdaptPlan(plan, {
     applied,
     skipped,
     blocked,
+    metadataUpdated,
     postApply: {
       updates: postApplyPlan.counts.update,
       identical: postApplyPlan.counts.identical,
@@ -121,6 +130,8 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     "SUPERVIBE_ADAPT_DRY_RUN",
     `HOST: ${plan.host.adapterId}`,
     `VERSION: ${plan.lastSeenVersion || "none"} -> ${plan.currentVersion || "unknown"}`,
+    `VERSION_DRIFT: ${plan.versionDrift ? "true" : "false"}`,
+    `METADATA_UPDATE_REQUIRED: ${plan.metadataUpdateRequired ? "true" : "false"}`,
     `ARTIFACTS: ${plan.items.length}`,
     `UPDATES: ${plan.counts.update}`,
     `IDENTICAL: ${plan.counts.identical}`,
@@ -139,6 +150,8 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   if (plan.approvalRequired) {
     const candidates = plan.items.filter((item) => item.action === "update").map((item) => item.projectRel).join(",");
     lines.push(`NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${candidates}"`);
+  } else if (plan.metadataUpdateRequired) {
+    lines.push("NEXT_APPLY_METADATA: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply");
   }
   return lines.join("\n");
 }
@@ -151,18 +164,19 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `APPLIED: ${result.applied.length}`,
     `SKIPPED: ${result.skipped.length}`,
     `BLOCKED: ${result.blocked.length}`,
+    `METADATA_UPDATED: ${result.metadataUpdated ? "true" : "false"}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
   for (const item of result.skipped) lines.push(`SKIPPED_FILE: ${item.projectRel}`);
   for (const item of result.blocked) lines.push(`BLOCKED_FILE: ${item.projectRel} - ${item.reason}`);
-  if (result.applied.length > 0) {
+  if (result.metadataUpdated) {
     lines.push("VERSION_MARKER: updated");
   }
   lines.push(`MEMORY_INDEX: ${result.memoryIndex?.status || "unknown"}`);
-  lines.push(`ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
+  lines.push(`ARTIFACT_ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
   lines.push(`POST_APPLY_UPDATES: ${result.postApply?.updates ?? "unknown"}`);
-  lines.push(`INDEX_REPAIR_NEEDED: ${result.indexGate?.ready === false ? "true" : "false"}`);
+  lines.push(`CODE_INDEX_READY: ${result.indexGate?.ready === true ? "true" : "false"}`);
   if (result.indexGate?.ready === false) {
     lines.push(`INDEX_REASON: ${result.indexGate.reason || result.indexGate.failed || "unknown"}`);
     lines.push(`NEXT_INDEX_REPAIR: ${result.indexGate.repairCommand || DEFAULT_INDEX_REPAIR_COMMAND}`);

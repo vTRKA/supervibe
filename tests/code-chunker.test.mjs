@@ -77,3 +77,13 @@ class Foo:
     assert.ok(c.text.trim().length > 0);
   }
 });
+
+test('chunkCode: observes shouldStop before expensive tokenization work', async () => {
+  await assert.rejects(
+    () => chunkCode('pub fn blocked_fixture() {}\n', 'foo.rs', {
+      shouldStop: () => true,
+      tokenMode: 'approximate',
+    }),
+    /chunking aborted/,
+  );
+});

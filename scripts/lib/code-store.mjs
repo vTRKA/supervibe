@@ -5,6 +5,7 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import { hashFile } from './file-hash.mjs';
 import { chunkCode, detectLanguage } from './code-chunker.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
@@ -13,6 +14,8 @@ import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedS
 import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
+const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 150_000;
+const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
 
 const EXTENSION_RESOLUTION = {
   typescript: ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'],
@@ -37,6 +40,11 @@ async function loadEmbeddingHelpers() {
 
 function normalizeRelPath(path) {
   return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function positiveInt(value, fallback) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? Math.trunc(num) : fallback;
 }
 
 function resolveImportSource(importSource, fromRelPath, language, fileSet) {
@@ -292,6 +300,63 @@ async function maybeTestPhaseHook(phase) {
   }
 }
 
+function fileTimeoutError({ phase, relPath, timeoutMs }) {
+  const error = new Error(`${phase} timed out after ${timeoutMs}ms for ${relPath}`);
+  error.code = 'SUPERVIBE_INDEX_FILE_TIMEOUT';
+  error.phase = phase;
+  error.relPath = relPath;
+  return error;
+}
+
+async function chunkCodeInWorker(code, absPath, { options, timeoutMs, relPath } = {}) {
+  return await new Promise((resolveWorker, rejectWorker) => {
+    const worker = new Worker(new URL('./code-chunk-worker.mjs', import.meta.url), {
+      workerData: { code, filePath: absPath, options },
+    });
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      worker.terminate().catch(() => {});
+      rejectWorker(fileTimeoutError({ phase: 'chunking', relPath, timeoutMs }));
+    }, timeoutMs);
+
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+
+    worker.once('message', (message) => {
+      if (message?.ok) {
+        finish(resolveWorker, message.chunks || []);
+        return;
+      }
+      const err = new Error(message?.error?.message || 'chunk worker failed');
+      err.name = message?.error?.name || 'Error';
+      err.code = message?.error?.code || 'SUPERVIBE_INDEX_CHUNK_WORKER_FAILED';
+      err.phase = 'chunking';
+      err.relPath = relPath;
+      if (message?.error?.stack) err.stack = message.error.stack;
+      finish(rejectWorker, err);
+    });
+    worker.once('error', (error) => {
+      error.phase ||= 'chunking';
+      error.relPath ||= relPath;
+      finish(rejectWorker, error);
+    });
+    worker.once('exit', (code) => {
+      if (settled || code === 0) return;
+      const error = new Error(`chunk worker exited with code ${code}`);
+      error.code = 'SUPERVIBE_INDEX_CHUNK_WORKER_EXIT';
+      error.phase = 'chunking';
+      error.relPath = relPath;
+      finish(rejectWorker, error);
+    });
+  });
+}
+
 export class CodeStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
@@ -301,6 +366,14 @@ export class CodeStore {
     this.db = null;
     this.useEmbeddings = opts.useEmbeddings !== false;
     this.useGraph = opts.useGraph !== false;
+    this.largeFileCharThreshold = positiveInt(
+      opts.largeFileCharThreshold ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_BYTES,
+      DEFAULT_LARGE_FILE_CHAR_THRESHOLD,
+    );
+    this.chunkTimeoutMs = positiveInt(
+      opts.chunkTimeoutMs ?? process.env.SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS,
+      DEFAULT_CHUNK_TIMEOUT_MS,
+    );
   }
 
   async init() {
@@ -466,8 +539,23 @@ export class CodeStore {
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
 
-    await enter('chunking');
-    const chunks = await chunkCode(content, absPath);
+    const chunkerMode = !this.useEmbeddings || content.length > this.largeFileCharThreshold ? 'approximate' : 'exact';
+    await enter('chunking', { chunkerMode });
+    const chunkOptions = {
+      tokenMode: chunkerMode,
+      largeFileCharThreshold: this.largeFileCharThreshold,
+      shouldStop,
+    };
+    const chunks = content.length > this.largeFileCharThreshold
+      ? await chunkCodeInWorker(content, absPath, {
+          options: {
+            tokenMode: chunkerMode,
+            largeFileCharThreshold: this.largeFileCharThreshold,
+          },
+          timeoutMs: this.chunkTimeoutMs,
+          relPath,
+        })
+      : await chunkCode(content, absPath, chunkOptions);
     const lines = content.split('\n').length;
 
     await enter('db-write');
@@ -888,7 +976,10 @@ export class CodeStore {
       files: r.files,
       filesWithSymbols: r.files_with_symbols,
       healthy: r.files === 0 || r.files_with_symbols > 0,
-      coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files
+      coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files,
+      reason: r.files > 0 && r.files_with_symbols === 0
+        ? `zero symbols extracted for ${r.files} indexed ${r.lang} file(s)`
+        : 'symbols extracted',
     }));
   }
 

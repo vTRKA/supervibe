@@ -156,6 +156,7 @@ function createProgressLogger({
     path: '',
     selectionFile: null,
     activeIndexFile: null,
+    chunkerMode: null,
     completed: 0,
   };
   let lastLoggedFile = 0;
@@ -186,6 +187,7 @@ function createProgressLogger({
       elapsedSeconds: Number(elapsedSeconds.toFixed(3)),
       etaSeconds: rate > 0 && remaining !== null ? Number((remaining / rate).toFixed(3)) : null,
       maxSeconds: maxSeconds || null,
+      chunkerMode: state.chunkerMode || null,
       lastPersistedCheckpoint,
     };
   };
@@ -230,6 +232,7 @@ function createProgressLogger({
       if (phase === 'file-start') {
         state.activeIndexFile = path || state.activeIndexFile;
         state.completed = Math.max(0, Number(event.current || 1) - 1);
+        state.chunkerMode = null;
       }
       if (['reading', 'hashing', 'chunking', 'db-write', 'embeddings', 'fts-write', 'graph-extraction'].includes(phase)) {
         state.activeIndexFile = path || state.activeIndexFile;
@@ -578,6 +581,9 @@ async function main() {
   const heartbeatSeconds = nonNegativeInt(values['heartbeat-seconds'] || process.env.SUPERVIBE_INDEX_HEARTBEAT_SECONDS, DEFAULT_HEARTBEAT_SECONDS);
   const maxFiles = nonNegativeInt(values['max-files'], 0);
   const maxSeconds = positiveNumber(values['max-seconds'] || process.env.SUPERVIBE_INDEX_MAX_SECONDS, 0);
+  const chunkTimeoutMs = process.env.SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS
+    ? undefined
+    : (maxSeconds > 0 ? Math.max(100, Math.floor(maxSeconds * 1000 * 0.8)) : undefined);
   const graphEnabled = sourceOnly ? false : (values['no-graph'] ? false : (noEmbeddings && !values.graph ? false : true));
   const repairFilter = buildRepairFilter({
     language: values.language,
@@ -626,6 +632,26 @@ async function main() {
     }
     if (inventory.excluded.length > 50) console.log(`  ... ${inventory.excluded.length - 50} more`);
     progress.stop();
+    return;
+  }
+
+  if (values['list-missing']) {
+    const diagnosticStore = new CodeStore(rootDir, {
+      useEmbeddings: false,
+      useGraph: graphEnabled,
+    });
+    try {
+      await diagnosticStore.init();
+      const report = await collectMissingOrStaleFiles(diagnosticStore, rootDir, {
+        includeGraph: graphEnabled,
+        filter: repairFilter,
+        onProgress: null,
+      });
+      console.log(formatMissingList(report, { maxFiles: maxFiles || DEFAULT_LIST_MISSING_LIMIT }));
+    } finally {
+      diagnosticStore.close();
+      progress.stop();
+    }
     return;
   }
 
@@ -686,6 +712,7 @@ async function main() {
     store = new CodeStore(rootDir, {
       useEmbeddings: !noEmbeddings,
       useGraph: graphEnabled,
+      chunkTimeoutMs,
     });
     try {
       await store.init();
@@ -695,18 +722,8 @@ async function main() {
       console.log(`Code DB recovery: ${recovery.recovered ? 'recovered' : 'not-needed'}`);
       if (recovery.backupPath) console.log(`  Backup: ${recovery.backupPath}`);
       if (recovery.rebuildCommand) console.log(`  Rebuild: ${recovery.rebuildCommand}`);
-      store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings, useGraph: graphEnabled });
+      store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings, useGraph: graphEnabled, chunkTimeoutMs });
       await store.init();
-    }
-
-    if (values['list-missing']) {
-      const report = await collectMissingOrStaleFiles(store, rootDir, {
-        includeGraph: graphEnabled,
-        filter: repairFilter,
-        onProgress: progress.onProgress,
-      });
-      console.log(formatMissingList(report, { maxFiles: maxFiles || DEFAULT_LIST_MISSING_LIMIT }));
-      return;
     }
 
     let filesToIndex = null;

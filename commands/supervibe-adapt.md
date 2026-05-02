@@ -49,11 +49,11 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
    ```
 
-6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version.
+6. **Update metadata.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version and write `baseline.pluginVersion`. If the dry-run reports `UPDATES: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
-8. **Separate adapt from index health.** A clean adapt can still leave code index health red. Treat `ADAPT_CLEAN: true` as the artifact-sync result and `INDEX_REPAIR_NEEDED: true` as a separate follow-up. When index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling the adapt incomplete.
+8. **Separate adapt from index health.** A clean adapt can still leave code index health red. Treat `ARTIFACT_ADAPT_CLEAN: true` as the artifact-sync result and `CODE_INDEX_READY: false` as a separate follow-up. When index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling the adapt incomplete.
 
 ## Output contract
 

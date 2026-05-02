@@ -29,12 +29,25 @@ async function getTokenizer() {
   return _tokenizer;
 }
 
+function tokenOperationAbortedError() {
+  const error = new Error('token counting aborted');
+  error.code = 'SUPERVIBE_TOKEN_COUNT_ABORTED';
+  return error;
+}
+
+function throwIfTokenOperationAborted({ signal = null, shouldStop = null } = {}) {
+  if (signal?.aborted || shouldStop?.()) throw tokenOperationAbortedError();
+}
+
 /**
  * Count actual tokens (e5 tokenizer).
  */
-export async function countTokens(text) {
+export async function countTokens(text, opts = {}) {
+  throwIfTokenOperationAborted(opts);
   const tok = await getTokenizer();
+  throwIfTokenOperationAborted(opts);
   const encoded = tok.encode(text);
+  throwIfTokenOperationAborted(opts);
   // encode() returns array of ids; -2 for [CLS]/[SEP] special tokens
   return Math.max(0, encoded.length - 2);
 }
@@ -59,12 +72,14 @@ export async function countTokens(text) {
  * @param {number} [opts.overlapTokens=32] - Overlap between consecutive chunks
  * @returns {Promise<string[]>} - Array of chunk strings
  */
-export async function chunkText(text, { targetTokens = 200, overlapTokens = 32 } = {}) {
+export async function chunkText(text, { targetTokens = 200, overlapTokens = 32, signal = null, shouldStop = null } = {}) {
   if (!text || typeof text !== 'string') return [];
+  throwIfTokenOperationAborted({ signal, shouldStop });
   const tok = await getTokenizer();
+  throwIfTokenOperationAborted({ signal, shouldStop });
 
   // Quick path: if whole text fits, return as single chunk
-  const totalTokens = await countTokens(text);
+  const totalTokens = await countTokens(text, { signal, shouldStop });
   if (totalTokens <= targetTokens) return [text.trim()];
 
   // Split into paragraphs first (preserve structure)
@@ -83,20 +98,24 @@ export async function chunkText(text, { targetTokens = 200, overlapTokens = 32 }
   };
 
   for (const paragraph of paragraphs) {
-    const pTokens = await countTokens(paragraph);
+    throwIfTokenOperationAborted({ signal, shouldStop });
+    const pTokens = await countTokens(paragraph, { signal, shouldStop });
 
     // Case 1: single paragraph exceeds target → split by sentences
     if (pTokens > targetTokens) {
       flushChunk();
       const sentences = paragraph.match(/[^.!?\n]+[.!?]+(?:\s|$)|[^.!?\n]+$/g) || [paragraph];
       for (const sentence of sentences) {
-        const sTokens = await countTokens(sentence);
+        throwIfTokenOperationAborted({ signal, shouldStop });
+        const sTokens = await countTokens(sentence, { signal, shouldStop });
 
         // Case 1a: single sentence still > target → hard token-split (rare)
         if (sTokens > targetTokens) {
           flushChunk();
+          throwIfTokenOperationAborted({ signal, shouldStop });
           const ids = tok.encode(sentence);
           for (let i = 0; i < ids.length; i += targetTokens - overlapTokens) {
+            throwIfTokenOperationAborted({ signal, shouldStop });
             const slice = ids.slice(i, i + targetTokens);
             const decoded = tok.decode(slice, { skip_special_tokens: true });
             chunks.push(decoded.trim());
@@ -128,6 +147,7 @@ export async function chunkText(text, { targetTokens = 200, overlapTokens = 32 }
   if (overlapTokens > 0 && chunks.length > 1) {
     const withOverlap = [chunks[0]];
     for (let i = 1; i < chunks.length; i++) {
+      throwIfTokenOperationAborted({ signal, shouldStop });
       const prevIds = tok.encode(chunks[i - 1]);
       const overlap = prevIds.slice(Math.max(0, prevIds.length - overlapTokens - 2), prevIds.length - 1);
       const overlapText = tok.decode(overlap, { skip_special_tokens: true });

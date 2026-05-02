@@ -88,6 +88,30 @@ test("build-code-index --list-missing reports policy-eligible gaps without index
   });
 });
 
+test("build-code-index --list-missing is read-only with respect to index locks and checkpoints", async () => {
+  await withFixture(async (rootDir) => {
+    const lockPath = join(rootDir, ".supervibe", "memory", "code-index.lock");
+    const checkpointPath = join(rootDir, ".supervibe", "memory", "code-index-checkpoint.json");
+    await mkdir(join(rootDir, ".supervibe", "memory"), { recursive: true });
+    await writeFile(lockPath, JSON.stringify({
+      pid: process.pid,
+      startedAt: "2026-05-02T00:00:00.000Z",
+      heartbeatAt: new Date().toISOString(),
+      command: "live-test-lock",
+    }), "utf8");
+
+    const result = spawnSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /SUPERVIBE_INDEX_MISSING/);
+    assert.equal(existsSync(lockPath), true, "diagnostic listing must not remove or replace a live writer lock");
+    assert.equal(existsSync(checkpointPath), false, "diagnostic listing must not leave an unfinished repair checkpoint");
+  });
+});
+
 test("build-code-index --source-only indexes BM25 chunks without graph work", async () => {
   await withFixture(async (rootDir) => {
     execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--source-only", "--heartbeat-seconds", "0"], {
@@ -107,6 +131,39 @@ test("build-code-index --source-only indexes BM25 chunks without graph work", as
       store.close();
     }
   });
+});
+
+test("build-code-index --source-only reports approximate chunking for repair-safe source indexing", async () => {
+  const rootDir = join(tmpdir(), `supervibe-code-index-source-only-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  try {
+    await mkdir(join(rootDir, "src-tauri", "src", "commands"), { recursive: true });
+    await writeFile(join(rootDir, "src-tauri", "src", "commands", "chat.rs"), [
+      "pub fn chat_fixture() {",
+      "  let mut value = 0;",
+      "  value += 1;",
+      "}",
+      "",
+    ].join("\n"), "utf8");
+
+    const out = execFileSync(process.execPath, [
+      scriptPath,
+      "--root", rootDir,
+      "--source-only",
+      "--debug-file", "src-tauri/src/commands/chat.rs",
+      "--trace-phases",
+      "--json-progress",
+      "--heartbeat-seconds", "0",
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.match(out, /"phase":"chunking"/);
+    assert.match(out, /"chunkerMode":"approximate"/);
+    assert.doesNotMatch(out, /SUPERVIBE_INDEX_BOUNDED_TIMEOUT/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("build-code-index --resume skips already indexed unchanged files", async () => {

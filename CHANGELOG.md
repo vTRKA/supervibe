@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.37] - 2026-05-02
+
+### Fixed
+
+- Fixed `supervibe-adapt --apply` so metadata-only version drift updates
+  `.supervibe-version` and `baseline.pluginVersion` even when all artifacts are
+  already identical.
+- Fixed `supervibe-adapt --help` to print CLI usage instead of running a dry-run.
+- Fixed source-only Code RAG repair for large source files by using approximate
+  line/block chunking, worker-thread chunk timeouts, and failed-file reporting.
+- Fixed `build-code-index --list-missing` so read-only diagnostics do not take
+  the exclusive index lock or leave repair checkpoints.
+
+### Changed
+
+- `supervibe-adapt` now reports `VERSION_DRIFT`,
+  `METADATA_UPDATE_REQUIRED`, `ARTIFACT_ADAPT_CLEAN`, and `CODE_INDEX_READY`
+  to separate artifact sync state from code index health.
+- Status output now includes graph extractor degradation details such as
+  zero-symbol coverage and query/grammar diagnostic reasons.
+
 ## [2.0.36] - 2026-05-02
 
 ### Added

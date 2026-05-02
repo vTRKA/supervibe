@@ -110,6 +110,62 @@ export async function compileQueryWithFallback(lang, primaryText, fallbackTexts 
   };
 }
 
+export async function diagnoseGraphExtractor(lang, {
+  queryText = null,
+  fallbackTexts = null,
+} = {}) {
+  if (!lang) {
+    return {
+      ok: false,
+      degraded: false,
+      reasonCode: 'missing-language',
+      reason: 'missing language',
+    };
+  }
+
+  try {
+    await getLanguage(lang);
+  } catch (error) {
+    return {
+      ok: false,
+      degraded: false,
+      reasonCode: 'grammar-load-failed',
+      reason: `grammar load failed: ${error.message}`,
+    };
+  }
+
+  const text = queryText ?? loadQueryText(lang);
+  if (!text) {
+    return {
+      ok: false,
+      degraded: false,
+      reasonCode: 'query-missing',
+      reason: `query file missing for ${queryKeyForLang(lang)}`,
+    };
+  }
+
+  const compiled = await compileQueryWithFallback(
+    lang,
+    text,
+    fallbackTexts ?? QUERY_FALLBACKS[queryKeyForLang(lang)] ?? QUERY_FALLBACKS[lang] ?? [],
+  );
+  if (!compiled.query) {
+    return {
+      ok: false,
+      degraded: true,
+      reasonCode: 'query-compile-failed',
+      reason: `query compile failed: ${compiled.reason}`,
+    };
+  }
+
+  return {
+    ok: true,
+    degraded: compiled.degraded,
+    reasonCode: compiled.degraded ? 'query-fallback' : 'ready',
+    reason: compiled.reason,
+  };
+}
+
 async function getCompiledQuery(lang) {
   const key = queryKeyForLang(lang);
   if (_queryObjectCache.has(key)) return _queryObjectCache.get(key);

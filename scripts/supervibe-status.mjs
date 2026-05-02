@@ -44,6 +44,7 @@ import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from '.
 import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-config.mjs';
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 import { CODEGRAPH_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './lib/supervibe-command-catalog.mjs';
+import { diagnoseGraphExtractor } from './lib/code-graph.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -443,6 +444,11 @@ async function main() {
       console.log(color('  Language coverage: graph not built in current source-readiness index', 'dim'));
     } else if (broken.length > 0) {
       console.log(color(`! Graph extraction degraded for: ${broken.map(b => b.language).join(', ')}`, 'yellow'));
+      for (const item of broken) {
+        const diagnostic = await diagnoseGraphExtractor(item.language);
+        const detail = item.reason || 'unknown symbol coverage issue';
+        console.log(color(`  Graph detail: ${item.language}: ${detail}; extractor=${diagnostic.reasonCode} (${diagnostic.reason})`, 'yellow'));
+      }
       console.log(color('  Files indexed; source RAG remains available. Check grammars/queries/<lang>.scm for graph repair.', 'dim'));
     } else if (health.length > 0) {
       console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
