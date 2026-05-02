@@ -36,7 +36,8 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
   - Components: `frontend/components/` (FSD layers)
   - Tests: `frontend/__tests__/`
 - **Prototypes**: `.supervibe/artifacts/prototypes/`
-  - **Brandbook (source of truth)**: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`
+  - **Brandbook direction**: `.supervibe/artifacts/brandbook/`
+  - **Design system source of truth**: `.supervibe/artifacts/prototypes/_design-system/`
 - **Docs**: `docs/`
   - ADRs: `.supervibe/artifacts/adr/`
   - PRDs: `.supervibe/artifacts/prd/`
@@ -119,7 +120,7 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
 
 **Brand reset / new product:**
 1. `supervibe:_design:creative-director` → direction
-2. `supervibe:_design:prototype-builder` → materialize via `supervibe:brandbook` skill in `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`
+2. `supervibe:_design:prototype-builder` → materialize via `supervibe:brandbook` skill in `.supervibe/artifacts/prototypes/_design-system/`
 3. `supervibe:_design:copywriter` + `supervibe:_design:accessibility-reviewer` review
 4. User approval → brandbook becomes source-of-truth for all subsequent `supervibe:prototype` invocations
 

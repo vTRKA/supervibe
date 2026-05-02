@@ -20,7 +20,7 @@ Every interactive step asks one question at a time using `Step N/M` or `Шаг N
 
 `/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the prototype feedback gate or an explicit blocker. Intermediate stage and section approvals are recorded as delegated design decisions when the recommended/default path is clear; they are not chat-level hard stops.
 
-Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after typography, palette, spacing, storyboard, first screen, first review, or any other intermediate phase if the next stage can be completed with the current brief and safe defaults.
+Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Intake Gate has not captured a user preference for a new/rebrand design run, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after typography, palette, spacing, storyboard, first screen, first review, or any other intermediate phase if the next stage can be completed with the current brief and safe defaults.
 
 ## Design Readiness Contract
 
@@ -95,6 +95,7 @@ Run a product-fit style matrix before committing to a visual direction: product 
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
 4. **Design system lifecycle is explicit.** Start with candidate tokens for visual proof, then finalize tokens only after visual approval. Every visual decision references the current candidate/final system instead of inventing one-off values.
 4a. **Design system is project-level, not per-mockup.** Build it once at `.supervibe/artifacts/prototypes/_design-system/`, then reuse it for every future mockup. New work may extend the system through an explicit extension request; it must not rebuild palette/type/components from scratch unless the user asked for a rebrand.
+4b. **Preference intake before tokens.** A new product, new visual direction, or rebrand MUST ask at least one explicit user preference question before brand direction or candidate tokens are written. Save the answer to `.supervibe/artifacts/brandbook/preferences.json`; delegated approval markers cannot satisfy this gate.
 5. **Explicit lifecycle.** draft → review → revisions → **approved** → handoff. The plugin tracks state in `.approval.json` artifacts; it knows when something is ready for backend/frontend integration.
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
@@ -163,7 +164,7 @@ Read `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`
 **Шаг 0c/N: Triage.** Then determine:
 - Is this a marketing landing page → uses `supervibe:landing-page` skill
 - Is this an in-product flow → uses `supervibe:prototype` skill
-- Does brand direction exist (`.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md`) → if yes reuse it by default and skip Stage 1
+- Does brand direction exist (`.supervibe/artifacts/brandbook/direction.md`) → if yes reuse it by default and skip Stage 1
 - Does design system exist (`.supervibe/artifacts/prototypes/_design-system/manifest.json` with `status: candidate`, `approved`, or final token metadata) → if yes enter **system-reuse mode** and skip the full Stage 2 dialogue
 - Does the brief require a token/component not present in the existing system → create a narrow extension request instead of rebuilding the system
 - For non-web targets dispatch the corresponding specialist designer (`extension-ui-designer` / `electron-ui-designer` / `tauri-ui-designer` / `mobile-ui-designer`) instead of `ux-ui-designer` for spec/review.
@@ -198,6 +199,14 @@ node id, variables export, component library, or Code Connect metadata:
    action type, and timebox. If writeback is unavailable, write
    `figma-source/manual-patch.md` instead.
 
+**Stage 0f — Preference Intake Gate (required before brand direction or design-system writes).**
+
+For a new product, new visual direction, or rebrand, ask one explicit preference question before writing `.supervibe/artifacts/brandbook/direction.md`, `.supervibe/artifacts/prototypes/_design-system/tokens.css`, or any delegated section marker.
+
+Use the Standard Question Template and start with the highest-impact preference, for example: visual direction/tone, audience trust level, density, reference brands to borrow from or avoid, or component feel. Do not create candidate tokens until the answer is saved to `.supervibe/artifacts/brandbook/preferences.json`, or until the user explicitly says they have no preference and wants safe defaults. The saved file must include the prompt, answer, chosen default if any, source (`user` or `explicit-default`), and timestamp.
+
+If the brief already states clear preferences, persist them to `.supervibe/artifacts/brandbook/preferences.json` and ask one confirmation or priority question before writing brand direction or candidate tokens. Existing approved design systems can skip this gate unless the request changes direction, audience, brand personality, or target surface.
+
 ### Stage 1 — Brand direction (conditional)
 
 If brand direction missing OR brief asks for "new brand / rebrand":
@@ -206,7 +215,7 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 2. If brief named a competitor reference, invoke `supervibe:mcp-discovery` for `web-crawl` (Firecrawl) and scrape that reference.
 3. Dispatch `creative-director` agent.
 4. Run the **Taste Alignment Gate** before any screen work: document audience, product personality, reference set, what to borrow, what to avoid, and how the selected direction differs from older prototypes in this project.
-5. Output: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords, old-prototype differentiation notes. Score against `brandbook` rubric ≥9.
+5. Output: `.supervibe/artifacts/brandbook/direction.md` — mood-board (with per-image rationale), 3 candidate directions narrowed to 1, palette intent, type intent, motion intent, voice keywords, old-prototype differentiation notes. Score against `brandbook` rubric ≥9.
 6. **Feedback gate** — present direction to user. Options:
    - ✅ approve direction → continue Stage 2
    - 🔀 alternative → creative-director generates 2 alternatives with documented tradeoffs (not random regen)
@@ -217,6 +226,7 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 
 If design system missing OR Stage 1 just produced a new direction OR the user explicitly asked for rebrand:
 
+0. Verify `.supervibe/artifacts/brandbook/preferences.json` exists for new/rebrand runs. Do not create candidate tokens, `manifest.json`, or delegated approval markers until the Preference Intake Gate is satisfied.
 1. Invoke `supervibe:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
 2. Each sub-section is a separate decision record (one question at a time only when clarification is actually needed, markdown with "Шаг N/8" progress).
 3. Each sub-section writes a completion/approval marker before the next section; when the user has not asked to review every section manually, use delegated approval markers with rationale in `.supervibe/artifacts/prototypes/_design-system/.approvals/<section>.json` and continue.
@@ -287,7 +297,7 @@ Output: `.supervibe/artifacts/prototypes/<slug>/index.html` + supporting files. 
 
 ### Stage 7 — Feedback loop (MANDATORY — DO NOT SKIP)
 
-After delivery, ALWAYS print this exact prompt:
+After delivery, ALWAYS print this exact prompt. The chat-level feedback prompt is canonical; the browser feedback overlay is supplemental and never replaces this approval/refine/alternative/stop choice:
 
 ```markdown
 **Прототип готов**
@@ -367,7 +377,7 @@ When user explicitly says "утвердить" / "approve" / "✅":
 ```
 === Supervibe Design ===
 Brief:        <one-line>
-Brand:        .supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
+Brand:        .supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
 System:       .supervibe/artifacts/prototypes/_design-system/manifest.json (candidate | approved/final)
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md

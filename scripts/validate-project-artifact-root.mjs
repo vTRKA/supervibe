@@ -45,6 +45,8 @@ const FORBIDDEN = Object.freeze([
   { label: "brandbook/", pattern: /(^|[^A-Za-z0-9_.\\/-])brandbook\//, canonical: ".supervibe/artifacts/brandbook/" },
 ]);
 
+const NESTED_SUPERVIBE_ARTIFACT_ROOT = /(^|[^A-Za-z0-9_.\\/-])\.supervibe[\\/]artifacts[\\/][^`"')\s]+[\\/]_?\.supervibe[\\/]artifacts[\\/][^`"')\s]+/i;
+
 function trackedTextFiles(rootDir = process.cwd()) {
   const output = execFileSync("git", ["ls-files"], { cwd: rootDir, encoding: "utf8" });
   return output
@@ -62,6 +64,16 @@ export function validateProjectArtifactRoot(rootDir = process.cwd(), files = tra
     const text = readFileSync(join(rootDir, file), "utf8").replace(/\r\n/g, "\n");
     const lines = text.split("\n");
     lines.forEach((line, index) => {
+      if (NESTED_SUPERVIBE_ARTIFACT_ROOT.test(line)) {
+        issues.push({
+          file,
+          line: index + 1,
+          code: "nested-supervibe-artifact-root",
+          legacy: "nested .supervibe/artifacts",
+          canonical: ".supervibe/artifacts/<kind>/",
+          message: `${file}:${index + 1} nests .supervibe/artifacts inside another artifact path; use one canonical artifact root`,
+        });
+      }
       for (const rule of FORBIDDEN) {
         if (!rule.pattern.test(line)) continue;
         if (line.includes(rule.canonical)) continue;

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.49] - 2026-05-02
+
+### Added
+
+- Added a design preference intake regression gate so `/supervibe-design` asks
+  for explicit user preference before writing brand direction or candidate
+  tokens.
+- Added project artifact-root validation for nested `.supervibe/artifacts`
+  paths.
+
+### Changed
+
+- Clarified that the chat feedback prompt is the canonical design feedback gate;
+  browser preview feedback remains supplemental for region comments.
+- Moved brand direction references to `.supervibe/artifacts/brandbook/` while
+  keeping tokens and components in `.supervibe/artifacts/prototypes/_design-system/`.
+
 ## [2.0.48] - 2026-05-02
 
 ### Added

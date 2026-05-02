@@ -336,7 +336,7 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 - Component library: `frontend/src/components/`, `packages/ui/`, Storybook entry points
 - Mockups / prototypes: `.supervibe/artifacts/mockups/`, `.supervibe/artifacts/prototypes/`, Figma file references in the active host instruction file
 - Design system: `.supervibe/artifacts/prototypes/_design-system/` — tokens, component specs, motion, accessibility
-- Brandbook: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/` — direction, voice, moodboards, positioning
+- Brandbook: `.supervibe/artifacts/brandbook/` — direction, voice, moodboards, positioning
 - IA reference: `docs/ia/`, sitemap files, or route manifests
 - Past design decisions: `.supervibe/memory/design/` — prior screen specs and rationale
 

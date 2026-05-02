@@ -41,13 +41,13 @@ Plus landing-specific:
 6. **SEO scaffolding from day one.** `<title>`, meta description, Open Graph, Twitter card, canonical, structured-data JSON-LD — all present from the first commit, not added later.
 7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
-9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old .supervibe/artifacts/prototypes/.supervibe/artifacts/mockups/presentations exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
+9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifacts exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
 10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`.
 
 ## Step 0 — Read source of truth (required)
 
 1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
-2. **Brand direction check** — `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
+2. **Brand direction check** — `.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
 3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
 4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
 5. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.

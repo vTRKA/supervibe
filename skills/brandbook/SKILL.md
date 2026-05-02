@@ -33,7 +33,7 @@ This skill replaces "vibes-based" brand work with a contract: tokens are explici
 
 NOT for:
 - Tweaking one button color in an approved system → that's a system-extension dialogue (this skill, brief mode)
-- Marketing direction without operational tokens → that's `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` (separate moodboard artifact)
+- Marketing direction without operational tokens → that's `.supervibe/artifacts/brandbook/direction.md` (separate moodboard artifact)
 
 ## Hard constraints
 
@@ -46,7 +46,7 @@ NOT for:
 
 ## Continuation Contract
 
-Full-pass mode continues through all eight sections in one run when the user invoked .supervibe/artifacts/brandbook/design-system creation and the brief gives enough context. Do not stop after palette, typography, spacing, motion, voice, the first component, accessibility, or manifest setup unless a real blocker appears.
+Full-pass mode continues through all eight sections in one run when the user invoked `.supervibe/artifacts/prototypes/_design-system/` creation and the brief gives enough context. Do not stop after palette, typography, spacing, motion, voice, the first component, accessibility, or manifest setup unless a real blocker appears.
 
 Use delegated approval markers for intermediate sections when the recommended/default choice is clear. A delegated marker must record the rationale, source evidence, and what the user can revise later in `.supervibe/artifacts/prototypes/_design-system/.approvals/<section>.json`. Ask the user only for decisions that are ambiguous, risky, legally/licensing-sensitive, destructive to an existing approved system, or explicitly requested for manual review.
 
@@ -54,13 +54,19 @@ Only the visual approval/finalize step is a chat-level gate in the normal flow. 
 
 ## Step 0 — Read source of truth (required)
 
-1. Read `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` if exists (creative-director's moodboard + intent doc).
+1. Read `.supervibe/artifacts/brandbook/direction.md` if exists (creative-director's moodboard + intent doc).
 2. Read `.supervibe/artifacts/prototypes/_design-system/` if exists — discover what's already approved vs what needs work.
    - If `manifest.json.status === "candidate"` or `"approved"`, enter **reuse/extension mode** by default.
    - In reuse/extension mode, print a short system summary and ask only about the missing token/component/asset capability needed for the current brief.
    - Full rebuild is allowed only when the user says rebrand, major reset, or explicitly approves replacing the system.
 3. Read `supervibe:project-memory --query brand` for prior brand decisions, retired directions, locked constraints.
 4. Read user's brief / requirements doc if pointed at one.
+
+**Step 0b — Preference Intake Gate.**
+
+Before writing candidate tokens, `manifest.json`, or delegated section markers for a new product, new visual direction, or rebrand, ask at least one explicit user preference question. Save the answer to `.supervibe/artifacts/brandbook/preferences.json` with prompt, answer, source, timestamp, and the design decision it unlocks.
+
+This gate cannot be satisfied by delegated approval markers. If the user already gave clear preferences in the brief, persist those as source=`user` and ask one confirmation or priority question before writing candidate tokens. If the user explicitly says "no preference" or "use defaults", persist source=`explicit-default`, name the default, and continue.
 
 **Step 0a — Determine target baseline.**
 

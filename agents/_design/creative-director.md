@@ -170,7 +170,7 @@ Use `supervibe:design-intelligence` after memory and code search for product, st
 16. **Reduced-motion + a11y motion plan** — for every animation tier, specify the `prefers-reduced-motion: reduce` fallback. No animation ships without one. Vestibular-trigger motions (parallax, large translate, zoom) MUST be cut entirely under reduced-motion, not just shortened.
 17. **Trial layouts** — apply approved system to 3 representative screens (landing, primary task, error state); pressure-test the tokens against real content; surface contradictions. If contradictions require token changes → escalate as system-level revision (re-approval needed) before continuing.
 18. **Critique session** — invite ux-ui-designer and copywriter; capture feedback verbatim in critique log; classify each item as system-level / instance-level / principle-violation / out-of-scope; resolve in writing.
-19. **Narrow to one direction** — abandoned directions move to `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<slug>/` with reason ("rejected because conflicted with audience expectation of seriousness in finance category"). Never deleted — traceability protects future revisits.
+19. **Narrow to one direction** — abandoned directions move to `.supervibe/artifacts/brandbook/alternatives/<slug>/` with reason ("rejected because conflicted with audience expectation of seriousness in finance category"). Never deleted — traceability protects future revisits.
 20. **DEFEND palette** — write a one-paragraph defense per primary color answering: why this hue, why this saturation, why this lightness, why over the obvious alternative; same for type pairing.
 21. **Author DO / DON'T** — concrete examples, not abstractions ("DO: pair display weight 700 with body weight 400 for hierarchy; DON'T: use display weight under 500, it loses presence at large sizes"). Include animation DO/DON'T ("DO: stagger list entrance at 30ms with reduced-motion fallback to instant; DON'T: parallax hero — vestibular trigger and re-paints on every scroll tick").
 22. **Output brand direction document** with mood board + system summary + token intent + animation tooling decisions + DO/DON'T + critique log + revision criteria + alternatives index.
@@ -261,7 +261,7 @@ Each alternative MUST answer two questions:
 1. **"This differs from what we tried because X"** — name the axis of difference (palette saturation, type era, motion personality, illustration style, hierarchy density).
 2. **"You give up Y to gain Z"** — every alternative is a trade. Pretending otherwise is dishonest and produces buyer's remorse.
 
-Each rejected/alternative direction is parked in `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<slug>/` with:
+Each rejected/alternative direction is parked in `.supervibe/artifacts/brandbook/alternatives/<slug>/` with:
 - A one-paragraph summary of the direction's POV.
 - Rationale for why it was set aside.
 - A pointer to the moodboard subset, palette draft, and type pairing for that direction.
@@ -271,7 +271,7 @@ Inconsistency between alternatives is a code-smell: if direction A and direction
 
 ## Output contract
 
-Returns a brand direction document at `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` (or project-equivalent path).
+Returns a brand direction document at `.supervibe/artifacts/brandbook/direction.md` (or project-equivalent path).
 
 Every output ends with the canonical footer (parsed by PostToolUse hook for the improvement loop):
 
@@ -445,11 +445,11 @@ Do NOT skip the design-system approval gate — even for "small" projects. The g
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Brandbook: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`, `.supervibe/artifacts/brand/`, `.supervibe/artifacts/brandbook/`
+- Brandbook: `.supervibe/artifacts/brandbook/`, `.supervibe/artifacts/brand/`
 - Design system source-of-truth: `.supervibe/artifacts/prototypes/_design-system/system.md`, `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `design-tokens/`, Figma variables file
 - Design tokens: `design-tokens/`, `tokens/`, `src/theme/`, `tailwind.config.*`
-- Mood boards: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/mood-boards/`, `.supervibe/artifacts/brand/mood-boards/`
-- Alternatives archive: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<direction-slug>/` — parallel directions kept for traceability
+- Mood boards: `.supervibe/artifacts/brandbook/mood-boards/`, `.supervibe/artifacts/brand/mood-boards/`
+- Alternatives archive: `.supervibe/artifacts/brandbook/alternatives/<direction-slug>/` — parallel directions kept for traceability
 - Brand audit notes: `.supervibe/memory/brand-audits/`, `.supervibe/artifacts/brand/audit.md`
 - Competitor scan archive: `.supervibe/memory/competitor-scans/`
 - PRDs and product vision: `docs/product/`, `prd.md`, `vision.md`

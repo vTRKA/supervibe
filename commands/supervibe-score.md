@@ -32,7 +32,7 @@ Inferred from path conventions:
 - `skills/**/SKILL.md` → `skill-quality`
 - `rules/*.md` → `rule-quality`
 - `.supervibe/artifacts/prototypes/<slug>/*.html` → `prototype`
-- `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/*` → `brandbook`
+- `.supervibe/artifacts/brandbook/*` → `brandbook`
 - `.supervibe/memory/<category>/*.md` → `memory-entry`
 
 If type cannot be inferred → ask user with the valid types listed.

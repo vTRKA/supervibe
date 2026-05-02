@@ -14,6 +14,9 @@ const RULES = Object.freeze([
       /Critique Gate/i,
       /one source of truth/i,
       /product model/i,
+      /Preference Intake Gate/i,
+      /Do not create candidate tokens/i,
+      /chat-level feedback prompt is canonical/i,
     ],
     forbidden: [
       /Design system is source of truth\. Approved FIRST, before any prototype/i,
@@ -28,6 +31,8 @@ const RULES = Object.freeze([
       /final tokens/i,
       /visual approval/i,
       /finalize/i,
+      /Preference Intake Gate/i,
+      /at least one explicit user preference question/i,
     ],
     forbidden: [
       /user approves the system FIRST, before any pixel of UI is built/i,

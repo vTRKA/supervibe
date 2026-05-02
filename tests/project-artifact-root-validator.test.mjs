@@ -23,6 +23,23 @@ test("project artifact root validator rejects legacy project-root artifact paths
   assert.ok(result.issues.some((issue) => issue.legacy === "prototypes/"));
 });
 
+test("project artifact root validator rejects nested .supervibe artifact roots", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-root-"));
+  const file = "commands/example.md";
+  const absPath = join(root, ...file.split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(
+    absPath,
+    "Write brand direction to .supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md\n",
+    "utf8",
+  );
+
+  const result = validateProjectArtifactRoot(root, [file]);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => issue.code === "nested-supervibe-artifact-root"));
+});
+
 test("current instruction surfaces keep Supervibe artifacts under .supervibe", () => {
   const result = validateProjectArtifactRoot(process.cwd());
 
