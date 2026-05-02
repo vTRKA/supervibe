@@ -66,6 +66,8 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "version-mismatch"));
   assert.ok(audit.issues.some((issue) => issue.code === "manifest-path-escapes-package"));
   assert.ok(audit.issues.some((issue) => issue.code === "missing-command-doc"));
+  assert.ok(audit.issues.some((issue) => issue.code === "terminal-bin-root-missing"));
+  assert.ok(audit.issues.some((issue) => issue.code === "unix-bin-link-not-wired"));
   assert.ok(audit.issues.some((issue) => issue.code === "codex-unsupported-manifest-field"));
   assert.ok(audit.issues.some((issue) => issue.code === "install-mirror-clean-missing"));
   assert.ok(audit.issues.some((issue) => issue.code === "upgrade-mirror-clean-missing"));

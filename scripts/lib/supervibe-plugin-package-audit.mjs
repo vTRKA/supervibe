@@ -57,6 +57,7 @@ export function auditPluginPackageData(data = {}) {
 
   validateMarketplace(data.marketplace, packageVersion, issues);
   validateCommandDocs(data, issues);
+  validateTerminalCommandSurface(data, issues);
   validatePublicDocs(data, packageVersion, issues);
   validateInstallUpdateSmoke(data.scripts || {}, issues);
   validateNoTrackedLocalDevFiles(data.trackedFiles || [], issues);
@@ -98,6 +99,8 @@ async function loadPluginPackageData(root) {
     changelog: await readOptional(join(root, "CHANGELOG.md")),
     registryYaml: await readOptional(join(root, "registry.yaml")),
     commandFiles,
+    terminalDispatcher: await readOptional(join(root, "bin", "supervibe.mjs")),
+    unixBinLinksScript: await readOptional(join(root, "scripts", "install-unix-bin-links.mjs")),
     pathExists: await collectPathStatus(root, manifests),
     trackedFiles: await collectTrackedFiles(root),
     scripts: {
@@ -239,6 +242,76 @@ function validateCommandDocs(data, issues) {
     const normalized = normalizeManifestPath(manifest.commands);
     if (normalized !== "commands") {
       addIssue(issues, "command-path-drift", `${name} command path is ${manifest.commands}`, `Set ${name} commands path to ./commands.`);
+    }
+  }
+}
+
+function validateTerminalCommandSurface(data, issues) {
+  const bin = data.packageJson?.bin || {};
+  const publicAliases = (data.commandFiles || [])
+    .filter((file) => file.endsWith(".md") && file.startsWith("supervibe"))
+    .map((file) => file.replace(/\.md$/, ""))
+    .sort();
+
+  if (bin.supervibe !== "bin/supervibe.mjs") {
+    addIssue(
+      issues,
+      "terminal-bin-root-missing",
+      "package.json must expose the root supervibe terminal command",
+      "Set package.json bin.supervibe to bin/supervibe.mjs."
+    );
+  }
+
+  const missing = publicAliases.filter((alias) => bin[alias] !== "bin/supervibe.mjs");
+  if (missing.length > 0) {
+    addIssue(
+      issues,
+      "terminal-bin-command-missing",
+      `package.json bin is missing ${missing.length} public command alias(es): ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`,
+      "Add every commands/supervibe*.md alias to package.json bin and point it at bin/supervibe.mjs."
+    );
+  }
+
+  for (const [name, pathRef] of Object.entries(bin)) {
+    if (pathEscapesPackage(pathRef)) {
+      addIssue(
+        issues,
+        "terminal-bin-path-escapes-package",
+        `package.json bin ${name} escapes package: ${pathRef}`,
+        "Keep terminal bin targets inside the plugin package."
+      );
+    }
+  }
+
+  if (!/^#!\/usr\/bin\/env node/m.test(data.terminalDispatcher || "")) {
+    addIssue(
+      issues,
+      "terminal-dispatcher-missing",
+      "bin/supervibe.mjs is missing or lacks a node shebang",
+      "Restore bin/supervibe.mjs with a portable /usr/bin/env node shebang."
+    );
+  }
+  if (!/SUPERVIBE_UNIX_BIN_LINKS/.test(data.unixBinLinksScript || "")) {
+    addIssue(
+      issues,
+      "unix-bin-link-installer-missing",
+      "scripts/install-unix-bin-links.mjs is missing the Unix terminal command link installer",
+      "Restore scripts/install-unix-bin-links.mjs so install.sh/update.sh can link macOS/Linux commands."
+    );
+  }
+
+  for (const [label, source] of Object.entries({
+    "install.sh": data.scripts?.installSh,
+    "update.sh": data.scripts?.updateSh,
+    "scripts/supervibe-upgrade.mjs": data.scripts?.upgradeMjs,
+  })) {
+    if (!/install-unix-bin-links\.mjs/.test(source || "")) {
+      addIssue(
+        issues,
+        "unix-bin-link-not-wired",
+        `${label} does not refresh macOS/Linux terminal command links`,
+        "Run scripts/install-unix-bin-links.mjs from install/update/upgrade paths."
+      );
     }
   }
 }

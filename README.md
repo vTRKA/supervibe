@@ -81,7 +81,7 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | b
 irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 ```
 
-The installer auto-detects every supported AI CLI on your machine and registers the plugin. Re-running it is a clean managed reinstall: user-owned tracked local edits stop the install, installer-managed `package-lock.json` and ONNX model drift are restored automatically, and stale untracked/ignored files from older plugin versions are removed before dependencies and generated registries are rebuilt.
+The installer auto-detects every supported AI CLI on your machine and registers the plugin. On macOS/Linux it also links terminal aliases such as `supervibe`, `supervibe-adapt`, `supervibe-status`, and `supervibe-doctor` into `${SUPERVIBE_BIN_DIR:-$HOME/.local/bin}`; if that directory is not on `PATH`, the installer prints the exact `export PATH=...` line to add. Re-running it is a clean managed reinstall: user-owned tracked local edits stop the install, installer-managed `package-lock.json` and ONNX model drift are restored automatically, and stale untracked/ignored files from older plugin versions are removed before dependencies and generated registries are rebuilt.
 
 **Claude Code (auto-detect):**
 ```bash
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.41 initialized for this project
+[supervibe] welcome  plugin v2.0.42 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -177,9 +177,9 @@ cd ~/.claude/plugins/marketplaces/supervibe-marketplace
 npm run supervibe:upgrade
 ```
 
-All three do the same thing: refuse user-owned tracked edits in the plugin checkout, self-heal installer-managed `package-lock.json` and ONNX model drift, clean stale untracked/ignored files, then `git pull --ff-only` with LFS smudge disabled + required ONNX model setup + `npm ci` + rebuild generated `registry.yaml` + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+All three do the same thing: refuse user-owned tracked edits in the plugin checkout, self-heal installer-managed `package-lock.json` and ONNX model drift, clean stale untracked/ignored files, then `git pull --ff-only` with LFS smudge disabled + required ONNX model setup + `npm ci` + rebuild generated `registry.yaml` + refresh macOS/Linux terminal aliases + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
 
-`/supervibe-adapt` is a slash command inside your AI CLI session, not a terminal command. Do not type `/supervibe-adapt` in zsh, bash, or PowerShell; open the target project in Claude Code, Codex, Gemini, Cursor, or OpenCode and send it in the AI chat/session.
+Slash commands keep their leading `/` and run inside your AI CLI session. Do not type `/supervibe-adapt` in zsh, bash, or PowerShell; open the target project in Claude Code, Codex, Gemini, Cursor, or OpenCode and send it in the AI chat/session. On macOS/Linux the installer also provides no-slash terminal aliases for CLI-backed operations, for example `supervibe-adapt --dry-run --project .` and `supervibe-status --index-health`. AI-only workflow aliases such as `supervibe-brainstorm` print deterministic guidance instead of failing with `command not found`.
 
 ### Refresh an already-scaffolded project
 

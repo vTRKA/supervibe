@@ -122,6 +122,19 @@ test('Codex installer registration includes native skills for Zed ACP sessions',
   assert.match(ps1, /Join-Path \$HOME '\.agents\\skills'/, 'PowerShell installer must link native skills for Codex/Zed ACP');
 });
 
+test('macOS/Linux installer and updater refresh terminal command shims', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const updateSh = readFileSync(UPD_SH, 'utf8');
+  const upgradeMjs = readFileSync(join(ROOT, 'scripts', 'supervibe-upgrade.mjs'), 'utf8');
+  const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+
+  assert.equal(packageJson.bin['supervibe-adapt'], 'bin/supervibe.mjs');
+  assert.match(sh, /install-unix-bin-links\.mjs/, 'bash installer must link terminal shims');
+  assert.match(updateSh, /install-unix-bin-links\.mjs/, 'bash updater must refresh terminal shims');
+  assert.match(upgradeMjs, /install-unix-bin-links\.mjs/, 'canonical upgrader must refresh terminal shims on Unix');
+  assert.match(sh, /\.local\/bin/, 'bash installer must use a user-writable Unix bin dir');
+});
+
 test('installers require Node 22.5+ and offer consent-based bootstrap before registration', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
@@ -178,6 +191,7 @@ test('dead-code lint is stable in installed checkouts', () => {
   const prePushHook = readFileSync(join(ROOT, '.husky', 'pre-push'), 'utf8');
 
   assert.match(packageJson.scripts['lint:dead-code'], /--no-config-hints/, 'install check must not fail or warn on Knip config hints');
+  assert.ok(knip.entry.includes('bin/*.mjs'), 'Knip must treat shipped terminal dispatchers as entrypoints');
   assert.ok(knip.entry.includes('scripts/*.mjs'), 'Knip must treat shipped CLI scripts as entrypoints');
   assert.ok(knip.entry.includes('scripts/hooks/*.mjs'), 'Knip must treat Claude hook scripts as entrypoints');
   assert.ok(knip.entry.includes('.husky/*'), 'Knip must see Husky hook entrypoints');

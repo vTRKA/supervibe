@@ -379,6 +379,21 @@ say "running npm run registry:build"
 
 ok "install preparation passed"
 
+ensure_unix_bin_links() {
+  say "linking macOS/Linux terminal commands (log: $LOG_DIR/unix-bin-links.log)"
+  if ( cd "$TARGET" && node scripts/install-unix-bin-links.mjs --plugin-root "$TARGET" >"$LOG_DIR/unix-bin-links.log" 2>&1 ); then
+    ok "terminal commands linked (supervibe, supervibe-adapt, supervibe-status, ...)"
+    if grep -q 'PATH_READY: false' "$LOG_DIR/unix-bin-links.log"; then
+      warn "terminal commands were linked under ${SUPERVIBE_BIN_DIR:-$HOME/.local/bin}, but that directory is not on PATH yet. Add: export PATH=\"${SUPERVIBE_BIN_DIR:-$HOME/.local/bin}:\$PATH\""
+    fi
+  else
+    warn "terminal command linking needs attention; slash commands still work in the AI CLI"
+    tail -n 80 "$LOG_DIR/unix-bin-links.log" >&2 || true
+  fi
+}
+
+ensure_unix_bin_links
+
 # Capture installed version (env-var approach avoids quote injection in path)
 INSTALLED_VERSION=$(SUPERVIBE_TARGET="$TARGET" node -e \
   'console.log(require(process.env.SUPERVIBE_TARGET + "/.claude-plugin/plugin.json").version)')
@@ -594,6 +609,7 @@ ${C_GREEN}=================================================================${C_R
   Location:    $TARGET
   CLIs wired:  ${CLIS_FOUND[*]}
   Runtime:     Node $(node --version) with node:sqlite
+  Terminal:    ${SUPERVIBE_BIN_DIR:-$HOME/.local/bin}/supervibe-adapt (macOS/Linux, no leading slash)
   Install audit: .supervibe/audits/install-lifecycle/latest.json
 
   Next steps:

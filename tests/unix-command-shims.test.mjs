@@ -1,0 +1,86 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import test from "node:test";
+
+const ROOT = process.cwd();
+const execFileAsync = promisify(execFile);
+
+test("terminal dispatcher runs CLI-backed Supervibe commands from macOS/Linux bin aliases", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    join(ROOT, "bin", "supervibe.mjs"),
+    "supervibe-adapt",
+    "--help",
+  ], { cwd: ROOT });
+
+  assert.match(stdout, /Supervibe adapt/);
+  assert.match(stdout, /--dry-run/);
+});
+
+test("terminal dispatcher gives AI-only slash commands a deterministic fallback", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    join(ROOT, "bin", "supervibe.mjs"),
+    "supervibe-brainstorm",
+    "--help",
+  ], { cwd: ROOT });
+
+  assert.match(stdout, /SUPERVIBE_TERMINAL_COMMAND/);
+  assert.match(stdout, /COMMAND: supervibe-brainstorm/);
+  assert.match(stdout, /SLASH_COMMAND: \/supervibe-brainstorm/);
+  assert.match(stdout, /AI_CLI_ONLY: true/);
+});
+
+test("terminal dispatcher does not execute mutating commands for --help", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    join(ROOT, "bin", "supervibe.mjs"),
+    "supervibe-update",
+    "--help",
+  ], { cwd: ROOT });
+
+  assert.match(stdout, /SUPERVIBE_TERMINAL_COMMAND/);
+  assert.match(stdout, /COMMAND: supervibe-update/);
+  assert.match(stdout, /RUNNABLE: true/);
+  assert.match(stdout, /HELP_FORWARDED: false/);
+  assert.doesNotMatch(stdout, /git fetch|npm ci|supervibe:upgrade/);
+});
+
+test("every macOS/Linux terminal alias has a non-destructive help path", async () => {
+  const packageJson = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const aliases = Object.keys(packageJson.bin).filter((alias) => alias !== "supervibe").sort();
+
+  assert.equal(aliases.length, 18);
+  for (const alias of aliases) {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "bin", "supervibe.mjs"),
+      alias,
+      "--help",
+    ], { cwd: ROOT, maxBuffer: 2 * 1024 * 1024 });
+    assert.match(stdout, /SUPERVIBE_|Supervibe|Usage:/, alias);
+  }
+});
+
+test("unix bin link installer dry-run covers every package bin alias", async () => {
+  const binDir = await mkdtemp(join(tmpdir(), "supervibe-bin-"));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "install-unix-bin-links.mjs"),
+      "--plugin-root",
+      ROOT,
+      "--bin-dir",
+      binDir,
+      "--dry-run",
+      "--json",
+    ], { cwd: ROOT });
+    const report = JSON.parse(stdout);
+    const packageJson = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+
+    assert.equal(report.pass, true);
+    assert.equal(report.total, Object.keys(packageJson.bin).length);
+    assert.ok(report.links.some((link) => link.name === "supervibe-adapt" && link.status === "create"));
+  } finally {
+    await rm(binDir, { recursive: true, force: true });
+  }
+});

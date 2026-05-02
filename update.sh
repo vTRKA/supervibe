@@ -235,5 +235,12 @@ say "running npm run supervibe:upgrade (does fetch + pull --ff-only + mirror cle
 ( cd "$PLUGIN_ROOT" && npm run supervibe:upgrade ) || die "upgrade failed; see output above."
 verify_checkout_integrity
 
+say "refreshing macOS/Linux terminal commands"
+if ( cd "$PLUGIN_ROOT" && node scripts/install-unix-bin-links.mjs --plugin-root "$PLUGIN_ROOT" ); then
+  ok "terminal commands refreshed (supervibe, supervibe-adapt, supervibe-status, ...)"
+else
+  warn "terminal command refresh needs attention; slash commands still work in the AI CLI"
+fi
+
 ok "done. Restart your AI CLI to pick up the new plugin code."
 ok "if any project has selected host adapter overrides, open that project in your AI CLI session and send /supervibe-adapt there (not in zsh/bash)."

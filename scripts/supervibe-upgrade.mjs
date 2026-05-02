@@ -182,6 +182,13 @@ if (!run('npm', ['ci', '--no-audit', '--no-fund'])) fail('npm ci failed');
 console.log('[supervibe:upgrade] npm run registry:build ...');
 if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
 
+if (process.platform !== 'win32') {
+  console.log('[supervibe:upgrade] refreshing macOS/Linux terminal commands ...');
+  if (!run('node', ['scripts/install-unix-bin-links.mjs', '--plugin-root', PLUGIN_ROOT])) {
+    fail('terminal command link refresh failed - run npm run supervibe:install-bins for details.');
+  }
+}
+
 console.log('[supervibe:upgrade] npm run supervibe:install-doctor ...');
 if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');
 

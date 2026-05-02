@@ -6,7 +6,7 @@ description: "Sync project-level host artifacts to upstream plugin changes or us
 
 Pull upstream improvements from the installed plugin into the selected host adapter without losing local customizations. This is the project-artifact refresh path after plugin updates; users should not delete generated agents/rules/skills manually.
 
-This is an AI CLI slash command, not an operating-system shell command. Run it inside the Claude Code, Codex, Gemini, Cursor, or OpenCode session for the target project; do not type `/supervibe-adapt` in zsh, bash, or PowerShell.
+The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode session for the target project; do not type `/supervibe-adapt` in zsh, bash, or PowerShell. On macOS/Linux installs, the no-slash terminal alias `supervibe-adapt` is also linked for direct CLI dry-runs and approved applies.
 
 ## When to invoke
 

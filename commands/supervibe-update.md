@@ -16,7 +16,7 @@ Update the installed Supervibe plugin to the latest commit. Wraps `npm run super
 
 Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.
 
-Both are slash commands inside an AI CLI session, not terminal shell commands. Use the one-line `curl`/PowerShell updater in zsh, bash, or PowerShell; send `/supervibe-update` and `/supervibe-adapt` inside the AI chat/session.
+Both are slash commands inside an AI CLI session. Use the one-line `curl`/PowerShell updater in zsh, bash, or PowerShell; send `/supervibe-update` and `/supervibe-adapt` inside the AI chat/session. On macOS/Linux installs, no-slash terminal aliases such as `supervibe-update` and `supervibe-adapt` are also linked for users who prefer terminal workflows.
 
 ## Invocation forms
 

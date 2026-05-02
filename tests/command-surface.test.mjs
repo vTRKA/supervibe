@@ -67,6 +67,19 @@ test("published command surface contains only user-facing commands", async () =>
   assert.deepStrictEqual(new Set(files), PUBLIC_COMMANDS);
 });
 
+test("every published slash command has a macOS/Linux terminal bin alias", async () => {
+  const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const bin = pkg.bin || {};
+  const commandAliases = [...PUBLIC_COMMANDS].map((file) => file.replace(/\.md$/, ""));
+  const missing = commandAliases.filter((alias) => !bin[alias]);
+
+  assert.deepStrictEqual(missing, []);
+  assert.equal(bin.supervibe, "bin/supervibe.mjs");
+  for (const alias of commandAliases) {
+    assert.equal(bin[alias], "bin/supervibe.mjs", alias);
+  }
+});
+
 test("documented npm scripts exist in package.json", async () => {
   const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   const scripts = new Set(Object.keys(pkg.scripts));

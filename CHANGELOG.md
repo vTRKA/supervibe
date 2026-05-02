@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.42] - 2026-05-02
+
+### Added
+
+- Added macOS/Linux terminal aliases for every published Supervibe command via
+  `package.json#bin` and the `bin/supervibe.mjs` dispatcher.
+- Added installer/updater wiring that links `supervibe`, `supervibe-adapt`,
+  `supervibe-status`, and the rest of the public command surface into a
+  user-writable Unix bin directory.
+
+### Fixed
+
+- Prevented `/supervibe-*` shell confusion by providing no-slash terminal
+  shims: CLI-backed commands run directly, while AI-only workflow commands
+  print deterministic guidance instead of failing with `command not found`.
+- Made mutating aliases such as `supervibe-update --help` non-destructive.
+
 ## [2.0.41] - 2026-05-02
 
 ### Added

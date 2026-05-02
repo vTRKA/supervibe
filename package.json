@@ -1,11 +1,32 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.41",
+  "version": "2.0.42",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.5.0"
+  },
+  "bin": {
+    "supervibe": "bin/supervibe.mjs",
+    "supervibe-adapt": "bin/supervibe.mjs",
+    "supervibe-audit": "bin/supervibe.mjs",
+    "supervibe-brainstorm": "bin/supervibe.mjs",
+    "supervibe-design": "bin/supervibe.mjs",
+    "supervibe-doctor": "bin/supervibe.mjs",
+    "supervibe-execute-plan": "bin/supervibe.mjs",
+    "supervibe-gc": "bin/supervibe.mjs",
+    "supervibe-genesis": "bin/supervibe.mjs",
+    "supervibe-loop": "bin/supervibe.mjs",
+    "supervibe-plan": "bin/supervibe.mjs",
+    "supervibe-presentation": "bin/supervibe.mjs",
+    "supervibe-preview": "bin/supervibe.mjs",
+    "supervibe-score": "bin/supervibe.mjs",
+    "supervibe-security-audit": "bin/supervibe.mjs",
+    "supervibe-status": "bin/supervibe.mjs",
+    "supervibe-strengthen": "bin/supervibe.mjs",
+    "supervibe-ui": "bin/supervibe.mjs",
+    "supervibe-update": "bin/supervibe.mjs"
   },
   "overrides": {
     "onnxruntime-node": "1.25.1"
@@ -28,6 +49,7 @@
     "supervibe:upgrade": "node scripts/supervibe-upgrade.mjs",
     "supervibe:auto-update": "node scripts/supervibe-auto-update.mjs",
     "supervibe:install-health": "node scripts/supervibe-auto-update.mjs --dry-run --health",
+    "supervibe:install-bins": "node scripts/install-unix-bin-links.mjs",
     "ensure:onnx-model": "node scripts/ensure-onnx-model.mjs",
     "supervibe:install-doctor": "node scripts/supervibe-install-doctor.mjs",
     "supervibe:upgrade-check": "node scripts/supervibe-upgrade-check.mjs",
