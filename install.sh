@@ -14,7 +14,7 @@
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
 #   2. Clones the Supervibe repo (LFS smudge disabled so clone cannot hang)
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
-#   4. Cleans stale files from the managed checkout before reinstalling
+#   4. Restores known installer-managed drift and cleans stale files before reinstalling
 #   5. Downloads the required ONNX embedding model before registration
 #   6. Runs npm ci + registry build + install lifecycle audit
 #   7. Registers the plugin in every detected CLI:
@@ -35,6 +35,7 @@ EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="supervibe-marketplace"
 MIN_NODE_VERSION="22.5.0"
+INSTALLER_MANAGED_MODEL_PATH="models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx"
 LOG_DIR="${TMPDIR:-/tmp}/supervibe-install.$$"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
@@ -118,25 +119,39 @@ ensure_required_onnx_model() {
   ok "required ONNX embedding model is ready"
 }
 
+restore_installer_managed_tracked_edits() {
+  local root="$1"
+  local status="$2"
+  local line path
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case "$line" in "?? "*) continue ;; esac
+    path="${line#???}"
+    case "$path" in *" -> "*) path="${path##* -> }" ;; esac
+    case "$path" in
+      "package-lock.json"|"$INSTALLER_MANAGED_MODEL_PATH")
+        warn "restoring installer-managed tracked artifact: $path"
+        git_no_lfs_smudge -C "$root" checkout -- "$path" >/dev/null 2>>"$LOG_DIR/restore-managed-artifacts.log" || {
+          cat "$LOG_DIR/restore-managed-artifacts.log" >&2
+          die "failed to restore installer-managed tracked artifact: $path"
+        }
+        ;;
+    esac
+  done <<EOF
+$status
+EOF
+}
+
 clean_managed_checkout() {
   local root="$1"
   local status tracked_dirty untracked_count
   status=$(git -C "$root" status --porcelain 2>/dev/null || true)
+  restore_installer_managed_tracked_edits "$root" "$status"
+  status=$(git -C "$root" status --porcelain 2>/dev/null || true)
   tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
-  if [ -n "$tracked_dirty" ] \
-    && [ "$(printf '%s\n' "$tracked_dirty" | wc -l | tr -d ' ')" = "1" ] \
-    && printf '%s\n' "$tracked_dirty" | grep -q -E '^[ MARCUD?!]{2} package-lock\.json$'; then
-    warn "restoring package-lock.json drift from previous installer npm install"
-    git -C "$root" checkout -- package-lock.json >/dev/null 2>"$LOG_DIR/restore-package-lock.log" || {
-      cat "$LOG_DIR/restore-package-lock.log" >&2
-      die "failed to restore package-lock.json. Inspect: $root"
-    }
-    status=$(git -C "$root" status --porcelain 2>/dev/null || true)
-    tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
-  fi
   if [ -n "$tracked_dirty" ]; then
     printf '%s\n' "$tracked_dirty" >&2
-    die "tracked local edits in $root; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
+    die "user-owned tracked local edits in $root; commit/stash them before reinstalling. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
   fi
   untracked_count=$(printf '%s\n' "$status" | grep -c -E '^\?\? ' || true)
   if [ "$untracked_count" -gt 0 ]; then

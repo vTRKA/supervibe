@@ -87,7 +87,7 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   assert.match(src, /replace\(\/\^\\uFEFF\//, 'must tolerate existing BOM-prefixed JSON files');
   assert.doesNotMatch(src, /param\(\[string\[\]\]\$Args/, 'must not shadow PowerShell automatic $args variable');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Continue'/, 'must let native stderr warnings pass through log capture');
-  assert.match(src, /restore-package-lock/, 'must self-heal package-lock drift left by older installer runs');
+  assert.match(src, /Restore-InstallerManagedTrackedEdits/, 'must self-heal package-lock/model drift left by older installer runs');
 });
 
 test('install.sh and install.ps1 reference the same marketplace name', () => {
@@ -144,8 +144,31 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
   assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
   assert.match(sh, /npm ci --no-audit --no-fund/, 'bash installer must not dirty package-lock.json');
-  assert.match(sh, /restore-package-lock/, 'bash installer must self-heal package-lock drift left by older installer runs');
+  assert.match(sh, /restore_installer_managed_tracked_edits/, 'bash installer must self-heal package-lock/model drift left by older installer runs');
   assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
+});
+
+test('install and update scripts self-heal installer-managed tracked artifacts before refusing user edits', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+  const updateSh = readFileSync(UPD_SH, 'utf8');
+  const updatePs1 = readFileSync(UPD_PS1, 'utf8');
+
+  for (const [name, src] of [['install.sh', sh], ['update.sh', updateSh]]) {
+    assert.match(src, /INSTALLER_MANAGED_MODEL_PATH/, `${name} must know the managed ONNX path`);
+    assert.match(src, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx/, `${name} must self-heal model drift`);
+    assert.match(src, /restore_installer_managed_tracked_edits/, `${name} must restore managed tracked artifacts before dirty refusal`);
+    assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
+    assert.match(src, /GIT_LFS_SKIP_SMUDGE=1/, `${name} must restore managed artifacts without LFS smudge`);
+  }
+
+  for (const [name, src] of [['install.ps1', ps1], ['update.ps1', updatePs1]]) {
+    assert.match(src, /\$InstallerManagedModelPath/, `${name} must know the managed ONNX path`);
+    assert.match(src, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx/, `${name} must self-heal model drift`);
+    assert.match(src, /Restore-InstallerManagedTrackedEdits/, `${name} must restore managed tracked artifacts before dirty refusal`);
+    assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
+    assert.match(src, /SkipLfsSmudge|Invoke-GitNoLfsSmudge/, `${name} must restore managed artifacts without LFS smudge`);
+  }
 });
 
 test('dead-code lint is stable in installed checkouts', () => {
@@ -253,6 +276,17 @@ test('update.sh has shebang, set -euo pipefail, and bootstraps first install', (
   assert.match(src, /tracked_dirty/, 'must refuse tracked edits specifically');
   assert.match(src, /untracked stale file/, 'must allow stale untracked cleanup through canonical upgrader');
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
+});
+
+test('update scripts explain slash commands run inside the AI CLI, not the terminal shell', () => {
+  const sh = readFileSync(UPD_SH, 'utf8');
+  const ps1 = readFileSync(UPD_PS1, 'utf8');
+
+  for (const [name, src] of [['update.sh', sh], ['update.ps1', ps1]]) {
+    assert.match(src, /AI CLI session/, `${name} must name where slash commands run`);
+    assert.match(src, /not .*terminal shell|not .*zsh|not .*PowerShell/i, `${name} must prevent users from running /supervibe-adapt in the OS shell`);
+    assert.match(src, /\/supervibe-adapt/, `${name} must keep the project refresh command visible`);
+  }
 });
 
 test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {

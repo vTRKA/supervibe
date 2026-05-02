@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
-**v2.0** - MIT - Windows / macOS / Linux - 894 tests
+**v2.0** - MIT - Windows / macOS / Linux - 919 tests
 
 ---
 
@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | b
 irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 ```
 
-The installer auto-detects every supported AI CLI on your machine and registers the plugin. Re-running it is a clean managed reinstall: tracked local edits stop the install, while stale untracked/ignored files from older plugin versions are removed before dependencies and generated registries are rebuilt.
+The installer auto-detects every supported AI CLI on your machine and registers the plugin. Re-running it is a clean managed reinstall: user-owned tracked local edits stop the install, installer-managed `package-lock.json` and ONNX model drift are restored automatically, and stale untracked/ignored files from older plugin versions are removed before dependencies and generated registries are rebuilt.
 
 **Claude Code (auto-detect):**
 ```bash
@@ -118,7 +118,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome — plugin v2.0.28 initialized for this project
+[supervibe] welcome — plugin v2.0.29 initialized for this project
 [supervibe] code RAG ✓ N files / M chunks (fresh)
 [supervibe] code graph ✓ N symbols / M edges (X% resolved)
 ```
@@ -176,7 +176,9 @@ cd ~/.claude/plugins/marketplaces/supervibe-marketplace
 npm run supervibe:upgrade
 ```
 
-All three do the same thing: refuse tracked edits in the plugin checkout, clean stale untracked/ignored files, then `git pull --ff-only` + LFS pull + `npm ci` + rebuild generated `registry.yaml` + run all tests + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+All three do the same thing: refuse user-owned tracked edits in the plugin checkout, self-heal installer-managed `package-lock.json` and ONNX model drift, clean stale untracked/ignored files, then `git pull --ff-only` with LFS smudge disabled + required ONNX model setup + `npm ci` + rebuild generated `registry.yaml` + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+
+`/supervibe-adapt` is a slash command inside your AI CLI session, not a terminal command. Do not type `/supervibe-adapt` in zsh, bash, or PowerShell; open the target project in Claude Code, Codex, Gemini, Cursor, or OpenCode and send it in the AI chat/session.
 
 ### Refresh an already-scaffolded project
 
@@ -428,7 +430,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run supervibe:happy-path -- --plan <plan.md>` | Ralph-style happy path: PRD/plan -> atomize -> execute -> verify -> archive |
 | `npm run supervibe:docs-audit` | User-facing docs relevance audit; flags internal dev files if they drift into `docs/` |
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit: package versions, registry, stale files, and host registration state |
-| `npm run supervibe:upgrade` | clean checkout, git pull, lfs pull, npm ci, rebuild registry, run all tests, run install doctor |
+| `npm run supervibe:upgrade` | clean checkout, git pull, required ONNX model setup, npm ci, rebuild registry, run install doctor |
 | `npm run supervibe:upgrade-check` | Manually query upstream for new commits |
 | `npm run code:index` | Code RAG + graph indexer with heartbeat/progress logging, single-run lock, and optional bounded batches |
 | `npm run code:search -- --query "..."` | Semantic search |

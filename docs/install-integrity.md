@@ -73,7 +73,8 @@ Installers print the checkout path, config areas they will modify, and integrity
 - live-main defaults with optional `SUPERVIBE_REF` tag/commit pinning
 - optional commit verification
 - optional package checksum verification
-- tracked checkout edit refusal for updates and reinstalls
+- user-owned tracked checkout edit refusal for updates and reinstalls
+- installer-managed `package-lock.json` and ONNX model drift are restored before dirty-check failure so required model hydration does not permanently block future updates
 - stale untracked/ignored files are cleaned from the managed plugin checkout before reinstall so removed commands, routes, generated leftovers, or old files cannot stay active
 - install/update asserts the managed checkout is a clean mirror after cleanup, clone, checkout, or `git pull --ff-only`, before runtime files are generated
 - `registry.yaml` is regenerated before the final install lifecycle audit

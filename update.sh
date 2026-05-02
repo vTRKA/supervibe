@@ -7,7 +7,7 @@
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
 #   2. If missing, delegates to install.sh for first-time install
-#   3. Refuses to clobber local edits (uncommitted changes -> stop)
+#   3. Refuses to clobber user-owned local edits; restores known installer-managed drift
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
 #      git fetch -> ff-only pull -> required ONNX model setup -> npm ci ->
 #      registry build -> install lifecycle doctor -> refresh upstream-check cache
@@ -21,6 +21,7 @@ PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
 EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
 EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 MIN_NODE_VERSION="22.5.0"
+INSTALLER_MANAGED_MODEL_PATH="models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx"
 
 if [ -t 1 ]; then
   C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_RED='\033[0;31m'; C_RESET='\033[0m'
@@ -31,6 +32,13 @@ say() { printf '%b[supervibe-update]%b %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
 ok()  { printf '%b[supervibe-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[supervibe-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[supervibe-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
+
+git_no_lfs_smudge() {
+  GIT_LFS_SKIP_SMUDGE=1 git \
+    -c filter.lfs.smudge= \
+    -c filter.lfs.required=false \
+    "$@"
+}
 
 bootstrap_first_install() {
   local install_url="${SUPERVIBE_INSTALL_URL:-}"
@@ -74,6 +82,26 @@ verify_checkout_integrity() {
     [ "$actual_sha" = "$EXPECTED_PACKAGE_SHA256" ] || die "package checksum mismatch: expected $EXPECTED_PACKAGE_SHA256 got $actual_sha"
     ok "package checksum verified: $EXPECTED_PACKAGE_SHA256"
   fi
+}
+
+restore_installer_managed_tracked_edits() {
+  local root="$1"
+  local status="$2"
+  local line path
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case "$line" in "?? "*) continue ;; esac
+    path="${line#???}"
+    case "$path" in *" -> "*) path="${path##* -> }" ;; esac
+    case "$path" in
+      "package-lock.json"|"$INSTALLER_MANAGED_MODEL_PATH")
+        warn "restoring installer-managed tracked artifact: $path"
+        git_no_lfs_smudge -C "$root" checkout -- "$path" || die "failed to restore installer-managed tracked artifact: $path"
+        ;;
+    esac
+  done <<EOF
+$status
+EOF
 }
 
 node_version_ge() {
@@ -183,17 +211,19 @@ ok "found checkout at $PLUGIN_ROOT"
 command -v git  >/dev/null || die "git not found."
 ensure_node_runtime
 command -v npm  >/dev/null || die "npm not found after Node.js setup. Reinstall Node.js $MIN_NODE_VERSION+ and re-run."
-say "plan: will update existing checkout at $PLUGIN_ROOT, preserve tracked local edits, and clean stale untracked files"
+say "plan: will update existing checkout at $PLUGIN_ROOT, preserve user-owned tracked local edits, self-heal installer-managed artifacts, and clean stale untracked files"
 say "plan: integrity pins expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 # ---- safety: refuse to clobber local edits ----
 
 status=$(git -C "$PLUGIN_ROOT" status --porcelain 2>/dev/null || true)
+restore_installer_managed_tracked_edits "$PLUGIN_ROOT" "$status"
+status=$(git -C "$PLUGIN_ROOT" status --porcelain 2>/dev/null || true)
 tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' | head -n 5 || true)
 untracked_count=$(printf '%s\n' "$status" | grep -c -E '^\?\? ' || true)
 if [ -n "$tracked_dirty" ]; then
   echo "$tracked_dirty" >&2
-  die "tracked local edits in $PLUGIN_ROOT; commit or stash before updating. Untracked stale files are cleaned automatically."
+  die "user-owned tracked local edits in $PLUGIN_ROOT; commit or stash before updating. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
 fi
 if [ "$untracked_count" -gt 0 ]; then
   warn "$untracked_count untracked stale file(s) will be removed by npm run supervibe:upgrade"
@@ -206,4 +236,4 @@ say "running npm run supervibe:upgrade (does fetch + pull --ff-only + mirror cle
 verify_checkout_integrity
 
 ok "done. Restart your AI CLI to pick up the new plugin code."
-ok "if any project has selected host adapter overrides, run /supervibe-adapt inside that project."
+ok "if any project has selected host adapter overrides, open that project in your AI CLI session and send /supervibe-adapt there (not in zsh/bash)."

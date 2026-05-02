@@ -6,7 +6,7 @@
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
 #   2. If missing, delegates to install.ps1 for first-time install
-#   3. Refuses to clobber local edits (uncommitted changes stop)
+#   3. Refuses to clobber user-owned local edits; restores known installer-managed drift
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout
 #      (fetch + pull --ff-only + mirror cleanup + required ONNX model setup + install audit)
 #
@@ -21,6 +21,7 @@ $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
 $ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $MinNodeVersion = [version]'22.5.0'
+$InstallerManagedModelPath = 'models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx'
 
 function Say  { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Cyan }
 function Ok   { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Green }
@@ -74,6 +75,42 @@ function Test-CheckoutIntegrity {
     $actualSha = Get-PackageSha256
     if ($actualSha -ne $ExpectedPackageSha256) { Die "package checksum mismatch: expected $ExpectedPackageSha256 got $actualSha" }
     Ok "package checksum verified: $ExpectedPackageSha256"
+  }
+}
+
+function Get-PorcelainPath {
+  param([string]$Line)
+  if ([string]::IsNullOrWhiteSpace($Line) -or $Line.Length -lt 4) { return '' }
+  $path = $Line.Substring(3)
+  $marker = ' -> '
+  $idx = $path.LastIndexOf($marker)
+  if ($idx -ge 0) { $path = $path.Substring($idx + $marker.Length) }
+  return $path.Replace('\', '/')
+}
+
+function Restore-InstallerManagedTrackedEdits {
+  param([string]$Path, [string[]]$Status)
+  $managedPaths = @('package-lock.json', $InstallerManagedModelPath)
+  foreach ($line in $Status) {
+    if (-not $line -or $line.StartsWith('?? ')) { continue }
+    $trackedPath = Get-PorcelainPath $line
+    if ($managedPaths -contains $trackedPath) {
+      Warn "restoring installer-managed tracked artifact: $trackedPath"
+      Invoke-GitNoLfsSmudge @('-C', $Path, 'checkout', '--', $trackedPath)
+      if ($LASTEXITCODE -ne 0) { Die "failed to restore installer-managed tracked artifact: $trackedPath" }
+    }
+  }
+}
+
+function Invoke-GitNoLfsSmudge {
+  param([string[]]$GitArgs)
+  $oldSkip = $env:GIT_LFS_SKIP_SMUDGE
+  try {
+    $env:GIT_LFS_SKIP_SMUDGE = '1'
+    & git -c filter.lfs.smudge= -c filter.lfs.required=false @GitArgs
+  } finally {
+    if ($null -eq $oldSkip) { Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue }
+    else { $env:GIT_LFS_SKIP_SMUDGE = $oldSkip }
   }
 }
 
@@ -160,17 +197,19 @@ Ok "found checkout at $PluginRoot"
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.' }
 Ensure-NodeRuntime
 if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
-Say "plan: will update existing checkout at $PluginRoot, preserve tracked local edits, and clean stale untracked files"
+Say "plan: will update existing checkout at $PluginRoot, preserve user-owned tracked local edits, self-heal installer-managed artifacts, and clean stale untracked files"
 Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 # ---- safety: refuse to clobber local edits ----
 
 $status = @(git -C $PluginRoot status --porcelain 2>$null)
+Restore-InstallerManagedTrackedEdits $PluginRoot $status
+$status = @(git -C $PluginRoot status --porcelain 2>$null)
 $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
 $untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
 if ($trackedDirty.Count -gt 0) {
   $trackedDirty | Write-Host
-  Die "tracked local edits in $PluginRoot; commit or stash before updating. Untracked stale files are cleaned automatically."
+  Die "user-owned tracked local edits in $PluginRoot; commit or stash before updating. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
 }
 if ($untrackedDirty.Count -gt 0) {
   Warn "$($untrackedDirty.Count) untracked stale file(s) will be removed by npm run supervibe:upgrade"
@@ -189,4 +228,4 @@ try {
 Test-CheckoutIntegrity
 
 Ok 'done. Restart your AI CLI to pick up the new plugin code.'
-Ok 'if any project has selected host adapter overrides, run /supervibe-adapt inside that project.'
+Ok 'if any project has selected host adapter overrides, open that project in your AI CLI session and send /supervibe-adapt there (not in PowerShell or another terminal shell).'

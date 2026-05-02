@@ -1,14 +1,13 @@
 ---
 description: >-
-Update the Supervibe plugin: git pull + lfs pull + npm ci + tests +
-  register-refresh. Idempotent. Now with mid-upgrade rollback procedure if tests
-  fail. Идемпотентно. С rollback при сбое тестов на середине upgrade. Triggers:
+Update the Supervibe plugin: git pull + required ONNX model setup + npm ci +
+  registry rebuild + install doctor. Idempotent. Triggers:
   'update plugin', 'обнови плагин', 'supervibe upgrade', '/supervibe-update'.
 ---
 
 # /supervibe-update
 
-Update the installed Supervibe plugin to the latest commit. Wraps `npm run supervibe:upgrade` with explicit rollback procedure if anything fails mid-upgrade.
+Update the installed Supervibe plugin to the latest commit. Wraps `npm run supervibe:upgrade`.
 
 ## Difference from `/supervibe-adapt`
 
@@ -17,11 +16,13 @@ Update the installed Supervibe plugin to the latest commit. Wraps `npm run super
 
 Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.
 
+Both are slash commands inside an AI CLI session, not terminal shell commands. Use the one-line `curl`/PowerShell updater in zsh, bash, or PowerShell; send `/supervibe-update` and `/supervibe-adapt` inside the AI chat/session.
+
 ## Invocation forms
 
 ### `/supervibe-update` — full upgrade
 
-Standard procedure: pull, install, test, refresh cache.
+Standard procedure: pull, install, refresh cache.
 
 ### `/supervibe-update --check` — non-mutating probe
 
@@ -64,27 +65,28 @@ Print: current version, target version, changelog summary between them, breaking
    ```
    This file is the rollback anchor. Cleaned up only on successful upgrade.
 
-3. **Refuse tracked local edits; clean stale leftovers.**
+3. **Refuse user-owned tracked local edits; clean stale leftovers.**
    - Run `git -C <resolved-supervibe-plugin-root> status --porcelain`.
-   - If tracked files are modified, print them and exit. Never auto-discard user edits.
+   - If user-owned tracked files are modified, print them and exit. Never auto-discard user edits.
+   - Installer-managed `package-lock.json` and ONNX model drift are restored first; the required model is rehydrated again after pull.
    - If only untracked/ignored stale files exist, continue. The managed upgrader runs `git clean -ffdx` before reinstalling dependencies so old routes, commands, generated leftovers, and removed files cannot stay active.
 
 4. **Run the upgrade.**
    ```bash
    cd <resolved-supervibe-plugin-root> && npm run supervibe:upgrade
    ```
-This script does: clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` -> `git lfs pull` (if available) -> `npm ci` -> `npm run registry:build` -> `npm run check` -> `npm run supervibe:install-doctor`.
+This script does: self-heal installer-managed tracked artifacts -> clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` with LFS smudge disabled -> required ONNX model setup -> `npm ci` -> `npm run registry:build` -> `npm run supervibe:install-doctor`.
 
-5. **If upgrade fails — automatic rollback:**
+5. **If upgrade fails:**
 
-   The script's `npm run check` exit code or any earlier step's failure triggers rollback:
+   The updater stops at the failing step, preserves the plugin checkout for retry, and prints the failed command output. Use manual rollback only if a partial update must be reverted:
 
    ```bash
    # Rollback procedure (mid-upgrade failure)
    cd <resolved-supervibe-plugin-root>
    git reset --hard $PRE_SHA   # restore source code
 npm ci                       # restore old node_modules from package-lock.json
-   git lfs pull                 # restore LFS state if changed
+   node scripts/ensure-onnx-model.mjs
    ```
 
    Print to user:
@@ -131,15 +133,15 @@ npm ci                       # restore old node_modules from package-lock.json
 | Failure | Recovery action |
 |---|---|
 | Resolved Supervibe plugin root not set | Print installer URL; exit |
-| Tracked local edits in checkout | List dirty tracked files; instruct stash/commit; exit |
+| User-owned tracked local edits in checkout | List dirty tracked files; instruct stash/commit; exit |
+| Installer-managed ONNX/package-lock drift | Restore those paths with LFS smudge disabled, then continue dirty check |
 | Stale untracked files in checkout | Clean automatically with `git clean -ffdx` before reinstall; install doctor fails if any remain |
 | Network failure during `git pull` | Print message; preserve pre-state; exit (no rollback needed — nothing changed yet) |
-| `npm ci` fails | Auto-rollback (step 5) — restore old node_modules from `package-lock.json` |
-| `npm run check` fails (tests, validators, knip) | Auto-rollback; save failure log; suggest `--to <prev-version>` to pin |
+| `npm ci` fails | Stop and print output; rerun after fixing dependency or network issue |
 | ONNX model fetch fails | Stop before declaring success; keep checkout for retry; print Git LFS/HuggingFace recovery hint |
 | Rollback itself fails | Last-resort guidance: `git reflog` to find pre-state SHA; manual `git reset --hard <sha>`; print exact commands |
 
-## Manual rollback (if auto-rollback unreachable)
+## Manual rollback
 
 If a hard machine crash or interrupt happens mid-upgrade:
 
@@ -161,8 +163,6 @@ Successful upgrade:
 Plugin root:    /path/to/marketplace
 Before:         vX.Y.Z
 After:          v2.0.11
-Tests:          773 / 773 passed
-Validators:     10 / 10 clean (+ knip)
 ONNX model:     ready before registration
 
 Rollback anchor: cleaned up (no longer needed)
@@ -181,7 +181,7 @@ Plugin root:    /path/to/marketplace
 Pre-state SHA:  abc1234
 Target:         v2.0.11
 
-❌ Failed at: npm run check (3 tests failed)
+❌ Failed at: npm run supervibe:install-doctor
 Error excerpt: [first 500 chars]
 
 ✓ Rollback executed:
@@ -209,7 +209,7 @@ Breaking changes detected: 2
   - Removed: supervibe:legacy-prompt-quality
   - Schema change: confidence-rubrics gates field
 
-Run `/supervibe-update` to apply (auto-rollback on failure).
+Run `/supervibe-update` to apply.
 ```
 
 ## When NOT to invoke

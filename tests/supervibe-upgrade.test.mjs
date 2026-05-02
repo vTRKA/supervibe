@@ -41,12 +41,16 @@ test("supervibe-upgrade avoids shell true while preserving Windows npm command r
   assert.doesNotMatch(source, /shell:\s*process\.platform === ['"]win32['"]/);
 });
 
-test("supervibe-upgrade self-heals package-lock drift from older installer runs", async () => {
+test("supervibe-upgrade self-heals installer-managed tracked artifacts before refusing user edits", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+  const helper = await readFile("scripts/lib/installer-managed-checkout.mjs", "utf8");
 
-  assert.match(source, /isPackageLockOnlyDrift/);
-  assert.match(source, /restoring package-lock\.json drift/);
-  assert.match(source, /git', \['checkout', '--', 'package-lock\.json'\]/);
+  assert.match(source, /partitionTrackedPorcelainLines/);
+  assert.match(source, /restoreInstallerManagedTrackedEdits/);
+  assert.match(source, /installer-managed tracked artifact/);
+  assert.match(source, /runGitNoLfsSmudge\(\['checkout', '--', path\]\)/);
+  assert.match(helper, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx|MODEL_RELATIVE_PATH/);
+  assert.match(helper, /package-lock\.json/);
 });
 
 test("supervibe-upgrade preserves auto-update lock and state during git clean", async () => {

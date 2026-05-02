@@ -285,6 +285,29 @@ function validateInstallUpdateSmoke(scripts, issues) {
   if (!/git clean -ffdx/.test(scripts.upgradeMjs || "") || !/assertMirrorCheckoutClean/.test(scripts.upgradeMjs || "")) {
     addIssue(issues, "upgrade-mirror-clean-missing", "upgrade script must clean and assert the managed checkout mirror before reinstall", "Run git clean -ffdx, then assert git status is clean after cleanup and pull.");
   }
+  for (const [label, source] of Object.entries({
+    "install.sh": scripts.installSh,
+    "install.ps1": scripts.installPs1,
+    "update.sh": scripts.updateSh,
+    "update.ps1": scripts.updatePs1,
+  })) {
+    if (!/installer-managed tracked artifact/.test(source || "") || !/model_quantized\.onnx/.test(source || "")) {
+      addIssue(
+        issues,
+        "managed-artifact-self-heal-missing",
+        `${label} must self-heal installer-managed ONNX/package-lock drift before refusing user edits`,
+        "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
+      );
+    }
+  }
+  if (!/installer-managed tracked artifact/.test(scripts.upgradeMjs || "") || !/partitionTrackedPorcelainLines/.test(scripts.upgradeMjs || "")) {
+    addIssue(
+      issues,
+      "managed-artifact-self-heal-missing",
+      "scripts/supervibe-upgrade.mjs must self-heal installer-managed ONNX/package-lock drift before refusing user edits",
+      "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
+    );
+  }
   if (!/SUPERVIBE_INSTALL_NODE/.test(scripts.installSh || "") || !/SUPERVIBE_INSTALL_NODE/.test(scripts.installPs1 || "")) {
     addIssue(issues, "install-node-bootstrap-consent-missing", "install scripts must ask for explicit consent before bootstrapping Node", "Keep Node upgrades explicit while requiring the full SQLite runtime.");
   }

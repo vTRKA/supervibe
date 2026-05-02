@@ -11,8 +11,8 @@
 #
 # Idempotent - safe to re-run for upgrades.
 
-# Existing managed checkouts are cleaned before reinstall so stale files from
-# older plugin versions cannot stay active.
+# Existing managed checkouts restore known installer-managed drift and clean stale
+# files before reinstall so older plugin versions cannot stay active.
 $ErrorActionPreference = 'Stop'
 
 $RepoUrl         = if ($env:SUPERVIBE_REPO) { $env:SUPERVIBE_REPO } else { 'https://github.com/vTRKA/supervibe.git' }
@@ -22,6 +22,7 @@ $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPE
 $PluginName      = 'supervibe'
 $MarketplaceName = 'supervibe-marketplace'
 $MinNodeVersion = [version]'22.5.0'
+$InstallerManagedModelPath = 'models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx'
 
 $LogDir = Join-Path $env:TEMP "supervibe-install.$PID"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -203,19 +204,39 @@ function Run-Git {
   }
 }
 
+function Get-PorcelainPath {
+  param([string]$Line)
+  if ([string]::IsNullOrWhiteSpace($Line) -or $Line.Length -lt 4) { return '' }
+  $path = $Line.Substring(3)
+  $marker = ' -> '
+  $idx = $path.LastIndexOf($marker)
+  if ($idx -ge 0) { $path = $path.Substring($idx + $marker.Length) }
+  return $path.Replace('\', '/')
+}
+
+function Restore-InstallerManagedTrackedEdits {
+  param([string]$Path, [string[]]$Status)
+  $managedPaths = @('package-lock.json', $InstallerManagedModelPath)
+  foreach ($line in $Status) {
+    if (-not $line -or $line.StartsWith('?? ')) { continue }
+    $trackedPath = Get-PorcelainPath $line
+    if ($managedPaths -contains $trackedPath) {
+      Warn "restoring installer-managed tracked artifact: $trackedPath"
+      $safeLogName = "restore-managed-artifact-$($trackedPath -replace '[^A-Za-z0-9_.-]', '-')"
+      $null = Run-Git @('-C', $Path, 'checkout', '--', $trackedPath) $safeLogName -SkipLfsSmudge
+    }
+  }
+}
+
 function Invoke-CleanManagedCheckout {
   param([string]$Path)
   $status = @(git -C $Path status --porcelain 2>$null)
+  Restore-InstallerManagedTrackedEdits $Path $status
+  $status = @(git -C $Path status --porcelain 2>$null)
   $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
-  if ($trackedDirty.Count -eq 1 -and $trackedDirty[0] -match '^[ MARCUD?!]{2} package-lock\.json$') {
-    Warn "restoring package-lock.json drift from previous installer npm install"
-    $null = Run-Git @('-C', $Path, 'checkout', '--', 'package-lock.json') 'restore-package-lock'
-    $status = @(git -C $Path status --porcelain 2>$null)
-    $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
-  }
   if ($trackedDirty.Count -gt 0) {
     $trackedDirty | Write-Host
-    Die "tracked local edits in $Path; commit/stash them before reinstalling. Untracked stale files are cleaned automatically."
+    Die "user-owned tracked local edits in $Path; commit/stash them before reinstalling. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
   }
   $untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
   if ($untrackedDirty.Count -gt 0) {

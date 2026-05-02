@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.29] - 2026-05-02
+
+### Fixed
+
+- Fixed user updates blocked by installer-managed ONNX model drift in managed
+  checkouts by restoring only known installer artifacts with LFS smudge
+  disabled before refusing user-owned tracked edits.
+- Clarified update/adapt next steps so `/supervibe-adapt` is shown as an AI CLI
+  slash command, not a zsh/bash/PowerShell command.
+
 ## [2.0.28] - 2026-05-02
 
 ### Added

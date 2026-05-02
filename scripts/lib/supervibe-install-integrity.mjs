@@ -47,6 +47,15 @@ export function auditInstallIntegrityData(data = {}) {
   requirePattern(scripts.installPs1, /supervibe:install-doctor/, "install.ps1", "missing install lifecycle doctor", issues);
   requirePattern(scripts.updateSh, /tracked_dirty/, "update.sh", "must distinguish tracked edits from untracked stale files", issues);
   requirePattern(scripts.updatePs1, /\$trackedDirty/, "update.ps1", "must distinguish tracked edits from untracked stale files", issues);
+  for (const [label, source] of Object.entries({
+    "install.sh": scripts.installSh,
+    "install.ps1": scripts.installPs1,
+    "update.sh": scripts.updateSh,
+    "update.ps1": scripts.updatePs1,
+  })) {
+    requirePattern(source, /installer-managed tracked artifact/, label, "must self-heal installer-managed model/package-lock drift before refusing user edits", issues);
+    requirePattern(source, /model_quantized\.onnx/, label, "must recognize the managed ONNX model artifact", issues);
+  }
 
   requirePattern(scripts.installSh, /will modify/i, "install.sh", "must explain modifications before writing", issues);
   requirePattern(scripts.installPs1, /will modify/i, "install.ps1", "must explain modifications before writing", issues);

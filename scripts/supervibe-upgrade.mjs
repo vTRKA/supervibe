@@ -17,6 +17,7 @@ import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { partitionTrackedPorcelainLines } from './lib/installer-managed-checkout.mjs';
 import {
   SQLITE_NODE_MIN_VERSION,
   formatNodeRuntimeMode,
@@ -85,12 +86,25 @@ function statusLines(stdout) {
   return String(stdout || '').split(/\r?\n/).map((line) => line.trimEnd()).filter(Boolean);
 }
 
-function isPackageLockOnlyDrift(lines) {
-  return lines.length === 1 && /^[ MARCUD?!]{2} package-lock\.json$/.test(lines[0]);
-}
-
 function isAllowedAutoUpdateStateLine(line) {
   return /^\?\? \.claude-plugin\/\.auto-update\.(json|lock)$/.test(String(line || "").trimEnd());
+}
+
+function readDirtyState(stage) {
+  const status = runQuiet('git', ['status', '--porcelain']);
+  if (!status.ok) {
+    fail(`git status failed during ${stage}: ${status.stderr || status.stdout || 'unknown error'}`);
+  }
+  const dirty = statusLines(status.stdout);
+  return { dirty, ...partitionTrackedPorcelainLines(dirty) };
+}
+
+function restoreInstallerManagedTrackedEdits(entries) {
+  const byPath = new Map(entries.map((entry) => [entry.path, entry]));
+  for (const [path, entry] of byPath) {
+    console.log(`[supervibe:upgrade] restoring installer-managed tracked artifact: ${path} (${entry.reason})`);
+    if (!runGitNoLfsSmudge(['checkout', '--', path])) fail(`failed to restore installer-managed tracked artifact: ${path}`);
+  }
 }
 
 function assertMirrorCheckoutClean(stage) {
@@ -126,26 +140,19 @@ if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
 const before = manifestVersion(PLUGIN_ROOT);
 console.log(`[supervibe:upgrade] current version: ${before || 'unknown'}`);
 
-// Refuse tracked local edits; clean untracked/ignored stale files from the managed checkout.
-let status = runQuiet('git', ['status', '--porcelain']);
-let dirty = status.ok ? statusLines(status.stdout) : [];
-let trackedDirty = dirty.filter((line) => !line.startsWith('?? '));
-let untrackedDirty = dirty.filter((line) => line.startsWith('?? '));
-if (isPackageLockOnlyDrift(trackedDirty)) {
-  console.log('[supervibe:upgrade] restoring package-lock.json drift from previous installer npm install');
-  if (!run('git', ['checkout', '--', 'package-lock.json'])) fail('failed to restore package-lock.json drift');
-  status = runQuiet('git', ['status', '--porcelain']);
-  dirty = status.ok ? statusLines(status.stdout) : [];
-  trackedDirty = dirty.filter((line) => !line.startsWith('?? '));
-  untrackedDirty = dirty.filter((line) => line.startsWith('?? '));
+// Refuse user-owned tracked local edits; clean untracked/ignored stale files from the managed checkout.
+let dirtyState = readDirtyState('pre-update dirty check');
+if (dirtyState.installerManaged.length > 0) {
+  restoreInstallerManagedTrackedEdits(dirtyState.installerManaged);
+  dirtyState = readDirtyState('post managed-artifact restore');
 }
-if (trackedDirty.length > 0) {
+if (dirtyState.userOwned.length > 0) {
   console.error('[supervibe:upgrade] uncommitted changes in plugin dir:');
-  console.error(trackedDirty.join('\n'));
+  console.error(dirtyState.userOwned.join('\n'));
   fail('Commit/stash tracked changes in the plugin checkout first, then re-run.');
 }
-if (untrackedDirty.length > 0) {
-  console.log(`[supervibe:upgrade] removing ${untrackedDirty.length} untracked stale file(s) from managed plugin checkout ...`);
+if (dirtyState.untracked.length > 0) {
+  console.log(`[supervibe:upgrade] removing ${dirtyState.untracked.length} untracked stale file(s) from managed plugin checkout ...`);
 }
 
 console.log('[supervibe:upgrade] clean managed checkout (git clean -ffdx) ...');
@@ -191,8 +198,9 @@ if (before === after) {
   console.log(`[supervibe:upgrade] already up to date (v${after})`);
 } else {
   console.log(`[supervibe:upgrade] upgraded ${before} -> ${after}`);
-  console.log(`[supervibe:upgrade] restart Claude Code to pick up the new plugin code.`);
+  console.log(`[supervibe:upgrade] restart your AI CLI to pick up the new plugin code.`);
   console.log(`[supervibe:upgrade] Each project will see [supervibe]  on its next session start.`);
+  console.log(`[supervibe:upgrade] To refresh project overrides, send /supervibe-adapt inside that project's AI CLI session, not in the terminal shell.`);
 }
 console.log('=================================================');
 
