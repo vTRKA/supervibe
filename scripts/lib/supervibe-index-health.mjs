@@ -31,6 +31,7 @@ export function buildIndexHealthSnapshot({
   const eligibleSourceFiles = numberOrZero(manifest.eligibleSourceFiles);
   const indexedSourceFiles = numberOrZero(manifest.indexedSourceFiles ?? manifest.indexedFiles);
   const staleRows = normalizeIndexedPaths(manifest.staleRows || []);
+  const partialIndexedFiles = normalizeIndexedPaths(manifest.partialIndexedFiles || []);
   const languageCoverage = normalizeLanguageCoverage(manifest.languageCoverage || {});
   const symbolQuality = normalizeSymbolQuality(manifest.symbolQuality || {}, manifest.topSymbols || []);
   const crossResolvedEdges = normalizeCrossResolvedEdges(manifest.crossResolvedEdges || {
@@ -72,6 +73,15 @@ export function buildIndexHealthSnapshot({
     });
   }
 
+  if (partialIndexedFiles.length > 0) {
+    issues.push({
+      code: 'partial-source-index-rows',
+      severity: 'warning',
+      message: 'partial source index rows present',
+      details: { partialIndexedFiles },
+    });
+  }
+
   if (symbolQuality.minifiedTopSymbols.length > 0) {
     issues.push({
       code: 'minified-symbols-in-top-symbols',
@@ -91,6 +101,7 @@ export function buildIndexHealthSnapshot({
     sourceCoverage,
     generatedIndexedFiles,
     staleRows,
+    partialIndexedFiles,
     languageCoverage,
     symbolQuality,
     crossResolvedEdges,
@@ -105,8 +116,11 @@ export async function collectIndexHealthFromStore(store, {
 } = {}) {
   const stats = store.stats();
   const grammarHealth = store.getGrammarHealth();
-  const indexedRows = store.db.prepare('SELECT path, language FROM code_files ORDER BY path').all();
+  const indexedRows = store.db.prepare('SELECT path, language, index_status AS indexStatus FROM code_files ORDER BY path').all();
   const indexedPaths = indexedRows.map((row) => row.path);
+  const partialIndexedFiles = indexedRows
+    .filter((row) => row.indexStatus === 'partial')
+    .map((row) => row.path);
   const generatedIndexedFiles = indexedPaths.filter(isGeneratedSourcePath);
   const staleRows = indexedPaths.filter((relPath) => !existsSync(join(rootDir, relPath)));
   const inventory = await collectEligibleSourceInventory(rootDir);
@@ -140,6 +154,7 @@ export async function collectIndexHealthFromStore(store, {
       indexedPaths,
       generatedIndexedFiles,
       staleRows,
+      partialIndexedFiles,
       languageCoverage,
       topSymbols,
       crossResolvedEdges: {
@@ -177,6 +192,7 @@ export function formatIndexHealth(health = {}) {
     `sourceCoverage: ${(numberOrZero(health.sourceCoverage) * 100).toFixed(1)}%`,
     `generatedIndexedFiles: ${(health.generatedIndexedFiles || []).length}`,
     `staleRows: ${(health.staleRows || []).length}`,
+    `partialRows: ${(health.partialIndexedFiles || []).length}`,
     `languageCoverage:`,
     ...(languageLines.length ? languageLines : ['  - none']),
     `symbolQuality:`,
@@ -221,6 +237,13 @@ export function evaluateIndexHealthGate(health = {}, {
       code: 'stale-rows',
       message: 'stale index rows present',
       actual: health.staleRows.length,
+    });
+  }
+  if ((health.partialIndexedFiles || []).length > 0) {
+    warnings.push({
+      code: 'partial-source-rows',
+      message: 'partial source index rows present',
+      actual: health.partialIndexedFiles.length,
     });
   }
   for (const [language, value] of Object.entries(health.languageCoverage || {})) {

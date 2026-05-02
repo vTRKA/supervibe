@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { CodeStore } from "../scripts/lib/code-store.mjs";
+
 const scriptPath = join(process.cwd(), "scripts", "build-code-index.mjs");
 
 test("indexing errors are recorded with path, phase, error and optional stack", async () => {
@@ -50,7 +52,7 @@ test("indexing errors are recorded with path, phase, error and optional stack", 
   }
 });
 
-test("large-file chunk timeout records failed_files entry and continues the batch", async () => {
+test("large-file chunk interruption records partial-row diagnostics and continues the batch", async () => {
   const rootDir = join(tmpdir(), `supervibe-index-chunk-timeout-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   try {
     await mkdir(join(rootDir, "src-tauri", "src", "commands"), { recursive: true });
@@ -68,16 +70,15 @@ test("large-file chunk timeout records failed_files entry and continues the batc
       encoding: "utf8",
       env: {
         ...process.env,
-        SUPERVIBE_CHUNKER_TEST_HANG: "1",
-        SUPERVIBE_CHUNKER_TEST_HANG_FILE: "src-tauri/src/commands/chat.rs",
-        SUPERVIBE_INDEX_LARGE_FILE_BYTES: "100",
-        SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS: "50",
+        SUPERVIBE_INDEX_LARGE_FILE_THRESHOLD_BYTES: "100",
+        SUPERVIBE_INDEX_LARGE_FILE_CHUNK_LINES: "5",
+        SUPERVIBE_INDEX_TEST_LARGE_FILE_STOP_AFTER_CHUNKS: "2",
       },
     });
     const output = `${result.stdout}\n${result.stderr}`;
 
     assert.equal(result.status, 0, output);
-    assert.match(output, /Files indexed: 1/);
+    assert.match(output, /Files indexed: 2/);
     assert.match(output, /Errors: 1/);
 
     const failedPath = join(rootDir, ".supervibe", "memory", "failed_files.json");
@@ -86,7 +87,24 @@ test("large-file chunk timeout records failed_files entry and continues the batc
     assert.equal(failed.files.length, 1);
     assert.equal(failed.files[0].path, "src-tauri/src/commands/chat.rs");
     assert.equal(failed.files[0].phase, "chunking");
-    assert.match(failed.files[0].message, /chunking timed out/);
+    assert.equal(failed.files[0].status, "partial-row");
+    assert.equal(failed.files[0].chunksWritten, 2);
+    assert.equal(failed.files[0].timeoutMs, 0);
+    assert.ok(failed.files[0].sizeBytes > 100);
+    assert.ok(failed.files[0].lineCount > 0);
+    assert.match(failed.files[0].chunkingStrategy, /large-file/);
+    assert.match(failed.files[0].recommendedAction, /source row is partial/);
+
+    const store = new CodeStore(rootDir, { useEmbeddings: false });
+    await store.init();
+    try {
+      const row = store.db.prepare("SELECT index_status AS indexStatus FROM code_files WHERE path = ?").get("src-tauri/src/commands/chat.rs");
+      const chunks = store.db.prepare("SELECT COUNT(*) AS count FROM code_chunks WHERE path = ?").get("src-tauri/src/commands/chat.rs").count;
+      assert.equal(row.indexStatus, "partial");
+      assert.equal(chunks, 2);
+    } finally {
+      store.close();
+    }
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }

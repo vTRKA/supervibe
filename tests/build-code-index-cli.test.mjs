@@ -11,6 +11,47 @@ import { hashFile } from "../scripts/lib/file-hash.mjs";
 
 const scriptPath = join(process.cwd(), "scripts", "build-code-index.mjs");
 
+function buildLargeRustFixture({ targetLines = 16339, targetBytes = 740000 } = {}) {
+  const lines = [
+    "pub mod generated_services {",
+    "use std::collections::HashMap;",
+    "",
+    "macro_rules! service_metric {",
+    "  ($name:expr, $value:expr) => {",
+    "    println!(\"{}:{}\", $name, $value);",
+    "  };",
+    "}",
+    "",
+    "pub trait ServiceOperation {",
+    "  fn apply(&self, input: i64) -> i64;",
+    "}",
+    "",
+    "pub struct ServiceState {",
+    "  pub values: HashMap<String, i64>,",
+    "}",
+    "",
+  ];
+  let i = 0;
+  let byteLength = Buffer.byteLength(lines.join("\n"), "utf8");
+  while (lines.length < targetLines || byteLength < targetBytes) {
+    const block = [
+      `pub fn generated_service_operation_${i}(input: i64) -> i64 {`,
+      `  let mut total = input + ${i};`,
+      `  total += ${i % 17};`,
+      `  service_metric!("generated_service_operation_${i}", total);`,
+      `  if total % 2 == 0 { return total / 2; }`,
+      `  total + ${(i % 31) + 1}`,
+      "}",
+      "",
+    ];
+    lines.push(...block);
+    byteLength += Buffer.byteLength(`\n${block.join("\n")}`, "utf8");
+    i += 1;
+  }
+  lines.push("}");
+  return `${lines.join("\n")}\n`;
+}
+
 async function withFixture(fn) {
   const rootDir = join(tmpdir(), `supervibe-code-index-cli-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   try {
@@ -33,6 +74,8 @@ test("build-code-index --help prints usage and does not start indexing", () => {
   assert.match(out, /--max-seconds/);
   assert.match(out, /--source-only/);
   assert.match(out, /--json-progress/);
+  assert.match(out, /--large-file-threshold-bytes/);
+  assert.match(out, /--known-failed-ttl/);
   assert.doesNotMatch(out, /Indexing code in/);
 });
 
@@ -161,6 +204,108 @@ test("build-code-index --source-only reports approximate chunking for repair-saf
     assert.match(out, /"phase":"chunking"/);
     assert.match(out, /"chunkerMode":"approximate"/);
     assert.doesNotMatch(out, /SUPERVIBE_INDEX_BOUNDED_TIMEOUT/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("build-code-index indexes a 750KB Rust source file through large-file mode without timing out", async () => {
+  const rootDir = join(tmpdir(), `supervibe-code-index-large-rust-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  try {
+    const relPath = "src-tauri/src/services/large_service.rs";
+    const absPath = join(rootDir, ...relPath.split("/"));
+    await mkdir(join(rootDir, "src-tauri", "src", "services"), { recursive: true });
+    const content = buildLargeRustFixture();
+    await writeFile(absPath, content, "utf8");
+
+    assert.ok(Buffer.byteLength(content, "utf8") >= 740000, "fixture should exercise the large-file byte path");
+    assert.ok(content.split("\n").length >= 16000, "fixture should exercise the large-file line path");
+
+    const out = execFileSync(process.execPath, [
+      scriptPath,
+      "--root", rootDir,
+      "--source-only",
+      "--debug-file", relPath,
+      "--json-progress",
+      "--health",
+      "--heartbeat-seconds", "0",
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 8,
+    });
+
+    assert.match(out, /"chunkerMode":"large-file"/);
+    assert.match(out, /Files indexed: 1/);
+    assert.doesNotMatch(out, /SUPERVIBE_INDEX_BOUNDED_TIMEOUT/);
+
+    const store = new CodeStore(rootDir, { useEmbeddings: false });
+    await store.init();
+    try {
+      const row = store.db.prepare(`
+        SELECT line_count AS lineCount, index_status AS indexStatus, chunking_strategy AS chunkingStrategy
+        FROM code_files
+        WHERE path = ?
+      `).get(relPath);
+      const chunks = store.db.prepare("SELECT COUNT(*) AS count FROM code_chunks WHERE path = ?").get(relPath).count;
+      assert.ok(row, "large Rust file should have a source row");
+      assert.equal(row.indexStatus, "full");
+      assert.match(row.chunkingStrategy, /large-file/);
+      assert.ok(row.lineCount >= 16000);
+      assert.ok(chunks > 10, `expected many incremental chunks, got ${chunks}`);
+    } finally {
+      store.close();
+    }
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("build-code-index --resume --graph skips fresh known-failed source rows before selecting work", async () => {
+  const rootDir = join(tmpdir(), `supervibe-code-index-known-failed-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  try {
+    await mkdir(join(rootDir, "aaa"), { recursive: true });
+    await mkdir(join(rootDir, "zzz"), { recursive: true });
+    await mkdir(join(rootDir, ".supervibe", "memory"), { recursive: true });
+    await writeFile(join(rootDir, "aaa", "large.rs"), "pub fn known_failed_large_fixture() { }\n", "utf8");
+    await writeFile(join(rootDir, "zzz", "next.ts"), "export function selectedAfterKnownFailed() { return 1; }\n", "utf8");
+    await writeFile(join(rootDir, ".supervibe", "memory", "failed_files.json"), JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      files: [{
+        path: "aaa/large.rs",
+        phase: "chunking",
+        status: "missing-row",
+        failedAt: new Date().toISOString(),
+        message: "previous chunking timeout",
+      }],
+    }, null, 2), "utf8");
+
+    const out = execFileSync(process.execPath, [
+      scriptPath,
+      "--root", rootDir,
+      "--resume",
+      "--graph",
+      "--no-embeddings",
+      "--max-files", "1",
+      "--heartbeat-seconds", "0",
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.match(out, /KNOWN_FAILED_SKIPPED: 1/);
+    assert.match(out, /Files indexed: 1/);
+
+    const store = new CodeStore(rootDir, { useEmbeddings: false });
+    await store.init();
+    try {
+      const skipped = store.db.prepare("SELECT path FROM code_files WHERE path = ?").get("aaa/large.rs");
+      const selected = store.db.prepare("SELECT path FROM code_files WHERE path = ?").get("zzz/next.ts");
+      assert.equal(skipped, undefined, "known failed missing source row should not consume the bounded graph batch");
+      assert.ok(selected, "next eligible file should be indexed instead");
+    } finally {
+      store.close();
+    }
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }

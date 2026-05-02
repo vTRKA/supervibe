@@ -2,12 +2,13 @@
 // Mirrors MemoryStore but for source code: per-file rows + per-chunk embeddings.
 // Hash-based change detection skips unchanged files on re-index.
 
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFile, mkdir, writeFile, stat } from 'node:fs/promises';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { createInterface } from 'node:readline';
 import { Worker } from 'node:worker_threads';
 import { hashFile } from './file-hash.mjs';
-import { chunkCode, detectLanguage } from './code-chunker.mjs';
+import { chunkCode, detectLanguage, estimateCodeTokens } from './code-chunker.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
 import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedSymbolName, pruneCodeIndex } from './supervibe-index-policy.mjs';
@@ -16,6 +17,13 @@ import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
 const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 150_000;
 const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
+const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 512 * 1024;
+const DEFAULT_LARGE_FILE_THRESHOLD_LINES = 10_000;
+const DEFAULT_LARGE_FILE_CHUNK_LINES = 240;
+const DEFAULT_LARGE_FILE_CHUNK_BYTES = 64 * 1024;
+const DEFAULT_LARGE_FILE_MAX_SECONDS = 30;
+const DEFAULT_LARGE_FILE_FALLBACK_MODE = 'structural';
+const DEFAULT_KNOWN_FAILED_TTL_SECONDS = 24 * 60 * 60;
 
 const EXTENSION_RESOLUTION = {
   typescript: ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'],
@@ -45,6 +53,11 @@ function normalizeRelPath(path) {
 function positiveInt(value, fallback) {
   const num = Number(value);
   return Number.isFinite(num) && num > 0 ? Math.trunc(num) : fallback;
+}
+
+function nonNegativeNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : fallback;
 }
 
 function resolveImportSource(importSource, fromRelPath, language, fileSet) {
@@ -305,6 +318,7 @@ function fileTimeoutError({ phase, relPath, timeoutMs }) {
   error.code = 'SUPERVIBE_INDEX_FILE_TIMEOUT';
   error.phase = phase;
   error.relPath = relPath;
+  error.timeoutMs = timeoutMs;
   return error;
 }
 
@@ -357,6 +371,44 @@ async function chunkCodeInWorker(code, absPath, { options, timeoutMs, relPath } 
   });
 }
 
+function rustStructuralBoundary(line = '') {
+  const text = String(line || '');
+  const patterns = [
+    { kind: 'module', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'macro', re: /^\s*macro_rules!\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'function-or-class', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'function-or-class', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?struct\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'function-or-class', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?enum\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'function-or-class', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+([A-Za-z_]\w*)\b/ },
+    { kind: 'function-or-class', re: /^\s*(?:pub(?:\([^)]*\))?\s+)?impl(?:\s*<[^>]+>)?\s+([A-Za-z_]\w*)?/ },
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern.re);
+    if (match) return { kind: pattern.kind, name: match[1] || null };
+  }
+  return null;
+}
+
+function lineCountOf(content = '') {
+  return String(content || '').split('\n').length;
+}
+
+function partialIndexError({ relPath, reason = 'large file source indexing stopped before EOF', timeoutMs = 0 } = {}) {
+  const error = new Error(reason);
+  error.code = 'SUPERVIBE_INDEX_PARTIAL_FILE';
+  error.phase = 'chunking';
+  error.relPath = relPath;
+  error.timeoutMs = timeoutMs;
+  return error;
+}
+
+function recommendedLargeFileAction(status) {
+  if (status === 'partial-row') {
+    return 'source row is partial; rerun source-only repair to complete it, or lower chunk size if the file repeatedly times out';
+  }
+  return 'rerun source-only repair after resolving the file-specific failure';
+}
+
 export class CodeStore {
   constructor(projectRoot, opts = {}) {
     this.projectRoot = projectRoot;
@@ -369,6 +421,35 @@ export class CodeStore {
     this.largeFileCharThreshold = positiveInt(
       opts.largeFileCharThreshold ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_BYTES,
       DEFAULT_LARGE_FILE_CHAR_THRESHOLD,
+    );
+    this.largeFileThresholdBytes = positiveInt(
+      opts.largeFileThresholdBytes
+        ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_THRESHOLD_BYTES
+        ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_BYTES,
+      DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+    );
+    this.largeFileThresholdLines = positiveInt(
+      opts.largeFileThresholdLines ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_THRESHOLD_LINES,
+      DEFAULT_LARGE_FILE_THRESHOLD_LINES,
+    );
+    this.largeFileChunkLines = positiveInt(
+      opts.largeFileChunkLines ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_CHUNK_LINES,
+      DEFAULT_LARGE_FILE_CHUNK_LINES,
+    );
+    this.largeFileChunkBytes = positiveInt(
+      opts.largeFileChunkBytes ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_CHUNK_BYTES,
+      DEFAULT_LARGE_FILE_CHUNK_BYTES,
+    );
+    this.largeFileMaxSeconds = nonNegativeNumber(
+      opts.largeFileMaxSeconds ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_MAX_SECONDS,
+      DEFAULT_LARGE_FILE_MAX_SECONDS,
+    );
+    this.largeFileFallbackMode = String(
+      opts.largeFileFallbackMode ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_FALLBACK_MODE ?? DEFAULT_LARGE_FILE_FALLBACK_MODE,
+    ).trim() || DEFAULT_LARGE_FILE_FALLBACK_MODE;
+    this.knownFailedTtlSeconds = nonNegativeNumber(
+      opts.knownFailedTtl ?? opts.knownFailedTtlSeconds ?? process.env.SUPERVIBE_INDEX_KNOWN_FAILED_TTL_SECONDS,
+      DEFAULT_KNOWN_FAILED_TTL_SECONDS,
     );
     this.chunkTimeoutMs = positiveInt(
       opts.chunkTimeoutMs ?? process.env.SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS,
@@ -392,7 +473,11 @@ export class CodeStore {
         content_hash TEXT NOT NULL,
         line_count INTEGER NOT NULL,
         indexed_at TEXT NOT NULL,
-        graph_version INTEGER NOT NULL DEFAULT 0
+        graph_version INTEGER NOT NULL DEFAULT 0,
+        index_status TEXT NOT NULL DEFAULT 'full',
+        chunking_strategy TEXT NOT NULL DEFAULT 'standard',
+        chunk_count INTEGER NOT NULL DEFAULT 0,
+        indexed_bytes INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS idx_code_files_lang ON code_files(language);
 
@@ -469,6 +554,10 @@ export class CodeStore {
       CREATE INDEX IF NOT EXISTS idx_anchor_symbol ON code_semantic_anchors(symbol_name);
     `);
     ensureColumn(this.db, "code_files", "graph_version", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn(this.db, "code_files", "index_status", "TEXT NOT NULL DEFAULT 'full'");
+    ensureColumn(this.db, "code_files", "chunking_strategy", "TEXT NOT NULL DEFAULT 'standard'");
+    ensureColumn(this.db, "code_files", "chunk_count", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn(this.db, "code_files", "indexed_bytes", "INTEGER NOT NULL DEFAULT 0");
     return this;
   }
 
@@ -503,66 +592,241 @@ export class CodeStore {
     };
 
     try {
-    let content;
-    await enter('reading');
-    try { content = await readFile(absPath, 'utf8'); }
-    catch (err) {
-      if (err.code === 'ENOENT') {
-        await this.removeFile(absPath);
-        return { skipped: 'file-deleted' };
+      let fileStats;
+      await enter('reading');
+      try { fileStats = await stat(absPath); }
+      catch (err) {
+        if (err.code === 'ENOENT') {
+          await this.removeFile(absPath);
+          return { skipped: 'file-deleted' };
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    await enter('hashing');
-    const hash = await hashFile(absPath);
-    const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
-    if (existing && existing.content_hash === hash && !force) {
-      // Hash unchanged, but extractor/query semantics may have changed across
-      // plugin versions. Rebuild only graph rows while preserving expensive RAG
-      // chunks and embeddings.
-      if (this.useGraph && Number(existing.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
-        try {
-          await enter('graph-extraction');
-          const result = await this.indexGraphFor(absPath, content);
-          this.markGraphCurrent(relPath);
-          return { skipped: 'unchanged-graph-reindexed', ...result };
-        } catch (err) {
-          if (process.env.SUPERVIBE_VERBOSE === '1') {
-            console.warn(`[code-graph] failed to reindex unchanged ${relPath}: ${err.message}`);
+      await enter('hashing');
+      const hash = await hashFile(absPath);
+      const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
+      const graphStale = this.useGraph && Number(existing?.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION;
+      if (existing && existing.content_hash === hash && !force && !graphStale) {
+        return { skipped: 'unchanged' };
+      }
+
+      const largeByBytes = Number(fileStats?.size || 0) >= this.largeFileThresholdBytes;
+      let content = null;
+      let lines = 0;
+      let largeByLines = false;
+
+      if (!largeByBytes || (existing && existing.content_hash === hash && !force && graphStale)) {
+        try { content = await readFile(absPath, 'utf8'); }
+        catch (err) {
+          if (err.code === 'ENOENT') {
+            await this.removeFile(absPath);
+            return { skipped: 'file-deleted' };
+          }
+          throw err;
+        }
+        lines = lineCountOf(content);
+        largeByLines = lines >= this.largeFileThresholdLines;
+      }
+
+      if (existing && existing.content_hash === hash && !force) {
+        // Hash unchanged, but extractor/query semantics may have changed across
+        // plugin versions. Rebuild only graph rows while preserving RAG chunks.
+        if (graphStale) {
+          try {
+            await enter('graph-extraction');
+            const result = await this.indexGraphFor(absPath, content ?? await readFile(absPath, 'utf8'));
+            this.markGraphCurrent(relPath);
+            return { skipped: 'unchanged-graph-reindexed', ...result };
+          } catch (err) {
+            if (process.env.SUPERVIBE_VERBOSE === '1') {
+              console.warn(`[code-graph] failed to reindex unchanged ${relPath}: ${err.message}`);
+            }
           }
         }
+        return { skipped: 'unchanged' };
       }
-      return { skipped: 'unchanged' };
+
+      const largeFile = largeByBytes || largeByLines;
+      if (largeFile) {
+        const result = await this.indexLargeFileSource(absPath, {
+          relPath,
+          lang,
+          hash,
+          fileSizeBytes: Number(fileStats?.size || 0),
+          initialLineCount: lines,
+          emit,
+          enter,
+          shouldStop,
+        });
+
+        if (this.useGraph && !result.partial) {
+          try {
+            await enter('graph-extraction');
+            await this.indexGraphFor(absPath, content ?? await readFile(absPath, 'utf8'));
+            this.markGraphCurrent(relPath);
+          } catch (err) {
+            if (process.env.SUPERVIBE_VERBOSE === '1') {
+              console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+            }
+          }
+        } else if (!this.useGraph) {
+          this.clearGraphFor(relPath);
+        }
+        return result;
+      }
+
+      if (content === null) {
+        try { content = await readFile(absPath, 'utf8'); }
+        catch (err) {
+          if (err.code === 'ENOENT') {
+            await this.removeFile(absPath);
+            return { skipped: 'file-deleted' };
+          }
+          throw err;
+        }
+        lines = lineCountOf(content);
+      }
+
+      this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
+      this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
+
+      const chunkerMode = !this.useEmbeddings || content.length > this.largeFileCharThreshold ? 'approximate' : 'exact';
+      await enter('chunking', { chunkerMode });
+      const chunkOptions = {
+        tokenMode: chunkerMode,
+        largeFileCharThreshold: this.largeFileCharThreshold,
+        shouldStop,
+      };
+      let chunks;
+      try {
+        chunks = content.length > this.largeFileCharThreshold
+          ? await chunkCodeInWorker(content, absPath, {
+              options: {
+                tokenMode: chunkerMode,
+                largeFileCharThreshold: this.largeFileCharThreshold,
+              },
+              timeoutMs: this.chunkTimeoutMs,
+              relPath,
+            })
+          : await chunkCode(content, absPath, chunkOptions);
+      } catch (err) {
+        err.indexMetadata ||= {
+          status: 'missing-row',
+          sizeBytes: Number(fileStats?.size || Buffer.byteLength(content, 'utf8')),
+          lineCount: lines,
+          lineCountIsPartial: false,
+          chunkingStrategy: chunkerMode,
+          timeoutMs: err.timeoutMs || (err.code === 'SUPERVIBE_INDEX_FILE_TIMEOUT' ? this.chunkTimeoutMs : 0),
+          chunksWritten: 0,
+          recommendedAction: recommendedLargeFileAction('missing-row'),
+        };
+        throw err;
+      }
+
+      await enter('db-write');
+      this.db.prepare(`
+        INSERT OR REPLACE INTO code_files (
+          path, language, content_hash, line_count, indexed_at, graph_version,
+          index_status, chunking_strategy, chunk_count, indexed_bytes
+        )
+        VALUES (?, ?, ?, ?, datetime('now'), 0, 'full', ?, ?, ?)
+      `).run(relPath, lang, hash, lines, chunkerMode, chunks.length, Number(fileStats?.size || Buffer.byteLength(content, 'utf8')));
+
+      const insertChunk = this.db.prepare(`
+        INSERT INTO code_chunks (path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const insertFTS = this.db.prepare(`
+        INSERT INTO code_chunks_fts (path, chunk_idx, chunk_text, name) VALUES (?, ?, ?, ?)
+      `);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const c = chunks[i];
+        let embeddingBuf = null;
+        if (this.useEmbeddings) {
+          await enter('embeddings', { chunk: i + 1, chunks: chunks.length });
+          try {
+            const { embed, vectorToBuffer } = await loadEmbeddingHelpers();
+            const vec = await embed(c.text, 'passage');
+            embeddingBuf = vectorToBuffer(vec);
+          } catch {}
+        }
+        insertChunk.run(relPath, i, c.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
+        await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
+        insertFTS.run(relPath, i, c.text, c.name || '');
+      }
+
+      // Phase D: also extract code graph (symbols + edges) for this file.
+      // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
+      if (this.useGraph) {
+        try {
+          await enter('graph-extraction');
+          await this.indexGraphFor(absPath, content);
+          this.markGraphCurrent(relPath);
+        } catch (err) {
+          if (process.env.SUPERVIBE_VERBOSE === '1') {
+            console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+          }
+        }
+      } else {
+        this.clearGraphFor(relPath);
+      }
+
+      return { indexed: true, chunks: chunks.length };
+    } catch (err) {
+      err.phase ||= activePhase;
+      err.relPath ||= relPath;
+      throw err;
     }
+  }
+
+  async indexLargeFileSource(absPath, {
+    relPath,
+    lang,
+    hash,
+    fileSizeBytes = 0,
+    initialLineCount = 0,
+    emit = null,
+    enter = null,
+    shouldStop = null,
+  } = {}) {
+    const structuralRust = lang === 'rust' && this.largeFileFallbackMode !== 'line-window';
+    const chunkingStrategy = structuralRust ? 'large-file-rust-structural' : 'large-file-line-window';
+    const deadlineMs = this.largeFileMaxSeconds > 0 ? this.largeFileMaxSeconds * 1000 : 0;
+    const deadlineAt = deadlineMs > 0 ? Date.now() + deadlineMs : 0;
+    let chunkIndex = 0;
+    let lineNo = 0;
+    let bytesScanned = 0;
+    let currentLines = [];
+    let currentStartLine = 1;
+    let currentBytes = 0;
+    let currentKind = 'block';
+    let currentName = null;
+    let partialError = null;
+
+    await enter?.('chunking', {
+      chunkerMode: 'large-file',
+      chunkingStrategy,
+      timeoutMs: deadlineMs,
+    });
 
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
+    this.clearGraphFor(relPath);
 
-    const chunkerMode = !this.useEmbeddings || content.length > this.largeFileCharThreshold ? 'approximate' : 'exact';
-    await enter('chunking', { chunkerMode });
-    const chunkOptions = {
-      tokenMode: chunkerMode,
-      largeFileCharThreshold: this.largeFileCharThreshold,
-      shouldStop,
-    };
-    const chunks = content.length > this.largeFileCharThreshold
-      ? await chunkCodeInWorker(content, absPath, {
-          options: {
-            tokenMode: chunkerMode,
-            largeFileCharThreshold: this.largeFileCharThreshold,
-          },
-          timeoutMs: this.chunkTimeoutMs,
-          relPath,
-        })
-      : await chunkCode(content, absPath, chunkOptions);
-    const lines = content.split('\n').length;
-
-    await enter('db-write');
+    await enter?.('db-write', {
+      chunkerMode: 'large-file',
+      chunkingStrategy,
+      indexStatus: 'partial',
+    });
     this.db.prepare(`
-      INSERT OR REPLACE INTO code_files (path, language, content_hash, line_count, indexed_at, graph_version)
-      VALUES (?, ?, ?, ?, datetime('now'), 0)
-    `).run(relPath, lang, hash, lines);
+      INSERT OR REPLACE INTO code_files (
+        path, language, content_hash, line_count, indexed_at, graph_version,
+        index_status, chunking_strategy, chunk_count, indexed_bytes
+      )
+      VALUES (?, ?, ?, ?, datetime('now'), 0, 'partial', ?, 0, 0)
+    `).run(relPath, lang, hash, initialLineCount || 0, chunkingStrategy);
 
     const insertChunk = this.db.prepare(`
       INSERT INTO code_chunks (path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding)
@@ -571,45 +835,156 @@ export class CodeStore {
     const insertFTS = this.db.prepare(`
       INSERT INTO code_chunks_fts (path, chunk_idx, chunk_text, name) VALUES (?, ?, ?, ?)
     `);
+    const updateFileProgress = this.db.prepare(`
+      UPDATE code_files
+      SET line_count = ?, chunk_count = ?, indexed_bytes = ?, index_status = ?, indexed_at = datetime('now')
+      WHERE path = ?
+    `);
 
-    for (let i = 0; i < chunks.length; i++) {
-      const c = chunks[i];
-      let embeddingBuf = null;
-      if (this.useEmbeddings) {
-        await enter('embeddings', { chunk: i + 1, chunks: chunks.length });
-        try {
-          const { embed, vectorToBuffer } = await loadEmbeddingHelpers();
-          const vec = await embed(c.text, 'passage');
-          embeddingBuf = vectorToBuffer(vec);
-        } catch {}
+    const failPartial = (reason, timeoutMs = 0) => {
+      const error = partialIndexError({ relPath, reason, timeoutMs });
+      error.indexMetadata = {
+        status: 'partial-row',
+        sizeBytes: fileSizeBytes,
+        lineCount: lineNo,
+        lineCountIsPartial: true,
+        bytesScanned,
+        chunkingStrategy,
+        timeoutMs,
+        chunksWritten: chunkIndex,
+        recommendedAction: recommendedLargeFileAction('partial-row'),
+      };
+      return error;
+    };
+
+    const flush = () => {
+      const chunkText = currentLines.join('\n').trim();
+      if (!chunkText) {
+        currentLines = [];
+        currentBytes = 0;
+        currentStartLine = lineNo + 1;
+        currentKind = 'block';
+        currentName = null;
+        return;
       }
-      insertChunk.run(relPath, i, c.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
-      await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
-      insertFTS.run(relPath, i, c.text, c.name || '');
-    }
+      const endLine = currentStartLine + currentLines.length - 1;
+      insertChunk.run(
+        relPath,
+        chunkIndex,
+        chunkText,
+        currentKind,
+        currentName,
+        currentStartLine,
+        endLine,
+        estimateCodeTokens(chunkText),
+        null,
+      );
+      insertFTS.run(relPath, chunkIndex, chunkText, currentName || '');
+      chunkIndex += 1;
+      updateFileProgress.run(lineNo, chunkIndex, bytesScanned, 'partial', relPath);
+      emit?.('fts-write', {
+        chunk: chunkIndex,
+        chunks: null,
+        chunkerMode: 'large-file',
+        chunkingStrategy,
+        indexStatus: 'partial',
+      });
 
-    // Phase D: also extract code graph (symbols + edges) for this file.
-    // Failure here is non-fatal — graph stays empty for this file, semantic RAG still works.
-    if (this.useGraph) {
-      try {
-        await enter('graph-extraction');
-        await this.indexGraphFor(absPath, content);
-        this.markGraphCurrent(relPath);
-      } catch (err) {
-        if (process.env.SUPERVIBE_VERBOSE === '1') {
-          console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+      const stopAfter = Number(process.env.SUPERVIBE_INDEX_TEST_LARGE_FILE_STOP_AFTER_CHUNKS || 0);
+      if (Number.isFinite(stopAfter) && stopAfter > 0 && chunkIndex >= stopAfter) {
+        throw failPartial(`test hook stopped large-file chunking after ${chunkIndex} chunk(s)`);
+      }
+
+      currentLines = [];
+      currentBytes = 0;
+      currentStartLine = lineNo + 1;
+      currentKind = 'block';
+      currentName = null;
+    };
+
+    try {
+      const input = createReadStream(absPath, { encoding: 'utf8' });
+      const lines = createInterface({ input, crlfDelay: Infinity });
+      for await (const line of lines) {
+        lineNo += 1;
+        bytesScanned += Buffer.byteLength(line, 'utf8') + 1;
+
+        if (shouldStop?.()) {
+          throw failPartial('global index deadline reached during large-file chunking');
+        }
+        if (deadlineAt > 0 && Date.now() >= deadlineAt) {
+          throw failPartial(`large-file chunking timed out after ${deadlineMs}ms`, deadlineMs);
+        }
+
+        const boundary = structuralRust ? rustStructuralBoundary(line) : null;
+        if (boundary && currentLines.length > 0) {
+          flush();
+        }
+        if (currentLines.length === 0) {
+          currentStartLine = lineNo;
+          currentKind = boundary?.kind || 'block';
+          currentName = boundary?.name || null;
+        } else if (boundary && !currentName) {
+          currentKind = boundary.kind;
+          currentName = boundary.name;
+        }
+
+        currentLines.push(line);
+        currentBytes += Buffer.byteLength(line, 'utf8') + 1;
+
+        if (currentLines.length >= this.largeFileChunkLines || currentBytes >= this.largeFileChunkBytes) {
+          flush();
         }
       }
-    } else {
-      this.clearGraphFor(relPath);
+      flush();
+    } catch (error) {
+      partialError = error;
     }
 
-    return { indexed: true, chunks: chunks.length };
-    } catch (err) {
-      err.phase ||= activePhase;
-      err.relPath ||= relPath;
-      throw err;
+    if (partialError) {
+      if (chunkIndex === 0) {
+        partialError.indexMetadata ||= {
+          status: 'missing-row',
+          sizeBytes: fileSizeBytes,
+          lineCount: lineNo,
+          lineCountIsPartial: true,
+          bytesScanned,
+          chunkingStrategy,
+          timeoutMs: partialError.timeoutMs || deadlineMs,
+          chunksWritten: 0,
+          recommendedAction: recommendedLargeFileAction('missing-row'),
+        };
+        throw partialError;
+      }
+      updateFileProgress.run(lineNo, chunkIndex, bytesScanned, 'partial', relPath);
+      return {
+        indexed: true,
+        partial: true,
+        chunks: chunkIndex,
+        phase: 'chunking',
+        error: partialError,
+        failureMetadata: {
+          status: 'partial-row',
+          sizeBytes: fileSizeBytes,
+          lineCount: lineNo,
+          lineCountIsPartial: true,
+          bytesScanned,
+          chunkingStrategy,
+          timeoutMs: partialError.timeoutMs || 0,
+          chunksWritten: chunkIndex,
+          recommendedAction: recommendedLargeFileAction('partial-row'),
+        },
+      };
     }
+
+    updateFileProgress.run(lineNo, chunkIndex, fileSizeBytes || bytesScanned, 'full', relPath);
+    return {
+      indexed: true,
+      chunks: chunkIndex,
+      partial: false,
+      lineCount: lineNo,
+      chunkingStrategy,
+    };
   }
 
   markGraphCurrent(relPath) {
@@ -804,13 +1179,23 @@ export class CodeStore {
         });
         if (result.indexed) counts.indexed++;
         else counts.skipped++;
+        if (result.partial) {
+          counts.errors++;
+          await this.recordFailedFile({
+            absPath: file.absPath,
+            phase: result.phase || 'chunking',
+            error: result.error,
+            verbose,
+            metadata: result.failureMetadata,
+          });
+        }
       } catch (err) {
         if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
           counts.bounded = true;
           break;
         }
         counts.errors++;
-        await this.recordFailedFile({ absPath: file.absPath, phase: err.phase || 'file', error: err, verbose });
+        await this.recordFailedFile({ absPath: file.absPath, phase: err.phase || 'file', error: err, verbose, metadata: err.indexMetadata });
       }
       counts.processed = index + 1;
       onProgress?.({
@@ -872,13 +1257,23 @@ export class CodeStore {
           shouldStop,
         });
         if (r.indexed) counts.indexed++; else counts.skipped++;
+        if (r.partial) {
+          counts.errors++;
+          await this.recordFailedFile({
+            absPath,
+            phase: r.phase || 'chunking',
+            error: r.error,
+            verbose,
+            metadata: r.failureMetadata,
+          });
+        }
       } catch (err) {
         if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
           counts.bounded = true;
           break;
         }
         counts.errors++;
-        await this.recordFailedFile({ absPath, phase: err.phase || 'file', error: err, verbose });
+        await this.recordFailedFile({ absPath, phase: err.phase || 'file', error: err, verbose, metadata: err.indexMetadata });
       }
       counts.processed = index + 1;
       onProgress?.({
@@ -914,16 +1309,28 @@ export class CodeStore {
     this.db.prepare('DELETE FROM code_files WHERE path = ?').run(relPath);
   }
 
-  async recordFailedFile({ absPath, phase = 'file', error, verbose = false } = {}) {
+  async recordFailedFile({ absPath, phase = 'file', error, verbose = false, metadata = null } = {}) {
     const relPath = normalizeRelPath(absPath ? this.toRel(absPath) : error?.relPath);
     const existing = await this.readFailedFilesReport();
     const files = existing.files.filter((item) => item.path !== relPath);
+    const extra = {
+      ...(error?.indexMetadata || {}),
+      ...(metadata || {}),
+    };
+    if (absPath && !extra.sizeBytes) {
+      try {
+        const fileStats = await stat(absPath);
+        extra.sizeBytes = Number(fileStats.size || 0);
+      } catch {}
+    }
     files.push({
       path: relPath,
       phase,
+      status: extra.status || undefined,
       errorName: error?.name || 'Error',
       message: error?.message || String(error || 'unknown error'),
       stack: verbose ? (error?.stack || '') : undefined,
+      ...extra,
       failedAt: new Date().toISOString(),
     });
     await mkdir(dirname(this.failedFilesPath), { recursive: true });

@@ -56,6 +56,20 @@ Large-project controls:
   --file <path>             Repair exactly one repo-relative source file
   --debug-file <path>       Debug exactly one file with phase-level progress
   --trace-phases            Emit JSON progress/checkpoint updates for file phases
+  --large-file-threshold-bytes <n>
+                           Use incremental large-file mode above this byte size
+  --large-file-threshold-lines <n>
+                           Use incremental large-file mode above this line count
+  --large-file-chunk-lines <n>
+                           Max lines per incremental large-file source chunk
+  --large-file-chunk-bytes <n>
+                           Max bytes per incremental large-file source chunk
+  --large-file-max-seconds <n>
+                           Per-file large-file chunking timeout; preserves partial rows
+  --large-file-fallback-mode <mode>
+                           Large-file strategy: structural or line-window
+  --known-failed-ttl <seconds>
+                           TTL for skipping recent known-failed files in --resume --graph
 
 Observability:
   --progress-every <n>      Print completed-file progress every n files (default: 25)
@@ -365,6 +379,23 @@ function formatIndexLockStatus(status) {
   ].join('\n');
 }
 
+function buildKnownFailedMap(report = {}, { ttlSeconds = 0 } = {}) {
+  const now = Date.now();
+  const ttlMs = Number(ttlSeconds || 0) > 0 ? Number(ttlSeconds) * 1000 : 0;
+  const map = new Map();
+  for (const item of report.files || []) {
+    const relPath = normalizeRelPath(item.path || '');
+    if (!relPath) continue;
+    if (!['chunking', 'reading', 'hashing', 'graph-extraction', 'file'].includes(String(item.phase || ''))) continue;
+    if (ttlMs > 0) {
+      const failedAt = Date.parse(item.failedAt || '');
+      if (!Number.isFinite(failedAt) || now - failedAt > ttlMs) continue;
+    }
+    map.set(relPath, item);
+  }
+  return map;
+}
+
 function cleanStaleIndexLock({ rootDir } = {}) {
   const status = inspectIndexLock({ rootDir });
   if (status.present && status.status === 'stale') {
@@ -443,19 +474,30 @@ async function collectMissingOrStaleFiles(store, rootDir, {
   prioritizeMissing = false,
   onProgress = null,
   filter = null,
+  skipKnownFailed = false,
+  knownFailedTtlSeconds = 0,
 } = {}) {
   const inventory = applyRepairFilterToInventory(await discoverSourceFiles(rootDir), filter);
   onProgress?.({ phase: 'discovery', total: inventory.files.length });
   const rows = store.db.prepare('SELECT path, content_hash AS contentHash, graph_version AS graphVersion FROM code_files').all();
   const byPath = new Map(rows.map((row) => [row.path, row]));
+  const knownFailedByPath = skipKnownFailed
+    ? buildKnownFailedMap(await store.readFailedFilesReport(), { ttlSeconds: knownFailedTtlSeconds })
+    : new Map();
   const missing = [];
   const stale = [];
+  const knownFailedSkipped = [];
 
   for (const [index, file] of inventory.files.entries()) {
     const row = byPath.get(file.relPath);
     const current = index + 1;
     if (!row) {
-      missing.push({ ...file, reason: 'missing-row' });
+      const knownFailed = knownFailedByPath.get(file.relPath);
+      if (knownFailed) {
+        knownFailedSkipped.push({ ...file, reason: `known-failed-${knownFailed.phase || 'file'}` });
+      } else {
+        missing.push({ ...file, reason: 'missing-row' });
+      }
     }
     if (current % 100 === 0 || current === inventory.files.length) {
       onProgress?.({ phase: 'selection', current, total: inventory.files.length, path: file.relPath });
@@ -469,6 +511,7 @@ async function collectMissingOrStaleFiles(store, rootDir, {
       indexedRows: rows.length,
       selectionComplete: false,
       knownMissing: missing.length,
+      knownFailedSkipped,
       staleScanSkipped: true,
     };
   }
@@ -486,7 +529,12 @@ async function collectMissingOrStaleFiles(store, rootDir, {
     if (fileHash && fileHash !== row.contentHash) {
       stale.push({ ...file, reason: 'content-changed' });
     } else if (includeGraph && Number(row.graphVersion || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
-      stale.push({ ...file, reason: 'graph-version-stale' });
+      const knownFailed = knownFailedByPath.get(file.relPath);
+      if (knownFailed) {
+        knownFailedSkipped.push({ ...file, reason: `known-failed-${knownFailed.phase || 'file'}` });
+      } else {
+        stale.push({ ...file, reason: 'graph-version-stale' });
+      }
     }
     if (current % 100 === 0 || current === inventory.files.length) {
       onProgress?.({ phase: 'selection', current, total: inventory.files.length, path: file.relPath });
@@ -498,6 +546,7 @@ async function collectMissingOrStaleFiles(store, rootDir, {
         indexedRows: rows.length,
         selectionComplete: false,
         knownMissing: missing.length,
+        knownFailedSkipped,
         staleScanSkipped: true,
       };
     }
@@ -509,6 +558,7 @@ async function collectMissingOrStaleFiles(store, rootDir, {
     indexedRows: rows.length,
     selectionComplete: true,
     knownMissing: missing.length,
+    knownFailedSkipped,
     staleScanSkipped: false,
   };
 }
@@ -525,6 +575,7 @@ function formatMissingList(report, { maxFiles = DEFAULT_LIST_MISSING_LIMIT } = {
     `ELIGIBLE_SOURCE_FILES: ${report.inventory.files.length}`,
     `INDEXED_ROWS: ${report.indexedRows}`,
     `MISSING_OR_STALE: ${report.files.length}`,
+    `KNOWN_FAILED_SKIPPED: ${report.knownFailedSkipped?.length || 0}`,
     `SHOWING: ${shown.length}`,
   ];
   for (const file of shown) {
@@ -562,6 +613,13 @@ async function main() {
       file: { type: 'string', default: '' },
       'debug-file': { type: 'string', default: '' },
       'trace-phases': { type: 'boolean', default: false },
+      'large-file-threshold-bytes': { type: 'string', default: '' },
+      'large-file-threshold-lines': { type: 'string', default: '' },
+      'large-file-chunk-lines': { type: 'string', default: '' },
+      'large-file-chunk-bytes': { type: 'string', default: '' },
+      'large-file-max-seconds': { type: 'string', default: '' },
+      'large-file-fallback-mode': { type: 'string', default: '' },
+      'known-failed-ttl': { type: 'string', default: '' },
       'explain-policy': { type: 'boolean', default: false },
       'watcher-diagnostics': { type: 'boolean', default: false },
       'clean-stale-lock': { type: 'boolean', default: false },
@@ -581,6 +639,15 @@ async function main() {
   const heartbeatSeconds = nonNegativeInt(values['heartbeat-seconds'] || process.env.SUPERVIBE_INDEX_HEARTBEAT_SECONDS, DEFAULT_HEARTBEAT_SECONDS);
   const maxFiles = nonNegativeInt(values['max-files'], 0);
   const maxSeconds = positiveNumber(values['max-seconds'] || process.env.SUPERVIBE_INDEX_MAX_SECONDS, 0);
+  const largeFileOptions = {
+    largeFileThresholdBytes: values['large-file-threshold-bytes'] ? positiveInt(values['large-file-threshold-bytes'], undefined) : undefined,
+    largeFileThresholdLines: values['large-file-threshold-lines'] ? positiveInt(values['large-file-threshold-lines'], undefined) : undefined,
+    largeFileChunkLines: values['large-file-chunk-lines'] ? positiveInt(values['large-file-chunk-lines'], undefined) : undefined,
+    largeFileChunkBytes: values['large-file-chunk-bytes'] ? positiveInt(values['large-file-chunk-bytes'], undefined) : undefined,
+    largeFileMaxSeconds: values['large-file-max-seconds'] ? nonNegativeInt(values['large-file-max-seconds'], undefined) : undefined,
+    largeFileFallbackMode: values['large-file-fallback-mode'] || undefined,
+    knownFailedTtl: values['known-failed-ttl'] ? nonNegativeInt(values['known-failed-ttl'], undefined) : undefined,
+  };
   const chunkTimeoutMs = process.env.SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS
     ? undefined
     : (maxSeconds > 0 ? Math.max(100, Math.floor(maxSeconds * 1000 * 0.8)) : undefined);
@@ -639,6 +706,7 @@ async function main() {
     const diagnosticStore = new CodeStore(rootDir, {
       useEmbeddings: false,
       useGraph: graphEnabled,
+      ...largeFileOptions,
     });
     try {
       await diagnosticStore.init();
@@ -713,6 +781,7 @@ async function main() {
       useEmbeddings: !noEmbeddings,
       useGraph: graphEnabled,
       chunkTimeoutMs,
+      ...largeFileOptions,
     });
     try {
       await store.init();
@@ -722,7 +791,7 @@ async function main() {
       console.log(`Code DB recovery: ${recovery.recovered ? 'recovered' : 'not-needed'}`);
       if (recovery.backupPath) console.log(`  Backup: ${recovery.backupPath}`);
       if (recovery.rebuildCommand) console.log(`  Rebuild: ${recovery.rebuildCommand}`);
-      store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings, useGraph: graphEnabled, chunkTimeoutMs });
+      store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings, useGraph: graphEnabled, chunkTimeoutMs, ...largeFileOptions });
       await store.init();
     }
 
@@ -735,11 +804,17 @@ async function main() {
         prioritizeMissing: maxFiles > 0,
         filter: repairFilter,
         onProgress: progress.onProgress,
+        skipKnownFailed: graphEnabled && !sourceOnly && !repairFilter.file,
+        knownFailedTtlSeconds: store.knownFailedTtlSeconds,
       });
       const capped = capFiles(report.files, maxFiles);
       filesToIndex = capped.files.map((file) => file.absPath);
-      modeLabel = `resume missing/stale (${filesToIndex.length}/${report.files.length} selected${capped.capped ? `, capped by --max-files=${maxFiles}` : ''}${report.staleScanSkipped ? ', missing-first fast path' : ''})`;
+      const knownFailedSkipped = report.knownFailedSkipped?.length || 0;
+      modeLabel = `resume missing/stale (${filesToIndex.length}/${report.files.length} selected${capped.capped ? `, capped by --max-files=${maxFiles}` : ''}${report.staleScanSkipped ? ', missing-first fast path' : ''}${knownFailedSkipped ? `, known-failed skipped=${knownFailedSkipped}` : ''})`;
       console.log(`[supervibe:index] resume mode: ${report.files.length} missing/stale file(s), ${filesToIndex.length} selected${report.staleScanSkipped ? '; stale scan deferred to next batch' : ''}`);
+      if (knownFailedSkipped) {
+        console.log(`KNOWN_FAILED_SKIPPED: ${knownFailedSkipped}`);
+      }
     } else if (values.since) {
       try {
         const out = execFileSync('git', ['log', '--name-only', '--pretty=format:', `${values.since}..HEAD`], {

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.38] - 2026-05-02
+
+### Added
+
+- Added incremental large-file Code RAG indexing for source files above byte or
+  line-count thresholds, with Rust structural chunking for `mod`, `impl`,
+  `trait`, `struct`, `enum`, `fn`, and `macro_rules!` boundaries.
+- Added large-file indexer configuration for thresholds, chunk sizes, per-file
+  timeout, fallback mode, and known-failed quarantine TTL.
+
+### Fixed
+
+- Fixed large source files so source/BM25 rows are written incrementally and can
+  remain as `partial` rows instead of becoming `missing-row` after a timeout.
+- Fixed `--resume --graph` to skip recent known-failed source files so one
+  quarantined file does not consume every bounded graph repair batch.
+- Expanded `failed_files.json` diagnostics with file size, line count, chunking
+  strategy, timeout, chunks written, and recommended next action.
+
 ## [2.0.37] - 2026-05-02
 
 ### Fixed

@@ -33,7 +33,7 @@ const BLOCK_PATTERNS = {
   typescript: /^(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|class\s+(\w+)|interface\s+(\w+)|type\s+(\w+)|const\s+(\w+)\s*[:=]|enum\s+(\w+))/gm,
   python: /^(?:async\s+)?def\s+(\w+)|^class\s+(\w+)/gm,
   php: /^(?:abstract\s+|final\s+)?(?:class\s+(\w+)|trait\s+(\w+)|interface\s+(\w+))|^(?:public\s+|private\s+|protected\s+)?(?:static\s+)?function\s+(\w+)/gm,
-  rust: /^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)|^(?:pub\s+)?struct\s+(\w+)|^(?:pub\s+)?enum\s+(\w+)|^(?:pub\s+)?trait\s+(\w+)|^(?:pub\s+)?impl\b/gm,
+  rust: /^(?:pub(?:\([^)]*\))?\s+)?mod\s+(\w+)|^macro_rules!\s+(\w+)|^(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+(\w+)|^(?:pub(?:\([^)]*\))?\s+)?struct\s+(\w+)|^(?:pub(?:\([^)]*\))?\s+)?enum\s+(\w+)|^(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)|^(?:pub(?:\([^)]*\))?\s+)?impl(?:\s*<[^>]+>)?\s+([A-Za-z_]\w*)?/gm,
   go: /^func\s+(?:\([^)]+\)\s+)?(\w+)|^type\s+(\w+)\s+(?:struct|interface)/gm,
   java: /^(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:final\s+)?(?:abstract\s+)?(?:class\s+(\w+)|interface\s+(\w+))/gm,
   ruby: /^class\s+(\w+)|^module\s+(\w+)|^def\s+(\w+)/gm,
@@ -93,7 +93,7 @@ function maybeHangForWorkerTest(filePath) {
   Atomics.wait(blocker, 0, 0, 60_000);
 }
 
-function estimateCodeTokens(text) {
+export function estimateCodeTokens(text) {
   const normalized = String(text || '').trim();
   if (!normalized) return 0;
   const pieces = normalized.match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g);

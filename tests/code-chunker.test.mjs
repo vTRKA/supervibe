@@ -87,3 +87,49 @@ test('chunkCode: observes shouldStop before expensive tokenization work', async 
     /chunking aborted/,
   );
 });
+
+test('chunkCode: Rust approximate mode recognizes modules and macros as chunk boundaries', async () => {
+  const code = `
+pub mod service_layer {
+  pub struct ServiceState {
+    value: i32,
+  }
+}
+
+macro_rules! service_event {
+  ($name:expr) => {
+    println!("{}", $name);
+  };
+}
+
+pub trait ServiceRunner {
+  fn run(&self);
+}
+
+impl ServiceRunner for ServiceState {
+  fn run(&self) {}
+}
+
+pub enum ServiceKind {
+  Fast,
+  Slow,
+}
+
+pub async fn execute_service() {
+  service_event!("execute");
+}
+`;
+
+  const chunks = await chunkCode(code, 'src/services/large_service.rs', {
+    tokenMode: 'approximate',
+    targetTokens: 24,
+    overlapTokens: 0,
+  });
+  const names = chunks.map((chunk) => chunk.name).filter(Boolean);
+
+  assert.ok(names.includes('service_layer'), `expected mod chunk, got ${names.join(', ')}`);
+  assert.ok(names.includes('service_event'), `expected macro_rules chunk, got ${names.join(', ')}`);
+  assert.ok(names.includes('ServiceRunner'), `expected trait chunk, got ${names.join(', ')}`);
+  assert.ok(names.includes('ServiceKind'), `expected enum chunk, got ${names.join(', ')}`);
+  assert.ok(names.includes('execute_service'), `expected fn chunk, got ${names.join(', ')}`);
+});
