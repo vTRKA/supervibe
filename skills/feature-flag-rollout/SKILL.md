@@ -92,6 +92,13 @@ Storage backend: <platform / repo path> (NOT env vars)
 - Storage location is the flag platform, not env vars.
 - Cohort membership is derivable and reproducible (no "pick some users at random and pin them").
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 
 - `supervibe:test-strategy` — defines the contract test pinned to the OFF branch.

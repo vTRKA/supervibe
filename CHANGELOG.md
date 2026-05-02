@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.46] - 2026-05-02
+
+### Added
+
+- Added a skill operational contract validator so every skill must expose
+  output, guard rail, and verification sections before release.
+- Added an adapted UI/UX coverage reference and validator for design-facing
+  agents, skills, and `/supervibe-design`.
+
+### Changed
+
+- Strengthened design agents and skills with explicit coverage for
+  accessibility, interaction, performance, style fit, responsive layout,
+  typography/color, motion, forms, navigation, and charts/data.
+- Filled missing operational contracts across process/support skills so agent
+  handoffs fail closed instead of relying on implicit behavior.
+
 ## [2.0.45] - 2026-05-02
 
 ### Added

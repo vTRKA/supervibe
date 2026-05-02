@@ -69,6 +69,25 @@ Design intelligence is an internal evidence source for this existing command, no
 
 The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but the precedence order is strict: **approved design system > project memory > codebase patterns > accessibility constraints > external references**. The design system line item is valid only when `prototypes/_design-system/manifest.json` has `status: approved`.
 
+## UI/UX Pro Max Coverage Gate
+
+Use `docs/references/ui-ux-pro-max-coverage.md` as the adapted UI/UX coverage checklist. This gate does not replace Supervibe tokens or approval flow; it ensures designers do not miss critical review dimensions.
+
+Before finalizing direction, spec, prototype, review, or handoff, confirm the relevant domains are either covered or explicitly marked N/A with rationale:
+
+1. Accessibility
+2. Touch & Interaction
+3. Performance
+4. Style Selection
+5. Layout & Responsive
+6. Typography & Color
+7. Animation
+8. Forms & Feedback
+9. Navigation Patterns
+10. Charts & Data
+
+Run a product-fit style matrix before committing to a visual direction: product category, trust/risk level, density, platform, interaction mode, and data intensity must explain the chosen style, palette, type, motion, and component density. For stack handoff, use stack-aware UI guidance so framework/library adapters implement the approved prototype and tokens instead of replacing them with library defaults.
+
 ## Hard rules (the user feedback that drives this command)
 
 1. **Native HTML/CSS/JS only** for prototypes. No React, Vue, Svelte, Next.js, Nuxt. Pure web platform. Frameworks come AFTER approval, in the handoff-to-stack step.

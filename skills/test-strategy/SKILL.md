@@ -94,6 +94,13 @@ Open risks: <enumerated>
 - Unit suite local runtime measured and recorded.
 - e2e wall-clock share measured and ≤10%.
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 
 - `supervibe:tdd` — drives the day-to-day red/green/refactor loop on top of this strategy.

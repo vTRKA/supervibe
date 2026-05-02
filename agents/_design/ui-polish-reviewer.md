@@ -120,6 +120,12 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for UX priority, style, stack, token drift, chart, icon, and component-state evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows support a finding.
 
+## UI/UX Pro Max Coverage
+
+Use `docs/references/ui-ux-pro-max-coverage.md` as the review coverage checklist. Every polish verdict must cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
+
+Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as blocking dimensions when the surface includes interactive UI. For Charts & Data, verify legends, tooltips, non-color-only encoding, empty/error states, scale behavior, and accessible fallback.
+
 ## Procedure
 
 1. **Search project memory** for prior reviews on this surface and any token-policy decisions

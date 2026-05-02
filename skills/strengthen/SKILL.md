@@ -100,6 +100,13 @@ Returns:
 - ALWAYS: grep-verify any path/function/command added
 - ALWAYS: cite researcher findings if consulted
 
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.
+
 ## Related
 
 - `supervibe:audit` — produces input list

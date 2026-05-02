@@ -103,6 +103,13 @@ Rubric: framework
 - `manifest.json` `componentLibrary.bridgePath` resolves to existing file.
 - Token references in bridge file (grep for token names from `tokens.css`) — count must be > 0; bridge that doesn't reference any token is broken.
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 - `supervibe:brandbook` — produces tokens this skill consumes
 - `supervibe:prototype-handoff` — consumes bridge as part of handoff bundle

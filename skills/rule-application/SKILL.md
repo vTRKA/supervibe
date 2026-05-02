@@ -78,6 +78,13 @@ Findings:
 - Do not add broad mandatory rules for niche project concerns.
 - Do not hide missing rules; missing expected rules are explicit findings.
 
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.
+
 ## Related
 
 - `agents/_meta/rules-curator` - owns rule creation and maintenance.

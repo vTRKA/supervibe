@@ -95,6 +95,13 @@ Returns:
 - `getRegistry()` returns ≥1 MCP OR explicit fallback documented
 - Output names which MCP was used (or "no MCP, fell back to X")
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 
 - Tool: `scripts/lib/mcp-registry.mjs` — registry helpers

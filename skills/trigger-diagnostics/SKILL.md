@@ -160,6 +160,13 @@ If more information is needed, ask one question per message:
 - `npm run validate:trigger-replay`
 - `npm run validate:artifact-links`
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 
 - `supervibe:workflow-router` internal route sentinel

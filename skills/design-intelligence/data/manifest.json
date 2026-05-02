@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageVersionTarget": "2.0.11",
-  "sourceRepository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "sourceReference": "external-ui-ux-reference-pack",
   "sourceCommit": "b7e3af80f6e331f6fb456667b82b12cade7c9d35",
   "sourceCommitShort": "b7e3af8",
   "license": "MIT",

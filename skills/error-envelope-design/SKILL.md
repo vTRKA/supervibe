@@ -102,6 +102,13 @@ Deprecation: <Sunset header + monitoring metric>
 - Batch endpoints return per-item status; no all-or-nothing collapses.
 - Sample error responses contain no stack traces, no SQL fragments, no internal hostnames.
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 
 - `supervibe:test-strategy` — contract tests assert the envelope at the API boundary.

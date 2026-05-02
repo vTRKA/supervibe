@@ -51,6 +51,12 @@ Evaluate these eight dimensions in order:
 8. Handoff readiness: findings are specific enough for a developer or designer
    to fix without re-discovery.
 
+## UI/UX Pro Max Coverage
+
+Use `docs/references/ui-ux-pro-max-coverage.md` to make the review complete, not just visually tasteful. Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
+
+For Accessibility, verify keyboard, focus, labels, contrast, semantics, target size, and reduced motion. For Performance, verify image sizing, layout shift risk, font loading, main-thread cost, and list virtualization where relevant. For Charts & Data, verify chart fit, legends, tooltips, non-color-only encoding, scale behavior, and empty/error states.
+
 ## Procedure
 
 1. Inspect the artifact files and nearby patterns.
@@ -97,6 +103,13 @@ Approval readiness: <ready | blocked>
 - Do not use generic advice without a cited UI region.
 - Do not claim browser verification happened unless a browser, screenshot, or
   local preview command actually ran.
+
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.
 
 ## Related
 

@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.45",
+  "version": "2.0.46",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -86,8 +86,10 @@
     "lint:descriptions": "node scripts/lint-skill-descriptions.mjs",
     "validate:plugin-json": "node scripts/validate-plugin-json.mjs",
     "validate:agent-footers": "node scripts/validate-agent-output-contract.mjs",
+    "validate:skill-operational-contracts": "node scripts/validate-skill-operational-contracts.mjs",
     "validate:design-skills": "node scripts/validate-design-skills.mjs",
     "validate:design-readiness": "node scripts/validate-design-readiness.mjs",
+    "validate:ui-ux-pro-max-coverage": "node scripts/validate-ui-ux-pro-max-coverage.mjs",
     "validate:question-discipline": "node scripts/validate-question-discipline.mjs",
     "validate:dialogue-ux": "node scripts/validate-dialogue-ux.mjs",
     "validate:workflow-continuation": "node scripts/validate-workflow-continuation.mjs",
@@ -111,7 +113,7 @@
     "audit:evidence": "node scripts/audit-evidence-citations.mjs",
     "rollout:rag-procedure": "node scripts/apply-rag-memory-procedure.mjs",
     "lint:dead-code": "knip --no-progress --no-config-hints",
-    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:design-skills && npm run validate:design-readiness && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:workflow-continuation && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:template-quality && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:artifact-links && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run validate:agentic-security && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:frontmatter && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:skill-operational-contracts && npm run validate:design-skills && npm run validate:design-readiness && npm run validate:ui-ux-pro-max-coverage && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:workflow-continuation && npm run validate:spec-artifacts && npm run validate:plan-artifacts && npm run validate:template-quality && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:artifact-links && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run validate:agentic-security && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {

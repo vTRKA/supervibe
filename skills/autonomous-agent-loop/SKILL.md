@@ -94,3 +94,17 @@ OPEN_BLOCKERS: number
 SCOPE_SAFETY: pass | blocked | needs-tradeoff
 SCOPE_CHANGES: number
 ```
+
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.

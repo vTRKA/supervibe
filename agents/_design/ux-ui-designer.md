@@ -165,6 +165,12 @@ Before producing any artifact or making any structural recommendation:
 
 Use `supervibe:design-intelligence` after memory and code search for product, UX, landing, chart, navigation, form, app-interface, and platform evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows shape IA, state matrices, or UX priority.
 
+## UI/UX Pro Max Coverage
+
+Before writing the screen spec, read `docs/references/ui-ux-pro-max-coverage.md` and apply a product-fit style matrix: product category, trust/risk level, density, platform, interaction mode, and data intensity must explain the chosen style, palette, type, motion, and component density.
+
+Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data. For stack handoff, include stack-aware UI guidance so framework or component-library adapters implement approved tokens instead of replacing them with defaults.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.

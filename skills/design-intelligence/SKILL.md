@@ -76,6 +76,23 @@ Generic retrieved guidance is advisory. It cannot override approved tokens, prio
 - `slides:*`: presentation strategy, layout, copy, chart, typography, color, and background guidance.
 - `collateral:*`: logo, icon, CIP, brand asset, and mockup context guidance.
 
+## UI/UX Pro Max Coverage Matrix
+
+For design-facing lookups, map retrieved evidence to this coverage matrix before making a recommendation:
+
+1. Accessibility
+2. Touch & Interaction
+3. Performance
+4. Style Selection
+5. Layout & Responsive
+6. Typography & Color
+7. Animation
+8. Forms & Feedback
+9. Navigation Patterns
+10. Charts & Data
+
+Use a product-fit style matrix to match product category, trust/risk, density, platform, interaction mode, and data intensity before suggesting visual direction. Use stack-aware UI guidance for framework, mobile, or component-library handoff; retrieved style rows are advisory and cannot override approved tokens, accessibility requirements, or local code patterns.
+
 ## Memory Writeback Rules
 
 Write memory only after a review or user signal marks the result accepted, rejected, or learned. Do not write every candidate suggestion.
@@ -91,3 +108,24 @@ Accepted decisions need artifact links or evidence ids. Rejected alternatives ne
 - memory-bypass
 - approved-system-overwrite
 - uncited-design-claim
+
+## Output contract
+
+Returns:
+- Evidence summary with cited memory, code, lookup, or fallback sources.
+- Decision or recommendation with confidence score and conflict handling.
+- Explicit next action, owner skill/agent, and stop condition when follow-up work is needed.
+
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.

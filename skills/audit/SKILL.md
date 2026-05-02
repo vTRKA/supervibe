@@ -81,6 +81,13 @@ Audit is read-only and non-interactive by default. No-prompt path: run the audit
 - DO NOT: flag false positives (verify each finding has evidence)
 - ALWAYS: emit reproducible report (same inputs = same report)
 
+## Verification
+
+- Confirm every emitted artifact exists and matches the Output contract.
+- Run the validator, test, dry-run, or audit command named by this skill when one exists.
+- Include concrete command/output evidence before claiming the skill completed successfully.
+- If verification cannot run, state the blocker and keep confidence below the passing gate.
+
 ## Related
 
 - `supervibe:strengthen` — fix weak

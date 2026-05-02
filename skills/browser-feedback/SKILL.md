@@ -100,6 +100,13 @@ Rubric: agent-delivery
 - Reload browser preview; confirm visual change matches comment intent.
 - `git diff` shows minimal change scope (no scope-creep).
 
+## Guard rails
+
+- Do not mutate files, provider state, network resources, or external tools unless this skill's procedure and the user approval path allow it.
+- Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
+- Do not claim completion without concrete verification evidence.
+- Preserve user-owned content and unrelated worktree changes.
+
 ## Related
 - `scripts/preview-server.mjs` — emits feedback over WebSocket into `.supervibe/memory/feedback-queue.jsonl`
 - `scripts/hooks/user-prompt-submit-feedback.mjs` — UserPromptSubmit hook surfaces new entries as `additionalContext` on every prompt
