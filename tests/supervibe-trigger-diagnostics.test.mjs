@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import {
   diagnoseTriggerRequest,
   formatTriggerDiagnostic,
@@ -24,5 +27,28 @@ describe("supervibe trigger diagnostics", () => {
     assert.match(text, /Intent: brainstorm_to_plan/);
     assert.match(text, /Command: \/supervibe-plan/);
     assert.match(text, /Шаг 1\/1: написать план/);
+  });
+  it("diagnoses unpublished explicit slash commands as hard stops", async () => {
+    const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-diagnostics-plugin-"));
+    const commandPath = join(pluginRoot, "commands", "supervibe-status.md");
+    try {
+      await mkdir(dirname(commandPath), { recursive: true });
+      await writeFile(commandPath, "---\ndescription: \"Status command\"\n---\n# /supervibe-status\n", "utf8");
+      await writeFile(join(pluginRoot, "package.json"), JSON.stringify({ scripts: {} }, null, 2), "utf8");
+
+      const report = diagnoseTriggerRequest("/supervibe-design create desktop design system", {
+        pluginRoot,
+        projectRoot: pluginRoot,
+      });
+      const text = formatTriggerDiagnostic(report);
+
+      assert.equal(report.route.intent, "missing_slash_command");
+      assert.equal(report.route.hardStop, true);
+      assert.equal(report.pass, false);
+      assert.match(report.recommendedAction, /Report the missing command and stop/);
+      assert.match(text, /Hard stop: true/);
+    } finally {
+      await rm(pluginRoot, { recursive: true, force: true });
+    }
   });
 });

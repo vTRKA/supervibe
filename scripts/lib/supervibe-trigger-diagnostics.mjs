@@ -12,7 +12,7 @@ export function diagnoseTriggerRequest(request, options = {}) {
   return {
     request,
     route,
-    pass: route.intent !== "unknown" && route.missingArtifacts.length === 0 && route.safetyBlockers.length === 0,
+    pass: route.intent !== "unknown" && route.hardStop !== true && route.missingArtifacts.length === 0 && route.safetyBlockers.length === 0,
     likelyCause,
     recommendedAction: recommendedActionFor(route),
     evidence: {
@@ -34,6 +34,9 @@ export function formatTriggerDiagnostic(report) {
     `Skill: ${report.route.skill}`,
     `Reason: ${report.route.reason}`,
   ];
+  if (report.route.hardStop === true) {
+    lines.push("Hard stop: true");
+  }
   if (report.evidence.missingArtifacts.length > 0) {
     lines.push(`Missing artifacts: ${report.evidence.missingArtifacts.join(", ")}`);
   }
@@ -47,6 +50,7 @@ export function formatTriggerDiagnostic(report) {
 }
 
 function likelyCauseFor(route) {
+  if (route.hardStop === true && route.intent === "missing_slash_command") return "The user named an explicit Supervibe slash command that is not published in the active command catalog.";
   if (route.intent === "unknown") return "No exact corpus or keyword route matched the user request.";
   if (route.missingArtifacts.length > 0) return "The trigger matched, but required artifact context is missing.";
   if (route.safetyBlockers.length > 0) return "The trigger matched, but safe execution needs an explicit gate first.";
@@ -54,6 +58,7 @@ function likelyCauseFor(route) {
 }
 
 function recommendedActionFor(route) {
+  if (route.hardStop === true && route.intent === "missing_slash_command") return "Report the missing command and stop. Do not search the repository, marketplace, or source tree to emulate the command.";
   if (route.intent === "unknown") return "Add a corpus phrase or strengthen the command/skill description.";
   if (route.missingArtifacts.length > 0) return `Provide: ${route.missingArtifacts.join(", ")}.`;
   if (route.safetyBlockers.length > 0) return `Resolve safety gates: ${route.safetyBlockers.join(", ")}.`;

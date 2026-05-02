@@ -40,5 +40,14 @@
       "intent": "unknown",
       "clarifyingQuestion": true
     }
+  },
+  {
+    "id": "explicit-design-slash-command-no-emulation",
+    "phrase": "запусти команду /supervibe-design на создание новой дизайн системы десктопного приложения",
+    "expected": {
+      "intent": "slash_command",
+      "command": "/supervibe-design на создание новой дизайн системы десктопного приложения",
+      "minConfidence": 0.99
+    }
   }
 ]

@@ -59,6 +59,29 @@ const CONTINUATION_COMMAND_RULES = Object.freeze([
   },
 ]);
 
+const COMMAND_LOOKUP_RULES = Object.freeze([
+  {
+    file: "scripts/lib/supervibe-agent-recommendation.mjs",
+    label: "managed fast command lookup hard stop",
+    required: [
+      /INTENT: missing_slash_command/i,
+      /HARD_STOP: true/i,
+      /do not inspect source files/i,
+      /repository paths to emulate it/i,
+    ],
+  },
+  {
+    file: "scripts/lib/supervibe-command-catalog.mjs",
+    label: "command catalog missing slash hard stop",
+    required: [
+      /missing_slash_command/i,
+      /hardStop/i,
+      /Hard stop: report the missing slash command/i,
+      /HARD_STOP: true/i,
+    ],
+  },
+]);
+
 export function validateCommandOperationalContracts(rootDir = process.cwd()) {
   const commandsDir = join(rootDir, "commands");
   const issues = [];
@@ -110,6 +133,28 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
           file: relPath,
           code: "missing-continuation-contract",
           message: `${relPath}: ${rule.label} missing continuation contract ${pattern}`,
+        });
+      }
+    }
+  }
+
+  for (const rule of COMMAND_LOOKUP_RULES) {
+    const absPath = join(rootDir, ...rule.file.split("/"));
+    if (!existsSync(absPath)) {
+      issues.push({
+        file: rule.file,
+        code: "missing-command-lookup-contract-file",
+        message: `${rule.file}: required command lookup contract file is missing`,
+      });
+      continue;
+    }
+    const text = readFileSync(absPath, "utf8");
+    for (const pattern of rule.required) {
+      if (!pattern.test(text)) {
+        issues.push({
+          file: rule.file,
+          code: "missing-command-lookup-hard-stop",
+          message: `${rule.file}: ${rule.label} missing ${pattern}`,
         });
       }
     }

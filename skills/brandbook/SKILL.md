@@ -82,9 +82,13 @@ The design-system review packet is a chat-level gate. Ask explicit approval/revi
 
 **Step 0b — Preference Coverage Matrix Gate.**
 
-Before writing candidate tokens, `manifest.json`, `design-flow-state.json`, or section markers for a new product, new visual direction, or rebrand, satisfy the Preference Coverage Matrix. The saved `.supervibe/artifacts/brandbook/preferences.json` must cover: visual direction and tone, audience/trust posture, information density, typography personality, palette mood, motion intensity, component feel, and reference borrow/avoid.
+Before writing candidate tokens, `manifest.json`, `design-flow-state.json`, or section markers for a new product, new visual direction, or rebrand, satisfy the Preference Coverage Matrix. The saved `.supervibe/artifacts/brandbook/preferences.json` must set `first_user_design_gate_ack=true` and cover: visual direction and tone, audience/trust posture, information density, typography personality, palette mood, motion intensity, component feel, and reference borrow/avoid.
 
-Ask one question at a time only for missing or ambiguous axes; do not dump all eight questions. If the user already gave clear preferences in the brief, persist those as source=`user` and ask one confirmation or priority question before writing candidate tokens. If the user explicitly says "no preference" or "use defaults", persist source=`explicit-default`, name each default, and continue. This gate cannot be satisfied by delegated approval markers. Only the visual approval/finalize step is a chat-level gate; candidate markers and delegated defaults cannot replace it.
+Ask one question at a time only for missing or ambiguous axes; do not dump all eight questions. If the user already gave clear preferences in the brief, persist those as source=`user` and ask one confirmation or priority question before writing candidate tokens. If the user explicitly says "no preference" or "use defaults", persist source=`explicit-default`, name each default, and continue. source=`inferred` is forbidden for this matrix. This gate cannot be satisfied by delegated approval markers. Only the visual approval/finalize step is a chat-level gate; candidate markers and delegated defaults cannot replace it.
+
+If the brief points at an older prototype or path such as `docs/old prototypes`, ask the Old artifact reference scope question before reading the old files or writing brand artifacts. Record the borrow/avoid answer into the `reference borrow/avoid` axis.
+
+Use dry-run mode for uncertain or first-pass generation: show the review packet in chat or write it to `.supervibe/artifacts/prototypes/_design-system/.scratch/<run-id>/` only. Promote to `.supervibe/artifacts/brandbook/` or `_design-system/` after `first_user_design_gate_ack=true` and the complete matrix evidence exist.
 
 For new product, new visual direction, or rebrand runs, `.supervibe/artifacts/brandbook/direction.md` must exist and `creative_direction.status = selected` must be recorded before candidate tokens, section markers, or prototype unlock. Direction output must show 3 candidate directions, references, borrow/avoid notes, and why the selected direction is not just a repaint of older prototypes.
 
@@ -382,6 +386,8 @@ Rubric:     brandbook
 - ONE question per message. Always.
 - DO NOT stop after internal section drafting when the next section can proceed with safe defaults, but DO stop for the design-system review packet before writing approved state.
 - DO NOT treat a single broad style choice as complete preference intake for a new design system; the Preference Coverage Matrix must be complete before candidate tokens.
+- DO NOT use source=`inferred` or agent-filled preferences in `preferences.json`; use source=`user` or source=`explicit-default` only, with `first_user_design_gate_ack=true`.
+- DO NOT promote dry-run or scratch review packets into durable `.supervibe/artifacts/brandbook/` or `_design-system/` paths before the first user design gate evidence exists.
 - DO NOT write candidate tokens or section markers for a new/rebrand run until `.supervibe/artifacts/brandbook/direction.md` exists and the creative direction is selected.
 - DO NOT inline raw hex / magic numbers anywhere. Tokens or it's not done.
 - DO NOT advance to component design before palette + type + spacing have candidate markers (downstream depends on these).

@@ -449,6 +449,11 @@ export function routeTriggerRequest(input, options = {}) {
   const locale = detectLocale(text);
   const corpus = options.corpus ?? getTriggerIntentCorpus();
 
+  const resolvedCommand = resolveCommandRequest(text, commandCatalogOptions(options));
+  if (resolvedCommand?.intent === "missing_slash_command") {
+    return routeGenericResolvedCommand(resolvedCommand, artifacts, locale);
+  }
+
   const commandMatch = matchSlashCommand(text);
   if (commandMatch) {
     const route = ROUTES[commandMatch.intent];
@@ -477,7 +482,6 @@ export function routeTriggerRequest(input, options = {}) {
     );
   }
 
-  const resolvedCommand = resolveCommandRequest(text);
   if (resolvedCommand?.doNotSearchProject && shouldPreemptTriggerRouting(resolvedCommand)) {
     if (resolvedCommand.directRoute !== false && ROUTES[resolvedCommand.intent]) {
       return routeResolvedKnownCommand(resolvedCommand, artifacts, locale);
@@ -689,6 +693,8 @@ function routeResolvedKnownCommand(resolvedCommand, artifacts, locale) {
       source: "command-catalog",
       reason: resolvedCommand.reason,
       doNotSearchProject: resolvedCommand.doNotSearchProject === true,
+      hardStop: resolvedCommand.hardStop === true,
+      stopCondition: resolvedCommand.hardStop ? "report-missing-command" : undefined,
     }, [{
       source: "command-catalog",
       reason: resolvedCommand.reason,
@@ -718,6 +724,8 @@ function routeGenericResolvedCommand(resolvedCommand, artifacts, locale) {
       source: "command-catalog",
       reason: resolvedCommand.reason,
       doNotSearchProject: resolvedCommand.doNotSearchProject === true,
+      hardStop: resolvedCommand.hardStop === true,
+      stopCondition: resolvedCommand.hardStop ? "report-missing-command" : undefined,
     }, [{
       source: "command-catalog",
       reason: resolvedCommand.reason,
@@ -732,6 +740,14 @@ function shouldPreemptTriggerRouting(resolvedCommand) {
   if (resolvedCommand.requestedCommand) return true;
   if (resolvedCommand.intent === "code_index_build") return true;
   return ["slash_command", "missing_slash_command", "project_npm_script", "plugin_npm_script", "missing_npm_script"].includes(resolvedCommand.intent);
+}
+
+function commandCatalogOptions(options = {}) {
+  return {
+    pluginRoot: options.pluginRoot ?? options.commandCatalog?.pluginRoot ?? process.cwd(),
+    projectRoot: options.projectRoot ?? options.commandCatalog?.projectRoot ?? process.cwd(),
+    shortcuts: options.commandCatalog?.shortcuts,
+  };
 }
 
 function withArtifactStatus(route, artifacts) {

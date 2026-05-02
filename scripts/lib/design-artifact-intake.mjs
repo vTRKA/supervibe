@@ -42,6 +42,15 @@ const REUSE_PATTERNS = [
   /\bэтот файл\b/i,
 ];
 
+const OLD_ARTIFACT_REFERENCE_PATTERNS = [
+  /[A-Za-z]:[\\/][^\n"'`]*\bold[^\n"'`]*\bprototypes?\b/gi,
+  /[A-Za-z]:[\\/][^\n"'`]*\blegacy[^\n"'`]*\bprototypes?\b/gi,
+  /\bdocs[\\/][^\n"'`]*\bold[^\n"'`]*\bprototypes?\b/gi,
+  /\bold prototypes?\b/gi,
+  /\blegacy prototypes?\b/gi,
+  /\bprevious prototypes?\b/gi,
+];
+
 async function safeStat(path) {
   try {
     return await stat(path);
@@ -60,6 +69,17 @@ async function readJson(path) {
 
 function hasAnyPattern(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
+}
+
+function findOldArtifactReferences(text) {
+  const refs = [];
+  for (const pattern of OLD_ARTIFACT_REFERENCE_PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const match of String(text ?? "").matchAll(pattern)) {
+      refs.push(match[0].trim());
+    }
+  }
+  return [...new Set(refs)].slice(0, 5);
 }
 
 async function collectArtifact(projectRoot, rootName, entryName) {
@@ -134,23 +154,51 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
   const explicitFresh = hasAnyPattern(text, FRESH_PATTERNS);
   const explicitReuse = hasAnyPattern(text, REUSE_PATTERNS);
   const hasExisting = artifacts.length > 0;
+  const oldArtifactReferences = findOldArtifactReferences(text);
+
+  if (oldArtifactReferences.length > 0) {
+    return {
+      mode: "ask",
+      needsQuestion: true,
+      needsOldArtifactScopeQuestion: true,
+      reason: "old-artifact-reference-scope-required",
+      artifacts,
+      oldArtifactReferences,
+    };
+  }
 
   if (!hasExisting) {
-    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts };
+    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts, oldArtifactReferences };
   }
 
   if (explicitFresh && !explicitReuse) {
-    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts };
+    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts, oldArtifactReferences };
   }
 
   if (explicitReuse && !explicitFresh) {
-    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts };
+    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts, oldArtifactReferences };
   }
 
-  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts };
+  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences };
 }
 
 export function formatDesignArtifactChoiceQuestion(intake) {
+  if (intake.needsOldArtifactScopeQuestion) {
+    const refs = (intake.oldArtifactReferences ?? []).map((ref, index) => `${index + 1}. ${ref}`).join("\n");
+    return `**Step 0/N: Old artifact reference scope.**
+The brief points at older design/prototype material. I need the borrow/avoid boundary before reading or writing design artifacts.
+
+${refs || "No reference path listed."}
+
+What should I borrow?
+
+- Functional inventory only (recommended) - preserve flows, states, and capabilities; avoid layout, style, and shell structure.
+- Functional inventory plus IA - preserve flows and information architecture; redesign visual structure.
+- Visual reference allowed - borrow selected style/layout traits and document what changes.
+- Ignore the old artifact - create a new design without reading it.
+- Stop here - make no hidden progress.`;
+  }
+
   const artifacts = intake.artifacts ?? [];
   const listed = artifacts.slice(0, 5).map((artifact, index) => {
     const target = artifact.target ? `, target=${artifact.target}` : "";

@@ -329,11 +329,12 @@ export function resolveCommandRequest(request, {
       requestedCommand: explicitSlash.command,
       slashCommandStatus: slashCommand ? "present" : "missing",
       doNotSearchProject: true,
+      hardStop: !slashCommand,
       directRoute: false,
       mutationRisk: "delegates-to-slash-command",
       nextAction: slashCommand
         ? "Run this exact slash command in the active AI CLI; no repository search is needed."
-        : "Report the missing slash command and inspect the command catalog; do not scan the whole repository for guesses.",
+        : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
     };
   }
 
@@ -482,6 +483,7 @@ export function formatCommandMatch(match) {
     match.slashCommandStatus ? `SLASH_COMMAND: ${match.slashCommandStatus}` : null,
     match.projectScriptStatus ? `PROJECT_SCRIPT: ${match.projectScriptStatus}` : null,
     match.pluginScriptStatus ? `PLUGIN_SCRIPT: ${match.pluginScriptStatus}` : null,
+    match.hardStop ? `HARD_STOP: true` : null,
     `DO_NOT_SEARCH_PROJECT: ${match.doNotSearchProject === true}`,
     `COMMAND: ${match.command || "none"}`,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),

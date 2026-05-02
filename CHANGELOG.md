@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.54] - 2026-05-03
+## [2.0.55] - 2026-05-03
 
 ### Added
 
+- Added a hard-stop command routing contract for unpublished explicit
+  `/supervibe-*` slash commands so agents report missing commands instead of
+  searching source files or emulating marketplace flows.
+- Added design artifact write-gate validation for `first_user_design_gate_ack`,
+  explicit preference matrix sources, and approval evidence before durable
+  design-system files are accepted.
+- Added terminal/file I/O policy validation plus `.editorconfig` and
+  `.gitattributes` UTF-8/LF enforcement for cross-host text safety.
 - Added design-flow gate validation for preference coverage, creative
   direction, section approval, and preview feedback/token checks.
 - Added preview URL helpers so shared prototype roots return
@@ -18,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Routed explicit slash-command text through the command catalog before static
+  workflow matching when the active catalog says the command is missing.
+- Extended design artifact intake so references to older prototype folders ask
+  a borrow/avoid scope question before reading or writing design artifacts.
 - Strengthened `/supervibe-design` and `supervibe:brandbook` so new/rebrand
   runs require a full preference coverage matrix and `direction.md` before
   candidate tokens or prototypes.
@@ -28,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the `/supervibe-design` process failure mode where a missing command
+  diagnostic could still be bypassed by manual flow execution.
+- Fixed versioned host guidance so managed contexts explicitly stop on
+  `missing_slash_command` / `HARD_STOP: true`.
 - Fixed preview serving for prototype roots that import sibling
   `_design-system` tokens.
 - Fixed workflow routing for resolved commands with no runnable command.

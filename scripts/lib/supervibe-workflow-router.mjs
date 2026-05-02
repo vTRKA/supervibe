@@ -106,7 +106,12 @@ export function routeWorkflowIntent(input, options = {}) {
   const contextual = routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts, dirtyGitState });
   if (contextual) return applySafetyState(contextual, { dirtyGitState, artifacts });
 
-  const triggerRoute = routeTriggerRequest(request, { artifacts });
+  const triggerRoute = routeTriggerRequest(request, {
+    artifacts,
+    pluginRoot: options.pluginRoot,
+    projectRoot: options.projectRoot,
+    commandCatalog: options.commandCatalog,
+  });
   if (triggerRoute.intent !== "unknown") {
     return applySafetyState(fromTriggerRoute(triggerRoute, { locale }), { dirtyGitState, artifacts });
   }
@@ -326,11 +331,13 @@ function fromTriggerRoute(route, options = {}) {
     reason: route.reason,
     nextPromptText: route.nextQuestion,
     nextQuestion: route.nextQuestion,
-    stopCondition: stopConditionForCommand(route.command),
+    stopCondition: route.stopCondition ?? stopConditionForCommand(route.command),
     requiredSafety: route.requiredSafety ?? [],
     missingArtifacts: route.missingArtifacts ?? [],
     safetyBlockers: route.safetyBlockers ?? [],
     alternatives: route.alternatives ?? [],
+    hardStop: route.hardStop === true,
+    doNotSearchProject: route.doNotSearchProject === true,
     handoffBlock: formatNextStepBlock({
       phase: phaseForRoute(route),
       artifactPath: route.prerequisites?.[0],

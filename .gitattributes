@@ -6,6 +6,21 @@
 # LF even when users clone with core.autocrlf=true.
 *.sh text eol=lf
 
+# Supervibe command, rule, skill, agent, validator and evidence text surfaces
+# must stay LF/UTF-8 across Windows and Unix hosts.
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.txt text eol=lf
+*.tpl text eol=lf
+*.template text eol=lf
+.editorconfig text eol=lf
+
 # Large ONNX models are downloaded from HuggingFace by the installer and are
 # intentionally not stored in git.
 #

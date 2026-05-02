@@ -25,8 +25,8 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 
 Same Supervibe project context, adapted for Gemini CLI:
 - 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
-- 54 process skills in `./skills/`
-- 26 project rules in `./rules/`
+- 55 process skills in `./skills/`
+- 28 project rules in `./rules/`
 - 17 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
@@ -36,6 +36,12 @@ Same Supervibe project context, adapted for Gemini CLI:
 - Live preview-server via `./scripts/preview-server.mjs`
 
 ## How to invoke
+
+Before broad source search for command-like requests, run:
+```
+node ./scripts/supervibe-commands.mjs --match "<user request>"
+```
+If the output says `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 
 Reference any agent by file path:
 ```
@@ -63,6 +69,8 @@ The same six core principles apply across host instruction files — these overr
 4. **Memory beats re-derivation** — find prior decisions in `.supervibe/memory/decisions/` before re-deriving.
 5. **Graph before refactor** — `--callers` evidence before any rename / move / extract.
 6. **Anti-half-finished** — no commented-out code, no orphan TODOs, no half-applied refactors.
+
+7. **UTF-8 file discipline** - follow `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md`: write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
 
 ## Reference
 

@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { routeTriggerRequest } from "../scripts/lib/supervibe-trigger-router.mjs";
 
 describe("supervibe trigger router", () => {
@@ -103,6 +106,18 @@ describe("supervibe trigger router", () => {
     assert.deepEqual(missing.safetyBlockers, []);
   });
 
+  it("does not manually emulate the published supervibe-design slash command from a mixed-language request", () => {
+    const route = routeTriggerRequest("запусти команду /supervibe-design на создание новой дизайн системы десктопного приложения");
+
+    assert.equal(route.intent, "slash_command");
+    assert.equal(route.command, "/supervibe-design на создание новой дизайн системы десктопного приложения");
+    assert.equal(route.skill, null);
+    assert.equal(route.source, "command-catalog");
+    assert.equal(route.doNotSearchProject, true);
+    assert.equal(route.requiredSafety.includes("slash-command-owns-safety"), true);
+    assert.deepEqual(route.safetyBlockers, []);
+  });
+
   it("routes security, network, prompt, and kanban requests through specialized flows", () => {
     const security = routeTriggerRequest("security audit should scan vulnerabilities and prioritize remediation", {
       artifacts: { userRequest: true },
@@ -157,5 +172,30 @@ describe("supervibe trigger router", () => {
     assert.match(route.nextQuestion, /brandbook before prototype/i);
     assert.equal(route.requiredSafety.includes("creative-direction-first"), true);
     assert.deepEqual(route.missingArtifacts, []);
+  });
+
+  it("hard-stops unpublished explicit slash commands before static route matching", async () => {
+    const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-trigger-plugin-"));
+    const commandPath = join(pluginRoot, "commands", "supervibe-status.md");
+    try {
+      await mkdir(dirname(commandPath), { recursive: true });
+      await writeFile(commandPath, "---\ndescription: \"Status command\"\n---\n# /supervibe-status\n", "utf8");
+      await writeFile(join(pluginRoot, "package.json"), JSON.stringify({ scripts: {} }, null, 2), "utf8");
+
+      const route = routeTriggerRequest("/supervibe-design create a desktop design system", {
+        pluginRoot,
+        projectRoot: pluginRoot,
+      });
+
+      assert.equal(route.intent, "missing_slash_command");
+      assert.equal(route.command, null);
+      assert.equal(route.hardStop, true);
+      assert.equal(route.doNotSearchProject, true);
+      assert.equal(route.stopCondition, "report-missing-command");
+      assert.equal(route.requiredSafety.includes("report-missing-command"), true);
+      assert.deepEqual(route.safetyBlockers, []);
+    } finally {
+      await rm(pluginRoot, { recursive: true, force: true });
+    }
   });
 });

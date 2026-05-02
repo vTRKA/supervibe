@@ -83,3 +83,26 @@ test("conflicting fresh and reuse brief asks before touching prior work", async 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("old prototype path references ask for borrow/avoid scope before artifact writes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "create a new desktop app design; study C:\\legacy-ui\\docs\\old prototypes but keep only functionality, not the shell",
+    });
+
+    assert.equal(intake.mode, "ask");
+    assert.equal(intake.needsQuestion, true);
+    assert.equal(intake.needsOldArtifactScopeQuestion, true);
+    assert.equal(intake.reason, "old-artifact-reference-scope-required");
+    assert.ok(intake.oldArtifactReferences.some((ref) => /old prototypes/i.test(ref)));
+
+    const question = formatDesignArtifactChoiceQuestion(intake);
+    assert.match(question, /Old artifact reference scope/);
+    assert.match(question, /Functional inventory only/);
+    assert.match(question, /Stop here - make no hidden progress/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

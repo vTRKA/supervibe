@@ -173,6 +173,32 @@ test("command resolver stops on unknown explicit scripts instead of searching th
   }
 });
 
+test("command resolver hard-stops on unpublished explicit slash commands", () => {
+  const pluginRoot = mkdtempSync(join(tmpdir(), "supervibe-command-plugin-"));
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-command-project-"));
+  try {
+    writeFileSync(join(pluginRoot, "package.json"), JSON.stringify({ scripts: {} }, null, 2), "utf8");
+    writeFileSync(join(projectRoot, "package.json"), JSON.stringify({ scripts: {} }, null, 2), "utf8");
+
+    const match = resolveCommandRequest("/supervibe-design create a new design system", {
+      pluginRoot,
+      projectRoot,
+    });
+
+    assert.equal(match.id, "missing-slash-command:supervibe-design");
+    assert.equal(match.intent, "missing_slash_command");
+    assert.equal(match.slashCommandStatus, "missing");
+    assert.equal(match.hardStop, true);
+    assert.equal(match.doNotSearchProject, true);
+    assert.equal(match.command, null);
+    assert.match(formatCommandCatalog(buildProjectCommandCatalog({ pluginRoot, projectRoot })), /SLASH_COMMANDS:/);
+    assert.match(match.nextAction, /Hard stop/);
+  } finally {
+    rmSync(pluginRoot, { recursive: true, force: true });
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("command resolver resolves bare Supervibe script names and known command names", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-command-project-"));
   try {
