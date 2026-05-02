@@ -1,15 +1,25 @@
 ---
 name: genesis
 namespace: process
-description: "Use WHEN bootstrapping host-aware Supervibe scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9. RU: Используется КОГДА разворачиваешь host-aware scaffold для нового или существующего проекта — собирает stack-pack в таргет с confidence-gate ≥9. Trigger phrases: 'scaffolding', 'первичный setup', 'init проекта', 'genesis'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN bootstrapping host-aware Supervibe scaffold for a new or existing
+  project to compose stack-pack into target with confidence-gate ≥9. Triggers:
+  'scaffolding', 'первичный setup', 'init проекта', 'genesis'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
-prerequisites: [requirements-spec]
+prerequisites:
+  - requirements-spec
 emits-artifact: scaffold-bundle
 confidence-rubric: confidence-rubrics/scaffold.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Genesis
@@ -22,18 +32,27 @@ WHEN target project has no host-specific Supervibe scaffold OR no managed routin
 
 Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition.
 
-Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
 Default behavior: choose the safest minimal profile, no add-ons, dry-run only until the user approves. Free-form path: the user can name exact agents, rules, host files, or stack constraints instead of choosing a listed profile.
 
 User-facing transparency is required. The dry-run must show selected agent groups and a one-line responsibility for each selected agent using `scripts/lib/supervibe-agent-roster.mjs` / `docs/agent-roster.md`; never show only opaque agent ids.
 
-After every material delivery, ask one explicit next-step question about the scaffold decision. Use language-matched, domain-specific labels; keep internal action ids only in saved state. Never use a generic next-step prompt for Genesis.
-- Apply scaffold / Применить scaffold - recommended only when the dry-run host, profile, agents, rules and files look correct; write the scaffold and run index/status checks.
-- Adjust install plan / Изменить план установки - user gives one focused host, profile, add-on, stack-pack, agent or rule change; rebuild dry-run without writing files.
-- Compare another set / Сравнить другой набор - produce another profile, host or agent/rule set with explicit tradeoffs before any write.
-- Review dry-run deeper / Проверить dry-run глубже - run status, audit or confidence scoring before applying the scaffold.
-- Stop without installing / Остановиться без установки - persist current dry-run state and exit without changing the project.
+After every material delivery, ask one explicit next-step question about the scaffold decision. Use `buildPostDeliveryQuestion({ intent: "genesis_setup" }, { locale })` when tooling is available. Visible labels must be language-matched and domain-specific; keep internal action ids only in saved state. Never show both English and Russian in the same visible option. Never use a generic next-step prompt for Genesis.
+
+English visible labels:
+- Apply scaffold - recommended only when the dry-run host, profile, agents, rules and files look correct; write the scaffold and run index/status checks.
+- Adjust install plan - user gives one focused host, profile, add-on, stack-pack, agent or rule change; rebuild dry-run without writing files.
+- Compare another set - produce another profile, host or agent/rule set with explicit tradeoffs before any write.
+- Review dry-run deeper - run status, audit or confidence scoring before applying the scaffold.
+- Stop without installing - persist current dry-run state and exit without changing the project.
+
+Russian visible labels:
+- Apply scaffold - recommended only when dry-run host, profile, agents, rules, and files look correct; write the scaffold and run index/status checks.
+- Adjust install plan - user gives one focused host, profile, add-on, stack-pack, agent, or rule change; rebuild dry-run without writing files.
+- Compare another set - prepare another profile, host, or agent/rule set with explicit tradeoffs before writing files.
+- Review dry-run deeper - run status, audit, or confidence scoring before applying the scaffold.
+- Stop without installing - persist current dry-run state and exit without project changes.
 
 ## Step 0 — Read source of truth (required)
 

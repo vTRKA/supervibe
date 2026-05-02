@@ -1,6 +1,6 @@
 ---
 description: >-
-Update the Supervibe plugin: git pull + required ONNX model setup + npm ci +
+  Update the Supervibe plugin: git pull + required ONNX model setup + npm ci +
   registry rebuild + install doctor. Idempotent. Triggers:
   'update plugin', 'обнови плагин', 'supervibe upgrade', '/supervibe-update'.
 ---

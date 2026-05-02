@@ -1,15 +1,25 @@
 ---
 name: adr
 namespace: process
-description: "Use WHEN making a non-trivial architectural decision (technology choice, pattern adoption, structural change) BEFORE implementation to record context, decision, consequences, alternatives. RU: Используется КОГДА принимается нетривиальное архитектурное решение (выбор технологии, паттерна, структурное изменение) ПЕРЕД реализацией — фиксирует контекст, решение, последствия, альтернативы. Trigger phrases: 'ADR', 'architecture decision', 'архитектурное решение', 'оформи решение'."
-allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
+description: >-
+  Use WHEN making a non-trivial architectural decision (technology choice,
+  pattern adoption, structural change) BEFORE implementation to record context,
+  decision, consequences, alternatives. Triggers: 'ADR', 'architecture
+  decision', 'архитектурное решение', 'оформи решение'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
+  - Bash
 phase: plan
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Architecture Decision Record (ADR)

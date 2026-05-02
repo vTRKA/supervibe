@@ -40,11 +40,15 @@ the design or prototype flow first.
 ## Local Design Expert Reference
 
 Read `docs/references/design-expert-knowledge.md` before review. Use the
-`Eight-Pass Expert Routine` as a completeness map for the evidence that should
-exist: preference/product fit, local evidence, reference scan, IA/user-flow,
-visual system, responsive/platform, quality, and feedback/approval. External
-references are supplemental; use the internet only for current references or
-official platform evidence after local data has been checked.
+`Eight-Pass Expert Routine` through Design Pass Triage as a completeness map
+for the evidence that should exist. Classify relevant evidence as `required |
+reuse | delegated | skipped | N/A` with rationale. Existing approved design
+systems normally make preference/product fit and visual-system evidence `reuse`;
+candidate or needs_revision systems are review gaps, not prototype-ready sources.
+Review should focus on local evidence, IA/user-flow, responsive/platform,
+quality, and feedback/approval gaps. External references are supplemental; use
+the internet only for current references or official platform evidence after
+local data has been checked.
 
 ## Review Dimensions
 

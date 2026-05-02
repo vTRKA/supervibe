@@ -1,15 +1,26 @@
 ---
 name: brainstorming
 namespace: process
-description: "Use BEFORE any creative work or WHEN the user says brainstorm/брейншторм, 'я сделал брейншторм', or asks for the next plan/план step TO clarify intent, produce an approved spec, and hand off with Next: /supervibe-plan. Trigger phrases: brainstorm, брейншторм готов, не останавливайся после brainstorm, next step, план."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use BEFORE any creative work OR WHEN the user starts brainstorm, has finished
+  brainstorm, or asks for the next planning step TO clarify intent, produce an
+  approved spec, and hand off with Next: /supervibe-plan. Triggers:
+  'brainstorm', 'next step', 'брейншторм', 'брейншторм готов', 'я сделал
+  брейншторм', 'план'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: brainstorm
 prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Brainstorming
@@ -40,6 +51,12 @@ Do NOT invoke any implementation skill, write any code, scaffold anything until 
 Do not stop after individual brainstorm sections. Once the user has invoked brainstorming, complete the full requirements package before the planning handoff unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user requests manual review of a specific section.
 
 Use assumptions for non-blocking gaps, label them clearly in the spec, and keep moving through first-principles, options, risks, kill criteria, decision matrix, Scope Safety Gate, production readiness, and the 10/10 scorecard. Section-level feedback is welcome, but it is not a default hard stop.
+
+## Topic Drift / Resume Contract
+
+If the user shifts topic while a brainstorm is incomplete or a `NEXT_STEP_HANDOFF` exists, preserve the current phase instead of silently switching. Surface the saved phase, artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question: continue current brainstorm, skip/delegate safe non-final decisions to the agent and continue, pause current brainstorm and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in the spec assumptions or explicit delegation notes. They cannot satisfy final spec approval, safety/policy gates, production approvals, or destructive-operation consent.
 
 ## Decision tree
 
@@ -88,7 +105,7 @@ After saving the spec, ALWAYS print a one-line hand-off so the user knows the ne
 ```
 Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Next: /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
-Шаг 1/1: написать план?
+Step 1/1: write the plan?
 ```
 
 Also include the machine-readable handoff block:

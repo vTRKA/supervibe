@@ -848,10 +848,11 @@ function copyChoice(item) {
 }
 
 function parseFrontmatter(raw) {
-  if (!String(raw).startsWith("---")) return {};
-  const end = String(raw).indexOf("\n---", 3);
+  const normalized = String(raw).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  if (!normalized.startsWith("---")) return {};
+  const end = normalized.indexOf("\n---", 3);
   if (end === -1) return {};
-  const block = String(raw).slice(3, end).replace(/\r\n/g, "\n");
+  const block = normalized.slice(3, end);
   const metadata = {};
   let currentKey = null;
   for (const line of block.split("\n")) {

@@ -1,15 +1,23 @@
 ---
 name: receiving-code-review
 namespace: process
-description: "Use WHEN receiving code review feedback BEFORE implementing suggestions to evaluate each finding with technical rigor instead of performative agreement. RU: Используется КОГДА получен фидбэк code review ПЕРЕД внедрением правок — оценивает каждое замечание с технической строгостью, без показного согласия. Trigger phrases: 'обработай review', 'feedback', 'комменты с PR', 'разбери ревью'."
-allowed-tools: [Read, Grep, Glob, Bash, Edit]
+description: >-
+  Use WHEN receiving code review feedback BEFORE implementing suggestions to
+  evaluate each finding with technical rigor instead of performative agreement.
+  Triggers: 'обработай review', 'feedback', 'комменты с PR', 'разбери ревью'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Edit
 phase: review
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Receiving Code Review

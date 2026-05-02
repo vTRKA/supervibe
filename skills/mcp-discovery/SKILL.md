@@ -1,15 +1,23 @@
 ---
 name: mcp-discovery
 namespace: process
-description: "Use WHEN session starts OR WHEN user mentions visual/browser/desktop/data task to detect available MCP servers and proactively suggest agents that benefit from them. RU: Используется КОГДА начинается сессия ИЛИ пользователь упоминает визуальную/браузерную/desktop/data задачу — определяет доступные MCP-серверы и проактивно предлагает агентов, которым они полезны. Trigger phrases: 'найди MCP', 'какие tools доступны', 'есть MCP для', 'mcp discovery'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use WHEN session starts OR WHEN user mentions visual/browser/desktop/data task
+  to detect available MCP servers and proactively suggest agents that benefit
+  from them. Triggers: 'найди MCP', 'какие tools доступны', 'есть MCP для', 'mcp
+  discovery'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: brainstorm
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # MCP Discovery

@@ -30,6 +30,8 @@ test('agent with discipline section passes', () => {
     'Why: this answer changes scope.',
     'Decision unlocked: select the safest path.',
     'If skipped: use the documented default.',
+    'Use an adaptive progress indicator and recompute M from current triage, saved workflow state, skipped stages, and delegated safe decisions.',
+    'If a NEXT_STEP_HANDOFF or workflowSignal exists and the user changes topic, ask whether to continue, skip/delegate, pause and switch, or stop/archive.',
     '## Anti-patterns',
     '- asking-multiple-questions-at-once',
     '',
@@ -59,6 +61,8 @@ test('stale placeholders outside dialogue section do not fail dialogue check', (
     'Why: this answer changes scope.',
     'Decision unlocked: select the safest path.',
     'If skipped: use the documented default.',
+    'Use an adaptive progress indicator and recompute M from current triage, saved workflow state, skipped stages, and delegated safe decisions.',
+    'If a NEXT_STEP_HANDOFF or workflowSignal exists and the user changes topic, ask whether to continue, skip/delegate, pause and switch, or stop/archive.',
     '',
     '## Alternatives considered',
     '- <option A>: rejected because <reason>',
@@ -82,6 +86,22 @@ test('agent dialogue section must explain why, decision, and skip default', () =
   assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-why'), JSON.stringify(issues));
   assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-decision'), JSON.stringify(issues));
   assert.ok(issues.some((issue) => issue.code === 'missing-dialogue-skip-assumption'), JSON.stringify(issues));
+});
+
+test('agent dialogue section must keep adaptive stage and topic-resume guidance', () => {
+  const body = [
+    '## User dialogue discipline',
+    'Шаг N/M format used with outcome-oriented labels.',
+    'Why: this answer changes scope.',
+    'Decision unlocked: select the safest path.',
+    'If skipped: use the documented default.',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
+  const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
+  assert.ok(issues.some((issue) => issue.code === 'missing-adaptive-progress-guidance'), JSON.stringify(issues));
+  assert.ok(issues.some((issue) => issue.code === 'missing-topic-resume-guidance'), JSON.stringify(issues));
 });
 
 test('noninteractive frontmatter override skips check', () => {

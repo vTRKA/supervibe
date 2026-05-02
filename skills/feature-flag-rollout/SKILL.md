@@ -1,15 +1,22 @@
 ---
 name: feature-flag-rollout
 namespace: app-excellence
-description: "Use BEFORE shipping a risky feature TO design staged rollout (kill-switch / percentage / cohort), define rollback criteria, plan flag debt cleanup. RU: Используется ПЕРЕД релизом рискованной фичи — проектирует поэтапный rollout (kill-switch / процент / когорта), критерии отката, план уборки flag debt. Trigger phrases: 'feature flag', 'staged rollout', 'постепенный релиз', 'фича-флаг'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use BEFORE shipping a risky feature TO design staged rollout (kill-switch /
+  percentage / cohort), define rollback criteria, plan flag debt cleanup.
+  Triggers: 'feature flag', 'staged rollout', 'постепенный релиз', 'фича-флаг'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: plan
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Feature Flag Rollout

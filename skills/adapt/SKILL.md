@@ -1,15 +1,24 @@
 ---
 name: adapt
 namespace: process
-description: "Use WHEN stack changed (new modules, renamed files, removed files, new major dependencies) to sync agents/skills with new state. RU: Используется КОГДА стек изменился (новые модули, переименования, удаления, новые зависимости) — синхронизирует агентов/скиллы с новым состоянием. Trigger phrases: 'sync проектные агенты', 'подтяни upstream', 'обнови агентов под новый стек', 'adapt'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN stack changed (new modules, renamed files, removed files, new major
+  dependencies) to sync agents/skills with new state. Triggers: 'sync проектные
+  агенты', 'подтяни upstream', 'обнови агентов под новый стек', 'adapt'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Adapt
@@ -26,16 +35,25 @@ last-verified: 2026-04-27
 
 Lifecycle: `scan -> plan -> review -> approved -> applied -> verified`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition.
 
-Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
 Default behavior: produce a dry-run adaptation plan and do not edit artifacts until approval. Free-form path: the user can name exact agents, rules, skills, paths, or stack changes to include or exclude.
 
-After every material delivery, ask one explicit next-step question about the adaptation plan. Use language-matched, domain-specific labels; keep internal action ids only in saved state.
-- Apply adaptation / Применить адаптацию - recommended when the dry-run adaptation plan looks right; apply the selected artifact updates.
-- Adjust adaptation plan / Изменить план адаптации - user gives one focused agent, rule, skill, path or stack change; rebuild the dry-run without writing files.
-- Compare another scope / Сравнить другой scope - produce another adaptation scope with explicit tradeoffs.
-- Review adaptation deeper / Проверить адаптацию глубже - run audit or confidence scoring before applying.
-- Stop without adapting / Остановиться без адаптации - persist current state and exit without changing project artifacts.
+After every material delivery, ask one explicit next-step question about the adaptation plan. Use `buildPostDeliveryQuestion({ intent: "adaptation_delivery" }, { locale })` when tooling is available. Visible labels must be language-matched and domain-specific; keep internal action ids only in saved state. Never show both English and Russian in the same visible option.
+
+English visible labels:
+- Apply adaptation - recommended when the dry-run adaptation plan looks right; apply the selected artifact updates.
+- Adjust adaptation plan - user gives one focused agent, rule, skill, path or stack change; rebuild the dry-run without writing files.
+- Compare another scope - produce another adaptation scope with explicit tradeoffs.
+- Review adaptation deeper - run audit or confidence scoring before applying.
+- Stop without adapting - persist current state and exit without changing project artifacts.
+
+Russian visible labels:
+- Apply adaptation - recommended when the dry-run adaptation plan looks correct; apply the selected artifact updates.
+- Adjust adaptation plan - user gives one focused agent, rule, skill, path, or stack change; rebuild dry-run without writing files.
+- Compare another scope - prepare another adaptation scope with explicit tradeoffs.
+- Review adaptation deeper - run audit or confidence scoring before applying.
+- Stop without adapting - persist current state and exit without changing project artifacts.
 
 ## Step 0 — Read source of truth (required)
 

@@ -1,15 +1,27 @@
 ---
 name: autonomous-agent-loop
 namespace: process
-description: "Use WHEN the user wants TO run a bounded autonomous multi-agent loop, epic/эпик, worktree run, or 3h/3 часа session that turns a plan into tasks, dispatches specialists, supports status/resume/stop, and stops safely on policy, budget, approval, or missing evidence."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN the user wants TO run a bounded autonomous multi-agent loop, epic,
+  worktree run, or 3h timeboxed session that turns a plan into tasks, dispatches
+  specialists, supports status/resume/stop, and stops safely on policy, budget,
+  approval, or missing evidence. Triggers: 'autonomous loop', 'epic',
+  'worktree', 'эпик', '3 часа'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
-prerequisites: [user-request-or-plan]
+prerequisites:
+  - user-request-or-plan
 emits-artifact: loop-state
 confidence-rubric: confidence-rubrics/autonomous-loop.yaml
 gate-on-exit: true
 version: 1.2
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Autonomous Agent Loop
@@ -84,6 +96,19 @@ partial reports are checkpoints, not terminal states. If the loop pauses, print
 the exact stop reason and next resume command. Final output must distinguish
 `COMPLETE` from `BLOCKED`, `PARTIAL`, `POLICY_STOP`, `BUDGET_STOP`, and
 `USER_PAUSED`.
+
+## Topic Drift / Resume Contract
+
+If the user shifts topic while `.supervibe/memory/loops/<run-id>/state.json`,
+`contextPack.workflowSignal`, or a queued handoff exists, preserve the loop
+state instead of silently switching. Surface run id, current phase, active task
+or wave, artifact path, next command, stop command, and blocker, then ask one
+`Step N/M` or `Step N/M` resume question: continue ready work, skip/delegate safe non-final decisions to the controller and continue, pause current loop and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in loop state, side-effect
+ledger, and final report. They cannot bypass policy, budget, approval,
+production, destructive-operation, review, verification, or scope-expansion
+gates.
 
 ## Execution Packet
 

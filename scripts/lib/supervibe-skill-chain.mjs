@@ -152,7 +152,14 @@ export function getNextWorkflowStep(phase) {
 
 export function formatNextStepBlock(options = {}) {
   const phase = normalizeWorkflowPhase(options.phase);
-  const edge = options.edge ?? getNextWorkflowStep(phase);
+  const baseEdge = options.edge ?? getNextWorkflowStep(phase);
+  const edge = {
+    ...baseEdge,
+    nextPhase: options.nextPhase ?? baseEdge.nextPhase,
+    command: options.nextCommand ?? options.command ?? baseEdge.command,
+    skill: options.nextSkill ?? options.skill ?? baseEdge.skill,
+    stopCondition: options.stopCondition ?? baseEdge.stopCondition,
+  };
   const locale = options.locale === "ru" ? "ru" : "en";
   const question = locale === "ru" ? edge.questionRu : edge.questionEn;
 

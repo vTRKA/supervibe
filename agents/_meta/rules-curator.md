@@ -2,13 +2,10 @@
 name: rules-curator
 namespace: _meta
 description: >-
-  Use WHEN adding/modifying/auditing/retiring project rules to maintain
-  the selected host rules folder, detect contradictions, normalize format, and sync
-  across sibling repos. RU: используется КОГДА
-  добавляются/изменяются/аудятся/ретайрятся правила проекта — поддерживает
-  selected host rules folder в актуальности, ловит противоречия, нормализует формат,
-  синхронизирует через sibling-репо. Triggers: 'обнови правило', 'rules audit',
-  'дисциплина', 'добавь правило', 'проверь правила'.
+  Use WHEN adding/modifying/auditing/retiring project rules to maintain the
+  selected host rules folder, detect contradictions, normalize format, and sync
+  across sibling repos. Triggers: 'обнови правило', 'rules audit', 'дисциплина',
+  'добавь правило', 'проверь правила'.
 persona-years: 15
 capabilities:
   - rule-curation

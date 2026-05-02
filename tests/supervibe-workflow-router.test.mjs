@@ -100,3 +100,78 @@ test("affirming explicit handoff reuses its command and skill", () => {
   assert.equal(route.skill, "supervibe:requesting-code-review");
   assert.equal(route.source, "recent-handoff");
 });
+
+test("topic drift with a saved handoff asks for resume choice instead of dropping state", () => {
+  const recentAssistantOutput = formatNextStepBlock({
+    phase: "brainstorm",
+    artifactPath: ".supervibe/artifacts/specs/example.md",
+    locale: "en",
+  });
+  const route = routeWorkflowIntent({
+    userPhrase: "also make a dashboard mockup",
+    recentAssistantOutput,
+  });
+
+  assert.equal(route.intent, "workflow_resume_choice");
+  assert.equal(route.command, "/supervibe-plan");
+  assert.equal(route.source, "recent-handoff-topic-drift");
+  assert.match(route.nextQuestion, /Continue it, skip\/delegate safe decisions/i);
+  assert.ok(route.requiredSafety.includes("no-silent-workflow-drop"));
+  assert.deepEqual(route.alternatives.map((item) => item.id), [
+    "continue-current",
+    "delegate-safe-decisions",
+    "pause-and-switch",
+    "stop-archive-current",
+  ]);
+});
+
+test("topic drift after plan handoff preserves mandatory review gate", () => {
+  const recentAssistantOutput = formatNextStepBlock({
+    phase: "plan",
+    artifactPath: ".supervibe/artifacts/plans/example.md",
+    nextPhase: "plan-review",
+    nextCommand: "/supervibe-plan --review .supervibe/artifacts/plans/example.md",
+    nextSkill: "supervibe:requesting-code-review",
+    locale: "en",
+  });
+  const route = routeWorkflowIntent({
+    userPhrase: "start implementing another thing",
+    recentAssistantOutput,
+  });
+
+  assert.equal(route.intent, "workflow_resume_choice");
+  assert.equal(route.command, "/supervibe-plan --review .supervibe/artifacts/plans/example.md");
+  assert.ok(route.requiredSafety.includes("final-gates-cannot-be-delegated"));
+  assert.ok(route.requiredSafety.includes("record-skip-or-delegation"));
+});
+
+test("explicit stop after saved handoff does not silently continue workflow", () => {
+  const recentAssistantOutput = formatNextStepBlock({
+    phase: "brainstorm",
+    artifactPath: ".supervibe/artifacts/specs/example.md",
+    locale: "en",
+  });
+  const route = routeWorkflowIntent({
+    userPhrase: "stop that flow",
+    recentAssistantOutput,
+  });
+
+  assert.notEqual(route.intent, "workflow_resume_choice");
+  assert.notEqual(route.source, "recent-handoff");
+});
+
+test("russian topic drift resume question is localized", () => {
+  const recentAssistantOutput = formatNextStepBlock({
+    phase: "brainstorm",
+    artifactPath: ".supervibe/artifacts/specs/example.md",
+    locale: "ru",
+  });
+  const route = routeWorkflowIntent({
+    userPhrase: "сделай другую задачу",
+    recentAssistantOutput,
+  });
+
+  assert.equal(route.intent, "workflow_resume_choice");
+  assert.match(route.nextQuestion, /Шаг 1\/1/);
+  assert.match(route.nextQuestion, /пропустить\/делегировать/i);
+});

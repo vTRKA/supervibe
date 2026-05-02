@@ -100,6 +100,9 @@ export function routeWorkflowIntent(input, options = {}) {
   const handoff = routeFromRecentHandoff(request, recentAssistantOutput, locale);
   if (handoff) return applySafetyState(handoff, { dirtyGitState, artifacts });
 
+  const topicDrift = routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale);
+  if (topicDrift) return applySafetyState(topicDrift, { dirtyGitState, artifacts });
+
   const contextual = routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts, dirtyGitState });
   if (contextual) return applySafetyState(contextual, { dirtyGitState, artifacts });
 
@@ -176,9 +179,45 @@ function routeFromRecentHandoff(request, recentAssistantOutput, locale) {
   };
 }
 
+function routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale) {
+  const parsed = parseNextStepBlock(recentAssistantOutput);
+  if (!parsed?.nextCommand) return null;
+  const text = normalize(request);
+  if (!text || isAffirmative(request)) return null;
+  if (isExplicitStopOrPause(text)) return null;
+
+  const question = locale === "ru"
+    ? `Шаг 1/1: есть незавершенный этап "${parsed.currentPhase ?? "workflow"}" (${parsed.artifact ?? "artifact"}). Продолжить его, пропустить/делегировать безопасные решения агенту, переключиться на новую тему или остановить текущий этап?`
+    : `Step 1/1: there is an unfinished "${parsed.currentPhase ?? "workflow"}" stage (${parsed.artifact ?? "artifact"}). Continue it, skip/delegate safe decisions to the agent, switch to the new topic, or stop the current stage?`;
+
+  return {
+    intent: "workflow_resume_choice",
+    phase: parsed.currentPhase ?? "workflow-continuation",
+    command: parsed.nextCommand,
+    skill: parsed.nextSkill ?? "supervibe:workflow-router",
+    confidence: 0.94,
+    mutationRisk: "none",
+    source: "recent-handoff-topic-drift",
+    reason: "A saved NEXT_STEP_HANDOFF exists, but the user sent a different request. Ask before continuing, delegating, switching, or stopping.",
+    nextPromptText: question,
+    nextQuestion: question,
+    stopCondition: "ask-before-topic-switch",
+    requiredSafety: ["no-silent-workflow-drop", "record-skip-or-delegation", "final-gates-cannot-be-delegated"],
+    missingArtifacts: [],
+    safetyBlockers: [],
+    alternatives: [
+      { id: "continue-current", command: parsed.nextCommand, skill: parsed.nextSkill ?? "supervibe:workflow-router" },
+      { id: "delegate-safe-decisions", command: parsed.nextCommand, skill: parsed.nextSkill ?? "supervibe:workflow-router" },
+      { id: "pause-and-switch", command: null, skill: "supervibe:trigger-diagnostics" },
+      { id: "stop-archive-current", command: null, skill: "supervibe:workflow-router" },
+    ],
+    handoff: parsed,
+  };
+}
+
 function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts }) {
   const phase = normalizeWorkflowPhase(lastCompletedPhase);
-  const affirmative = AFFIRMATIVE_PHRASES.some((phrase) => text === normalize(phrase) || text.includes(normalize(phrase)));
+  const affirmative = containsAffirmativePhrase(text);
   if (phase && affirmative && WORKFLOW_EDGES[phase]) {
     return fromWorkflowStep(phase, {
       intent: `continue_${WORKFLOW_EDGES[phase].nextPhase}`,
@@ -366,7 +405,37 @@ function isVagueFeatureRequest(text) {
 
 function isAffirmative(value) {
   const text = normalize(value);
-  return AFFIRMATIVE_PHRASES.some((phrase) => text === normalize(phrase) || text.includes(normalize(phrase)));
+  return containsAffirmativePhrase(text);
+}
+
+function containsAffirmativePhrase(value) {
+  const text = normalize(value);
+  if (!text) return false;
+  return AFFIRMATIVE_PHRASES.some((phrase) => {
+    const normalizedPhrase = normalize(phrase);
+    if (!normalizedPhrase) return false;
+    if (text === normalizedPhrase) return true;
+    const escaped = escapeRegExp(normalizedPhrase);
+    return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}([^\\p{L}\\p{N}_]|$)`, "u").test(text);
+  });
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isExplicitStopOrPause(text) {
+  return containsAny(text, [
+    "stop",
+    "pause",
+    "cancel",
+    "archive",
+    "стоп",
+    "пауза",
+    "останов",
+    "отмени",
+    "архив",
+  ]);
 }
 
 function containsAny(text, phrases) {

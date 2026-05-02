@@ -50,6 +50,11 @@ const STALE_DIALOGUE_PATTERNS = Object.freeze([
     pattern: /<Recommended action>\s+\(recommended\)/,
     message: 'Use a localized recommended marker placeholder or localized marker text.',
   },
+  {
+    code: 'mixed-language-visible-action-menu',
+    pattern: /(?:^|\n)\s*-\s*(?:Apply|Approve|Adjust|Revise|Refine|Compare|Review|Stop|Try another option|Explore another direction|Run deeper review|Keep)[^/\n]{0,80}\/\s*[А-ЯЁа-яё][^\n]*(?:\s[-\u2013\u2014]\s|\s-\s)/,
+    message: 'Do not render bilingual "English / Russian" action labels in visible menus; choose labels for the user locale only.',
+  },
 ]);
 
 const ALLOWED_STALE_DIALOGUE_FILES = new Set([

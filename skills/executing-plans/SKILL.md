@@ -1,15 +1,25 @@
 ---
 name: executing-plans
 namespace: process
-description: "Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase. RU: Используется КОГДА существует утверждённый implementation-plan — выполняет его пофазно с обязательной верификацией каждой задачи и confidence-gate на каждой фазе. Trigger phrases: 'выполни план', 'execute plan', 'запусти план', 'погнали по плану'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN an approved implementation-plan exists to execute it phase-by-phase
+  with mandatory verification per task and confidence-gate per phase. Triggers:
+  'выполни план', 'execute plan', 'запусти план', 'погнали по плану'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
-prerequisites: [implementation-plan]
+prerequisites:
+  - implementation-plan
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Executing Plans

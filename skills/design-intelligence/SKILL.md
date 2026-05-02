@@ -45,10 +45,21 @@ Required preflight order:
 ## Local Expert Routine
 
 Before design-facing outputs, read `docs/references/design-expert-knowledge.md`
-and apply its `Eight-Pass Expert Routine` where the owning command or agent is
-doing substantial design work. This skill supplies the local evidence lookup
-pass; it does not replace preference intake, reference scan, IA/user-flow,
-visual-system, responsive/platform, quality, or feedback/approval passes.
+and apply Design Pass Triage from its `Eight-Pass Expert Routine` where the
+owning command or agent is doing substantial design work. The owning workflow
+classifies each pass as `required | reuse | delegated | skipped | N/A`. This
+skill supplies the local evidence lookup pass; it does not replace preference
+intake, reference scan, IA/user-flow, visual-system, responsive/platform,
+quality, or feedback/approval passes.
+
+When an approved design system already exists, treat prior preference and
+visual-system choices as reusable evidence unless the user asked for a rebrand,
+new audience posture, or material direction change. When a candidate or needs_revision
+design system exists, recommend resuming section approval instead of treating it
+as reusable prototype evidence. If lookup reveals a
+missing token, component, asset, or interaction, recommend a narrow
+design-system extension instead of a full restart. Do not force all eight passes
+for every prototype when local evidence proves reuse is sufficient.
 
 ## Evidence Contract
 

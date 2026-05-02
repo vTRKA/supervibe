@@ -1,11 +1,17 @@
 ---
 name: observability
-description: "Structured logs (JSON), metrics (RED/USE), distributed tracing, with consistent fields and correlation IDs across services. RU: Логи / метрики / трейсы для новых сервисов с consistent fields и correlation IDs. Trigger phrases: 'observability', 'logging', 'трейсинг'."
-applies-to: [any]
+description: >-
+  Structured logs (JSON), metrics (RED/USE), distributed tracing, with
+  consistent fields and correlation IDs across services. Triggers:
+  'observability', 'logging', 'трейсинг'.
+applies-to:
+  - any
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [best-practices-2026, infrastructure-patterns]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - best-practices-2026
+  - infrastructure-patterns
 ---
 
 # Observability

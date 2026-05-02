@@ -1,15 +1,25 @@
 ---
 name: writing-plans
 namespace: process
-description: "Use AFTER an approved spec or WHEN plan/план is ready TO produce a phased implementation plan, require review/ревью loop, then split into atomic tasks and epic/эпик before execution. Trigger phrases: составь план, сделал план, review plan, ревью луп, atomic, атомарные задачи, epic."
-allowed-tools: [Read, Grep, Glob, Write, Edit]
+description: >-
+  Use AFTER an approved spec OR WHEN a plan is ready TO produce a phased
+  implementation plan, require review loop, then split into atomic tasks and
+  epic before execution. Triggers: 'составь план', 'сделал план', 'review plan',
+  'ревью луп', 'atomic', 'атомарные задачи', 'epic'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
 phase: plan
-prerequisites: [requirements-spec]
+prerequisites:
+  - requirements-spec
 emits-artifact: implementation-plan
 confidence-rubric: confidence-rubrics/plan.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Writing Plans
@@ -22,7 +32,7 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 
 ## Step 0 — Read source of truth (required)
 
-1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `.supervibe/artifacts/specs/`. Запусти `/supervibe-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/supervibe-plan <path>`." Do not proceed with planning vapor.
+1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** -> STOP and tell the user: "No approved spec exists in `.supervibe/artifacts/specs/`. Run `/supervibe-brainstorm <topic>` to create one, or pass an explicit existing spec path: `/supervibe-plan <path>`." Do not proceed with planning vapor.
 2. Read the active host instruction file for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
@@ -39,6 +49,12 @@ If the plan includes functionality not present in the approved spec, Scope Safet
 Do not stop after individual plan phases, the first task list, or a draft review-gate section. Write the full plan before handoff unless the user explicitly stops/pauses, the spec is missing or unapproved, scope must be decomposed, or one blocking ambiguity prevents a production-safe plan.
 
 Internal phase review gates are instructions for executors later; they are not chat-level stop points for the planner. Use conservative assumptions for non-blocking gaps, document them, and continue through file mapping, critical path, tasks, rollback, verification, production readiness, final 10/10 acceptance, and the mandatory review handoff.
+
+## Topic Drift / Resume Contract
+
+If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, preserve the current phase instead of silently switching. Surface the saved phase, spec/plan artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in plan assumptions, Scope Safety Gate, or review handoff. They cannot bypass mandatory plan review, safety/policy gates, production approvals, or destructive-operation consent.
 
 ## Evidence and visual plan gate
 
@@ -80,8 +96,8 @@ Per task: TDD applicable?
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Шаг 1/1: review loop по плану?`.
-13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Шаг 1/1: разбить план на атомарные work items и epic?`.
+12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
+13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
 ## Output contract
 

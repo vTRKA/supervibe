@@ -1,15 +1,27 @@
 ---
 name: prototype
 namespace: process
-description: "Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in framework to produce 1:1 native-HTML prototype in /prototypes for brand approval, feedback iteration, and frame­work-agnostic 1:1 transfer. RU: используется КОГДА пользователь просит дизайн/макет/исследование UI ДО реализации во фреймворке — создаёт 1:1 нативный HTML-прототип в /prototypes для утверждения, цикла обратной связи и переноса в любой фреймворк. Trigger phrases: 'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI', 'нужен прототип', 'сделай макет'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in
+  framework to produce 1:1 native-HTML prototype in /prototypes for brand
+  approval, feedback iteration, and frame­work-agnostic 1:1 transfer. Triggers:
+  'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI', 'нужен прототип',
+  'сделай макет'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
-prerequisites: [design-system-approved]
+prerequisites:
+  - design-system-approved
 emits-artifact: prototype
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 2.0
-last-verified: 2026-04-28
+version: 2
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Prototype
@@ -22,11 +34,11 @@ Before prototype structure or visual decisions, run project memory, code search,
 
 ## Local Design Expert Reference
 
-Read `docs/references/design-expert-knowledge.md` before building. For substantial prototypes, honor the `Eight-Pass Expert Routine`: preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+Read `docs/references/design-expert-knowledge.md` before building. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify each pass as `required | reuse | delegated | skipped | N/A`. For prototype work inside an approved design system, reuse preference intake and visual-system decisions; run only the relevant local evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. A candidate or needs_revision design system must resume approval review and cannot unlock prototype work. Do not force all eight passes just because the user asked for another mockup. If a missing token, component, asset, or interaction is needed, ask one narrow design-system extension question before building. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
 
 ## When to invoke
 
-AFTER `supervibe:brandbook` has produced an approved design system at `.supervibe/artifacts/prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
+AFTER `supervibe:brandbook` has produced an approved design system at `.supervibe/artifacts/prototypes/_design-system/`. Triggered by prototype requests; other-language trigger phrases remain in the frontmatter `Triggers:` metadata.
 
 NOT for:
 - Implementing in a real framework — that is `<stack>-developer` agents AFTER prototype is approved and handed off
@@ -38,30 +50,30 @@ NOT for:
 1. **Native only.** No React, Vue, Svelte, Next.js, Nuxt, Astro, Tailwind preprocessor, npm dependencies. Pure HTML + CSS + JS. The output must work by opening `index.html` in any browser without a build step.
 2. **Design system is source of truth.** Every color, spacing, type ramp, radius, motion timing comes from `.supervibe/artifacts/prototypes/_design-system/tokens.css`. Raw hex values, magic pixel numbers, ad-hoc cubic-beziers are forbidden. If the system doesn't have it, ask user to extend the system FIRST.
 3. **Two viewports by default** — `375px` (mobile) and `1440px` (desktop). The user may request more (e.g. `768px` tablet, `1920px` wide-screen) but the default is exactly these two. Ask user upfront before building.
-4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with progress indicator ("Шаг 2/5: viewports").
+4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with a dynamic progress indicator (`Step N/M`), where `M` is the count of required questions after triage.
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
 6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
 7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 
 ## Step 0 — Read source of truth (required)
 
-1. **Design system check.** Read `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `.supervibe/artifacts/prototypes/_design-system/components/*.md`, `.supervibe/artifacts/prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
+1. **Design system check.** Read `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`, `manifest.json`, `tokens.css`, `components/*.md`, and `voice.md`. If `design_system.status !== "approved"` or any required section is missing from `approved_sections` (`palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, `accessibility-platform`) -> STOP. Tell user: "Cannot build a prototype without an approved design system. Approve the missing design-system sections first."
 2. **Artifact mode check.** Run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
 3. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
 4. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
 
-## Target surfaces (Шаг 0 — ASK BEFORE viewport)
+## Target surfaces (Step 0 — ASK BEFORE viewport)
 
 Prototype skill supports five target runtimes. Ask user FIRST:
 
-**Шаг 0/N:** На какую платформу делаем прототип?
-- `web` — браузерный сайт/SaaS (default 375 mobile + 1440 desktop)
-- `chrome-extension` — расширение браузера (popup + options + side-panel)
+**Step 0/N:** Which platform is this prototype for?
+- `web` - browser website/SaaS (default 375 mobile + 1440 desktop)
+- `chrome-extension` - browser extension (popup + options + side-panel)
 - `electron` — Electron desktop app (main + settings windows)
 - `tauri` — Tauri desktop app (Rust + webview)
-- `mobile-native` — нативное мобильное (iOS/Android — React Native / Flutter / SwiftUI)
+- `mobile-native` - native mobile (iOS/Android - React Native / Flutter / SwiftUI)
 
-После выбора — загружу `templates/viewport-presets/<target>.json` и спрошу про viewport'ы (default/optional/custom).
+After selection, load `templates/viewport-presets/<target>.json` and ask about viewports (default/optional/custom).
 
 For `mobile-native`: prototype is HTML simulation of mobile UI within an iframe with the chosen viewport size — note that final implementation will be React Native / Flutter / native; the HTML prototype is a fidelity sketch only.
 
@@ -81,13 +93,15 @@ What viewports does this prototype need?
 └─ User can choose any subset of defaults+optional, or custom widths.
 
 ASK (one question, after target chosen):
-  "Использовать стандартные viewport'ы для <target>: <list> или нужны другие?"
+  "Use the default viewports for <target>: <list>, or choose different ones?"
 
 Wait for explicit answer. Save chosen viewports + target + runtime + constraints
 to .supervibe/artifacts/prototypes/<slug>/config.json BEFORE any HTML written.
 
 The pre-write hook (scripts/hooks/pre-write-prototype-guard.mjs) blocks every
-file write to .supervibe/artifacts/prototypes/<slug>/ until config.json exists.
+file write to .supervibe/artifacts/prototypes/<slug>/ until config.json exists
+and blocks HTML/CSS/JS prototype writes until design-flow-state allows
+prototype.requested.
 ```
 
 ## Decision tree — interaction depth
@@ -134,13 +148,13 @@ What level of fidelity does this prototype need?
 The prototype-builder agent (or this skill, when run inline) asks user-facing questions ONE AT A TIME, formatted as:
 
 ```markdown
-**Шаг 1/4: Viewports.**
-Использовать стандартные 375px (mobile) + 1440px (desktop)?
+**Step N/M: Viewports.**
+Use default 375px mobile and 1440px desktop?
 
-- ✅ Да, стандартные
-- ➕ Добавить 768px (tablet)
-- ➕ Добавить 1920px (wide)
-- ✏️ Свои размеры (укажи)
+- Yes, defaults
+- Add 768px tablet
+- Add 1920px wide
+- Custom sizes
 ```
 
 Wait for explicit answer. Then next question. Never combine.
@@ -164,23 +178,23 @@ Wait for explicit answer. Then next question. Never combine.
 After delivering the URL, the skill EXPLICITLY prompts feedback:
 
 ```markdown
-**Прототип готов:** http://localhost:3047
+**Prototype ready:** http://localhost:3047
 **Viewports:** 375px (mobile), 1440px (desktop)
-**Состояние:** draft
+**State:** draft
 
-Что делаем дальше?
+What should happen next?
 
-- ✅ **Утвердить** — фиксирую состояние как `approved`, готовлю handoff в `.supervibe/artifacts/prototypes/<slug>/handoff/`
-- ✎ **Доработать** — расскажи что поменять, итерируем
-- 🔀 **Альтернатива** — предложу 2 другие визуальные/композиционные направления
-- 🛑 **Стоп** — оставить как draft, вернёмся позже
+- **Approve** - set state to `approved`, prepare handoff in `.supervibe/artifacts/prototypes/<slug>/handoff/`
+- **Revise** - describe the change and apply one iteration
+- **Alternative** - propose two other visual/composition directions
+- **Stop** - keep as draft and resume later
 ```
 
-Do NOT proceed without explicit choice. If "Доработать" → ask one clarifying question per round. If "Альтернатива" → spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side.
+Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side.
 
 ### Stage 6 — Approval marker
 
-When user explicitly says "утвердить" / "approve" / "✅":
+When the user explicitly approves:
 
 1. Write `.supervibe/artifacts/prototypes/<slug>/.approval.json`:
    ```json
@@ -230,6 +244,7 @@ Rubric:     prototype
 - DO NOT proceed past delivery without explicit feedback choice.
 - DO NOT reuse or edit an old design artifact without the artifact-mode question when the brief is ambiguous.
 - DO NOT disable preview feedback overlay for prototype previews.
+- DO NOT build or preview from a candidate or needs_revision design system.
 - DO NOT mark approved without `.approval.json` artifact.
 - DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
 - DO NOT ask >1 question per message.
@@ -241,12 +256,12 @@ Rubric:     prototype
 - `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits
 - `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
 - Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
-- Approval marker written when user says "утвердить" / "approve"
+- Approval marker written when the user explicitly approves
 - `prefers-reduced-motion: reduce` honored — animations disabled or shortened to ≤100ms
 
 ## Anti-patterns (skill-level — fail conditions)
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
 - `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.

@@ -1,15 +1,24 @@
 ---
 name: experiment
 namespace: process
-description: "Use BEFORE running an A/B test or feature flag rollout to set up hypothesis, success metric, sample size calculation, randomization, and analysis plan. RU: Используется ПЕРЕД запуском A/B-теста или feature-flag rollout — оформляет гипотезу, success-метрику, sample size, рандомизацию и план анализа. Trigger phrases: 'a/b test', 'эксперимент', 'split-test', 'проверим гипотезу'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use BEFORE running an A/B test or feature flag rollout to set up hypothesis,
+  success metric, sample size calculation, randomization, and analysis plan.
+  Triggers: 'a/b test', 'эксперимент', 'split-test', 'проверим гипотезу'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: plan
 prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Experiment

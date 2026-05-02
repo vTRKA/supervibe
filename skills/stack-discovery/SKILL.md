@@ -1,15 +1,22 @@
 ---
 name: stack-discovery
 namespace: process
-description: "Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack to scan manifests, ask gap questions, build stack-fingerprint. RU: Используется КОГДА сессия начинается в незнакомом проекте ИЛИ упомянут новый стек — сканирует манифесты, задаёт уточняющие вопросы и строит stack-fingerprint. Trigger phrases: 'определи стек', 'stack discovery', 'какой тут стек', 'разведай проект'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack
+  to scan manifests, ask gap questions, build stack-fingerprint. Triggers:
+  'определи стек', 'stack discovery', 'какой тут стек', 'разведай проект'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: brainstorm
 prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Stack Discovery

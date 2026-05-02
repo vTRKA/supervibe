@@ -1,11 +1,18 @@
 ---
 name: pre-commit-discipline
-description: "Every project must have husky+lint-staged+commitlint pre-commit pipeline; pre-push runs full check; CI mirrors pre-push for backstop. RU: Husky pre-commit hooks обязательны к прохождению; pre-push запускает полный check. Trigger phrases: 'pre-commit', 'hook', 'husky'."
-applies-to: [any]
+description: >-
+  Every project must have husky+lint-staged+commitlint pre-commit pipeline;
+  pre-push runs full check; CI mirrors pre-push for backstop. Triggers:
+  'pre-commit', 'hook', 'husky'.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [git-discipline, commit-discipline, no-dead-code]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - git-discipline
+  - commit-discipline
+  - no-dead-code
 ---
 
 # Pre-Commit Discipline

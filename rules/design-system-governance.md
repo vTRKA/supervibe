@@ -16,7 +16,7 @@ Design work becomes slow and inconsistent when every mockup recreates palette, t
 
 Concrete consequence of NOT following: five prototypes for one product use five subtly different button styles, and production engineers cannot tell which one is canonical.
 
-The system has two states: candidate tokens for visual proof, then final tokens after visual approval. Candidate tokens keep draft prototypes disciplined; final tokens are the only token set developers may treat as production guidance.
+The system has gated states: candidate tokens for design-system review packets, approved design-system state for prototype work, then final handoff metadata after prototype approval. Candidate tokens do not unlock prototypes; final tokens are the only token set developers may treat as production guidance.
 
 ## When this rule applies
 
@@ -28,7 +28,7 @@ This rule does NOT apply when the user explicitly asks for a rebrand, major rese
 
 ## What to do
 
-- Treat `.supervibe/artifacts/prototypes/_design-system/manifest.json` with `status: candidate` as source for prototype proof, and `status: approved` plus `tokensState: final` as source for development handoff.
+- Treat `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` with `design_system.status = approved` and all required sections approved as the gate for prototype proof; treat `manifest.json` with `status: approved` plus `tokensState: final` as source for development handoff.
 - Reuse existing `tokens.css`, `motion.css`, `voice.md`, `accessibility.md`, and `components/*.md`.
 - If a prototype needs something missing, create a narrow extension request at `.supervibe/artifacts/prototypes/_design-system/extensions/<date>-<slug>.md`.
 - Ask one approval question for the extension only.
@@ -58,11 +58,11 @@ Why this is good: the existing system stays stable, and the missing capability i
 
 ## Enforcement
 
-- `/supervibe-design` Stage 0 checks whether `_design-system/manifest.json` is approved.
+- `/supervibe-design` Stage 0 checks whether `_design-system/design-flow-state.json` approves every required design-system section.
 - `supervibe:brandbook` has reuse/extension mode.
-- `prototype-builder` must stop on missing tokens/components and request an extension instead of inventing values.
+- `prototype-builder` must stop on missing, candidate, or needs_revision design-system state and request approval/extension instead of inventing values.
 - `ui-polish-reviewer` flags token bypass and component duplication.
-- `scripts/hooks/pre-write-prototype-guard.mjs` blocks raw colors and hardcoded layout pixel values in prototype surfaces after `_design-system/manifest.json` is approved.
+- `scripts/hooks/pre-write-prototype-guard.mjs` blocks prototype HTML/CSS/JS writes until design-flow state allows `prototype.requested`, then blocks raw colors and hardcoded layout pixel values in prototype surfaces.
 
 ## Related rules
 

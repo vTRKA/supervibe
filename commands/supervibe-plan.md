@@ -1,8 +1,9 @@
 ---
 description: >-
-  Use AFTER approved spec or when plan/план is ready TO write a phased plan,
-  require review/ревью loop, then atomic task split and epic/эпик handoff before
-  execution; triggers include "сделал план", "review plan", and "atomize".
+  Use AFTER approved spec OR WHEN planning is ready TO write a phased plan,
+  require review loop, then atomic task split and epic handoff before execution.
+  Triggers: 'plan', 'review plan', 'atomize', 'сделал план', 'план', 'ревью',
+  'эпик'.
 ---
 
 # /supervibe-plan
@@ -14,6 +15,12 @@ Direct trigger for the `supervibe:writing-plans` skill. Use after `/supervibe-br
 Do not stop after individual plan phases, file-structure mapping, first task batch, or the first review-gate draft. A `/supervibe-plan` invocation should write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
 
 Review gates inside the plan are execution-time gates for later workers; they are not reasons for the planning agent to stop before completing the full plan artifact.
+
+## Topic Drift / Resume Contract
+
+If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, do not silently drop the saved phase. Surface the current phase, plan/spec artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in the plan assumptions, scope safety gate, or review handoff. They cannot bypass the mandatory plan review loop, final approval, safety/policy gates, production approvals, or destructive-operation consent.
 
 ## Invocation forms
 
@@ -63,7 +70,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 8. **Mandatory review handoff before execution.** Print:
    ```
    Plan saved to <path>.
-   Шаг 1/1: review loop по плану?
+   Step 1/1: run the plan review loop?
    ```
 
 8a. **Machine-readable review handoff.** Include:
@@ -83,7 +90,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 9. **After review passes.** Hand off to atomization and epic creation:
    ```
-   Шаг 1/1: разбить план на атомарные work items и epic?
+   Step 1/1: split the plan into atomic work items and an epic?
    ```
 
 After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`.

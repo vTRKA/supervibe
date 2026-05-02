@@ -1,8 +1,9 @@
 ---
 description: >-
-  Use WHEN starting brainstorm/брейншторм, clarifying a feature, or the user
-  says "я сделал брейншторм" and needs the next plan/план step TO produce an
-  approved spec and hand off with "Next: /supervibe-plan" instead of stopping.
+  Use WHEN starting brainstorm, clarifying a feature, or continuing after an
+  approved brainstorm TO produce an approved spec and hand off with "Next:
+  /supervibe-plan" instead of stopping. Triggers: 'brainstorm', 'next plan',
+  'брейншторм', 'я сделал брейншторм', 'план'.
 ---
 
 # /supervibe-brainstorm
@@ -15,6 +16,12 @@ Do not stop after individual brainstorm sections such as first-principles, optio
 
 Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan <spec-path>` handoff.
 
+## Topic Drift / Resume Contract
+
+If the user shifts topic while a brainstorm is incomplete or a `NEXT_STEP_HANDOFF` exists, do not silently drop the saved phase. Surface the current phase, artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue current brainstorm, skip/delegate safe non-final decisions to the agent and continue, pause current brainstorm and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in the spec under assumptions or explicit delegations. They cannot satisfy final spec approval, safety/policy gates, production approvals, or destructive-operation consent.
+
 ## Invocation forms
 
 ### `/supervibe-brainstorm <topic>`
@@ -23,7 +30,7 @@ Examples:
 - `/supervibe-brainstorm "idea"`
 - `/supervibe-brainstorm payment idempotency`
 - `/supervibe-brainstorm rebuilding the dashboard for editor users`
-- `/supervibe-brainstorm моки для preview-server`  *(Russian topics work — the skill is bilingual)*
+- `/supervibe-brainstorm preview-server mockups`
 
 ### `/supervibe-brainstorm` (no args)
 
@@ -50,7 +57,7 @@ Treat the most recent user message as the topic.
 
 4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
-5. **Mandatory handoff.** Print `Шаг 1/1: написать production-ready план?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
+5. **Mandatory handoff.** Print `Step 1/1: write the production-ready plan?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
 
 5a. **Machine-readable handoff.** Include:
 

@@ -1,15 +1,25 @@
 ---
 name: strengthen
 namespace: process
-description: "Use WHEN audit flagged weak/stale artifacts to deepen them from project context AND fresh research (consults research-agents for stale best-practices/dependency/security/infra/design). RU: Используется КОГДА audit пометил артефакты слабыми/устаревшими — углубляет их из контекста проекта И свежего ресёрча (best-practices/dependency/security/infra/design). Trigger phrases: 'усиль агента', 'strengthen <agent>', 'докрути артефакт', 'усилить'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN audit flagged weak/stale artifacts to deepen them from project
+  context AND fresh research (consults research-agents for stale
+  best-practices/dependency/security/infra/design). Triggers: 'усиль агента',
+  'strengthen <agent>', 'докрути артефакт', 'усилить'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Strengthen
@@ -22,16 +32,25 @@ WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe
 
 Lifecycle: `intake -> plan -> review -> approved -> applied -> verified`. Persist state in `.supervibe/memory/strengthen/state.json` before every lifecycle transition.
 
-Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
+Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
 Default behavior: produce a dry-run diff and do not edit artifacts until approval. Free-form path: the user can name exact artifacts, agents, rules, or research constraints to include or exclude.
 
-After every material delivery, ask one explicit next-step question about the strengthening diff. Use language-matched, domain-specific labels; keep internal action ids only in saved state.
-- Apply strengthening / Применить усиление - recommended when the dry-run artifact diff looks right; apply the selected updates.
-- Adjust strengthening diff / Изменить diff усиления - user gives one focused artifact, section, rule or research constraint; rebuild the dry-run diff without writing files.
-- Compare another approach / Сравнить другой подход - produce another strengthening approach with explicit tradeoffs.
-- Review strengthening deeper / Проверить усиление глубже - run confidence scoring, audit, or specialist review before applying.
-- Stop without strengthening / Остановиться без усиления - persist current state and exit without changing artifacts.
+After every material delivery, ask one explicit next-step question about the strengthening diff. Use `buildPostDeliveryQuestion({ intent: "strengthening_delivery" }, { locale })` when tooling is available. Visible labels must be language-matched and domain-specific; keep internal action ids only in saved state. Never show both English and Russian in the same visible option.
+
+English visible labels:
+- Apply strengthening - recommended when the dry-run artifact diff looks right; apply the selected updates.
+- Adjust strengthening diff - user gives one focused artifact, section, rule or research constraint; rebuild the dry-run diff without writing files.
+- Compare another approach - produce another strengthening approach with explicit tradeoffs.
+- Review strengthening deeper - run confidence scoring, audit, or specialist review before applying.
+- Stop without strengthening - persist current state and exit without changing artifacts.
+
+Russian visible labels:
+- Apply strengthening - recommended when the dry-run artifact diff looks correct; apply the selected updates.
+- Adjust strengthening diff - user gives one focused artifact, section, rule, or research constraint; rebuild dry-run diff without writing files.
+- Compare another approach - prepare another strengthening approach with explicit tradeoffs.
+- Review strengthening deeper - run confidence scoring, audit, or specialist review before applying.
+- Stop without strengthening - persist current state and exit without artifact changes.
 
 ## Step 0 — Read source of truth (required)
 

@@ -1,11 +1,17 @@
 ---
 name: rule-maintenance
-description: "Defines lifecycle of rules in selected host rules folder/: when to add, when to retire, how rules-curator agent maintains them. RU: Правила пересматриваются раз в квартал; last-verified держится свежим; rules-curator поддерживает lifecycle. Trigger phrases: 'rules audit', 'аудит правил', 'rule maintenance'."
-applies-to: [any]
+description: >-
+  Defines lifecycle of rules in selected host rules folder/: when to add, when
+  to retire, how rules-curator agent maintains them. Triggers: 'rules audit',
+  'аудит правил', 'rule maintenance'.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [confidence-discipline, anti-hallucination]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - confidence-discipline
+  - anti-hallucination
 ---
 
 # Rule Maintenance

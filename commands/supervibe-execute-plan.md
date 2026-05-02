@@ -1,8 +1,9 @@
 ---
 description: >-
-  Use AFTER plan review and atomic/epic handoff TO execute a plan with 10/10
-  readiness and completion gates. Trigger phrases: execute plan, сделай по
-  плану, review passed, atomic tasks ready, epic ready, /supervibe-execute-plan.
+  Use WHEN an approved implementation plan has passed review and atomic tasks
+  are ready TO execute the plan with explicit readiness and completion gates.
+  Triggers: 'execute plan', 'сделай по плану', 'review passed', 'atomic tasks
+  ready', 'epic ready', '/supervibe-execute-plan'.
 ---
 
 # /supervibe-execute-plan
@@ -35,7 +36,7 @@ Examples:
 
 Auto-detects most recent plan in `.supervibe/artifacts/plans/`. If multiple recent or ambiguous, lists them and asks user to pick.
 
-If no plans exist → redirect: "Нет планов в `.supervibe/artifacts/plans/`. Запусти `/supervibe-plan <spec>` первым".
+If no plans exist -> redirect: "No plans found in `.supervibe/artifacts/plans/`. Run `/supervibe-plan <spec>` first."
 
 ### `/supervibe-execute-plan --resume <plan-path>`
 

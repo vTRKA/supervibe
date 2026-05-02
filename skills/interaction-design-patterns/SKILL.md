@@ -1,15 +1,25 @@
 ---
 name: interaction-design-patterns
 namespace: process
-description: "Use WHEN designing micro-interactions, animations, transitions, loading states to apply timing tiers, easing rules, and WOW-effect patterns from current 2026 design practice. RU: используется КОГДА проектируются микро-взаимодействия, анимации, переходы, loading-состояния — применяет timing tiers, easing-правила и WOW-паттерны из практики 2026. Trigger phrases: 'добавь анимацию', 'нужны переходы', 'микроинтеракция', 'оживи интерфейс'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN designing micro-interactions, animations, transitions, loading states
+  to apply timing tiers, easing rules, and WOW-effect patterns from current 2026
+  design practice. Triggers: 'добавь анимацию', 'нужны переходы',
+  'микроинтеракция', 'оживи интерфейс'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
 prerequisites: []
 emits-artifact: prototype
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-04-28
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Interaction Design Patterns
@@ -691,7 +701,7 @@ Rubric: prototype
 - **Bouncy easing for serious actions** — delete-confirmation should feel weighty; bounce reads as "the app isn't taking this seriously".
 
 ### Skill-level fail conditions
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 

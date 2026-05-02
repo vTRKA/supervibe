@@ -1,15 +1,27 @@
 ---
 name: landing-page
 namespace: process
-description: "Use WHEN building a marketing or product landing page as a native HTML/CSS/JS prototype to scaffold with SEO meta, analytics hooks, copy review, accessibility, and explicit approval lifecycle for stack-agnostic handoff. RU: используется КОГДА строится маркетинговый или продуктовый landing как нативный HTML/CSS/JS прототип — каркас с SEO, аналитикой, copy review, a11y и явным lifecycle утверждения для переноса в любой стек. Trigger phrases: 'сделай лендинг', 'нужна landing страница', 'построй landing', 'дизайн посадочной'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN building a marketing or product landing page as a native HTML/CSS/JS
+  prototype to scaffold with SEO meta, analytics hooks, copy review,
+  accessibility, and explicit approval lifecycle for stack-agnostic handoff.
+  Triggers: 'сделай лендинг', 'нужна landing страница', 'построй landing',
+  'дизайн посадочной'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
-prerequisites: [design-system-approved]
+prerequisites:
+  - design-system-approved
 emits-artifact: prototype
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 2.0
-last-verified: 2026-04-28
+version: 2
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Landing Page
@@ -20,13 +32,13 @@ Before section order, CTA, style, typography, conversion, or visual treatment de
 
 ## Local Design Expert Reference
 
-Read `docs/references/design-expert-knowledge.md` before building. For substantial landing work, honor the `Eight-Pass Expert Routine`: preference intake and product fit, local evidence lookup, reference scan, IA/user-flow, visual system, responsive/platform, quality, and prototype/review/feedback. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+Read `docs/references/design-expert-knowledge.md` before building. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify each pass as `required | reuse | delegated | skipped | N/A`. For landing work inside an approved design system, reuse preference intake and visual-system decisions; run only the relevant local evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. A candidate or needs_revision design system must resume approval review and cannot unlock landing prototype work. Do not force all eight passes for every landing prototype. Full eight-pass coverage is for new products, rebrands, missing systems, or material direction changes. If the landing needs a missing token, component, asset, or conversion interaction, ask one narrow design-system extension question instead of restarting the full system. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
 
 Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `supervibe:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
 
 ## When to invoke
 
-User asks for a landing page: "сделай лендинг", "build a landing", "посадочная для X", "marketing page". The brief usually specifies the audience (B2B / B2C / dev-tool / consumer) and a competitor reference ("в стиле Linear" / "как Stripe").
+User asks for a landing page. English examples include "build a landing" and "marketing page". The brief usually specifies the audience (B2B / B2C / dev-tool / consumer) and competitor reference.
 
 NOT for:
 - In-product flows (login, dashboard, settings) — that's `supervibe:prototype`
@@ -35,7 +47,7 @@ NOT for:
 ## Hard constraints (same as `supervibe:prototype`)
 
 1. **Native only.** No frameworks, no build step, no npm. Pure HTML + CSS + JS.
-2. **Design system is source of truth.** All visuals come through `.supervibe/artifacts/prototypes/_design-system/tokens.css`.
+2. **Design system is source of truth.** All visuals come through approved `.supervibe/artifacts/prototypes/_design-system/tokens.css`.
 3. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user before adding more.
 4. **One question at a time** in markdown with progress.
 5. **Explicit approval lifecycle**: draft → review → revisions → approved → handoff.
@@ -50,7 +62,7 @@ Plus landing-specific:
 
 ## Step 0 — Read source of truth (required)
 
-1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
+1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` with `design_system.status = "approved"` and all required sections approved, plus `{tokens.css, components/, voice.md}`. STOP if missing, candidate, needs_revision, or incomplete.
 2. **Brand direction check** — `.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
 3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
 4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
@@ -71,7 +83,7 @@ What landing kind is this?
 └─ Single big CTA, ≤2 sections
     → Squeeze page (campaign, paid traffic landing)
 
-ASK: "Какая структура нужна?" — multiple choice in markdown
+ASK: "What structure is needed?" - multiple choice in markdown
 ```
 
 ## Procedure
@@ -81,15 +93,15 @@ ASK: "Какая структура нужна?" — multiple choice in markdown
 1. Pick slug: `.supervibe/artifacts/prototypes/landing-<topic>/`.
 2. **Single question on viewports** (markdown formatted):
    ```markdown
-   **Шаг 1/4: Viewports.**
-   Стандарт — 375px (mobile) + 1440px (desktop). Что нужно?
-   - ✅ Стандартные
+   **Step N/M: Viewports.**
+   Default - 375px mobile and 1440px desktop. What viewport set should be used?
+   - Use defaults
    - ➕ + 768px (tablet)
    - ➕ + 1920px (wide)
-   - ✏️ Свои
+   - Custom
    ```
 3. **Single question on landing structure** (after viewports answered).
-4. **Single question on tone** ("деловой / тёплый / провокационный / брутальный / минималистичный").
+4. **Single question on tone** using localized, non-bilingual options such as businesslike, warm, provocative, brutalist, or minimalist.
 5. **Single question on competitor references** (zero, one, or up-to-three URLs).
 
 Each question waits for explicit answer. Save all to `.supervibe/artifacts/prototypes/landing-<topic>/config.json`.
@@ -140,33 +152,33 @@ Each question waits for explicit answer. Save all to `.supervibe/artifacts/proto
 
 ### Stage 4 — Live preview
 
-Same as `supervibe:prototype` — `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/ --daemon` with mandatory feedback overlay and no attached console. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
+Same as `supervibe:prototype` — only after design-flow state allows `prototype.requested`, run `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/ --daemon` with mandatory feedback overlay and no attached console. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
 
 ### Stage 5 — Feedback loop (required)
 
 After URL delivered:
 
 ```markdown
-**Лендинг готов:** http://localhost:3047
+**Landing page ready:** http://localhost:3047
 **Viewports:** 375 / 1440
-**Структура:** {{chosen}}
+**Structure:** {{chosen}}
 **SEO + analytics hooks:** wired
-**Состояние:** draft
+**State:** draft
 
-Что делаем дальше?
+What should happen next?
 
-- ✅ **Утвердить** — фиксирую `approved`, копирую в `.supervibe/artifacts/prototypes/landing-<topic>/handoff/`
-- ✎ **Доработать** — что поменять? Опиши одной мыслью, я итерирую
-- 🔀 **Альтернатива** — предложу 2 другие структуры/тона
-- 📊 **Провести reviews** — accessibility-reviewer + ui-polish-reviewer + seo-specialist параллельно
-- 🛑 **Стоп** — оставить как draft
+- **Approve** - write `approved`, copy to `.supervibe/artifacts/prototypes/landing-<topic>/handoff/`
+- **Revise** - describe one change; apply one iteration
+- **Alternative** - propose two other structures/tones
+- **Run reviews** - accessibility-reviewer + ui-polish-reviewer + seo-specialist in parallel
+- **Stop** - keep as draft
 ```
 
 Wait for explicit choice. Do NOT proceed without explicit choice.
 
 ### Stage 6 — Approval marker
 
-When user says "утвердить":
+When the user explicitly approves:
 
 1. Write `.supervibe/artifacts/prototypes/landing-<topic>/.approval.json`:
    ```json
@@ -214,6 +226,7 @@ Same as `supervibe:prototype`, plus:
 - DO NOT exceed Lighthouse mobile budgets without justification ADR.
 - DO NOT reuse or edit an old landing artifact without the artifact-mode question when the brief is ambiguous.
 - DO NOT disable preview feedback overlay for landing previews.
+- DO NOT build or preview from a candidate or needs_revision design system.
 
 ## Verification
 
@@ -226,7 +239,7 @@ Same as `supervibe:prototype`, plus:
 
 ## Anti-patterns (skill-level — fail conditions)
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
 - `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.

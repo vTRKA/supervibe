@@ -1,11 +1,22 @@
 ---
 name: modular-backend
-description: "Backend organized by bounded contexts (modules) with explicit boundaries, internal-only dependencies, public contract per module. RU: Bounded contexts, нет god-сервисов, публичный контракт на модуль. Trigger phrases: 'архитектура backend', 'bounded context', 'модули'."
-applies-to: [laravel, django, rails, spring-boot, fastapi, nestjs]
+description: >-
+  Backend organized by bounded contexts (modules) with explicit boundaries,
+  internal-only dependencies, public contract per module. Triggers: 'архитектура
+  backend', 'bounded context', 'модули'.
+applies-to:
+  - laravel
+  - django
+  - rails
+  - spring-boot
+  - fastapi
+  - nestjs
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [fsd, no-dead-code]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - fsd
+  - no-dead-code
 ---
 
 # Modular Backend

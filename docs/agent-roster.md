@@ -62,7 +62,7 @@ Total agents: 89
 - `email-lifecycle` - Use WHEN designing transactional or marketing email flows to ensure deliverability, accessibility, brand consistency, and lifecycle correctness. Stacks: any.
 - `product-manager` - Use WHEN making product decisions (priority, scope, roadmap, OKR) at PM/CPO level for any user-facing feature or product area. Stacks: any.
 - `qa-test-engineer` - Use WHEN designing test strategy or test suites to ensure coverage across test pyramid (unit, integration, e2e) with stack-appropriate patterns. Stacks: any.
-- `seo-specialist` - Use WHEN building or auditing public pages to ensure technical SEO (meta, schema.org, sitemaps, CWV) and content SEO (keyword targeting, structure, hreflang). RU: используется КОГДА создаются или аудятся публичные стр... Stacks: any.
+- `seo-specialist` - Use WHEN building or auditing public pages to ensure technical SEO (meta, schema.org, sitemaps, CWV) and content SEO (keyword targeting, structure, hreflang). Stacks: any.
 - `systems-analyst` - Use WHEN converting vague requests into concrete contracts with acceptance criteria, edge cases, state machines, and system boundaries — READ-ONLY. Stacks: any.
 
 ## Stack: android
@@ -71,7 +71,7 @@ Total agents: 89
 
 ## Stack: aspnet
 
-- `aspnet-developer` - Use WHEN implementing ASP.NET Core features, controllers, minimal APIs, EF Core models, services, with xUnit tests and modern .NET patterns. RU: Используется КОГДА реализуешь фичи на ASP.NET Core — контроллеры, minima... Stacks: aspnet.
+- `aspnet-developer` - Use WHEN implementing ASP.NET Core features, controllers, minimal APIs, EF Core models, services, with xUnit tests and modern .NET patterns. Stacks: aspnet.
 
 ## Stack: chrome-extension
 
@@ -90,7 +90,7 @@ Total agents: 89
 
 ## Stack: express
 
-- `express-developer` - Use WHEN implementing Express.js APIs, middleware pipelines, route modules, validators, and error handlers with supertest coverage. RU: Используется КОГДА реализуешь API на Express.js — middleware-пайплайны, модули ро... Stacks: express.
+- `express-developer` - Use WHEN implementing Express.js APIs, middleware pipelines, route modules, validators, and error handlers with supertest coverage. Stacks: express.
 
 ## Stack: fastapi
 
@@ -134,14 +134,14 @@ Total agents: 89
 
 ## Stack: nextjs
 
-- `nextjs-architect` - Use WHEN designing Next.js 14+ application architecture (server components default, streaming, ISR, edge runtime, route organization) READ-ONLY. RU: Используется КОГДА проектируешь архитектуру Next.js 14+ — server com... Stacks: nextjs.
-- `nextjs-developer` - Use WHEN implementing Next.js 14+ pages, layouts, server actions, route handlers, mutations with TypeScript strict. RU: Используется КОГДА реализуешь Next.js 14+ — pages, layouts, server actions, route handlers, мутац... Stacks: nextjs.
+- `nextjs-architect` - Use WHEN designing Next.js 14+ application architecture (server components default, streaming, ISR, edge runtime, route organization) READ-ONLY. Stacks: nextjs.
+- `nextjs-developer` - Use WHEN implementing Next.js 14+ pages, layouts, server actions, route handlers, mutations with TypeScript strict. Stacks: nextjs.
 - `server-actions-specialist` - Use WHEN implementing Server Actions for mutations to enforce input validation, error handling, revalidation, and optimistic updates. Stacks: nextjs.
 
 ## Stack: nuxt
 
 - `nuxt-architect` - Use WHEN designing Nuxt 3 application architecture (server vs client routing, Nitro engine choice, hybrid rendering SSR/SSG/ISR/CSR, Pinia stores, modules, layers, runtime config) READ-ONLY. Stacks: nuxt.
-- `nuxt-developer` - Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware, error.vue) with Vitest. RU: Используется КОГДА реализуешь фичи Nu... Stacks: nuxt.
+- `nuxt-developer` - Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware, error.vue) with Vitest. Stacks: nuxt.
 
 ## Stack: postgres
 
@@ -180,5 +180,5 @@ Total agents: 89
 ## System improvement
 
 - `memory-curator` - Use WHEN auditing project memory hygiene OR after sync-rules to deduplicate, retire stale entries, normalize tags, regenerate index, and audit cross-link integrity. Stacks: any.
-- `rules-curator` - Use WHEN adding/modifying/auditing/retiring project rules to maintain the selected host rules folder, detect contradictions, normalize format, and sync across sibling repos. RU: используется КОГДА добавляются/изменяют... Stacks: any.
+- `rules-curator` - Use WHEN adding/modifying/auditing/retiring project rules to maintain the selected host rules folder, detect contradictions, normalize format, and sync across sibling repos. Stacks: any.
 - `supervibe-orchestrator` - Use WHEN deciding which Supervibe phase to invoke based on weighted context (system-reminders, effectiveness, confidence-log, user message, stack-fingerprint) — never auto-executes state changes. Stacks: any.

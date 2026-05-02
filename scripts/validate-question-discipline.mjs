@@ -22,6 +22,8 @@ const OUTCOME_LABEL_MARKER = 'outcome-oriented labels';
 const WHY_MARKER_RE = /\bWhy:|\bWhy this matters:|\bContext:/i;
 const DECISION_MARKER_RE = /\bDecision unlocked:|\bDecision recorded:|\bDecision:/i;
 const SKIP_MARKER_RE = /\bIf skipped:|\bDefault if skipped:|\bSkip assumption:/i;
+const ADAPTIVE_PROGRESS_RE = /adaptive progress indicator|Recompute `?M`?|current triage|saved workflow state|skipped stages|delegated safe decisions/i;
+const TOPIC_RESUME_RE = /NEXT_STEP_HANDOFF|workflowSignal|changes topic|pause and switch|stop\/archive|continue, skip\/delegate/i;
 const STALE_OPTION_PLACEHOLDER_RE = /<option [abc]>|one-line rationale per option/i;
 const STALE_RECOMMENDED_MARKER_RE = /<Recommended action>\s+\(recommended\)/;
 const DELIVERY_COMMAND_SCOPE = new Set([
@@ -95,6 +97,20 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
       file: relPath,
       code: 'missing-dialogue-skip-assumption',
       message: 'Dialogue discipline must state the safe default or assumption if the question is skipped.',
+    });
+  }
+  if (!ADAPTIVE_PROGRESS_RE.test(dialogueSection)) {
+    issues.push({
+      file: relPath,
+      code: 'missing-adaptive-progress-guidance',
+      message: 'Dialogue discipline must compute Step N/M from current triage, saved state, skipped stages, and delegated decisions instead of fixed totals.',
+    });
+  }
+  if (!TOPIC_RESUME_RE.test(dialogueSection)) {
+    issues.push({
+      file: relPath,
+      code: 'missing-topic-resume-guidance',
+      message: 'Dialogue discipline must preserve saved handoff/workflow state when the user changes topic.',
     });
   }
   if (STALE_OPTION_PLACEHOLDER_RE.test(dialogueSection)) {

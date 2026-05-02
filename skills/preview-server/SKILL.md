@@ -1,15 +1,22 @@
 ---
 name: preview-server
 namespace: process
-description: "Use AFTER generating HTML/CSS/JS mockup files TO spawn a local http://localhost preview server with hot-reload, share URL with user, optionally capture Playwright screenshot. RU: используется ПОСЛЕ генерации файлов мокапа HTML/CSS/JS — поднимает локальный http://localhost preview-сервер с hot-reload, отдаёт URL пользователю, опционально снимает Playwright-скриншот. Trigger phrases: 'покажи в браузере', 'дай ссылку', 'открой превью', 'хочу потыкать'."
-allowed-tools: [Read, Bash, Glob]
+description: >-
+  Use AFTER generating HTML/CSS/JS mockup files TO spawn a local
+  http://localhost preview server with hot-reload, share URL with user,
+  optionally capture Playwright screenshot. Triggers: 'покажи в браузере', 'дай
+  ссылку', 'открой превью', 'хочу потыкать'.
+allowed-tools:
+  - Read
+  - Bash
+  - Glob
 phase: prototype
 prerequisites: []
 emits-artifact: preview-url
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Preview Server

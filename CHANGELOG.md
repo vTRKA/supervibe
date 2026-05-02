@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.53] - 2026-05-03
+
+### Added
+
+- Added a machine-readable design flow state gate that blocks prototype writes
+  until the design system is explicitly approved with all required sections.
+- Added a text encoding and instruction-language validator that rejects
+  repairable mojibake and keeps Russian intent phrases confined to quoted
+  `Triggers:` metadata in agent, skill, command, rule, and docs surfaces.
+- Added mandatory `instruction-surface-integrity` rule so adapted projects
+  inherit encoding, trigger-language, and workflow-state safety requirements.
+
+### Changed
+
+- Strengthened `/supervibe-brainstorm`, `/supervibe-plan`, and
+  `/supervibe-loop` continuation contracts so topic drift asks whether to
+  continue, skip/delegate safe non-final decisions, switch topic, or stop
+  without dropping workflow state.
+- Normalized shared agent/skill/docs instruction text to one base language
+  while preserving multilingual routing triggers.
+
+### Fixed
+
+- Fixed workflow routing so short affirmative phrases are matched as standalone
+  tokens instead of substrings inside unrelated words.
+- Fixed candidate design-system artifacts so they no longer unlock prototype
+  generation or preview server startup without explicit approval.
+- Restored corrupted multilingual trigger keys and block future repeated
+  question-mark text-loss regressions in instruction surfaces.
+
+## [2.0.52] - 2026-05-03
+
+### Added
+
+- Added localized post-delivery contexts for adaptation, strengthening, and
+  design flows so runtime dialogue helpers can select one visible language for
+  action labels.
+- Added a dialogue UX regression check that rejects mixed-language visible
+  action menus.
+
+### Changed
+
+- Reworked design, genesis, adapt, and strengthen dialogue docs to use
+  locale-specific visible label sets instead of bilingual slash-label menus.
+- Updated the generated agent dialogue template to forbid bilingual option
+  labels in user-facing questions.
+
 ## [2.0.51] - 2026-05-03
 
 ### Added

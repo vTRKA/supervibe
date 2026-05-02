@@ -2,9 +2,9 @@
 description: >-
   Score an artifact against its confidence rubric with explicit gap analysis and
   remediation actions. Primary scoring command; use --record when telemetry
-  should be updated. Supports auto-detect, batch, dry-run, and override flow. Поддерживает
-  auto-detect типа артефакта, batch-режим, dry-run и override. Triggers:
-  'оцени', 'score', 'evaluate confidence', 'gap analysis', '/supervibe-score'.
+  should be updated. Supports auto-detect, batch, dry-run, and override flow.
+  Triggers: 'оцени', 'score', 'evaluate confidence', 'gap analysis',
+  '/supervibe-score'.
 ---
 
 # /supervibe-score

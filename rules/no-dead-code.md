@@ -1,11 +1,17 @@
 ---
 name: no-dead-code
-description: "Every function, class, struct, enum variant, method, exported symbol must have at least one live call site; deferred wiring banned. RU: Knip-clean — удалять unused exports и functions, все символы должны иметь живые callers. Trigger phrases: 'мёртвый код', 'unused export', 'dead code'."
-applies-to: [any]
+description: >-
+  Every function, class, struct, enum variant, method, exported symbol must have
+  at least one live call site; deferred wiring banned. Triggers: 'мёртвый код',
+  'unused export', 'dead code'.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [confidence-discipline, anti-hallucination]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - confidence-discipline
+  - anti-hallucination
 ---
 
 # No Dead Code

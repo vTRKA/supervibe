@@ -1,11 +1,17 @@
 ---
 name: prototype-to-production
-description: "Only approved prototypes with final tokens are 1:1 source of truth for visual implementation; draft prototypes provide product model only. Drift between approved prototype and production >5% blocks merge. RU: Hardening checklist перед промоутом; только approved prototype + final tokens являются source of truth. Trigger phrases: 'prototype to prod', 'промоут прототипа', 'hardening'."
-applies-to: [any]
+description: >-
+  Only approved prototypes with final tokens are 1:1 source of truth for visual
+  implementation; draft prototypes provide product model only. Drift between
+  approved prototype and production >5% blocks merge. Triggers: 'prototype to
+  prod', 'промоут прототипа', 'hardening'.
+applies-to:
+  - any
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [confidence-discipline]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - confidence-discipline
 ---
 
 # Prototype-to-Production
@@ -31,8 +37,8 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 
 ### Prototype phase
 
-1. Build HTML prototype with `supervibe:prototype` skill
-2. Use candidate design-system tokens (`.supervibe/artifacts/prototypes/_design-system/tokens.css`) for draft proof, then final tokens after visual approval
+1. Build HTML prototype with `supervibe:prototype` skill only after `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` has `design_system.status = approved` and every required section approved
+2. Use approved design-system tokens (`.supervibe/artifacts/prototypes/_design-system/tokens.css`) for draft proof, then final handoff token metadata after visual approval
 3. Render all 8 standard states (resting/hover/active/focus/disabled/loading/empty/error)
 4. Get stakeholder approval (creative-director + user)
 

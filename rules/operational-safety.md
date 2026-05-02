@@ -1,11 +1,19 @@
 ---
 name: operational-safety
-description: "Consent-first operational safety for deletes, servers, routers, credentials, privilege elevation, git pulls/stashes, and destructive side effects. RU: удаление, серверы и привилегии только с явным согласием."
-applies-to: [any]
+description: >-
+  Consent-first operational safety for deletes, servers, routers, credentials,
+  privilege elevation, git pulls/stashes, and destructive side effects.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-30
-related-rules: [git-discipline, no-dead-code, privacy-pii, infrastructure-patterns, pre-commit-discipline]
+version: 1
+last-verified: 2026-04-30T00:00:00.000Z
+related-rules:
+  - git-discipline
+  - no-dead-code
+  - privacy-pii
+  - infrastructure-patterns
+  - pre-commit-discipline
 ---
 
 # Operational Safety

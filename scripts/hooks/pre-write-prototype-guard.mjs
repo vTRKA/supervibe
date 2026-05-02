@@ -7,6 +7,7 @@ import {
   formatArtifactRootBlockReason,
   legacyProjectArtifactMatch,
 } from '../lib/supervibe-artifact-roots.mjs';
+import { evaluatePrototypeTransition } from '../lib/design-flow-state.mjs';
 
 const FRAMEWORK_PATTERNS = [
   /\bimport\s+.+\s+from\s+['"]/,
@@ -111,6 +112,13 @@ for (const pat of FRAMEWORK_PATTERNS) {
 
 // Item 7 — approved design-system gate: once tokens/components are approved,
 // prototype surfaces must consume them instead of inventing visual values.
+if (PROTOTYPE_SURFACE_RE.test(path)) {
+  const transition = evaluatePrototypeTransition(projectRoot);
+  if (!transition.allowed) {
+    emit('block', `${transition.reason} Missing sections: ${(transition.missingSections || []).join(', ') || 'N/A'}.`);
+  }
+}
+
 if (PROTOTYPE_SURFACE_RE.test(path) && hasActiveDesignSystem(projectRoot)) {
   const bypassReason = detectDesignTokenBypass(content);
   if (bypassReason) emit('block', bypassReason);

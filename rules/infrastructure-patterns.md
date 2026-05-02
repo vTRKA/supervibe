@@ -1,11 +1,16 @@
 ---
 name: infrastructure-patterns
-description: "Catalogs HA/replication/cache/queue patterns (Redis Sentinel, Postgres streaming, Kafka topics, etc.) with decision criteria per scale tier. RU: Sentinel/Cluster decision, репликация, queue topology с критериями выбора по масштабу. Trigger phrases: 'redis topology', 'replication', 'инфраструктура'."
-applies-to: [any]
+description: >-
+  Catalogs HA/replication/cache/queue patterns (Redis Sentinel, Postgres
+  streaming, Kafka topics, etc.) with decision criteria per scale tier.
+  Triggers: 'redis topology', 'replication', 'инфраструктура'.
+applies-to:
+  - any
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [observability]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - observability
 ---
 
 # Infrastructure Patterns

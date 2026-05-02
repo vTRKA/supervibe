@@ -1,15 +1,24 @@
 ---
 name: new-feature
 namespace: process
-description: "Use WHEN starting any new user-facing feature to orchestrate end-to-end flow from requirements to merge with all gates enforced. RU: Используется КОГДА начинается новая user-facing фича — оркестрирует end-to-end поток от требований до мержа со всеми гейтами. Trigger phrases: 'новая фича', 'feature scaffold', 'давай новую фичу', 'начни фичу'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN starting any new user-facing feature to orchestrate end-to-end flow
+  from requirements to merge with all gates enforced. Triggers: 'новая фича',
+  'feature scaffold', 'давай новую фичу', 'начни фичу'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: brainstorm
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # New Feature

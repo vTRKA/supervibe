@@ -1,15 +1,22 @@
 ---
 name: code-search
 namespace: process
-description: "Use BEFORE making non-trivial changes to source code to find relevant existing code, similar patterns, and callers via hybrid keyword+semantic search. RU: Используется ПЕРЕД нетривиальными изменениями кода — находит релевантный код, схожие паттерны и вызовы через гибридный поиск (keyword + semantic + graph). Trigger phrases: 'найди код', 'кто вызывает', 'callers <symbol>', 'где используется'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use BEFORE making non-trivial changes to source code to find relevant existing
+  code, similar patterns, and callers via hybrid keyword+semantic search.
+  Triggers: 'найди код', 'кто вызывает', 'callers <symbol>', 'где используется'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: brainstorm
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Code Search

@@ -243,6 +243,180 @@ const POST_DELIVERY_CONTEXTS = Object.freeze({
       },
     },
   },
+  adaptation_delivery: {
+    en: {
+      prompt: 'Step 1/1: apply the adaptation updates now, or inspect the plan first?',
+      recommendation: 'Recommended path: apply only when the dry-run adaptation plan and affected artifacts look correct.',
+      freeFormPath: 'You can answer in your own words, for example: "apply only Codex artifacts" or "exclude design agents".',
+      stopCondition: 'Stop without adapting: I will persist the current adaptation state and make no project artifact changes.',
+      actions: {
+        approve: {
+          label: 'Apply adaptation',
+          tradeoff: 'Write the selected artifact updates, update the version marker, then run verification.',
+        },
+        refine: {
+          label: 'Adjust adaptation plan',
+          tradeoff: 'Name one agent, rule, skill, path, or stack change; I will rebuild the dry-run without writing files.',
+        },
+        alternative: {
+          label: 'Compare another scope',
+          tradeoff: 'Show another adaptation scope with explicit tradeoffs before any write.',
+        },
+        'deeper-review': {
+          label: 'Review adaptation deeper',
+          tradeoff: 'Run audit, confidence, or status checks before applying the updates.',
+        },
+        stop: {
+          label: 'Stop without adapting',
+          tradeoff: 'Save the current state and exit without changing project artifacts.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: применить обновления адаптации сейчас или сначала проверить план?',
+      recommendation: 'Рекомендуемый путь: применять только если dry-run план адаптации и затронутые артефакты выглядят корректно.',
+      freeFormPath: 'Можно ответить своими словами, например: "примени только Codex-артефакты" или "исключи дизайн-агентов".',
+      stopCondition: 'Остановиться без адаптации: сохраню текущее состояние адаптации и не буду менять проектные артефакты.',
+      actions: {
+        approve: {
+          label: 'Применить адаптацию',
+          tradeoff: 'Запишу выбранные обновления артефактов, обновлю маркер версии и запущу проверку.',
+        },
+        refine: {
+          label: 'Изменить план адаптации',
+          tradeoff: 'Укажи одного агента, правило, скилл, путь или изменение стека; пересоберу dry-run без записи файлов.',
+        },
+        alternative: {
+          label: 'Сравнить другой scope',
+          tradeoff: 'Покажу другой scope адаптации с явными компромиссами до записи файлов.',
+        },
+        'deeper-review': {
+          label: 'Проверить адаптацию глубже',
+          tradeoff: 'Запущу audit, confidence или status checks перед применением обновлений.',
+        },
+        stop: {
+          label: 'Остановиться без адаптации',
+          tradeoff: 'Сохраню текущее состояние и выйду без изменений проектных артефактов.',
+        },
+      },
+    },
+  },
+  strengthening_delivery: {
+    en: {
+      prompt: 'Step 1/1: apply the strengthening updates now, or inspect the diff first?',
+      recommendation: 'Recommended path: apply only when the dry-run artifact diff looks correct.',
+      freeFormPath: 'You can answer in your own words, for example: "apply only agent changes" or "skip rules".',
+      stopCondition: 'Stop without strengthening: I will persist the current state and make no artifact changes.',
+      actions: {
+        approve: {
+          label: 'Apply strengthening',
+          tradeoff: 'Write the selected artifact updates and run the required verification.',
+        },
+        refine: {
+          label: 'Adjust strengthening diff',
+          tradeoff: 'Name one artifact, section, rule, or research constraint; I will rebuild the dry-run diff without writing files.',
+        },
+        alternative: {
+          label: 'Compare another approach',
+          tradeoff: 'Produce another strengthening approach with explicit tradeoffs before any write.',
+        },
+        'deeper-review': {
+          label: 'Review strengthening deeper',
+          tradeoff: 'Run confidence scoring, audit, or specialist review before applying.',
+        },
+        stop: {
+          label: 'Stop without strengthening',
+          tradeoff: 'Save the current state and exit without changing artifacts.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: применить усиление сейчас или сначала проверить diff?',
+      recommendation: 'Рекомендуемый путь: применять только если dry-run diff артефактов выглядит корректно.',
+      freeFormPath: 'Можно ответить своими словами, например: "примени только изменения агентов" или "не трогай правила".',
+      stopCondition: 'Остановиться без усиления: сохраню текущее состояние и не буду менять артефакты.',
+      actions: {
+        approve: {
+          label: 'Применить усиление',
+          tradeoff: 'Запишу выбранные обновления артефактов и запущу обязательную проверку.',
+        },
+        refine: {
+          label: 'Изменить diff усиления',
+          tradeoff: 'Укажи один артефакт, раздел, правило или research-ограничение; пересоберу dry-run diff без записи файлов.',
+        },
+        alternative: {
+          label: 'Сравнить другой подход',
+          tradeoff: 'Подготовлю другой подход к усилению с явными компромиссами до записи файлов.',
+        },
+        'deeper-review': {
+          label: 'Проверить усиление глубже',
+          tradeoff: 'Запущу confidence scoring, audit или specialist review перед применением.',
+        },
+        stop: {
+          label: 'Остановиться без усиления',
+          tradeoff: 'Сохраню текущее состояние и выйду без изменений артефактов.',
+        },
+      },
+    },
+  },
+  design_delivery: {
+    en: {
+      prompt: 'Step 1/1: approve the design artifact, or choose the next design action?',
+      recommendation: 'Recommended path: approve only when the artifact, feedback state, and review evidence look correct.',
+      freeFormPath: 'You can answer in your own words, for example: "approve desktop, refine mobile".',
+      stopCondition: 'Stop and save design state: I will persist the current state and make no hidden progress.',
+      actions: {
+        approve: {
+          label: 'Approve design',
+          tradeoff: 'Move the design artifact to the next lifecycle state and preserve approval evidence.',
+        },
+        refine: {
+          label: 'Revise design',
+          tradeoff: 'Name one visual, UX, content, or accessibility change; I will apply one iteration.',
+        },
+        alternative: {
+          label: 'Compare another direction',
+          tradeoff: 'Produce another design direction with explicit gains and tradeoffs.',
+        },
+        'deeper-review': {
+          label: 'Review design deeper',
+          tradeoff: 'Run the relevant design review, accessibility, token, or viewport checks before changing state.',
+        },
+        stop: {
+          label: 'Stop and save design state',
+          tradeoff: 'Save the current state and exit without claiming silent completion.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: утвердить дизайн-артефакт или выбрать следующее дизайн-действие?',
+      recommendation: 'Рекомендуемый путь: утверждать только если артефакт, состояние фидбека и review evidence выглядят корректно.',
+      freeFormPath: 'Можно ответить своими словами, например: "утверди desktop, но доработай mobile".',
+      stopCondition: 'Остановиться и сохранить дизайн: сохраню текущее состояние и не буду скрыто продолжать.',
+      actions: {
+        approve: {
+          label: 'Утвердить дизайн',
+          tradeoff: 'Переведу дизайн-артефакт в следующий lifecycle state и сохраню approval evidence.',
+        },
+        refine: {
+          label: 'Доработать дизайн',
+          tradeoff: 'Укажи одно visual, UX, content или accessibility изменение; сделаю одну итерацию.',
+        },
+        alternative: {
+          label: 'Сравнить другое направление',
+          tradeoff: 'Подготовлю другое дизайн-направление с явными плюсами и компромиссами.',
+        },
+        'deeper-review': {
+          label: 'Проверить дизайн глубже',
+          tradeoff: 'Запущу релевантный design review, accessibility, token или viewport checks перед изменением состояния.',
+        },
+        stop: {
+          label: 'Остановиться и сохранить дизайн',
+          tradeoff: 'Сохраню текущее состояние и выйду без заявления о скрытом завершении.',
+        },
+      },
+    },
+  },
 });
 
 function getPostDeliveryActions(locale = 'en', context = null) {
@@ -404,14 +578,15 @@ function dialogueContractMarkdown({
     `Lifecycle: ${lifecycle}. Persist state at \`${stateArtifact}\`.`,
     '',
     'Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`.',
+    '`M` is adaptive: compute it from current triage, saved workflow state, skipped stages, and delegated safe decisions; never force the maximum stage count when stages are reusable or N/A.',
     'Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.',
+    'If a saved `NEXT_STEP_HANDOFF`, `workflowSignal`, or stage state exists and the user changes topic, ask whether to continue, skip/delegate safe decisions, pause and switch topic, or stop/archive current state.',
     '',
     'After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal ids only in saved state.',
-    '- Apply / Применить - recommended when the plan or delivery looks right; move to the next lifecycle state.',
-    '- Revise / Доработать - user gives one focused change; apply one iteration.',
-    '- Try another option / Другой вариант - produce another option with explicit tradeoffs.',
-    '- Review deeper / Проверить глубже - run the relevant review/check agents or validators before changing anything.',
-    '- Stop here / Остановиться - persist current state and exit without claiming silent completion.',
+    'Never render bilingual slash labels in a visible menu. Pick exactly one locale from the user conversation.',
+    '',
+    'English visible labels: `Apply`, `Revise`, `Try another option`, `Review deeper`, `Stop here`.',
+    'Russian visible labels: `Применить`, `Доработать`, `Другой вариант`, `Проверить глубже`, `Остановиться`.',
   ].join('\n');
 }
 

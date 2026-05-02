@@ -73,7 +73,7 @@ Numbered steps the agent follows. Include verification step + confidence-scoring
 ≥4 concrete patterns to avoid, each with one-line reasoning.
 
 ### `## User dialogue discipline`
-Required for every interactive agent. Ask one question per message, match the user's language, include `Step N/M` or `Шаг N/M`, explain `Why:`, name `Decision unlocked:`, state `If skipped:`, list outcome-oriented choices with tradeoffs, and include `asking-multiple-questions-at-once` in anti-patterns. Use `scripts/lib/supervibe-dialogue-contract.mjs` for post-delivery menus instead of hardcoding one-off approval prompts.
+Required for every interactive agent. Ask one question per message, match the user's language, include `Step N/M` or `Step N/M`, explain `Why:`, name `Decision unlocked:`, state `If skipped:`, list outcome-oriented choices with tradeoffs, and include `asking-multiple-questions-at-once` in anti-patterns. Use `scripts/lib/supervibe-dialogue-contract.mjs` for post-delivery menus instead of hardcoding one-off approval prompts.
 
 ### `## Verification`
 Specific commands the agent runs to prove done.

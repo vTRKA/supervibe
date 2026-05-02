@@ -1,14 +1,23 @@
 ---
 name: browser-feedback
 namespace: supervibe
-description: "Use WHEN browser-feedback system-reminder appears with click-region context AND active prototype, mockup, or presentation is open in preview server TO triage the comment, route to designer/deck/layout agent, and respond. Closes the user→browser→agent loop in real time. RU: используется КОГДА появляется system-reminder с browser-feedback и в preview server открыт прототип, мокап или презентация — классифицирует комментарий, перенаправляет к нужному дизайнеру, deck-builder или верстальщику и отвечает. Закрывает петлю user→browser→agent в реальном времени. Trigger phrases: 'browser-feedback received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'."
-allowed-tools: [Read, Edit, Bash, Grep]
+description: >-
+  Use WHEN browser-feedback system-reminder appears with click-region context
+  AND active prototype, mockup, or presentation is open in preview server TO
+  triage the comment, route to designer/deck/layout agent, and respond. Closes
+  the user-to-browser-to-agent loop in real time. Triggers: 'browser-feedback
+  received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'.
+allowed-tools:
+  - Read
+  - Edit
+  - Bash
+  - Grep
 phase: feedback
 prerequisites: []
 emits-artifact: feedback-resolution
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
+version: 1
 last-verified: 2026-04-28T00:00:00.000Z
 ---
 
@@ -67,10 +76,10 @@ Browser feedback entries are not lifecycle approval. A resolved browser feedback
    ```
 7. Print feedback prompt to user:
    ```
-   ✅ Принять изменения — закрыть feedback entry
-   ✎ Доработать — что ещё поменять
-   🔀 Альтернатива — другой подход
-   🛑 Откатить — вернуть как было
+   Accept changes - close feedback entry
+   Revise - what else should change
+   Alternative - another approach
+   Revert - restore the previous state
    ```
 8. If the user accepts the fix, mark it resolved:
    ```bash
@@ -93,7 +102,7 @@ Rubric: agent-delivery
 ## Anti-patterns
 - `silent-resolution` — applying change without writing resolution record.
 - `wrong-scope-fix` — changing tokens for a per-prototype need (cascading visual change to other prototypes).
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
+- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding without printing the resolution feedback block.
 
 ## Verification

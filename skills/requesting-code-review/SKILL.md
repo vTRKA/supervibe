@@ -1,15 +1,26 @@
 ---
 name: requesting-code-review
 namespace: process
-description: "Use BEFORE code-reviewer, PR, or AFTER plan/план is written TO run a review/ревью loop with evidence, changed-file scope, plan risks, and next handoff. Trigger phrases: pre-PR review, request review, готов к ревью, сделай ревью плана, review loop."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use BEFORE code-reviewer, PR, or AFTER a plan is written TO run a review loop
+  with evidence, changed-file scope, plan risks, and next handoff. Triggers:
+  'pre-PR review', 'request review', 'готов к ревью', 'сделай ревью плана',
+  'review loop'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: review
-prerequisites: [agent-output]
+prerequisites:
+  - agent-output
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Requesting Code Review

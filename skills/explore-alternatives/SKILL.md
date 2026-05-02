@@ -1,15 +1,24 @@
 ---
 name: explore-alternatives
 namespace: process
-description: "Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate ≥2 alternatives with tradeoffs and explicit chosen-rationale. RU: Используется ПЕРЕД фиксацией нетривиального решения (сложность ≥5) — перечисляет ≥2 альтернативы с компромиссами и явное обоснование выбора. Trigger phrases: 'варианты', 'decision matrix', 'alternatives', 'сравни подходы'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate
+  ≥2 alternatives with tradeoffs and explicit chosen-rationale. Triggers:
+  'варианты', 'decision matrix', 'alternatives', 'сравни подходы'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: plan
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Explore Alternatives

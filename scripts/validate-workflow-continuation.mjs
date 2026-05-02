@@ -3,14 +3,24 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const TOPIC_DRIFT_REQUIRED = Object.freeze([
+  /## Topic Drift \/ Resume Contract/i,
+  /skip\/delegate safe non-final decisions/i,
+  /pause .*switch topic/i,
+  /stop\/archive/i,
+]);
+
 const RULES = Object.freeze([
   {
     file: "commands/supervibe-design.md",
     label: "design pipeline",
     required: [
       /## Continuation Contract/i,
-      /Continue through all applicable stages/i,
+      /Continue through all applicable non-blocking stages/i,
       /Only pause when/i,
+      /stageTriage/i,
+      /required.*reuse.*delegated.*skipped.*N\/A/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [
       /Each stage is gated on user explicit approval before the next starts/i,
@@ -22,8 +32,10 @@ const RULES = Object.freeze([
     label: "brandbook full pass",
     required: [
       /## Continuation Contract/i,
-      /Full-pass mode continues through all eight sections/i,
-      /delegated approval markers/i,
+      /Full-pass mode can draft all required sections/i,
+      /reuse\/extension mode must not force/i,
+      /review packet/i,
+      /Candidate markers are not user approval/i,
     ],
     forbidden: [
       /Each section is its OWN dialogue\. User approves before next starts/i,
@@ -36,6 +48,8 @@ const RULES = Object.freeze([
     required: [
       /Do not stop after individual brainstorm sections/i,
       /complete the requirements package before handoff/i,
+      /NEXT_STEP_HANDOFF/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [],
   },
@@ -45,6 +59,8 @@ const RULES = Object.freeze([
     required: [
       /Do not stop after individual brainstorm sections/i,
       /complete the full requirements package/i,
+      /NEXT_STEP_HANDOFF/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [
       /Get approval per section/i,
@@ -56,6 +72,8 @@ const RULES = Object.freeze([
     required: [
       /Do not stop after individual plan phases/i,
       /write the full plan before the review handoff/i,
+      /NEXT_STEP_HANDOFF/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [],
   },
@@ -65,6 +83,8 @@ const RULES = Object.freeze([
     required: [
       /Do not stop after individual plan phases/i,
       /write the full plan before handoff/i,
+      /NEXT_STEP_HANDOFF/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [],
   },
@@ -74,6 +94,8 @@ const RULES = Object.freeze([
     required: [
       /Do not stop after the first task or wave/i,
       /continue ready work until/i,
+      /workflowSignal/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [],
   },
@@ -86,6 +108,8 @@ const RULES = Object.freeze([
       /Definition Of Ready/i,
       /Definition Of Done/i,
       /Execution Packet/i,
+      /workflowSignal/i,
+      ...TOPIC_DRIFT_REQUIRED,
     ],
     forbidden: [],
   },

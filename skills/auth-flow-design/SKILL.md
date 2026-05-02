@@ -1,15 +1,23 @@
 ---
 name: auth-flow-design
 namespace: app-excellence
-description: "Use BEFORE implementing authentication TO choose the right flow (authorization-code+PKCE / client-credentials / device-code / resource-owner-password) for the use case. RU: Используется ПЕРЕД реализацией авторизации — выбирает правильный flow (authorization-code+PKCE / client-credentials / device-code / ROPC) под кейс. Trigger phrases: 'auth flow', 'дизайн авторизации', 'OAuth выбор', 'как сделать логин'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use BEFORE implementing authentication TO choose the right flow
+  (authorization-code+PKCE / client-credentials / device-code /
+  resource-owner-password) for the use case. Triggers: 'auth flow', 'дизайн
+  авторизации', 'OAuth выбор', 'как сделать логин'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: design
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Auth Flow Design

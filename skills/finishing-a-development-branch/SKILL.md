@@ -1,15 +1,22 @@
 ---
 name: finishing-a-development-branch
 namespace: process
-description: "Use WHEN implementation complete and all verifications pass to decide how to integrate the work (merge, PR, archive, discard) with safety checks. RU: Используется КОГДА реализация завершена и все верификации прошли — решает, как интегрировать работу (merge / PR / archive / discard) с safety-чеками. Trigger phrases: 'finish branch', 'merge готовое', 'закрой ветку', 'wrap up branch'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use WHEN implementation complete and all verifications pass to decide how to
+  integrate the work (merge, PR, archive, discard) with safety checks. Triggers:
+  'finish branch', 'merge готовое', 'закрой ветку', 'wrap up branch'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: review
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Finishing a Development Branch

@@ -37,8 +37,17 @@ const LOCAL_KNOWLEDGE_DOMAINS = Object.freeze([
 const SHARED_REQUIRED = Object.freeze([
   /docs\/references\/design-expert-knowledge\.md/i,
   /Eight-Pass Expert Routine/i,
+  /Design Pass Triage/i,
+  /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i,
   /designContextPreflight\(\)|searchDesignIntelligence\(\)|supervibe:design-intelligence/i,
   /External references are supplemental/i,
+]);
+
+const ADAPTIVE_DESIGN_REQUIRED = Object.freeze([
+  /Do not force all eight passes/i,
+  /approved design system/i,
+  /candidate or needs_revision|candidate\s+.*needs_revision/i,
+  /missing token|narrow design-system extension|narrow extension/i,
 ]);
 
 const RULES = Object.freeze([
@@ -50,6 +59,11 @@ const RULES = Object.freeze([
       /Local Design Knowledge Pack/i,
       /Local Knowledge Folders/i,
       /Eight-Pass Expert Routine/i,
+      /Design Pass Triage/i,
+      /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i,
+      /Do not force all eight passes/i,
+      /approved\s+design system/i,
+      /candidate\s+or\s+needs_revision/i,
       /Use the internet only for current\s+references/i,
       /skills\/design-intelligence\/data\/manifest\.json/i,
       /skills\/design-intelligence\/data\/stacks\//i,
@@ -68,6 +82,7 @@ const RULES = Object.freeze([
     required: [
       /Design Expert Knowledge Gate/i,
       ...SHARED_REQUIRED,
+      ...ADAPTIVE_DESIGN_REQUIRED,
       ...DESIGN_DOMAINS,
       ...LOCAL_KNOWLEDGE_DOMAINS,
       /product-fit style matrix/i,
@@ -90,6 +105,7 @@ const RULES = Object.freeze([
     required: [
       /Design Expert Knowledge Matrix/i,
       ...SHARED_REQUIRED,
+      ...ADAPTIVE_DESIGN_REQUIRED,
       ...DESIGN_DOMAINS,
       ...LOCAL_KNOWLEDGE_DOMAINS,
       /Use the local knowledge pack first/i,
@@ -104,17 +120,17 @@ const RULES = Object.freeze([
   {
     file: "skills/prototype/SKILL.md",
     label: "prototype expert reference",
-    required: [...SHARED_REQUIRED, /--daemon/i],
+    required: [...SHARED_REQUIRED, ...ADAPTIVE_DESIGN_REQUIRED, /--daemon/i],
   },
   {
     file: "skills/landing-page/SKILL.md",
     label: "landing expert reference",
-    required: [...SHARED_REQUIRED, /--daemon/i],
+    required: [...SHARED_REQUIRED, ...ADAPTIVE_DESIGN_REQUIRED, /--daemon/i],
   },
   {
     file: "skills/presentation-deck/SKILL.md",
     label: "deck expert reference",
-    required: [...SHARED_REQUIRED, /--daemon/i],
+    required: [...SHARED_REQUIRED, /approved design system/i, /candidate or needs_revision/i, /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i, /--daemon/i],
   },
   {
     file: "skills/ui-review-and-polish/SKILL.md",
@@ -123,6 +139,8 @@ const RULES = Object.freeze([
       /Design Expert Knowledge/i,
       /docs\/references\/design-expert-knowledge\.md/i,
       /Eight-Pass Expert Routine/i,
+      /Design Pass Triage/i,
+      /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i,
       ...DESIGN_DOMAINS,
     ],
   },
@@ -186,6 +204,9 @@ export function validateDesignExpertKnowledge(rootDir = process.cwd()) {
       /skills\/design-intelligence\/data\/slides\//i,
       /skills\/design-intelligence\/data\/collateral\//i,
       /skills\/design-intelligence\/references\//i,
+      /Design Pass Triage/i,
+      /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i,
+      /Do not force all eight passes/i,
     ]) {
       if (!pattern.test(text)) {
         issues.push({

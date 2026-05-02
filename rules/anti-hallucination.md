@@ -1,11 +1,17 @@
 ---
 name: anti-hallucination
-description: "Never claim a path/function/contract/command exists without grep/read verification; never claim 'works' without command output. RU: Запрещает выдумывание путей, сигнатур и фактов без grep/read верификации; требует cite file:line. Trigger phrases: 'не выдумывай', 'cite file:line', 'верифицируй'."
-applies-to: [any]
+description: >-
+  Never claim a path/function/contract/command exists without grep/read
+  verification; never claim 'works' without command output. Triggers: 'не
+  выдумывай', 'cite file:line', 'верифицируй'.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [confidence-discipline, no-dead-code]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - confidence-discipline
+  - no-dead-code
 ---
 
 # Anti-Hallucination

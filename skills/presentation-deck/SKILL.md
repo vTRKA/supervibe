@@ -22,7 +22,7 @@ Before storyboard or visual direction, run project memory, code search, and inte
 
 ## Local Design Expert Reference
 
-Read `docs/references/design-expert-knowledge.md` before deck structure or visual direction. For substantial decks, honor the `Eight-Pass Expert Routine` through the deck-owned passes: preference intake and product/audience fit, local evidence lookup, reference scan, storyboard/flow, visual system, responsive slide preview, quality review, and feedback/approval. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+Read `docs/references/design-expert-knowledge.md` before deck structure or visual direction. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify deck-owned passes as `required | reuse | delegated | skipped | N/A`. For decks inside an approved design system, reuse preference and visual-system decisions unless the deck requires a new audience posture, brand reset, or missing token/asset extension. If the system is candidate or needs_revision, resume design-system approval before treating it as reusable. Run the relevant product/audience fit, local evidence lookup, reference scan, storyboard/flow, responsive slide preview, quality review, and feedback/approval passes. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
 
 ## When to invoke
 

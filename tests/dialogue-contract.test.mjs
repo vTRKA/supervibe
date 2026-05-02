@@ -118,6 +118,41 @@ test('requirements post-delivery question uses requirements-specific actions', (
   assert.match(formatPostDeliveryQuestion(question), /Approve requirements \(recommended\)/);
 });
 
+test('adaptation, strengthening and design post-delivery contexts localize visible labels', () => {
+  const adaptation = buildPostDeliveryQuestion({ intent: 'adaptation_delivery' }, { locale: 'ru' });
+  assert.equal(adaptation.context, 'adaptation_delivery');
+  assert.deepEqual(adaptation.choices.map((choice) => choice.label), [
+    'Применить адаптацию',
+    'Изменить план адаптации',
+    'Сравнить другой scope',
+    'Проверить адаптацию глубже',
+    'Остановиться без адаптации',
+  ]);
+  assert.match(formatPostDeliveryQuestion(adaptation), /Применить адаптацию \(рекомендуется\)/);
+  assert.doesNotMatch(formatPostDeliveryQuestion(adaptation), /Apply adaptation/);
+
+  const strengthening = buildPostDeliveryQuestion({ intent: 'strengthening_delivery' }, { locale: 'en' });
+  assert.equal(strengthening.context, 'strengthening_delivery');
+  assert.deepEqual(strengthening.choices.map((choice) => choice.label), [
+    'Apply strengthening',
+    'Adjust strengthening diff',
+    'Compare another approach',
+    'Review strengthening deeper',
+    'Stop without strengthening',
+  ]);
+
+  const design = buildPostDeliveryQuestion({ intent: 'design_delivery' }, { locale: 'ru' });
+  assert.equal(design.context, 'design_delivery');
+  assert.deepEqual(design.choices.map((choice) => choice.label), [
+    'Утвердить дизайн',
+    'Доработать дизайн',
+    'Сравнить другое направление',
+    'Проверить дизайн глубже',
+    'Остановиться и сохранить дизайн',
+  ]);
+  assert.doesNotMatch(formatPostDeliveryQuestion(design), /Approve design/);
+});
+
 test('transparent step questions expose why, decision, and skip assumption', () => {
   const question = buildTransparentStepQuestion({
     step: 2,
@@ -191,6 +226,21 @@ test('dialogue UX validator rejects dry next-step handoff prompts', async () => 
 
   assert.equal(result.pass, false);
   assert.ok(result.issues.some((issue) => issue.code === 'stale-next-step-handoff'), JSON.stringify(result.issues));
+});
+
+test('dialogue UX validator rejects mixed-language visible action menus', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'supervibe-dialogue-mixed-locale-'));
+  await mkdir(join(root, 'skills', 'bad-flow'), { recursive: true });
+  await writeFile(join(root, 'skills', 'bad-flow', 'SKILL.md'), [
+    '## Shared Dialogue Contract',
+    'Every interactive step asks one question at a time using `Step N/M`.',
+    '- Apply adaptation / Применить адаптацию - recommended when the dry-run looks right.',
+  ].join('\n'), 'utf8');
+
+  const result = await validateDialogueUx(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'mixed-language-visible-action-menu'), JSON.stringify(result.issues));
 });
 
 test('dialogue UX validator passes current tracked dialogue surfaces', async () => {

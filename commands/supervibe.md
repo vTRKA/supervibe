@@ -1,11 +1,12 @@
 ---
 description: >-
-  Use WHEN the user asks what to do next, says brainstorm/брейншторм or
-  plan/план is ready, asks review/ревью, atomic task split, epic/эпик creation,
-  autonomous run, security audit/уязвимости, router/network diagnostics,
-  design/UI/deck requests, worktree isolation, status, stop/resume, or
-  diagnose/why-trigger TO route to the next safe Supervibe workflow command
-  without mutating first.
+  Use WHEN the user asks what to do next, has a brainstorm or plan ready, asks
+  for review, atomic task split, epic creation, autonomous run, security audit,
+  router/network diagnostics, design/UI/deck requests, worktree isolation,
+  status, stop/resume, or diagnose/why-trigger TO route to the next safe
+  Supervibe workflow command without mutating first. Triggers: 'what next',
+  'brainstorm', 'plan', 'review', 'security audit', 'брейншторм', 'план',
+  'ревью', 'эпик', 'уязвимости'.
 ---
 
 # /supervibe
@@ -32,10 +33,10 @@ statements such as "users cannot see epics/tasks", "old tasks are cluttering
 memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has
 internal TODO garbage", "Figma tokens drift from code", and "the UI looks
 amateur" without requiring the user to name the command. Security statements
-such as "is this safe to ship?", "проверь на уязвимости", "секьюрити аудит",
-and "нужен remediation plan" route to `/supervibe-security-audit`. Network
-statements such as "роутер падает", "настроить маршрутизатор", "VPN не
-работает", and "стабилизировать Wi-Fi" route to `network-router-engineer` in
+Security examples such as "is this safe to ship?" or "security audit" route
+to `/supervibe-security-audit`. Network examples such as router crashes,
+router configuration, VPN failures, and Wi-Fi stability route to
+`network-router-engineer` in fresh context for troubleshooting.
 read-only diagnostics mode first.
 
 Command-like requests use the deterministic command catalog before any broad
@@ -47,8 +48,8 @@ requests for primary workflows. Run:
 node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "<user request>"
 ```
 
-Example: "`npm run code:index` вот запусти индексацию" routes to the same
-source-first flow used by genesis:
+Example: an explicit request to refresh the Supervibe code index routes to the
+same source-first flow used by genesis:
 
 ```bash
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
@@ -82,10 +83,10 @@ Security and network requests route through explicit safety boundaries:
 - router/server/network mutation -> ask for scoped approval; read-only until approved
 
 For workflow handoffs, ask the concrete next-step question instead of stopping at the previous phase:
-- Brainstorm ready: `Шаг 1/1: написать план?`
-- Plan ready: `Шаг 1/1: review loop по плану?`
-- Review passed: `Шаг 1/1: разбить план на атомарные work items и epic?`
-- Epic run requested: `Шаг 1/1: provider-safe preflight перед worktree/autonomous run?`
+- Brainstorm ready: `Step 1/1: write the plan?`
+- Plan ready: `Step 1/1: run the plan review loop?`
+- Review passed: `Step 1/1: split the plan into atomic work items and an epic?`
+- Epic run requested: `Step 1/1: run provider-safe preflight before worktree/autonomous run?`
 - Work status question: route "what is ready?", "what is blocked?", "who owns this?", "what changed?", and "what should I run next?" to the work-item query layer.
 
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.

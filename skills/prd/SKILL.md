@@ -1,15 +1,24 @@
 ---
 name: prd
 namespace: process
-description: "Use BEFORE building any user-facing feature to write a Product Requirements Document framing problem, users, solution, success metrics, and out-of-scope. RU: Используется ПЕРЕД сборкой любой user-facing фичи — пишет Product Requirements Document с проблемой, пользователями, решением, success-метриками и out-of-scope. Trigger phrases: 'PRD', 'продуктовая спецификация', 'product requirements', 'оформи PRD'."
-allowed-tools: [Read, Grep, Glob, Write, Edit]
+description: >-
+  Use BEFORE building any user-facing feature to write a Product Requirements
+  Document framing problem, users, solution, success metrics, and out-of-scope.
+  Triggers: 'PRD', 'продуктовая спецификация', 'product requirements', 'оформи
+  PRD'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
 phase: brainstorm
 prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Product Requirements Document (PRD)

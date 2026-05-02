@@ -1,10 +1,23 @@
 ---
 name: prototype-handoff
 namespace: process
-description: "Use AFTER a prototype is explicitly approved (.approval.json present with status=approved) to package it as a stack-agnostic handoff bundle at .supervibe/artifacts/prototypes/<slug>/handoff/ that any framework developer can pick up and promote to production. RU: используется ПОСЛЕ явного утверждения прототипа (.approval.json status=approved) — упаковывает его в stack-agnostic handoff-бандл .supervibe/artifacts/prototypes/<slug>/handoff/, который любой framework-разработчик подхватит и перенесёт в production. Trigger phrases: 'утверди прототип', 'готов к разработке', 'передай разработчикам', 'handoff to dev', 'stack-agnostic export'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use AFTER a prototype is explicitly approved (.approval.json present with
+  status=approved) to package it as a stack-agnostic handoff bundle at
+  .supervibe/artifacts/prototypes/<slug>/handoff/ that any framework developer
+  can pick up and promote to production. Triggers: 'утверди прототип', 'готов к
+  разработке', 'передай разработчикам', 'handoff to dev', 'stack-agnostic
+  export'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: handoff
-prerequisites: [prototype-approved]
+prerequisites:
+  - prototype-approved
 emits-artifact: handoff-bundle
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
@@ -22,10 +35,10 @@ Readiness boundary: handoff requires **approved prototype + final tokens**. Draf
 
 - After `supervibe:prototype` or `supervibe:landing-page` produced a prototype AND user explicitly approved it (`.supervibe/artifacts/prototypes/<slug>/.approval.json` exists with `status: "approved"`)
 - After `/supervibe-design` Stage 8 fires
-- When user says "готово к разработке", "передай разработчикам", "approved, hand it off", "ready for stack"
+- Request examples include "approved, hand it off" and "ready for stack". Other-language trigger phrases remain in the frontmatter `Triggers:` metadata.
 
 NOT for:
-- Drafts or under-review prototypes — refuse with "Прототип не утверждён. Получите явное `✅ approve` через feedback loop в `supervibe:prototype` сначала."
+- Drafts or under-review prototypes - refuse with "Prototype is not approved. Get explicit approval through the `supervibe:prototype` feedback loop first."
 - Production deployment — that's still the chosen `<stack>-developer` agent's job
 
 ## Hard constraints
@@ -126,7 +139,7 @@ Read `.supervibe/artifacts/prototypes/<slug>/config.json` for `target`. Branch:
 - `target: chrome-extension` → ALSO copy `templates/handoff-adapters/chrome-extension.md.tpl` to `handoff/extension-adapter.md` and fill prototype-specific notes.
 - `target: electron` → ALSO copy `templates/handoff-adapters/electron.md.tpl` to `handoff/electron-adapter.md`.
 - `target: tauri` → ALSO copy `templates/handoff-adapters/tauri.md.tpl` to `handoff/tauri-adapter.md`.
-- `target: mobile-native` → ASK user one question: "Production stack — React Native, Flutter, или native (Swift/Kotlin)?". Based on answer copy `react-native.md.tpl` or `flutter.md.tpl` to `handoff/<rn-or-flutter>-adapter.md`. For native (Swift/Kotlin): produce a manual hand-off note ("HTML sketches are layout reference; native implementation is greenfield — share with platform-native designer").
+- `target: mobile-native` -> ASK user one question: "Production stack - React Native, Flutter, or native (Swift/Kotlin)?". Based on answer copy `react-native.md.tpl` or `flutter.md.tpl` to `handoff/<rn-or-flutter>-adapter.md`. For native (Swift/Kotlin): produce a manual hand-off note ("HTML sketches are layout reference; native implementation is greenfield - share with platform-native designer").
 
 For any non-web target, the per-target adapter file goes alongside (not instead of) `stack-agnostic.md` — the latter still covers token+component inventory, the former covers runtime mapping.
 

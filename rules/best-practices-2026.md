@@ -1,11 +1,18 @@
 ---
 name: best-practices-2026
-description: "Curated cross-stack best practices as of 2026 — TypeScript strict, async/await over callbacks, immutable defaults, structured logging, no implicit any. RU: Применять 2026-current паттерны, не 2018 идиомы. Trigger phrases: 'best practices', 'актуально', 'современные паттерны'."
-applies-to: [any]
+description: >-
+  Curated cross-stack best practices as of 2026 — TypeScript strict, async/await
+  over callbacks, immutable defaults, structured logging, no implicit any.
+  Triggers: 'best practices', 'актуально', 'современные паттерны'.
+applies-to:
+  - any
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [no-dead-code, anti-hallucination, observability]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - no-dead-code
+  - anti-hallucination
+  - observability
 ---
 
 # Best Practices (2026 Snapshot)

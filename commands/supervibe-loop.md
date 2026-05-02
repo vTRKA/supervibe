@@ -1,8 +1,9 @@
 ---
 description: >-
-  Use WHEN running an autonomous loop, epic/эпик, atomic work queue, 3h/3 часа
-  session, or separate worktree TO perform provider-safe policy preflight, bounded
-  execution, status, resume, stop, side-effect ledger, and cleanup gates.
+  Use WHEN running an autonomous loop, epic, atomic work queue, 3h timeboxed
+  session, or separate worktree TO perform provider-safe policy preflight,
+  bounded execution, status, resume, stop, side-effect ledger, and cleanup
+  gates. Triggers: 'loop', 'epic', 'worktree', 'эпик', '3 часа'.
 ---
 
 # /supervibe-loop
@@ -250,6 +251,12 @@ Execution modes:
 Do not stop after the first task or wave if there is still ready work, budget, and no blocker. The loop should continue ready work until the queue is exhausted, a configured max-duration/max-iteration/provider budget is reached, a policy or approval gate blocks progress, verification fails, or the user explicitly stops/pauses.
 
 Wave reviews are checkpoints, not default terminal states. If a wave passes and more tasks are ready, continue to the next wave or print the exact blocker that prevents continuation. Final output must distinguish "finished all available work" from "paused by gate/budget/user".
+
+## Topic Drift / Resume Contract
+
+If the user shifts topic while `.supervibe/memory/loops/<run-id>/state.json`, `contextPack.workflowSignal`, or a queued handoff exists, do not silently drop the loop. Surface run id, current phase, active task or wave, artifact path, next command, stop command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue ready work, skip/delegate safe non-final decisions to the controller and continue, pause current loop and switch topic, or stop/archive the current state.
+
+Skipped or delegated decisions must be recorded in loop state, side-effect ledger, and final report. They cannot bypass policy, budget, approval, production, destructive-operation, review, verification, or scope-expansion gates.
 
 ## Safety Boundaries
 

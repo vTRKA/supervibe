@@ -1,15 +1,22 @@
 ---
 name: rule-audit
 namespace: process
-description: "Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across host adapter rules OR after sync-rules. RU: Используется КОГДА rules-curator должен найти противоречия/избыточность/пробелы среди правил host adapter ИЛИ после sync-rules. Trigger phrases: 'аудит правил', 'rules check', 'проверь правила', 'rule audit'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across
+  host adapter rules OR after sync-rules. Triggers: 'аудит правил', 'rules
+  check', 'проверь правила', 'rule audit'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: review
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Rule Audit

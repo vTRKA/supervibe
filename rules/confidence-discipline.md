@@ -1,11 +1,18 @@
 ---
 name: confidence-discipline
-description: "Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric before claiming done; <9 requires an explicit override reason recorded by the confidence gate. RU: Скоринг каждой работы рубрикой; гейт ≥9; override логируется с обоснованием. Trigger phrases: 'confidence', 'оценка', 'rubric'."
-applies-to: [any]
+description: >-
+  Every artifact (spec, plan, code, scaffold) must score ≥9 against its rubric
+  before claiming done; <9 requires an explicit override reason recorded by the
+  confidence gate. Triggers: 'confidence', 'оценка', 'rubric'.
+applies-to:
+  - any
 mandatory: true
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [anti-hallucination, no-dead-code, commit-discipline]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - anti-hallucination
+  - no-dead-code
+  - commit-discipline
 ---
 
 # Confidence Discipline

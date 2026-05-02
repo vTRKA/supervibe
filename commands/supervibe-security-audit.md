@@ -1,9 +1,10 @@
 ---
 description: >-
-  Use WHEN the user asks for security audit, vulnerability scan, секьюрити
-  аудит, проверка уязвимостей, safe to ship, or remediation loop TO run a
-  read-only multi-agent security audit, rank findings, then optionally plan,
-  execute, and re-audit until the security gate reaches 10/10.
+  Use WHEN the user asks for security audit, vulnerability scan, safe-to-ship
+  decision, or remediation loop TO run a read-only multi-agent security audit,
+  rank findings, then optionally plan, execute, and re-audit until the security
+  gate reaches 10/10. Triggers: 'security audit', 'vulnerability scan', 'safe to
+  ship', 'секьюрити аудит', 'проверка уязвимостей'.
 ---
 
 # /supervibe-security-audit

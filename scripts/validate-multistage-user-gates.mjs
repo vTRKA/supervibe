@@ -106,7 +106,7 @@ const OVERLAY_OR_BROWSER_FEEDBACK_RE = /browser feedback|feedback overlay|Feedba
 const LIFECYCLE_RE = /approval|approved|handoff|export|\.approval\.json|feedback prompt|deck|prototype/i;
 const OVERLAY_BOUNDARY_RE = /supplemental|not an approval gate|not approval signals|not lifecycle approval|never replaces|does not approve/i;
 const DELEGATED_DECISION_RE = /delegated (?:approval markers|design decisions|decisions|marker)/i;
-const DELEGATED_BOUNDARY_RE = /cannot (?:be )?satisf(?:y|ied)|not chat-level|not approval signals|cannot replace/i;
+const DELEGATED_BOUNDARY_RE = /cannot (?:be )?satisf(?:y|ied)|cannot bypass|not chat-level|not approval signals|cannot replace/i;
 
 export function validateMultistageUserGates(rootDir = process.cwd()) {
   const issues = [];

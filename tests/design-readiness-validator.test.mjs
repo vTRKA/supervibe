@@ -13,11 +13,11 @@ test("design readiness validator rejects draft-to-dev and final-token shortcuts"
   const files = {
     "commands/supervibe-design.md": [
       "# /supervibe-design",
-      "Design system is source of truth. Approved FIRST, before any prototype.",
+      "candidate tokens keep draft prototypes disciplined",
     ].join("\n"),
     "skills/brandbook/SKILL.md": [
       "# Brandbook",
-      "The user approves the system FIRST, before any pixel of UI is built.",
+      "candidate tokens are the source for draft prototypes",
     ].join("\n"),
     "agents/_design/prototype-builder.md": "# prototype-builder",
     "skills/prototype-handoff/SKILL.md": "# Prototype Handoff",

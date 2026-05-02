@@ -1,15 +1,21 @@
 ---
 name: verification
 namespace: process
-description: "Use BEFORE any claim of works/fixed/complete/passing/done to run a verification command and show its output as evidence — bans assertion without command output. RU: Используется ПЕРЕД любым заявлением 'работает/починено/готово/проходит' — запускает команду верификации и показывает её вывод как evidence; запрещает утверждения без вывода команды. Trigger phrases: 'проверь', 'evidence', 'докажи что работает', 'верификация'."
-allowed-tools: [Bash, Read]
+description: >-
+  Use BEFORE any claim of works/fixed/complete/passing/done to run a
+  verification command and show its output as evidence — bans assertion without
+  command output. Triggers: 'проверь', 'evidence', 'докажи что работает',
+  'верификация'.
+allowed-tools:
+  - Bash
+  - Read
 phase: review
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Verification

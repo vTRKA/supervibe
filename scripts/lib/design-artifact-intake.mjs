@@ -158,7 +158,7 @@ export function formatDesignArtifactChoiceQuestion(intake) {
     return `${index + 1}. ${artifact.path}${target}${status}`;
   }).join("\n");
 
-  return `**Step 0/8: Design artifact mode.**
+  return `**Step 0/N: Design artifact mode.**
 I found existing design artifacts, but the brief does not say whether to reuse them or start fresh.
 
 ${listed || "No candidate artifacts listed."}

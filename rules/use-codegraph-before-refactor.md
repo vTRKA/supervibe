@@ -2,19 +2,40 @@
 name: use-codegraph-before-refactor
 id: use-codegraph-before-refactor
 title: Use code graph to assess blast radius before refactor
-description: "Before any refactor / rename / extract / move / inline / delete that touches a public symbol, run supervibe:code-search graph queries to enumerate the blast radius and cite caller evidence. RU: BEFORE rename / move / extract / delete на public symbol — обязателен --callers первым для оценки blast radius. Trigger phrases: 'переименуй', 'rename', 'refactor'."
-applies-to: [refactor, rename, extract-method, move-file, inline, delete-public-symbol, rename-symbol]
-applies-when: ["refactor", "rename", "extract-method", "move-file", "inline", "delete-public-symbol", "rename-symbol"]
+description: >-
+  Before any refactor / rename / extract / move / inline / delete that touches a
+  public symbol, run supervibe:code-search graph queries to enumerate the blast
+  radius and cite caller evidence. Triggers: 'переименуй', 'rename', 'refactor'.
+applies-to:
+  - refactor
+  - rename
+  - extract-method
+  - move-file
+  - inline
+  - delete-public-symbol
+  - rename-symbol
+applies-when:
+  - refactor
+  - rename
+  - extract-method
+  - move-file
+  - inline
+  - delete-public-symbol
+  - rename-symbol
 mandatory: true
 severity: critical
-trigger-skills: [supervibe:code-search]
-created: 2026-04-27
-last-verified: 2026-04-27
+trigger-skills:
+  - 'supervibe:code-search'
+created: 2026-04-27T00:00:00.000Z
+last-verified: 2026-04-27T00:00:00.000Z
 last-fired: null
 fire-count: 0
 sunset: null
-version: 1.0
-related-rules: [anti-hallucination, no-dead-code, confidence-discipline]
+version: 1
+related-rules:
+  - anti-hallucination
+  - no-dead-code
+  - confidence-discipline
 ---
 
 # Rule: Use Code Graph Before Refactor

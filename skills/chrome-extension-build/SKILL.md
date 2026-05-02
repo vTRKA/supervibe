@@ -1,15 +1,26 @@
 ---
 name: chrome-extension-build
 namespace: process
-description: "Use WHEN setting up or modifying the build pipeline for a Chrome MV3 extension to choose bundler (Vite-CRXJS / WXT / Plasmo / vanilla), wire HMR for popup, generate icons, lint manifest, and produce a CWS-ready zip. RU: используется КОГДА настраивается или меняется build-пайплайн для Chrome MV3 расширения — выбирает bundler (Vite-CRXJS / WXT / Plasmo / ванильный), включает HMR для popup, генерирует иконки, линтит manifest и собирает готовый для CWS zip. Trigger phrases: 'настрой сборку расширения', 'сделай build для chrome extension', 'добавь HMR в popup', 'упакуй для CWS', 'web-ext lint'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit]
+description: >-
+  Use WHEN setting up or modifying the build pipeline for a Chrome MV3 extension
+  to choose bundler (Vite-CRXJS / WXT / Plasmo / vanilla), wire HMR for popup,
+  generate icons, lint manifest, and produce a CWS-ready zip. Triggers: 'настрой
+  сборку расширения', 'сделай build для chrome extension', 'добавь HMR в popup',
+  'упакуй для CWS', 'web-ext lint'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
 phase: exec
 prerequisites: []
 emits-artifact: build-pipeline
 confidence-rubric: confidence-rubrics/scaffold.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-28
+version: 1
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Chrome Extension Build

@@ -60,9 +60,30 @@ repository or external skill for baseline design expertise.
 
 ## Eight-Pass Expert Routine
 
-Unless the user explicitly asks to skip steps or delegates decisions to the
-agent, every substantial design workflow must run at least these eight passes.
-Ask one user-facing question at a time at the gates that require preference or
+This is an adaptive coverage routine, not a fixed eight-step user gauntlet.
+Start every substantial design workflow with **Design Pass Triage** and record
+each pass as `required | reuse | delegated | skipped | N/A` with a short
+rationale in the owning artifact, config, or handoff.
+
+Do not force all eight passes for every prototype. Full eight-pass coverage is
+required for a new product, rebrand, missing design system, major audience or
+brand-positioning change, or material visual direction change. If an approved
+design system already exists and the request is a prototype, screen, flow, deck,
+or refinement inside that system, reuse preference and visual-system decisions
+instead of asking the user to approve palette, typography, spacing, radius,
+motion, and component baseline again. If the system is candidate or
+needs_revision, resume the design-system approval gate; do not treat it as
+prototype-ready.
+
+Prototype-only work inside an existing system normally runs the relevant local
+evidence, reference, IA/user-flow, responsive/platform, quality, and
+prototype/review/feedback passes. If the request needs a missing token,
+component, asset, interaction, or platform behavior, create a narrow design
+system extension request and ask exactly one approval question for that
+extension. The user may explicitly skip a pass or delegate safe decisions to
+the agent; record that skip/delegation and keep the next handoff state current.
+
+Ask one user-facing question at a time at gates that require preference or
 approval; do not silently collapse the flow into a single generated artifact.
 
 1. **Preference intake and product fit**: capture audience, business goal,

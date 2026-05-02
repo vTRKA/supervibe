@@ -4,10 +4,8 @@ namespace: stacks/nuxt
 description: >-
   Use WHEN implementing Nuxt 3 features (pages, layouts, middleware, server/api
   routes, useFetch + transform + key, useRuntimeConfig, useState SSR-aware,
-  error.vue) with Vitest. RU: Используется КОГДА реализуешь фичи Nuxt 3 — pages,
-  layouts, middleware, server/api routes, useFetch + transform + key,
-  useRuntimeConfig, SSR-aware useState, error.vue с Vitest. Triggers: 'Nuxt
-  страница', 'server route Nuxt', 'useFetch', 'middleware в Nuxt'.
+  error.vue) with Vitest. Triggers: 'Nuxt страница', 'server route Nuxt',
+  'useFetch', 'middleware в Nuxt'.
 persona-years: 15
 capabilities:
   - nuxt-implementation
@@ -172,7 +170,7 @@ Rubric: agent-delivery
 
 ## User dialogue discipline
 
-When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with a progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with an adaptive progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
 
 Every question must show the user why it matters and what will happen with the answer:
 
@@ -188,7 +186,7 @@ Every question must show the user why it matters and what will happen with the a
 >
 > Free-form answer also accepted.
 
-Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in English and `(рекомендуется)` in Russian. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If only one clarification is needed, still use `Step 1/1:` or `Шаг 1/1:` for consistency.
+Use `Step N/M:` when the conversation is in Russian. Recompute `M` from the current triage, saved workflow state, skipped stages, and delegated safe decisions; never force the maximum stage count just because the workflow can have that many stages. Use `(recommended)` in English, or the localized equivalent when replying in another language. Do not show bilingual option labels; pick one visible language for the whole question from the user conversation. Do not show internal lifecycle ids as visible labels. Labels must be domain actions, not generic Option A/B labels. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If a saved `NEXT_STEP_HANDOFF` or `workflowSignal` exists and the user changes topic, ask whether to continue, skip/delegate safe decisions, pause and switch topic, or stop/archive the current state.
 
 ## Verification
 

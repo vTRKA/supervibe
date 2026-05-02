@@ -1,15 +1,23 @@
 ---
 name: test-strategy
 namespace: app-excellence
-description: "Use BEFORE designing tests for a new feature TO establish pyramid (unit/integration/e2e ratios), fixture isolation policy, flake budget, coverage triangulation strategy. RU: Используется ПЕРЕД проектированием тестов под новую фичу — устанавливает пирамиду (unit/integration/e2e), политику изоляции фикстур, flake budget и стратегию триангуляции покрытия. Trigger phrases: 'test strategy', 'покрытие тестами', 'тестовая пирамида', 'стратегия тестов'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use BEFORE designing tests for a new feature TO establish pyramid
+  (unit/integration/e2e ratios), fixture isolation policy, flake budget,
+  coverage triangulation strategy. Triggers: 'test strategy', 'покрытие
+  тестами', 'тестовая пирамида', 'стратегия тестов'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: plan
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Test Strategy

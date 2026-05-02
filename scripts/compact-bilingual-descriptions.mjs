@@ -3,8 +3,7 @@
  * Compact bilingual descriptions: drop redundant "RU: <translation of EN>" block
  * while preserving ALL trigger phrases (RU + EN).
  *
- * Scope: agents/**\/*.md AND commands/*.md (extended in plan v2 — commands also have RU: blocks).
- * Skills NOT in scope (their descriptions are typically EN-only and shorter).
+ * Scope: agent, command, skill, and rule markdown frontmatter descriptions.
  *
  * Anthropic best practices: descriptions hit Claude every message. RU translation
  * of EN intent is redundant — Claude understands English natively. Trigger phrases
@@ -29,9 +28,9 @@ export function compactBilingual(description) {
   let compacted = description;
 
   // Remove "RU: <translation>..." up to but excluding next "Trigger phrases:" / "Триггеры:" / period-then-Trigger
-  compacted = compacted.replace(/\.\s*RU:\s*[^.]*?(?=\s*(?:Trigger phrases?:|Триггеры?:))/gi, '.');
+  compacted = compacted.replace(/\.\s*RU:\s*[\s\S]*?(?=\s*(?:Trigger phrases?:|Triggers:|Триггеры?:))/gi, '.');
   compacted = compacted.replace(/\.\s*RU:\s*[^.]*?\.(?=\s|$)/gi, '.');
-  compacted = compacted.replace(/\s+RU:\s*[^.]*?(?=\s*(?:Trigger phrases?:|Триггеры?:))/gi, ' ');
+  compacted = compacted.replace(/\s+RU:\s*[\s\S]*?(?=\s*(?:Trigger phrases?:|Triggers:|Триггеры?:))/gi, ' ');
 
   // Normalise "Trigger phrases:" / "Триггеры:" labels to single "Triggers:"
   // (\b doesn't work for Cyrillic in JS regex — use simple lookbehind for non-letter)
@@ -78,6 +77,8 @@ async function main() {
   const targets = [
     ...(await walk(join(root, 'agents'))),
     ...(await walk(join(root, 'commands'))),
+    ...(await walk(join(root, 'skills'))),
+    ...(await walk(join(root, 'rules'))),
   ];
 
   let modified = 0;

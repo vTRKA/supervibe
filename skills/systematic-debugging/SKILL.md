@@ -1,15 +1,22 @@
 ---
 name: systematic-debugging
 namespace: process
-description: "Use WHEN encountering any bug, test failure, or unexpected behavior BEFORE proposing fixes to enforce hypothesis-evidence-isolation methodology. RU: Используется КОГДА встречен баг, упавший тест или неожиданное поведение ПЕРЕД предложением фиксов — навязывает методологию hypothesis → evidence → isolation. Trigger phrases: 'дебаг', 'почему сломалось', 'найди корень', 'разбери баг'."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: >-
+  Use WHEN encountering any bug, test failure, or unexpected behavior BEFORE
+  proposing fixes to enforce hypothesis-evidence-isolation methodology.
+  Triggers: 'дебаг', 'почему сломалось', 'найди корень', 'разбери баг'.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: exec
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Systematic Debugging

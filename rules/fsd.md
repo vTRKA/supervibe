@@ -1,11 +1,20 @@
 ---
 name: fsd
-description: "Feature-Sliced Design for frontend: layered structure (app/pages/widgets/features/entities/shared) with strict downward-only dependencies. RU: Feature-Sliced Design для frontend — слои app/pages/widgets/features/entities/shared, зависимости только вниз. Trigger phrases: 'FSD', 'структура frontend', 'feature-sliced'."
-applies-to: [react, nextjs, vue, svelte]
+description: >-
+  Feature-Sliced Design for frontend: layered structure
+  (app/pages/widgets/features/entities/shared) with strict downward-only
+  dependencies. Triggers: 'FSD', 'структура frontend', 'feature-sliced'.
+applies-to:
+  - react
+  - nextjs
+  - vue
+  - svelte
 mandatory: false
-version: 1.0
-last-verified: 2026-04-27
-related-rules: [modular-backend, no-dead-code]
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
+related-rules:
+  - modular-backend
+  - no-dead-code
 ---
 
 # Feature-Sliced Design (FSD)

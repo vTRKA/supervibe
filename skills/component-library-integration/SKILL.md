@@ -34,22 +34,22 @@ Before choosing or bridging a component library, run project memory, code search
 
 Ask user one question at a time.
 
-**Шаг 1/4:** What is the target stack for production?
+**Step 1/4:** What is the target stack for production?
 - React → continue Step 2
 - Vue → recommend HeadlessUI (Vue) or Radix-Vue or custom; Step 2
 - Svelte → recommend Melt UI / Bits UI or custom; Step 2
 - Angular → recommend Angular Material or custom; Step 2
 - Vanilla / multi-framework → custom only; Step 2
 
-**Шаг 2/4:** What is the design priority axis?
+**Step 2/4:** What is the design priority axis?
 - Speed-to-market + opinionated visual: MUI | Mantine
 - Maximum control + tokens-first: shadcn/ui | Radix UI primitives
 - Headless logic only, full visual control: HeadlessUI | Radix UI primitives
 - Already chose a library externally (project has it installed): adapt it
 
-**Шаг 3/4:** Confirm library: <chosen>
+**Step 3/4:** Confirm library: <chosen>
 
-**Шаг 4/4:** Bridge depth — 3 tiers:
+**Step 4/4:** Bridge depth — 3 tiers:
 - A) Token-only bridge: re-theme library to consume our tokens. Library API stays default.
 - B) Token + component-spec alignment: also map each baseline component (button/input/card/...) to the library's primitive.
 - C) Full custom layer: build our components on the library's headless primitives, our spec drives API.
@@ -73,11 +73,11 @@ Ask user one question at a time.
 
 4. Print feedback prompt (required):
    ```
-   ✅ Утвердить — фиксирую bridge, продолжаю handoff
-   ✎ Доработать — что поменять в маппинге?
-   🔀 Альтернатива — построить bridge для другой библиотеки
-   📊 Углублённый review — позвать code-reviewer на сгенерированный theme
-   🛑 Стоп — оставить bridge как draft
+   Approve - save the bridge and continue handoff
+   Revise - what should change in the mapping?
+   Alternative - build a bridge for another library
+   Deep review - ask code-reviewer to review the generated theme
+   Stop - keep bridge as draft
    ```
 
 ## Output contract

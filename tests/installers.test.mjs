@@ -11,9 +11,37 @@ const UPD_SH = join(ROOT, 'update.sh');
 const UPD_PS1 = join(ROOT, 'update.ps1');
 const GITATTRIBUTES = join(ROOT, '.gitattributes');
 
+const BASH_FOR_SYNTAX = resolveBashForSyntaxCheck();
+const BASH_SKIP_REASON = BASH_FOR_SYNTAX ? false : 'bash is unavailable or cannot start in this environment';
+
+function resolveBashForSyntaxCheck() {
+  const candidates = process.platform === 'win32'
+    ? [
+      join(process.env.ProgramFiles || 'C:\\Program Files', 'Git', 'bin', 'bash.exe'),
+      'bash',
+    ]
+    : ['bash'];
+
+  for (const candidate of candidates) {
+    if (candidate.includes('\\') && !existsSync(candidate)) continue;
+    try {
+      execFileSync(candidate, ['-n', '-s'], {
+        cwd: ROOT,
+        input: '#!/usr/bin/env bash\ntrue\n',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      return candidate;
+    } catch {
+      // Try the next candidate; Windows WSL bash may be installed but unusable.
+    }
+  }
+  return null;
+}
+
 function bashSyntaxCheck(filePath) {
+  if (!BASH_FOR_SYNTAX) throw new Error(BASH_SKIP_REASON);
   try {
-    execFileSync('bash', ['-n', '-s'], {
+    execFileSync(BASH_FOR_SYNTAX, ['-n', '-s'], {
       cwd: ROOT,
       input: readFileSync(filePath),
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -34,7 +62,7 @@ test('install.ps1 exists and is non-empty', () => {
   assert.ok(statSync(PS1).size > 1000);
 });
 
-test('install.sh is syntactically valid bash', () => {
+test('install.sh is syntactically valid bash', { skip: BASH_SKIP_REASON }, () => {
   // bash -n parses without executing. Available on macOS / Linux / Git Bash.
   try {
     bashSyntaxCheck(SH);
@@ -268,7 +296,7 @@ test('update.sh and update.ps1 exist and are non-empty', () => {
   assert.ok(statSync(UPD_PS1).size > 500);
 });
 
-test('update.sh is syntactically valid bash', () => {
+test('update.sh is syntactically valid bash', { skip: BASH_SKIP_REASON }, () => {
   try {
     bashSyntaxCheck(UPD_SH);
   } catch (err) {
