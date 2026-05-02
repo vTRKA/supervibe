@@ -34,6 +34,12 @@ If spec covers multiple independent subsystems → STOP, return to brainstorming
 
 If the plan includes functionality not present in the approved spec, Scope Safety Gate, or explicit user-approved change request → STOP and either remove it, defer it, or record a scope-change tradeoff. Do not let "nice to have" work enter implementation tasks silently.
 
+## Continuation Contract
+
+Do not stop after individual plan phases, the first task list, or a draft review-gate section. Write the full plan before handoff unless the user explicitly stops/pauses, the spec is missing or unapproved, scope must be decomposed, or one blocking ambiguity prevents a production-safe plan.
+
+Internal phase review gates are instructions for executors later; they are not chat-level stop points for the planner. Use conservative assumptions for non-blocking gaps, document them, and continue through file mapping, critical path, tasks, rollback, verification, production readiness, final 10/10 acceptance, and the mandatory review handoff.
+
 ## Evidence and visual plan gate
 
 Every implementation plan must add `## Retrieval, CodeGraph, And Visual Evidence` before file-structure tasks:

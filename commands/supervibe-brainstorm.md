@@ -9,6 +9,12 @@ description: >-
 
 Direct trigger for the `supervibe:brainstorming` skill. Use this when you want to be explicit about entering brainstorm mode rather than relying on the AI to detect it from the phrasing of your request. After the spec is approved, always hand off to planning with the exact next-step question.
 
+## Continuation Contract
+
+Do not stop after individual brainstorm sections such as first-principles, options, risks, matrix, or scope safety. A `/supervibe-brainstorm` invocation should complete the requirements package before handoff, unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user asks to review one section manually.
+
+Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan <spec-path>` handoff.
+
 ## Invocation forms
 
 ### `/supervibe-brainstorm <topic>`

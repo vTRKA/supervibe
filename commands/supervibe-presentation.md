@@ -6,6 +6,12 @@ description: "Create and iterate presentation decks with Supervibe designers: br
 
 Brief: User-facing command for presentation work. It routes the request to presentation agents, keeps the same review loop as design prototypes, and only exports `.pptx` after the deck is approved.
 
+## Continuation Contract
+
+Do not stop after storyboard or first slide. A `/supervibe-presentation <brief>` invocation should continue through the deck pipeline from objective, storyboard, deck JSON, HTML preview, review, and feedback prompt unless the user explicitly stops/pauses, a required brief field blocks the next artifact, or export/upload requires explicit approval.
+
+Intermediate story and slide decisions can be recorded as delegated decisions when the brief and recommended/default path are clear. The explicit approval gate is for final deck approval before PPTX export, not for every slide or section.
+
 ## Usage
 
 | Form | Behavior |
@@ -34,7 +40,7 @@ Brief: User-facing command for presentation work. It routes the request to prese
    - `export/`
    - `google-drive-handoff.md`
 5. Start preview with `node scripts/preview-server.mjs --root presentations/<slug>/preview --label "<slug> deck"`.
-6. Prompt the user for explicit feedback choice: approve, revise, alternative, deeper review, or stop.
+6. Prompt the user for explicit feedback choice after the preview and reviews exist: approve, revise, alternative, deeper review, or stop.
 7. On approval, run `node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
 8. If Google Drive is requested, fill `templates/presentation/google-drive-handoff.md.tpl` with target folder, file name, owner, exported PPTX path, and upload instructions.
 

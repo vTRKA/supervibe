@@ -173,6 +173,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: run the design pipeline with memory, code, and design lookup preflight?",
     prerequisites: ["design-brief"],
   },
+  design_continue: {
+    phase: "design",
+    command: "/supervibe-design --continue",
+    skill: "supervibe:prototype",
+    nextQuestionRu: "Шаг 1/1: продолжить оставшиеся этапы дизайн-пайплайна до следующего реального gate?",
+    nextQuestionEn: "Step 1/1: continue the remaining design pipeline stages until the next real gate?",
+    prerequisites: ["design-brief"],
+  },
   design_review: {
     phase: "audit",
     command: "/supervibe-audit --design",
@@ -410,6 +418,12 @@ const RULES = [
     intent: "design_system_extension",
     confidence: 0.88,
     test: (text) => hasAny(text, ["extend design system", "design-system extension", "расшир", "дизайн-систем"]) && hasAny(text, ["token", "component", "tokens", "компонент"]),
+  },
+  {
+    intent: "design_continue",
+    confidence: 0.89,
+    test: (text) => hasAny(text, ["continue", "next stages", "remaining stages", "продолж", "дальше", "следующие этап", "оставшиеся этап"]) &&
+      (hasDesignSurface(text) || hasAny(text, ["stage", "stages", "этап", "prototype", "прототип", "mockup", "макет"])),
   },
   {
     intent: "design_review",
@@ -790,7 +804,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
-  if (["brainstorm_to_plan", "readme_update", "design_new", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 

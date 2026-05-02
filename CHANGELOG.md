@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.44] - 2026-05-02
+
+### Added
+
+- Added a workflow-continuation validator to the release check so multi-stage
+  design, brainstorm, plan, loop, and presentation flows cannot regress into
+  hard stops after an intermediate stage.
+
+### Fixed
+
+- Reframed design-system and brandbook section approvals as recorded/delegated
+  decisions by default, so `/supervibe-design` continues through applicable
+  stages until a real final feedback gate or explicit blocker.
+- Clarified brainstorm, planning, loop, and presentation contracts to continue
+  through full packages, phases, waves, and deck stages unless the user stops,
+  a safety gate blocks, or a real ambiguity prevents progress.
+- Routed "continue remaining design stages" style requests back into
+  `/supervibe-design --continue`.
+
 ## [2.0.43] - 2026-05-02
 
 ### Fixed

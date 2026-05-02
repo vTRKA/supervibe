@@ -39,10 +39,18 @@ NOT for:
 
 1. **One question at a time.** Brand work is deeply collaborative; never overwhelm with a 5-question dump.
 2. **Markdown-formatted dialogue** with progress indicator: "Шаг 3/8: палитра — primary".
-3. **Approval is explicit** at the SYSTEM level. Each section (palette, type, spacing, radius, motion, voice, components-baseline) signed off separately so the user can change their mind on type without redoing palette.
+3. **Approval is explicit** at the SYSTEM level. Section markers (palette, type, spacing, radius, motion, voice, components-baseline) must be recorded so the user can change their mind on type without redoing palette, but the default full-pass flow does not stop after each section.
 4. **Output is machine-readable** — `tokens.css` parseable by any tool; `components/<name>.md` parseable for component cards; `motion.css` consumable by every prototype.
 5. **Versioned + reversible** — each approved section gets a git commit; reverting is git revert, not "undo".
 6. **Alternatives are first-class** — when user rejects a direction, this skill produces 2 alternatives with explicit tradeoffs documented, never random regen.
+
+## Continuation Contract
+
+Full-pass mode continues through all eight sections in one run when the user invoked brandbook/design-system creation and the brief gives enough context. Do not stop after palette, typography, spacing, motion, voice, the first component, accessibility, or manifest setup unless a real blocker appears.
+
+Use delegated approval markers for intermediate sections when the recommended/default choice is clear. A delegated marker must record the rationale, source evidence, and what the user can revise later in `prototypes/_design-system/.approvals/<section>.json`. Ask the user only for decisions that are ambiguous, risky, legally/licensing-sensitive, destructive to an existing approved system, or explicitly requested for manual review.
+
+Only the final system approval is a chat-level gate in the normal flow. If the user says stop, pause, skip, or asks to review a specific section manually, honor that instruction and persist partial state.
 
 ## Step 0 — Read source of truth (required)
 
@@ -90,7 +98,7 @@ What's the user asking for?
 
 ## Procedure (full pass — 8 sections)
 
-Each section is its OWN dialogue. User approves before next starts. ONE question per message.
+Each section is its OWN decision record. Ask ONE question per message only when the current section cannot be safely completed from the brief, approved direction, target baseline, and defaults.
 
 ### Section 1 — Palette intent (≤6 questions)
 
@@ -274,7 +282,7 @@ Final output: `prototypes/_design-system/manifest.json`:
 
 ### Approval markers per section
 
-After each section dialogue completes, write a per-section approval to `prototypes/_design-system/.approvals/<section>.json` so partial work survives session restarts and the next session knows what's left.
+After each section completes, write a per-section approval/completion marker to `prototypes/_design-system/.approvals/<section>.json` so partial work survives session restarts and the next session knows what's left. In full-pass continuation mode, these are delegated approval markers unless the user explicitly chose manual review for that section.
 
 ### Extension mode (fast path for later mockups)
 
@@ -317,7 +325,7 @@ Rubric:     brandbook
 ## Guard rails
 
 - ONE question per message. Always.
-- DO NOT proceed to next section without explicit approval of the current.
+- DO NOT stop after an intermediate section when the next section can proceed with safe defaults and delegated approval markers.
 - DO NOT inline raw hex / magic numbers anywhere. Tokens or it's not done.
 - DO NOT advance to component design before palette + type + spacing approved (downstream depends on these).
 - DO NOT mark approved without `manifest.json` + per-section markers in `.approvals/`.

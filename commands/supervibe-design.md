@@ -16,6 +16,12 @@ Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `prototype
 
 Every interactive step asks one question at a time using `Step N/M` or `Шаг N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
+## Continuation Contract
+
+`/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the prototype feedback gate or an explicit blocker. Intermediate stage and section approvals are recorded as delegated design decisions when the recommended/default path is clear; they are not chat-level hard stops.
+
+Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after typography, palette, spacing, storyboard, first screen, first review, or any other intermediate phase if the next stage can be completed with the current brief and safe defaults.
+
 ### Standard Question Template
 
 Every design question must use this structure, with the labels translated to the user's language when needed:
@@ -85,7 +91,7 @@ Use most recent brief from the conversation, or ask one clarifying question.
 
 ## Pipeline (8 stages)
 
-Each stage is gated on user explicit approval before the next starts. Skip stages that don't apply (e.g. brand direction unnecessary for an in-product flow inside an existing brand).
+Each stage records progress before the next starts. Skip stages that don't apply (e.g. brand direction unnecessary for an in-product flow inside an existing brand), but do not treat normal stage completion as a reason to stop.
 
 ### Stage 0 — Artifact mode + Target surface + Triage (always)
 
@@ -177,8 +183,8 @@ If brand direction missing OR brief asks for "new brand / rebrand":
 If design system missing OR Stage 1 just produced a new direction OR the user explicitly asked for rebrand:
 
 1. Invoke `supervibe:brandbook` skill in full-pass mode (8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest).
-2. Each sub-section is a separate dialogue (one question at a time, markdown with "Шаг N/8" progress).
-3. Each sub-section gets explicit approval before next; per-section approvals saved to `prototypes/_design-system/.approvals/<section>.json`.
+2. Each sub-section is a separate decision record (one question at a time only when clarification is actually needed, markdown with "Шаг N/8" progress).
+3. Each sub-section writes a completion/approval marker before the next section; when the user has not asked to review every section manually, use delegated approval markers with rationale in `prototypes/_design-system/.approvals/<section>.json` and continue.
 4. Output: `prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json}` with `manifest.json.status === 'approved'`.
 
 After completion: design system is the **source of truth** for all downstream stages. No prototype invents tokens.

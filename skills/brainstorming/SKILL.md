@@ -35,6 +35,12 @@ Do NOT skip this — uninformed questions waste user time.
 
 Do NOT invoke any implementation skill, write any code, scaffold anything until design is approved AND requirements-spec scores ≥9.
 
+## Continuation Contract
+
+Do not stop after individual brainstorm sections. Once the user has invoked brainstorming, complete the full requirements package before the planning handoff unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user requests manual review of a specific section.
+
+Use assumptions for non-blocking gaps, label them clearly in the spec, and keep moving through first-principles, options, risks, kill criteria, decision matrix, Scope Safety Gate, production readiness, and the 10/10 scorecard. Section-level feedback is welcome, but it is not a default hard stop.
+
 ## Decision tree
 
 ```
@@ -56,7 +62,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
 6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
-8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Get approval per section.
+8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
 9. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
 10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
 11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.

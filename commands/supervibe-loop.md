@@ -245,6 +245,12 @@ Execution modes:
 - Stop for policy, budget, missing access, production approval, cancellation,
   state migration, unapproved scope expansion, or side-effect reconciliation.
 
+## Continuation Contract
+
+Do not stop after the first task or wave if there is still ready work, budget, and no blocker. The loop should continue ready work until the queue is exhausted, a configured max-duration/max-iteration/provider budget is reached, a policy or approval gate blocks progress, verification fails, or the user explicitly stops/pauses.
+
+Wave reviews are checkpoints, not default terminal states. If a wave passes and more tasks are ready, continue to the next wave or print the exact blocker that prevents continuation. Final output must distinguish "finished all available work" from "paused by gate/budget/user".
+
 ## Safety Boundaries
 
 - No provider bypass, rate-limit bypass, hidden background automation, or broad

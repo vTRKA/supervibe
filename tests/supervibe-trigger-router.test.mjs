@@ -133,4 +133,16 @@ describe("supervibe trigger router", () => {
     assert.equal(memoryAudit.intent, "memory_audit");
     assert.equal(memoryAudit.command, "/supervibe-audit --memory");
   });
+
+  it("routes design continuation phrases back into the design pipeline", () => {
+    const route = routeTriggerRequest("продолжай все оставшиеся этапы дизайна", {
+      artifacts: { designBrief: true, designArtifact: true },
+    });
+
+    assert.equal(route.intent, "design_continue");
+    assert.equal(route.command, "/supervibe-design --continue");
+    assert.equal(route.skill, "supervibe:prototype");
+    assert.match(route.nextQuestion, /продолжить оставшиеся этапы/i);
+    assert.deepEqual(route.missingArtifacts, []);
+  });
 });
