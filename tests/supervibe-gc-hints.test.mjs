@@ -21,7 +21,9 @@ test("GC hints summarize work-item and memory cleanup candidates", async () => {
     assert.equal(hints.needsAttention, true);
     assert.equal(hints.workItems.candidates, 1);
     assert.equal(hints.memory.candidates, 1);
-    assert.match(formatGcHints(hints), /supervibe:gc/);
+    assert.equal(hints.memory.schedule.due, true);
+    assert.match(formatGcHints(hints), /MEMORY_GC_DUE: true/);
+    assert.match(formatGcHints(hints), /supervibe:memory-gc/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

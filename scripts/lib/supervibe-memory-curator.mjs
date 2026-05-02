@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { basename, join, relative, sep } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { basename, extname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 
 import { rebuildMemory } from "./memory-store.mjs";
@@ -19,6 +19,22 @@ export async function curateProjectMemory({
   const validation = validateMemoryEntries(entries);
   const contradictions = detectMemoryContradictions(entries);
   const lifecycle = buildMemoryLifecycle(entries, { now, contradictions });
+  const referenceIssues = detectMemoryReferenceIssues(entries, { rootDir });
+  const duplicateCandidates = detectDuplicateMemoryCandidates(entries, { lifecycle });
+  lifecycle.candidateQueues.referenceReview = referenceIssues.map((item) => ({
+    id: `${item.entryId}:${item.reference}`,
+    entryId: item.entryId,
+    reference: item.reference,
+    reason: item.reason,
+    state: "new",
+  }));
+  lifecycle.candidateQueues.duplicateReview = duplicateCandidates.map((item) => ({
+    id: `${item.ids[0]}~${item.ids[1]}`,
+    ids: item.ids,
+    reason: item.reason,
+    score: item.score,
+    state: "new",
+  }));
   const tags = [...new Set(entries.flatMap((entry) => entry.tags))].sort();
   const index = {
     schemaVersion: 2,
@@ -38,6 +54,10 @@ export async function curateProjectMemory({
     tags,
     validation,
     lifecycle,
+    quality: {
+      referenceIssues,
+      duplicateCandidates,
+    },
   };
   await writeFile(join(memoryDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`, "utf8");
   const sqlite = rebuildSqlite ? await rebuildMemory(rootDir, { useEmbeddings }) : null;
@@ -48,6 +68,8 @@ export async function curateProjectMemory({
     indexPath: join(memoryDir, "index.json"),
     validation,
     contradictions,
+    referenceIssues,
+    duplicateCandidates,
     lifecycle,
     tags,
   };
@@ -158,6 +180,53 @@ function buildMemoryLifecycle(entries = [], { now = new Date().toISOString(), co
   };
 }
 
+function detectMemoryReferenceIssues(entries = [], { rootDir = process.cwd() } = {}) {
+  const issues = [];
+  for (const entry of entries) {
+    for (const reference of extractLocalArtifactReferences(entry.body || "")) {
+      const normalized = normalizeReferencePath(reference);
+      if (!normalized) continue;
+      if (!isReferenceScopeValid(normalized)) continue;
+      if (!referenceExists(rootDir, normalized)) {
+        issues.push({
+          entryId: entry.id,
+          file: entry.file,
+          reference: normalized,
+          reason: "missing-reference",
+        });
+      }
+    }
+  }
+  return issues.sort((a, b) => `${a.entryId}:${a.reference}`.localeCompare(`${b.entryId}:${b.reference}`));
+}
+
+function detectDuplicateMemoryCandidates(entries = [], { lifecycle = null, threshold = 0.72 } = {}) {
+  const lifecycleById = lifecycle?.byId || {};
+  const activeEntries = entries.filter((entry) => !lifecycleById[entry.id]?.stale);
+  const candidates = [];
+  for (let i = 0; i < activeEntries.length; i += 1) {
+    for (let j = i + 1; j < activeEntries.length; j += 1) {
+      const left = activeEntries[i];
+      const right = activeEntries[j];
+      if (left.type !== right.type) continue;
+      const tagOverlap = intersectionSize(new Set(left.tags || []), new Set(right.tags || []));
+      if (tagOverlap === 0) continue;
+      const score = jaccard(tokenSet(`${left.id} ${left.summary} ${left.body}`), tokenSet(`${right.id} ${right.summary} ${right.body}`));
+      if (score < threshold) continue;
+      candidates.push({
+        ids: [left.id, right.id].sort(),
+        files: [left.file, right.file].sort(),
+        score: Number(score.toFixed(3)),
+        tagOverlap,
+        reason: "near-duplicate-active-memory",
+      });
+    }
+  }
+  return candidates
+    .sort((a, b) => b.score - a.score || a.ids.join("~").localeCompare(b.ids.join("~")))
+    .slice(0, 20);
+}
+
 export function annotateMemorySearchResults(results = [], curation = null) {
   const lifecycle = curation?.lifecycle?.byId || {};
   return results.map((result) => ({
@@ -180,6 +249,7 @@ export function filterCurrentMemoryResults(results = [], curation = null, {
 }
 
 export function formatMemoryCurationReport(report = {}) {
+  const queues = report.lifecycle?.candidateQueues || {};
   return [
     "SUPERVIBE_MEMORY_CURATION",
     `PASS: ${Boolean(report.pass)}`,
@@ -187,10 +257,103 @@ export function formatMemoryCurationReport(report = {}) {
     `SQLITE_ENTRIES: ${report.sqliteEntries ?? "not-rebuilt"}`,
     `STALE: ${report.lifecycle?.staleCount || 0}`,
     `CONTRADICTIONS: ${report.contradictions?.length || 0}`,
+    `REFERENCE_ISSUES: ${report.referenceIssues?.length || 0}`,
+    `DUPLICATE_CANDIDATES: ${report.duplicateCandidates?.length || 0}`,
+    `REVIEW_MEMORY: ${queues.memoryReview?.length || 0}`,
+    `REVIEW_REFERENCES: ${queues.referenceReview?.length || 0}`,
+    `REVIEW_DUPLICATES: ${queues.duplicateReview?.length || 0}`,
     `INDEX: ${report.indexPath || "none"}`,
     ...((report.validation?.errors || []).map((error) => `ERROR: ${error}`)),
     ...((report.validation?.warnings || []).slice(0, 8).map((warning) => `WARN: ${warning}`)),
+    ...((report.referenceIssues || []).slice(0, 8).map((issue) => `REF_MISSING: ${issue.entryId} -> ${issue.reference}`)),
+    ...((report.duplicateCandidates || []).slice(0, 8).map((issue) => `DUPLICATE: ${issue.ids.join(" ~ ")} score=${issue.score}`)),
   ].join("\n");
+}
+
+function extractLocalArtifactReferences(body = "") {
+  const refs = new Set();
+  const text = String(body || "");
+  const codeRefPattern = /`([^`\n]+\.(?:mjs|js|ts|tsx|jsx|json|md|yaml|yml|rs|py|toml|css|html)(?::\d+)?)`/gi;
+  const markdownLinkPattern = /\[[^\]]+\]\((?!https?:\/\/|mailto:)([^)#\s]+)(?::\d+)?(?:#[^)]+)?\)/gi;
+  const plainPathPattern = /\b((?:scripts|tests|docs|agents|skills|rules|commands|confidence-rubrics|stack-packs|references|\.codex-plugin|\.claude-plugin|\.cursor-plugin|\.opencode)\/[A-Za-z0-9._/@:+-]+\.(?:mjs|js|ts|tsx|jsx|json|md|yaml|yml|rs|py|toml|css|html)(?::\d+)?)\b/gi;
+  for (const pattern of [codeRefPattern, markdownLinkPattern, plainPathPattern]) {
+    let match;
+    while ((match = pattern.exec(text))) refs.add(match[1]);
+  }
+  return [...refs];
+}
+
+function normalizeReferencePath(reference = "") {
+  let normalized = String(reference || "").trim();
+  if (!normalized || /^[a-z]+:\/\//i.test(normalized) || normalized.startsWith("#")) return "";
+  normalized = normalized.replace(/^<|>$/g, "");
+  normalized = normalized.replace(/\\/g, "/");
+  normalized = normalized.replace(/^(?:node|npx)\s+/, "");
+  normalized = normalized.replace(/:\d+$/, "");
+  normalized = normalized.replace(/^\.\//, "");
+  if (normalized.includes("*")) return "";
+  if (normalized.startsWith(".supervibe/") || normalized.startsWith("docs/audits/")) return "";
+  if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return "";
+  if (normalized.includes("..")) return "";
+  if (!normalized.includes("/") && !["package.json", "package-lock.json", "README.md", "CHANGELOG.md"].includes(normalized)) return "";
+  return normalized;
+}
+
+function isReferenceScopeValid(reference = "") {
+  const [scope] = reference.split("/");
+  const ext = extname(reference).toLowerCase();
+  const byScope = {
+    agents: new Set([".md"]),
+    commands: new Set([".md"]),
+    "confidence-rubrics": new Set([".yaml", ".yml"]),
+    docs: new Set([".md"]),
+    references: new Set([".md", ".json"]),
+    rules: new Set([".md", ".yaml", ".yml"]),
+    scripts: new Set([".mjs", ".js", ".json"]),
+    skills: new Set([".md"]),
+    "stack-packs": new Set([".yaml", ".yml", ".json", ".md"]),
+    tests: new Set([".mjs", ".js", ".json"]),
+  };
+  if (!reference.includes("/")) return true;
+  return byScope[scope]?.has(ext) ?? false;
+}
+
+function referenceExists(rootDir, reference) {
+  if (existsSync(join(rootDir, reference))) return true;
+  const [scope] = reference.split("/");
+  if (!["agents", "skills"].includes(scope)) return false;
+  return findFileByBasename(join(rootDir, scope), basename(reference));
+}
+
+function findFileByBasename(dir, target) {
+  if (!existsSync(dir)) return false;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isFile() && entry.name === target) return true;
+    if (entry.isDirectory() && findFileByBasename(fullPath, target)) return true;
+  }
+  return false;
+}
+
+function tokenSet(text = "") {
+  const stop = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "uses", "must", "should"]);
+  return new Set(String(text || "")
+    .toLowerCase()
+    .split(/[^a-z0-9а-яё_-]+/i)
+    .filter((token) => token.length >= 4 && !stop.has(token)));
+}
+
+function jaccard(left = new Set(), right = new Set()) {
+  if (!left.size || !right.size) return 0;
+  const overlap = intersectionSize(left, right);
+  const union = new Set([...left, ...right]).size;
+  return union > 0 ? overlap / union : 0;
+}
+
+function intersectionSize(left = new Set(), right = new Set()) {
+  let count = 0;
+  for (const item of left) if (right.has(item)) count += 1;
+  return count;
 }
 
 function normalizeArray(value) {

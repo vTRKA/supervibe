@@ -9,9 +9,13 @@ import {
   archiveMemoryGcCandidates,
   archiveMemoryEntry,
   classifyMemoryEntry,
+  evaluateMemoryGcSchedule,
+  filterMemoryGcAutoCandidates,
+  formatMemoryGcSchedule,
   memoryGcStats,
   restoreMemoryEntry,
   scanMemoryGc,
+  writeMemoryGcScheduleRun,
 } from "../scripts/lib/supervibe-memory-gc.mjs";
 
 test("memory GC archives superseded decisions and restores by memory id", async () => {
@@ -92,6 +96,52 @@ test("memory GC candidates low-confidence old learnings but keeps high-confidenc
       now: "2026-04-30T00:00:00.000Z",
     });
     assert.deepEqual(scan.candidates.map((candidate) => candidate.id), ["learning-low"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("memory GC schedule marks cleanup due and records policy runs", async () => {
+  const root = await makeTempRoot("supervibe-memory-gc-schedule-");
+  try {
+    await writeMemory(root, "decisions", "new.md", {
+      id: "decision-new",
+      date: "2026-04-01",
+      confidence: 10,
+    }, "Current checkout architecture.");
+    await writeMemory(root, "decisions", "old.md", {
+      id: "decision-old",
+      date: "2025-01-01",
+      confidence: 8,
+      "superseded-by": "decision-new",
+    }, "Old checkout architecture.");
+
+    const scan = await scanMemoryGc({
+      rootDir: root,
+      category: "decisions",
+      now: "2026-04-30T00:00:00.000Z",
+    });
+    const due = await evaluateMemoryGcSchedule({
+      rootDir: root,
+      now: "2026-04-30T00:00:00.000Z",
+      scan,
+    });
+    assert.equal(due.due, true);
+    assert.equal(due.autoEligible, 1);
+    assert.match(formatMemoryGcSchedule(due), /DUE: true/);
+    assert.deepEqual(filterMemoryGcAutoCandidates(scan, due).candidates.map((candidate) => candidate.id), ["decision-old"]);
+
+    await writeMemoryGcScheduleRun({
+      rootDir: root,
+      now: "2026-04-30T00:00:00.000Z",
+    });
+    const notDue = await evaluateMemoryGcSchedule({
+      rootDir: root,
+      now: "2026-05-01T00:00:00.000Z",
+      scan,
+    });
+    assert.equal(notDue.due, false);
+    assert.equal(notDue.lastRunAt, "2026-04-30T00:00:00.000Z");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

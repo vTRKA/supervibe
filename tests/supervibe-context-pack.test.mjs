@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   buildContextPack,
+  evaluateContextPackTokenSlo,
   estimateTokens,
   formatContextPackMarkdown,
   selectActiveItem,
@@ -67,11 +68,25 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
     assert.match(pack.markdown, /Omitted Context/);
     assert.match(pack.markdown, /Semantic Anchors/);
     assert.ok(pack.summary.estimatedTokens > 0);
+    assert.equal(pack.summary.tokenBudget.status, "ok");
+    assert.match(pack.markdown, /Token budget: ok/);
     assert.equal(selectActiveItem([pack.activeItem], "T1").itemId, "T1");
     assert.ok(estimateTokens(formatContextPackMarkdown(pack)) >= pack.summary.estimatedTokens);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("context pack token SLO reports warning and over-budget states", () => {
+  assert.equal(evaluateContextPackTokenSlo({
+    estimatedTokens: 80,
+    maxTokens: 100,
+    warningRatio: 0.7,
+  }).status, "warning");
+  assert.equal(evaluateContextPackTokenSlo({
+    estimatedTokens: 110,
+    maxTokens: 100,
+  }).status, "over_budget");
 });
 
 test("context pack excludes superseded memory from active agent context", async () => {

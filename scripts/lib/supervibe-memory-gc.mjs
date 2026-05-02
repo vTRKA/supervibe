@@ -4,12 +4,131 @@ import { basename, join } from "node:path";
 import matter from "gray-matter";
 
 export const MEMORY_GC_CATEGORIES = Object.freeze(["decisions", "patterns", "incidents", "learnings", "solutions"]);
+const DEFAULT_MEMORY_GC_SCHEDULE = Object.freeze({
+  intervalDays: 14,
+  mode: "review",
+  autoArchiveReasons: ["superseded"],
+  maxAutoArchive: 20,
+  lastRunAt: null,
+});
 
 export function createMemoryGcPolicy(overrides = {}) {
   return {
     incidentsDays: Number(overrides.incidentsDays || overrides.incidents || 365),
     learningsDays: Number(overrides.learningsDays || overrides.learnings || 180),
     lowConfidenceBelow: Number(overrides.lowConfidenceBelow || 7),
+  };
+}
+
+function createMemoryGcSchedulePolicy(overrides = {}) {
+  return {
+    intervalDays: Number(overrides.intervalDays || overrides["interval-days"] || DEFAULT_MEMORY_GC_SCHEDULE.intervalDays),
+    mode: String(overrides.mode || DEFAULT_MEMORY_GC_SCHEDULE.mode),
+    autoArchiveReasons: normalizeList(overrides.autoArchiveReasons || overrides["auto-archive-reasons"] || DEFAULT_MEMORY_GC_SCHEDULE.autoArchiveReasons),
+    maxAutoArchive: Number(overrides.maxAutoArchive || overrides["max-auto-archive"] || DEFAULT_MEMORY_GC_SCHEDULE.maxAutoArchive),
+    lastRunAt: overrides.lastRunAt || overrides.last_run_at || null,
+  };
+}
+
+function defaultMemoryGcSchedulePath(rootDir = process.cwd()) {
+  return join(rootDir, ".supervibe", "memory", "gc-policy.json");
+}
+
+async function readMemoryGcSchedulePolicy({
+  rootDir = process.cwd(),
+  policyPath = defaultMemoryGcSchedulePath(rootDir),
+} = {}) {
+  if (!existsSync(policyPath)) {
+    return {
+      ...createMemoryGcSchedulePolicy(),
+      source: "default",
+      policyPath,
+    };
+  }
+  const parsed = JSON.parse(await readFile(policyPath, "utf8"));
+  return {
+    ...createMemoryGcSchedulePolicy(parsed),
+    source: "file",
+    policyPath,
+  };
+}
+
+export async function evaluateMemoryGcSchedule({
+  rootDir = process.cwd(),
+  now = new Date().toISOString(),
+  scan = null,
+  policyPath = defaultMemoryGcSchedulePath(rootDir),
+} = {}) {
+  const schedule = await readMemoryGcSchedulePolicy({ rootDir, policyPath });
+  const candidates = scan?.summary?.candidates || 0;
+  const lastRunAt = schedule.lastRunAt || null;
+  const ageDays = lastRunAt ? ageInDays(lastRunAt, now) : null;
+  const intervalDue = !lastRunAt || Number(ageDays) >= Number(schedule.intervalDays);
+  const due = candidates > 0 && intervalDue;
+  const nextRunAt = lastRunAt
+    ? new Date(Date.parse(lastRunAt) + Number(schedule.intervalDays) * 86_400_000).toISOString()
+    : now;
+  const autoEligible = scan
+    ? (scan.candidates || []).filter((candidate) => schedule.autoArchiveReasons.includes(candidate.reason)).slice(0, schedule.maxAutoArchive).length
+    : 0;
+  return {
+    policyPath,
+    source: schedule.source,
+    mode: schedule.mode,
+    intervalDays: schedule.intervalDays,
+    lastRunAt,
+    nextRunAt,
+    ageDays,
+    due,
+    candidates,
+    autoArchiveReasons: schedule.autoArchiveReasons,
+    maxAutoArchive: schedule.maxAutoArchive,
+    autoEligible,
+    nextAction: due
+      ? "run npm run supervibe:memory-gc -- --scheduled --dry-run"
+      : candidates > 0
+        ? `next scheduled review at ${nextRunAt}`
+        : "no cleanup candidates",
+  };
+}
+
+export async function writeMemoryGcScheduleRun({
+  rootDir = process.cwd(),
+  now = new Date().toISOString(),
+  policyPath = defaultMemoryGcSchedulePath(rootDir),
+  schedule = null,
+} = {}) {
+  const current = schedule || await readMemoryGcSchedulePolicy({ rootDir, policyPath });
+  const next = {
+    intervalDays: current.intervalDays,
+    mode: current.mode,
+    autoArchiveReasons: current.autoArchiveReasons,
+    maxAutoArchive: current.maxAutoArchive,
+    lastRunAt: now,
+  };
+  await mkdir(join(rootDir, ".supervibe", "memory"), { recursive: true });
+  await writeFile(policyPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  return { policyPath, schedule: next };
+}
+
+export function filterMemoryGcAutoCandidates(scan, scheduleState = {}) {
+  const reasons = new Set(scheduleState.autoArchiveReasons || DEFAULT_MEMORY_GC_SCHEDULE.autoArchiveReasons);
+  const max = Number(scheduleState.maxAutoArchive || DEFAULT_MEMORY_GC_SCHEDULE.maxAutoArchive);
+  const candidates = (scan.candidates || [])
+    .filter((candidate) => reasons.has(candidate.reason))
+    .slice(0, max);
+  return {
+    ...scan,
+    candidates,
+    summary: {
+      ...scan.summary,
+      candidates: candidates.length,
+      active: scan.summary?.scanned ? scan.summary.scanned - candidates.length : scan.summary?.active || 0,
+    },
+    autoPolicy: {
+      reasons: [...reasons],
+      maxAutoArchive: max,
+    },
   };
 }
 
@@ -205,6 +324,22 @@ export function formatMemoryGcReport(scan, archiveResult = null) {
   return lines.join("\n");
 }
 
+export function formatMemoryGcSchedule(schedule = {}) {
+  return [
+    "SUPERVIBE_MEMORY_GC_POLICY",
+    `DUE: ${Boolean(schedule.due)}`,
+    `MODE: ${schedule.mode || "review"}`,
+    `SOURCE: ${schedule.source || "default"}`,
+    `INTERVAL_DAYS: ${schedule.intervalDays ?? DEFAULT_MEMORY_GC_SCHEDULE.intervalDays}`,
+    `LAST_RUN_AT: ${schedule.lastRunAt || "never"}`,
+    `NEXT_RUN_AT: ${schedule.nextRunAt || "unknown"}`,
+    `CANDIDATES: ${schedule.candidates || 0}`,
+    `AUTO_ELIGIBLE: ${schedule.autoEligible || 0}`,
+    `AUTO_REASONS: ${(schedule.autoArchiveReasons || []).join(",") || "none"}`,
+    `NEXT_ACTION: ${schedule.nextAction || "inspect memory gc"}`,
+  ].join("\n");
+}
+
 async function readMemoryCategory(memoryDir, category) {
   const dir = join(memoryDir, category);
   const out = [];
@@ -237,6 +372,12 @@ function ageInDays(date, now) {
   const end = Date.parse(now || "");
   if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
   return Math.max(0, Math.floor((end - start) / 86_400_000));
+}
+
+function normalizeList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return String(value).split(",").map((item) => item.trim()).filter(Boolean);
 }
 
 async function appendArchiveLog(archiveRoot, entry) {

@@ -29,6 +29,7 @@ import { formatSemanticAnchorReport, parseSemanticAnchors } from './lib/supervib
 import { formatAssignmentExplanation } from './lib/supervibe-assignment-explainer.mjs';
 import { buildExecutionWaves, formatWaveStatus } from './lib/supervibe-wave-controller.mjs';
 import { buildGcHints, formatGcHints } from './lib/supervibe-gc-hints.mjs';
+import { buildMemoryHealthReport, formatMemoryHealthReport } from './lib/supervibe-memory-health.mjs';
 import { evaluateIntentGoldenCorpus, formatIntentGoldenEvaluation } from './lib/supervibe-trigger-router.mjs';
 import { buildCapabilityRegistry, formatCapabilityRegistryReport, validateCapabilityRegistry } from './lib/supervibe-capability-registry.mjs';
 import { formatHostDiagnostics, selectHostAdapter } from './lib/supervibe-host-detector.mjs';
@@ -274,6 +275,14 @@ async function main() {
     const hints = await buildGcHints({ rootDir: PROJECT_ROOT, now: args.now || new Date().toISOString() });
     if (args.json) console.log(renderTerminalOutput({ data: hints, json: true }, { json: true }));
     else console.log(formatGcHints(hints));
+    return;
+  }
+
+  if (args['memory-health']) {
+    const report = await buildMemoryHealthReport({ rootDir: PROJECT_ROOT, now: args.now || new Date().toISOString() });
+    if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
+    else console.log(formatMemoryHealthReport(report));
+    if (args.strict && !report.pass) process.exitCode = 2;
     return;
   }
 
@@ -604,7 +613,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

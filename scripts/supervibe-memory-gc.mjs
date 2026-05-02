@@ -3,10 +3,14 @@
 import {
   archiveMemoryGcCandidates,
   createMemoryGcPolicy,
+  evaluateMemoryGcSchedule,
+  filterMemoryGcAutoCandidates,
   formatMemoryGcReport,
+  formatMemoryGcSchedule,
   memoryGcStats,
   restoreMemoryEntry,
   scanMemoryGc,
+  writeMemoryGcScheduleRun,
 } from "./lib/supervibe-memory-gc.mjs";
 
 const args = parseArgs(process.argv.slice(2));
@@ -16,6 +20,9 @@ if (args.help) {
     "SUPERVIBE_MEMORY_GC_HELP",
     "Usage:",
     "  npm run supervibe:memory-gc -- --dry-run",
+    "  npm run supervibe:memory-gc -- --policy",
+    "  npm run supervibe:memory-gc -- --scheduled --dry-run",
+    "  npm run supervibe:memory-gc -- --scheduled --auto --apply",
     "  npm run supervibe:memory-gc -- --category learnings --apply",
     "  npm run supervibe:memory-gc -- --restore <memory-id>",
     "  npm run supervibe:memory-gc -- --stats",
@@ -36,7 +43,7 @@ try {
     process.exit(0);
   }
 
-  const scan = await scanMemoryGc({
+  let scan = await scanMemoryGc({
     rootDir,
     category: args.category || "all",
     now: args.now || new Date().toISOString(),
@@ -46,12 +53,31 @@ try {
       lowConfidenceBelow: args["low-confidence-below"],
     }),
   });
+  const schedule = await evaluateMemoryGcSchedule({
+    rootDir,
+    now: args.now || scan.now,
+    scan,
+  });
+  if (args.policy) {
+    console.log(args.json ? JSON.stringify(schedule, null, 2) : formatMemoryGcSchedule(schedule));
+    process.exit(0);
+  }
+  if (args.scheduled && !schedule.due && !args.force) {
+    console.log(args.json ? JSON.stringify({ scan, schedule, skipped: true }, null, 2) : formatMemoryGcSchedule(schedule));
+    process.exit(0);
+  }
+  if (args.auto) {
+    scan = filterMemoryGcAutoCandidates(scan, schedule);
+  }
   const archiveResult = await archiveMemoryGcCandidates(scan, {
     dryRun: !args.apply,
     now: args.now || scan.now,
   });
-  if (args.json) console.log(JSON.stringify({ scan, archiveResult }, null, 2));
-  else console.log(formatMemoryGcReport(scan, archiveResult));
+  if (args.apply && args.scheduled) {
+    await writeMemoryGcScheduleRun({ rootDir, now: args.now || scan.now });
+  }
+  if (args.json) console.log(JSON.stringify({ scan, schedule, archiveResult }, null, 2));
+  else console.log([formatMemoryGcSchedule(schedule), formatMemoryGcReport(scan, archiveResult)].join("\n\n"));
 } catch (err) {
   console.error(`SUPERVIBE_MEMORY_GC_ERROR: ${err.message}`);
   process.exitCode = 1;

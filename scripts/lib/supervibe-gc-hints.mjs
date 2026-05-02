@@ -1,4 +1,4 @@
-import { scanMemoryGc } from "./supervibe-memory-gc.mjs";
+import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
 
 export async function buildGcHints({
@@ -12,15 +12,18 @@ export async function buildGcHints({
     scanWorkItemGc({ rootDir, now, retentionDays, staleOpenDays, includeStaleOpen }),
     scanMemoryGc({ rootDir, now }),
   ]);
+  const memorySchedule = await evaluateMemoryGcSchedule({ rootDir, now, scan: memory });
   const needsAttention = workItems.summary.candidates > 0 || memory.summary.candidates > 0;
   return {
     schemaVersion: 1,
     generatedAt: now,
     needsAttention,
     workItems: summarizeWorkItems(workItems),
-    memory: summarizeMemory(memory),
-    nextAction: needsAttention
-      ? "run npm run supervibe:gc -- --all --dry-run"
+    memory: { ...summarizeMemory(memory), schedule: memorySchedule },
+    nextAction: memorySchedule.due
+      ? memorySchedule.nextAction
+      : needsAttention
+        ? "run npm run supervibe:gc -- --all --dry-run"
       : "no cleanup needed",
   };
 }
@@ -33,6 +36,8 @@ export function formatGcHints(hints = {}) {
     `WORK_ITEM_TOP: ${(hints.workItems?.top || []).map((item) => `${item.graphId}:${item.reason}`).join(",") || "none"}`,
     `MEMORY_CANDIDATES: ${hints.memory?.candidates || 0}`,
     `MEMORY_TOP: ${(hints.memory?.top || []).map((item) => `${item.id}:${item.reason}`).join(",") || "none"}`,
+    `MEMORY_GC_DUE: ${Boolean(hints.memory?.schedule?.due)}`,
+    `MEMORY_GC_NEXT: ${hints.memory?.schedule?.nextRunAt || "unknown"}`,
     `NEXT_ACTION: ${hints.nextAction || "inspect status"}`,
   ].join("\n");
 }

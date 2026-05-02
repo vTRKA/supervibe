@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.40] - 2026-05-02
+
+### Added
+
+- Added memory health reporting with current-only retrieval policy, context-pack
+  token SLOs, GC due-state, and review queues for references, duplicates, and
+  contradictions.
+- Added scheduled memory GC policy support with safe auto-archive filtering for
+  superseded entries.
+
+### Fixed
+
+- Tightened memory reference validation to review missing stable project
+  artifacts without treating local project-state paths or historical examples as
+  active repo truth.
+
 ## [2.0.39] - 2026-05-02
 
 ### Fixed

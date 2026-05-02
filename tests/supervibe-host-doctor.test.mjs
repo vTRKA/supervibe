@@ -26,7 +26,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.0.39");
+  assert.equal(result.packageVersion, "2.0.40");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 

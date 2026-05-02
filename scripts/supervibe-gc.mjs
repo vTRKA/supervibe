@@ -6,7 +6,17 @@ import {
   restoreWorkItemGraph,
   scanWorkItemGc,
 } from "./lib/supervibe-work-item-gc.mjs";
-import { archiveMemoryGcCandidates, createMemoryGcPolicy, formatMemoryGcReport, restoreMemoryEntry, scanMemoryGc } from "./lib/supervibe-memory-gc.mjs";
+import {
+  archiveMemoryGcCandidates,
+  createMemoryGcPolicy,
+  evaluateMemoryGcSchedule,
+  filterMemoryGcAutoCandidates,
+  formatMemoryGcReport,
+  formatMemoryGcSchedule,
+  restoreMemoryEntry,
+  scanMemoryGc,
+  writeMemoryGcScheduleRun,
+} from "./lib/supervibe-memory-gc.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -17,6 +27,7 @@ try {
       "Usage:",
       "  npm run supervibe:gc -- --work-items --dry-run",
       "  npm run supervibe:gc -- --memory --category learnings --dry-run",
+      "  npm run supervibe:gc -- --memory --scheduled --auto --apply",
       "  npm run supervibe:gc -- --all --apply",
       "  npm run supervibe:gc -- --memory --restore <memory-id>",
       "  npm run supervibe:gc -- --work-items --restore <graph-id>",
@@ -50,7 +61,7 @@ try {
     blocks.push(formatWorkItemGcReport(scan, archiveResult));
   }
   if (runMemory) {
-    const scan = await scanMemoryGc({
+    let scan = await scanMemoryGc({
       rootDir,
       category: args.category || "all",
       policy: createMemoryGcPolicy({
@@ -59,7 +70,16 @@ try {
         lowConfidenceBelow: args["low-confidence-below"],
       }),
     });
+    const schedule = await evaluateMemoryGcSchedule({ rootDir, scan });
+    blocks.push(formatMemoryGcSchedule(schedule));
+    if (args.scheduled && !schedule.due && !args.force) {
+      blocks.push("SUPERVIBE_MEMORY_GC\nSKIPPED: scheduled policy not due");
+      console.log(blocks.join("\n\n"));
+      process.exit(0);
+    }
+    if (args.auto) scan = filterMemoryGcAutoCandidates(scan, schedule);
     const archiveResult = await archiveMemoryGcCandidates(scan, { dryRun: !args.apply });
+    if (args.apply && args.scheduled) await writeMemoryGcScheduleRun({ rootDir });
     blocks.push(formatMemoryGcReport(scan, archiveResult));
   }
   console.log(blocks.join("\n\n"));

@@ -110,3 +110,48 @@ test("memory search hides superseded entries by default and exposes them only as
   assert.match(withHistory, /old-feedback-websocket/);
   assert.match(withHistory, /Freshness: superseded \(stale\)/);
 });
+
+test("memory curator queues missing references and near-duplicate active entries", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-quality-"));
+  const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+  await mkdir(decisionsDir, { recursive: true });
+  await mkdir(join(rootDir, "scripts"), { recursive: true });
+  await writeFile(join(rootDir, "scripts", "existing.mjs"), "export const ok = true;\n", "utf8");
+  await writeFile(join(decisionsDir, "checkout-a.md"), [
+    "---",
+    "id: checkout-token-budget-a",
+    "type: decision",
+    "date: 2026-05-01",
+    "tags: [commands, validation]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Checkout token budget keeps active context concise and cites `scripts/existing.mjs` plus `scripts/missing.mjs`.",
+  ].join("\n"), "utf8");
+  await writeFile(join(decisionsDir, "checkout-b.md"), [
+    "---",
+    "id: checkout-token-budget-b",
+    "type: decision",
+    "date: 2026-05-01",
+    "tags: [commands, validation]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Checkout token budget keeps active context concise and cites `scripts/existing.mjs` plus `scripts/missing.mjs`.",
+  ].join("\n"), "utf8");
+
+  const report = await curateProjectMemory({
+    rootDir,
+    now: "2026-05-01T00:00:00.000Z",
+    rebuildSqlite: false,
+  });
+
+  assert.equal(report.referenceIssues.length, 2);
+  assert.ok(report.referenceIssues.every((issue) => issue.reference === "scripts/missing.mjs"));
+  assert.equal(report.duplicateCandidates.length, 1);
+  assert.deepEqual(report.duplicateCandidates[0].ids, ["checkout-token-budget-a", "checkout-token-budget-b"]);
+  assert.equal(report.lifecycle.candidateQueues.referenceReview.length, 2);
+  assert.equal(report.lifecycle.candidateQueues.duplicateReview.length, 1);
+  assert.match(formatMemoryCurationReport(report), /REF_MISSING: checkout-token-budget-a -> scripts\/missing\.mjs/);
+  assert.match(formatMemoryCurationReport(report), /DUPLICATE: checkout-token-budget-a ~ checkout-token-budget-b/);
+});

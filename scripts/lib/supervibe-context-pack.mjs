@@ -9,6 +9,10 @@ import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
 const MEMORY_CATEGORIES = ["decisions", "patterns", "incidents", "learnings", "solutions"];
+const DEFAULT_CONTEXT_PACK_TOKEN_SLO = Object.freeze({
+  warningRatio: 0.7,
+  hardRatio: 1.0,
+});
 
 export async function buildContextPack({
   rootDir = process.cwd(),
@@ -18,6 +22,9 @@ export async function buildContextPack({
   memoryLimit = 6,
   evidenceLimit = 8,
   maxChars = 12_000,
+  maxTokens = Math.ceil(maxChars / 4),
+  tokenWarningRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.warningRatio,
+  tokenHardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
   now = new Date().toISOString(),
   includeStaleMemory = false,
 } = {}) {
@@ -87,6 +94,7 @@ export async function buildContextPack({
       semanticAnchors: semanticAnchors.length,
       maxChars,
       estimatedTokens: 0,
+      tokenBudget: null,
     },
     omitted: [
       "closed sibling task bodies",
@@ -95,9 +103,23 @@ export async function buildContextPack({
       "full graph JSON when summarized fields are sufficient",
     ],
   };
-  const markdown = trimPackMarkdown(formatContextPackMarkdown(pack), maxChars);
+  let markdown = trimPackMarkdown(formatContextPackMarkdown(pack), maxChars);
+  pack.summary.estimatedTokens = estimateTokens(markdown);
+  pack.summary.tokenBudget = evaluateContextPackTokenSlo({
+    estimatedTokens: pack.summary.estimatedTokens,
+    maxTokens,
+    warningRatio: tokenWarningRatio,
+    hardRatio: tokenHardRatio,
+  });
+  markdown = trimPackMarkdown(formatContextPackMarkdown(pack), maxChars);
   pack.markdown = markdown;
   pack.summary.estimatedTokens = estimateTokens(markdown);
+  pack.summary.tokenBudget = evaluateContextPackTokenSlo({
+    estimatedTokens: pack.summary.estimatedTokens,
+    maxTokens,
+    warningRatio: tokenWarningRatio,
+    hardRatio: tokenHardRatio,
+  });
   return pack;
 }
 
@@ -149,6 +171,7 @@ export function formatContextPackMarkdown(pack = {}) {
     "",
     "## Pack Metrics",
     `- Estimated tokens: ${pack.summary?.estimatedTokens ?? estimateTokens(JSON.stringify(pack))}`,
+    `- Token budget: ${pack.summary?.tokenBudget?.status || "unknown"} (${pack.summary?.tokenBudget?.estimatedTokens ?? pack.summary?.estimatedTokens ?? 0}/${pack.summary?.tokenBudget?.maxTokens ?? "unknown"})`,
     `- Total work items: ${pack.summary?.totalItems ?? 0}`,
     `- Omitted items: ${pack.summary?.omittedItems ?? 0}`,
     "",
@@ -286,6 +309,30 @@ function trimPackMarkdown(markdown, maxChars) {
 
 export function estimateTokens(text = "") {
   return Math.ceil(String(text).length / 4);
+}
+
+export function evaluateContextPackTokenSlo({
+  estimatedTokens = 0,
+  maxTokens = 3_000,
+  warningRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.warningRatio,
+  hardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
+} = {}) {
+  const pressure = maxTokens > 0 ? Number(estimatedTokens) / Number(maxTokens) : 1;
+  const status = pressure >= hardRatio ? "over_budget" : pressure >= warningRatio ? "warning" : "ok";
+  return {
+    status,
+    pass: status !== "over_budget",
+    estimatedTokens: Number(estimatedTokens || 0),
+    maxTokens: Number(maxTokens || 0),
+    pressure: Number(pressure.toFixed(3)),
+    warningRatio,
+    hardRatio,
+    nextAction: status === "over_budget"
+      ? "reduce memory/evidence limits or split context before agent handoff"
+      : status === "warning"
+        ? "keep memory and evidence limits tight"
+        : "execute",
+  };
 }
 
 function ageInDays(date, now) {
