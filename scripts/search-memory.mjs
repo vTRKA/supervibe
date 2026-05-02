@@ -7,7 +7,7 @@
 // Output: JSON array of matching entries with bm25 score.
 
 import { searchMemory } from './lib/memory-store.mjs';
-import { annotateMemorySearchResults, curateProjectMemory } from './lib/supervibe-memory-curator.mjs';
+import { curateProjectMemory, filterCurrentMemoryResults } from './lib/supervibe-memory-curator.mjs';
 import { buildProjectKnowledgeGraph, formatKnowledgeGraphSearch } from './lib/supervibe-project-knowledge-graph.mjs';
 import { parseArgs } from 'node:util';
 
@@ -37,13 +37,19 @@ const opts = {
 };
 
 try {
+  const includeHistory = Boolean(values['include-history'] || values['include-superseded']);
   const curation = await curateProjectMemory({ rootDir: PROJECT_ROOT, rebuildSqlite: false });
-  const results = annotateMemorySearchResults(await searchMemory(PROJECT_ROOT, opts), curation);
+  const searchLimit = includeHistory ? opts.limit : Math.max(opts.limit * 4, opts.limit);
+  const rawResults = await searchMemory(PROJECT_ROOT, { ...opts, limit: searchLimit });
+  const results = filterCurrentMemoryResults(rawResults, curation, {
+    includeHistory,
+    limit: opts.limit,
+  });
   if (values.graph) {
     const graph = await buildProjectKnowledgeGraph({ rootDir: PROJECT_ROOT, curation });
     console.log(formatKnowledgeGraphSearch(graph, {
       query: opts.query,
-      includeHistory: Boolean(values['include-history'] || values['include-superseded']),
+      includeHistory,
     }));
     if (results.length > 0) console.log("");
   }

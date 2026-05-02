@@ -168,6 +168,17 @@ export function annotateMemorySearchResults(results = [], curation = null) {
   }));
 }
 
+export function filterCurrentMemoryResults(results = [], curation = null, {
+  includeHistory = false,
+  limit = results.length,
+} = {}) {
+  const annotated = annotateMemorySearchResults(results, curation);
+  const filtered = includeHistory
+    ? annotated
+    : annotated.filter((entry) => !entry.stale && !(entry.contradictionIds || []).length);
+  return filtered.slice(0, limit);
+}
+
 export function formatMemoryCurationReport(report = {}) {
   return [
     "SUPERVIBE_MEMORY_CURATION",

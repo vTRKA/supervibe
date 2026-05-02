@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import matter from "gray-matter";
 import { createWorkItemIndex } from "./supervibe-work-item-query.mjs";
+import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { parseSemanticAnchors } from "./supervibe-semantic-anchor-index.mjs";
 import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
@@ -18,6 +19,7 @@ export async function buildContextPack({
   evidenceLimit = 8,
   maxChars = 12_000,
   now = new Date().toISOString(),
+  includeStaleMemory = false,
 } = {}) {
   if (!graphPath) throw new Error("context pack requires graphPath");
   const graph = JSON.parse(await readFile(graphPath, "utf8"));
@@ -34,7 +36,15 @@ export async function buildContextPack({
   const dependencies = index.filter((item) => dependencyIds.has(item.itemId));
   const blockers = index.filter((item) => ["blocked", "gate", "stale", "delegated"].includes(item.effectiveStatus));
   const terms = extractPackTerms(activeItem, query);
-  const memory = (await findRelevantMemory({ rootDir, terms, limit: memoryLimit, now })).slice(0, memoryLimit);
+  const memoryCuration = await curateProjectMemory({ rootDir, now, rebuildSqlite: false });
+  const memory = (await findRelevantMemory({
+    rootDir,
+    terms,
+    limit: memoryLimit,
+    now,
+    curation: memoryCuration,
+    includeHistory: includeStaleMemory,
+  })).slice(0, memoryLimit);
   const evidence = collectEvidence(graph, activeItem, evidenceLimit);
   const semanticAnchors = await collectSemanticAnchors({ rootDir, activeItem, limit: 8 });
   const workflowFlow = createWorkflowFlowModel({ graph, index });
@@ -158,8 +168,16 @@ export function selectActiveItem(index = [], itemId = null) {
     || null;
 }
 
-async function findRelevantMemory({ rootDir, terms, limit, now = new Date().toISOString() }) {
+async function findRelevantMemory({
+  rootDir,
+  terms,
+  limit,
+  now = new Date().toISOString(),
+  curation = null,
+  includeHistory = false,
+}) {
   const memoryDir = join(rootDir, ".supervibe", "memory");
+  const lifecycleById = curation?.lifecycle?.byId || {};
   const entries = [];
   for (const category of MEMORY_CATEGORIES) {
     const dir = join(memoryDir, category);
@@ -169,21 +187,26 @@ async function findRelevantMemory({ rootDir, terms, limit, now = new Date().toIS
       const filePath = join(dir, entry.name);
       const parsed = matter(await readFile(filePath, "utf8"));
       if (parsed.data.archivedAt) continue;
+      const id = String(parsed.data.id || basename(entry.name, ".md"));
+      const lifecycle = lifecycleById[id] || {};
+      if (!includeHistory && (lifecycle.stale || lifecycle.contradictionIds?.length)) continue;
       const text = `${parsed.data.id || ""} ${parsed.data.tags || ""} ${parsed.content}`.toLowerCase();
       const score = scoreTerms(text, terms);
       if (score <= 0) continue;
       const fileStat = await stat(filePath);
-      const ageDays = ageInDays(fileStat.mtime.toISOString(), now);
-      const freshness = ageDays > 365 ? "stale" : ageDays > 90 ? "aging" : "fresh";
+      const ageDays = lifecycle.ageDays ?? ageInDays(fileStat.mtime.toISOString(), now);
+      const freshness = lifecycle.freshness || (ageDays > 365 ? "stale" : ageDays > 90 ? "aging" : "fresh");
       const freshnessPenalty = freshness === "stale" ? 1 : 0;
       entries.push({
-        id: parsed.data.id || basename(entry.name, ".md"),
+        id,
         category,
         file: filePath,
         score,
         effectiveScore: Math.max(0, score - freshnessPenalty),
         ageDays,
         freshness,
+        stale: Boolean(lifecycle.stale),
+        contradictionIds: lifecycle.contradictionIds || [],
         confidence: Number(parsed.data.confidence || 0),
         updatedAt: fileStat.mtime.toISOString(),
         summary: parsed.content.split(/\r?\n/).filter(Boolean).slice(0, 2).join(" ").slice(0, 220),

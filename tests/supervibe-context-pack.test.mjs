@@ -74,6 +74,52 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
   }
 });
 
+test("context pack excludes superseded memory from active agent context", async () => {
+  const root = await makeTempRoot("supervibe-context-pack-memory-lifecycle-");
+  try {
+    const graphPath = await writeGraph(root, {
+      graph_id: "epic-context",
+      title: "Checkout Context Epic",
+      items: [
+        { itemId: "epic-context", type: "epic", status: "open", title: "Checkout Context Epic" },
+        {
+          itemId: "T1",
+          type: "task",
+          status: "open",
+          title: "Checkout payment context pack",
+          labels: ["checkout", "payment"],
+          acceptanceCriteria: ["Checkout payment works"],
+        },
+      ],
+      tasks: [{ id: "T1", status: "open" }],
+      evidence: [],
+    });
+    await writeMemory(root, "decisions", "old-checkout.md", {
+      id: "checkout-legacy-memory",
+      confidence: 9,
+    }, "Checkout payment context uses the legacy memory shape.");
+    await writeMemory(root, "decisions", "new-checkout.md", {
+      id: "checkout-current-memory",
+      confidence: 10,
+      supersedes: "[checkout-legacy-memory]",
+    }, "Checkout payment context uses the current memory shape.");
+
+    const pack = await buildContextPack({
+      rootDir: root,
+      graphPath,
+      itemId: "T1",
+      memoryLimit: 4,
+      now: "2026-05-02T00:00:00.000Z",
+    });
+
+    assert.ok(pack.memory.some((entry) => entry.id === "checkout-current-memory"));
+    assert.equal(pack.memory.some((entry) => entry.id === "checkout-legacy-memory"), false);
+    assert.doesNotMatch(pack.markdown, /checkout-legacy-memory/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 async function writeGraph(root, graph) {
   const dir = join(root, ".supervibe", "memory", "work-items", "epic-context");
   await mkdir(dir, { recursive: true });

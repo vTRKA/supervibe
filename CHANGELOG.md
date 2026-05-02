@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.39] - 2026-05-02
+
+### Fixed
+
+- Filtered project memory retrieval to current entries by default so
+  superseded, stale, and contradictory memories do not enter normal agent
+  context.
+- Kept historical memory available through explicit `--include-superseded` /
+  `--include-history` lookup when an agent needs provenance.
+- Updated context packs to respect memory lifecycle metadata instead of
+  selecting superseded markdown entries directly.
+
 ## [2.0.38] - 2026-05-02
 
 ### Added
