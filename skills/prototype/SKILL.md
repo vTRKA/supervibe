@@ -37,7 +37,7 @@ NOT for:
 4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with progress indicator ("Шаг 2/5: viewports").
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
 6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
-7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews.
+7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 
 ## Step 0 — Read source of truth (required)
 

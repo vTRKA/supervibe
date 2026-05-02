@@ -10,7 +10,7 @@ Brief: User-facing command for presentation work. It routes the request to prese
 
 Do not stop after storyboard or first slide. A `/supervibe-presentation <brief>` invocation should continue through the deck pipeline from objective, storyboard, deck JSON, HTML preview, review, and feedback prompt unless the user explicitly stops/pauses, a required brief field blocks the next artifact, or export/upload requires explicit approval.
 
-Intermediate story and slide decisions can be recorded as delegated decisions when the brief and recommended/default path are clear. The explicit approval gate is for final deck approval before PPTX export, not for every slide or section.
+Intermediate story and slide decisions can be recorded as delegated decisions when the brief and recommended/default path are clear. Delegated decisions cannot satisfy the final deck approval gate. Browser feedback comments are revision inputs, not approval signals. The explicit approval gate is for final deck approval before PPTX export, not for every slide or section. Wait for explicit choice before export or Google Drive handoff.
 
 ## Usage
 

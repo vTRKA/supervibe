@@ -73,6 +73,8 @@ What do we do next?
 - 🛑 **Stop** - keep as draft
 ```
 
+The browser feedback overlay is supplemental. Browser feedback comments are revision inputs, not approval signals. Wait for explicit choice. PPTX export stays blocked until `.approval.json` is written after the user approves.
+
 9. **Revision loop.** Apply feedback in small rounds. For browser feedback, write a resolution note under `feedback-resolutions/<id>.md` and mark the item resolved.
 10. **Approval marker.** On explicit approval, write `.supervibe/artifacts/presentations/<slug>/.approval.json` with status, approvedAt, approvedBy, slide count, feedback rounds, and preview URL.
 11. **PPTX export.** Run `node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.

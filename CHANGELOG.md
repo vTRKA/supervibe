@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.50] - 2026-05-02
+
+### Added
+
+- Added a multistage user-gate validator covering feedback-overlay and
+  delegated-decision approval boundaries across commands, skills, and design
+  agents.
+
+### Changed
+
+- Clarified prototype, landing, preview, presentation, and browser-feedback
+  flows so browser feedback is always supplemental and cannot replace explicit
+  approve/revise/alternative/stop user choices.
+
 ## [2.0.49] - 2026-05-02
 
 ### Added

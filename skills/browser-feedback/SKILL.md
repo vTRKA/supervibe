@@ -27,6 +27,8 @@ If user invokes manually with no pending feedback, run `node "<resolved-supervib
 
 Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json`. The UserPromptSubmit hook resurfaces unresolved entries until they are marked `resolved` or `rejected`.
 
+Browser feedback entries are not lifecycle approval. A resolved browser feedback entry does not approve the artifact, export a deck, or create a handoff; the surrounding delivery flow must still ask its explicit approve/revise/alternative/stop question.
+
 ## Step 0 — Read source of truth
 - Read full feedback entry: `jq -c "select(.id==\"<id>\")" .supervibe/memory/feedback-queue.jsonl`
 - Read artifact config: `.supervibe/artifacts/prototypes/<slug>/config.json`, `.supervibe/artifacts/mockups/<slug>/config.json`, or `.supervibe/artifacts/presentations/<slug>/deck.json`

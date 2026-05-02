@@ -111,7 +111,7 @@ Use `supervibe:design-intelligence` after memory and code search for slide layou
 3. Reuse approved design tokens from `.supervibe/artifacts/prototypes/_design-system/` when available. If not available, keep deck theme explicit in `deck.json.theme`.
 4. Build `.supervibe/artifacts/presentations/<slug>/preview/index.html` with one slide per section, readable speaker notes, and no external CDN dependencies.
 5. Start preview with `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
-6. Print the feedback prompt from `supervibe:presentation-deck` and wait for explicit approve/revise/alternative/deep-review/stop choice.
+6. Print the feedback prompt from `supervibe:presentation-deck` and wait for explicit approve/revise/alternative/deep-review/stop choice. Wait for explicit choice. Browser feedback entries are revision inputs, not approval signals; .approval.json exists before export is allowed.
 7. On revise, read open feedback from `.supervibe/memory/feedback-status.json` and `.supervibe/memory/feedback-queue.jsonl`, apply changes, write `feedback-resolutions/<id>.md`, and mark each item resolved or rejected.
 8. On alternative, create `.supervibe/artifacts/presentations/<slug>/alternatives/<variant>/tradeoff.md` from `templates/alternatives/tradeoff.md.tpl`.
 9. On approval, write `.approval.json`.

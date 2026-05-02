@@ -14,7 +14,7 @@ last-verified: 2026-04-27
 
 # Preview Server
 
-Spawn the Supervibe local hot-reload preview server for freshly generated mockup files, hand the URL to the user, and (optionally) capture a Playwright screenshot before tearing the server down. For design roots, the feedback overlay is mandatory. The feedback path is IDE-neutral at the preview layer: browser comments are written to `.supervibe/memory/feedback-queue.jsonl`; hooks surface them automatically where supported, and other IDEs can poll with `feedback-status.mjs --list`.
+Spawn the Supervibe local hot-reload preview server for freshly generated mockup files, hand the URL to the user, and (optionally) capture a Playwright screenshot before tearing the server down. For design roots, the feedback overlay is mandatory. The feedback overlay is supplemental and not an approval gate; the surrounding command or skill must still ask its approve/revise/alternative/stop question before any artifact is marked approved, exported, or handed off. The feedback path is IDE-neutral at the preview layer: browser comments are written to `.supervibe/memory/feedback-queue.jsonl`; hooks surface them automatically where supported, and other IDEs can poll with `feedback-status.mjs --list`.
 
 ## When to invoke
 

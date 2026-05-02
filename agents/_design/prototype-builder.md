@@ -180,6 +180,7 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, etc.). If creative-director persisted `.supervibe/artifacts/prototypes/<feature>/decisions/animation.md`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
 17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `.supervibe/artifacts/prototypes/<feature>/_reviews/`.
 18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the preview summary, lifecycle state, persisted state artifact path, and the shared post-delivery question from `scripts/lib/supervibe-dialogue-contract.mjs` with `intent="prototype_delivery"`.
+    The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the chat feedback prompt remains the canonical approve/revise/alternative/stop lifecycle gate.
     Required summary fields:
     - `Prototype`: `http://localhost:NNNN`
     - `Viewports`: exact list from `config.json`

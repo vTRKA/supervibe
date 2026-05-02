@@ -42,7 +42,7 @@ Plus landing-specific:
 7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
 9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifacts exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
-10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`.
+10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 
 ## Step 0 — Read source of truth (required)
 
@@ -158,7 +158,7 @@ After URL delivered:
 - 🛑 **Стоп** — оставить как draft
 ```
 
-Wait for explicit choice.
+Wait for explicit choice. Do NOT proceed without explicit choice.
 
 ### Stage 6 — Approval marker
 
