@@ -1,12 +1,19 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
+
+const execFileAsync = promisify(execFile);
 
 export async function buildMemoryHealthReport({
   rootDir = process.cwd(),
   now = new Date().toISOString(),
   contextPackMaxTokens = 3_000,
+  changedFiles = null,
 } = {}) {
-  const curation = await curateProjectMemory({ rootDir, now, rebuildSqlite: false });
+  const gitChangedFiles = changedFiles || await collectGitChangedFiles({ rootDir });
+  const curation = await curateProjectMemory({ rootDir, now, rebuildSqlite: false, changedFiles: gitChangedFiles });
   const gcScan = await scanMemoryGc({ rootDir, now });
   const gcSchedule = await evaluateMemoryGcSchedule({ rootDir, now, scan: gcScan });
   const reviewQueues = curation.lifecycle?.candidateQueues || {};
@@ -19,6 +26,9 @@ export async function buildMemoryHealthReport({
 
   if ((curation.duplicateCandidates || []).length > 0) {
     warnings.push({ code: "memory-duplicate-review", count: curation.duplicateCandidates.length });
+  }
+  if ((curation.invalidationCandidates || []).length > 0) {
+    warnings.push({ code: "memory-invalidation-review", count: curation.invalidationCandidates.length });
   }
   if (gcSchedule.due) {
     warnings.push({ code: "memory-gc-due", count: gcSchedule.candidates });
@@ -54,11 +64,18 @@ export async function buildMemoryHealthReport({
       contradictions: curation.contradictions?.length || 0,
       referenceIssues: curation.referenceIssues?.length || 0,
       duplicateCandidates: curation.duplicateCandidates?.length || 0,
+      invalidationCandidates: curation.invalidationCandidates?.length || 0,
+      hierarchy: curation.hierarchy,
       reviewQueues: {
         memoryReview: reviewQueues.memoryReview?.length || 0,
         referenceReview: reviewQueues.referenceReview?.length || 0,
         duplicateReview: reviewQueues.duplicateReview?.length || 0,
+        invalidationReview: reviewQueues.invalidationReview?.length || 0,
       },
+    },
+    gitDiff: {
+      changedFiles: gitChangedFiles.length,
+      sampled: gitChangedFiles.slice(0, 20),
     },
     gc: {
       candidates: gcScan.summary?.candidates || 0,
@@ -89,6 +106,11 @@ export function formatMemoryHealthReport(report = {}) {
     `CONTRADICTION_REVIEWS: ${report.curation?.reviewQueues?.memoryReview || 0}`,
     `REFERENCE_ISSUES: ${report.curation?.referenceIssues || 0}`,
     `DUPLICATE_CANDIDATES: ${report.curation?.duplicateCandidates || 0}`,
+    `INVALIDATION_CANDIDATES: ${report.curation?.invalidationCandidates || 0}`,
+    `CURRENT_LAYER: ${report.curation?.hierarchy?.current?.count ?? "unknown"}`,
+    `HISTORY_LAYER: ${report.curation?.hierarchy?.history?.count ?? "unknown"}`,
+    `MEMORY_SUMMARY_TOKENS: ${report.curation?.hierarchy?.tokenEstimate ?? "unknown"}`,
+    `GIT_CHANGED_FILES: ${report.gitDiff?.changedFiles || 0}`,
     `GC_CANDIDATES: ${report.gc?.candidates || 0}`,
     `GC_DUE: ${Boolean(report.gc?.due)}`,
     `GC_AUTO_ELIGIBLE: ${report.gc?.autoEligible || 0}`,
@@ -96,4 +118,16 @@ export function formatMemoryHealthReport(report = {}) {
     ...issues.slice(0, 8).map((issue) => `ISSUE: ${issue.code} ${issue.message || ""}`.trim()),
     ...warnings.slice(0, 8).map((warning) => `WARN: ${warning.code}${warning.count !== undefined ? ` count=${warning.count}` : ""}${warning.message ? ` ${warning.message}` : ""}`.trim()),
   ].join("\n");
+}
+
+async function collectGitChangedFiles({ rootDir = process.cwd() } = {}) {
+  try {
+    const [worktree, staged] = await Promise.all([
+      execFileAsync("git", ["diff", "--name-only"], { cwd: rootDir }),
+      execFileAsync("git", ["diff", "--name-only", "--cached"], { cwd: rootDir }),
+    ]);
+    return [...new Set(`${worktree.stdout}\n${staged.stdout}`.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))];
+  } catch {
+    return [];
+  }
 }

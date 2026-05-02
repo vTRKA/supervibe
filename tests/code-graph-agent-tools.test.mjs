@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 import { CodeStore } from "../scripts/lib/code-store.mjs";
-import { buildCodeGraphContext } from "../scripts/lib/supervibe-codegraph-context.mjs";
+import { buildCodeGraphContext, evaluateCodeGraphTaskTypeGate } from "../scripts/lib/supervibe-codegraph-context.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -26,13 +26,27 @@ test("agent-facing codegraph context combines RAG chunks, graph neighbors, impac
     assert.ok(context.relatedFiles.includes("src/hooks/vpn.ts"));
     assert.ok(context.semanticAnchors.some((row) => row.anchorId === "ideas-page"));
     assert.equal(context.quality.pass, true);
+    assert.equal(context.taskTypeGate.pass, true);
     assert.ok(context.retrievalPipeline.stages.some((stage) => stage.name === "rerank"));
     assert.match(context.markdown, /Supervibe CodeGraph Context/);
     assert.match(context.markdown, /Retrieval Quality/);
     assert.match(context.markdown, /Graph Quality Gates/);
+    assert.match(context.markdown, /Task-Type Graph Gate/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("task-type CodeGraph gate blocks structural work without graph evidence", () => {
+  const gate = evaluateCodeGraphTaskTypeGate({
+    taskType: "refactor",
+    quality: { pass: true, symbolCoverage: 0.5, edgeResolutionRate: 0.5, warnings: [] },
+    graphHealth: { crossResolvedEdges: { total: 30, rate: 0.5 } },
+    stats: { ragChunks: 2, entrySymbols: 1, graphNodes: 0, impactNodes: 0 },
+  });
+
+  assert.equal(gate.pass, false);
+  assert.ok(gate.failures.some((item) => item.includes("graph neighborhood")));
 });
 
 test("search-code exposes context, impact, files, and symbol-search modes for agents", async () => {

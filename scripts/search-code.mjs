@@ -36,6 +36,7 @@ const { values, positionals } = parseArgs({
     impact: { type: 'string', default: '' },
     files: { type: 'string', default: '' },
     context: { type: 'string', default: '' },
+    'task-type': { type: 'string', default: '' },
     'repo-map': { type: 'boolean', default: false },
     depth: { type: 'string', default: '1' },
     format: { type: 'string', default: 'flat' },
@@ -138,6 +139,7 @@ if (values['repo-map']) {
     limit,
     graphDepth: parseInt(values.depth, 10),
     useEmbeddings: !values['no-semantic'],
+    taskType: values['task-type'] || undefined,
   });
   if (values.json) console.log(JSON.stringify(context, null, 2));
   else console.log(context.markdown);

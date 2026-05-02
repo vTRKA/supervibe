@@ -29,6 +29,7 @@ test("memory health report exposes retrieval policy, token SLO, and review queue
       rootDir,
       now: "2026-05-02T00:00:00.000Z",
       contextPackMaxTokens: 2500,
+      changedFiles: [],
     });
 
     assert.equal(report.pass, true, formatMemoryHealthReport(report));
@@ -61,11 +62,46 @@ test("memory health queues missing memory references for review", async () => {
     const report = await buildMemoryHealthReport({
       rootDir,
       now: "2026-05-02T00:00:00.000Z",
+      changedFiles: [],
     });
 
     assert.equal(report.pass, true);
     assert.ok(report.warnings.some((warning) => warning.code === "memory-reference-review"));
     assert.match(formatMemoryHealthReport(report), /REFERENCE_ISSUES: 1/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("memory health includes git-diff invalidation and hierarchy metrics", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-health-invalidation-"));
+  try {
+    const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+    await mkdir(decisionsDir, { recursive: true });
+    await mkdir(join(rootDir, "src"), { recursive: true });
+    await writeFile(join(rootDir, "src", "checkout.ts"), "export const checkout = true;\n", "utf8");
+    await writeFile(join(decisionsDir, "checkout.md"), [
+      "---",
+      "id: checkout-memory",
+      "type: decision",
+      "date: 2026-05-01",
+      "tags: [commands, validation]",
+      "agent: test-agent",
+      "confidence: 10",
+      "---",
+      "Checkout memory cites `src/checkout.ts`.",
+    ].join("\n"), "utf8");
+
+    const report = await buildMemoryHealthReport({
+      rootDir,
+      now: "2026-05-02T00:00:00.000Z",
+      changedFiles: ["src/checkout.ts"],
+    });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.curation.invalidationCandidates, 1);
+    assert.equal(report.curation.hierarchy.current.count, 1);
+    assert.match(formatMemoryHealthReport(report), /INVALIDATION_CANDIDATES: 1/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }

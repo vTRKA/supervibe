@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.41] - 2026-05-02
+
+### Added
+
+- Added live agent retrieval telemetry health with evidence-contract scoring and
+  automatic strengthening task recommendations.
+- Added golden retrieval evaluation for memory IDs, RAG paths, CodeGraph symbols,
+  retrieval stages, precision/recall, and token budgets.
+- Added git-diff memory invalidation queues and hierarchical current/history
+  memory summary layers.
+- Added task-type CodeGraph quality gates so structural refactors require graph
+  neighborhood or impact evidence while docs/debug/feature tasks get appropriate
+  thresholds.
+
+### Changed
+
+- Task telemetry now records whether non-trivial agent outputs cite required
+  memory, RAG, and CodeGraph evidence or explicitly state that retrieval returned
+  no evidence.
+
 ## [2.0.40] - 2026-05-02
 
 ### Added

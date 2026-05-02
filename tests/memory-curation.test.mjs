@@ -155,3 +155,35 @@ test("memory curator queues missing references and near-duplicate active entries
   assert.match(formatMemoryCurationReport(report), /REF_MISSING: checkout-token-budget-a -> scripts\/missing\.mjs/);
   assert.match(formatMemoryCurationReport(report), /DUPLICATE: checkout-token-budget-a ~ checkout-token-budget-b/);
 });
+
+test("memory curator builds hierarchy and queues git-diff invalidation candidates", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-invalidation-"));
+  const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+  await mkdir(decisionsDir, { recursive: true });
+  await mkdir(join(rootDir, "src"), { recursive: true });
+  await writeFile(join(rootDir, "src", "checkout.ts"), "export const checkout = true;\n", "utf8");
+  await writeFile(join(decisionsDir, "checkout.md"), [
+    "---",
+    "id: checkout-current-memory",
+    "type: decision",
+    "date: 2026-05-01",
+    "tags: [commands, validation]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Checkout behavior is implemented in `src/checkout.ts`.",
+  ].join("\n"), "utf8");
+
+  const report = await curateProjectMemory({
+    rootDir,
+    now: "2026-05-02T00:00:00.000Z",
+    changedFiles: ["src/checkout.ts"],
+  });
+
+  assert.equal(report.hierarchy.current.count, 1);
+  assert.equal(report.hierarchy.history.count, 0);
+  assert.equal(report.invalidationCandidates.length, 1);
+  assert.equal(report.invalidationCandidates[0].entryId, "checkout-current-memory");
+  assert.equal(report.lifecycle.candidateQueues.invalidationReview.length, 1);
+  assert.match(formatMemoryCurationReport(report), /INVALIDATE: checkout-current-memory -> src\/checkout\.ts/);
+});

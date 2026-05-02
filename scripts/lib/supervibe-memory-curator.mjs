@@ -12,6 +12,7 @@ export async function curateProjectMemory({
   now = new Date().toISOString(),
   rebuildSqlite = false,
   useEmbeddings = false,
+  changedFiles = [],
 } = {}) {
   const memoryDir = join(rootDir, ".supervibe", "memory");
   await mkdir(memoryDir, { recursive: true });
@@ -21,6 +22,8 @@ export async function curateProjectMemory({
   const lifecycle = buildMemoryLifecycle(entries, { now, contradictions });
   const referenceIssues = detectMemoryReferenceIssues(entries, { rootDir });
   const duplicateCandidates = detectDuplicateMemoryCandidates(entries, { lifecycle });
+  const invalidationCandidates = detectMemoryInvalidationCandidates(entries, { lifecycle, changedFiles });
+  const hierarchy = buildHierarchicalMemorySummary(entries, { lifecycle });
   lifecycle.candidateQueues.referenceReview = referenceIssues.map((item) => ({
     id: `${item.entryId}:${item.reference}`,
     entryId: item.entryId,
@@ -33,6 +36,13 @@ export async function curateProjectMemory({
     ids: item.ids,
     reason: item.reason,
     score: item.score,
+    state: "new",
+  }));
+  lifecycle.candidateQueues.invalidationReview = invalidationCandidates.map((item) => ({
+    id: `${item.entryId}:${item.changedFiles[0] || "changed"}`,
+    entryId: item.entryId,
+    changedFiles: item.changedFiles,
+    reason: item.reason,
     state: "new",
   }));
   const tags = [...new Set(entries.flatMap((entry) => entry.tags))].sort();
@@ -57,6 +67,8 @@ export async function curateProjectMemory({
     quality: {
       referenceIssues,
       duplicateCandidates,
+      invalidationCandidates,
+      hierarchy,
     },
   };
   await writeFile(join(memoryDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`, "utf8");
@@ -70,6 +82,8 @@ export async function curateProjectMemory({
     contradictions,
     referenceIssues,
     duplicateCandidates,
+    invalidationCandidates,
+    hierarchy,
     lifecycle,
     tags,
   };
@@ -227,6 +241,63 @@ function detectDuplicateMemoryCandidates(entries = [], { lifecycle = null, thres
     .slice(0, 20);
 }
 
+function detectMemoryInvalidationCandidates(entries = [], { lifecycle = null, changedFiles = [] } = {}) {
+  const changed = new Set((changedFiles || []).map(normalizeReferencePath).filter(Boolean));
+  if (!changed.size) return [];
+  const lifecycleById = lifecycle?.byId || {};
+  const candidates = [];
+  for (const entry of entries) {
+    if (lifecycleById[entry.id]?.stale) continue;
+    const refs = extractLocalArtifactReferences(entry.body || "")
+      .map(normalizeReferencePath)
+      .filter(Boolean);
+    const affected = refs.filter((reference) => changed.has(reference));
+    if (!affected.length) continue;
+    candidates.push({
+      entryId: entry.id,
+      file: entry.file,
+      changedFiles: [...new Set(affected)].sort(),
+      reason: "referenced-file-changed",
+    });
+  }
+  return candidates.sort((a, b) => a.entryId.localeCompare(b.entryId));
+}
+
+function buildHierarchicalMemorySummary(entries = [], { lifecycle = null, maxCurrent = 12 } = {}) {
+  const lifecycleById = lifecycle?.byId || {};
+  const active = entries.filter((entry) => !lifecycleById[entry.id]?.stale);
+  const historical = entries.filter((entry) => lifecycleById[entry.id]?.stale);
+  const currentTop = active
+    .slice()
+    .sort((a, b) => b.confidence - a.confidence || String(b.date).localeCompare(String(a.date)))
+    .slice(0, maxCurrent)
+    .map((entry) => ({
+      id: entry.id,
+      type: entry.type,
+      tags: entry.tags,
+      confidence: entry.confidence,
+      summary: entry.summary,
+    }));
+  return {
+    current: {
+      count: active.length,
+      byType: countBy(active, "type"),
+      byTag: countTags(active),
+      top: currentTop,
+    },
+    review: {
+      stale: historical.length,
+      contradictions: lifecycle?.contradictionCount || 0,
+      queues: Object.fromEntries(Object.entries(lifecycle?.candidateQueues || {}).map(([key, value]) => [key, value.length])),
+    },
+    history: {
+      count: historical.length,
+      byType: countBy(historical, "type"),
+    },
+    tokenEstimate: Math.ceil(JSON.stringify(currentTop).length / 4),
+  };
+}
+
 export function annotateMemorySearchResults(results = [], curation = null) {
   const lifecycle = curation?.lifecycle?.byId || {};
   return results.map((result) => ({
@@ -259,14 +330,19 @@ export function formatMemoryCurationReport(report = {}) {
     `CONTRADICTIONS: ${report.contradictions?.length || 0}`,
     `REFERENCE_ISSUES: ${report.referenceIssues?.length || 0}`,
     `DUPLICATE_CANDIDATES: ${report.duplicateCandidates?.length || 0}`,
+    `INVALIDATION_CANDIDATES: ${report.invalidationCandidates?.length || 0}`,
+    `CURRENT_LAYER: ${report.hierarchy?.current?.count ?? "unknown"}`,
+    `HISTORY_LAYER: ${report.hierarchy?.history?.count ?? "unknown"}`,
     `REVIEW_MEMORY: ${queues.memoryReview?.length || 0}`,
     `REVIEW_REFERENCES: ${queues.referenceReview?.length || 0}`,
     `REVIEW_DUPLICATES: ${queues.duplicateReview?.length || 0}`,
+    `REVIEW_INVALIDATIONS: ${queues.invalidationReview?.length || 0}`,
     `INDEX: ${report.indexPath || "none"}`,
     ...((report.validation?.errors || []).map((error) => `ERROR: ${error}`)),
     ...((report.validation?.warnings || []).slice(0, 8).map((warning) => `WARN: ${warning}`)),
     ...((report.referenceIssues || []).slice(0, 8).map((issue) => `REF_MISSING: ${issue.entryId} -> ${issue.reference}`)),
     ...((report.duplicateCandidates || []).slice(0, 8).map((issue) => `DUPLICATE: ${issue.ids.join(" ~ ")} score=${issue.score}`)),
+    ...((report.invalidationCandidates || []).slice(0, 8).map((issue) => `INVALIDATE: ${issue.entryId} -> ${issue.changedFiles.join(",")}`)),
   ].join("\n");
 }
 
@@ -354,6 +430,23 @@ function intersectionSize(left = new Set(), right = new Set()) {
   let count = 0;
   for (const item of left) if (right.has(item)) count += 1;
   return count;
+}
+
+function countBy(entries = [], field) {
+  const out = {};
+  for (const entry of entries) {
+    const value = entry[field] || "unknown";
+    out[value] = (out[value] || 0) + 1;
+  }
+  return out;
+}
+
+function countTags(entries = []) {
+  const out = {};
+  for (const entry of entries) {
+    for (const tag of entry.tags || []) out[tag] = (out[tag] || 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(out).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 20));
 }
 
 function normalizeArray(value) {

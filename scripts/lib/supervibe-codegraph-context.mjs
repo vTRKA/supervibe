@@ -12,6 +12,7 @@ export async function buildCodeGraphContext({
   includeImpact = true,
   useEmbeddings = true,
   maxChars = 14_000,
+  taskType = inferCodeGraphTaskType(query || symbol || ""),
 } = {}) {
   const store = new CodeStore(rootDir, { useEmbeddings });
   await store.init();
@@ -46,6 +47,17 @@ export async function buildCodeGraphContext({
     });
     const graphHealth = store.getGraphHealthMetrics();
     const quality = buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, relatedFiles });
+    const taskTypeGate = evaluateCodeGraphTaskTypeGate({
+      taskType,
+      quality,
+      graphHealth,
+      stats: {
+        ragChunks: ragChunks.length,
+        entrySymbols: entrySymbols.length,
+        graphNodes: dedupedGraph.length,
+        impactNodes: impact.nodes.length,
+      },
+    });
     const context = {
       schemaVersion: 1,
       query: searchQuery,
@@ -59,6 +71,7 @@ export async function buildCodeGraphContext({
       retrievalPipeline,
       graphHealth,
       quality,
+      taskTypeGate,
       stats: {
         ragChunks: ragChunks.length,
         entrySymbols: entrySymbols.length,
@@ -105,6 +118,9 @@ function formatCodeGraphContextMarkdown(context = {}) {
     "",
     "## Graph Quality Gates",
     formatGraphQuality(context.quality),
+    "",
+    "## Task-Type Graph Gate",
+    formatTaskTypeGate(context.taskTypeGate),
     "",
     "## Metrics",
     formatList([
@@ -164,6 +180,49 @@ function buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, 
     fallbackReason: retrievalPipeline?.fallback?.reason || "",
     symbolCoverage: graphHealth?.sourceFileSymbolCoverage?.coverage ?? null,
     edgeResolutionRate: graphHealth?.crossResolvedEdges?.rate ?? null,
+  };
+}
+
+export function evaluateCodeGraphTaskTypeGate({
+  taskType = "feature",
+  quality = {},
+  graphHealth = {},
+  stats = {},
+} = {}) {
+  const normalized = normalizeTaskType(taskType);
+  const failures = [];
+  const warnings = [...(quality.warnings || [])];
+  const symbolCoverage = Number(quality.symbolCoverage ?? graphHealth?.sourceFileSymbolCoverage?.coverage ?? 0);
+  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const hasGraphEvidence = Number(stats.graphNodes || 0) > 0 || Number(stats.impactNodes || 0) > 0;
+  const hasSourceEvidence = Number(stats.ragChunks || 0) > 0 || Number(stats.entrySymbols || 0) > 0;
+
+  if (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized)) {
+    if (!quality.pass) failures.push("base graph context quality failed");
+    if (!hasGraphEvidence) failures.push("structural task requires graph neighborhood or impact evidence");
+    if (symbolCoverage < 0.2) failures.push("structural task requires >=20% symbol coverage");
+    if ((graphHealth?.crossResolvedEdges?.total || 0) >= 20 && edgeResolution < 0.05) failures.push("structural task requires >=5% cross-file edge resolution");
+  } else if (["debug", "feature"].includes(normalized)) {
+    if (!hasSourceEvidence) failures.push("task requires source RAG or symbol evidence");
+    if (!hasGraphEvidence) warnings.push("graph evidence missing; keep changes localized until graph context is available");
+  } else if (normalized === "docs") {
+    if (!hasSourceEvidence && !hasGraphEvidence) warnings.push("docs task has no code evidence; acceptable only for text-only docs");
+  }
+
+  return {
+    taskType: normalized,
+    pass: failures.length === 0,
+    failures,
+    warnings,
+    requirements: requirementsForTaskType(normalized),
+    metrics: {
+      symbolCoverage,
+      edgeResolution,
+      graphNodes: Number(stats.graphNodes || 0),
+      impactNodes: Number(stats.impactNodes || 0),
+      ragChunks: Number(stats.ragChunks || 0),
+      entrySymbols: Number(stats.entrySymbols || 0),
+    },
   };
 }
 
@@ -246,6 +305,16 @@ function formatGraphQuality(quality = {}) {
   ]);
 }
 
+function formatTaskTypeGate(gate = {}) {
+  return formatList([
+    `taskType=${gate.taskType || "unknown"}`,
+    `pass=${Boolean(gate.pass)}`,
+    `requirements=${(gate.requirements || []).join("; ") || "none"}`,
+    `failures=${gate.failures?.join("; ") || "none"}`,
+    `warnings=${gate.warnings?.join("; ") || "none"}`,
+  ]);
+}
+
 function formatPercent(value) {
   return Number.isFinite(Number(value)) ? `${(Number(value) * 100).toFixed(1)}%` : "unknown";
 }
@@ -265,4 +334,30 @@ function dedupeBy(items, keyFn) {
 function trimMarkdown(markdown, maxChars) {
   if (!maxChars || markdown.length <= maxChars) return markdown;
   return `${markdown.slice(0, Math.max(0, maxChars - 90))}\n\n## Trim Notice\n- Context trimmed to ${maxChars} chars.\n`;
+}
+
+function inferCodeGraphTaskType(text = "") {
+  const value = String(text || "").toLowerCase();
+  if (/(rename|move|delete|extract|public api|refactor)/.test(value)) return "refactor";
+  if (/(debug|bug|fix|root cause)/.test(value)) return "debug";
+  if (/(docs|readme|documentation)/.test(value)) return "docs";
+  return "feature";
+}
+
+function normalizeTaskType(taskType = "feature") {
+  const value = String(taskType || "feature").toLowerCase();
+  if (/(rename|move|delete|extract|public-api|public api)/.test(value)) return value.replace(/\s+/g, "-");
+  if (/refactor/.test(value)) return "refactor";
+  if (/debug|bug|fix/.test(value)) return "debug";
+  if (/doc/.test(value)) return "docs";
+  return "feature";
+}
+
+function requirementsForTaskType(taskType) {
+  if (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(taskType)) {
+    return ["source RAG", "symbol evidence", "graph neighborhood or impact", "symbol coverage >=20%", "edge resolution >=5% when applicable"];
+  }
+  if (["debug", "feature"].includes(taskType)) return ["source RAG or symbol evidence", "graph warning surfaced when missing"];
+  if (taskType === "docs") return ["code evidence optional when task is text-only"];
+  return ["source evidence"];
 }

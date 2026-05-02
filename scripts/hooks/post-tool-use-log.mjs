@@ -8,6 +8,7 @@
 // MUST be fast (< 100ms) and failure-tolerant — never blocks the main flow.
 
 import { logInvocation } from '../lib/agent-invocation-logger.mjs';
+import { evaluateAgentOutputEvidenceContract } from '../lib/supervibe-agent-retrieval-telemetry.mjs';
 
 const LOW_CONFIDENCE_THRESHOLD = 8.0;
 
@@ -109,6 +110,11 @@ async function main() {
   const confidence = extractConfidence(responseText);
   const override = extractOverride(responseText);
   const subtoolUsage = extractSubtoolUsage(responseText);
+  const evidenceContract = evaluateAgentOutputEvidenceContract({
+    taskText: description,
+    outputText: responseText,
+    subtoolUsage,
+  });
 
   const taskSummary = description.slice(0, 200);
   const score = confidence ?? 0;
@@ -123,6 +129,7 @@ async function main() {
       duration_ms: payload.duration_ms ?? null,
       session_id: payload.session_id ?? null,
       subtool_usage: subtoolUsage,
+      evidence_contract: evidenceContract,
     });
   } catch { /* silent */ }
 
