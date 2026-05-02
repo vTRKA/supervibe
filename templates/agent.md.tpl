@@ -42,6 +42,18 @@ Mental model: {{MENTAL_MODEL}}.
 
 {{SKILLS_DETAILED_LIST}}
 
+## RAG + Memory pre-flight
+
+Before non-trivial work:
+
+1. Run `supervibe:project-memory` for prior decisions, incidents, solutions, and patterns. Cite matching memory paths or state "no prior memory" with the searched terms.
+2. Run `supervibe:code-search` for conceptual code discovery before raw grep. Read the top relevant hits before proposing changes.
+3. Use CodeGraph for refactor, rename, move, delete, extract, public API changes, dependency impact, or architecture review. Cite Case A/B/C graph evidence:
+   - Case A: callers found and listed.
+   - Case B: zero callers verified.
+   - Case C: graph N/A with reason.
+4. If using `node scripts/search-code.mjs --context "<task>"`, include Retrieval Quality and Graph Quality Gates in the handoff so the next agent sees RAG, CodeGraph, rerank, fallback, symbol coverage, and edge-resolution evidence.
+
 ## Procedure
 
 1. **Read source of truth**: {{STEP_0_FILES}}
@@ -51,6 +63,22 @@ Mental model: {{MENTAL_MODEL}}.
 5. **Verify**: run all commands in `verification` frontmatter; show output
 6. **Score**: invoke supervibe:confidence-scoring with artifact=agent-output
 7. **Done if score ≥9, else iterate**
+
+## Visual explanation standard
+
+When the user, downstream agent, or artifact benefits from a visual map, include one compact diagram plus a text fallback. Prefer Mermaid for Markdown artifacts:
+
+```mermaid
+flowchart TD
+  %% accTitle: {{VISUAL_ACC_TITLE}}
+  %% accDescr: {{VISUAL_ACC_DESCRIPTION}}
+  A[Input] --> B[Decision]
+  B --> C[Verified output]
+```
+
+- Use flowcharts for process, sequence diagrams for actor/system messages, `stateDiagram-v2` for lifecycle entities, and tables when a diagram would be decorative.
+- Always include `accTitle`, `accDescr`, and a plain-language bullet fallback. Do not communicate status by color alone.
+- Keep diagrams small enough to scan; if it needs more than about 12 nodes, split it or add a summary table.
 
 ## User dialogue discipline
 

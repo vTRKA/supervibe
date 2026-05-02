@@ -8,8 +8,8 @@ prerequisites: [user-request-or-plan]
 emits-artifact: loop-state
 confidence-rubric: confidence-rubrics/autonomous-loop.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-29
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Autonomous Agent Loop
@@ -43,6 +43,9 @@ last-verified: 2026-04-29
    to reach production but split execution into verified phases.
 7. Build a minimal context pack before dispatch: memory lookup, Code RAG,
    CodeGraph when structurally relevant, then targeted file reads.
+   The context pack must preserve Retrieval Quality, Graph Quality Gates,
+   fallback reason, source citations, semantic anchors, and warnings. If graph
+   warnings affect a structural task, stop or repair before dispatching that task.
 8. Dispatch specialist chains by task type and verify required agents, skills,
    MCPs, reviewer independence, and fallback availability.
 9. Execute only ready-front tasks. For fresh-context mode, pass only the task
@@ -66,6 +69,9 @@ last-verified: 2026-04-29
    hidden optional functionality entered execution.
 14. Write final report with task, agent, context, handoff, score, verification,
    approval, rollback, and artifact-retention evidence.
+   Include a visual status summary: Mermaid graph export or UI/control-plane
+   link plus a text fallback listing ready, blocked, review, done, open gates,
+   and release blockers.
 15. Use `status`, `graph`, `doctor`, and `prime` before resuming a long run in a
    fresh context; never rely on hidden conversation state.
 

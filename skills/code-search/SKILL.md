@@ -8,8 +8,8 @@ prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Code Search
@@ -75,6 +75,19 @@ Use these before broad file reads:
 
 For refactors, prefer `--impact` plus `--neighbors` over raw grep. The graph resolver is import-aware and intentionally leaves ambiguous same-name edges unresolved instead of guessing.
 
+## Quality standard
+
+Agent-facing retrieval is not just "some hits were found." A high-quality context pack must show:
+
+- rewritten query and retrieval stage counts (`rewrite`, `exact-symbol`, `fts`, `embedding`, `repo-map`, `graph-neighbor`, `dedupe`, `rerank`);
+- selected source citations with file:line ranges;
+- fallback reason when results are empty, weak, or truncated;
+- entry symbols, graph neighborhood, and impact radius when structural work is possible;
+- semantic anchors when files define them;
+- Graph Quality Gates: generated-file leakage, minified top symbols, symbol coverage, cross-file edge resolution, and warnings.
+
+If `--context` reports graph quality warnings, keep source RAG usable but do not perform a structural refactor until the graph query needed for that refactor has explicit Case A/B/C evidence.
+
 ## Output contract
 
 Returns:
@@ -94,6 +107,7 @@ Returns:
 
 - search-code.mjs returns >0 results OR explicit "no matches"
 - Top hits read for context before claiming complete
+- `--context` output includes Retrieval Quality and Graph Quality Gates when used for agent handoff
 
 ## Related
 

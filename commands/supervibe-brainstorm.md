@@ -33,6 +33,8 @@ Treat the most recent user message as the topic.
    - First-principle decomposition
    - Product type, MVP path, SDLC stage, launch model, and production owner
    - Scope Safety Gate: include/defer/reject/spike decisions, why-not rationale, and tradeoffs
+   - Evidence and retrieval plan: memory, Code RAG, CodeGraph need, citations, stale checks
+   - Visual explanation plan: Mermaid/table choice with `accTitle`, `accDescr`, and text fallback
    - Stakeholder map
    - Competitive scan (when applicable, via `supervibe:mcp-discovery` for Firecrawl)
    - 2-3 alternative approaches with kill criteria
@@ -77,6 +79,8 @@ Score:     <N>/10  Rubric: requirements
 Validator: validate-spec-artifacts PASS
 Production readiness: covered
 Scope safety: present, with deferred/rejected additions explained
+Evidence plan: memory/RAG/CodeGraph commands and citations present
+Visual explanation: diagram/table choice with accessible fallback present
 10/10 scorecard: present
 
 Next:      /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md

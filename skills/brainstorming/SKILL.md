@@ -8,8 +8,8 @@ prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Brainstorming
@@ -64,6 +64,14 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 13. **User review of written spec** — explicit approval required.
 14. **Handoff** to `supervibe:writing-plans`.
 15. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
+
+## Evidence and visual explanation gates
+
+Every brainstorm artifact must include:
+
+- **Evidence and retrieval plan**: project-memory entries checked, Code RAG queries needed for planning, whether CodeGraph evidence is mandatory, and external primary sources used for current best practices.
+- **Visual explanation plan**: Mermaid flowchart, sequence diagram, state diagram, C4-style context, or explicit table-only decision. Diagrams must include `accTitle`, `accDescr`, and a text fallback per `docs/references/visual-explanation-standard.md`.
+- **RAG/CodeGraph quality handoff**: if the next step changes code, name the exact `search-code --context`, `--callers`, `--impact`, or `supervibe-context-pack` command the planner should run.
 
 ## Output contract
 

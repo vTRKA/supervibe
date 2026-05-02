@@ -29,6 +29,43 @@ and screenshots containing private data.
 
 ---
 
+## Retrieval, CodeGraph, And Visual Evidence
+
+### Retrieval contract
+- Project memory entries read:
+- Code RAG queries:
+- Top source citations:
+- Freshness / stale-fact checks:
+
+### CodeGraph contract
+- Graph mode: N/A / callers / callees / neighbors / impact
+- Required commands:
+  ```bash
+  node scripts/search-code.mjs --context "<task or symbol>" --limit 10
+  node scripts/search-code.mjs --callers "<symbol>"
+  node scripts/search-code.mjs --impact "<symbol>" --depth 2
+  ```
+- Expected evidence: Case A callers found / Case B zero callers / Case C graph N/A.
+- Resolution caveat: report source coverage, symbol coverage, edge resolution, and any warnings.
+
+### Visual explanation contract
+- Required diagram: Mermaid flowchart / sequence / stateDiagram-v2 / C4-style context / table-only.
+- Audience: beginner / engineer / operator.
+- Accessibility: include `accTitle`, `accDescr`, and a text fallback for the same information.
+
+```mermaid
+flowchart LR
+  %% accTitle: <single-line accessible title>
+  %% accDescr: <plain-language summary of phases, dependencies, and release gates>
+  Spec[Approved spec] --> Plan[Reviewed plan]
+  Plan --> Build[Implementation]
+  Build --> Verify[Verification]
+  Verify --> Release[Release gate]
+  Release --> Learn[Post-release learning]
+```
+
+---
+
 ## File Structure
 
 ### Created

@@ -25,7 +25,11 @@ test("agent-facing codegraph context combines RAG chunks, graph neighbors, impac
     assert.ok(context.graphEvidence.some((row) => row.name === "useUserVPNConfigQuery"));
     assert.ok(context.relatedFiles.includes("src/hooks/vpn.ts"));
     assert.ok(context.semanticAnchors.some((row) => row.anchorId === "ideas-page"));
+    assert.equal(context.quality.pass, true);
+    assert.ok(context.retrievalPipeline.stages.some((stage) => stage.name === "rerank"));
     assert.match(context.markdown, /Supervibe CodeGraph Context/);
+    assert.match(context.markdown, /Retrieval Quality/);
+    assert.match(context.markdown, /Graph Quality Gates/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -37,6 +41,7 @@ test("search-code exposes context, impact, files, and symbol-search modes for ag
   try {
     const context = await execFileAsync(process.execPath, [cli, "--context", "IdeasPage useUserVPNConfigQuery", "--no-semantic"], { cwd: root });
     assert.match(context.stdout, /Graph Neighborhood/);
+    assert.match(context.stdout, /Retrieval Quality/);
     assert.match(context.stdout, /useUserVPNConfigQuery/);
 
     const impact = await execFileAsync(process.execPath, [cli, "--impact", "useUserVPNConfigQuery", "--no-semantic"], { cwd: root });

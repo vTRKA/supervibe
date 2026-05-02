@@ -28,6 +28,26 @@
 
 ---
 
+## Evidence and retrieval plan
+
+### Project memory
+- Query:
+- Relevant entries:
+- Decision impact:
+
+### RAG and CodeGraph
+- Code RAG query plan:
+- CodeGraph needed? yes / no
+- Graph evidence required before implementation:
+- Citation expectations:
+
+### Research basis
+- Official docs / primary sources:
+- Competitive or reference products:
+- Stale facts that must be re-checked before planning:
+
+---
+
 ## Product and SDLC fit
 
 ### Project type
@@ -66,6 +86,35 @@
 - Additions that would hurt the project now:
 - Smallest production-safe alternative:
 - Evidence required to promote deferred items:
+
+---
+
+## Visual explanation plan
+
+### Diagram type
+- Mermaid flowchart / sequence diagram / stateDiagram-v2 / C4-style context / table-only
+
+### Audience levels
+- Beginner summary:
+- Engineer detail:
+- Operator/release view:
+
+### Accessibility
+- `accTitle`:
+- `accDescr`:
+- Text fallback:
+- Do not rely on color alone:
+
+### Required visual
+
+```mermaid
+flowchart TD
+  %% accTitle: <single-line accessible title>
+  %% accDescr: <plain-language summary of the diagram>
+  A[Current state] --> B{Decision}
+  B -->|Include| C[Smallest production-safe slice]
+  B -->|Defer / reject| D[Parked with evidence trigger]
+```
 
 ---
 

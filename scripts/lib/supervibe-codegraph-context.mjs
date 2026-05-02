@@ -1,5 +1,6 @@
 import { CodeStore } from "./code-store.mjs";
 import { impactRadius, neighborhood, searchSymbols } from "./code-graph-queries.mjs";
+import { runRetrievalPipeline } from "./supervibe-retrieval-pipeline.mjs";
 
 export async function buildCodeGraphContext({
   rootDir = process.cwd(),
@@ -35,6 +36,16 @@ export async function buildCodeGraphContext({
       : { roots: [], nodes: [], edges: [] };
     const relatedFiles = collectRelatedFiles({ ragChunks, entrySymbols, graphEvidence: dedupedGraph, impact });
     const semanticAnchors = collectSemanticAnchors(store.db, relatedFiles, searchQuery).slice(0, limit);
+    const retrievalPipeline = runRetrievalPipeline({
+      query: searchQuery,
+      ftsCandidates: ragChunks.map((row) => ({ id: `${row.file}:${row.startLine}`, path: row.file, score: row.score })),
+      embeddingCandidates: useEmbeddings ? ragChunks.map((row) => ({ id: `${row.file}:${row.startLine}:semantic`, path: row.file, score: row.semantic || row.score })) : [],
+      exactSymbolCandidates: entrySymbols.map((row) => ({ id: row.id, symbol: row.name, path: row.path, score: row.score / 100 || 0.9 })),
+      repoMapCandidates: relatedFiles.map((path, index) => ({ path, rank: relatedFiles.length - index })),
+      graphCandidates: dedupedGraph.map((row) => ({ symbol: row.name, path: row.path, score: 0.8 })),
+    });
+    const graphHealth = store.getGraphHealthMetrics();
+    const quality = buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, relatedFiles });
     const context = {
       schemaVersion: 1,
       query: searchQuery,
@@ -45,6 +56,9 @@ export async function buildCodeGraphContext({
       impact,
       relatedFiles,
       semanticAnchors,
+      retrievalPipeline,
+      graphHealth,
+      quality,
       stats: {
         ragChunks: ragChunks.length,
         entrySymbols: entrySymbols.length,
@@ -86,6 +100,12 @@ function formatCodeGraphContextMarkdown(context = {}) {
     "## Semantic Anchors",
     formatList((context.semanticAnchors || []).map((anchor) => `${anchor.path}:${anchor.startLine} ${anchor.anchorId} ${anchor.symbolName || ""} ${anchor.responsibility || ""}`)),
     "",
+    "## Retrieval Quality",
+    formatRetrievalQuality(context.retrievalPipeline),
+    "",
+    "## Graph Quality Gates",
+    formatGraphQuality(context.quality),
+    "",
     "## Metrics",
     formatList([
       `ragChunks=${context.stats?.ragChunks || 0}`,
@@ -109,6 +129,42 @@ function selectSeedNames({ symbol, ragChunks, entrySymbols, query }) {
     if (/[A-Z_]/.test(token) || /^use[A-Z0-9_]/.test(token)) seeds.push(token);
   }
   return [...new Set(seeds)].filter(Boolean);
+}
+
+function buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, relatedFiles }) {
+  const failures = [];
+  const warnings = [];
+  const requiredStages = ["rewrite", "exact-symbol", "fts", "embedding", "repo-map", "graph-neighbor", "dedupe", "rerank"];
+  const stages = new Set((retrievalPipeline?.stages || []).map((stageItem) => stageItem.name));
+  for (const stageName of requiredStages) {
+    if (!stages.has(stageName)) failures.push(`missing retrieval stage: ${stageName}`);
+  }
+  if (!retrievalPipeline?.fallback?.reason) failures.push("missing fallback reason");
+  if ((graphHealth?.sourceFileSymbolCoverage?.generatedIndexedFiles || 0) > 0) {
+    failures.push("generated files indexed in graph context");
+  }
+  if ((graphHealth?.symbolNameQuality?.minifiedTopSymbols || []).length > 0) {
+    failures.push("minified symbols appear in top graph symbols");
+  }
+  if ((graphHealth?.sourceFileSymbolCoverage?.files || 0) >= 5 && (graphHealth?.sourceFileSymbolCoverage?.coverage || 0) < 0.2) {
+    warnings.push("low symbol coverage for indexed files");
+  }
+  if ((graphHealth?.crossResolvedEdges?.total || 0) >= 20 && (graphHealth?.crossResolvedEdges?.rate || 0) < 0.05) {
+    warnings.push("low cross-file edge resolution");
+  }
+  if ((semanticAnchors || []).length === 0 && (relatedFiles || []).length > 0) {
+    warnings.push("no semantic anchors found for related files");
+  }
+  return {
+    pass: failures.length === 0,
+    failures,
+    warnings,
+    stageCount: retrievalPipeline?.stages?.length || 0,
+    selectedCount: retrievalPipeline?.selected?.length || 0,
+    fallbackReason: retrievalPipeline?.fallback?.reason || "",
+    symbolCoverage: graphHealth?.sourceFileSymbolCoverage?.coverage ?? null,
+    edgeResolutionRate: graphHealth?.crossResolvedEdges?.rate ?? null,
+  };
 }
 
 function collectRelatedFiles({ ragChunks, entrySymbols, graphEvidence, impact }) {
@@ -165,6 +221,33 @@ function formatList(items) {
   const list = (items || []).filter(Boolean);
   if (!list.length) return "- none";
   return list.map((item) => `- ${item}`).join("\n");
+}
+
+function formatRetrievalQuality(pipeline = {}) {
+  const stages = (pipeline.stages || [])
+    .map((stageItem) => `${stageItem.name}:${stageItem.candidateCount}`)
+    .join(", ") || "none";
+  return formatList([
+    `pass=${Boolean(pipeline.pass)}`,
+    `rewrittenQuery=${pipeline.rewrittenQuery || pipeline.query || "none"}`,
+    `stages=${stages}`,
+    `selected=${pipeline.selected?.length || 0}`,
+    `fallback=${pipeline.fallback?.used ? "used" : "not-used"} (${pipeline.fallback?.reason || "none"})`,
+  ]);
+}
+
+function formatGraphQuality(quality = {}) {
+  return formatList([
+    `pass=${Boolean(quality.pass)}`,
+    `failures=${quality.failures?.join("; ") || "none"}`,
+    `warnings=${quality.warnings?.join("; ") || "none"}`,
+    `symbolCoverage=${formatPercent(quality.symbolCoverage)}`,
+    `edgeResolution=${formatPercent(quality.edgeResolutionRate)}`,
+  ]);
+}
+
+function formatPercent(value) {
+  return Number.isFinite(Number(value)) ? `${(Number(value) * 100).toFixed(1)}%` : "unknown";
 }
 
 function dedupeBy(items, keyFn) {

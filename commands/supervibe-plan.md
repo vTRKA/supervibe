@@ -38,6 +38,7 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
    - File structure (which files to create / modify, with paths)
    - Critical path
    - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
+   - Retrieval, CodeGraph, and visual evidence contract
    - Delivery strategy from MVP to production
    - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
    - Phased tasks (≤5 minutes each, with verification commands)
@@ -94,6 +95,8 @@ Tasks:       <count>  (parallelizable batches: <count>)
 Critical path: <N> tasks
 Production readiness: test/security/perf/observability/rollback/release covered
 Scope safety: approved scope mapped; deferred/rejected extras documented
+Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
+Visual evidence: Mermaid/table plan with accessible title, description and text fallback
 Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS

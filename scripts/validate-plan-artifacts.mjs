@@ -92,7 +92,7 @@ export function validatePlanArtifact(markdown) {
     issues.push('plan format: missing hard constraints block');
   }
 
-  for (const section of ['AI/Data Boundary', 'File Structure', 'Critical Path', 'Scope Safety Gate', 'Delivery Strategy', 'Production Readiness', 'Final 10/10 Acceptance Gate', 'Self-Review', 'Execution Handoff']) {
+  for (const section of ['AI/Data Boundary', 'Retrieval, CodeGraph, And Visual Evidence', 'File Structure', 'Critical Path', 'Scope Safety Gate', 'Delivery Strategy', 'Production Readiness', 'Final 10/10 Acceptance Gate', 'Self-Review', 'Execution Handoff']) {
     if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
   }
 
@@ -104,6 +104,11 @@ export function validatePlanArtifact(markdown) {
   const fileStructure = sectionBody(markdown, 'File Structure');
   if (!/(Create|Created|Modify|Modified)/i.test(fileStructure) || !/`[^`]+`/.test(fileStructure)) {
     issues.push('file structure: expected concrete create/modify paths');
+  }
+
+  const retrievalVisual = sectionBody(markdown, 'Retrieval, CodeGraph, And Visual Evidence');
+  for (const term of ['memory', 'RAG', 'CodeGraph', 'Mermaid', 'accTitle', 'accDescr', 'fallback']) {
+    if (!new RegExp(term, 'i').test(retrievalVisual)) issues.push(`retrieval/codegraph/visual evidence: missing ${term}`);
   }
 
   const criticalPath = sectionBody(markdown, 'Critical Path');

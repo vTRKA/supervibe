@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.31] - 2026-05-02
+
+### Added
+
+- Added template quality validation for core brainstorm, plan, agent, and skill
+  templates and wired it into `npm run check`.
+- Added visual explanation standard for accessible Mermaid diagrams and text
+  fallbacks.
+- Added knowledge/autonomy/visualization audit with consolidated TODO and
+  research basis.
+
+### Changed
+
+- Strengthened brainstorm, plan, and autonomous-loop contracts with explicit
+  memory, RAG, CodeGraph, visual, accessibility, fallback, and production
+  evidence gates.
+- Expanded agent-facing CodeGraph context with Retrieval Quality and Graph
+  Quality Gates.
+- Updated RAG/CodeGraph reference docs with context-pack quality requirements.
+
 ## [2.0.30] - 2026-05-02
 
 ### Added

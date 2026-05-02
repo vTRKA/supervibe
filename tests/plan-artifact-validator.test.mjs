@@ -27,6 +27,14 @@ const GOOD_PLAN = `# Billing Export Implementation Plan
 | External network/API | no External calls | N/A | explicit approval |
 | PII/secrets | references only | redact PII | approver |
 
+## Retrieval, CodeGraph, And Visual Evidence
+
+- Memory: search project memory for billing export decisions before edits.
+- RAG: run source RAG for billing export route and service patterns.
+- CodeGraph: graph Case C unless exported route symbols are renamed; if renamed, run callers and impact.
+- Mermaid: include accTitle and accDescr on the release-flow diagram.
+- Text fallback: explain plan -> build -> verify -> release path.
+
 ## File Structure
 
 ### Created

@@ -24,6 +24,25 @@ Before doing anything, read:
 - {{SOURCE_FILE_1}}
 - {{SOURCE_FILE_2}}
 
+## Retrieval and evidence policy
+
+- For non-trivial planning, implementation, refactor, architecture, or production work, run `supervibe:project-memory` before proposing decisions.
+- For unfamiliar code or code changes, run `supervibe:code-search` before broad file reads.
+- Use CodeGraph for rename, move, delete, extract, public API, dependency-impact, and multi-file refactor work.
+- If `node scripts/search-code.mjs --context "<task>"` is used, preserve the RAG Retrieval Quality, CodeGraph Quality Gates, citations, fallback reason, and graph warnings in the output.
+- Cite memory IDs, source file:line references, graph symbols, and verification commands in the evidence ledger.
+
+## Visual explanation policy
+
+Use a visual only when it reduces ambiguity for the user or downstream agent. Prefer:
+
+- Mermaid `flowchart` for process and decision flow.
+- Mermaid `sequenceDiagram` for actor/system handoffs.
+- Mermaid `stateDiagram-v2` for lifecycle states.
+- Tables when exact comparison matters more than topology.
+
+Every Mermaid diagram must include `accTitle`, `accDescr`, and a text fallback. Do not use color as the only signal.
+
 ## Decision tree
 
 ```

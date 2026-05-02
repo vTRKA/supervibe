@@ -235,6 +235,12 @@ Execution modes:
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
   so the worker and reviewer see the current project/epic/task phase, claim,
   gate, and next action before acting.
+- Include Retrieval Quality and Graph Quality Gates in fresh-context handoffs
+  so workers see source citations, rerank/fallback status, semantic anchors,
+  graph warnings, symbol coverage, and edge-resolution caveats before editing.
+- Include a visual status summary in long-run reports: `/supervibe-loop graph
+  --format mermaid` output or `/supervibe-ui` URL plus a text fallback listing
+  ready, blocked, review, done, open gates, release blockers, and rollback owner.
 - Treat task score below 9.0 as incomplete.
 - Stop for policy, budget, missing access, production approval, cancellation,
   state migration, unapproved scope expansion, or side-effect reconciliation.

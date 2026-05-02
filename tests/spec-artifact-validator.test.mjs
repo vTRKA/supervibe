@@ -98,6 +98,12 @@ Admins need a reliable billing export path that avoids manual SQL.
 ### Non-goals
 - PDF export.
 
+## Evidence and retrieval plan
+- Memory: search project memory for prior billing export decisions.
+- RAG: run source RAG for billing export controller and service patterns.
+- CodeGraph: graph N/A for brainstorm; planner must run CodeGraph if public API changes.
+- Citations: cite memory IDs and source file:line references in the plan.
+
 ## Product and SDLC fit
 - MVP path: ship synchronous export first, async only if measured need appears.
 - SDLC stage: discovery complete, ready for implementation planning, test design, release review, and production rollout.
@@ -110,6 +116,11 @@ Admins need a reliable billing export path that avoids manual SQL.
 | Synchronous CSV export | include | Admin outcome and finance workflow metric | Low risk and easy rollback | PDF export stays deferred |
 | Async export queue | defer | No failing test or support evidence yet | Adds jobs, emails, storage, support risk | Promote only if 10k rows exceeds 30s |
 | PDF export | reject | No current user evidence | High maintenance and QA cost | Won't build until a paid workflow needs it |
+
+## Visual explanation plan
+- Mermaid flowchart with accTitle and accDescr.
+- Text fallback describes CSV export decision and deferred async queue.
+- Do not rely on color alone.
 
 ## Options explored
 ### Option A: Synchronous export

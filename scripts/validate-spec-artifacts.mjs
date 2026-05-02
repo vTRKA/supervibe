@@ -21,8 +21,10 @@ const REQUIRED_INTAKE_SECTIONS = [
 const REQUIRED_BRAINSTORM_SECTIONS = [
   'Problem statement',
   'First-principle decomposition',
+  'Evidence and retrieval plan',
   'Product and SDLC fit',
   'Scope Safety Gate',
+  'Visual explanation plan',
   'Options explored',
   'Non-obvious risks',
   'Kill criteria',
@@ -156,7 +158,17 @@ export function validateBrainstormSpec(markdown) {
     if (!new RegExp(term, 'i').test(sdlc)) issues.push(`product and SDLC fit: missing ${term}`);
   }
 
+  const evidence = sectionBody(markdown, 'Evidence and retrieval plan');
+  for (const term of ['memory', 'RAG', 'CodeGraph', 'citation']) {
+    if (!new RegExp(term, 'i').test(evidence)) issues.push(`evidence and retrieval plan: missing ${term}`);
+  }
+
   issues.push(...validateScopeSafety(sectionBody(markdown, 'Scope Safety Gate'), 'scope safety gate'));
+
+  const visual = sectionBody(markdown, 'Visual explanation plan');
+  for (const term of ['Mermaid', 'accTitle', 'accDescr', 'fallback']) {
+    if (!new RegExp(term, 'i').test(visual)) issues.push(`visual explanation plan: missing ${term}`);
+  }
 
   if (countMarkdownItems(sectionBody(markdown, 'Non-obvious risks')) < 3) {
     issues.push('non-obvious risks: expected at least 3 risks');

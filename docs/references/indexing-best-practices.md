@@ -40,6 +40,9 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 - Graph symbol extraction is a secondary layer. Source RAG can be ready while a
   language query is degraded; use `--strict-index-health` only when explicitly
   auditing graph extraction.
+- Agent-facing context must expose quality metadata, not only raw hits:
+  retrieval stage counts, rerank status, fallback reason, symbol coverage,
+  edge-resolution rate, generated-file leakage, and graph warnings.
 
 ## Repair
 
@@ -50,3 +53,23 @@ Supervibe code indexing uses one policy module: `scripts/lib/supervibe-index-pol
 - `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` catches graph extraction and cross-file resolution up after source RAG is healthy.
 - `node scripts/build-code-index.mjs --root . --force --health` is a deliberate full rebuild path, not the default repair path.
 - `node scripts/build-code-index.mjs --root . --explain-policy` prints include and exclude reasons for auditing.
+
+## Best-Practice Alignment
+
+- Treat the index as a pipeline with observable stages and repair commands,
+  matching the GraphRAG pattern of explicit indexing workflows.
+- Combine lexical source search, semantic retrieval, repo map, graph
+  neighborhood, rerank, and fallback instead of relying on one flat retrieval
+  layer.
+- Keep graph retrieval incremental and quality-gated; graph warnings must not
+  hide source RAG readiness, but structural refactors still require graph
+  evidence before edits.
+- Use source citations and graph node/edge evidence in agent handoffs so users
+  and downstream agents can audit why context was selected.
+
+## Source Basis
+
+- Microsoft GraphRAG indexing overview: https://microsoft.github.io/graphrag/index/overview/
+- LightRAG paper: https://arxiv.org/abs/2410.05779
+- Tree-sitter repository: https://github.com/tree-sitter/tree-sitter
+- SCIP Code Intelligence Protocol: https://github.com/sourcegraph/scip

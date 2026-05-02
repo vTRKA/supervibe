@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { extname } from "node:path";
 import test from "node:test";
 
@@ -151,6 +151,7 @@ function trackedTextFiles() {
   return output
     .split("\n")
     .filter(Boolean)
+    .filter((file) => existsSync(file))
     .filter((file) => file !== "tests/supervibe-project-state-root.test.mjs")
     .filter((file) => !file.startsWith("models/") && !file.startsWith("grammars/"))
     .filter((file) => TEXT_EXTENSIONS.has(extname(file)));

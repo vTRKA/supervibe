@@ -8,8 +8,8 @@ prerequisites: [requirements-spec]
 emits-artifact: implementation-plan
 confidence-rubric: confidence-rubrics/plan.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Writing Plans
@@ -33,6 +33,15 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 If spec covers multiple independent subsystems → STOP, return to brainstorming for decomposition. One plan = one coherent subsystem.
 
 If the plan includes functionality not present in the approved spec, Scope Safety Gate, or explicit user-approved change request → STOP and either remove it, defer it, or record a scope-change tradeoff. Do not let "nice to have" work enter implementation tasks silently.
+
+## Evidence and visual plan gate
+
+Every implementation plan must add `## Retrieval, CodeGraph, And Visual Evidence` before file-structure tasks:
+
+- project-memory and Code RAG commands the executor must run before edits;
+- CodeGraph mode and Case A/B/C expectation for structural tasks;
+- expected source citations, graph warnings, and fallback handling;
+- one compact Mermaid/table visual for critical path, state flow, architecture, or release gate, with `accTitle`, `accDescr`, and text fallback.
 
 ## Decision tree
 
