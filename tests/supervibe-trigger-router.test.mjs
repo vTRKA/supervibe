@@ -198,4 +198,28 @@ describe("supervibe trigger router", () => {
       await rm(pluginRoot, { recursive: true, force: true });
     }
   });
+
+  it("hard-stops unpublished brainstorm, plan, and loop slash commands before static routing", async () => {
+    const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-trigger-plugin-"));
+    const commandPath = join(pluginRoot, "commands", "supervibe-status.md");
+    try {
+      await mkdir(dirname(commandPath), { recursive: true });
+      await writeFile(commandPath, "---\ndescription: \"Status command\"\n---\n# /supervibe-status\n", "utf8");
+      await writeFile(join(pluginRoot, "package.json"), JSON.stringify({ scripts: {} }, null, 2), "utf8");
+
+      for (const command of ["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-loop"]) {
+        const route = routeTriggerRequest(`${command} test flow`, {
+          pluginRoot,
+          projectRoot: pluginRoot,
+        });
+
+        assert.equal(route.intent, "missing_slash_command", command);
+        assert.equal(route.hardStop, true, command);
+        assert.equal(route.doNotSearchProject, true, command);
+        assert.equal(route.stopCondition, "report-missing-command", command);
+      }
+    } finally {
+      await rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
 });

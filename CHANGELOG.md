@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.55] - 2026-05-03
+## [2.0.56] - 2026-05-03
 
 ### Added
 
+- Added `design-agent-plan.mjs` to classify website, PDF, image/screenshot,
+  Figma, existing design-system, and old-prototype references before
+  `/supervibe-design` reads them or writes durable artifacts.
+- Added design agent invocation receipt validation so claimed design agents and
+  skills must have completed `_agent-invocations/*.json` evidence for durable
+  outputs.
 - Added a hard-stop command routing contract for unpublished explicit
   `/supervibe-*` slash commands so agents report missing commands instead of
   searching source files or emulating marketplace flows.
@@ -26,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `/supervibe-design` now persists an explicit agent/skill orchestration plan
+  and requires completed Agent Invocation Receipts before claiming
+  `creative-director`, `brandbook`, `ux-ui-designer`, `copywriter`,
+  `prototype-builder`, polish, accessibility, or SEO work ran.
+- Reference source intake now asks a one-question borrow/avoid scope gate for
+  websites, PDFs, images/screenshots, and Figma links before scraping,
+  opening, uploading, parsing, or using those sources.
 - Routed explicit slash-command text through the command catalog before static
   workflow matching when the active catalog says the command is missing.
 - Extended design artifact intake so references to older prototype folders ask
@@ -40,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed PDF/image reference parsing so local files are classified without
+  accidentally swallowing adjacent website text.
 - Fixed the `/supervibe-design` process failure mode where a missing command
   diagnostic could still be bypassed by manual flow execution.
 - Fixed versioned host guidance so managed contexts explicitly stop on

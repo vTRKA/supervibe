@@ -106,3 +106,62 @@ test("old prototype path references ask for borrow/avoid scope before artifact w
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("website references ask for source scope before reading or artifact writes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "create a new desktop app design; use https://example.com as a visual reference",
+    });
+
+    assert.equal(intake.mode, "ask");
+    assert.equal(intake.needsQuestion, true);
+    assert.equal(intake.needsReferenceSourceScopeQuestion, true);
+    assert.equal(intake.reason, "reference-source-scope-required");
+    assert.equal(intake.referenceSources[0].kind, "website");
+
+    const question = formatDesignArtifactChoiceQuestion(intake);
+    assert.match(question, /Reference source scope/);
+    assert.match(question, /Use as visual inspiration/);
+    assert.match(question, /Ignore this reference/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("pdf and image references are classified before design-system generation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "new agent chat UI; use C:\\refs\\brand-guide.pdf and C:\\refs\\screen.png",
+    });
+
+    assert.equal(intake.needsReferenceSourceScopeQuestion, true);
+    assert.deepEqual(
+      intake.referenceSources.map((source) => source.kind).sort(),
+      ["image", "pdf"],
+    );
+    assert.ok(intake.referenceSources.some((source) => source.value === "C:\\refs\\brand-guide.pdf"));
+    assert.ok(intake.referenceSources.some((source) => source.value === "C:\\refs\\screen.png"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("old artifact references take priority over generic website or pdf references", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "study C:\\legacy-ui\\docs\\old prototypes and https://example.com but keep only functionality",
+    });
+
+    assert.equal(intake.needsOldArtifactScopeQuestion, true);
+    assert.equal(intake.needsReferenceSourceScopeQuestion, undefined);
+    assert.equal(intake.reason, "old-artifact-reference-scope-required");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

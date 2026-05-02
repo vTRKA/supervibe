@@ -51,6 +51,15 @@ const OLD_ARTIFACT_REFERENCE_PATTERNS = [
   /\bprevious prototypes?\b/gi,
 ];
 
+const REFERENCE_SOURCE_PATTERNS = Object.freeze([
+  ["figma", /\bhttps?:\/\/(?:www\.)?figma\.com\/(?:file|design|proto)\/[^\s)"'`]+/gi],
+  ["pdf", /\bhttps?:\/\/[^\s)"'`]+\.pdf\b|[A-Za-z]:[\\/][^\s"'`<>|]+\.pdf\b|\.{1,2}[\\/][^\s"'`<>|]+\.pdf\b|\b[^\s"'`<>|]+\.pdf\b/gi],
+  ["image", /\bhttps?:\/\/[^\s)"'`]+\.(?:png|jpe?g|webp|gif|svg)\b|[A-Za-z]:[\\/][^\s"'`<>|]+\.(?:png|jpe?g|webp|gif|svg)\b|\.{1,2}[\\/][^\s"'`<>|]+\.(?:png|jpe?g|webp|gif|svg)\b|\b[^\s"'`<>|]+\.(?:png|jpe?g|webp|gif|svg)\b/gi],
+  ["website", /\bhttps?:\/\/(?![^/\s)"'`]*figma\.com\b)(?![^\s)"'`]+\.(?:pdf|png|jpe?g|webp|gif|svg)\b)[^\s)"'`]+/gi],
+  ["screenshot", /\b(?:screenshot|screen capture|скриншот|скрин)\b/gi],
+  ["existing-design-system", /\.supervibe[\\/]artifacts[\\/]prototypes[\\/]_design-system\b/gi],
+]);
+
 async function safeStat(path) {
   try {
     return await stat(path);
@@ -80,6 +89,22 @@ function findOldArtifactReferences(text) {
     }
   }
   return [...new Set(refs)].slice(0, 5);
+}
+
+function findDesignReferenceSources(text) {
+  const sources = [];
+  const seen = new Set();
+  for (const [kind, pattern] of REFERENCE_SOURCE_PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const match of String(text ?? "").matchAll(pattern)) {
+      const value = match[0].trim().replace(/[.,;:]+$/, "");
+      const key = `${kind}:${value.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sources.push({ kind, value });
+    }
+  }
+  return sources.slice(0, 8);
 }
 
 async function collectArtifact(projectRoot, rootName, entryName) {
@@ -155,6 +180,7 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
   const explicitReuse = hasAnyPattern(text, REUSE_PATTERNS);
   const hasExisting = artifacts.length > 0;
   const oldArtifactReferences = findOldArtifactReferences(text);
+  const referenceSources = findDesignReferenceSources(text);
 
   if (oldArtifactReferences.length > 0) {
     return {
@@ -164,22 +190,35 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
       reason: "old-artifact-reference-scope-required",
       artifacts,
       oldArtifactReferences,
+      referenceSources,
+    };
+  }
+
+  if (referenceSources.length > 0) {
+    return {
+      mode: "ask",
+      needsQuestion: true,
+      needsReferenceSourceScopeQuestion: true,
+      reason: "reference-source-scope-required",
+      artifacts,
+      oldArtifactReferences,
+      referenceSources,
     };
   }
 
   if (!hasExisting) {
-    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts, oldArtifactReferences };
+    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts, oldArtifactReferences, referenceSources };
   }
 
   if (explicitFresh && !explicitReuse) {
-    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts, oldArtifactReferences };
+    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts, oldArtifactReferences, referenceSources };
   }
 
   if (explicitReuse && !explicitFresh) {
-    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts, oldArtifactReferences };
+    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts, oldArtifactReferences, referenceSources };
   }
 
-  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences };
+  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences, referenceSources };
 }
 
 export function formatDesignArtifactChoiceQuestion(intake) {
@@ -196,6 +235,25 @@ What should I borrow?
 - Functional inventory plus IA - preserve flows and information architecture; redesign visual structure.
 - Visual reference allowed - borrow selected style/layout traits and document what changes.
 - Ignore the old artifact - create a new design without reading it.
+- Stop here - make no hidden progress.`;
+  }
+
+  if (intake.needsReferenceSourceScopeQuestion) {
+    const refs = (intake.referenceSources ?? [])
+      .map((source, index) => `${index + 1}. ${source.kind}: ${source.value}`)
+      .join("\n");
+    return `**Step 0/N: Reference source scope.**
+The brief includes external or local reference material. I need the borrow/avoid boundary before scraping, opening, uploading, parsing, or writing durable design artifacts.
+
+${refs || "No reference source listed."}
+
+How should I use these references?
+
+- Functional inventory only (recommended) - preserve capabilities, flows, states, and terminology; avoid copying layout or style.
+- Use for information architecture - borrow navigation/grouping patterns only.
+- Use as visual inspiration - borrow selected mood/layout traits and document what changes.
+- Treat as authoritative brand source - only when the source is an approved brand guide/design source of truth.
+- Ignore this reference - create the design without reading it.
 - Stop here - make no hidden progress.`;
   }
 
