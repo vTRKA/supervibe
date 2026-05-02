@@ -8,8 +8,8 @@ prerequisites: [ruleset]
 emits-artifact: rule-application-report
 confidence-rubric: confidence-rubrics/rule-quality.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-05-01
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Rule Application
@@ -17,6 +17,12 @@ last-verified: 2026-05-01
 Dry-run a Supervibe ruleset against a project and report whether the rules are
 loadable, scoped, and useful. This skill is read-only unless the user explicitly
 asks to update rules after the report.
+
+## When to invoke
+
+Use when validating, applying, or dry-running Supervibe project rules against a
+codebase or host artifact set. Prefer this before claiming a rule is useful,
+safe, missing, stale, overbroad, or ready for host adaptation.
 
 ## Step 0 - Read Source Of Truth
 

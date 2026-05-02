@@ -32,6 +32,13 @@ Before doing anything, read:
 - If `node scripts/search-code.mjs --context "<task>"` is used, preserve the RAG Retrieval Quality, CodeGraph Quality Gates, citations, fallback reason, and graph warnings in the output.
 - Cite memory IDs, source file:line references, graph symbols, and verification commands in the evidence ledger.
 
+## Operational quality bar
+
+- Define ready/done criteria for any skill that coordinates more than one step, agent, file, approval, or artifact.
+- Add a Continuation Contract when the skill could otherwise stop after a first stage, first result, or first approval gate.
+- Keep worker handoffs self-contained: objective, approved scope, read context, write set, acceptance criteria, verification, stop conditions, and output contract.
+- Do not claim completion without verification evidence, confidence score, and explicit blocker/partial state when confidence is below the gate.
+
 ## Visual explanation policy
 
 Use a visual only when it reduces ambiguity for the user or downstream agent. Prefer:

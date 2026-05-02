@@ -8,8 +8,8 @@ prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # New Feature
@@ -19,6 +19,32 @@ last-verified: 2026-04-27
 WHEN user says "let's build feature X" and X is non-trivial (estimated complexity ≥4). This is the orchestrator that chains the entire feature workflow.
 
 NOT for: bug fixes (use systematic-debugging), refactors (use refactoring-specialist), config-only changes.
+
+## Continuation Contract
+
+Do not stop after PRD, brainstorm, prototype, plan, first task, or review if
+the feature workflow still has a clear next gate and no blocker. Each stage
+must either hand off to the next stage with artifact path, confidence, and stop
+condition, or stop with the exact missing approval/evidence.
+
+Intermediate stage approval is not a feature completion signal. The feature is
+complete only when the approved scope is implemented, verified, reviewed, scored
+at least 9/10, and either merged/released or explicitly parked with a saved
+state and next command.
+
+## Feature Definition Of Ready
+
+Start execution only after the product outcome, approved scope, acceptance
+criteria, design/prototype need, plan path, verification commands, rollback,
+and release path are known. If any of these are unknown, route to the owning
+skill instead of improvising in implementation.
+
+## Feature Definition Of Done
+
+A feature is done only when user-facing behavior meets acceptance criteria,
+tests/verification pass, security/privacy/observability/release gates are
+handled for the risk level, code review and quality gate evidence exist, and no
+deferred optional scope is hidden inside the delivered work.
 
 ## Step 0 — Read source of truth (required)
 

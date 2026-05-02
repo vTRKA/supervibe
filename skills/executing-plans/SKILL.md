@@ -8,8 +8,8 @@ prerequisites: [implementation-plan]
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Executing Plans
@@ -36,6 +36,33 @@ If a task, subtask, or agent suggestion adds functionality outside the approved
 plan scope, STOP. Either remove the addition, defer/reject it with rationale, or
 obtain explicit user approval with tradeoff, verification, rollout, and rollback
 before continuing.
+
+## Continuation Contract
+
+Do not stop after the first task, phase, or green check while the reviewed plan
+still has ready work, budget, and no blocker. Phase gates are verification
+checkpoints; they become terminal only when a check fails, scope expands,
+approval is required, dependencies are missing, or the user pauses/stops.
+
+After every completed task, update a resume-safe checkpoint: completed task id,
+changed files, verification output, residual risks, next ready task, and exact
+resume command. If a task fails, fix the failure or mark the plan blocked with
+the failing command and next unblock action; do not silently skip to unrelated
+scope.
+
+## Definition Of Ready
+
+A plan task is ready only when it has accepted scope mapping, dependency state,
+declared files, bite-sized steps, verification command, rollback, and stop
+condition. If the plan omits these, repair the plan or route back to
+`supervibe:writing-plans` before implementation.
+
+## Definition Of Done
+
+A plan task is done only after the implementation matches the plan, verification
+evidence is captured, no unapproved extras shipped, and confidence is at least
+9/10. A phase is done only when all tasks in that phase are done or explicitly
+blocked/partial with user acceptance.
 
 ## Decision tree
 

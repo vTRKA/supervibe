@@ -67,3 +67,23 @@ Free-form answer also accepted.
 - `drive-ready` - Google Drive handoff manifest exists.
 
 Do not skip from `draft` to `exported`. PPTX export must happen after explicit approval.
+
+## Output Contract
+
+```text
+SUPERVIBE_PRESENTATION
+STATUS: draft | approved | exported | drive-ready | blocked
+ARTIFACT_DIR: .supervibe/artifacts/presentations/<slug>/
+PREVIEW_URL: <local URL or none>
+NEXT_ACTION: <feedback | approve | revise | export | drive handoff | blocked reason>
+CONFIDENCE: <N>/10
+```
+
+## Safety Boundaries
+
+- Writes stay under `.supervibe/artifacts/presentations/<slug>/`.
+- PPTX export requires explicit approval of the deck content and visuals.
+- Google Drive handoff is a manifest unless a connected Drive action is
+  explicitly approved in the current environment.
+- Source material with secrets or private customer data must be redacted before
+  deck artifacts are created.

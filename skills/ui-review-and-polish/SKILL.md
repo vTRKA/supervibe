@@ -8,8 +8,8 @@ prerequisites: [ui-artifact]
 emits-artifact: ui-polish-report
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-05-01
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # UI Review And Polish
@@ -17,6 +17,13 @@ last-verified: 2026-05-01
 Review an existing UI artifact and produce a prioritized polish report. This
 skill is review-only: it identifies issues and concrete fixes, but it does not
 rewrite the UI unless the user explicitly asks for implementation after review.
+
+## When to invoke
+
+Use after a UI mockup, prototype, desktop/mobile shell, browser extension view,
+or implemented screen exists and needs review before approval, handoff, or
+production claim. Do not use it to invent a visual direction from scratch; use
+the design or prototype flow first.
 
 ## Step 0 - Read Source Of Truth
 

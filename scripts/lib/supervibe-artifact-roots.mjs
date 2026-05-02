@@ -18,9 +18,9 @@ const LEGACY_TO_CANONICAL = Object.freeze([
   ["docs/experiments", `${SUPERVIBE_ARTIFACT_ROOT}/experiments`],
   ["docs/postmortems", `${SUPERVIBE_ARTIFACT_ROOT}/postmortems`],
   ["docs/audits", ".supervibe/audits"],
-  ["docs/follow-ups.md", `${SUPERVIBE_ARTIFACT_ROOT}/follow-ups.md`],
-  ["docs/deprecations.md", `${SUPERVIBE_ARTIFACT_ROOT}/deprecations.md`],
-  ["docs/permissions.md", `${SUPERVIBE_ARTIFACT_ROOT}/permissions.md`],
+  ["docs/follow-ups.md", ".supervibe/artifacts/follow-ups.md"],
+  ["docs/deprecations.md", ".supervibe/artifacts/deprecations.md"],
+  ["docs/permissions.md", ".supervibe/artifacts/permissions.md"],
   ["screen-specs", `${SUPERVIBE_ARTIFACT_ROOT}/screen-specs`],
   ["brandbook", `${SUPERVIBE_ARTIFACT_ROOT}/brandbook`],
 ]);

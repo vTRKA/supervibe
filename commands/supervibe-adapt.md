@@ -8,6 +8,16 @@ Pull upstream improvements from the installed plugin into the selected host adap
 
 The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode session for the target project; do not type `/supervibe-adapt` in zsh, bash, or PowerShell. On macOS/Linux installs, the no-slash terminal alias `supervibe-adapt` is also linked for direct CLI dry-runs and approved applies.
 
+## Invocation
+
+```bash
+/supervibe-adapt
+/supervibe-adapt --dry-run
+/supervibe-adapt --apply
+supervibe-adapt --dry-run --diff-summary
+supervibe-adapt --apply --include "<project-relative-path>"
+```
+
 ## When to invoke
 
 - After `npm run supervibe:upgrade` reports a version bump (e.g. `previous → 2.0.11`).
@@ -68,6 +78,15 @@ Deleted:     <count>
 
 Confidence:  N/10  Rubric: agent-delivery
 ```
+
+## Safety Boundaries
+
+- Dry-run is read-only by default and must not refresh memory indexes unless
+  explicitly requested.
+- Apply writes only approved project host artifacts and `.supervibe/memory/`
+  metadata required by the adapt plan.
+- User-owned host instruction text outside managed blocks is never overwritten.
+- Index repair is a separate follow-up from artifact adaptation.
 
 ## What is NOT touched
 

@@ -78,6 +78,68 @@ const RULES = Object.freeze([
     forbidden: [],
   },
   {
+    file: "skills/autonomous-agent-loop/SKILL.md",
+    label: "autonomous loop skill",
+    required: [
+      /## Continuation Contract/i,
+      /Do not stop after the first task or wave/i,
+      /Definition Of Ready/i,
+      /Definition Of Done/i,
+      /Execution Packet/i,
+    ],
+    forbidden: [],
+  },
+  {
+    file: "commands/supervibe-execute-plan.md",
+    label: "execute plan command",
+    required: [
+      /## Continuation Contract/i,
+      /Do not stop after the first phase, task, or green check/i,
+      /Resume mode must continue/i,
+    ],
+    forbidden: [],
+  },
+  {
+    file: "skills/executing-plans/SKILL.md",
+    label: "executing plans skill",
+    required: [
+      /## Continuation Contract/i,
+      /Do not stop after the first task, phase, or green check/i,
+      /resume-safe checkpoint/i,
+    ],
+    forbidden: [],
+  },
+  {
+    file: "skills/subagent-driven-development/SKILL.md",
+    label: "subagent-driven development skill",
+    required: [
+      /## Continuation Contract/i,
+      /Continue through every ready wave/i,
+      /Worker Execution Packet/i,
+    ],
+    forbidden: [],
+  },
+  {
+    file: "skills/dispatching-parallel-agents/SKILL.md",
+    label: "parallel dispatch skill",
+    required: [
+      /## Continuation Contract/i,
+      /Do not stop after the first subagent returns/i,
+      /self-contained worker packet/i,
+    ],
+    forbidden: [],
+  },
+  {
+    file: "skills/new-feature/SKILL.md",
+    label: "new feature skill",
+    required: [
+      /## Continuation Contract/i,
+      /Do not stop after PRD, brainstorm, prototype, plan, first task, or review/i,
+      /Feature Definition Of Done/i,
+    ],
+    forbidden: [],
+  },
+  {
     file: "commands/supervibe-presentation.md",
     label: "presentation command",
     required: [

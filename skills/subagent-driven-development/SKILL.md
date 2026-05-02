@@ -8,8 +8,8 @@ prerequisites: [implementation-plan]
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-27
+version: 1.1
+last-verified: 2026-05-02
 ---
 
 # Subagent-Driven Development
@@ -17,6 +17,56 @@ last-verified: 2026-04-27
 ## When to invoke
 
 WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `supervibe:executing-plans` (inline) when both apply.
+
+## Continuation Contract
+
+Continue through every ready wave until the wave queue is exhausted, a
+verification/review gate fails, a policy or approval gate blocks progress, a
+write-set conflict appears, budget expires, or the user explicitly pauses. Do
+not stop after the first subagent result, first green task, first rejected task,
+or first review checkpoint when unrelated ready work remains.
+
+If one task fails, quarantine or re-queue that task with reason, retry count,
+owner, and next unblock action; keep independent ready tasks moving when their
+write sets and dependencies are disjoint.
+
+## Definition Of Ready
+
+A subagent task is ready only when it has a reviewed plan reference, dependency
+state, declared write set, expected files, acceptance criteria, verification
+command, rollback plan, scope id, risk level, stop condition, and reviewer. If
+any field is missing, split or repair the task before dispatch.
+
+## Worker Execution Packet
+
+Each worker brief must be self-contained because the worker may not share the
+parent conversation:
+
+```yaml
+taskId: "<stable id>"
+whyItMatters: "<user-visible outcome>"
+objective: "<bounded deliverable>"
+writeSet: ["<repo-relative paths>"]
+allowedReads: ["<context files or search citations>"]
+approvedScope: "<scope id or explicit approval receipt>"
+acceptanceCriteria: ["<criterion>"]
+verification: ["<command and expected signal>"]
+rollback: "<how to undo this task>"
+stopConditions: ["<when to stop and report blocked>"]
+outputContract: "changed files, evidence, risks, confidence, next action"
+```
+
+Workers must be told they are not alone in the codebase, must not revert edits
+made by others, and must adapt to concurrent changes instead of overwriting
+them.
+
+## Definition Of Done
+
+A wave is done only after every task in the wave is `SUCCESS`, `BLOCKED`, or
+`QUARANTINED` with evidence. `SUCCESS` requires worker evidence, independent
+Stage 2 review, verification output, side-effect reconciliation, scope safety,
+and confidence at least 9/10. Rejected or partial worker output is not progress
+until it is repaired or explicitly accepted as partial by the user.
 
 ## Step 0 — Read source of truth (required)
 

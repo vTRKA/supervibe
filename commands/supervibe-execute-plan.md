@@ -11,6 +11,18 @@ Direct trigger for plan execution with two **mandatory 10/10 confidence gates** 
 
 This is the safety-critical sibling of `/supervibe-plan` — that one writes the plan, this one runs it without quality compromise.
 
+## Continuation Contract
+
+Do not stop after the first phase, task, or green check while the reviewed plan
+still has ready work, budget, and no blocker. A review gate, readiness audit,
+or phase verification is a checkpoint unless it fails or requires explicit user
+approval. If execution pauses, report the exact stop reason, last completed
+task, next ready task, saved state path, and resume command.
+
+Resume mode must continue from the first pending or blocked task after
+re-running readiness on the remaining work. It must not restart from the top or
+silently skip failed tasks.
+
 ## Invocation forms
 
 ### `/supervibe-execute-plan <plan-path>`

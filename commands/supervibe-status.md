@@ -88,3 +88,23 @@ which alternatives were rejected, and what evidence the handoff must include.
 
 The work-item watch and delegated inbox sections are observational. They do not
 claim, close, or mutate tasks.
+
+## Output Contract
+
+```text
+SUPERVIBE_STATUS
+MODE: standard | dashboard | integrations | query | report | policy | role | anchors | waves
+READ_ONLY: true
+STATUS: ok | warnings | blocked | failed
+SECTIONS: <comma-separated sections rendered>
+NEXT_ACTION: <single recommended command or none>
+```
+
+## Safety Boundaries
+
+- Default status is read-only and no-tty safe.
+- Dashboard, report, view, and eval outputs write only explicitly requested
+  local artifacts under `.supervibe/memory/` or `.supervibe/audits/`.
+- Queries use whitelisted filters only and never evaluate code.
+- Network-backed integrations remain advisory unless an explicit policy approval
+  and allowlisted target are present.

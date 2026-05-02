@@ -6,6 +6,15 @@ description: "Bootstrap a host-aware Supervibe scaffold from a stack-pack matche
 
 Set up Supervibe for a fresh project or an existing project that needs host-aware Codex, Claude, Cursor, Gemini or OpenCode instructions.
 
+## Invocation
+
+```bash
+/supervibe-genesis
+/supervibe-genesis --dry-run
+/supervibe-genesis --profile minimal
+/supervibe-genesis --profile product-design --host codex
+```
+
 ## Shared Dialogue Contract
 
 Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text.

@@ -65,6 +65,14 @@ Every action supports preview first. Real mutations require an explicit
 `127.0.0.1` only and does not call provider CLIs, MCPs, network trackers,
 deployment targets, or external APIs.
 
+## Safety Boundaries
+
+- Bind to `127.0.0.1` only.
+- Preview before local graph mutation; apply requires `confirm=apply-local`.
+- Do not call provider CLIs, MCPs, network trackers, deployments, billing,
+  account, DNS, or external APIs.
+- Store server logs and bridge descriptors under `.supervibe/`.
+
 ## Local JSON Endpoints
 
 - `GET /api/graph?file=<graph.json>`

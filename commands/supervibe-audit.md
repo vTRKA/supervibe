@@ -8,6 +8,14 @@ Run a full plugin + project health check. No writes — only reports.
 
 Design audit mode uses the same command surface: `/supervibe-audit --design`. It reads design artifacts and reports missing memory preflight, missing design intelligence citations, token drift, brand/collateral asset drift, slide/deck quality gaps, chart accessibility gaps, and UI polish regressions.
 
+## Invocation
+
+```bash
+/supervibe-audit
+/supervibe-audit --design
+/supervibe-audit --json
+```
+
 ## Procedure
 
 1. **Index health.** Run `npm run supervibe:status` (or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`). Capture: code RAG counts, graph resolution rate, memory entries, watcher state, preview servers, MCP registry, agent telemetry.

@@ -48,6 +48,14 @@ CLI binaries and registration files into failures.
 
 `--json` prints the same report in machine-readable form for CI or diagnostics.
 
+## Safety Boundaries
+
+- Read-only: do not install, unlink, rewrite, or register host files.
+- Repair actions are printed as explicit next commands; the user decides whether
+  to run them.
+- Local paths and host registrations are diagnostic evidence, not mutation
+  targets for this command.
+
 ## Output Contract
 
 ```text

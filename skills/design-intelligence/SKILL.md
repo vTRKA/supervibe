@@ -8,13 +8,20 @@ prerequisites: [project-memory-preflight, code-search-preflight]
 emits-artifact: design-intelligence-evidence
 confidence-rubric: confidence-rubrics/design-intelligence.yaml
 gate-on-exit: true
-version: 2.0
-last-verified: 2026-04-30
+version: 2.1
+last-verified: 2026-05-02
 ---
 
 # Design Intelligence
 
 Internal lookup and synthesis support for Supervibe design work. This skill does not own brand direction, UX specs, prototypes, presentation decks, accessibility review, or stack implementation. It supplies cited evidence so those agents make better decisions.
+
+## When to invoke
+
+Use this skill only as internal evidence support for design-facing agents and
+commands that need retrieval-backed product, style, UX, chart, deck, collateral,
+or stack UI guidance. It should enrich a design decision with citations, not
+replace the owning design, review, or handoff skill.
 
 ## Invocation Scope
 
@@ -26,7 +33,9 @@ Use through existing routes only:
 
 Never add a new slash command, package script, or standalone CLI wrapper for this lookup.
 
-## Required Preflight Order
+## Procedure
+
+Required preflight order:
 
 1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, or `rejected`.
 2. Code search: inspect existing tokens, components, prototypes, routes, stack conventions, and brand assets.

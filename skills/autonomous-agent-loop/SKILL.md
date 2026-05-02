@@ -8,11 +8,129 @@ prerequisites: [user-request-or-plan]
 emits-artifact: loop-state
 confidence-rubric: confidence-rubrics/autonomous-loop.yaml
 gate-on-exit: true
-version: 1.1
+version: 1.2
 last-verified: 2026-05-02
 ---
 
 # Autonomous Agent Loop
+
+## When to invoke
+
+Use this skill when a user asks for an autonomous run, epic execution, bounded
+multi-agent loop, long worktree session, or multi-step delivery that must keep
+working until the queue is exhausted, blocked, cancelled, or out of approved
+budget. This skill is the loop controller contract, not a short checklist.
+
+Do not use it for one small local edit, a read-only explanation, or a plan that
+has not passed review unless the invocation is explicitly dry-run/readiness
+only.
+
+## Controller Model
+
+Every run has three roles even when one human or one AI session performs more
+than one role:
+
+- Controller: owns task graph, scope, policy, budget, approvals, state, and
+  final truth. The controller decides ready/blocked/done.
+- Worker: owns one bounded task with a declared write set, verification command,
+  stop condition, and no authority to expand scope.
+- Reviewer: independently checks worker evidence, scope safety, regression
+  risk, and acceptance criteria before the controller marks done.
+
+Workers are never trusted because they completed a first step or produced a
+confident narrative. Completion requires reviewer-grade evidence and controller
+state reconciliation.
+
+## Definition Of Ready
+
+A task is ready only when all of these are true:
+
+1. It maps to approved user scope or an explicit approved scope-change receipt.
+2. Dependencies are complete or intentionally mocked with a rollback path.
+3. Write set is declared and does not overlap another active worker unless a
+   maintainer-approved conflict exception exists.
+4. Acceptance criteria, verification commands, rollback, risk level, and stop
+   conditions are present.
+5. Minimal context pack exists with memory, Code RAG, CodeGraph when relevant,
+   source citations, retrieval quality, graph warnings, and fallback reasons.
+6. Policy preflight is green for tools, network, MCP, secrets, production,
+   provider permissions, rate limits, and approval leases.
+7. Readiness score is at least 9/10, or the run is dry-run and the missing
+   remediation is recorded.
+
+## Definition Of Done
+
+A task is done only when all of these are true:
+
+1. Acceptance criteria are satisfied with cited evidence.
+2. Required verification ran and the output is recorded.
+3. Reviewer evidence is present for risky, shared-contract, or multi-file work.
+4. Side-effect ledger matches actual writes, commands, external calls, spawned
+   processes, approvals, and cleanup actions.
+5. Scope Safety Gate confirms no unapproved extras shipped.
+6. Handoff includes next action, residual risks, rollback, and confidence score.
+7. Score is at least 9/10. Anything lower is re-queued, repaired, blocked, or
+   explicitly accepted as partial by the user.
+
+## Continuation Contract
+
+Do not stop after the first task or wave. Continue ready work until the task
+queue is exhausted, max-duration/max-iteration/provider budget is reached,
+policy or approval gates block progress, verification fails, no-progress policy
+fires, or the user explicitly pauses/stops.
+
+Wave reviews, taste checks, first working tests, first agent handoffs, and
+partial reports are checkpoints, not terminal states. If the loop pauses, print
+the exact stop reason and next resume command. Final output must distinguish
+`COMPLETE` from `BLOCKED`, `PARTIAL`, `POLICY_STOP`, `BUDGET_STOP`, and
+`USER_PAUSED`.
+
+## Execution Packet
+
+Every worker or fresh-context handoff must be self-contained and small:
+
+```yaml
+taskId: "<stable id>"
+objective: "<one bounded deliverable>"
+approvedScopeId: "<scope id or approval receipt>"
+writeSet: ["<repo-relative path or glob>"]
+readOnlyContext:
+  memory: ["<memory id/path or no-match query>"]
+  ragCitations: ["<file:line or search result id>"]
+  graphEvidence: ["<symbol/caller/impact evidence or N/A reason>"]
+acceptanceCriteria: ["<observable criterion>"]
+verification: ["<command and expected signal>"]
+policyBoundaries: ["<tools/network/MCP/secrets/prod limits>"]
+sideEffectsAllowed: ["<local write/process/network action or none>"]
+stopConditions: ["<when to stop instead of improvise>"]
+outputContract: "<exact handoff fields>"
+```
+
+Missing packet fields mean the task is not ready.
+
+## Wave Planning And Dispatch
+
+Build waves from ready tasks using dependencies, write-set overlap, policy risk,
+reviewer availability, worktree/session registry claims, and rollback cost.
+Parallelize only disjoint write sets or read-only investigations. Keep waves
+small enough to review; large ready fronts become multiple waves.
+
+Record why each worker/reviewer pair was chosen, which alternatives were
+rejected, and why any task was serialized, blocked, or quarantined. A failing
+known task should not keep blocking unrelated ready work; quarantine it with
+reason, retry limit, owner, and resume condition.
+
+## Recovery And Resume
+
+State lives under `.supervibe/memory/loops/<run-id>/` and must be sufficient for
+fresh-context recovery. Before resume, run `status`, `graph`, `doctor`, and
+`prime`; validate state schema/migrations, side-effect ledger, active process
+ownership, approval expiry, and ready-front ordering.
+
+No-progress policy: after a bounded failed retry, change one variable
+(context, task split, owner, verification, or scope decision) or stop as
+blocked. Never repeat the same worker prompt with the same evidence and expect a
+different result.
 
 ## Procedure
 

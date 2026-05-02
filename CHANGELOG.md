@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.48] - 2026-05-02
+
+### Added
+
+- Added command operational contract validation so all slash command docs expose
+  invocation, safety, and output contracts, with continuation gates for
+  multi-step flows.
+- Added regression tests covering high-risk skill contracts and command
+  operational contracts.
+
+### Changed
+
+- Strengthened autonomous loop, subagent, plan execution, parallel dispatch,
+  and feature workflow skills with ready/done definitions, continuation
+  contracts, worker packets, resume recovery, and no-progress handling.
+- Expanded the workflow-continuation release gate to cover the critical
+  multi-agent and plan-execution skills, not only the top-level commands.
+
+### Fixed
+
+- Normalized legacy artifact remap literals so project-artifact-root validation
+  does not flag the migration table itself.
+
 ## [2.0.47] - 2026-05-02
 
 ### Added

@@ -17,6 +17,15 @@ loops, `prompt-ai-engineer` for prompt/system-prompt/agent-instruction and
 intent-router hardening, `network-router-engineer` for read-only router/network
 diagnostics, and `/supervibe-ui` for Kanban task/epic/agent visibility.
 
+## Invocation
+
+```bash
+/supervibe
+/supervibe --diagnose-trigger "<user request>"
+/supervibe --why-trigger "<user request>"
+/supervibe --interactive
+```
+
 The router has three layers: exact trigger corpus, deterministic keyword rules,
 and semantic intent profiles for implicit needs. Semantic profiles catch pain
 statements such as "users cannot see epics/tasks", "old tasks are cluttering

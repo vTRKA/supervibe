@@ -40,3 +40,23 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 - Foreground mode is for debugging: `--foreground` keeps server output attached to the terminal.
 - Hot-reload by default: file changes inside the served directory trigger a browser refresh; pass `--no-reload` to disable.
 - `127.0.0.1` only: the server binds to loopback (never `0.0.0.0`), so previews are not reachable from other machines on the network.
+
+## Output Contract
+
+```text
+SUPERVIBE_PREVIEW
+ACTION: list | start | kill | kill-all
+STATUS: ok | blocked | failed
+URL: http://127.0.0.1:<port> | none
+PID: <pid or none>
+ROOT: <served directory or none>
+NEXT_ACTION: <open URL | inspect logs | choose another port | none>
+```
+
+## Safety Boundaries
+
+- Bind to loopback only.
+- Serve only the requested local directory.
+- Kill only preview-server processes tracked by Supervibe or matching the
+  explicit port requested by the user.
+- Store logs and server state under `.supervibe/servers/`.

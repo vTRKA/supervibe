@@ -73,6 +73,7 @@ const TEMPLATE_RULES = [
     requiredSections: [
       "Step 0",
       "Retrieval and evidence policy",
+      "Operational quality bar",
       "Visual explanation policy",
       "Decision tree",
       "Output contract",
