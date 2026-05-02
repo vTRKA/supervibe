@@ -3,10 +3,15 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 
+import { CodeStore } from "./code-store.mjs";
+import { hasNodeSqliteSupport, SQLITE_NODE_MIN_VERSION } from "./node-sqlite-runtime.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
+import { collectIndexHealthFromStore, evaluateIndexHealthGate } from "./supervibe-index-health.mjs";
+import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
+const DEFAULT_INDEX_REPAIR_COMMAND = "node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress";
 
 export async function createAdaptPlan({
   projectRoot = process.cwd(),
@@ -22,6 +27,7 @@ export async function createAdaptPlan({
   const baseline = readBaseline(projectRoot);
   const currentVersion = await getCurrentPluginVersion(pluginRoot);
   const lastSeenVersion = await getLastSeenVersion(projectRoot);
+  const memoryIndex = await ensureMemoryIndex(projectRoot);
   const upstream = buildUpstreamIndex(pluginRoot);
   const projectArtifacts = listProjectArtifacts(projectRoot, adapter);
   const items = projectArtifacts.map((artifact) => classifyArtifact({
@@ -43,6 +49,7 @@ export async function createAdaptPlan({
     currentVersion,
     lastSeenVersion,
     baselineVersion: baseline.pluginVersion || null,
+    memoryIndex,
     approvalRequired: items.some((item) => item.action === "update"),
     counts,
     items,
@@ -80,6 +87,13 @@ export async function applyAdaptPlan(plan, {
     await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
   }
 
+  const postApplyPlan = await createAdaptPlan({
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    adapterId: plan.host.adapterId,
+  });
+  const indexGate = await inspectIndexGate(plan.projectRoot);
+
   return {
     kind: "adapt-apply",
     projectRoot: plan.projectRoot,
@@ -90,10 +104,18 @@ export async function applyAdaptPlan(plan, {
     applied,
     skipped,
     blocked,
+    postApply: {
+      updates: postApplyPlan.counts.update,
+      identical: postApplyPlan.counts.identical,
+      projectOnly: postApplyPlan.counts.projectOnly,
+      clean: postApplyPlan.counts.update === 0,
+    },
+    memoryIndex: postApplyPlan.memoryIndex,
+    indexGate,
   };
 }
 
-export function formatAdaptPlan(plan) {
+export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   const lines = [
     "SUPERVIBE_ADAPT_DRY_RUN",
     `HOST: ${plan.host.adapterId}`,
@@ -102,8 +124,10 @@ export function formatAdaptPlan(plan) {
     `UPDATES: ${plan.counts.update}`,
     `IDENTICAL: ${plan.counts.identical}`,
     `PROJECT_ONLY: ${plan.counts.projectOnly}`,
+    `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
   ];
+  if (diffSummary) lines.push("", formatAdaptDiffSummary(plan));
   for (const item of plan.items) {
     if (item.action === "update") {
       lines.push(`UPDATE: ${item.projectRel} <= ${item.upstreamRel} (${item.classification})`);
@@ -118,7 +142,7 @@ export function formatAdaptPlan(plan) {
   return lines.join("\n");
 }
 
-export function formatAdaptApply(result) {
+export function formatAdaptApply(result, { diffSummary = false } = {}) {
   const lines = [
     "SUPERVIBE_ADAPT_APPLY",
     `HOST: ${result.host.adapterId}`,
@@ -127,11 +151,33 @@ export function formatAdaptApply(result) {
     `SKIPPED: ${result.skipped.length}`,
     `BLOCKED: ${result.blocked.length}`,
   ];
+  if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
   for (const item of result.skipped) lines.push(`SKIPPED_FILE: ${item.projectRel}`);
   for (const item of result.blocked) lines.push(`BLOCKED_FILE: ${item.projectRel} - ${item.reason}`);
   if (result.applied.length > 0) {
     lines.push("VERSION_MARKER: updated");
+  }
+  lines.push(`MEMORY_INDEX: ${result.memoryIndex?.status || "unknown"}`);
+  lines.push(`ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
+  lines.push(`POST_APPLY_UPDATES: ${result.postApply?.updates ?? "unknown"}`);
+  lines.push(`INDEX_REPAIR_NEEDED: ${result.indexGate?.ready === false ? "true" : "false"}`);
+  if (result.indexGate?.ready === false) {
+    lines.push(`INDEX_REASON: ${result.indexGate.reason || result.indexGate.failed || "unknown"}`);
+    lines.push(`NEXT_INDEX_REPAIR: ${result.indexGate.repairCommand || DEFAULT_INDEX_REPAIR_COMMAND}`);
+  }
+  return lines.join("\n");
+}
+
+function formatAdaptDiffSummary(plan) {
+  const updates = (plan.items || []).filter((item) => item.action === "update" || item.diff);
+  const lines = [
+    "SUPERVIBE_ADAPT_DIFF_SUMMARY",
+    `FILES: ${updates.length}`,
+  ];
+  for (const item of updates) {
+    const diff = item.diff || {};
+    lines.push(`DIFF: ${item.projectRel} +${diff.additions || 0} -${diff.deletions || 0} (${item.classification})`);
   }
   return lines.join("\n");
 }
@@ -152,6 +198,7 @@ function classifyArtifact({ artifact, upstream, baselineHash }) {
   const upstreamHash = hashContent(upstreamContent);
   const identical = projectHash === upstreamHash;
   const classification = classifyHashes({ projectHash, upstreamHash, baselineHash });
+  const diff = identical ? { additions: 0, deletions: 0 } : summarizeLineDiff(projectContent, upstreamContent);
 
   return {
     ...artifact,
@@ -162,6 +209,7 @@ function classifyArtifact({ artifact, upstream, baselineHash }) {
     projectHash,
     upstreamHash,
     baselineHash,
+    diff,
   };
 }
 
@@ -259,11 +307,12 @@ async function writeBaseline(plan, applied) {
   const path = join(plan.projectRoot, ...BASELINE_PATH);
   const current = readBaseline(plan.projectRoot);
   const artifacts = { ...(current.artifacts || {}) };
+  const updatedAt = new Date().toISOString();
   for (const item of applied) {
     artifacts[item.projectRel] = {
       hash: item.upstreamHash,
       upstream: item.upstreamRel,
-      updatedAt: "deterministic-local",
+      updatedAt,
     };
   }
   await mkdir(dirname(path), { recursive: true });
@@ -273,6 +322,106 @@ async function writeBaseline(plan, applied) {
     hostAdapter: plan.host.adapterId,
     artifacts,
   }, null, 2) + "\n");
+}
+
+async function ensureMemoryIndex(projectRoot) {
+  const result = await curateProjectMemory({
+    rootDir: projectRoot,
+    rebuildSqlite: false,
+    now: new Date().toISOString(),
+  });
+  return {
+    status: result.pass ? "ready" : "needs-review",
+    path: normalizeRel(relative(projectRoot, result.indexPath)),
+    markdownEntries: result.markdownEntries,
+    warnings: result.validation?.warnings || [],
+    errors: result.validation?.errors || [],
+  };
+}
+
+async function inspectIndexGate(projectRoot) {
+  const codeDbPath = join(projectRoot, ".supervibe", "memory", "code.db");
+  if (!existsSync(codeDbPath)) {
+    return {
+      ready: false,
+      reason: "missing-code-index",
+      repairCommand: DEFAULT_INDEX_REPAIR_COMMAND,
+    };
+  }
+  if (!hasNodeSqliteSupport()) {
+    return {
+      ready: false,
+      reason: `node-sqlite-unavailable-${SQLITE_NODE_MIN_VERSION}`,
+      repairCommand: DEFAULT_INDEX_REPAIR_COMMAND,
+    };
+  }
+  const store = new CodeStore(projectRoot, { useEmbeddings: false });
+  await store.init();
+  try {
+    const health = await collectIndexHealthFromStore(store, { rootDir: projectRoot });
+    const gate = evaluateIndexHealthGate(health);
+    return {
+      ready: gate.ready,
+      reason: gate.ready ? "ready" : "index-health-gate",
+      failed: (gate.failedGates || []).map((item) => item.code).join(",") || "none",
+      indexedSourceFiles: gate.indexedSourceFiles,
+      eligibleSourceFiles: gate.eligibleSourceFiles,
+      sourceCoverage: gate.sourceCoverage,
+      repairCommand: gate.repairCommand || DEFAULT_INDEX_REPAIR_COMMAND,
+    };
+  } finally {
+    store.close();
+  }
+}
+
+function summarizeLineDiff(before, after) {
+  const beforeLines = splitLines(before);
+  const afterLines = splitLines(after);
+  if (beforeLines.length * afterLines.length > 1_000_000) {
+    return summarizeLineDiffFast(beforeLines, afterLines);
+  }
+  const lcs = lcsLength(beforeLines, afterLines);
+  return {
+    additions: afterLines.length - lcs,
+    deletions: beforeLines.length - lcs,
+  };
+}
+
+function summarizeLineDiffFast(beforeLines, afterLines) {
+  let prefix = 0;
+  while (prefix < beforeLines.length && prefix < afterLines.length && beforeLines[prefix] === afterLines[prefix]) {
+    prefix += 1;
+  }
+  let suffix = 0;
+  while (
+    suffix + prefix < beforeLines.length &&
+    suffix + prefix < afterLines.length &&
+    beforeLines[beforeLines.length - 1 - suffix] === afterLines[afterLines.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+  return {
+    additions: Math.max(0, afterLines.length - prefix - suffix),
+    deletions: Math.max(0, beforeLines.length - prefix - suffix),
+  };
+}
+
+function lcsLength(a, b) {
+  let previous = new Array(b.length + 1).fill(0);
+  let current = new Array(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = a[i - 1] === b[j - 1] ? previous[j - 1] + 1 : Math.max(previous[j], current[j - 1]);
+    }
+    [previous, current] = [current, previous.fill(0)];
+  }
+  return previous[b.length];
+}
+
+function splitLines(value) {
+  const normalized = String(value || "").replace(/\r\n/g, "\n");
+  if (!normalized) return [];
+  return normalized.endsWith("\n") ? normalized.slice(0, -1).split("\n") : normalized.split("\n");
 }
 
 function hashContent(value) {

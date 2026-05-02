@@ -20,7 +20,7 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
 
 0. **Run the real dry-run implementation.** Use:
    ```bash
-   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
+   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --diff-summary --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
    ```
    The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute.
 
@@ -42,6 +42,7 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
    <adapter>/rules/no-half-finished.md     unchanged  unchanged skip
    <adapter>/agents/_legacy/*.md           DELETED    present   ask user
    ```
+   The CLI also prints `SUPERVIBE_ADAPT_DIFF_SUMMARY` with per-file additions/deletions. If a slash-flow uses `--apply --all` after explicit user approval, keep that summary visible in the transcript so the applied files are auditable.
 
 5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval. Apply only approved files:
    ```bash
@@ -51,6 +52,8 @@ This is an AI CLI slash command, not an operating-system shell command. Run it i
 6. **Update version marker.** After all approved writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
+
+8. **Separate adapt from index health.** A clean adapt can still leave code index health red. Treat `ADAPT_CLEAN: true` as the artifact-sync result and `INDEX_REPAIR_NEEDED: true` as a separate follow-up. When index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling the adapt incomplete.
 
 ## Output contract
 

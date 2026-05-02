@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -66,6 +66,41 @@ test("supervibe-adapt applies only explicitly approved files and updates version
       readFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "utf8").trim(),
       CURRENT_VERSION,
     );
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt prints diff summary and creates memory index during dry-run", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--dry-run", "--diff-summary", "--no-color"]);
+
+    assert.match(out, /SUPERVIBE_ADAPT_DIFF_SUMMARY/);
+    assert.match(out, /DIFF: \.codex\/agents\/repo-researcher\.md \+\d+ -\d+ \(review-update\)/);
+    assert.match(out, /MEMORY_INDEX: ready/);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt --apply --all separates adapt success from index repair and writes ISO baseline timestamps", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--apply", "--all", "--no-color"]);
+
+    assert.match(out, /SUPERVIBE_ADAPT_DIFF_SUMMARY/);
+    assert.match(out, /APPLIED: 1/);
+    assert.match(out, /ADAPT_CLEAN: true/);
+    assert.match(out, /POST_APPLY_UPDATES: 0/);
+    assert.match(out, /INDEX_REPAIR_NEEDED: true/);
+    assert.match(out, /NEXT_INDEX_REPAIR: node scripts\/build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
+
+    const baseline = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), "utf8"));
+    const updatedAt = baseline.artifacts[".codex/agents/repo-researcher.md"].updatedAt;
+    assert.match(updatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    assert.notEqual(updatedAt, "deterministic-local");
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

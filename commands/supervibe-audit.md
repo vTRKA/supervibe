@@ -22,7 +22,11 @@ Design audit mode uses the same command surface: `/supervibe-audit --design`. It
 
 6. **Project-level overrides.** If the selected host adapter's agents folder exists in the current project, diff each file against the upstream version in `<resolved-supervibe-plugin-root>/agents/<same-namespace>/<same-name>.md`. Report drifted ones.
 
-7. **Memory hygiene.** List memory categories under `.supervibe/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
+7. **Memory hygiene.** First check `.supervibe/memory/index.json`. If it is missing, diagnose that memory lookup is not ready and print:
+   ```bash
+   node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs
+   ```
+   Then list memory categories under `.supervibe/memory/{decisions,patterns,incidents,learnings,solutions}/` with counts. Flag categories with zero entries (likely under-used).
 
 8. **Override-rate check.** Read `.supervibe/confidence-log.jsonl`. If override rate over the last 100 entries exceeds 5%, escalate as a finding.
 

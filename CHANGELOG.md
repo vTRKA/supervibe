@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.33] - 2026-05-02
+
+### Added
+
+- Added `supervibe-adapt --diff-summary` and automatic per-file summary output
+  for `--apply --all` so approved bulk updates remain auditable.
+- Added Codex/project host artifact support to `validate-artifact-links --root`
+  so `.codex/agents`, `.codex/rules`, and `.codex/skills` are validated instead
+  of reporting zero artifacts.
+
+### Changed
+
+- `supervibe-adapt` now creates the project memory index during dry-run/apply,
+  reports post-apply artifact cleanliness separately from code index health, and
+  prints the exact next index repair command when source coverage is incomplete.
+- Adapt baselines now write real ISO `updatedAt` timestamps for diagnostics.
+
 ## [2.0.32] - 2026-05-02
 
 ### Added

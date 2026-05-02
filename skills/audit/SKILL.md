@@ -30,7 +30,8 @@ Audit is read-only and non-interactive by default. No-prompt path: run the audit
 1. Read `registry.yaml` for current artifact list
 2. Read `.supervibe/memory/effectiveness.jsonl` (if exists)
 3. Read `.supervibe/confidence-log.jsonl` (if exists)
-4. Read recent commits for context
+4. Check `.supervibe/memory/index.json`; if missing, report `memory-index-missing` and the exact `node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs` repair command before any project-memory-dependent checks
+5. Read recent commits for context
 
 ## Procedure
 

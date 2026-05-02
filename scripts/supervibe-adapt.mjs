@@ -23,10 +23,10 @@ try {
       include: args.include ? String(args.include).split(",").filter(Boolean) : [],
       applyAll: Boolean(args.all),
     });
-    print(result, formatAdaptApply);
+    print(result, (value) => formatAdaptApply(value, { diffSummary: Boolean(args["diff-summary"] || args.all) }));
     if (result.blocked.length > 0) process.exitCode = 2;
   } else {
-    print(plan, formatAdaptPlan);
+    print(plan, (value) => formatAdaptPlan(value, { diffSummary: Boolean(args["diff-summary"]) }));
   }
 } catch (error) {
   console.error(`supervibe-adapt error: ${error.message}`);
@@ -40,7 +40,7 @@ function print(value, formatter) {
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(["apply", "all", "dry-run", "json", "no-color"]);
+  const booleans = new Set(["apply", "all", "dry-run", "json", "no-color", "diff-summary"]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith("--")) {
