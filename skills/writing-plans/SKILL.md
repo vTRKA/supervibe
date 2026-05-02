@@ -22,7 +22,7 @@ NOT for: still-vague requirements (go back to brainstorming), trivial one-line c
 
 ## Step 0 — Read source of truth (required)
 
-1. Read the approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `docs/specs/`. Запусти `/supervibe-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/supervibe-plan <path>`." Do not proceed with planning vapor.
+1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** → STOP and tell the user: "Нет утверждённой спецификации в `.supervibe/artifacts/specs/`. Запусти `/supervibe-brainstorm <topic>` чтобы её создать, или укажи путь к существующему spec явно: `/supervibe-plan <path>`." Do not proceed with planning vapor.
 2. Read the active host instruction file for project's verification commands (typecheck, test, lint)
 3. Read existing patterns the plan must follow (skim related code via Glob)
 4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
@@ -76,9 +76,9 @@ Per task: TDD applicable?
    - Commit step (or note if commits suppressed)
 7. **Final 10/10 acceptance gate** — define exact evidence needed to call the work production-ready; include "no open blockers" and plan reread requirements.
 8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, SDLC completeness, production-readiness coverage.
-9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file docs/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
+9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file .supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
-11. **Save** to `docs/plans/YYYY-MM-DD-<feature>.md`.
+11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
 12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Шаг 1/1: review loop по плану?`.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Шаг 1/1: разбить план на атомарные work items и epic?`.
@@ -92,9 +92,9 @@ Required handoff block after saving the plan:
 ```text
 NEXT_STEP_HANDOFF
 Current phase: plan
-Artifact: docs/plans/YYYY-MM-DD-<slug>.md
+Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next phase: plan-review
-Next command: /supervibe-plan --review docs/plans/YYYY-MM-DD-<slug>.md
+Next command: /supervibe-plan --review .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next skill: supervibe:requesting-code-review
 Stop condition: ask-before-plan-review
 Why: Execution and atomization are blocked until plan review passes.
@@ -216,7 +216,7 @@ This prevents cascading failures.
 
 ## Output contract template
 
-Save plans to `docs/plans/YYYY-MM-DD-<feature-name>.md`. Reference template at `docs/templates/plan-template.md`.
+Save plans to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature-name>.md`. Reference template at `docs/templates/plan-template.md`.
 
 Required header:
 ```markdown
@@ -259,13 +259,13 @@ Required at end:
 
 ### Workflow: Feature plan (5–15 tasks)
 
-1. Read brainstorm output (`docs/specs/...-brainstorm.md`) if exists
+1. Read brainstorm output (`.supervibe/artifacts/specs/...-brainstorm.md`) if exists
 2. List ALL tasks in dependency order
 3. Mark critical path
 4. Identify parallelization batches for handoff
 5. Per task: failing test, impl, verify, rollback, commit
 6. Self-review: coverage / placeholders / type consistency
-7. Save to `docs/plans/`
+7. Save to `.supervibe/artifacts/plans/`
 
 ### Workflow: Multi-phase plan (>15 tasks, >1 day)
 
@@ -283,7 +283,7 @@ Required at end:
 
 ## Verification
 
-- Plan saved to `docs/plans/YYYY-MM-DD-<feature>.md`
+- Plan saved to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`
 - Every task has bite-sized steps + failing test + verify command + commit
 - Critical path documented
 - Scope Safety Gate documents approved, deferred, rejected, and spiked scope with evidence and tradeoffs

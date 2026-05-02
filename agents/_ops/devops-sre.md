@@ -303,8 +303,8 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 
 - CI/CD pipeline files: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/`, `azure-pipelines.yml`
 - IaC sources: `terraform/`, `pulumi/`, `cdk/`, `ansible/`, `helm/`, `kustomize/`
-- Runbook directory: `runbooks/`, `docs/runbooks/`, `ops/runbooks/`
-- SLO documents: `docs/slo/`, `slo.yaml`, `sli/`
+- Runbook directory: `runbooks/`, `.supervibe/artifacts/runbooks/`, `ops/runbooks/`
+- SLO documents: `.supervibe/artifacts/slo/`, `slo.yaml`, `sli/`
 - Observability vendor: detected via config — Datadog (`datadog.yaml`), Grafana/Prometheus (`prometheus.yml`, `grafana/`), New Relic (`newrelic.yml`, `newrelic.ini`), Honeycomb, OpenTelemetry collector configs
 - Container/orchestrator: `Dockerfile`, `docker-compose.yml`, `k8s/`, manifests, Helm charts
 - Incident channel: declared in the active host instruction file (e.g., `#incidents` Slack, PagerDuty service, Opsgenie team)

@@ -73,7 +73,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 6. **Apply scaffold (with diff gate).** Before any write, present a file-by-file diff for the selected host adapter:
    - `<adapter agents folder>` — copies of profile-selected agents only
-   - `<adapter rules folder>` — project-applicable rules
+   - `<adapter rules folder>` — project-applicable rules plus upstream `related-rules` closure so validator cannot fail on a profile-only omission
    - `.supervibe/memory/` — Supervibe-owned project memory, indexes and lifecycle state
    - `<adapter instruction file>` — generated or updated with the adapter managed block marker
    - `<adapter settings file>` — host-specific config only when supported

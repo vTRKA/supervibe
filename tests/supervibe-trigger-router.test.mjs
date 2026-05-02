@@ -17,7 +17,7 @@ describe("supervibe trigger router", () => {
 
   it("routes plan completion to the review loop before atomization or execution", () => {
     const route = routeTriggerRequest("после плана сделай ревью луп", {
-      artifacts: { planPath: "docs/plans/example.md" },
+      artifacts: { planPath: ".supervibe/artifacts/plans/example.md" },
     });
 
     assert.equal(route.intent, "plan_review");

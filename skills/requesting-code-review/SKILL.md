@@ -82,9 +82,9 @@ If the plan passes, print:
 ```text
 NEXT_STEP_HANDOFF
 Current phase: plan-review
-Artifact: docs/plans/YYYY-MM-DD-<slug>.md
+Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next phase: work-item-atomization
-Next command: /supervibe-loop --from-plan --atomize docs/plans/YYYY-MM-DD-<slug>.md
+Next command: /supervibe-loop --from-plan --atomize .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-work-item-atomization
 Why: A reviewed plan can become durable atomic work items and an epic.

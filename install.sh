@@ -12,7 +12,7 @@
 #
 # What it does (idempotent - safe to re-run):
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
-#   2. Clones the Supervibe repo (LFS smudge disabled so clone cannot hang)
+#   2. Clones the Supervibe repo
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
 #   4. Restores known installer-managed drift and cleans stale files before reinstalling
 #   5. Downloads the required ONNX embedding model before registration
@@ -35,7 +35,7 @@ EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 PLUGIN_NAME="supervibe"
 MARKETPLACE_NAME="supervibe-marketplace"
 MIN_NODE_VERSION="22.5.0"
-INSTALLER_MANAGED_MODEL_PATH="models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx"
+LOCAL_ONNX_MODEL_PATH="models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx"
 LOG_DIR="${TMPDIR:-/tmp}/supervibe-install.$$"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
@@ -66,11 +66,8 @@ guard_wsl_windows_install() {
   die "WSL detected. This installer would use WSL HOME=$HOME and WSL Node, not your Windows Codex/Claude/Gemini profile. For Windows install, run PowerShell: irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex. To intentionally install inside WSL, set SUPERVIBE_ALLOW_WSL_INSTALL=1."
 }
 
-git_no_lfs_smudge() {
-  GIT_LFS_SKIP_SMUDGE=1 git \
-    -c filter.lfs.smudge= \
-    -c filter.lfs.required=false \
-    "$@"
+run_git() {
+  git "$@"
 }
 
 validate_safe_path() {
@@ -114,7 +111,7 @@ ensure_required_onnx_model() {
   ( cd "$TARGET" && node scripts/ensure-onnx-model.mjs >"$LOG_DIR/onnx-model.log" 2>&1 ) || {
     echo "--- last 80 lines of ONNX model setup ---" >&2
     tail -n 80 "$LOG_DIR/onnx-model.log" >&2
-    die "required ONNX model setup failed. Check Git LFS or network access to HuggingFace, then re-run."
+    die "required ONNX model setup failed. Check network access to HuggingFace, then re-run."
   }
   ok "required ONNX embedding model is ready"
 }
@@ -129,9 +126,9 @@ restore_installer_managed_tracked_edits() {
     path="${line#???}"
     case "$path" in *" -> "*) path="${path##* -> }" ;; esac
     case "$path" in
-      "package-lock.json"|"$INSTALLER_MANAGED_MODEL_PATH")
+      "package-lock.json")
         warn "restoring installer-managed tracked artifact: $path"
-        git_no_lfs_smudge -C "$root" checkout -- "$path" >/dev/null 2>>"$LOG_DIR/restore-managed-artifacts.log" || {
+        run_git -C "$root" checkout -- "$path" >/dev/null 2>>"$LOG_DIR/restore-managed-artifacts.log" || {
           cat "$LOG_DIR/restore-managed-artifacts.log" >&2
           die "failed to restore installer-managed tracked artifact: $path"
         }
@@ -158,7 +155,7 @@ clean_managed_checkout() {
     warn "removing $untracked_count untracked stale file(s) from managed plugin checkout"
   fi
   say "cleaning managed checkout (git clean -ffdx)"
-  git -C "$root" clean -ffdx >/dev/null 2>"$LOG_DIR/git-clean.log" || {
+  git -C "$root" clean -ffdx -e "$LOCAL_ONNX_MODEL_PATH" >/dev/null 2>"$LOG_DIR/git-clean.log" || {
     cat "$LOG_DIR/git-clean.log" >&2
     die "git clean failed. Inspect: $root"
   }
@@ -328,15 +325,15 @@ say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} p
 if [ -d "$TARGET/.git" ]; then
   clean_managed_checkout "$TARGET"
   say "found existing checkout at $TARGET - updating to $REF"
-  if ! git_no_lfs_smudge -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
+  if ! run_git -C "$TARGET" fetch --tags --prune --quiet 2>"$LOG_DIR/fetch.log"; then
     cat "$LOG_DIR/fetch.log" >&2
     die "git fetch failed. Inspect: $TARGET"
   fi
-  git_no_lfs_smudge -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
+  run_git -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
     cat "$LOG_DIR/checkout.log" >&2
     die "git checkout $REF failed. Make sure the ref exists upstream."
   }
-  if ! git_no_lfs_smudge -C "$TARGET" pull --ff-only --quiet 2>"$LOG_DIR/pull.log"; then
+  if ! run_git -C "$TARGET" pull --ff-only --quiet 2>"$LOG_DIR/pull.log"; then
     warn "pull --ff-only failed (local diverged or detached head); leaving checkout at current commit"
   fi
   assert_checkout_mirror_clean "$TARGET" "checkout update"
@@ -346,11 +343,11 @@ else
     quarantine_non_git_target "$TARGET"
   fi
   mkdir -p "$(dirname "$TARGET")"
-  git_no_lfs_smudge clone --quiet "$REPO_URL" "$TARGET" 2>"$LOG_DIR/clone.log" || {
+  run_git clone --quiet "$REPO_URL" "$TARGET" 2>"$LOG_DIR/clone.log" || {
     cat "$LOG_DIR/clone.log" >&2
     die "git clone failed. Check network / repo access."
   }
-  git_no_lfs_smudge -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
+  run_git -C "$TARGET" checkout --quiet "$REF" 2>"$LOG_DIR/checkout.log" || {
     cat "$LOG_DIR/checkout.log" >&2
     die "git checkout $REF failed inside fresh clone."
   }

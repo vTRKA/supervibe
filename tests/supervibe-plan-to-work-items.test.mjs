@@ -65,7 +65,7 @@ npm test -- payment.test.ts
 test("plan parser extracts tasks, critical path, parallel groups, and review gates", () => {
   assert.ok(WORK_ITEM_TYPES.includes("epic"));
   assert.ok(WORK_ITEM_REQUIRED_FIELDS.includes("verificationCommands"));
-  const parsed = parsePlanForWorkItems(PLAN, "docs/plans/payment.md");
+  const parsed = parsePlanForWorkItems(PLAN, ".supervibe/artifacts/plans/payment.md");
   assert.equal(parsed.title, "Payment Flow Implementation Plan");
   assert.equal(parsed.tasks.length, 3);
   assert.deepEqual(parsed.criticalPath, ["T1", "T2", "T3"]);
@@ -75,7 +75,7 @@ test("plan parser extracts tasks, critical path, parallel groups, and review gat
 
 test("atomization creates one epic, child tasks, blocker edges, gates, and followups", () => {
   const graph = atomizePlanToWorkItems(PLAN, {
-    planPath: "docs/plans/payment.md",
+    planPath: ".supervibe/artifacts/plans/payment.md",
     epicId: "epic-payment",
     planReviewPassed: true,
   });
@@ -96,7 +96,7 @@ test("atomization creates one epic, child tasks, blocker edges, gates, and follo
 
 test("work item graph converts into runner-compatible loop tasks", () => {
   const graph = atomizePlanToWorkItems(PLAN, {
-    planPath: "docs/plans/payment.md",
+    planPath: ".supervibe/artifacts/plans/payment.md",
     epicId: "epic-payment",
     planReviewPassed: true,
   });
@@ -111,7 +111,7 @@ test("work item graph converts into runner-compatible loop tasks", () => {
 
 test("validation rejects unknown blockers", () => {
   const graph = atomizePlanToWorkItems(PLAN, {
-    planPath: "docs/plans/payment.md",
+    planPath: ".supervibe/artifacts/plans/payment.md",
     epicId: "epic-payment",
     planReviewPassed: true,
   });
@@ -123,13 +123,13 @@ test("validation rejects unknown blockers", () => {
 
 test("createWorkItemGraph exposes task graph projection", () => {
   const graph = atomizePlanToWorkItems(PLAN, {
-    planPath: "docs/plans/payment.md",
+    planPath: ".supervibe/artifacts/plans/payment.md",
     epicId: "epic-payment",
     planReviewPassed: true,
   });
   const projected = createWorkItemGraph({
     epicId: graph.epicId,
-    planPath: "docs/plans/payment.md",
+    planPath: ".supervibe/artifacts/plans/payment.md",
     title: graph.title,
     items: graph.items,
   });
@@ -140,7 +140,7 @@ test("native write and external adapter failure preserve native graph", async ()
   const temp = await mkdtemp(join(tmpdir(), "supervibe-work-items-"));
   try {
     const graph = atomizePlanToWorkItems(PLAN, {
-      planPath: "docs/plans/payment.md",
+      planPath: ".supervibe/artifacts/plans/payment.md",
       epicId: "epic-payment",
       planReviewPassed: true,
     });

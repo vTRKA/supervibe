@@ -61,7 +61,7 @@ Usage:
   preview-server.mjs --kill <port>
   preview-server.mjs --kill-all
 
-Note: --no-feedback is blocked for prototypes/, mockups/, and presentations/ roots.`);
+Note: --no-feedback is blocked for .supervibe/artifacts/prototypes/, .supervibe/artifacts/mockups/, and .supervibe/artifacts/presentations/ roots.`);
   process.exit(0);
 }
 

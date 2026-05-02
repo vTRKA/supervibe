@@ -69,7 +69,7 @@ Returns JSON-shaped object:
 ```
 {
   "artifact-type": "requirements-spec",
-  "artifact-ref": "docs/specs/2026-04-27-foo.md",
+  "artifact-ref": ".supervibe/artifacts/specs/2026-04-27-foo.md",
   "score": 8,
   "max-score": 10,
   "status": "BLOCK",  // PASS | WARN | BLOCK

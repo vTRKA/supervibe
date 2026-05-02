@@ -65,7 +65,7 @@ multi-session work should use disjoint task IDs and write-sets.
 ## Commands
 
 ```bash
-/supervibe-loop --plan-waves docs/plans/example.md
+/supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
 /supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --setup-worker-presets
 /supervibe-status --waves --file .supervibe/memory/loops/<run-id>/state.json

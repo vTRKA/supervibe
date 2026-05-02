@@ -175,7 +175,7 @@ Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performanc
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
-2. **Artifact mode gate**: if existing `prototypes/`, `mockups/`, `presentations/`, or prior specs match the brief and the user did not explicitly say continue existing vs new from scratch, ask one question before treating old files as source. Prior files are evidence, not permission to reuse.
+2. **Artifact mode gate**: if existing `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, `.supervibe/artifacts/presentations/`, or prior specs match the brief and the user did not explicitly say continue existing vs new from scratch, ask one question before treating old files as source. Prior files are evidence, not permission to reuse.
 3. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
 4. **Reference scan**: collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns. For each, record URL, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
 4. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
@@ -331,12 +331,12 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Design tokens: `prototypes/_design-system/tokens.css`, `design-tokens/`, `frontend/src/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
-- Screen specs: `screen-specs/`, `docs/specs/`, or co-located alongside route files
+- Design tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `design-tokens/`, `frontend/src/tokens/`, or platform equivalent (CSS custom properties, Tailwind config, Figma variables)
+- Screen specs: `.supervibe/artifacts/screen-specs/`, `.supervibe/artifacts/specs/`, or co-located alongside route files
 - Component library: `frontend/src/components/`, `packages/ui/`, Storybook entry points
-- Mockups / prototypes: `mockups/`, `prototypes/`, Figma file references in the active host instruction file
-- Design system: `prototypes/_design-system/` — tokens, component specs, motion, accessibility
-- Brandbook: `prototypes/_brandbook/` — direction, voice, moodboards, positioning
+- Mockups / prototypes: `.supervibe/artifacts/mockups/`, `.supervibe/artifacts/prototypes/`, Figma file references in the active host instruction file
+- Design system: `.supervibe/artifacts/prototypes/_design-system/` — tokens, component specs, motion, accessibility
+- Brandbook: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/` — direction, voice, moodboards, positioning
 - IA reference: `docs/ia/`, sitemap files, or route manifests
 - Past design decisions: `.supervibe/memory/design/` — prior screen specs and rationale
 

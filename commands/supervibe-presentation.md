@@ -17,8 +17,8 @@ Intermediate story and slide decisions can be recorded as delegated decisions wh
 | Form | Behavior |
 | --- | --- |
 | `/supervibe-presentation <brief>` | Create or continue a deck from a natural-language brief. |
-| `/supervibe-presentation --revise <slug>` | Load feedback for `presentations/<slug>/` and revise the approved draft. |
-| `/supervibe-presentation --export <slug>` | Export `presentations/<slug>/deck.json` to `presentations/<slug>/export/<slug>.pptx`. |
+| `/supervibe-presentation --revise <slug>` | Load feedback for `.supervibe/artifacts/presentations/<slug>/` and revise the approved draft. |
+| `/supervibe-presentation --export <slug>` | Export `.supervibe/artifacts/presentations/<slug>/deck.json` to `.supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`. |
 | `/supervibe-presentation --drive <slug>` | Prepare a Google Drive handoff manifest after PPTX export. |
 
 ## What I do when invoked
@@ -29,7 +29,7 @@ Intermediate story and slide decisions can be recorded as delegated decisions wh
    - `supervibe:_design:presentation-director` for story arc, slide architecture, visual reference scan, and design-system alignment.
    - `supervibe:_design:presentation-deck-builder` for HTML slide preview, feedback revisions, PPTX export, and Google Drive handoff.
    - Existing `creative-director`, `ux-ui-designer`, `copywriter`, `ui-polish-reviewer`, and `accessibility-reviewer` when the deck needs brand, screen, copy, visual QA, or accessibility depth.
-4. Create or reuse `presentations/<slug>/`:
+4. Create or reuse `.supervibe/artifacts/presentations/<slug>/`:
    - `brief.md`
    - `storyboard.md`
    - `deck.json`
@@ -39,9 +39,9 @@ Intermediate story and slide decisions can be recorded as delegated decisions wh
    - `feedback-resolutions/`
    - `export/`
    - `google-drive-handoff.md`
-5. Start preview with `node scripts/preview-server.mjs --root presentations/<slug>/preview --label "<slug> deck"`.
+5. Start preview with `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
 6. Prompt the user for explicit feedback choice after the preview and reviews exist: approve, revise, alternative, deeper review, or stop.
-7. On approval, run `node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
+7. On approval, run `node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.
 8. If Google Drive is requested, fill `templates/presentation/google-drive-handoff.md.tpl` with target folder, file name, owner, exported PPTX path, and upload instructions.
 
 ## Clarifying question format

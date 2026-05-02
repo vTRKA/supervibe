@@ -196,7 +196,7 @@ async function main() {
 
   if (values.help) {
     console.log(`Usage:
-  node scripts/validate-plan-artifacts.mjs --file docs/plans/<plan>.md
+  node scripts/validate-plan-artifacts.mjs --file .supervibe/artifacts/plans/<plan>.md
   node scripts/validate-plan-artifacts.mjs --all`);
     process.exit(0);
   }
@@ -205,11 +205,11 @@ async function main() {
   const files = values.file
     ? [values.file]
     : values.all
-      ? await walkMarkdown(join(root, 'docs', 'plans'))
-      : await walkMarkdown(join(root, 'docs', 'plans'));
+      ? await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'))
+      : await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'));
 
   if (files.length === 0) {
-    console.log('[validate-plan-artifacts] no docs/plans/*.md files found; skipping');
+    console.log('[validate-plan-artifacts] no .supervibe/artifacts/plans/*.md files found; skipping');
     return;
   }
 

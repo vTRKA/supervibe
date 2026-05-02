@@ -106,16 +106,16 @@ Use `supervibe:design-intelligence` after memory and code search for slide layou
 
 ## Procedure
 
-1. Read `presentations/<slug>/storyboard.md` or the user's brief.
-2. Load `templates/presentation/deck-spec.json` and create `presentations/<slug>/deck.json`.
-3. Reuse approved design tokens from `prototypes/_design-system/` when available. If not available, keep deck theme explicit in `deck.json.theme`.
-4. Build `presentations/<slug>/preview/index.html` with one slide per section, readable speaker notes, and no external CDN dependencies.
-5. Start preview with `node scripts/preview-server.mjs --root presentations/<slug>/preview --label "<slug> deck"`.
+1. Read `.supervibe/artifacts/presentations/<slug>/storyboard.md` or the user's brief.
+2. Load `templates/presentation/deck-spec.json` and create `.supervibe/artifacts/presentations/<slug>/deck.json`.
+3. Reuse approved design tokens from `.supervibe/artifacts/prototypes/_design-system/` when available. If not available, keep deck theme explicit in `deck.json.theme`.
+4. Build `.supervibe/artifacts/presentations/<slug>/preview/index.html` with one slide per section, readable speaker notes, and no external CDN dependencies.
+5. Start preview with `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
 6. Print the feedback prompt from `supervibe:presentation-deck` and wait for explicit approve/revise/alternative/deep-review/stop choice.
 7. On revise, read open feedback from `.supervibe/memory/feedback-status.json` and `.supervibe/memory/feedback-queue.jsonl`, apply changes, write `feedback-resolutions/<id>.md`, and mark each item resolved or rejected.
-8. On alternative, create `presentations/<slug>/alternatives/<variant>/tradeoff.md` from `templates/alternatives/tradeoff.md.tpl`.
+8. On alternative, create `.supervibe/artifacts/presentations/<slug>/alternatives/<variant>/tradeoff.md` from `templates/alternatives/tradeoff.md.tpl`.
 9. On approval, write `.approval.json`.
-10. Export with `node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
+10. Export with `node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.
 11. Run a smoke check: file exists, size is non-zero, first two bytes are `PK`.
 12. Fill `google-drive-handoff.md` from `templates/presentation/google-drive-handoff.md.tpl` when Drive handoff is requested.
 
@@ -161,8 +161,8 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 
 ## Verification
 
-- `presentations/<slug>/deck.json` exists and contains a non-empty `slides` array.
-- `presentations/<slug>/preview/index.html` loads through preview server.
+- `.supervibe/artifacts/presentations/<slug>/deck.json` exists and contains a non-empty `slides` array.
+- `.supervibe/artifacts/presentations/<slug>/preview/index.html` loads through preview server.
 - Browser feedback entries for this slug are tracked and resolved/rejected before export.
 - `.approval.json` exists before export.
 - Exported `.pptx` exists and passes ZIP magic-byte smoke check.
@@ -215,7 +215,7 @@ The preview is where users approve the deck. It must be easier to inspect than a
 - No CDN or external runtime dependencies.
 - Feedback overlay enabled through preview server.
 - Preview uses the same deck content as `deck.json`; no divergent copy.
-- If using project design tokens, import them from `prototypes/_design-system/` or mirror their values in a documented preview stylesheet.
+- If using project design tokens, import them from `.supervibe/artifacts/prototypes/_design-system/` or mirror their values in a documented preview stylesheet.
 - For product screenshots, include alt/caption text so feedback can identify the target.
 
 ## PPTX export decision tree
@@ -260,7 +260,7 @@ For each feedback item:
    - story/copy/content -> `storyboard.md` and `deck.json`
    - visual/layout -> `preview/index.html`, preview CSS, and `deck.json` if export-visible
    - export issue -> `scripts/build-presentation.mjs` only if the exporter lacks needed behavior
-5. Write `presentations/<slug>/feedback-resolutions/<id>.md`:
+5. Write `.supervibe/artifacts/presentations/<slug>/feedback-resolutions/<id>.md`:
    ```markdown
    # Feedback <id>
    Original: <comment>
@@ -272,7 +272,7 @@ For each feedback item:
    ```
 6. Resolve or reject:
    ```bash
-   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution presentations/<slug>/feedback-resolutions/<id>.md
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution .supervibe/artifacts/presentations/<slug>/feedback-resolutions/<id>.md
    ```
 
 Resolved feedback must not resurface in later turns. If it does, inspect `.supervibe/memory/feedback-status.json` before editing.
@@ -369,7 +369,7 @@ Before final response:
 
 ### Build from brief
 
-1. Create `presentations/<slug>/brief.md`.
+1. Create `.supervibe/artifacts/presentations/<slug>/brief.md`.
 2. Request or receive storyboard from `presentation-director`.
 3. Create `deck.json`.
 4. Generate `preview/index.html`.
@@ -389,7 +389,7 @@ Before final response:
 
 1. Confirm `deck.json` exists and is valid.
 2. Confirm `.approval.json` exists.
-3. Run `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
+3. Run `npm run presentation:build -- --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.
 4. Smoke check first bytes are `PK`.
 5. Report output path and any fidelity limitations.
 
@@ -404,9 +404,9 @@ Before final response:
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Deck workspace: `presentations/<slug>/`
-- Deck source: `presentations/<slug>/deck.json`
-- Preview root: `presentations/<slug>/preview/`
-- Export directory: `presentations/<slug>/export/`
-- Drive handoff: `presentations/<slug>/google-drive-handoff.md`
+- Deck workspace: `.supervibe/artifacts/presentations/<slug>/`
+- Deck source: `.supervibe/artifacts/presentations/<slug>/deck.json`
+- Preview root: `.supervibe/artifacts/presentations/<slug>/preview/`
+- Export directory: `.supervibe/artifacts/presentations/<slug>/export/`
+- Drive handoff: `.supervibe/artifacts/presentations/<slug>/google-drive-handoff.md`
 - Export script: `scripts/build-presentation.mjs`

@@ -18,11 +18,11 @@ Build a **native HTML / CSS / JS** prototype that materializes an approved desig
 
 ## Design Intelligence Preflight
 
-Before prototype structure or visual decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use retrieved rows for style, UX, chart, icon, app-interface, and stack evidence, but never override approved `prototypes/_design-system/` tokens without an explicit extension approval.
+Before prototype structure or visual decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use retrieved rows for style, UX, chart, icon, app-interface, and stack evidence, but never override approved `.supervibe/artifacts/prototypes/_design-system/` tokens without an explicit extension approval.
 
 ## When to invoke
 
-AFTER `supervibe:brandbook` has produced an approved design system at `prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
+AFTER `supervibe:brandbook` has produced an approved design system at `.supervibe/artifacts/prototypes/_design-system/`. Triggered by user requests like "сделай мокап", "build a prototype of X", "покажи как будет выглядеть", "design the checkout flow".
 
 NOT for:
 - Implementing in a real framework — that is `<stack>-developer` agents AFTER prototype is approved and handed off
@@ -32,16 +32,16 @@ NOT for:
 ## Hard constraints
 
 1. **Native only.** No React, Vue, Svelte, Next.js, Nuxt, Astro, Tailwind preprocessor, npm dependencies. Pure HTML + CSS + JS. The output must work by opening `index.html` in any browser without a build step.
-2. **Design system is source of truth.** Every color, spacing, type ramp, radius, motion timing comes from `prototypes/_design-system/tokens.css`. Raw hex values, magic pixel numbers, ad-hoc cubic-beziers are forbidden. If the system doesn't have it, ask user to extend the system FIRST.
+2. **Design system is source of truth.** Every color, spacing, type ramp, radius, motion timing comes from `.supervibe/artifacts/prototypes/_design-system/tokens.css`. Raw hex values, magic pixel numbers, ad-hoc cubic-beziers are forbidden. If the system doesn't have it, ask user to extend the system FIRST.
 3. **Two viewports by default** — `375px` (mobile) and `1440px` (desktop). The user may request more (e.g. `768px` tablet, `1920px` wide-screen) but the default is exactly these two. Ask user upfront before building.
 4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with progress indicator ("Шаг 2/5: viewports").
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
-6. **Existing artifact mode is explicit.** If `prototypes/`, `mockups/`, or `presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
+6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
 7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews.
 
 ## Step 0 — Read source of truth (required)
 
-1. **Design system check.** Read `prototypes/_design-system/tokens.css`, `prototypes/_design-system/components/*.md`, `prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
+1. **Design system check.** Read `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `.supervibe/artifacts/prototypes/_design-system/components/*.md`, `.supervibe/artifacts/prototypes/_design-system/voice.md`. If any are missing → STOP. Tell user: "Не могу строить прототип без утверждённой дизайн-системы. Запусти `/supervibe-design <бриф>` или `supervibe:brandbook` для согласования tokens + components ПЕРВЫМ".
 2. **Artifact mode check.** Run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
 3. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
 4. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
@@ -80,10 +80,10 @@ ASK (one question, after target chosen):
   "Использовать стандартные viewport'ы для <target>: <list> или нужны другие?"
 
 Wait for explicit answer. Save chosen viewports + target + runtime + constraints
-to prototypes/<slug>/config.json BEFORE any HTML written.
+to .supervibe/artifacts/prototypes/<slug>/config.json BEFORE any HTML written.
 
 The pre-write hook (scripts/hooks/pre-write-prototype-guard.mjs) blocks every
-file write to prototypes/<slug>/ until config.json exists.
+file write to .supervibe/artifacts/prototypes/<slug>/ until config.json exists.
 ```
 
 ## Decision tree — interaction depth
@@ -99,19 +99,19 @@ What level of fidelity does this prototype need?
 │   → CSS animations + Web Animations API + Intersection Observer
 │   (defer to supervibe:interaction-design-patterns for recipes)
 └─ Data-fed mock — fake API responses, realistic content state
-    → fetch() against local JSON files in prototypes/<slug>/mocks/
+    → fetch() against local JSON files in .supervibe/artifacts/prototypes/<slug>/mocks/
 ```
 
 ## Procedure
 
 ### Stage 1 — Setup
 
-1. Pick a slug for the prototype: `prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
-2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
+1. Pick a slug for the prototype: `.supervibe/artifacts/prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
+2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `.supervibe/artifacts/prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
 3. Confirm interaction depth level (visual-only / click-through / realistic / data-fed). One question, multiple-choice format.
 4. Create directory layout:
    ```
-   prototypes/<slug>/
+   .supervibe/artifacts/prototypes/<slug>/
    ├── config.json              { "viewports": [375, 1440], "interaction": "click-through", "approval": "draft" }
    ├── index.html               entry point
    ├── pages/                   per-flow HTML files
@@ -144,13 +144,13 @@ Wait for explicit answer. Then next question. Never combine.
 ### Stage 3 — Build
 
 1. Build the chosen viewports as separate breakpoint blocks in `styles/pages.css` using container queries OR a single `@media (min-width)` cascade. Pick one and keep consistent.
-2. Compose components by reading `prototypes/_design-system/components/<name>.md` for each — NEVER invent component patterns; if the design system doesn't have what you need, STOP and ask user to extend the system.
-3. Animations come from `prototypes/_design-system/motion.css` (named keyframes + named easings + named durations) — apply, don't author new motion in the prototype.
-4. **No framework imports.** Verify `<script src=>` and `<link href=>` reference only relative files. No CDN, no `import` from npm. Greppable: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css))' prototypes/<slug>/` must return zero results.
+2. Compose components by reading `.supervibe/artifacts/prototypes/_design-system/components/<name>.md` for each — NEVER invent component patterns; if the design system doesn't have what you need, STOP and ask user to extend the system.
+3. Animations come from `.supervibe/artifacts/prototypes/_design-system/motion.css` (named keyframes + named easings + named durations) — apply, don't author new motion in the prototype.
+4. **No framework imports.** Verify `<script src=>` and `<link href=>` reference only relative files. No CDN, no `import` from npm. Greppable: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css))' .supervibe/artifacts/prototypes/<slug>/` must return zero results.
 
 ### Stage 4 — Live preview
 
-1. Invoke `supervibe:preview-server` with `--root prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
+1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes/<slug>/`. It spawns `http://localhost:NNNN` with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
 2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button. If missing, fix the preview setup before presenting the URL.
 3. Print URL to user. Hand-off to user for visual review.
 4. Ensure server stays alive while feedback loop runs.
@@ -166,19 +166,19 @@ After delivering the URL, the skill EXPLICITLY prompts feedback:
 
 Что делаем дальше?
 
-- ✅ **Утвердить** — фиксирую состояние как `approved`, готовлю handoff в `prototypes/<slug>/handoff/`
+- ✅ **Утвердить** — фиксирую состояние как `approved`, готовлю handoff в `.supervibe/artifacts/prototypes/<slug>/handoff/`
 - ✎ **Доработать** — расскажи что поменять, итерируем
 - 🔀 **Альтернатива** — предложу 2 другие визуальные/композиционные направления
 - 🛑 **Стоп** — оставить как draft, вернёмся позже
 ```
 
-Do NOT proceed without explicit choice. If "Доработать" → ask one clarifying question per round. If "Альтернатива" → spawn `prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side.
+Do NOT proceed without explicit choice. If "Доработать" → ask one clarifying question per round. If "Альтернатива" → spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side.
 
 ### Stage 6 — Approval marker
 
 When user explicitly says "утвердить" / "approve" / "✅":
 
-1. Write `prototypes/<slug>/.approval.json`:
+1. Write `.supervibe/artifacts/prototypes/<slug>/.approval.json`:
    ```json
    {
      "status": "approved",
@@ -205,13 +205,13 @@ When user explicitly says "утвердить" / "approve" / "✅":
 ```
 === Prototype ===
 Slug:           <slug>
-Location:       prototypes/<slug>/
+Location:       .supervibe/artifacts/prototypes/<slug>/
 Viewports:      [375, 1440]   (mobile, desktop)
 Interaction:    click-through
 Files:          index.html (1) + pages (N) + styles (M) + scripts (K)
-Design system:  prototypes/_design-system/  (commit: <sha>)
+Design system:  .supervibe/artifacts/prototypes/_design-system/  (commit: <sha>)
 Preview URL:    http://localhost:NNNN
-Approval:       <draft | approved>     ← saved at prototypes/<slug>/.approval.json
+Approval:       <draft | approved>     ← saved at .supervibe/artifacts/prototypes/<slug>/.approval.json
 Feedback rounds: <count>
 
 Confidence: <N>.<dd>/10
@@ -233,9 +233,9 @@ Rubric:     prototype
 
 ## Verification
 
-- `find prototypes/<slug>/ -name '*.html'` shows expected structure
-- `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<slug>/` returns 0 hits
-- `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
+- `find .supervibe/artifacts/prototypes/<slug>/ -name '*.html'` shows expected structure
+- `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits
+- `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
 - Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
 - Approval marker written when user says "утвердить" / "approve"
 - `prefers-reduced-motion: reduce` honored — animations disabled or shortened to ≤100ms
@@ -245,7 +245,7 @@ Rubric:     prototype
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
-- `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
+- `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 - `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
 - `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.

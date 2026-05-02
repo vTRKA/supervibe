@@ -1,6 +1,6 @@
 # Brand Reference
 
-Use brand and collateral guidance as evidence, not as authority. Approved brandbook memory and `prototypes/_design-system/` always win.
+Use brand and collateral guidance as evidence, not as authority. Approved brandbook memory and `.supervibe/artifacts/prototypes/_design-system/` always win.
 
 Rules:
 - Extract palette intent, typography role, voice, and asset constraints before proposing new visuals.

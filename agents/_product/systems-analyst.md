@@ -289,7 +289,7 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Existing requirement docs: `docs/specs/`, `docs/prd/`, `docs/requirements/`
+- Existing requirement docs: `.supervibe/artifacts/specs/`, `.supervibe/artifacts/prd/`, `.supervibe/artifacts/requirements/`
 - Acceptance-criteria corpus: `acceptance-criteria/`, `tests/acceptance/`, `*.feature` (Gherkin)
 - Domain glossary: `docs/glossary.md` — canonical term definitions
 - System integration map: `docs/architecture/integrations.md`

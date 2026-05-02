@@ -12,16 +12,13 @@ import {
   onnxModelPath,
 } from "../scripts/ensure-onnx-model.mjs";
 
-test("ONNX model validator rejects missing, tiny, and Git LFS pointer files", async () => {
+test("ONNX model validator rejects missing and truncated files", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-onnx-"));
   try {
     const modelPath = join(dir, "model_quantized.onnx");
     assert.equal(isModelUsable(modelPath, 10), false);
 
     await writeFile(modelPath, "tiny");
-    assert.equal(isModelUsable(modelPath, 10), false);
-
-    await writeFile(modelPath, "version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 118308185\n");
     assert.equal(isModelUsable(modelPath, 10), false);
 
     await writeFile(modelPath, Buffer.alloc(16, 1));
@@ -70,25 +67,20 @@ test("ONNX model setup checks existing model before any network fetch", async ()
 
   const existingCheck = ensureBody.indexOf("if (isModelUsable(modelPath))");
   const download = ensureBody.indexOf("await downloadWithRetries");
-  const lfs = ensureBody.indexOf("tryGitLfsPull");
 
   assert.notEqual(existingCheck, -1, "setup should check for an already-usable model");
   assert.notEqual(download, -1, "setup should have a direct download path");
-  assert.notEqual(lfs, -1, "setup should retain Git LFS as fallback");
   assert.ok(existingCheck < download, "ready local model must skip direct download");
-  assert.ok(existingCheck < lfs, "ready local model must skip Git LFS");
 });
 
-test("ONNX model setup uses HuggingFace before Git LFS to conserve repository LFS bandwidth", async () => {
+test("ONNX model setup uses HuggingFace only and has no repository LFS fallback", async () => {
   const source = await readFile("scripts/ensure-onnx-model.mjs", "utf8");
   const ensureBody = source.slice(source.indexOf("export async function ensureOnnxModel"));
 
   const download = ensureBody.indexOf("await downloadWithRetries");
-  const lfs = ensureBody.indexOf("tryGitLfsPull");
 
   assert.notEqual(download, -1, "setup should directly download from HuggingFace");
-  assert.notEqual(lfs, -1, "setup should retain Git LFS fallback");
-  assert.ok(download < lfs, "direct HuggingFace download must run before Git LFS fallback");
+  assert.doesNotMatch(source, /tryGitLfsPull|git lfs|git-lfs|GIT_LFS|SUPERVIBE_LFS|filter\.lfs/i);
 });
 
 test("ONNX model downloader reports progress and does not interrupt direct downloads by default", async () => {
@@ -96,8 +88,7 @@ test("ONNX model downloader reports progress and does not interrupt direct downl
 
   assert.match(source, /content-length/);
   assert.match(source, /downloaded \$\{percent\.toFixed\(1\)\}%/);
-  assert.match(source, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, "direct download stall timeout may be enabled explicitly for diagnostics");
-  assert.match(source, /stall timeout disabled by default/);
   assert.match(source, /no total timeout/);
-  assert.doesNotMatch(source, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/);
+  assert.match(source, /no stall timeout/);
+  assert.doesNotMatch(source, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_STALL_TIMEOUT|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT|DEFAULT_DOWNLOAD_TIMEOUT|request\.setTimeout|setTimeout\(/);
 });

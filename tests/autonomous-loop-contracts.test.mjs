@@ -23,13 +23,13 @@ test("execution contract validates against schema", () => {
     acceptanceCriteria: ["Integration works"],
     verificationCommands: ["npm test"],
     policyRiskLevel: "low",
-    source: { type: "plan", path: "docs/plans/x.md" },
+    source: { type: "plan", path: ".supervibe/artifacts/plans/x.md" },
   });
 
   assert.equal(validate(contract), true, JSON.stringify(validate.errors));
   assert.equal(contract.moduleType, "INTEGRATION");
   assert.ok(MODULE_TYPES.includes("INTEGRATION"));
-  assert.deepEqual(contract.targetFiles, ["docs/plans/x.md"]);
+  assert.deepEqual(contract.targetFiles, [".supervibe/artifacts/plans/x.md"]);
 });
 
 test("contract generation covers every task and summarizes verification", () => {

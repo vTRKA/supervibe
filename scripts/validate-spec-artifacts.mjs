@@ -238,7 +238,7 @@ async function main() {
 
   if (values.help) {
     console.log(`Usage:
-  node scripts/validate-spec-artifacts.mjs --file docs/specs/<spec>.md
+  node scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/<spec>.md
   node scripts/validate-spec-artifacts.mjs --all`);
     process.exit(0);
   }
@@ -247,11 +247,11 @@ async function main() {
   const files = values.file
     ? [values.file]
     : values.all
-      ? await walkMarkdown(join(root, 'docs', 'specs'))
-      : await walkMarkdown(join(root, 'docs', 'specs'));
+      ? await walkMarkdown(join(root, '.supervibe', 'artifacts', 'specs'))
+      : await walkMarkdown(join(root, '.supervibe', 'artifacts', 'specs'));
 
   if (files.length === 0) {
-    console.log('[validate-spec-artifacts] no docs/specs/*.md files found; skipping');
+    console.log('[validate-spec-artifacts] no .supervibe/artifacts/specs/*.md files found; skipping');
     return;
   }
 

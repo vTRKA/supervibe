@@ -19,9 +19,9 @@ pass after fixes.
 /supervibe-security-audit
 /supervibe-security-audit --scope .
 /supervibe-security-audit --scope apps/api --severity high
-/supervibe-security-audit --plan docs/audits/security-2026-04-30.md
-/supervibe-security-audit --execute docs/plans/security-remediation.md
-/supervibe-security-audit --reaudit docs/audits/security-2026-04-30.md
+/supervibe-security-audit --plan .supervibe/audits/security/security-2026-04-30.md
+/supervibe-security-audit --execute .supervibe/artifacts/plans/security-remediation.md
+/supervibe-security-audit --reaudit .supervibe/audits/security/security-2026-04-30.md
 /supervibe-security-audit --quick --no-deps
 ```
 
@@ -101,7 +101,7 @@ Collect facts before findings:
 - config and deployment files
 - `.github/workflows/`, CI configs, Docker/IaC
 - AI/agent/MCP/RAG files if present
-- previous audits under `docs/audits/` and `.supervibe/memory/incidents/`
+- previous audits under `.supervibe/audits/` and `.supervibe/memory/incidents/`
 
 Do not list a vulnerability until the exact code path is read. A pattern hit is
 a candidate, not a finding.
@@ -139,9 +139,9 @@ Never inflate severity for report volume. If reachability is not proven, mark
 
 If findings exist and the user wants fixes:
 
-1. Write or update `docs/audits/YYYY-MM-DD-security-audit.md`.
+1. Write or update `.supervibe/audits/security/YYYY-MM-DD-security-audit.md`.
 2. Create a remediation spec or directly a plan:
-   `docs/plans/YYYY-MM-DD-security-remediation.md`.
+   `.supervibe/artifacts/plans/YYYY-MM-DD-security-remediation.md`.
 3. Each task must be atomic and carry:
    - finding id and severity
    - files to modify

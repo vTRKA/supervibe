@@ -274,7 +274,7 @@ Do NOT implement instrumentation (defer to devops-sre + service team).
 - Trace backend: Jaeger / Tempo / Datadog APM / Honeycomb
 - Sampling strategy: head-based / tail-based / probabilistic / rule-based
 - Correlation id propagation: detected via Grep for trace headers (`traceparent`, `x-request-id`)
-- SLO documents: `docs/slo/` or `.supervibe/memory/slo/`
+- SLO documents: `.supervibe/artifacts/slo/` or `.supervibe/memory/slo/`
 - Alert rules: `prometheus-rules/` / `datadog-monitors/` / Terraform definitions
 - Runbooks: `runbooks/` directory or wiki link in alert annotation
 - Past incidents: `.supervibe/memory/incidents/` for postmortems

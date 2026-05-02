@@ -4,11 +4,11 @@ dimensions:
   - id: visual-foundation
     weight: 2
     question: "Are the visual foundations defined as design tokens (color palette with semantic names, type scale with hierarchy, spacing scale, radii, elevation, motion durations/easings)?"
-    evidence-required: "tokens file (e.g., prototypes/_brandbook/tokens.css or tokens.json) with all 6 token categories present and semantically named (NOT raw hex values floating in component CSS)"
+    evidence-required: "tokens file (e.g., .supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/tokens.css or tokens.json) with all 6 token categories present and semantically named (NOT raw hex values floating in component CSS)"
   - id: component-inventory
     weight: 2
     question: "Is there a documented inventory of base components (button, input, card, dialog, etc.) with all states (resting/hover/active/focus/disabled/loading/empty/error) shown?"
-    evidence-required: "prototypes/_brandbook/components/*.html files OR a single index.html showing every component x every state matrix"
+    evidence-required: ".supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/components/*.html files OR a single index.html showing every component x every state matrix"
   - id: voice-and-tone
     weight: 2
     question: "Is the voice/tone documented with concrete examples (do/don't pairs for headlines, body, CTAs, errors)?"

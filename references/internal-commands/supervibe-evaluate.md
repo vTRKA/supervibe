@@ -26,7 +26,7 @@ Evaluate the most recent invocation of a specific agent.
 
 ### `/supervibe-evaluate <artifact-type> <path>`
 
-Evaluate any artifact on disk, even outside an active task. Example: `/supervibe-evaluate plan docs/plans/2026-04-28-foo.md`.
+Evaluate any artifact on disk, even outside an active task. Example: `/supervibe-evaluate plan .supervibe/artifacts/plans/2026-04-28-foo.md`.
 
 ## Procedure
 

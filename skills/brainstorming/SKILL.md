@@ -25,7 +25,7 @@ NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writin
 Before asking any question, read:
 - The active host instruction file (the active host instruction file, `AGENTS.md`, `GEMINI.md`, Cursor rule, or `opencode.json`) for architecture, conventions, and scope boundaries
 - Most recent commits (`git log -10 --oneline`) for active context
-- Any related existing specs in `docs/specs/`
+- Any related existing specs in `.supervibe/artifacts/specs/`
 - Project memory under `.supervibe/memory/` and any legacy `MEMORY.md` if present
 - `docs/references/scope-safety-standard.md` for the mandatory Scope Safety Gate
 
@@ -63,9 +63,9 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
 8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
-9. **Write spec** to `docs/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
+9. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
 10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
-11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file docs/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
+11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
 13. **User review of written spec** — explicit approval required.
 14. **Handoff** to `supervibe:writing-plans`.
@@ -81,13 +81,13 @@ Every brainstorm artifact must include:
 
 ## Output contract
 
-Returns: path to approved spec at `docs/specs/YYYY-MM-DD-<topic>-design.md` with confidence score ≥9 and explicit user approval recorded in conversation.
+Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md` with confidence score ≥9 and explicit user approval recorded in conversation.
 
 After saving the spec, ALWAYS print a one-line hand-off so the user knows the next command:
 
 ```
-Spec saved to docs/specs/YYYY-MM-DD-<slug>-design.md
-Next: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Next: /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Шаг 1/1: написать план?
 ```
 
@@ -96,9 +96,9 @@ Also include the machine-readable handoff block:
 ```text
 NEXT_STEP_HANDOFF
 Current phase: brainstorm
-Artifact: docs/specs/YYYY-MM-DD-<slug>-design.md
+Artifact: .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Next phase: plan
-Next command: /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Next command: /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-plan
 Why: Brainstorm output must become a reviewed implementation plan before execution.
@@ -204,7 +204,7 @@ Document weights BEFORE scoring (prevents post-hoc rationalization).
 
 ## Output contract template
 
-Save brainstorm output to `docs/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Use template at `docs/templates/brainstorm-output-template.md`.
+Save brainstorm output to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Use template at `docs/templates/brainstorm-output-template.md`.
 
 Required sections (in order):
 1. **Problem statement** (1 paragraph)
@@ -243,7 +243,7 @@ Required sections (in order):
 4. Generate ≥3 options (lean on `supervibe:explore-alternatives` for matrix)
 5. Risks + kill criteria
 6. Decision matrix → recommend
-7. Save to `docs/specs/`
+7. Save to `.supervibe/artifacts/specs/`
 
 ### Workflow: Refactor brainstorm (existing system)
 
@@ -267,7 +267,7 @@ Required sections (in order):
 
 ## Verification
 
-- Output saved to `docs/specs/YYYY-MM-DD-<topic>-brainstorm.md`
+- Output saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`
 - All required sections present, including SDLC fit, Scope Safety Gate, production readiness contract, and 10/10 scorecard
 - Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence, harm, and tradeoff
 - Decision matrix weights documented BEFORE scores
@@ -298,7 +298,7 @@ A: Honor their preference for the conversation, but still record the decompositi
 internally and produce the spec file. The spec is for future maintainers, not the user.
 
 **Q: How do I handle a brainstorm that spans multiple sessions?**
-A: Save partial progress to `docs/specs/YYYY-MM-DD-<topic>-brainstorm.md` after each
+A: Save partial progress to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` after each
 session. Mark unresolved sections with `TBD: <what's missing>` and surface them at the
 top of the file so the next session resumes without re-discovery.
 

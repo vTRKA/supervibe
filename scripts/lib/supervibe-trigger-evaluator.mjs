@@ -45,7 +45,7 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
       recentAssistantOutput: [
         "NEXT_STEP_HANDOFF",
         "Current phase: plan",
-        "Artifact: docs/plans/example.md",
+        "Artifact: .supervibe/artifacts/plans/example.md",
         "Next phase: plan-review",
         "Next command: /supervibe-plan --review",
         "Next skill: supervibe:requesting-code-review",

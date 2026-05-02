@@ -1,5 +1,5 @@
 /* shadcn/ui token bridge
- * Source: prototypes/_design-system/tokens.css
+ * Source: .supervibe/artifacts/prototypes/_design-system/tokens.css
  * Generated: <ISO-date>
  * Regenerate when tokens.css changes.
  *

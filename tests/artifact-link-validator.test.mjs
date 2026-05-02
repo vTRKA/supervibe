@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -133,4 +133,74 @@ test('artifact link validator validates Codex project host artifacts via --root'
 
   assert.match(out, /Artifact link validation passed: 1 agents, 1 skills, 1 rules/);
   assert.match(out, /artifact root: \.codex/);
+});
+
+test('artifact link validator help is non-mutating and exits zero', () => {
+  const out = execFileSync(process.execPath, [VALIDATOR_SCRIPT, '--help'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  assert.match(out, /Validate Supervibe artifact links/);
+  assert.match(out, /--json/);
+});
+
+test('artifact link validator explains upstream missing related-rule candidates', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'supervibe-artifact-links-upstream-'));
+  const pluginRoot = await mkdtemp(join(tmpdir(), 'supervibe-artifact-links-plugin-'));
+  await mkdir(join(root, '.codex', 'rules'), { recursive: true });
+  await mkdir(join(pluginRoot, 'rules'), { recursive: true });
+  await writeFile(join(root, 'AGENTS.md'), '# Project instructions\n', 'utf8');
+  await writeFile(join(pluginRoot, 'rules', 'base-rule.md'), [
+    '---',
+    'name: base-rule',
+    'mandatory: true',
+    'related-rules: [optional-rule]',
+    '---',
+    '# Base',
+  ].join('\n'), 'utf8');
+  await writeFile(join(pluginRoot, 'rules', 'optional-rule.md'), [
+    '---',
+    'name: optional-rule',
+    'mandatory: false',
+    'related-rules: []',
+    '---',
+    '# Optional',
+  ].join('\n'), 'utf8');
+  await writeFile(join(root, '.codex', 'rules', 'base-rule.md'), [
+    '---',
+    'name: base-rule',
+    'mandatory: true',
+    'related-rules: [optional-rule]',
+    '---',
+    '# Base',
+  ].join('\n'), 'utf8');
+
+  const result = await validateArtifactLinks(root, { adapterId: 'codex', pluginRoot });
+  const issue = result.issues.find((item) => item.code === 'missing-related-rule');
+
+  assert.equal(result.pass, false);
+  assert.equal(issue.upstreamAvailable, true);
+  assert.equal(issue.upstreamRel, 'rules/optional-rule.md');
+  assert.equal(issue.projectRel, '.codex/rules/optional-rule.md');
+  assert.equal(issue.mandatory, false);
+  assert.match(issue.nextAction, /supervibe-adapt --apply --include "\.codex\/rules\/optional-rule\.md"/);
+
+  const cli = spawnSync(process.execPath, [
+    VALIDATOR_SCRIPT,
+    '--root',
+    root,
+    '--host',
+    'codex',
+    '--plugin-root',
+    pluginRoot,
+  ], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+
+  assert.equal(cli.status, 1);
+  assert.match(cli.stderr, /upstream provides rules\/optional-rule\.md \(mandatory: false\)/);
+  assert.match(cli.stderr, /NEXT: Run supervibe-adapt --dry-run/);
 });

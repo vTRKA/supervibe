@@ -4,7 +4,7 @@ dimensions:
   - id: visual-completeness
     weight: 2
     question: "Does the HTML prototype render every screen state (resting, hover, active, focus, disabled, loading, empty, error)?"
-    evidence-required: "List of separate state files in prototypes/{feature}/states/ matching the 8 standard states"
+    evidence-required: "List of separate state files in .supervibe/artifacts/prototypes/{feature}/states/ matching the 8 standard states"
   - id: token-discipline
     weight: 2
     question: "Are all colors/spacing/typography from design tokens, with no arbitrary hex values or inline numeric pixel values?"

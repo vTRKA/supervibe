@@ -38,13 +38,13 @@ function createUpToDateCodexProjectWithVersionDrift() {
   return projectRoot;
 }
 
-function runAdapt(projectRoot, args = []) {
+function runAdapt(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
   return execFileSync(process.execPath, [ADAPT_SCRIPT, ...args], {
     cwd: projectRoot,
     env: {
       ...process.env,
       SUPERVIBE_HOST: "codex",
-      SUPERVIBE_PLUGIN_ROOT: ROOT,
+      SUPERVIBE_PLUGIN_ROOT: pluginRoot,
     },
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -127,14 +127,28 @@ test("supervibe-adapt applies only explicitly approved files and updates version
   }
 });
 
-test("supervibe-adapt prints diff summary and creates memory index during dry-run", () => {
+test("supervibe-adapt dry-run is read-only for memory index by default", () => {
   const projectRoot = createCodexProject();
   try {
     const out = runAdapt(projectRoot, ["--dry-run", "--diff-summary", "--no-color"]);
 
     assert.match(out, /SUPERVIBE_ADAPT_DIFF_SUMMARY/);
     assert.match(out, /DIFF: \.codex\/agents\/repo-researcher\.md \+\d+ -\d+ \(review-update\)/);
+    assert.match(out, /MEMORY_INDEX: not-refreshed/);
+    assert.match(out, /MEMORY_INDEX_REFRESHED: false/);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt can explicitly refresh memory index during dry-run", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--dry-run", "--refresh-memory-index", "--no-color"]);
+
     assert.match(out, /MEMORY_INDEX: ready/);
+    assert.match(out, /MEMORY_INDEX_REFRESHED: true/);
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), true);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -149,6 +163,7 @@ test("supervibe-adapt --apply --all separates adapt success from index repair an
     assert.match(out, /SUPERVIBE_ADAPT_DIFF_SUMMARY/);
     assert.match(out, /APPLIED: 1/);
     assert.match(out, /ARTIFACT_ADAPT_CLEAN: true/);
+    assert.match(out, /POST_APPLY_ADDS: 0/);
     assert.match(out, /POST_APPLY_UPDATES: 0/);
     assert.match(out, /CODE_INDEX_READY: false/);
     assert.match(out, new RegExp(`NEXT_INDEX_REPAIR: ${escapeRegExp(SOURCE_RAG_INDEX_COMMAND)}`));
@@ -161,6 +176,57 @@ test("supervibe-adapt --apply --all separates adapt success from index repair an
     assert.notEqual(updatedAt, "deterministic-local");
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt adds upstream related-rule closure candidates", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-closure-project-"));
+  const pluginRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-closure-plugin-"));
+  try {
+    mkdirSync(join(projectRoot, ".codex", "rules"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory"), { recursive: true });
+    mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(pluginRoot, "rules"), { recursive: true });
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+    writeFileSync(join(pluginRoot, ".claude-plugin", "plugin.json"), JSON.stringify({ version: "9.9.9" }));
+    writeFileSync(join(pluginRoot, "rules", "base-rule.md"), [
+      "---",
+      "name: base-rule",
+      "mandatory: true",
+      "related-rules: [optional-rule]",
+      "---",
+      "# Base Rule",
+      "",
+    ].join("\n"));
+    writeFileSync(join(pluginRoot, "rules", "optional-rule.md"), [
+      "---",
+      "name: optional-rule",
+      "mandatory: false",
+      "related-rules: []",
+      "---",
+      "# Optional Rule",
+      "",
+    ].join("\n"));
+    writeFileSync(join(projectRoot, ".codex", "rules", "base-rule.md"), readFileSync(join(pluginRoot, "rules", "base-rule.md"), "utf8"));
+
+    const dryRun = runAdapt(projectRoot, ["--dry-run", "--no-color"], { pluginRoot });
+
+    assert.match(dryRun, /ADDS: 1/);
+    assert.match(dryRun, /ADD: \.codex\/rules\/optional-rule\.md <= rules\/optional-rule\.md \(related-rule-closure; mandatory: false\)/);
+    assert.match(dryRun, /APPROVAL_REQUIRED: true/);
+    assert.match(dryRun, /NEXT_APPLY: .*\.codex\/rules\/optional-rule\.md/);
+
+    const apply = runAdapt(projectRoot, ["--apply", "--include", ".codex/rules/optional-rule.md", "--no-color"], { pluginRoot });
+
+    assert.match(apply, /APPLIED: 1/);
+    assert.match(apply, /ARTIFACT_ADAPT_CLEAN: true/);
+    assert.equal(
+      readFileSync(join(projectRoot, ".codex", "rules", "optional-rule.md"), "utf8"),
+      readFileSync(join(pluginRoot, "rules", "optional-rule.md"), "utf8"),
+    );
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(pluginRoot, { recursive: true, force: true });
   }
 });
 

@@ -100,7 +100,7 @@ Source of alternatives:
 Rationale: <2-3 sentences citing project context>
 
 ### Next step
-- ADR: <link to docs/adr/NNNN.md if structural>
+- ADR: <link to .supervibe/artifacts/adr/NNNN.md if structural>
 - OR: continue to writing-plans with chosen alternative
 ```
 
@@ -186,7 +186,7 @@ Document the budget at start. If you exceed it: log "exceeded budget by X; outco
 
 ## Output contract template
 
-Save exploration to `docs/specs/YYYY-MM-DD-<topic>-alternatives.md` (or as section in brainstorm/ADR/PRD).
+Save exploration to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-alternatives.md` (or as section in brainstorm/ADR/PRD).
 
 Required sections:
 1. **Problem restated** (1 paragraph)

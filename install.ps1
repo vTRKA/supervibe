@@ -22,7 +22,7 @@ $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPE
 $PluginName      = 'supervibe'
 $MarketplaceName = 'supervibe-marketplace'
 $MinNodeVersion = [version]'22.5.0'
-$InstallerManagedModelPath = 'models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx'
+$LocalOnnxModelPath = 'models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx'
 
 $LogDir = Join-Path $env:TEMP "supervibe-install.$PID"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -177,18 +177,12 @@ Say "plan: will modify Claude config under $AnthropicConfigDir, Codex plugin cac
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
-  param([string[]]$GitArgs, [string]$LogName, [switch]$AllowFail, [switch]$SkipLfsSmudge)
+  param([string[]]$GitArgs, [string]$LogName, [switch]$AllowFail)
   $log = Join-Path $LogDir "$LogName.log"
-  $effectiveGitArgs = $GitArgs
-  $oldSkip = $env:GIT_LFS_SKIP_SMUDGE
   $oldErrorActionPreference = $ErrorActionPreference
-  if ($SkipLfsSmudge) {
-    $effectiveGitArgs = @('-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.required=false') + $GitArgs
-    $env:GIT_LFS_SKIP_SMUDGE = '1'
-  }
   try {
     $ErrorActionPreference = 'Continue'
-    & git @effectiveGitArgs 2>&1 | Tee-Object -FilePath $log | Out-Null
+    & git @GitArgs 2>&1 | Tee-Object -FilePath $log | Out-Null
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0 -and -not $AllowFail) {
       Get-Content $log | Write-Host
@@ -197,10 +191,6 @@ function Run-Git {
     return ($exitCode -eq 0)
   } finally {
     $ErrorActionPreference = $oldErrorActionPreference
-    if ($SkipLfsSmudge) {
-      if ($null -eq $oldSkip) { Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue }
-      else { $env:GIT_LFS_SKIP_SMUDGE = $oldSkip }
-    }
   }
 }
 
@@ -216,14 +206,14 @@ function Get-PorcelainPath {
 
 function Restore-InstallerManagedTrackedEdits {
   param([string]$Path, [string[]]$Status)
-  $managedPaths = @('package-lock.json', $InstallerManagedModelPath)
+  $managedPaths = @('package-lock.json')
   foreach ($line in $Status) {
     if (-not $line -or $line.StartsWith('?? ')) { continue }
     $trackedPath = Get-PorcelainPath $line
     if ($managedPaths -contains $trackedPath) {
       Warn "restoring installer-managed tracked artifact: $trackedPath"
       $safeLogName = "restore-managed-artifact-$($trackedPath -replace '[^A-Za-z0-9_.-]', '-')"
-      $null = Run-Git @('-C', $Path, 'checkout', '--', $trackedPath) $safeLogName -SkipLfsSmudge
+      $null = Run-Git @('-C', $Path, 'checkout', '--', $trackedPath) $safeLogName
     }
   }
 }
@@ -243,7 +233,7 @@ function Invoke-CleanManagedCheckout {
     Warn "removing $($untrackedDirty.Count) untracked stale file(s) from managed plugin checkout"
   }
   Say 'cleaning managed checkout (git clean -ffdx)'
-  $null = Run-Git @('-C', $Path, 'clean', '-ffdx') 'git-clean'
+  $null = Run-Git @('-C', $Path, 'clean', '-ffdx', '-e', $LocalOnnxModelPath) 'git-clean'
   Assert-CheckoutMirrorClean $Path 'pre-update cleanup'
 }
 
@@ -271,7 +261,7 @@ function Invoke-RequiredOnnxModelSetup {
     if ($exitCode -ne 0) {
       Write-Host '--- last 80 lines of ONNX model setup ---'
       Get-Content $log -Tail 80 | Write-Host
-      Die 'required ONNX model setup failed. Check Git LFS or network access to HuggingFace, then re-run.'
+      Die 'required ONNX model setup failed. Check network access to HuggingFace, then re-run.'
     }
   } finally {
     $ErrorActionPreference = $oldErrorActionPreference
@@ -294,9 +284,9 @@ function Move-NonGitTargetAside {
 if (Test-Path (Join-Path $Target '.git')) {
   Invoke-CleanManagedCheckout $Target
   Say "found existing checkout at $Target - updating to $Ref"
-  $null = Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch' -SkipLfsSmudge
-  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
-  if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail -SkipLfsSmudge)) {
+  $null = Run-Git @('-C', $Target, 'fetch', '--tags', '--prune', '--quiet') 'fetch'
+  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
+  if (-not (Run-Git @('-C', $Target, 'pull', '--ff-only', '--quiet') 'pull' -AllowFail)) {
     Warn 'pull --ff-only failed (local diverged or detached head); leaving checkout at current commit'
   }
   Assert-CheckoutMirrorClean $Target 'checkout update'
@@ -306,8 +296,8 @@ if (Test-Path (Join-Path $Target '.git')) {
     Move-NonGitTargetAside $Target
   }
   New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
-  $null = Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone' -SkipLfsSmudge
-  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout' -SkipLfsSmudge
+  $null = Run-Git @('clone', '--quiet', $RepoUrl, $Target) 'clone'
+  $null = Run-Git @('-C', $Target, 'checkout', '--quiet', $Ref) 'checkout'
   Assert-CheckoutMirrorClean $Target 'fresh clone'
 }
 

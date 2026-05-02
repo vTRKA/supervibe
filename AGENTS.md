@@ -9,7 +9,7 @@ Read `README.md` for user-facing setup. This file is the Codex entry point; Clau
 - Runtime: Node.js 22.5+ with `node:sqlite`.
 - Package manager: npm.
 - No Docker or native compile step is required for normal development.
-- Large assets under `models/` and `grammars/` may require Git LFS in a fresh checkout.
+- The ONNX embedding model is downloaded from HuggingFace by the installer; large model binaries are not stored in git.
 
 Useful commands:
 

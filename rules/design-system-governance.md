@@ -28,9 +28,9 @@ This rule does NOT apply when the user explicitly asks for a rebrand, major rese
 
 ## What to do
 
-- Treat `prototypes/_design-system/manifest.json` with `status: candidate` as source for prototype proof, and `status: approved` plus `tokensState: final` as source for development handoff.
+- Treat `.supervibe/artifacts/prototypes/_design-system/manifest.json` with `status: candidate` as source for prototype proof, and `status: approved` plus `tokensState: final` as source for development handoff.
 - Reuse existing `tokens.css`, `motion.css`, `voice.md`, `accessibility.md`, and `components/*.md`.
-- If a prototype needs something missing, create a narrow extension request at `prototypes/_design-system/extensions/<date>-<slug>.md`.
+- If a prototype needs something missing, create a narrow extension request at `.supervibe/artifacts/prototypes/_design-system/extensions/<date>-<slug>.md`.
 - Ask one approval question for the extension only.
 - Update the relevant token/component file and append the extension id to `manifest.json.extensions`.
 - Do not reopen palette/type/spacing/component baseline approval unless the user asked for a rebrand.
@@ -43,7 +43,7 @@ This rule does NOT apply when the user explicitly asks for a rebrand, major rese
 
 ```text
 User: make a billing dashboard mockup.
-Agent: asks brand personality, palette, typography, spacing, component library again even though prototypes/_design-system/manifest.json is approved.
+Agent: asks brand personality, palette, typography, spacing, component library again even though .supervibe/artifacts/prototypes/_design-system/manifest.json is approved.
 ```
 
 Why this is bad: the user pays the same setup cost repeatedly and the new dashboard may drift from the approved system.
@@ -51,7 +51,7 @@ Why this is bad: the user pays the same setup cost repeatedly and the new dashbo
 ### Good
 
 ```text
-Agent reads prototypes/_design-system/manifest.json, reports "approved system v1.0.0, 23 components", then creates only extensions/2026-04-29-data-table.md because the dashboard needs a table component not yet defined.
+Agent reads .supervibe/artifacts/prototypes/_design-system/manifest.json, reports "approved system v1.0.0, 23 components", then creates only extensions/2026-04-29-data-table.md because the dashboard needs a table component not yet defined.
 ```
 
 Why this is good: the existing system stays stable, and the missing capability is added with clear scope and approval.

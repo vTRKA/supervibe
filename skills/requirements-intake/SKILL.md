@@ -56,7 +56,7 @@ Complexity signals:
 5. **Ask one question at a time** — multiple-choice when possible
 6. **Build requirements-spec** with: objective, scope (in/out), Scope Safety Gate, acceptance criteria, edge cases, stakeholders, complexity score
 7. **Confidence-score** the spec (`supervibe:confidence-scoring` artifact-type=requirements-spec)
-8. **Machine-validate intake artifact** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs" --file docs/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
+8. **Machine-validate intake artifact** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs" --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-intake.md`. If it fails, fix missing sections/questions before handoff.
 9. **If <9** → continue questioning to fill gaps; loop until ≥9
 10. **Compute complexity** using signals table above
 11. **Decide handoff**: brainstorming / writing-plans / executing-plans
@@ -65,7 +65,7 @@ Complexity signals:
 ## Output contract
 
 Returns:
-- requirements-spec saved to `docs/specs/YYYY-MM-DD-<topic>-intake.md`
+- requirements-spec saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-intake.md`
 - complexity-score (1-10) with justification
 - scope-safety decision table with include/defer/reject/spike rationale
 - next-skill recommendation with reason
@@ -162,7 +162,7 @@ End every intake with explicit "Open questions" section. Required ≥3. If you c
 
 ## Output contract template
 
-Save intake notes to `docs/specs/YYYY-MM-DD-<topic>-intake.md`. Use template at `docs/templates/intake-template.md`.
+Save intake notes to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-intake.md`. Use template at `docs/templates/intake-template.md`.
 
 Required sections:
 1. **Request as stated by user** (verbatim quote)
@@ -222,7 +222,7 @@ Required sections:
 
 ## Verification
 
-- Intake saved to `docs/specs/YYYY-MM-DD-<topic>-intake.md`
+- Intake saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-intake.md`
 - All 9 sections present
 - Personas: ≥2
 - Constraints: ≥1 per category (or explicit "no constraint")

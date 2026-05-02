@@ -38,7 +38,7 @@ npm test
 \`\`\`bash
 npm test
 \`\`\`
-`, { planPath: "docs/plans/sample.md", epicId: "epic-sample", planReviewPassed: true });
+`, { planPath: ".supervibe/artifacts/plans/sample.md", epicId: "epic-sample", planReviewPassed: true });
 }
 
 test("sync push materializes epic, child tasks, dependencies, and writes mapping", async () => {

@@ -1,6 +1,6 @@
 # Chrome MV3 Extension Adapter — <prototype-slug>
 
-> Source HTML: prototypes/<slug>/{popup,options,side-panel}/index.html
+> Source HTML: .supervibe/artifacts/prototypes/<slug>/{popup,options,side-panel}/index.html
 > Target stack: Chrome MV3 (works on Edge, Brave, Vivaldi, Opera)
 
 ## Manifest surfaces

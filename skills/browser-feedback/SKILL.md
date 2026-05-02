@@ -21,7 +21,7 @@ When feedback affects design quality, run project memory, code search, and inter
 ## When to invoke
 Trigger source: `<system-reminder>` containing `[supervibe] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id. Slugs can be plain prototype slugs, `mockup:<slug>`, or `presentation:<slug>`.
 
-Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root prototypes/<slug>/` without `--no-feedback`, verify `#supervibe-fb-toggle` appears in served HTML, and only then continue design review.
+Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/` without `--no-feedback`, verify `#supervibe-fb-toggle` appears in served HTML, and only then continue design review.
 
 If user invokes manually with no pending feedback, run `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list` first, then inspect `.supervibe/memory/feedback-queue.jsonl` if needed. This keeps the loop usable in IDEs that do not surface hook reminders automatically.
 
@@ -29,7 +29,7 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
 
 ## Step 0 — Read source of truth
 - Read full feedback entry: `jq -c "select(.id==\"<id>\")" .supervibe/memory/feedback-queue.jsonl`
-- Read artifact config: `prototypes/<slug>/config.json`, `mockups/<slug>/config.json`, or `presentations/<slug>/deck.json`
+- Read artifact config: `.supervibe/artifacts/prototypes/<slug>/config.json`, `.supervibe/artifacts/mockups/<slug>/config.json`, or `.supervibe/artifacts/presentations/<slug>/deck.json`
 - Read prototype/deck preview HTML at the indicated viewport
 - Read DS manifest if comment mentions colour/typography/spacing
 
@@ -42,8 +42,8 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
 | layout (spacing/order/alignment) | `prototype-builder` | HTML/CSS structure |
 | copy (text/voice) | `copywriter` (if in stack) or prototype-builder | content/copy.md |
 | a11y (focus/contrast/aria) | `prototype-builder` + `accessibility-reviewer` | HTML attributes + CSS |
-| mockup visual/layout | `prototype-builder` or `creative-director` | `mockups/<slug>/` |
-| presentation slide/story/export | `presentation-deck-builder` | `presentations/<slug>/deck.json` + preview |
+| mockup visual/layout | `prototype-builder` or `creative-director` | `.supervibe/artifacts/mockups/<slug>/` |
+| presentation slide/story/export | `presentation-deck-builder` | `.supervibe/artifacts/presentations/<slug>/deck.json` + preview |
 
 ## Procedure
 
@@ -58,7 +58,7 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
    a. Reproduce the issue at the named viewport.
    b. Apply minimal change.
    c. Trigger preview hot-reload (no manual restart needed).
-   d. Write `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` with: original comment, classification, change made, file:line refs, before/after summary.
+   d. Write `.supervibe/artifacts/prototypes/<slug>/feedback-resolutions/<id>.md`, `.supervibe/artifacts/mockups/<slug>/feedback-resolutions/<id>.md`, or `.supervibe/artifacts/presentations/<slug>/feedback-resolutions/<id>.md` with: original comment, classification, change made, file:line refs, before/after summary.
 6. Mark the entry `in_progress` when work starts:
    ```bash
    node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --progress <id>
@@ -72,12 +72,12 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
    ```
 8. If the user accepts the fix, mark it resolved:
    ```bash
-   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution prototypes|mockups|presentations/<slug>/feedback-resolutions/<id>.md
+   node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --resolve <id> --resolution .supervibe/artifacts/prototypes/<slug>/feedback-resolutions/<id>.md
    ```
    If the user rejects or parks it, use `--reject <id>` and include the reason in the resolution record.
 
 ## Output contract
-- `prototypes/<slug>/feedback-resolutions/<id>.md`, `mockups/<slug>/feedback-resolutions/<id>.md`, or `presentations/<slug>/feedback-resolutions/<id>.md` — resolution record
+- `.supervibe/artifacts/prototypes/<slug>/feedback-resolutions/<id>.md`, `.supervibe/artifacts/mockups/<slug>/feedback-resolutions/<id>.md`, or `.supervibe/artifacts/presentations/<slug>/feedback-resolutions/<id>.md` — resolution record
 - `.supervibe/memory/feedback-status.json` updated to `resolved`, `rejected`, or `in_progress`
 - Modified prototype files OR design-system overrides
 - Confidence footer:
@@ -95,7 +95,7 @@ Rubric: agent-delivery
 - `advancing-without-feedback-prompt` — concluding without printing the resolution feedback block.
 
 ## Verification
-- Check the matching `feedback-resolutions/<id>.md` exists under `prototypes/<slug>/`, `mockups/<slug>/`, or `presentations/<slug>/`.
+- Check the matching `feedback-resolutions/<id>.md` exists under `.supervibe/artifacts/prototypes/<slug>/`, `.supervibe/artifacts/mockups/<slug>/`, or `.supervibe/artifacts/presentations/<slug>/`.
 - Run `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list` and confirm accepted entries no longer appear as open.
 - Reload browser preview; confirm visual change matches comment intent.
 - `git diff` shows minimal change scope (no scope-creep).

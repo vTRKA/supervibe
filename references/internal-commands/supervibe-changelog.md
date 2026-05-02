@@ -180,7 +180,7 @@ Migrate mode:
 
 - Same session that already showed SessionStart upgrade banner — Claude already has context (the banner IS the changelog summary).
 - After `/supervibe-update` reported "no-op (already on latest)" — nothing to show.
-- For changes within your own project's `docs/plans/*.md` history — that's `git log`, not the plugin changelog.
+- For changes within your own project's `.supervibe/artifacts/plans/*.md` history — that's `git log`, not the plugin changelog.
 
 ## Related
 

@@ -27,7 +27,7 @@ test("workflow phase graph forces brainstorm to plan to review to atomization", 
 test("next-step handoff block is parseable and prevents silent producer stops", () => {
   const output = formatNextStepBlock({
     phase: "plan",
-    artifactPath: "docs/plans/example.md",
+    artifactPath: ".supervibe/artifacts/plans/example.md",
     locale: "en",
   });
 
@@ -38,7 +38,7 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
   const assertion = assertNoSilentStop({
     phase: "plan",
     output,
-    artifactPath: "docs/plans/example.md",
+    artifactPath: ".supervibe/artifacts/plans/example.md",
     locale: "en",
   });
   assert.equal(assertion.pass, true);
@@ -47,8 +47,8 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
 test("no-silent-stop assertion fails when next question is missing", () => {
   const assertion = assertNoSilentStop({
     phase: "brainstorm",
-    output: "Spec saved to docs/specs/example.md",
-    artifactPath: "docs/specs/example.md",
+    output: "Spec saved to .supervibe/artifacts/specs/example.md",
+    artifactPath: ".supervibe/artifacts/specs/example.md",
     locale: "en",
   });
   assert.equal(assertion.pass, false);
@@ -58,8 +58,8 @@ test("no-silent-stop assertion fails when next question is missing", () => {
 
 test("plan review package passes only with atomic tasks, verification, rollback, and policy guard", () => {
   const planReviewPackage = createPlanReviewPackage({
-    planPath: "docs/plans/example.md",
-    specPath: "docs/specs/example.md",
+    planPath: ".supervibe/artifacts/plans/example.md",
+    specPath: ".supervibe/artifacts/specs/example.md",
     coverageMatrix: true,
     worktree: { required: true },
     policy: { providerSafe: true },
@@ -92,8 +92,8 @@ test("plan review package passes only with atomic tasks, verification, rollback,
 
 test("plan review package blocks parallel write conflicts and permission bypass", () => {
   const planReviewPackage = createPlanReviewPackage({
-    planPath: "docs/plans/example.md",
-    specPath: "docs/specs/example.md",
+    planPath: ".supervibe/artifacts/plans/example.md",
+    specPath: ".supervibe/artifacts/specs/example.md",
     coverageMatrix: true,
     tasks: [
       {

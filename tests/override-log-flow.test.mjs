@@ -19,7 +19,7 @@ after(async () => {
 test('appendOverrideEntry creates .supervibe/ if missing and does not create .claude/', async () => {
   const entry = {
     'artifact-type': 'plan',
-    'artifact-ref': 'docs/plans/test.md',
+    'artifact-ref': '.supervibe/artifacts/plans/test.md',
     score: 7,
     'max-score': 10,
     'status-overridden': 'BLOCK',

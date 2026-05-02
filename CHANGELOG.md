@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.47] - 2026-05-02
+
+### Added
+
+- Added `related-rules` closure planning for genesis/adapt so upstream optional
+  rule links become explicit `ADD` candidates with mandatory metadata and apply
+  commands instead of validator-only failures.
+- Added validator help and upstream-aware missing-rule diagnostics for
+  `validate-artifact-links`.
+
+### Changed
+
+- Removed repository large-file filter usage for ONNX model distribution.
+  Install/update now rely on HuggingFace download only, reuse already-ready local
+  models, and preserve the ignored ONNX file during checkout cleanup.
+- Made `supervibe-adapt --dry-run` read-only for `.supervibe/memory/index.json`
+  by default, with explicit `--refresh-memory-index` / `--no-refresh-memory-index`
+  controls.
+
+### Fixed
+
+- Fixed adapt ADD planning for upstream-only related rule artifacts discovered
+  through validation.
+- Kept artifact-root validation in the release check so generated project
+  artifacts stay under `.supervibe`.
+
 ## [2.0.46] - 2026-05-02
 
 ### Added
@@ -496,7 +522,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added regression coverage that rejects raw action-id menus and stale generic
   `<option a>` dialogue placeholders.
-- Added `docs/audits/2026-05-01-dialogue-ux-audit.md` with the dialogue UX
+- Added `.supervibe/audits/2026-05-01-dialogue-ux-audit.md` with the dialogue UX
   audit findings and remediation checklist.
 
 ## [2.0.22] - 2026-05-01
@@ -823,7 +849,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made design preview feedback mandatory and visible across prototype, mockup,
   and presentation roots, with an IDE-neutral queue fallback for hosts without
   prompt hooks.
-- Aligned designer agents with `prototypes/_design-system/` as the canonical
+- Aligned designer agents with `.supervibe/artifacts/prototypes/_design-system/` as the canonical
   token/component/motion source of truth.
 - Added a prototype write guard that blocks raw colors and hardcoded layout
   pixels after a design system is approved.

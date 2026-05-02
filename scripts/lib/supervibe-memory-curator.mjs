@@ -368,7 +368,7 @@ function normalizeReferencePath(reference = "") {
   normalized = normalized.replace(/:\d+$/, "");
   normalized = normalized.replace(/^\.\//, "");
   if (normalized.includes("*")) return "";
-  if (normalized.startsWith(".supervibe/") || normalized.startsWith("docs/audits/")) return "";
+  if (normalized.startsWith(".supervibe/")) return "";
   if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return "";
   if (normalized.includes("..")) return "";
   if (!normalized.includes("/") && !["package.json", "package-lock.json", "README.md", "CHANGELOG.md"].includes(normalized)) return "";

@@ -27,9 +27,9 @@ test("design command standardizes questions and makes approved handoff mandatory
   assert.match(design, /Decision unlocked:/);
   assert.match(design, /If skipped:/);
   assert.match(design, /approved design system > project memory > codebase patterns > accessibility constraints > external references/i);
-  assert.match(design, /prototypes\/_design-system\/manifest\.json.*status.*approved/i);
+  assert.match(design, /\.supervibe\/artifacts\/prototypes\/_design-system\/manifest\.json.*status.*approved/i);
   assert.match(design, /supervibe:prototype-handoff/);
-  assert.match(design, /prototypes\/<slug>\/handoff\//);
+  assert.match(design, /\.supervibe\/artifacts\/prototypes\/<slug>\/handoff\//);
   assert.match(design, /ready for development/i);
   assert.match(design, /components-used\.json/);
   assert.match(design, /tokens-used\.json/);

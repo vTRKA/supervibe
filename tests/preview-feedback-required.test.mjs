@@ -24,9 +24,9 @@ test("feedback overlay injects a visible mandatory button and artifact slug", as
 });
 
 test("design preview roots cannot disable feedback overlay", () => {
-  const prototypeRoot = join("workspace", "prototypes", "checkout");
-  const presentationRoot = join("workspace", "presentations", "investor");
-  const mockupRoot = join("workspace", "mockups", "landing");
+  const prototypeRoot = join("workspace", ".supervibe", "artifacts", "prototypes", "checkout");
+  const presentationRoot = join("workspace", ".supervibe", "artifacts", "presentations", "investor");
+  const mockupRoot = join("workspace", ".supervibe", "artifacts", "mockups", "landing");
   const publicRoot = join("workspace", "public");
 
   assert.equal(isFeedbackRequiredPreviewRoot(prototypeRoot), true);

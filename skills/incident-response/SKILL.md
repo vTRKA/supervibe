@@ -52,7 +52,7 @@ Mitigation options (SEV1/2):
 4. **Investigate** — `supervibe:systematic-debugging` for root cause
 5. **Verify mitigation holding** — monitoring shows recovery
 6. **Communicate resolution** — close incident in channel/pager
-7. **Postmortem** — within 48h, write `docs/postmortems/YYYY-MM-DD-<incident>.md`:
+7. **Postmortem** — within 48h, write `.supervibe/artifacts/postmortems/YYYY-MM-DD-<incident>.md`:
    ```markdown
    # Postmortem: <Title>
 

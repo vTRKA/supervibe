@@ -1,6 +1,6 @@
 # Flutter Adapter — <prototype-slug>
 
-> Source HTML sketches: prototypes/<slug>/{ios,android}/
+> Source HTML sketches: .supervibe/artifacts/prototypes/<slug>/{ios,android}/
 > Target stack: Flutter 3.19+
 
 ## Component mapping

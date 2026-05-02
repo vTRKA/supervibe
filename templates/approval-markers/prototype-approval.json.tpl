@@ -4,7 +4,7 @@
   "approvedAt": "{{ISO date — e.g. 2026-04-28T14:30:00Z}}",
   "approvedBy": "{{user — read from `git config user.name`}}",
   "viewports": [375, 1440],
-  "designSystemVersion": "{{git commit sha of prototypes/_design-system/ at approval time}}",
+  "designSystemVersion": "{{git commit sha of .supervibe/artifacts/prototypes/_design-system/ at approval time}}",
   "previewUrl": "http://localhost:{{port}}",
   "feedbackRounds": 0,
   "approvalScope": "full",

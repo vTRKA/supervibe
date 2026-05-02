@@ -1,13 +1,7 @@
-import { MODEL_RELATIVE_PATH } from "../ensure-onnx-model.mjs";
-
 export const INSTALLER_MANAGED_TRACKED_PATHS = Object.freeze([
   {
     path: "package-lock.json",
     reason: "package-lock drift from older installer or npm runs",
-  },
-  {
-    path: MODEL_RELATIVE_PATH,
-    reason: "required ONNX model artifact rehydrated by the installer",
   },
 ]);
 

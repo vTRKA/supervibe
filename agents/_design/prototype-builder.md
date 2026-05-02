@@ -2,7 +2,7 @@
 name: prototype-builder
 namespace: _design
 description: >-
-  Use WHEN materializing design as 1:1 HTML/CSS prototype in prototypes/ for
+  Use WHEN materializing design as 1:1 HTML/CSS prototype in .supervibe/artifacts/prototypes/ for
   brandbook approval and 1:1 production transfer. Triggers: 'построй прототип',
   'свёрстай мокап', 'нужен HTML-прототип', 'кликабельный макет'.
 persona-years: 15
@@ -139,17 +139,17 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
-2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `prototypes/`, `mockups/`, or `presentations/` files until this choice is explicit.
-3. **Design system gate (MANDATORY)** — load `prototypes/_design-system/manifest.json`. If `status` is neither `"candidate"` nor `"approved"` and there is no final token metadata → STOP and tell user: "Дизайн-система не подготовлена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без candidate design system прототип нельзя строить, токены неоткуда брать." Do not proceed.
+2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` files until this choice is explicit.
+3. **Design system gate (MANDATORY)** — load `.supervibe/artifacts/prototypes/_design-system/manifest.json`. If `status` is neither `"candidate"` nor `"approved"` and there is no final token metadata → STOP and tell user: "Дизайн-система не подготовлена. Запусти `/supervibe-design <бриф>` с Stage 2 или `supervibe:brandbook` напрямую — без candidate design system прототип нельзя строить, токены неоткуда брать." Do not proceed.
 
-3a. **Target-specific scaffolding.** Read `prototypes/<feature>/config.json` for `target`. Branch directory layout:
-- `web` → `prototypes/<feature>/{index.html, styles/, scripts/, content/}`. Single page or pages/.
-- `chrome-extension` → `prototypes/<feature>/{popup/index.html, options/index.html, side-panel/index.html, manifest.json (mock)}`. Each surface its own HTML file. Verify CSP compliance: no `<script>` inline content; all JS in external files.
-- `electron` → `prototypes/<feature>/{main-window/index.html, settings/index.html}`. Note in README that production preload bridge is NOT implemented in prototype.
-- `tauri` → `prototypes/<feature>/{main-window/index.html, secondary/index.html}`. Note production `invoke()` calls must be mocked at prototype stage.
-- `mobile-native` → `prototypes/<feature>/{ios/{home,detail}.html, android/{home,detail}.html}`. Each viewport iframe shows the corresponding HTML at the device-frame size. Note: production is React Native / Flutter / native — these HTMLs are fidelity sketches, not implementation.
+3a. **Target-specific scaffolding.** Read `.supervibe/artifacts/prototypes/<feature>/config.json` for `target`. Branch directory layout:
+- `web` → `.supervibe/artifacts/prototypes/<feature>/{index.html, styles/, scripts/, content/}`. Single page or pages/.
+- `chrome-extension` → `.supervibe/artifacts/prototypes/<feature>/{popup/index.html, options/index.html, side-panel/index.html, manifest.json (mock)}`. Each surface its own HTML file. Verify CSP compliance: no `<script>` inline content; all JS in external files.
+- `electron` → `.supervibe/artifacts/prototypes/<feature>/{main-window/index.html, settings/index.html}`. Note in README that production preload bridge is NOT implemented in prototype.
+- `tauri` → `.supervibe/artifacts/prototypes/<feature>/{main-window/index.html, secondary/index.html}`. Note production `invoke()` calls must be mocked at prototype stage.
+- `mobile-native` → `.supervibe/artifacts/prototypes/<feature>/{ios/{home,detail}.html, android/{home,detail}.html}`. Each viewport iframe shows the corresponding HTML at the device-frame size. Note: production is React Native / Flutter / native — these HTMLs are fidelity sketches, not implementation.
 3. **Read screen spec** from ux-ui-designer — confirm scope, states required, interaction patterns.
-4. **Viewport question (ONE QUESTION, MARKDOWN)** — if `prototypes/<feature>/config.json` doesn't already have `viewports`, ask:
+4. **Viewport question (ONE QUESTION, MARKDOWN)** — if `.supervibe/artifacts/prototypes/<feature>/config.json` doesn't already have `viewports`, ask:
    ```markdown
    **Step 1/3: Viewports.**
    Стандарт — 375px (mobile) + 1440px (desktop). Что нужно?
@@ -159,39 +159,39 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
    - ✏️ Свои размеры
    ```
    Wait for explicit answer. Save to `config.json` BEFORE writing any HTML.
-5. **Scaffold directory**: create `prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
-6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
-7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
+5. **Scaffold directory**: create `.supervibe/artifacts/prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
+6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
+7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `.supervibe/artifacts/prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 7a. **Critique Gate after first screen** — after the first representative screen renders, compare it to older prototypes and ask: "is this a new product direction or a repainted old shell?" If the answer is repaint, revise the direction/tokens before expanding. If it passes, continue the remaining screens.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
-9. **Spawn preview** — invoke `supervibe:preview-server --root prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
+9. **Spawn preview** — invoke `supervibe:preview-server --root .supervibe/artifacts/prototypes/<feature>/` for live URL with hot-reload and mandatory feedback overlay. Never pass `--no-feedback` for prototypes. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.
 11. **Viewport breakpoints** — write CSS for the EXACT viewports in `config.json` (default 375 + 1440 only). Use `@media (min-width: <px>)` cascade or container queries. Do NOT add unrequested breakpoints (no silent 768 / 1024 / 1920 unless user asked).
-12. **Motion pass** — add transitions/animations using token durations + easings from `prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
+12. **Motion pass** — add transitions/animations using token durations + easings from `.supervibe/artifacts/prototypes/_design-system/motion.css` (`var(--duration-quick)`, `var(--ease-out-quart)`). Wrap non-essential motion in `@media (prefers-reduced-motion: no-preference)`; verify `prefers-reduced-motion: reduce` short-circuits to instant or essential-only.
 12a. **Media capability gate** — read `config.json.mediaCapabilities`; if missing, run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` and write the result to config. If `video=false`, do not create or promise rendered video files. Use CSS/WAAPI motion in the preview, static storyboards, SVG/Lottie specs from existing assets, or poster frames instead.
 13. **Token-discipline grep (CI gate)**:
-    - `grep -rE '#[0-9a-fA-F]{3,8}|rgb\(|rgba\(' prototypes/<feature>/styles/pages.css` → 0 hits
-    - `grep -rE '\\b[0-9]+px\\b' prototypes/<feature>/styles/pages.css` → audit each (1px borders OK, layout px NOT OK)
-    - `grep -rE 'cubic-bezier\(' prototypes/<feature>/` → 0 hits in pages.css (all easings via `var(--ease-*)`)
+    - `grep -rE '#[0-9a-fA-F]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<feature>/styles/pages.css` → 0 hits
+    - `grep -rE '\\b[0-9]+px\\b' .supervibe/artifacts/prototypes/<feature>/styles/pages.css` → audit each (1px borders OK, layout px NOT OK)
+    - `grep -rE 'cubic-bezier\(' .supervibe/artifacts/prototypes/<feature>/` → 0 hits in pages.css (all easings via `var(--ease-*)`)
     - Drift report lists deliberate exceptions with inline `/* DRIFT: reason */` flag.
 14. **Screenshot baseline** — capture each state at every declared viewport; save to `pages/states/.screenshots/`.
 15. **Console check** — load each HTML in browser, verify zero console errors/warnings.
 16. **Write README.md** — what to view, in what order; viewport list; tab-order map; known drifts (with rationale); browsers tested.
-16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, etc.). If creative-director persisted `prototypes/<feature>/decisions/animation.md`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
-17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `prototypes/<feature>/_reviews/`.
+16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, etc.). If creative-director persisted `.supervibe/artifacts/prototypes/<feature>/decisions/animation.md`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
+17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `.supervibe/artifacts/prototypes/<feature>/_reviews/`.
 18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the preview summary, lifecycle state, persisted state artifact path, and the shared post-delivery question from `scripts/lib/supervibe-dialogue-contract.mjs` with `intent="prototype_delivery"`.
     Required summary fields:
     - `Prototype`: `http://localhost:NNNN`
     - `Viewports`: exact list from `config.json`
     - `State`: `draft` or `review`
-    - `State artifact`: `prototypes/<feature>/config.json` plus `.approval.json` only after explicit approval
+    - `State artifact`: `.supervibe/artifacts/prototypes/<feature>/config.json` plus `.approval.json` only after explicit approval
     - `Question`: formatted via `buildPostDeliveryQuestion({ intent: "prototype_delivery" }, { locale })`
     Wait for explicit choice. Do NOT advance silently to handoff.
 
-    If user picks "🔀 Альтернатива": spawn `prototypes/<feature>/alternatives/<variant-name>/` and copy `templates/alternatives/tradeoff.md.tpl` to each variant directory. Fill all sections with explicit "differs because X / gives up Y to gain Z" framing. Never delete a parked variant — convert to `Status: rejected` with a Rejection note instead.
-19. **Approval marker** (only on explicit "✅"): write `prototypes/<feature>/.approval.json` per the schema in `supervibe:prototype` skill (status, approvedAt, approvedBy, viewports, designSystemVersion, feedbackRounds).
+    If user picks "🔀 Альтернатива": spawn `.supervibe/artifacts/prototypes/<feature>/alternatives/<variant-name>/` and copy `templates/alternatives/tradeoff.md.tpl` to each variant directory. Fill all sections with explicit "differs because X / gives up Y to gain Z" framing. Never delete a parked variant — convert to `Status: rejected` with a Rejection note instead.
+19. **Approval marker** (only on explicit "✅"): write `.supervibe/artifacts/prototypes/<feature>/.approval.json` per the schema in `supervibe:prototype` skill (status, approvedAt, approvedBy, viewports, designSystemVersion, feedbackRounds).
 20. **Score** with `supervibe:confidence-scoring` against `prototype.yaml` rubric ≥9.
-21. **Handoff bundle** (only after approval and final tokens): copy approved files to `prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
+21. **Handoff bundle** (only after approval and final tokens): copy approved files to `.supervibe/artifacts/prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
 
 ## Output contract
 
@@ -202,7 +202,7 @@ Returns:
 
 **Builder**: supervibe:_design:prototype-builder
 **Date**: YYYY-MM-DD
-**Location**: prototypes/<feature>/
+**Location**: .supervibe/artifacts/prototypes/<feature>/
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
@@ -247,9 +247,9 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 ## Verification
 
 For each prototype:
-- `grep -E '#[0-9a-fA-F]{3,8}' prototypes/<feature>/**/*.css` returns 0 matches (or all matches inside `/* DRIFT */` blocks)
-- `grep -E '\\b[0-9]+px\\b' prototypes/<feature>/**/*.css` audited — every match either (a) inside `var(--*)` fallback, (b) literal 1px border, or (c) flagged DRIFT
-- All N states present in `prototypes/<feature>/states/` per state matrix
+- `grep -E '#[0-9a-fA-F]{3,8}' .supervibe/artifacts/prototypes/<feature>/**/*.css` returns 0 matches (or all matches inside `/* DRIFT */` blocks)
+- `grep -E '\\b[0-9]+px\\b' .supervibe/artifacts/prototypes/<feature>/**/*.css` audited — every match either (a) inside `var(--*)` fallback, (b) literal 1px border, or (c) flagged DRIFT
+- All N states present in `.supervibe/artifacts/prototypes/<feature>/states/` per state matrix
 - Each state HTML loads with zero console errors/warnings (devtools check)
 - Tab through index.html: every interactive element reachable, focus ring visible, logical order
 - Resize to 360px width: no horizontal scroll, no clipped content
@@ -300,7 +300,7 @@ Do NOT touch: framework code (React, Vue, Svelte) — production transfer is the
 Do NOT decide on: brand language, voice, illustration style — creative-director's domain.
 Do NOT decide on: token values themselves — ux-ui-designer + brandbook own the token catalog; this agent consumes it.
 Do NOT decide on: copywriting beyond placeholder Lorem-equivalent — content-strategist owns final copy.
-Do NOT touch: production CSS, design system source code, or anything outside `prototypes/`.
+Do NOT touch: production CSS, design system source code, or anything outside `.supervibe/artifacts/prototypes/`.
 
 ## Related
 
@@ -326,10 +326,10 @@ Do NOT touch: production CSS, design system source code, or anything outside `pr
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Output location: `prototypes/<feature>/` — one directory per feature
-- Design-system tokens: `prototypes/_design-system/tokens.css` — single source of truth, imported by every prototype
-- Component specs from design system: `prototypes/_design-system/components/` — atomic building blocks (buttons, inputs, cards)
-- States directory: `prototypes/<feature>/states/` — one HTML file per visual state
+- Output location: `.supervibe/artifacts/prototypes/<feature>/` — one directory per feature
+- Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css` — single source of truth, imported by every prototype
+- Component specs from design system: `.supervibe/artifacts/prototypes/_design-system/components/` — atomic building blocks (buttons, inputs, cards)
+- States directory: `.supervibe/artifacts/prototypes/<feature>/states/` — one HTML file per visual state
 - Design tokens canonical source: `design-tokens/` (Style Dictionary, Theo, or hand-authored CSS variables)
 - Figma source-of-truth: linked via `recommended-mcps: [figma]` for token sync + asset extraction
 - Browsers tested: latest Chrome, Firefox, Safari (desktop + iOS); Edge as Chromium proxy
@@ -418,7 +418,7 @@ READY FOR HANDOFF | ITERATE
 ## Preview server (when applicable)
 - **URL**: http://localhost:NNNN — handed to user, opens in browser
 - **Label**: <feature-name>
-- **Hot-reload**: on (file edits in `mockups/<feature>/` auto-refresh browser)
+- **Hot-reload**: on (file edits in `.supervibe/artifacts/mockups/<feature>/` auto-refresh browser)
 - **Port lifecycle**: cleanup on session end via SIGINT, OR `/supervibe-preview --kill <port>` manually
 
 If task is non-visual (e.g., design tokens only): explicitly state "Preview: N/A (no visual mockup generated)".

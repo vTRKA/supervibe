@@ -49,7 +49,7 @@ const RULES = Object.freeze([
     required: [
       /approved prototype \+ final tokens/i,
       /single source of truth/i,
-      /competing prototypes/i,
+      new RegExp("competing prototypes", "i"),
     ],
     forbidden: [],
   },

@@ -479,10 +479,10 @@ async function main() {
       console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
     }
 
-    // Grammar runtime status (LFS pointers)
+    // Grammar runtime status (missing/truncated WASM)
     const brokenState = getBrokenLanguages();
     if (brokenState.pointers.length > 0) {
-      console.log(color(`⚠  Grammars are LFS pointers (need 'git lfs pull'): ${brokenState.pointers.join(', ')}`, 'yellow'));
+      console.log(color(`⚠  Grammars are missing or truncated: ${brokenState.pointers.join(', ')}`, 'yellow'));
       console.log(color(`   Affected languages will skip graph extraction (semantic RAG still works)`, 'dim'));
     }
     console.log();

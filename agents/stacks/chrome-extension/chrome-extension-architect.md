@@ -145,7 +145,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - TypeScript config — `tsconfig.json`, `@types/chrome` version
 - Build output — `dist/`, `.output/`, or `build/` — what is actually shipped to CWS
 - CWS listing — `store/listing.md` or equivalent: short description, detailed description, screenshots, privacy policy URL, purposes disclosure
-- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `.supervibe/artifacts/adr/`, `.supervibe/artifacts/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 
 ## Skills
 
@@ -301,13 +301,13 @@ Before producing any artifact or making any structural recommendation:
 14. **Write the ADR** — context (capability driver, surfaces, constraints), decision (manifest skeleton, message topology, permission set with purposes), alternatives (≥2 considered), consequences (positive AND negative, including review-time risk), migration plan if MV2-to-MV3 or shipped extension
 15. **Verify against anti-patterns** — walk every anti-pattern below; explicitly mark each as "not present" or "accepted with mitigation + ADR rationale"
 16. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
-17. **Deliver ADR + annotated manifest.json template** — signed (author, date, status: proposed/accepted), filed in `docs/specs/<date>-<topic>-extension-architecture.md`, linked from related ADRs
+17. **Deliver ADR + annotated manifest.json template** — signed (author, date, status: proposed/accepted), filed in `.supervibe/artifacts/specs/<date>-<topic>-extension-architecture.md`, linked from related ADRs
 
 ## Output contract
 
 Returns:
 
-1. ADR document at `docs/specs/<YYYY-MM-DD>-<topic>-extension-architecture.md`
+1. ADR document at `.supervibe/artifacts/specs/<YYYY-MM-DD>-<topic>-extension-architecture.md`
 2. Annotated `manifest.json` template (commented, ready for chrome-extension-developer to materialize)
 3. Message-passing topology diagram (ASCII or Mermaid)
 4. CWS purposes disclosure draft (one sentence per permission)
@@ -448,7 +448,7 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 
 For each architectural recommendation:
 
-- ADR file exists at `docs/specs/<YYYY-MM-DD>-<topic>-extension-architecture.md`, signed (author + date + status)
+- ADR file exists at `.supervibe/artifacts/specs/<YYYY-MM-DD>-<topic>-extension-architecture.md`, signed (author + date + status)
 - `manifest.json` template `manifest_version: 3` confirmed: `node -e 'const m = JSON.parse(require("fs").readFileSync("manifest.json","utf8")); if (m.manifest_version !== 3) process.exit(1)'`
 - `manifest.json` parses as valid JSON: `node -e 'JSON.parse(require("fs").readFileSync("manifest.json","utf8"))'`
 - `web-ext lint --source-dir ./dist` passes (if `web-ext` is available in the project)

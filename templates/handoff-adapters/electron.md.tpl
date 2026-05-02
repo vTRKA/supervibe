@@ -1,6 +1,6 @@
 # Electron Adapter — <prototype-slug>
 
-> Source HTML: prototypes/<slug>/{main-window,settings}/index.html
+> Source HTML: .supervibe/artifacts/prototypes/<slug>/{main-window,settings}/index.html
 > Target stack: Electron renderer process — same HTML/CSS/JS works directly
 
 ## Renderer process

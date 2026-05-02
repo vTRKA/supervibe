@@ -500,7 +500,7 @@ async function main() {
         console.log("SUPERVIBE_EPIC_STATUS");
         console.log(`EPIC: ${args.epic}`);
         console.log("STATUS: missing graph");
-        console.log(`NEXT_ACTION: run /supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed`);
+        console.log(`NEXT_ACTION: run /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed`);
         return;
       }
     }
@@ -868,10 +868,10 @@ function printHelp() {
   console.log(`SUPERVIBE_LOOP_HELP
 Primary:
   supervibe-loop --request "validate integrations"
-  supervibe-loop --happy-path --plan docs/plans/example.md
-  supervibe-loop --plan docs/plans/example.md
-  supervibe-loop --from-prd docs/specs/example.md
-  supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
+  supervibe-loop --happy-path --plan .supervibe/artifacts/plans/example.md
+  supervibe-loop --plan .supervibe/artifacts/plans/example.md
+  supervibe-loop --from-prd .supervibe/artifacts/specs/example.md
+  supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
   supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --status --epic <epic-id>
   supervibe-loop --stop <run-id>
@@ -894,17 +894,17 @@ Primary:
   supervibe-loop --anchor-doctor
   supervibe-loop --anchor-doctor --fix-derived
   supervibe-loop --summarize-changes --task task-123 --file src/example.ts --summary "Changed parser"
-  supervibe-loop --plan-waves docs/plans/example.md
+  supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
   supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --setup-worker-presets
 
 Advanced:
-  supervibe-loop --readiness --plan docs/plans/example.md
+  supervibe-loop --readiness --plan .supervibe/artifacts/plans/example.md
   supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format text|json|mermaid|dot
   supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json [--fix]
   supervibe-loop prime --file .supervibe/memory/loops/<run-id>/state.json
-  supervibe-loop --import-tasks docs/plans/example.md --dry-run
-  supervibe-loop --atomize-plan docs/plans/example.md --preview
+  supervibe-loop --import-tasks .supervibe/artifacts/plans/example.md --dry-run
+  supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --preview
   supervibe-loop --priority --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --notify terminal,inbox --request "validate integrations"

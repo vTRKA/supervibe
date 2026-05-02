@@ -5,7 +5,7 @@ import { preflight as memoryPreflight } from "./memory-preflight.mjs";
 import { composeDesignRecommendation, searchDesignIntelligence } from "./design-intelligence-search.mjs";
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const DEFAULT_SCAN_DIRS = ["prototypes", "skills", "agents/_design", "commands", "docs"];
+const DEFAULT_SCAN_DIRS = [".supervibe/artifacts", "skills", "agents/_design", "commands", "docs"];
 
 export async function designContextPreflight({
   query,
@@ -82,7 +82,7 @@ export async function scanCodebaseForDesignContext({
 
 function detectContextConflicts({ memory, code, designLookup }) {
   const conflicts = [];
-  const hasApprovedSystem = code.some((item) => /prototypes\/_design-system|design-system/i.test(item.path));
+  const hasApprovedSystem = code.some((item) => /\.supervibe\/artifacts\/prototypes\/_design-system|design-system/i.test(item.path));
   const suggestsBrand = designLookup.some((row) => row.kind === "collateral" || /color|style|typography/.test(row.domain));
   if (hasApprovedSystem && suggestsBrand) {
     conflicts.push({

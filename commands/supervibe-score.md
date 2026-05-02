@@ -18,21 +18,21 @@ For inline scoring during agent execution, agents use `supervibe:confidence-scor
 ### `/supervibe-score <artifact-type> <path>` — explicit
 
 Examples:
-- `/supervibe-score requirements docs/specs/2026-04-28-billing-design.md`
-- `/supervibe-score plan docs/plans/2026-04-28-token-economy-safe-mode.md`
+- `/supervibe-score requirements .supervibe/artifacts/specs/2026-04-28-billing-design.md`
+- `/supervibe-score plan .supervibe/artifacts/plans/2026-04-28-token-economy-safe-mode.md`
 - `/supervibe-score skill-quality skills/component-library-integration/SKILL.md`
-- `/supervibe-score brandbook prototypes/_design-system/system.md`
+- `/supervibe-score brandbook .supervibe/artifacts/prototypes/_design-system/system.md`
 
 ### `/supervibe-score <path>` — auto-detect type
 
 Inferred from path conventions:
-- `docs/specs/*.md` → `requirements`
-- `docs/plans/*.md` → `plan`
+- `.supervibe/artifacts/specs/*.md` → `requirements`
+- `.supervibe/artifacts/plans/*.md` → `plan`
 - `agents/**/*.md` → `agent-quality`
 - `skills/**/SKILL.md` → `skill-quality`
 - `rules/*.md` → `rule-quality`
-- `prototypes/<slug>/*.html` → `prototype`
-- `prototypes/_brandbook/*` → `brandbook`
+- `.supervibe/artifacts/prototypes/<slug>/*.html` → `prototype`
+- `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/*` → `brandbook`
 - `.supervibe/memory/<category>/*.md` → `memory-entry`
 
 If type cannot be inferred → ask user with the valid types listed.
@@ -46,7 +46,7 @@ Useful when user just produced an artifact in this session.
 
 Glob pattern matched against artifact-type-aware locations:
 - `/supervibe-score --batch agent-quality "agents/_design/**/*.md"` — scores all design agents
-- `/supervibe-score --batch plan "docs/plans/*.md"` — scores every plan
+- `/supervibe-score --batch plan ".supervibe/artifacts/plans/*.md"` — scores every plan
 
 Returns: aggregate table + worst-3 detail.
 
@@ -145,8 +145,8 @@ Single-artifact:
 
 ```
 === Supervibe Score ===
-Artifact:    docs/plans/2026-04-28-token-economy-safe-mode.md
-Type:        plan (auto-detected from docs/plans/)
+Artifact:    .supervibe/artifacts/plans/2026-04-28-token-economy-safe-mode.md
+Type:        plan (auto-detected from .supervibe/artifacts/plans/)
 Rubric:      confidence-rubrics/plan.yaml
 Score:       9.2 / 10
 Gate:        pass (block-below: 9, warn-below: 10)

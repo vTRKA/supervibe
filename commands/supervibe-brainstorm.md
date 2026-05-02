@@ -48,7 +48,7 @@ Treat the most recent user message as the topic.
    - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
-4. **Save the spec.** The skill emits `docs/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
+4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
 5. **Mandatory handoff.** Print `Шаг 1/1: написать production-ready план?` with the concrete `/supervibe-plan <spec-path>` command. Do not offer direct implementation from brainstorm output.
 
@@ -78,7 +78,7 @@ Treat the most recent user message as the topic.
 ```
 === Supervibe Brainstorm ===
 Topic:     <one-line summary>
-Spec:      docs/specs/YYYY-MM-DD-<slug>-design.md
+Spec:      .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Lines:     <count>
 Approaches: <count>  (chosen: <name>)
 Score:     <N>/10  Rubric: requirements
@@ -89,7 +89,7 @@ Evidence plan: memory/RAG/CodeGraph commands and citations present
 Visual explanation: diagram/table choice with accessible fallback present
 10/10 scorecard: present
 
-Next:      /supervibe-plan docs/specs/YYYY-MM-DD-<slug>-design.md
+Next:      /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan <spec-path>`
 ```
 

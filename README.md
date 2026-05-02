@@ -4,7 +4,7 @@
 
 A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
-**v2.0** - MIT - Windows / macOS / Linux - 1015 tests
+**v2.0** - MIT - Windows / macOS / Linux - 1024 tests
 
 ---
 
@@ -34,7 +34,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 | Design pipeline (5 targets) | web  chrome-extension  electron  tauri  mobile-native  specialist designer per target, viewport presets, brandbook baselines, target-aware handoff adapters (RN / Flutter / MV3 / Electron renderer / Tauri webview) |
 | Design intelligence (2.0) | Internal RAG data pack for designer agents: memory + code + retrieval-backed style, UX, charts, decks, collateral, and stack UI evidence through existing `/supervibe-design` and `/supervibe-audit` flows |
 | Component library bridges | shadcn / MUI / Mantine / Radix / HeadlessUI  token bridge generated from approved design system |
-| Pre-write prototype guard | `PreToolUse` hook blocks writes to `prototypes/<slug>/` until `config.json` exists AND blocks framework imports  prototypes stay native HTML/CSS/JS |
+| Pre-write prototype guard | `PreToolUse` hook blocks writes to `.supervibe/artifacts/prototypes/<slug>/` until `config.json` exists AND blocks framework imports  prototypes stay native HTML/CSS/JS |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
 24 stacks supported: PHP (Laravel)  TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS)  Python (FastAPI, Django + DRF)  Ruby (Rails)  Java / Kotlin (Spring)  C# (ASP.NET)  Go  Mobile (Flutter, iOS, Android)  Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS)  GraphQL  PostgreSQL  MySQL  MongoDB  Elasticsearch  Redis.
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.46 initialized for this project
+[supervibe] welcome  plugin v2.0.47 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -130,7 +130,7 @@ Check multi-host readiness at any time:
 npm run supervibe:doctor -- --host all
 ```
 
-**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. Git LFS is optional, but the ONNX embedding model is not: the installer first reuses an already-downloaded usable model, then downloads the model directly from HuggingFace without a default stall or total timeout, and only falls back to Git LFS if the direct download fails. No Docker, no Python, no native compile step.
+**Requirements:** Node.js 22.5+ and Git. The installer checks `node:sqlite` before registration; if Node is missing or too old, it asks for explicit consent to install or upgrade Node and only continues after SQLite/RAG/CodeGraph can run. The ONNX embedding model is required but not stored in git: the installer first reuses an already-downloaded usable model, otherwise downloads it directly from HuggingFace with no total timeout and no stall timeout. No Docker, no Python, no native compile step.
 
 For unattended installs, set `SUPERVIBE_INSTALL_NODE=1` to allow Node bootstrap or `SUPERVIBE_INSTALL_NODE=0` to fail fast with manual instructions.
 
@@ -177,7 +177,7 @@ cd ~/.claude/plugins/marketplaces/supervibe-marketplace
 npm run supervibe:upgrade
 ```
 
-All three do the same thing: refuse user-owned tracked edits in the plugin checkout, self-heal installer-managed `package-lock.json` and ONNX model drift, clean stale untracked/ignored files, then `git pull --ff-only` with LFS smudge disabled + required ONNX model setup + `npm ci` + rebuild generated `registry.yaml` + refresh macOS/Linux terminal aliases + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
+All three do the same thing: refuse user-owned tracked edits in the plugin checkout, self-heal installer-managed `package-lock.json` drift, clean stale untracked/ignored files, then `git pull --ff-only` + required HuggingFace ONNX model setup + `npm ci` + rebuild generated `registry.yaml` + refresh macOS/Linux terminal aliases + run the install lifecycle doctor + refresh the upstream-check cache. Restart the AI CLI afterwards.
 
 Slash commands keep their leading `/` and run inside your AI CLI session. Do not type `/supervibe-adapt` in zsh, bash, or PowerShell; open the target project in Claude Code, Codex, Gemini, Cursor, or OpenCode and send it in the AI chat/session. On macOS/Linux the installer also provides no-slash terminal aliases for CLI-backed operations, for example `supervibe-adapt --dry-run --project .` and `supervibe-status --index-health`. AI-only workflow aliases such as `supervibe-brainstorm` print deterministic guidance instead of failing with `command not found`.
 
@@ -232,9 +232,9 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 
 ```bash
 /supervibe-brainstorm "idea"
-/supervibe-plan --from-brainstorm docs/specs/example.md
-/supervibe-plan --review docs/plans/example.md
-/supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
+/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
+/supervibe-plan --review .supervibe/artifacts/plans/example.md
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
 /supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic example-epic --worktree --max-duration 3h
 /supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
@@ -262,8 +262,8 @@ fresh-context prime summaries, context packs, PRD/story intake, visual local
 control, reversible GC, and safe export/import bundles:
 
 ```bash
-/supervibe-loop --from-prd docs/specs/checkout.md --dry-run
-/supervibe-loop --atomize-plan docs/plans/example.md --dry-run
+/supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --dry-run
 /supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/example-epic/graph.json
 /supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format text
 /supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json
@@ -325,7 +325,7 @@ to check derived anchor drift. Details are in
 [semantic anchors](docs/semantic-anchors.md).
 
 Multi-agent orchestration can be inspected before any fan-out. Use
-`/supervibe-loop --plan-waves docs/plans/example.md` to see safe parallel
+`/supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md` to see safe parallel
 waves, `/supervibe-loop --assign-ready --explain --file <state.json>` to see
 worker/reviewer reasoning, and `/supervibe-status --assignment <task-id> --file
 <state.json>` to answer why a task was assigned or serialized. Details are in
@@ -340,11 +340,11 @@ For any new feature, component, or behavior change.
 ```
 /supervibe-brainstorm payment idempotency
    collaborative dialogue, kill criteria, decision matrix
-   saves docs/specs/2026-04-28-payment-idempotency-design.md
+   saves .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md
    score 9 against requirements rubric
-/supervibe-plan docs/specs/2026-04-28-payment-idempotency-design.md
+/supervibe-plan .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md
    phased TDD plan, parallelization batches, risk register
-   saves docs/plans/2026-04-28-payment-idempotency.md
+   saves .supervibe/artifacts/plans/2026-04-28-payment-idempotency.md
    score 9 against plan rubric
    choose: subagent-driven OR inline execution
 ```
@@ -363,7 +363,7 @@ For any visual surface  web landing, in-product flow, browser extension, Electro
    optional: component-library-integration (shadcn / MUI / Mantine / Radix / HeadlessUI bridge)
    specialist designer per target (extension-ui-designer / electron / tauri / mobile / ux-ui)
    copywriter: every visible string nailed
-   prototype-builder: 1:1 HTML/CSS in prototypes/<slug>/ (native only  pre-write hook enforces)
+   prototype-builder: 1:1 HTML/CSS in .supervibe/artifacts/prototypes/<slug>/ (native only  pre-write hook enforces)
    AUTO: supervibe:preview-server spawns http://localhost:NNNN with hot reload +  feedback overlay
    ui-polish-reviewer + accessibility-reviewer in parallel
    feedback loop ( /  /  /  / )  never silent
@@ -454,7 +454,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run code:search -- --callers "Symbol"` | Graph: who calls this symbol |
 | `npm run code:search -- --impact "Symbol" --depth 2` | Graph: inbound blast radius before refactor |
 | `npm run code:search -- --files "src"` | Graph: indexed files with language and symbol counts |
-| `npm run presentation:build -- --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
+| `npm run presentation:build -- --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Plugin-directory alias for the optional watcher daemon; from a user project prefer `node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs` |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
 | `npm run check` | Full test suite plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
@@ -471,9 +471,9 @@ The installer now writes `.supervibe/audits/install-lifecycle/latest.json`; if t
 
 **Zed with Codex ACP does not show Supervibe after typing `/`.** Current `codex-acp` advertises only its own built-in commands to Zed. Supervibe follows the Codex-supported route instead: Codex sees the plugin through `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local` plus `~/.codex/config.toml`, and Zed/Codex ACP sessions get Supervibe behavior through native skills linked at `~/.agents/skills/supervibe`. Re-run the installer, restart the Zed external-agent session, then check `npm run supervibe:doctor -- --host codex --strict`.
 
-**`Protobuf parsing failed`.** The embedding model is missing or still an LFS pointer. Re-run the current installer; it verifies the ONNX file, reuses it when ready, otherwise downloads the model directly from HuggingFace before registration. Git LFS is only used as a fallback if the direct download fails.
+**`Protobuf parsing failed`.** The embedding model is missing, incomplete, or corrupt. Re-run the current installer; it verifies the ONNX file, reuses it when ready, otherwise downloads the model directly from HuggingFace before registration.
 
-**Install hangs at `git-lfs filter-process`.** Re-run with the current installer. Clone/checkout disables LFS smudge, and the required ONNX setup uses direct HuggingFace download first so normal installs do not consume repository Git LFS bandwidth; bounded Git LFS remains a fallback.
+**Model download takes a long time.** Let it continue. The installer does not impose a total or stall timeout on the HuggingFace ONNX download, and it reuses an already-downloaded usable model on the next run.
 
 **Windows install starts in WSL.** If `install.sh` runs under `C:\Windows\System32\bash.exe`, it uses WSL `$HOME` and WSL Node, not the Windows Codex/Claude/Gemini profile. Use PowerShell `install.ps1` for Windows, or set `SUPERVIBE_ALLOW_WSL_INSTALL=1` only when you intentionally want a separate WSL install.
 

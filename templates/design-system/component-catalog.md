@@ -1,6 +1,6 @@
 # Component Catalog
 
-Use this catalog when deciding whether the design system has enough coverage for upcoming prototypes. Copy only the components the project needs into `prototypes/_design-system/components/`, then specify anatomy, states, variants, tokens, and accessibility for each.
+Use this catalog when deciding whether the design system has enough coverage for upcoming prototypes. Copy only the components the project needs into `.supervibe/artifacts/prototypes/_design-system/components/`, then specify anatomy, states, variants, tokens, and accessibility for each.
 
 ## Core
 

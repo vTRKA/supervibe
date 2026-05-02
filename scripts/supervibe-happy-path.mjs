@@ -8,8 +8,8 @@ if (args.help) {
   console.log([
     "SUPERVIBE_HAPPY_PATH_HELP",
     "Usage:",
-    "  npm run supervibe:happy-path -- --plan docs/plans/example.md",
-    "  npm run supervibe:happy-path -- --from-prd docs/specs/example.md",
+    "  npm run supervibe:happy-path -- --plan .supervibe/artifacts/plans/example.md",
+    "  npm run supervibe:happy-path -- --from-prd .supervibe/artifacts/specs/example.md",
     "  npm run supervibe:happy-path -- --request \"build checkout\"",
     "",
     "Prints the PRD/plan -> atomize -> execute -> verify -> close/archive path.",

@@ -16,14 +16,14 @@ This is the safety-critical sibling of `/supervibe-plan` — that one writes the
 ### `/supervibe-execute-plan <plan-path>`
 
 Examples:
-- `/supervibe-execute-plan docs/plans/2026-04-28-token-economy-safe-mode.md`
-- `/supervibe-execute-plan docs/plans/2026-04-27-codegraph-phase-d.md`
+- `/supervibe-execute-plan .supervibe/artifacts/plans/2026-04-28-token-economy-safe-mode.md`
+- `/supervibe-execute-plan .supervibe/artifacts/plans/2026-04-27-codegraph-phase-d.md`
 
 ### `/supervibe-execute-plan` (no args)
 
-Auto-detects most recent plan in `docs/plans/`. If multiple recent or ambiguous, lists them and asks user to pick.
+Auto-detects most recent plan in `.supervibe/artifacts/plans/`. If multiple recent or ambiguous, lists them and asks user to pick.
 
-If no plans exist → redirect: "Нет планов в `docs/plans/`. Запусти `/supervibe-plan <spec>` первым".
+If no plans exist → redirect: "Нет планов в `.supervibe/artifacts/plans/`. Запусти `/supervibe-plan <spec>` первым".
 
 ### `/supervibe-execute-plan --resume <plan-path>`
 
@@ -114,7 +114,7 @@ For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe
 a. If `<plan-path>` given → use it.
 b. If `--resume <path>` → use it; mark as resume mode.
 c. If `--dry-run <path>` → use it; mark as readiness-only.
-d. If no args → glob `docs/plans/*.md`, sort by mtime desc, pick top 1 (or list and ask if multiple created today).
+d. If no args → glob `.supervibe/artifacts/plans/*.md`, sort by mtime desc, pick top 1 (or list and ask if multiple created today).
 e. If no plans exist → redirect to `/supervibe-plan`, exit.
 
 ### 1. Read plan + context
@@ -122,7 +122,7 @@ e. If no plans exist → redirect to `/supervibe-plan`, exit.
 - Read full plan file
 - Read `supervibe:project-memory --query <topic-from-plan-title>` for prior similar executions
 - Read related rules from `rules/` (per applies-to globs)
-- Read any spec referenced by the plan (links to `docs/specs/`)
+- Read any spec referenced by the plan (links to `.supervibe/artifacts/specs/`)
 
 ### 2. Stage A — Readiness audit (10/10 gate)
 
@@ -130,7 +130,7 @@ For each of the 10 dimensions above, compute pass/fail with file:line evidence:
 
 ```
 === Stage A — Readiness audit ===
-Plan: docs/plans/<file>.md
+Plan: .supervibe/artifacts/plans/<file>.md
 
 [1/10] Plan format valid                  ✓
 [2/10] File structure mapped              ✓
@@ -228,7 +228,7 @@ This becomes searchable context for future similar plans.
 
 ```
 === Supervibe Execute Plan — DRY RUN ===
-Plan:        docs/plans/<file>.md
+Plan:        .supervibe/artifacts/plans/<file>.md
 Tasks:       <N> across <M> phases
 Readiness:   <X>/10  ✓ or ✗
 

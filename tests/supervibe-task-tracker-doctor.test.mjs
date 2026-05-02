@@ -20,7 +20,7 @@ function graph() {
 \`\`\`bash
 npm test
 \`\`\`
-`, { epicId: "epic-doctor", planPath: "docs/plans/doctor.md", planReviewPassed: true });
+`, { epicId: "epic-doctor", planPath: ".supervibe/artifacts/plans/doctor.md", planReviewPassed: true });
 }
 
 test("task tracker doctor reports missing mappings, duplicate external tasks, orphans, stale claims, and worktree drift", () => {

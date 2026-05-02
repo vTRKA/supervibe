@@ -21,7 +21,6 @@ $PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
 $ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $MinNodeVersion = [version]'22.5.0'
-$InstallerManagedModelPath = 'models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx'
 
 function Say  { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Cyan }
 function Ok   { param($m) Write-Host "[supervibe-update] $m" -ForegroundColor Green }
@@ -90,27 +89,15 @@ function Get-PorcelainPath {
 
 function Restore-InstallerManagedTrackedEdits {
   param([string]$Path, [string[]]$Status)
-  $managedPaths = @('package-lock.json', $InstallerManagedModelPath)
+  $managedPaths = @('package-lock.json')
   foreach ($line in $Status) {
     if (-not $line -or $line.StartsWith('?? ')) { continue }
     $trackedPath = Get-PorcelainPath $line
     if ($managedPaths -contains $trackedPath) {
       Warn "restoring installer-managed tracked artifact: $trackedPath"
-      Invoke-GitNoLfsSmudge @('-C', $Path, 'checkout', '--', $trackedPath)
+      & git -C $Path checkout -- $trackedPath
       if ($LASTEXITCODE -ne 0) { Die "failed to restore installer-managed tracked artifact: $trackedPath" }
     }
-  }
-}
-
-function Invoke-GitNoLfsSmudge {
-  param([string[]]$GitArgs)
-  $oldSkip = $env:GIT_LFS_SKIP_SMUDGE
-  try {
-    $env:GIT_LFS_SKIP_SMUDGE = '1'
-    & git -c filter.lfs.smudge= -c filter.lfs.required=false @GitArgs
-  } finally {
-    if ($null -eq $oldSkip) { Remove-Item Env:GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue }
-    else { $env:GIT_LFS_SKIP_SMUDGE = $oldSkip }
   }
 }
 

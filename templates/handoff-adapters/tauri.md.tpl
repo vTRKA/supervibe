@@ -1,6 +1,6 @@
 # Tauri Adapter — <prototype-slug>
 
-> Source HTML: prototypes/<slug>/{main-window,secondary}/index.html
+> Source HTML: .supervibe/artifacts/prototypes/<slug>/{main-window,secondary}/index.html
 > Target stack: Tauri 2 webview
 
 ## Webview compatibility

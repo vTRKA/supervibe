@@ -18,7 +18,7 @@ test("open validation request becomes bounded task queue", () => {
 });
 
 test("plan checkboxes are parsed into executable tasks", () => {
-  const tasks = parsePlanTasks("## Task 1\n- [ ] **Step 1: Verify runtime**\n```bash\nnode --test tests/x.test.mjs\n```", "docs/plans/x.md");
+  const tasks = parsePlanTasks("## Task 1\n- [ ] **Step 1: Verify runtime**\n```bash\nnode --test tests/x.test.mjs\n```", ".supervibe/artifacts/plans/x.md");
   assert.equal(tasks.length, 1);
   assert.equal(tasks[0].verificationCommands[0], "node --test tests/x.test.mjs");
 });
@@ -51,7 +51,7 @@ test("work-item graph JSON parses into runner-compatible tasks", () => {
         parentId: null,
         blocks: ["task-a"],
         related: [],
-        discoveredFrom: { type: "plan", path: "docs/plans/x.md" },
+        discoveredFrom: { type: "plan", path: ".supervibe/artifacts/plans/x.md" },
         acceptanceCriteria: ["Epic done"],
         verificationCommands: [],
         writeScope: [],
@@ -68,7 +68,7 @@ test("work-item graph JSON parses into runner-compatible tasks", () => {
         parentId: "epic-x",
         blocks: [],
         related: [],
-        discoveredFrom: { type: "plan", path: "docs/plans/x.md" },
+        discoveredFrom: { type: "plan", path: ".supervibe/artifacts/plans/x.md" },
         acceptanceCriteria: ["Task done"],
         verificationCommands: ["npm test"],
         writeScope: [{ action: "modify", path: "src/a.ts" }],
@@ -120,7 +120,7 @@ test("PRD markdown extracts user stories with source lines and branch slug", () 
 
 ## Non-Goals
 - Subscription billing
-`, "docs/specs/checkout.md");
+`, ".supervibe/artifacts/specs/checkout.md");
 
   assert.equal(tasks.length, 2);
   assert.equal(tasks[0].source.type, "prd");

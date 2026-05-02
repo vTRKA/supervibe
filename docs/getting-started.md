@@ -7,7 +7,7 @@ or an open validation request.
 
 ```bash
 npm run supervibe:loop -- --dry-run --request "validate integrations"
-npm run supervibe:loop -- --plan docs/plans/payment-integration.md
+npm run supervibe:loop -- --plan .supervibe/artifacts/plans/payment-integration.md
 ```
 
 The loop runs preflight first, asks for missing server or access references
@@ -24,10 +24,7 @@ project memory, confidence gates, and stack-aware scaffolding backed by SQLite.
 - **Claude Code** (latest)
 - **Node.js 22.5+** for SQLite-backed semantic RAG, code graph, project memory, and agent task memory. The installer can offer to install/upgrade Node with explicit consent.
 - **Git**
-- **Git LFS** *(optional fallback)*  the embedding model (`model_quantized.onnx`, 113 MB) is tracked via Git LFS because GitHub cannot store it as a normal blob. The installer still requires the model before registration: it first reuses an already-ready local ONNX file, otherwise downloads the model directly from HuggingFace (~118 MB) without a default stall or total timeout. Bounded Git LFS is used only if that direct download fails.
-  - Check: `git lfs version` (should print `git-lfs/X.Y.Z ...`)
-  - Install: macOS `brew install git-lfs`; Windows already bundled with Git for Windows 2.x; Linux see [git-lfs.com](https://git-lfs.com)
-  - After install (once per machine): `git lfs install`
+- **HuggingFace network access for the embedding model**. `model_quantized.onnx` is not stored in git. The installer first reuses an already-ready local ONNX file, otherwise downloads it from HuggingFace (~118 MB) with no total timeout and no stall timeout.
 
 ## Install (verified)
 
@@ -71,17 +68,17 @@ npm run supervibe:install-bins    # optional on Linux/Mac: links supervibe-* ter
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.46
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.47
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.46
-xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.46"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.0.47
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.0.47"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.46
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.0.47
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.46" "C:\path\to\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.0.47" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -106,7 +103,7 @@ supervibe-adapt --help    # Linux/Mac terminal alias, no leading slash
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.0.46/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.0.47/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -154,7 +151,7 @@ Type `y`.
 - Generates the selected host settings file when supported
 - Generates or updates the selected host instruction surface through the active adapter
 - Sets up husky + commitlint + lint-staged
-- Creates skeleton dirs: `backend/`, `frontend/`, `prototypes/`, `docs/`
+- Creates skeleton dirs: `backend/`, `frontend/`, `.supervibe/artifacts/prototypes/`, `docs/`
 
 After ~30-60 seconds: scaffolded project ready.
 
@@ -351,7 +348,7 @@ Use the preview server when a design, prototype, or static HTML/CSS mockup needs
 **Start:**
 
 ```bash
-npm run supervibe:preview -- --root mockups/checkout
+npm run supervibe:preview -- --root .supervibe/artifacts/mockups/checkout
 
 # Output:
 # [supervibe-preview] checkout  http://localhost:3047
@@ -403,7 +400,7 @@ Use `docs/templates/` for durable project artifacts:
 | `brainstorm-output-template.md` | `supervibe:brainstorming` | First-principles decomposition and decision matrix |
 | `intake-template.md` | `supervibe:requirements-intake` | Personas, constraints, and success criteria |
 
-Store approved artifacts under `docs/specs/YYYY-MM-DD-<topic>-<type>.md`.
+Store approved artifacts under `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-<type>.md`.
 
 ## Agent improvement loop
 
@@ -428,7 +425,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.46/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.0.47/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -503,13 +500,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1  v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-  - Manifest auto-updated; ensure your install path has v2.0.46
+  - Manifest auto-updated; ensure your install path has v2.0.47
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.0.46 dir, restart Claude Code
+- **Action**: re-symlink to v2.0.47 dir, restart Claude Code
 
 ## Where to next
 
@@ -517,5 +514,5 @@ rm -rf <project>/<adapter>/skills
 - `docs/skill-authoring.md`  write a new skill
 - `docs/agent-authoring.md`  write a new agent
 - `docs/rule-authoring.md`  write a new rule
-- `docs/specs/2026-04-27-supervibe-framework-design.md`  full architecture spec
+- `.supervibe/artifacts/specs/2026-04-27-supervibe-framework-design.md`  full architecture spec
 - GitHub issues for support

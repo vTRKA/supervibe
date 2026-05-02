@@ -31,7 +31,7 @@ NOT for:
 ## Hard constraints (same as `supervibe:prototype`)
 
 1. **Native only.** No frameworks, no build step, no npm. Pure HTML + CSS + JS.
-2. **Design system is source of truth.** All visuals come through `prototypes/_design-system/tokens.css`.
+2. **Design system is source of truth.** All visuals come through `.supervibe/artifacts/prototypes/_design-system/tokens.css`.
 3. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user before adding more.
 4. **One question at a time** in markdown with progress.
 5. **Explicit approval lifecycle**: draft → review → revisions → approved → handoff.
@@ -41,13 +41,13 @@ Plus landing-specific:
 6. **SEO scaffolding from day one.** `<title>`, meta description, Open Graph, Twitter card, canonical, structured-data JSON-LD — all present from the first commit, not added later.
 7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
-9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old prototypes/mockups/presentations exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
+9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old .supervibe/artifacts/prototypes/.supervibe/artifacts/mockups/presentations exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
 10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`.
 
 ## Step 0 — Read source of truth (required)
 
-1. **Design system check** — same as `supervibe:prototype`. Required: `prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
-2. **Brand direction check** — `prototypes/_brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
+1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/{tokens.css, components/, voice.md}`. STOP if missing.
+2. **Brand direction check** — `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
 3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
 4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
 5. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
@@ -74,7 +74,7 @@ ASK: "Какая структура нужна?" — multiple choice in markdown
 
 ### Stage 1 — Setup + viewport question
 
-1. Pick slug: `prototypes/landing-<topic>/`.
+1. Pick slug: `.supervibe/artifacts/prototypes/landing-<topic>/`.
 2. **Single question on viewports** (markdown formatted):
    ```markdown
    **Шаг 1/4: Viewports.**
@@ -88,12 +88,12 @@ ASK: "Какая структура нужна?" — multiple choice in markdown
 4. **Single question on tone** ("деловой / тёплый / провокационный / брутальный / минималистичный").
 5. **Single question on competitor references** (zero, one, or up-to-three URLs).
 
-Each question waits for explicit answer. Save all to `prototypes/landing-<topic>/config.json`.
+Each question waits for explicit answer. Save all to `.supervibe/artifacts/prototypes/landing-<topic>/config.json`.
 
 ### Stage 2 — File layout
 
 ```
-prototypes/landing-<topic>/
+.supervibe/artifacts/prototypes/landing-<topic>/
 ├── config.json                  { "viewports": [375, 1440], "structure": "saas-classic", "tone": "warm", ... }
 ├── index.html                   landing entry — has full SEO + OG + JSON-LD + analytics scaffolding
 ├── styles/
@@ -132,11 +132,11 @@ prototypes/landing-<topic>/
    <a href="#signup" data-analytics-event="hero-cta-click" data-analytics-section="hero">Get started</a>
    ```
 4. Image discipline: explicit width/height, `loading="lazy"` below the fold, `loading="eager" fetchpriority="high"` on LCP image, `aspect-ratio` on parent to avoid CLS.
-5. Animations from `prototypes/_design-system/motion.css` only. Reduced-motion respected.
+5. Animations from `.supervibe/artifacts/prototypes/_design-system/motion.css` only. Reduced-motion respected.
 
 ### Stage 4 — Live preview
 
-Same as `supervibe:prototype` — `supervibe:preview-server --root prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
+Same as `supervibe:prototype` — `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/` with mandatory feedback overlay. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
 
 ### Stage 5 — Feedback loop (required)
 
@@ -151,7 +151,7 @@ After URL delivered:
 
 Что делаем дальше?
 
-- ✅ **Утвердить** — фиксирую `approved`, копирую в `prototypes/landing-<topic>/handoff/`
+- ✅ **Утвердить** — фиксирую `approved`, копирую в `.supervibe/artifacts/prototypes/landing-<topic>/handoff/`
 - ✎ **Доработать** — что поменять? Опиши одной мыслью, я итерирую
 - 🔀 **Альтернатива** — предложу 2 другие структуры/тона
 - 📊 **Провести reviews** — accessibility-reviewer + ui-polish-reviewer + seo-specialist параллельно
@@ -164,7 +164,7 @@ Wait for explicit choice.
 
 When user says "утвердить":
 
-1. Write `prototypes/landing-<topic>/.approval.json`:
+1. Write `.supervibe/artifacts/prototypes/landing-<topic>/.approval.json`:
    ```json
    {
      "status": "approved",
@@ -187,14 +187,14 @@ When user says "утвердить":
 ```
 === Landing Page ===
 Slug:           landing-<topic>
-Location:       prototypes/landing-<topic>/
+Location:       .supervibe/artifacts/prototypes/landing-<topic>/
 Viewports:      [375, 1440]
 Structure:      <saas-classic | product | conversion | editorial | squeeze>
 SEO scaffolding: ✓ title + description + OG + Twitter + JSON-LD + canonical
 Analytics hooks: <count> data-analytics-event attributes wired
 Lighthouse target: LCP <2.5s, CLS <0.1, TBT <200ms (mobile slow-4G)
 Preview URL:    http://localhost:NNNN
-Approval:       <draft | approved>     ← prototypes/<slug>/.approval.json
+Approval:       <draft | approved>     ← .supervibe/artifacts/prototypes/<slug>/.approval.json
 
 Confidence: <N>.<dd>/10
 Override:   <true|false>
@@ -213,19 +213,19 @@ Same as `supervibe:prototype`, plus:
 
 ## Verification
 
-- `grep -E 'meta name="description"|og:title|og:image|application/ld\+json' prototypes/landing-*/index.html` → all present
-- `grep -rE 'data-analytics-event=' prototypes/landing-*/` → ≥3 hits (hero CTA, primary CTA, footer CTA at minimum)
+- `grep -E 'meta name="description"|og:title|og:image|application/ld\+json' .supervibe/artifacts/prototypes/landing-*/index.html` → all present
+- `grep -rE 'data-analytics-event=' .supervibe/artifacts/prototypes/landing-*/` → ≥3 hits (hero CTA, primary CTA, footer CTA at minimum)
 - All `<img>` have `width=` AND `height=` (no CLS)
 - Reduced-motion respected (no entrance animation longer than 100ms when `prefers-reduced-motion: reduce`)
 - Lighthouse mobile-slow-4G: LCP <2.5s, CLS <0.1
-- `find . -name '*.html' -path '*/prototypes/landing-*'` opens cleanly in browser without console errors
+- `find . -name '*.html' -path '*/.supervibe/artifacts/prototypes/landing-*'` opens cleanly in browser without console errors
 
 ## Anti-patterns (skill-level — fail conditions)
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Шаг N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
-- `silent-viewport-expansion` — adding viewport widths beyond what `prototypes/<slug>/config.json` declares without re-asking the user.
+- `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
 - `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
 - `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.

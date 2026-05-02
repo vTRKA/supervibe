@@ -22,10 +22,10 @@ NOT for: internal refactors, infra changes, dev tooling.
 
 ## Step 0 — Read source of truth (required)
 
-1. Read project's `docs/prd/` for prior PRDs (numbering, format)
+1. Read project's `.supervibe/artifacts/prd/` for prior PRDs (numbering, format)
 2. Read existing user docs / marketing pages (vocabulary, positioning)
 3. Read analytics if available (current behavior baseline)
-4. Read related specs in `docs/specs/`
+4. Read related specs in `.supervibe/artifacts/specs/`
 
 ## Decision tree
 
@@ -38,8 +38,8 @@ Feature scope?
 
 ## Procedure
 
-1. **Find next PRD number** in `docs/prd/`
-2. **Write PRD** at `docs/prd/NNNN-<feature>.md`:
+1. **Find next PRD number** in `.supervibe/artifacts/prd/`
+2. **Write PRD** at `.supervibe/artifacts/prd/NNNN-<feature>.md`:
    ```markdown
    # PRD-NNNN: <Feature Name>
 
@@ -93,7 +93,7 @@ Returns: PRD file with all sections filled, success metrics measurable, out-of-s
 
 ## Verification
 
-- PRD file at `docs/prd/NNNN-<feature>.md`
+- PRD file at `.supervibe/artifacts/prd/NNNN-<feature>.md`
 - All required sections present
 - Success metrics include target + timeframe
 - Stakeholder approval recorded
@@ -179,7 +179,7 @@ Same format as plans:
 
 ## Output contract template
 
-Save PRDs to `docs/specs/YYYY-MM-DD-<feature>-prd.md`. Use template at `docs/templates/PRD-template.md`.
+Save PRDs to `.supervibe/artifacts/specs/YYYY-MM-DD-<feature>-prd.md`. Use template at `docs/templates/PRD-template.md`.
 
 Required sections (in order):
 1. **TL;DR** (3 sentences max)
@@ -236,7 +236,7 @@ Required sections (in order):
 
 ## Verification
 
-- PRD saved to `docs/specs/YYYY-MM-DD-<feature>-prd.md`
+- PRD saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<feature>-prd.md`
 - All 14 sections present
 - ACs in Gherkin format with ≥1 per user story
 - Success metrics: ≥3, with baseline + target

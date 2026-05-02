@@ -77,13 +77,13 @@ Match exact pack?
 6. Resolve the host adapter from the active host instruction files and folders (the active host instruction file, `.claude`, `AGENTS.md`, `.codex`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json`) plus active CLI hints.
 7. If multiple adapters are plausible, ask one host-selection question and do not write until answered.
 8. For each profile-selected and add-on-selected `agents-attach` / `agent-addons` entry → copy agent file to the selected adapter's agents folder.
-9. For each `rules-attach` → copy rule file to the selected adapter's rules folder.
+9. For each `rules-attach` → copy rule file to the selected adapter's rules folder, including upstream `related-rules` closure or explicitly marked external links.
 10. Copy support skills referenced by selected agents or the bootstrap/adapt flow to the selected adapter's skills folder.
 10a. Generate or update the selected adapter's settings file only if supported.
 11. Generate or update the selected adapter's instruction file through `scripts/lib/supervibe-context-migrator.mjs`, using managed block markers and preserving user-owned content.
 11b. Create Supervibe-owned state under `.supervibe/memory/` only, including `.supervibe/memory/index-config.json` and `.supervibe/memory/.supervibe-version`. Do not create the legacy Claude memory path unless the user explicitly asks for migration.
 9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
-10. Generate skeleton dirs (backend/, frontend/, prototypes/, docs/)
+10. Generate skeleton dirs (backend/, frontend/, .supervibe/artifacts/prototypes/, docs/)
 11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9

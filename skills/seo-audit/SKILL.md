@@ -22,7 +22,7 @@ last-verified: 2026-04-27
 
 ## Step 0 — Read source of truth (required)
 
-1. Identify pages in scope (`prototypes/landing/` or live URLs)
+1. Identify pages in scope (`.supervibe/artifacts/prototypes/landing/` or live URLs)
 2. Read sitemap, robots.txt
 3. Invoke `best-practices-researcher` for current 2026 SEO patterns (via research-cache, TTL 30d)
 

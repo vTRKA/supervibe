@@ -14,9 +14,9 @@ related-rules: [confidence-discipline]
 
 Designs approved as prototypes regularly drift during implementation — devs reinterpret, eyeball spacing, omit states. Drift accumulates until production looks nothing like the approved design.
 
-By treating `prototypes/` as 1:1 source of truth and measuring drift, we keep design discipline. Approved prototype = contract; production violates at its peril.
+By treating `.supervibe/artifacts/prototypes/` as 1:1 source of truth and measuring drift, we keep design discipline. Approved prototype = contract; production violates at its peril.
 
-Draft prototypes are not production visual contracts. They may communicate the product model, flow, states, evidence, and human decisions, but production visual implementation starts only from `approved prototype + final tokens` in `prototypes/<slug>/handoff/`.
+Draft prototypes are not production visual contracts. They may communicate the product model, flow, states, evidence, and human decisions, but production visual implementation starts only from `approved prototype + final tokens` in `.supervibe/artifacts/prototypes/<slug>/handoff/`.
 
 Concrete consequence of NOT following: approved design is a fiction; stakeholders reject production saying "this isn't what we approved"; rework cycles.
 
@@ -32,13 +32,13 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 ### Prototype phase
 
 1. Build HTML prototype with `supervibe:prototype` skill
-2. Use candidate design-system tokens (`prototypes/_design-system/tokens.css`) for draft proof, then final tokens after visual approval
+2. Use candidate design-system tokens (`.supervibe/artifacts/prototypes/_design-system/tokens.css`) for draft proof, then final tokens after visual approval
 3. Render all 8 standard states (resting/hover/active/focus/disabled/loading/empty/error)
 4. Get stakeholder approval (creative-director + user)
 
 ### Production transfer phase
 
-1. Frontend developer reads `prototypes/<feature>/handoff/`
+1. Frontend developer reads `.supervibe/artifacts/prototypes/<feature>/handoff/`
 2. Confirms `.approval.json` is approved and `manifest.json` has final tokens
 3. Implements 1:1 in framework (React/Vue/Svelte/etc.)
 4. Token references map directly (CSS var → JS theme object)

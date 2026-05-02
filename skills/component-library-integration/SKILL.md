@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 phase: design-system
 prerequisites:
   - design-system-approved
-emits-artifact: prototypes/_design-system/library-bridge/<library>/
+emits-artifact: .supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/
 confidence-rubric: confidence-rubrics/framework.yaml
 gate-on-exit: design-system
 version: 1.0
@@ -25,10 +25,10 @@ Before choosing or bridging a component library, run project memory, code search
 - WHEN user asks "use shadcn / use MUI / can we adopt <library>" — propose this skill.
 
 ## Step 0 — Read source of truth
-- `prototypes/_design-system/manifest.json` (status must be approved)
-- `prototypes/_design-system/tokens.css`
-- `prototypes/_design-system/motion.css`
-- `prototypes/_design-system/components/*.md` (each baseline component spec)
+- `.supervibe/artifacts/prototypes/_design-system/manifest.json` (status must be approved)
+- `.supervibe/artifacts/prototypes/_design-system/tokens.css`
+- `.supervibe/artifacts/prototypes/_design-system/motion.css`
+- `.supervibe/artifacts/prototypes/_design-system/components/*.md` (each baseline component spec)
 
 ## Decision tree
 
@@ -57,19 +57,19 @@ Ask user one question at a time.
 ## Procedure
 
 1. Branch on chosen library:
-   - **MUI** → copy `templates/component-adapters/mui-token-bridge.ts.tpl` to `prototypes/_design-system/library-bridge/mui/theme.ts`. Fill palette/typography/spacing/shape/transitions from `tokens.css`.
-   - **shadcn/ui** → copy `templates/component-adapters/shadcn-token-bridge.css.tpl` to `prototypes/_design-system/library-bridge/shadcn/globals.css`. Map shadcn CSS vars (`--background`, `--foreground`, `--primary`, etc.) to our tokens.
-   - **Radix / HeadlessUI / Melt UI / Bits UI** → copy `templates/component-adapters/headless-ui-mapping.md.tpl` to `prototypes/_design-system/library-bridge/<lib>/mapping.md`. List which primitive backs each baseline component.
+   - **MUI** → copy `templates/component-adapters/mui-token-bridge.ts.tpl` to `.supervibe/artifacts/prototypes/_design-system/library-bridge/mui/theme.ts`. Fill palette/typography/spacing/shape/transitions from `tokens.css`.
+   - **shadcn/ui** → copy `templates/component-adapters/shadcn-token-bridge.css.tpl` to `.supervibe/artifacts/prototypes/_design-system/library-bridge/shadcn/globals.css`. Map shadcn CSS vars (`--background`, `--foreground`, `--primary`, etc.) to our tokens.
+   - **Radix / HeadlessUI / Melt UI / Bits UI** → copy `templates/component-adapters/headless-ui-mapping.md.tpl` to `.supervibe/artifacts/prototypes/_design-system/library-bridge/<lib>/mapping.md`. List which primitive backs each baseline component.
    - **Mantine** → similar to MUI; create `theme.ts` from Mantine's `MantineThemeOverride` shape filled with tokens.
    - **Custom** → no bridge needed; baseline component specs are the contract.
 
-2. Write a `prototypes/_design-system/library-bridge/<library>/README.md` describing:
+2. Write a `.supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/README.md` describing:
    - Why this library (link back to brandbook decision)
    - Bridge depth (A/B/C)
    - How to import in production stack
    - Migration path if library is later swapped
 
-3. Update `prototypes/_design-system/manifest.json` with `componentLibrary: { name: "...", bridgeDepth: "...", bridgePath: "..." }`.
+3. Update `.supervibe/artifacts/prototypes/_design-system/manifest.json` with `componentLibrary: { name: "...", bridgeDepth: "...", bridgePath: "..." }`.
 
 4. Print feedback prompt (required):
    ```
@@ -81,8 +81,8 @@ Ask user one question at a time.
    ```
 
 ## Output contract
-- `prototypes/_design-system/library-bridge/<library>/` — bridge files
-- `prototypes/_design-system/library-bridge/<library>/README.md` — rationale
+- `.supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/` — bridge files
+- `.supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/README.md` — rationale
 - Updated `manifest.json`
 
 ```
@@ -99,7 +99,7 @@ Rubric: framework
 - `advancing-without-feedback-prompt`
 
 ## Verification
-- `cat prototypes/_design-system/library-bridge/<library>/README.md` shows: library name, bridge depth, link back to brandbook decision.
+- `cat .supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/README.md` shows: library name, bridge depth, link back to brandbook decision.
 - `manifest.json` `componentLibrary.bridgePath` resolves to existing file.
 - Token references in bridge file (grep for token names from `tokens.css`) — count must be > 0; bridge that doesn't reference any token is broken.
 

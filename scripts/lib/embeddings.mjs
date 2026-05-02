@@ -1,7 +1,7 @@
 // Real semantic embeddings via @huggingface/transformers (pure JS, no Python).
 // Uses Xenova/multilingual-e5-small (384-dim, quantized ~118MB).
 // MULTILINGUAL: handles English, Russian, 100+ languages well.
-// Bundled in repo at models/Xenova/multilingual-e5-small/ — no network download needed.
+// Resolved by the installer into models/Xenova/multilingual-e5-small/.
 //
 // IMPORTANT: e5 family requires PREFIXES for best quality:
 //   - "query: <text>" for search queries
@@ -16,21 +16,20 @@ import { existsSync, statSync } from 'node:fs';
 const PLUGIN_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const LOCAL_MODEL_DIR = join(PLUGIN_ROOT, 'models');
 
-// Detect whether the bundled model is actually present and usable.
+// Detect whether the local model is actually present and usable.
 // Official installers should guarantee this before registration; the remote
 // fallback remains for manual clones, corrupted checkouts, and older installs.
 // Three failure modes we must handle:
 //   1. models/ dir missing entirely (dev clone with --depth 0 / shallow)
 //   2. config.json missing (incomplete checkout)
-//   3. model_quantized.onnx is a Git LFS pointer file (~134 bytes) because
-//      the user's machine has no git-lfs installed -> ONNX runtime would
-//      throw "Protobuf parsing failed" at runtime.
+//   3. model_quantized.onnx is truncated/corrupt -> ONNX runtime would throw
+//      "Protobuf parsing failed" at runtime.
 // In any of those cases, transparently fall back to HuggingFace remote download
 // (~118MB one-time, cached in node_modules/@huggingface/.cache/).
 const MODEL_DIR = join(LOCAL_MODEL_DIR, 'Xenova', 'multilingual-e5-small');
 const CONFIG_FILE = join(MODEL_DIR, 'config.json');
 const MODEL_FILE = join(MODEL_DIR, 'onnx', 'model_quantized.onnx');
-const MIN_MODEL_BYTES = 1_000_000; // real quantized ONNX ≈ 113MB; LFS pointer ≈ 134B
+const MIN_MODEL_BYTES = 1_000_000; // real quantized ONNX is about 113MB.
 
 function isLocalModelUsable() {
   if (!existsSync(CONFIG_FILE)) return false;
@@ -51,7 +50,7 @@ env.cacheDir = join(PLUGIN_ROOT, 'node_modules', '@huggingface', '.cache');
 
 if (!localOK && process.env.SUPERVIBE_VERBOSE === '1') {
   // eslint-disable-next-line no-console
-  console.warn('[supervibe/embeddings] bundled model not usable (missing or LFS pointer); falling back to remote HuggingFace download (~118MB, one-time).');
+  console.warn('[supervibe/embeddings] local model not usable (missing, incomplete, or corrupt); falling back to remote HuggingFace download (~118MB, one-time).');
 }
 
 const MODEL_ID = 'Xenova/multilingual-e5-small';

@@ -139,7 +139,7 @@ Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as b
 8. **Alignment grid**: visually inspect column alignment across rows; verify baselines align between adjacent text blocks; check optical alignment of icons inside buttons
 9. **State coverage**: for every interactive element, exercise resting → `browser_hover` → `browser_press_key` Tab to focus → click for active → disabled (toggle in DOM) → loading (toggle state) → empty data → error data; screenshot each state
 10. **Keyboard navigation**: `browser_press_key` Tab through entire screen; record order; verify focus ring visible on every stop; verify no element is reachable only by mouse; verify Escape closes overlays; verify Enter/Space activate
-11. **Responsive sweep — match `config.json` viewports**: read `prototypes/<feature>/config.json` for the EXACT viewport list the user approved (default `[375, 1440]`). `browser_resize` to each declared viewport ONLY (do not test extras the prototype wasn't built for). Screenshot each; verify no horizontal scroll at smallest declared viewport; verify touch targets ≥44×44 at mobile-tier viewports (≤768); verify content reflows readably between consecutive viewports.
+11. **Responsive sweep — match `config.json` viewports**: read `.supervibe/artifacts/prototypes/<feature>/config.json` for the EXACT viewport list the user approved (default `[375, 1440]`). `browser_resize` to each declared viewport ONLY (do not test extras the prototype wasn't built for). Screenshot each; verify no horizontal scroll at smallest declared viewport; verify touch targets ≥44×44 at mobile-tier viewports (≤768); verify content reflows readably between consecutive viewports.
 12. **Copy precision**: read every visible string aloud; check for Lorem Ipsum, Latin filler, "TODO", placeholder names; verify CTA verbs match action; verify error messages are actionable not "Something went wrong"
 13. **DS token compliance**: Grep component source for `#[0-9a-fA-F]{3,8}` (raw hex), `\d+px` outside token files, inline styles bypassing tokens; cross-reference allowed token list
 14. **Visual regression**: diff current screenshots against baselines in `tests/visual/`; flag unintended changes
@@ -268,10 +268,10 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Design tokens: `prototypes/_design-system/tokens.css`, `tokens.json`, or framework-equivalent (`tailwind.config.*`, `theme.ts`, CSS custom properties)
-- Brandbook / styleguide: `prototypes/_brandbook/`, `prototypes/_design-system/`, `docs/design-system/`, Storybook URL
+- Design tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `tokens.json`, or framework-equivalent (`tailwind.config.*`, `theme.ts`, CSS custom properties)
+- Brandbook / styleguide: `.supervibe/artifacts/brandbook/`, `.supervibe/artifacts/prototypes/_design-system/`, `docs/design-system/`, Storybook URL
 - Component library: `components/`, `src/ui/`, `packages/ui/`
-- Screen specs: `screen-specs/`, design-tool URLs (Figma) referenced in tickets
+- Screen specs: `.supervibe/artifacts/screen-specs/`, design-tool URLs (Figma) referenced in tickets
 - Visual regression baselines: `tests/visual/`, `__screenshots__/`, Chromatic / Percy / Loki output
 - Prior review notes: `.supervibe/memory/decisions/` — past polish decisions and rationale
 - Accessibility scope: WCAG 2.1 AA minimum (declared in the active host instruction file if stricter)

@@ -2,7 +2,7 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import { constants, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join, relative, sep } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import matter from 'gray-matter';
 
 import { selectHostAdapter } from './lib/supervibe-host-detector.mjs';
@@ -57,8 +57,8 @@ async function readMatter(path) {
   return matter(content).data || {};
 }
 
-function issue(file, code, message) {
-  return { file, code, message };
+function issue(file, code, message, extra = {}) {
+  return { file, code, message, ...extra };
 }
 
 export async function validateArtifactLinks(root = ROOT, options = {}) {
@@ -71,6 +71,7 @@ export async function validateArtifactLinks(root = ROOT, options = {}) {
   const rules = [];
   const context = resolveArtifactContext(root, options);
   const pluginRoot = context.pluginRoot || ROOT;
+  const upstreamRuleIndex = await buildUpstreamRuleIndex(pluginRoot);
 
   for await (const path of walk(context.skillsDir)) {
     if (!path.endsWith('SKILL.md')) continue;
@@ -112,7 +113,35 @@ export async function validateArtifactLinks(root = ROOT, options = {}) {
     for (const related of rule.data['related-rules'] || []) {
       if (typeof related !== 'string' || !related.trim()) continue;
       if (!ruleNames.has(related)) {
-        issues.push(issue(rel(root, rule.path), 'missing-related-rule', `Rule references missing related rule ${related}`));
+        const upstreamRule = upstreamRuleIndex.get(related);
+        if (upstreamRule) {
+          const projectRel = normalize(join(context.rulesRel, basename(upstreamRule.path)));
+          issues.push(issue(
+            rel(root, rule.path),
+            'missing-related-rule',
+            `Rule references missing related rule ${related}; upstream provides ${upstreamRule.rel} (mandatory: ${upstreamRule.mandatory ? 'true' : 'false'})`,
+            {
+              relatedRule: related,
+              upstreamAvailable: true,
+              upstreamRel: upstreamRule.rel,
+              projectRel,
+              mandatory: upstreamRule.mandatory,
+              nextAction: `Run supervibe-adapt --dry-run, then supervibe-adapt --apply --include "${projectRel}"`,
+            }
+          ));
+        } else {
+          issues.push(issue(
+            rel(root, rule.path),
+            'missing-related-rule',
+            `Rule references missing related rule ${related}; no upstream rule artifact was found`,
+            {
+              relatedRule: related,
+              upstreamAvailable: false,
+              external: true,
+              nextAction: `Add rule ${related}, or mark this relation as optional/external if it intentionally points outside the selected profile`,
+            }
+          ));
+        }
       }
     }
   }
@@ -158,6 +187,10 @@ export async function validateArtifactLinks(root = ROOT, options = {}) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.help || args.h) {
+    console.log(formatUsage());
+    return;
+  }
   const result = await validateArtifactLinks(args.root || process.cwd(), {
     adapterId: args.host,
     pluginRoot: args['plugin-root'] || ROOT,
@@ -169,7 +202,7 @@ async function main() {
   }
   if (!result.pass) {
     for (const item of result.issues) {
-      console.error(`${item.file}: ${item.code}: ${item.message}`);
+      console.error(formatArtifactLinkIssue(item));
     }
     console.error(`\nArtifact link validation failed with ${result.issues.length} issue(s).`);
     process.exit(1);
@@ -196,6 +229,7 @@ function resolveArtifactContext(root, { adapterId = null, pluginRoot = ROOT, env
     agentsDir: join(root, 'agents'),
     skillsDir: join(root, 'skills'),
     rulesDir: join(root, 'rules'),
+    rulesRel: 'rules',
     pluginRoot,
   };
   const hasPluginLayout = existsSync(pluginLayout.agentsDir) || existsSync(pluginLayout.skillsDir) || existsSync(pluginLayout.rulesDir);
@@ -210,6 +244,7 @@ function resolveArtifactContext(root, { adapterId = null, pluginRoot = ROOT, env
     agentsDir: join(root, adapter.agentsFolder),
     skillsDir: join(root, adapter.skillsFolder),
     rulesDir: join(root, adapter.rulesFolder),
+    rulesRel: adapter.rulesFolder,
     pluginRoot,
   };
   const hasHostLayout = existsSync(hostLayout.agentsDir) || existsSync(hostLayout.skillsDir) || existsSync(hostLayout.rulesDir);
@@ -224,11 +259,56 @@ async function existsAny(paths) {
   return false;
 }
 
+async function buildUpstreamRuleIndex(pluginRoot) {
+  const index = new Map();
+  const rulesDir = join(pluginRoot, 'rules');
+  for await (const path of walk(rulesDir)) {
+    if (!path.endsWith('.md')) continue;
+    const data = await readMatter(path);
+    const name = String(data.name || basename(path, '.md')).trim();
+    if (!name) continue;
+    index.set(name, {
+      name,
+      path,
+      rel: rel(pluginRoot, path),
+      mandatory: Boolean(data.mandatory),
+      relatedRules: Array.isArray(data['related-rules']) ? data['related-rules'] : [],
+    });
+  }
+  return index;
+}
+
+function formatArtifactLinkIssue(item) {
+  const lines = [`${item.file}: ${item.code}: ${item.message}`];
+  if (item.nextAction) lines.push(`  NEXT: ${item.nextAction}`);
+  return lines.join('\n');
+}
+
+function formatUsage() {
+  return `
+Validate Supervibe artifact links
+
+Usage:
+  node scripts/validate-artifact-links.mjs [options]
+
+Options:
+  --root <path>         Project or plugin root to validate (default: cwd)
+  --plugin-root <path>  Supervibe plugin root for upstream lookup
+  --host <id>           Force host adapter, e.g. codex, claude, cursor
+  --json                Print machine-readable JSON
+  --help, -h            Show this help and exit
+`.trim();
+}
+
 function parseArgs(argv) {
   const parsed = {};
-  const booleans = new Set(['json']);
+  const booleans = new Set(['json', 'help', 'h']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === '-h') {
+      parsed.h = true;
+      continue;
+    }
     if (!arg.startsWith('--')) continue;
     const key = arg.slice(2);
     if (booleans.has(key)) parsed[key] = true;

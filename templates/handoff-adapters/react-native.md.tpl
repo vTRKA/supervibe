@@ -1,6 +1,6 @@
 # React Native Adapter — <prototype-slug>
 
-> Source HTML sketches: prototypes/<slug>/{ios,android}/
+> Source HTML sketches: .supervibe/artifacts/prototypes/<slug>/{ios,android}/
 > Target stack: React Native (>= 0.74) or Expo SDK 50+
 
 ## Component mapping

@@ -248,7 +248,7 @@ async function main() {
 
   if (values.help || !values.input || !values.output) {
     console.log(`Usage:
-  node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx [--json]`);
+  node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx [--json]`);
     process.exit(values.help ? 0 : 2);
   }
 

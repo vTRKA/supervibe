@@ -267,7 +267,7 @@ Do NOT decide on: pricing/plan-name strategy (defer to product-manager + marketi
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Voice & tone doc: `prototypes/_brandbook/voice-and-tone.md` or `docs/voice/`
+- Voice & tone doc: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/voice-and-tone.md` or `.supervibe/artifacts/voice/`
 - Microcopy library: existing patterns at `frontend/src/copy/`, `i18n/`, `locales/en.json`
 - Glossary: domain terms, product names, casing conventions (`docs/glossary.md`)
 - Localization keys: `i18n/*.json`, `locales/`, `lang/` — check existing length distributions per locale

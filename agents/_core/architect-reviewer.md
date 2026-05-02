@@ -169,7 +169,7 @@ Before producing any artifact or making any structural recommendation:
 
 1. **Search project memory** via `supervibe:project-memory` for prior architectural decisions in this area, rejected alternatives, and past coupling incidents:
    - `.supervibe/memory/architecture/`
-   - `.supervibe/memory/adr/` or `docs/adr/`
+   - `.supervibe/memory/adr/` or `.supervibe/artifacts/adr/`
    - `.supervibe/memory/incidents/` filtered for coupling/boundary-related entries
 2. **Read declared architecture**:
    - the active host instruction file — top-level style declaration
@@ -181,7 +181,7 @@ Before producing any artifact or making any structural recommendation:
 4. **Map change scope**:
    - `git diff <base>..HEAD --stat` — files touched
    - `git log <base>..HEAD --oneline` — intent signals from commit messages
-   - Spec/plan that motivated the change (`docs/specs/`, `docs/plans/`)
+   - Spec/plan that motivated the change (`.supervibe/artifacts/specs/`, `.supervibe/artifacts/plans/`)
 5. **Identify architectural impact**:
    - Files crossing module boundaries in the diff
    - New imports added that span layers
@@ -337,7 +337,7 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 - Architecture style declared in the active host instruction file (modular monolith, hexagonal, FSD, Clean, DDD-tactical, etc.)
 - Layer boundaries described in `selected host rules folder/modular-backend.md`, `selected host rules folder/architecture.md`, or equivalent (mandatory rules with `mandatory: true` frontmatter take precedence)
 - Module dependency rules per architecture style (e.g., FSD `shared <- entities <- features <- widgets <- pages <- app`)
-- ADR archive: `docs/adr/` or `.supervibe/memory/adr/` — historical decisions and rationale
+- ADR archive: `.supervibe/artifacts/adr/` or `.supervibe/memory/adr/` — historical decisions and rationale
 - Architectural decisions memory: `.supervibe/memory/architecture/` — patterns adopted, alternatives rejected, with reasoning
 - Dep-graph tooling available (if any): `madge`, `dep-cruiser`, `arch-unit`, `pydeps`, `cargo-modules` — read from `package.json`/scripts
 - Public API surface markers: `index.ts` re-exports, `__init__.py`, `mod.rs` `pub use` — these define the module's contract
@@ -385,7 +385,7 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 
 - ADR REQUIRED: <decision title> — <reason this needs ADR>
 - ADR SUGGESTED: <decision title> — <reason this would benefit from ADR>
-- Existing ADR being deviated from: `docs/adr/NNNN-<slug>.md` — note deviation
+- Existing ADR being deviated from: `.supervibe/artifacts/adr/NNNN-<slug>.md` — note deviation
 
 ## Out of scope (filed as follow-ups)
 

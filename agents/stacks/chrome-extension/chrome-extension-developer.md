@@ -148,7 +148,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `docs/adr/` or `docs/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
+1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `.supervibe/artifacts/adr/` or `.supervibe/artifacts/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
 2. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
 3. **Pre-task: invoke `supervibe:code-search`** — `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
 4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` change quarterly — never trust training-cutoff).
@@ -177,7 +177,7 @@ Returns:
 
 **Developer**: supervibe:stacks/chrome-extension:chrome-extension-developer
 **Date**: YYYY-MM-DD
-**ADR referenced**: docs/adr/<NNNN>-<title>.md (status: Accepted)
+**ADR referenced**: .supervibe/artifacts/adr/<NNNN>-<title>.md (status: Accepted)
 
 ### Summary
 <1–2 sentences: what was built and which surface(s) it touches.>
@@ -411,14 +411,14 @@ Rubric: agent-delivery
 - i18n: `_locales/<locale>/messages.json` per supported locale; `chrome.i18n.getMessage(key)` at call site
 - Storage adapters: typically a thin `src/lib/storage.ts` wrapping `chrome.storage.local|sync|session` with typed get/set/onChanged
 - Message bus: typically `src/lib/messages.ts` defining a discriminated-union type and a `sendMessage<T>(msg): Promise<Resp>` helper
-- ADR archive: `docs/adr/` or `docs/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
+- ADR archive: `.supervibe/artifacts/adr/` or `.supervibe/artifacts/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Design input
 
 When implementing extension surfaces (popup / options / side-panel), check for design handoff first:
 
-1. Look for `prototypes/<slug>/handoff/` produced by `extension-ui-designer` + `prototype-handoff` skill.
+1. Look for `.supervibe/artifacts/prototypes/<slug>/handoff/` produced by `extension-ui-designer` + `prototype-handoff` skill.
 2. If present, read:
    - `viewport-spec.json` — confirms target widths
    - `components-used.json` — inventory of components needed

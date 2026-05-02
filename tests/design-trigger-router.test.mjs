@@ -36,7 +36,7 @@ test("routes Russian and English design intents without adding lookup commands",
   assert.equal(design.skill, "supervibe:prototype");
 
   const audit = routeTriggerRequest("run a design audit", {
-    artifacts: { designArtifact: "prototypes/app/index.html" },
+    artifacts: { designArtifact: ".supervibe/artifacts/prototypes/app/index.html" },
   });
   assert.equal(audit.intent, "design_review");
   assert.equal(audit.command, "/supervibe-audit --design");

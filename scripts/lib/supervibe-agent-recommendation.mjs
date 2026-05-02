@@ -448,6 +448,26 @@ function listAvailableRules(rootDir) {
   return ids;
 }
 
+function listAvailableRuleRecords(rootDir) {
+  const rulesDir = join(rootDir, "rules");
+  const records = new Map();
+  if (!existsSync(rulesDir)) return records;
+  for (const file of listMarkdownFiles(rulesDir)) {
+    const id = file.replace(/\.md$/, "");
+    const path = findMarkdownFilePath(rulesDir, file);
+    const frontmatter = path ? parseFrontmatter(readFileSync(path, "utf8")) : {};
+    const name = String(frontmatter.name || id).trim();
+    const record = {
+      id,
+      name,
+      relatedRules: asArray(frontmatter["related-rules"]).map((item) => String(item).trim()).filter(Boolean),
+    };
+    records.set(id, record);
+    if (name) records.set(name, record);
+  }
+  return records;
+}
+
 function listMandatoryRules(rootDir) {
   const rulesDir = join(rootDir, "rules");
   if (!existsSync(rulesDir)) return [];
@@ -700,17 +720,37 @@ function resolveGenesisStackPack({ pluginRoot, fingerprint }) {
 
 function resolveGenesisRules({ pluginRoot, stackPack, addOns = [] }) {
   const availableRules = listAvailableRules(pluginRoot);
+  const ruleRecords = listAvailableRuleRecords(pluginRoot);
   const packRules = asArray(stackPack?.data?.["rules-attach"]);
   const requestedAdaptationRules = addOns.includes("project-adaptation") ? ADAPTATION_RULES : [];
-  const wantedRules = unique([
+  const baseWantedRules = unique([
     ...listMandatoryRules(pluginRoot),
     ...packRules,
     ...requestedAdaptationRules,
   ]);
+  const wantedRules = expandRelatedRuleClosure(baseWantedRules, ruleRecords);
   return {
     selectedRules: wantedRules.filter((id) => availableRules.has(id)),
     missingRules: wantedRules.filter((id) => !availableRules.has(id)),
   };
+}
+
+function expandRelatedRuleClosure(seedRules, ruleRecords) {
+  const selected = [];
+  const seen = new Set();
+  const queue = [...seedRules];
+  while (queue.length > 0) {
+    const requestedId = queue.shift();
+    if (!requestedId || seen.has(requestedId)) continue;
+    seen.add(requestedId);
+    const record = ruleRecords.get(requestedId);
+    const id = record?.id || requestedId;
+    if (!selected.includes(id)) selected.push(id);
+    for (const related of record?.relatedRules || []) {
+      if (!seen.has(related)) queue.push(related);
+    }
+  }
+  return selected;
 }
 
 function resolveGenesisSkills({ pluginRoot, selectedAgents }) {

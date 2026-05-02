@@ -6,9 +6,7 @@
 # LF even when users clone with core.autocrlf=true.
 *.sh text eol=lf
 
-# Embedding model is ~113MB, exceeds GitHub's 100MB single-file limit -> must use LFS.
-# Installers verify this file and fall back to direct HuggingFace download before registration.
-*.onnx filter=lfs diff=lfs merge=lfs -text
-
-# WASM grammars are <2.1MB each (~8.3MB total) — stored as regular blobs since
-# 1.8.0 to eliminate LFS as install dependency.
+# Large ONNX models are downloaded from HuggingFace by the installer and are
+# intentionally not stored in git.
+#
+# WASM grammars are <2.1MB each (~8.3MB total) and are stored as regular blobs.

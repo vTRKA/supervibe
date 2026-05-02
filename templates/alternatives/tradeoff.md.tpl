@@ -1,7 +1,7 @@
 # Alternative Direction: <variant-name>
 
 > Generated: <ISO-date>
-> Originating prototype: prototypes/<slug>/
+> Originating prototype: .supervibe/artifacts/prototypes/<slug>/
 > Status: parked | active | rejected (kept for audit)
 
 ## Differs because

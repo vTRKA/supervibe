@@ -33,7 +33,7 @@ export async function atomizePlanFile(planPath, options = {}) {
 }
 
 export function atomizePlanToWorkItems(markdown, options = {}) {
-  const planPath = normalizePath(options.planPath ?? "docs/plans/plan.md");
+  const planPath = normalizePath(options.planPath ?? ".supervibe/artifacts/plans/plan.md");
   const parsed = parsePlanForWorkItems(markdown, planPath);
   const epicId = options.epicId || createEpicId(parsed.title, planPath);
   const childItems = createChildItems(parsed, epicId, options);
@@ -88,7 +88,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   };
 }
 
-export function parsePlanForWorkItems(markdown, planPath = "docs/plans/plan.md") {
+export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts/plans/plan.md") {
   const lines = String(markdown ?? "").split(/\r?\n/);
   const title = lines.find((line) => /^#\s+/.test(line))?.replace(/^#\s+/, "").trim()
     || planPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "")

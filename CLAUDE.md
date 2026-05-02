@@ -48,8 +48,8 @@ supervibe/
 ├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
 ├── rules/                         26 project rules
 ├── confidence-rubrics/            17 YAML rubrics
-├── grammars/                      Bundled WASM tree-sitter grammars (LFS)
-├── models/Xenova/...              Embedding model (LFS)
+├── grammars/                      Bundled WASM tree-sitter grammars
+├── models/Xenova/...              Embedding model metadata; ONNX is downloaded by installer
 ├── scripts/                       Build / index / search / validate (Node ESM)
 │   └── lib/                         Reusable libs
 ├── tests/                         node:test suite (run via `npm run check`)

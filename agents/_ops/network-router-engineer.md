@@ -359,7 +359,7 @@ provide runbooks and verification evidence for the authorized operator.
 
 - Network automation: `ansible/`, `terraform/`, `pulumi/`, `netbox/`, `nornir/`
 - Router/firewall configs: `configs/network/`, `infra/network/`, `ops/router/`
-- Runbooks: `docs/runbooks/`, `runbooks/`, `ops/runbooks/`
+- Runbooks: `.supervibe/artifacts/runbooks/`, `runbooks/`, `ops/runbooks/`
 - Monitoring: Prometheus/Grafana, LibreNMS, Zabbix, UniFi controller, vendor cloud
 - Secrets policy: credential references only; no raw PSK/password/API key output
 - Approval ledger: `.supervibe/memory/decisions/` or loop side-effect ledger

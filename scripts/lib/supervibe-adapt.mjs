@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
+import matter from "gray-matter";
 
 import { CodeStore } from "./code-store.mjs";
 import { hasNodeSqliteSupport, SQLITE_NODE_MIN_VERSION } from "./node-sqlite-runtime.mjs";
@@ -10,6 +11,7 @@ import { collectIndexHealthFromStore, evaluateIndexHealthGate } from "./supervib
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
+import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
@@ -19,6 +21,7 @@ export async function createAdaptPlan({
   pluginRoot = process.cwd(),
   env = process.env,
   adapterId = null,
+  refreshMemoryIndex = false,
 } = {}) {
   const hostSelection = selectHostAdapter({
     rootDir: projectRoot,
@@ -28,14 +31,24 @@ export async function createAdaptPlan({
   const baseline = readBaseline(projectRoot);
   const currentVersion = await getCurrentPluginVersion(pluginRoot);
   const lastSeenVersion = await getLastSeenVersion(projectRoot);
-  const memoryIndex = await ensureMemoryIndex(projectRoot);
+  const memoryIndex = refreshMemoryIndex
+    ? await ensureMemoryIndex(projectRoot)
+    : readMemoryIndexStatus(projectRoot);
   const upstream = buildUpstreamIndex(pluginRoot);
   const projectArtifacts = listProjectArtifacts(projectRoot, adapter);
-  const items = projectArtifacts.map((artifact) => classifyArtifact({
+  const projectItems = projectArtifacts.map((artifact) => classifyArtifact({
     artifact,
     upstream: upstream[artifact.type].get(artifact.id) || null,
     baselineHash: baseline.artifacts?.[artifact.projectRel]?.hash || null,
   }));
+  const closureItems = await planRelatedRuleClosure({
+    projectRoot,
+    pluginRoot,
+    adapter,
+    upstream,
+    projectArtifacts,
+  });
+  const items = dedupePlanItems([...projectItems, ...closureItems]);
   const counts = countPlanItems(items);
   const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
   const baselineVersionDrift = Boolean(currentVersion && baseline.pluginVersion !== currentVersion);
@@ -57,7 +70,7 @@ export async function createAdaptPlan({
     baselineVersionDrift,
     metadataUpdateRequired,
     memoryIndex,
-    approvalRequired: items.some((item) => item.action === "update"),
+    approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
     counts,
     items,
   };
@@ -66,6 +79,7 @@ export async function createAdaptPlan({
 export async function applyAdaptPlan(plan, {
   include = [],
   applyAll = false,
+  refreshMemoryIndex = true,
 } = {}) {
   const approved = new Set(include.map(normalizeRel));
   const applied = [];
@@ -73,7 +87,7 @@ export async function applyAdaptPlan(plan, {
   const blocked = [];
 
   for (const item of plan.items) {
-    if (item.action !== "update") continue;
+    if (item.action !== "update" && item.action !== "add") continue;
     const approvedFile = applyAll || approved.has(item.projectRel);
     if (!approvedFile) {
       skipped.push(item);
@@ -83,13 +97,17 @@ export async function applyAdaptPlan(plan, {
       blocked.push({ ...item, reason: "missing upstream file" });
       continue;
     }
+    if (item.action === "add" && existsSync(item.projectAbs)) {
+      blocked.push({ ...item, reason: "target already exists" });
+      continue;
+    }
     const content = await readFile(item.upstreamAbs, "utf8");
     await mkdir(dirname(item.projectAbs), { recursive: true });
     await writeFile(item.projectAbs, content);
     applied.push(item);
   }
 
-  const metadataOnlyUpdate = plan.counts.update === 0 && plan.metadataUpdateRequired;
+  const metadataOnlyUpdate = plan.counts.update === 0 && plan.counts.add === 0 && plan.metadataUpdateRequired;
   const metadataUpdated = Boolean(plan.currentVersion && (applied.length > 0 || metadataOnlyUpdate));
   if (metadataUpdated) {
     await writeBaseline(plan, applied);
@@ -100,6 +118,7 @@ export async function applyAdaptPlan(plan, {
     projectRoot: plan.projectRoot,
     pluginRoot: plan.pluginRoot,
     adapterId: plan.host.adapterId,
+    refreshMemoryIndex,
   });
   const indexGate = await inspectIndexGate(plan.projectRoot);
 
@@ -116,9 +135,10 @@ export async function applyAdaptPlan(plan, {
     metadataUpdated,
     postApply: {
       updates: postApplyPlan.counts.update,
+      adds: postApplyPlan.counts.add,
       identical: postApplyPlan.counts.identical,
       projectOnly: postApplyPlan.counts.projectOnly,
-      clean: postApplyPlan.counts.update === 0,
+      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0,
     },
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,
@@ -133,22 +153,27 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `VERSION_DRIFT: ${plan.versionDrift ? "true" : "false"}`,
     `METADATA_UPDATE_REQUIRED: ${plan.metadataUpdateRequired ? "true" : "false"}`,
     `ARTIFACTS: ${plan.items.length}`,
+    `ADDS: ${plan.counts.add}`,
     `UPDATES: ${plan.counts.update}`,
     `IDENTICAL: ${plan.counts.identical}`,
     `PROJECT_ONLY: ${plan.counts.projectOnly}`,
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
+    `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary(plan));
   for (const item of plan.items) {
-    if (item.action === "update") {
+    if (item.action === "add") {
+      const mandatory = item.mandatory === undefined ? "unknown" : String(Boolean(item.mandatory));
+      lines.push(`ADD: ${item.projectRel} <= ${item.upstreamRel} (${item.classification}; mandatory: ${mandatory})`);
+    } else if (item.action === "update") {
       lines.push(`UPDATE: ${item.projectRel} <= ${item.upstreamRel} (${item.classification})`);
     } else if (item.action === "project-only") {
       lines.push(`PROJECT_ONLY: ${item.projectRel} (no upstream match; keep unless explicitly archived)`);
     }
   }
   if (plan.approvalRequired) {
-    const candidates = plan.items.filter((item) => item.action === "update").map((item) => item.projectRel).join(",");
+    const candidates = plan.items.filter((item) => item.action === "update" || item.action === "add").map((item) => item.projectRel).join(",");
     lines.push(`NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${candidates}"`);
   } else if (plan.metadataUpdateRequired) {
     lines.push("NEXT_APPLY_METADATA: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply");
@@ -174,7 +199,9 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     lines.push("VERSION_MARKER: updated");
   }
   lines.push(`MEMORY_INDEX: ${result.memoryIndex?.status || "unknown"}`);
+  lines.push(`MEMORY_INDEX_REFRESHED: ${result.memoryIndex?.refreshed ? "true" : "false"}`);
   lines.push(`ARTIFACT_ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
+  lines.push(`POST_APPLY_ADDS: ${result.postApply?.adds ?? "unknown"}`);
   lines.push(`POST_APPLY_UPDATES: ${result.postApply?.updates ?? "unknown"}`);
   lines.push(`CODE_INDEX_READY: ${result.indexGate?.ready === true ? "true" : "false"}`);
   if (result.indexGate?.ready === false) {
@@ -228,6 +255,94 @@ function classifyArtifact({ artifact, upstream, baselineHash }) {
   };
 }
 
+async function planRelatedRuleClosure({ projectRoot, pluginRoot, adapter, upstream, projectArtifacts }) {
+  const existingRuleNames = new Set();
+  const plannedRuleNames = new Set();
+  for (const artifact of projectArtifacts.filter((item) => item.type === "rule")) {
+    existingRuleNames.add(artifact.id);
+    const data = readArtifactMatter(artifact.projectAbs);
+    if (data.name) existingRuleNames.add(String(data.name));
+  }
+
+  const closureItems = [];
+  const queue = collectProjectRelatedRuleNames(projectArtifacts);
+  const validatorResult = await validateArtifactLinks(projectRoot, {
+    adapterId: adapter.id,
+    pluginRoot,
+  }).catch(() => null);
+  for (const item of validatorResult?.issues || []) {
+    if (item.code === "missing-related-rule" && item.upstreamAvailable && item.relatedRule) {
+      queue.push(String(item.relatedRule));
+    }
+  }
+
+  while (queue.length > 0) {
+    const related = queue.shift();
+    if (!related || existingRuleNames.has(related) || plannedRuleNames.has(related)) continue;
+    const upstreamRule = upstream.rule.get(related);
+    if (!upstreamRule) continue;
+
+    const fileName = basename(upstreamRule.upstreamAbs);
+    const projectAbs = join(projectRoot, adapter.rulesFolder, fileName);
+    const projectRel = normalizeRel(relative(projectRoot, projectAbs));
+    if (existsSync(projectAbs)) {
+      existingRuleNames.add(related);
+      continue;
+    }
+
+    const upstreamContent = readFileSync(upstreamRule.upstreamAbs, "utf8");
+    const upstreamHash = hashContent(upstreamContent);
+    const item = {
+      type: "rule",
+      id: upstreamRule.id,
+      ruleName: related,
+      action: "add",
+      classification: "related-rule-closure",
+      projectAbs,
+      projectRel,
+      upstreamAbs: upstreamRule.upstreamAbs,
+      upstreamRel: upstreamRule.upstreamRel,
+      upstreamHash,
+      projectHash: null,
+      baselineHash: null,
+      mandatory: upstreamRule.mandatory,
+      relatedRules: upstreamRule.relatedRules,
+      diff: summarizeLineDiff("", upstreamContent),
+    };
+    closureItems.push(item);
+    plannedRuleNames.add(related);
+    existingRuleNames.add(related);
+    for (const next of upstreamRule.relatedRules || []) {
+      if (typeof next === "string" && next.trim()) queue.push(next.trim());
+    }
+  }
+
+  return closureItems;
+}
+
+function collectProjectRelatedRuleNames(projectArtifacts) {
+  const out = [];
+  for (const artifact of projectArtifacts.filter((item) => item.type === "rule")) {
+    const data = readArtifactMatter(artifact.projectAbs);
+    for (const related of data["related-rules"] || []) {
+      if (typeof related === "string" && related.trim()) out.push(related.trim());
+    }
+  }
+  return out;
+}
+
+function dedupePlanItems(items) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    const key = `${item.action}:${item.projectRel}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out.sort((a, b) => a.projectRel.localeCompare(b.projectRel) || a.action.localeCompare(b.action));
+}
+
 function classifyHashes({ projectHash, upstreamHash, baselineHash }) {
   if (projectHash === upstreamHash) return "identical";
   if (!baselineHash) return "review-update";
@@ -245,12 +360,7 @@ function buildUpstreamIndex(pluginRoot) {
         upstreamAbs: path,
         upstreamRel: normalizeRel(relative(pluginRoot, path)),
       }])),
-    rule: new Map(listFiles(join(pluginRoot, "rules"), { recursive: false, suffix: ".md" })
-      .map((path) => [basename(path, ".md"), {
-        id: basename(path, ".md"),
-        upstreamAbs: path,
-        upstreamRel: normalizeRel(relative(pluginRoot, path)),
-      }])),
+    rule: buildRuleIndex(pluginRoot),
     skill: new Map(listFiles(join(pluginRoot, "skills"), { recursive: true, fileName: "SKILL.md" })
       .map((path) => {
         const id = basename(dirname(path));
@@ -261,6 +371,26 @@ function buildUpstreamIndex(pluginRoot) {
         }];
       })),
   };
+}
+
+function buildRuleIndex(pluginRoot) {
+  const index = new Map();
+  for (const path of listFiles(join(pluginRoot, "rules"), { recursive: false, suffix: ".md" })) {
+    const id = basename(path, ".md");
+    const data = readArtifactMatter(path);
+    const name = String(data.name || id).trim();
+    const entry = {
+      id,
+      name,
+      upstreamAbs: path,
+      upstreamRel: normalizeRel(relative(pluginRoot, path)),
+      mandatory: Boolean(data.mandatory),
+      relatedRules: Array.isArray(data["related-rules"]) ? data["related-rules"].filter((item) => typeof item === "string") : [],
+    };
+    index.set(id, entry);
+    if (name) index.set(name, entry);
+  }
+  return index;
 }
 
 function listProjectArtifacts(projectRoot, adapter) {
@@ -302,10 +432,19 @@ function listFiles(dir, { recursive, suffix = null, fileName = null }) {
 
 function countPlanItems(items) {
   return {
+    add: items.filter((item) => item.action === "add").length,
     update: items.filter((item) => item.action === "update").length,
     identical: items.filter((item) => item.action === "identical").length,
     projectOnly: items.filter((item) => item.action === "project-only").length,
   };
+}
+
+function readArtifactMatter(path) {
+  try {
+    return matter(readFileSync(path, "utf8")).data || {};
+  } catch {
+    return {};
+  }
 }
 
 function readBaseline(projectRoot) {
@@ -348,10 +487,40 @@ async function ensureMemoryIndex(projectRoot) {
   return {
     status: result.pass ? "ready" : "needs-review",
     path: normalizeRel(relative(projectRoot, result.indexPath)),
+    refreshed: true,
     markdownEntries: result.markdownEntries,
     warnings: result.validation?.warnings || [],
     errors: result.validation?.errors || [],
   };
+}
+
+function readMemoryIndexStatus(projectRoot) {
+  const indexPath = join(projectRoot, ".supervibe", "memory", "index.json");
+  if (!existsSync(indexPath)) {
+    return {
+      status: "not-refreshed",
+      path: normalizeRel(relative(projectRoot, indexPath)),
+      refreshed: false,
+      reason: "read-only-adapt-plan",
+    };
+  }
+  try {
+    const data = JSON.parse(readFileSync(indexPath, "utf8"));
+    return {
+      status: "existing",
+      path: normalizeRel(relative(projectRoot, indexPath)),
+      refreshed: false,
+      entries: Array.isArray(data.entries) ? data.entries.length : undefined,
+      updatedAt: data.updatedAt || data.generatedAt || null,
+    };
+  } catch {
+    return {
+      status: "needs-review",
+      path: normalizeRel(relative(projectRoot, indexPath)),
+      refreshed: false,
+      reason: "unreadable-index",
+    };
+  }
 }
 
 async function inspectIndexGate(projectRoot) {

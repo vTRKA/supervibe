@@ -88,7 +88,7 @@ test("multi-session plan requests route to worktree orchestration", () => {
 test("affirming explicit handoff reuses its command and skill", () => {
   const recentAssistantOutput = formatNextStepBlock({
     phase: "plan",
-    artifactPath: "docs/plans/example.md",
+    artifactPath: ".supervibe/artifacts/plans/example.md",
     locale: "en",
   });
   const route = routeWorkflowIntent({

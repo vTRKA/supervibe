@@ -1,7 +1,7 @@
 ---
 description: >-
   Advanced integration command. Promote approved prototype handoff bundle to production stack. Reads
-  prototypes/<slug>/handoff/, dispatches stack-developer to wire up tokens +
+  .supervibe/artifacts/prototypes/<slug>/handoff/, dispatches stack-developer to wire up tokens +
   components into the chosen framework. Includes pre-deploy validation +
   rollback. Triggers: 'integrate prototype handoff', 'promote approved prototype',
   'wire prototype to stack', 'production handoff', '/supervibe-deploy'.
@@ -19,9 +19,9 @@ This command does NOT replace the stack-developer's work — it dispatches the r
 
 These MUST hold before deployment proceeds:
 
-1. **Approval marker exists**: `prototypes/<slug>/.approval.json` with `status: "approved"`.
-2. **Handoff bundle complete**: `prototypes/<slug>/handoff/` contains README.md + components-used.json + tokens-used.json + viewport-spec.json + stack-agnostic.md + (target-specific adapter file if non-web).
-3. **Design system approved**: `prototypes/_design-system/manifest.json` with `status: "approved"` AND its `versionSha` matches the prototype's `designSystemVersion`.
+1. **Approval marker exists**: `.supervibe/artifacts/prototypes/<slug>/.approval.json` with `status: "approved"`.
+2. **Handoff bundle complete**: `.supervibe/artifacts/prototypes/<slug>/handoff/` contains README.md + components-used.json + tokens-used.json + viewport-spec.json + stack-agnostic.md + (target-specific adapter file if non-web).
+3. **Design system approved**: `.supervibe/artifacts/prototypes/_design-system/manifest.json` with `status: "approved"` AND its `versionSha` matches the prototype's `designSystemVersion`.
 4. **No drift**: handoff bundle's tokens/components match current `_design-system/` (no design-system edits after approval that haven't propagated).
 5. **Target stack has a developer agent**: e.g., `target: "web"` + project is Next.js → `nextjs-developer` exists.
 6. **Target codebase clean** (no uncommitted changes that would mix with deployment).
@@ -57,7 +57,7 @@ Reads `.deployed.json` for the slug. Reverts the deployment commit(s). Used if p
 ### 1. Resolve slug
 
 a. If `<slug>` given → use it.
-b. If no args → glob `prototypes/*/.approval.json` where status="approved" AND `prototypes/<slug>/.deployed.json` does NOT exist. List them; user picks.
+b. If no args → glob `.supervibe/artifacts/prototypes/*/.approval.json` where status="approved" AND `.supervibe/artifacts/prototypes/<slug>/.deployed.json` does NOT exist. List them; user picks.
 c. If none → "No approved-but-not-deployed prototypes. Run `/supervibe-design` first."
 
 ### 2. Run pre-deploy invariants (the 6 HARD GATES)
@@ -89,7 +89,7 @@ If any FAIL → print specific issue + suggested fix:
 
 ### 3. Determine target stack
 
-Read `prototypes/<slug>/config.json` for `target` field:
+Read `.supervibe/artifacts/prototypes/<slug>/config.json` for `target` field:
 - `web` → infer production framework from project (Next.js / Vue / vanilla / etc.) via `supervibe:stack-discovery`
 - `chrome-extension` → dispatch `chrome-extension-developer`
 - `electron` → dispatch electron-developer (currently delegated; may need to create)
@@ -106,13 +106,13 @@ Use `supervibe:writing-plans` skill with input:
 - Viewport spec → responsive breakpoints in production
 - Stack-specific adapter hints → which library APIs to use
 
-Output: `docs/plans/2026-XX-XX-deploy-<slug>.md` with phased TDD tasks.
+Output: `.supervibe/artifacts/plans/2026-XX-XX-deploy-<slug>.md` with phased TDD tasks.
 
 ### 5. Execute via `/supervibe-execute-plan`
 
 Pass the deploy plan path:
 ```
-/supervibe-execute-plan docs/plans/2026-XX-XX-deploy-<slug>.md
+/supervibe-execute-plan .supervibe/artifacts/plans/2026-XX-XX-deploy-<slug>.md
 ```
 
 This invokes the full Stage A (readiness) + execution + Stage B (completion) flow with 10/10 gates.
@@ -125,7 +125,7 @@ This invokes the full Stage A (readiness) + execution + Stage B (completion) flo
 Date: <ISO>
 Approved at: <approval-date>
 Production stack: <stack>
-Plan: docs/plans/<plan>.md
+Plan: .supervibe/artifacts/plans/<plan>.md
 Stack-developer: <agent>
 Commit(s): <SHAs>
 Tokens added: <count>
@@ -133,13 +133,13 @@ Components created: <count>
 Status: success | partial | reverted
 ```
 
-`prototypes/<slug>/.deployed.json` (mark as shipped):
+`.supervibe/artifacts/prototypes/<slug>/.deployed.json` (mark as shipped):
 ```json
 {
   "deployedAt": "<ISO>",
   "deployedBy": "<user>",
   "productionStack": "<stack>",
-  "planPath": "docs/plans/<plan>.md",
+  "planPath": ".supervibe/artifacts/plans/<plan>.md",
   "commits": [ "<sha>", ... ],
   "rollbackProcedure": "/supervibe-deploy --rollback <slug>"
 }
@@ -155,7 +155,7 @@ Status: success | partial | reverted
 
 When user runs `/supervibe-deploy --rollback <slug>`:
 
-1. Read `prototypes/<slug>/.deployed.json` for the commit SHAs.
+1. Read `.supervibe/artifacts/prototypes/<slug>/.deployed.json` for the commit SHAs.
 2. Verify SHAs are still in git history (not garbage-collected).
 3. Run: `git revert <sha-1> <sha-2> ...` (in reverse order, each as separate commit).
 4. Verify production tests still pass with the project's native test command.
@@ -189,18 +189,18 @@ Stack-developer: nextjs-developer
 
 Pre-deploy invariants: 6 / 6 ✓
 
-Deployment plan: docs/plans/2026-04-28-deploy-landing-fintech-2026.md
+Deployment plan: .supervibe/artifacts/plans/2026-04-28-deploy-landing-fintech-2026.md
   Phases: 4
   Tasks: 23
   Files affected: 17 created, 4 modified
 
-Execution: /supervibe-execute-plan docs/plans/2026-04-28-deploy-landing-fintech-2026.md
+Execution: /supervibe-execute-plan .supervibe/artifacts/plans/2026-04-28-deploy-landing-fintech-2026.md
 
 Stage A (readiness): 10/10 ✓
 [execution log]
 Stage B (completion): 10/10 ✓
 
-Deployment record: prototypes/landing-fintech-2026/.deployed.json
+Deployment record: .supervibe/artifacts/prototypes/landing-fintech-2026/.deployed.json
 Memory: .supervibe/memory/decisions/deployments.md (appended)
 
 Follow-ups:
@@ -227,4 +227,4 @@ Follow-ups:
 - `/supervibe-score --record` — telemetry after deploy
 - `/supervibe-genesis` — if production codebase missing
 - `agents/stacks/<stack>/<stack>-developer.md` — the developer dispatched
-- `prototypes/<slug>/.deployed.json` — deployment record (this command writes)
+- `.supervibe/artifacts/prototypes/<slug>/.deployed.json` — deployment record (this command writes)

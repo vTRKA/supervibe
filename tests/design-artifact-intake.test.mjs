@@ -11,17 +11,17 @@ import {
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-"));
-  await mkdir(join(root, "prototypes", "checkout"), { recursive: true });
-  await writeFile(join(root, "prototypes", "checkout", "config.json"), JSON.stringify({
+  await mkdir(join(root, ".supervibe", "artifacts", "prototypes", "checkout"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", "config.json"), JSON.stringify({
     target: "web",
     viewports: [375, 1440],
     approval: "draft",
   }));
-  await writeFile(join(root, "prototypes", "checkout", "index.html"), "<html><body>checkout</body></html>");
-  await mkdir(join(root, "mockups", "pricing"), { recursive: true });
-  await writeFile(join(root, "mockups", "pricing", "index.html"), "<html><body>pricing</body></html>");
-  await mkdir(join(root, "presentations", "investor"), { recursive: true });
-  await writeFile(join(root, "presentations", "investor", "deck.json"), JSON.stringify({ title: "Investor" }));
+  await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"), "<html><body>checkout</body></html>");
+  await mkdir(join(root, ".supervibe", "artifacts", "mockups", "pricing"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "artifacts", "mockups", "pricing", "index.html"), "<html><body>pricing</body></html>");
+  await mkdir(join(root, ".supervibe", "artifacts", "presentations", "investor"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "artifacts", "presentations", "investor", "deck.json"), JSON.stringify({ title: "Investor" }));
   return root;
 }
 
@@ -29,10 +29,10 @@ test("findExistingDesignArtifacts returns prototype candidates with metadata", a
   const root = await fixture();
   try {
     const artifacts = await findExistingDesignArtifacts({ projectRoot: root });
-    assert.equal(artifacts.some((artifact) => artifact.path === "prototypes/checkout"), true);
-    assert.equal(artifacts.some((artifact) => artifact.path === "mockups/pricing"), true);
-    assert.equal(artifacts.some((artifact) => artifact.path === "presentations/investor"), true);
-    const checkout = artifacts.find((artifact) => artifact.path === "prototypes/checkout");
+    assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/prototypes/checkout"), true);
+    assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/mockups/pricing"), true);
+    assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/presentations/investor"), true);
+    const checkout = artifacts.find((artifact) => artifact.path === ".supervibe/artifacts/prototypes/checkout");
     assert.equal(checkout.status, "draft");
     assert.equal(checkout.target, "web");
   } finally {
@@ -49,7 +49,7 @@ test("ambiguous design brief asks whether to reuse old artifact or create new", 
     const question = formatDesignArtifactChoiceQuestion(intake);
     assert.match(question, /Continue an existing artifact/);
     assert.match(question, /Create a new design from scratch/);
-    assert.match(question, /prototypes\/checkout/);
+    assert.match(question, /\.supervibe\/artifacts\/prototypes\/checkout/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -15,7 +15,7 @@ describe("supervibe chain handoff enforcer", () => {
   });
 
   it("detects missing review loop handoff after plan output", () => {
-    const result = assertRequiredHandoff("plan", "Plan saved at docs/plans/example.md\nNext: execute");
+    const result = assertRequiredHandoff("plan", "Plan saved at .supervibe/artifacts/plans/example.md\nNext: execute");
 
     assert.equal(result.pass, false);
     assert.deepEqual(

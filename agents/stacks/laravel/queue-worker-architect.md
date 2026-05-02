@@ -360,7 +360,7 @@ Is the work a per-resource action that must NEVER overlap with itself?
 
 - Destination: `failed_jobs` table + S3 cold archive after 30 days
 - Alarm: > 10 failures in 5min on any queue -> PagerDuty
-- Replay procedure: documented per job class in `docs/runbooks/queue-replay.md`
+- Replay procedure: documented per job class in `.supervibe/artifacts/runbooks/queue-replay.md`
 - Poison-message detection: same payload hash failing >3 times in 24h -> auto-quarantine + ticket
 
 ## Rate limiting

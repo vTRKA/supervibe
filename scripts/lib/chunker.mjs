@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
 const PLUGIN_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const LOCAL_MODEL_DIR = join(PLUGIN_ROOT, 'models');
 
-// Tokenizer needs config.json + tokenizer.json (both small, regular git blobs — never in LFS).
+// Tokenizer needs config.json + tokenizer.json (both small, regular git blobs).
 // If either is missing, fall back to remote HuggingFace download.
 const MODEL_DIR = join(LOCAL_MODEL_DIR, 'Xenova', 'multilingual-e5-small');
 const tokenizerOK = existsSync(join(MODEL_DIR, 'config.json')) && existsSync(join(MODEL_DIR, 'tokenizer.json'));

@@ -48,8 +48,8 @@ test("supervibe-upgrade self-heals installer-managed tracked artifacts before re
   assert.match(source, /partitionTrackedPorcelainLines/);
   assert.match(source, /restoreInstallerManagedTrackedEdits/);
   assert.match(source, /installer-managed tracked artifact/);
-  assert.match(source, /runGitNoLfsSmudge\(\['checkout', '--', path\]\)/);
-  assert.match(helper, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx|MODEL_RELATIVE_PATH/);
+  assert.match(source, /run\('git', \['checkout', '--', path\]\)/);
+  assert.doesNotMatch(helper, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx|MODEL_RELATIVE_PATH/);
   assert.match(helper, /package-lock\.json/);
 });
 
@@ -58,17 +58,19 @@ test("supervibe-upgrade preserves auto-update lock and state during git clean", 
 
   assert.match(source, /\.claude-plugin\/\.auto-update\.json/);
   assert.match(source, /\.claude-plugin\/\.auto-update\.lock/);
+  assert.match(source, /MODEL_RELATIVE_PATH/);
+  assert.match(source, /'-e',\s*MODEL_RELATIVE_PATH/s);
 });
 
-test("supervibe-upgrade skips Git LFS smudge before required ONNX setup", async () => {
+test("supervibe-upgrade uses plain git before required ONNX setup", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
-  const noSmudge = source.indexOf("runGitNoLfsSmudge(['fetch'");
+  const fetch = source.indexOf("run('git', ['fetch'");
   const modelSetup = source.indexOf("scripts/ensure-onnx-model.mjs");
 
-  assert.notEqual(noSmudge, -1, "upgrade should have an LFS-smudge-free git path");
+  assert.notEqual(fetch, -1, "upgrade should fetch through the normal git path");
   assert.notEqual(modelSetup, -1, "upgrade should run required ONNX model setup");
-  assert.ok(noSmudge < modelSetup, "fetch/pull must skip LFS smudge before required model setup");
-  assert.match(source, /GIT_LFS_SKIP_SMUDGE/);
+  assert.ok(fetch < modelSetup, "fetch/pull must run before required model setup");
+  assert.doesNotMatch(source, /GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs|runGitNoLfsSmudge/i);
 });
 
 test("supervibe-upgrade requires ONNX model setup before npm ci", async () => {
@@ -80,14 +82,9 @@ test("supervibe-upgrade requires ONNX model setup before npm ci", async () => {
   assert.notEqual(modelSetup, -1, "upgrade should announce required ONNX setup");
   assert.notEqual(npmCi, -1, "upgrade should still run npm ci");
   assert.ok(modelSetup < npmCi, "upgrade must prepare the required model before npm ci/check declares success");
-  assert.doesNotMatch(source, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS/, "upgrade must not let users skip the required ONNX model");
-  assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_MS/, "shared setup should support a millisecond LFS stall override");
-  assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_SECONDS/, "shared setup should support a seconds-based LFS stall override");
-  assert.match(modelScript, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, "shared setup should support opt-in direct download stall diagnostics");
+  assert.doesNotMatch(source, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS|GIT_LFS_SKIP_SMUDGE|filter\.lfs/i, "upgrade must not let users skip the required ONNX model or depend on repository large-file filters");
   assert.match(modelScript, /no total timeout/, "shared setup should not impose a total model download limit");
-  assert.match(modelScript, /stall timeout disabled by default/, "shared setup should not interrupt direct downloads by default");
+  assert.match(modelScript, /no stall timeout/, "shared setup should not interrupt direct downloads");
   assert.match(modelScript, /content-length/, "shared setup should report percent when the server provides model size");
-  assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/, "direct model download must not use default stall or absolute timeouts");
-  assert.match(modelScript, /join\(rootDir, "\.git", "lfs", "incomplete"\)/, "shared setup should clean incomplete LFS downloads");
-  assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, "shared setup should remove incomplete LFS downloads safely");
+  assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_STALL_TIMEOUT|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT|DEFAULT_DOWNLOAD_TIMEOUT|request\.setTimeout|setTimeout\(|GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs/i, "direct model download must not use stall/absolute timeouts or repository large-file fallback");
 });

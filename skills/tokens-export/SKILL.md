@@ -21,7 +21,7 @@ Before exporting or auditing tokens, run project memory, code search, and intern
 ## When to invoke
 
 WHEN:
-- Approved design system exists (`prototypes/_design-system/tokens.css` and `prototypes/_design-system/manifest.json` exist with confidence ≥9)
+- Approved design system exists (`.supervibe/artifacts/prototypes/_design-system/tokens.css` and `.supervibe/artifacts/prototypes/_design-system/manifest.json` exist with confidence ≥9)
 - Frontend implementation begins
 - Brandbook tokens updated (re-export needed)
 
@@ -29,7 +29,7 @@ NOT for: ad-hoc one-off color changes (those go through brandbook update first).
 
 ## Step 0 — Read source of truth (required)
 
-1. Read `prototypes/_design-system/tokens.css` (or `tokens.json`)
+1. Read `.supervibe/artifacts/prototypes/_design-system/tokens.css` (or `tokens.json`)
 2. Identify frontend stack from `supervibe:stack-discovery` output
 3. Identify target file convention per stack:
    - Tailwind: `tailwind.config.js` `theme.extend`

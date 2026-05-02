@@ -22,12 +22,14 @@ try {
     pluginRoot,
     env: process.env,
     adapterId: args.host,
+    refreshMemoryIndex: resolveMemoryRefresh(args),
   });
 
   if (args.apply) {
     const result = await applyAdaptPlan(plan, {
       include: args.include ? String(args.include).split(",").filter(Boolean) : [],
       applyAll: Boolean(args.all),
+      refreshMemoryIndex: resolveMemoryRefresh(args),
     });
     print(result, (value) => formatAdaptApply(value, { diffSummary: Boolean(args["diff-summary"] || args.all) }));
     if (result.blocked.length > 0) process.exitCode = 2;
@@ -57,6 +59,8 @@ Options:
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update
   --diff-summary            Print per-file addition/deletion summary
+  --refresh-memory-index    Refresh .supervibe/memory/index.json during planning
+  --no-refresh-memory-index Do not refresh memory index (dry-run default)
   --project <path>          Project root to adapt
   --plugin-root <path>      Supervibe plugin root to compare against
   --host <id>               Force host adapter, e.g. codex, claude, cursor
@@ -71,9 +75,26 @@ Examples:
 `.trim();
 }
 
+function resolveMemoryRefresh(args) {
+  if (args["refresh-memory-index"]) return true;
+  if (args["no-refresh-memory-index"]) return false;
+  return Boolean(args.apply);
+}
+
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(["apply", "all", "dry-run", "json", "no-color", "diff-summary", "help", "h"]);
+  const booleans = new Set([
+    "apply",
+    "all",
+    "dry-run",
+    "json",
+    "no-color",
+    "diff-summary",
+    "refresh-memory-index",
+    "no-refresh-memory-index",
+    "help",
+    "h",
+  ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "-h") {

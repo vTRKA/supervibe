@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { partitionTrackedPorcelainLines } from './lib/installer-managed-checkout.mjs';
+import { MODEL_RELATIVE_PATH } from './ensure-onnx-model.mjs';
 import {
   SQLITE_NODE_MIN_VERSION,
   formatNodeRuntimeMode,
@@ -58,21 +59,6 @@ function run(cmd, args, opts = {}) {
   return r.status === 0;
 }
 
-function runGitNoLfsSmudge(args) {
-  return run('git', [
-    '-c',
-    'filter.lfs.smudge=',
-    '-c',
-    'filter.lfs.required=false',
-    ...args,
-  ], {
-    env: {
-      ...process.env,
-      GIT_LFS_SKIP_SMUDGE: '1',
-    },
-  });
-}
-
 function runQuiet(cmd, args) {
   const invocation = commandInvocation(cmd, args);
   const r = spawnSync(invocation.command, invocation.args, { cwd: PLUGIN_ROOT, encoding: 'utf8' });
@@ -103,7 +89,7 @@ function restoreInstallerManagedTrackedEdits(entries) {
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   for (const [path, entry] of byPath) {
     console.log(`[supervibe:upgrade] restoring installer-managed tracked artifact: ${path} (${entry.reason})`);
-    if (!runGitNoLfsSmudge(['checkout', '--', path])) fail(`failed to restore installer-managed tracked artifact: ${path}`);
+    if (!run('git', ['checkout', '--', path])) fail(`failed to restore installer-managed tracked artifact: ${path}`);
   }
 }
 
@@ -163,12 +149,14 @@ if (!run('git', [
   '.claude-plugin/.auto-update.json',
   '-e',
   '.claude-plugin/.auto-update.lock',
+  '-e',
+  MODEL_RELATIVE_PATH,
 ])) fail('git clean failed');
 assertMirrorCheckoutClean('pre-pull cleanup');
 
 console.log('[supervibe:upgrade] git fetch + pull --ff-only ...');
-if (!runGitNoLfsSmudge(['fetch', '--tags', '--prune'])) fail('git fetch failed');
-if (!runGitNoLfsSmudge(['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
+if (!run('git', ['fetch', '--tags', '--prune'])) fail('git fetch failed');
+if (!run('git', ['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
 assertMirrorCheckoutClean('git pull --ff-only');
 
 console.log('[supervibe:upgrade] ensuring required ONNX embedding model ...');

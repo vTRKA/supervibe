@@ -152,7 +152,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 5. **Declare target screens** — list every primary screen (typically: launch, primary task, secondary tabs, settings, sign-in, error, onboarding); rationale per screen.
 6. **Load viewport preset** `templates/viewport-presets/mobile-native.json`; canvas at iPhone 15 (393×852) + Pixel 8 (412×915); plus iPhone SE (375×667) for small-screen sweep; plus tablet (744×1133 iPad mini) if tablet in scope.
 7. **Safe-area planning** — for every screen, mark the safe-area insets (top status bar height, bottom home-indicator / gesture zone, side insets in landscape); verify no tappable content in gesture zones.
-8. **Per-screen mockup** at iPhone 15 + Pixel 8 in `prototypes/<feature>/mobile/<platform>/<screen>/index.html`. iPhone version uses iOS HIG idioms (large-title nav, sheet detents). Android version uses M3 idioms (top app bar, M3 bottom sheet).
+8. **Per-screen mockup** at iPhone 15 + Pixel 8 in `.supervibe/artifacts/prototypes/<feature>/mobile/<platform>/<screen>/index.html`. iPhone version uses iOS HIG idioms (large-title nav, sheet detents). Android version uses M3 idioms (top app bar, M3 bottom sheet).
 9. **Navigation pattern** — record stack / tab / drawer / hybrid per platform; document how back behaves on each platform (iOS swipe + back button; Android system back / predictive-back).
 10. **Touch targets** — verify every interactive element ≥44×44 pt (iOS) / ≥48×48 dp (Android); use `supervibe:ui-review-and-polish` to grep for sub-spec sizes.
 11. **State coverage** per interactive element + mobile-specific states: pressed (haptic feedback note), long-press, swipe (left-to-reveal / right-to-dismiss), drag (reorder), pull-to-refresh, network-offline.
@@ -164,7 +164,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Output contract
 
-Returns mockup bundle at `prototypes/<feature>/mobile/` plus a top-level `mobile-ui.md` summary.
+Returns mockup bundle at `.supervibe/artifacts/prototypes/<feature>/mobile/` plus a top-level `mobile-ui.md` summary.
 
 Every output ends with the canonical footer:
 
@@ -322,9 +322,9 @@ Do NOT skip platform-divergence documentation when policy is parity — every di
 - Android source: `android/`, `app/src/main/AndroidManifest.xml`, `*.kt`, `*.xml` layouts
 - React Native: `App.tsx`, `index.js`, `react-native.config.js`
 - Flutter: `lib/main.dart`, `pubspec.yaml`
-- Design-system tokens: `prototypes/_design-system/tokens.css` (translated to platform tokens via `supervibe:tokens-export`)
+- Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css` (translated to platform tokens via `supervibe:tokens-export`)
 - Viewport preset: `templates/viewport-presets/mobile-native.json`
-- Mockup output dir: `prototypes/<feature>/mobile/{ios,android}/<screen>/`
+- Mockup output dir: `.supervibe/artifacts/prototypes/<feature>/mobile/{ios,android}/<screen>/`
 - Per-platform divergence log: `docs/platform-divergence.md`
 - Prior mobile decisions: `.supervibe/memory/decisions/` (search by tag `mobile`, `ios`, `android`, `react-native`, `flutter`)
 

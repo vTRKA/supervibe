@@ -3,7 +3,7 @@
 // No native compilation. No Docker. No external services.
 //
 // Robustness:
-//   - Detects LFS pointer files (~130B vs ~100KB+ real WASM)
+//   - Detects missing or truncated WASM grammar files
 //   - Per-language graceful fallback: if grammar broken, mark lang broken,
 //     graph extraction for that language returns empty (semantic RAG still works)
 //   - Caches Parser+Language per process
@@ -29,7 +29,7 @@ const GRAMMAR_FILES = {
 };
 
 // Smallest legit WASM grammar in our set is tree-sitter-go (~213KB).
-// LFS pointer files are ~130 bytes. 50KB threshold is safely below smallest grammar.
+// 50KB threshold is safely below the smallest bundled grammar.
 const MIN_WASM_BYTES = 50_000;
 
 let _parserInit = null;
@@ -47,7 +47,7 @@ function isWasmFileUsable(wasmPath) {
   try {
     const size = statSync(wasmPath).size;
     if (size < MIN_WASM_BYTES) {
-      return { ok: false, reason: 'pointer-or-truncated', size };
+      return { ok: false, reason: 'truncated', size };
     }
   } catch (err) {
     return { ok: false, reason: 'stat-failed', err: err.message };
@@ -64,7 +64,7 @@ export async function getLanguage(lang) {
     throw new Error(`Unsupported language for graph extraction: ${lang}`);
   }
   if (_brokenLangs.has(lang)) {
-    throw new Error(`Grammar for ${lang} is unusable (LFS pointer or missing). Run 'git lfs pull' or reinstall.`);
+    throw new Error(`Grammar for ${lang} is unusable (missing or truncated). Reinstall Supervibe.`);
   }
 
   await ensureParserInit();
@@ -74,9 +74,9 @@ export async function getLanguage(lang) {
     const check = isWasmFileUsable(wasmPath);
     if (!check.ok) {
       _brokenLangs.add(lang);
-      if (check.reason === 'pointer-or-truncated') _pointerLangs.add(lang);
+      if (check.reason === 'truncated') _pointerLangs.add(lang);
       if (process.env.SUPERVIBE_VERBOSE === '1') {
-        console.warn(`[supervibe/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Run 'git lfs pull'.`);
+        console.warn(`[supervibe/grammar] ${lang} grammar unusable: ${check.reason}${check.size ? ` (${check.size}B)` : ''}. Reinstall Supervibe.`);
       }
       throw new Error(`Grammar file unusable for ${lang}: ${check.reason} at ${wasmPath}`);
     }

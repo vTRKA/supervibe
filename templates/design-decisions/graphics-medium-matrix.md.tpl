@@ -27,7 +27,7 @@
 ## Asset pipeline
 - Source format: <e.g. AE composition, Figma component, raw photo>
 - Build step: <e.g. bodymovin export, svgo optimization, sharp resize>
-- Output path: <prototypes/<slug>/assets/...>
+- Output path: <.supervibe/artifacts/prototypes/<slug>/assets/...>
 
 ## Performance ceiling
 - Total visual asset budget: <KB on first paint>

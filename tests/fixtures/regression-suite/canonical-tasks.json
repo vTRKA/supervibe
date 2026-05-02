@@ -3,11 +3,11 @@
     "purpose": "Canonical task fixtures for token-economy regression suite. 5 agents x 8 tasks = 40 dispatches per phase. Diff against baseline catches quality regressions.",
     "frozen-as-of": "2026-04-28",
     "do-not-modify": "Changing tasks invalidates cross-phase comparisons. Add new tasks; never edit existing.",
-    "see-also": "docs/plans/2026-04-28-token-economy-safe-mode.md Phase 7"
+    "see-also": ".supervibe/artifacts/plans/2026-04-28-token-economy-safe-mode.md Phase 7"
   },
   "creative-director": [
     "Define brand direction for a fintech app aimed at non-technical SMB owners. Adjectives: trustworthy not stiff, modern not trendy.",
-    "Audit existing brand at prototypes/_brandbook for token drift; produce a tagged KEEP/FLEX/RETIRE inventory.",
+    "Audit existing brand at .supervibe/artifacts/prototypes/_brandbook for token drift; produce a tagged KEEP/FLEX/RETIRE inventory.",
     "Propose 3 alternative palette directions for an app rejecting current 'medical blue' direction.",
     "Specify motion library + easing system for a brand described as 'patient, considered'.",
     "Rebrand strategy for a 5-year-old SaaS adding consumer mobile; preserve enterprise trust.",

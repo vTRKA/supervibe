@@ -69,6 +69,6 @@ modern standards to map into concrete task behavior.
 - https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 - https://owasp.org/www-project-agentic-skills-top-10/
 - https://openssf.org/projects/slsa/
-- https://opentelemetry.io/docs/specs/semconv/
+- https://opentelemetry.io/.supervibe/artifacts/specs/semconv/
 - https://www.w3.org/TR/wcag/
 - docs/references/scope-safety-standard.md

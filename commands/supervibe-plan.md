@@ -20,18 +20,18 @@ Review gates inside the plan are execution-time gates for later workers; they ar
 ### `/supervibe-plan <spec-path>`
 
 Examples:
-- `/supervibe-plan docs/specs/2026-04-28-payment-idempotency-design.md`
-- `/supervibe-plan docs/specs/2026-04-28-mocks-preview-server-design.md`
+- `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md`
+- `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-mocks-preview-server-design.md`
 
 ### `/supervibe-plan` (no args)
 
-Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back to:
+Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If none, fall back to:
 - Show user the list of recent specs and ask which to plan
 - If no specs exist at all → tell user to run `/supervibe-brainstorm` first and stop
 
 ## Procedure
 
-1. **Resolve the spec.** Either explicit path, the freshest file in `docs/specs/`, or stop with a redirect to `/supervibe-brainstorm`.
+1. **Resolve the spec.** Either explicit path, the freshest file in `.supervibe/artifacts/specs/`, or stop with a redirect to `/supervibe-brainstorm`.
 
 2. **Validate the spec.** Read it. Check for:
    - Approved status (frontmatter or first H2 indicating user signed off)
@@ -54,7 +54,7 @@ Auto-detect the most recent spec in `docs/specs/` and use it. If none, fall back
    - Final 10/10 acceptance gate with no open blockers
    - Self-review checklist
 
-5. **Save the plan.** Output goes to `docs/plans/YYYY-MM-DD-<topic-slug>.md`.
+5. **Save the plan.** Output goes to `.supervibe/artifacts/plans/YYYY-MM-DD-<topic-slug>.md`.
 
 6. **Machine-validate the plan.** Run `node scripts/validate-plan-artifacts.mjs --file <plan>`. Any failure blocks execution handoff.
 
@@ -95,7 +95,7 @@ Atomized items are templated by work type and preserve labels, severity, owner/c
 ```
 === Supervibe Plan ===
 Spec:        <path>
-Plan:        docs/plans/YYYY-MM-DD-<slug>.md
+Plan:        .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Phases:      <count>
 Tasks:       <count>  (parallelizable batches: <count>)
 Critical path: <N> tasks

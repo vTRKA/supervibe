@@ -146,7 +146,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
     - Mark each as ✓ universal / ⚠ needs `@supports` fallback / ✗ avoid
     - Author `docs/webview-compat.md` row-per-feature with engine versions
 6. **Load viewport preset** `templates/viewport-presets/tauri.json`; canvas at 1280×800 main / 800×600 secondary.
-7. **Per-window mockup** in `prototypes/<feature>/tauri/<window>/index.html` with linked `tokens.css` and explicit `@supports` fallbacks.
+7. **Per-window mockup** in `.supervibe/artifacts/prototypes/<feature>/tauri/<window>/index.html` with linked `tokens.css` and explicit `@supports` fallbacks.
 8. **State coverage** per interactive element + cross-webview-specific notes ("focus ring renders with 1px difference on WebKitGTK; spec accepts").
 9. **Tray design** (if present) — same pattern as Electron designer's tray (right-click menu, left-click behavior per OS, template image macOS, 16+32 PNG Win+Linux).
 10. **Auto-update prompt UX** — in-app non-blocking notification design; install-on-quit pattern; changelog modal before confirm; progress during download.
@@ -159,7 +159,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Output contract
 
-Returns mockup bundle at `prototypes/<feature>/tauri/` plus a top-level `tauri-ui.md` summary.
+Returns mockup bundle at `.supervibe/artifacts/prototypes/<feature>/tauri/` plus a top-level `tauri-ui.md` summary.
 
 Every output ends with the canonical footer:
 
@@ -299,9 +299,9 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - Tauri config: `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`
 - Renderer entry: `src/index.html`, `index.html`, framework root (Vite / SvelteKit / Solid / Vue / React)
 - IPC commands: `src-tauri/src/main.rs` (`#[tauri::command]` definitions); renderer-side `invoke('cmd_name', { ... })`
-- Design-system tokens: `prototypes/_design-system/tokens.css`
+- Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css`
 - Viewport preset: `templates/viewport-presets/tauri.json`
-- Mockup output dir: `prototypes/<feature>/tauri/{main-window,secondary,tray}/`
+- Mockup output dir: `.supervibe/artifacts/prototypes/<feature>/tauri/{main-window,secondary,tray}/`
 - Webview compat notes: `docs/webview-compat.md` (per-engine min versions + known bugs)
 - Auto-updater config: `src-tauri/tauri.conf.json` `updater` block
 - Prior Tauri decisions: `.supervibe/memory/decisions/` (search by tag `tauri`, `webview`, `wkwebview`, `webview2`)

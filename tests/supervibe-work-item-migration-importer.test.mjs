@@ -12,7 +12,7 @@ import {
 
 test("markdown checklist and plan sections import into dry-run work-item graph with source lines", () => {
   const result = importWorkItemsFromSource({
-    sourcePath: "docs/plans/example.md",
+    sourcePath: ".supervibe/artifacts/plans/example.md",
     content: [
       "## Task 1: Build API",
       "- [ ] Wire UI",

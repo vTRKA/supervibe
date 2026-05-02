@@ -26,14 +26,14 @@ closed before any remote mutation.
    variables, components, text styles, effects, layout grids, assets, and
    relevant node metadata.
 3. **Normalize.** Write local evidence under
-   `prototypes/<slug>/figma-source/`:
+   `.supervibe/artifacts/prototypes/<slug>/figma-source/`:
    - `source.json` - file key, node IDs, timestamps, capability mode.
    - `variables.json` - raw extracted variables and aliases.
    - `components.json` - component names, variants, states, and properties.
    - `assets/` - downloaded image/icon assets when allowed.
    - `mapping.md` - Figma component/token to local token/component mapping.
 4. **Token Sync.** Convert approved Figma variables into
-   `prototypes/_design-system/tokens.css` or an extension request. Do not
+   `.supervibe/artifacts/prototypes/_design-system/tokens.css` or an extension request. Do not
    overwrite approved repo tokens without a system-level approval.
 5. **Prototype.** Build native HTML/CSS/JS from the local design-system contract,
    not directly from raw Figma values. Every raw Figma value must map to an
@@ -43,7 +43,7 @@ closed before any remote mutation.
    and token use. Missing parity becomes a handoff issue, not an implicit code
    change.
 7. **Drift Audit.** Before approval, generate
-   `prototypes/<slug>/figma-source/drift-report.md` with:
+   `.supervibe/artifacts/prototypes/<slug>/figma-source/drift-report.md` with:
    - token drift
    - component/variant drift
    - missing states
@@ -78,8 +78,8 @@ Figma Source Evidence:
   nodeIds: ["<node-id>"]
   extractedAt: "<ISO>"
   sourceStatus: "approved | candidate | stale | unknown"
-  tokenMapping: "prototypes/<slug>/figma-source/mapping.md"
-  driftReport: "prototypes/<slug>/figma-source/drift-report.md"
+  tokenMapping: ".supervibe/artifacts/prototypes/<slug>/figma-source/mapping.md"
+  driftReport: ".supervibe/artifacts/prototypes/<slug>/figma-source/drift-report.md"
   writeback: "not-available | blocked-for-approval | proposed | applied"
 ```
 

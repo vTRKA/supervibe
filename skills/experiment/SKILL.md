@@ -22,7 +22,7 @@ NOT for: bug fixes (no need to test), forced rollouts (legal/compliance required
 
 ## Step 0 — Read source of truth (required)
 
-1. Read existing experiments in `docs/experiments/` for format consistency
+1. Read existing experiments in `.supervibe/artifacts/experiments/` for format consistency
 2. Read analytics platform docs (statistical machinery available)
 3. Read prior baseline metrics (current conversion / engagement / revenue)
 4. Read feature flag system docs
@@ -51,7 +51,7 @@ Success metric type?
 5. **Randomization** — unit (user / session / impression), allocation (50/50 default), stratification if needed
 6. **Run duration** — based on sample size + traffic; minimum 1 week to capture weekly cycles
 7. **Analysis plan** — pre-register: which test, which subgroups, how to handle SRM (sample ratio mismatch)
-8. **Write experiment doc** at `docs/experiments/YYYY-MM-DD-<name>.md` with all above
+8. **Write experiment doc** at `.supervibe/artifacts/experiments/YYYY-MM-DD-<name>.md` with all above
 9. **Score** — `supervibe:confidence-scoring` artifact-type=requirements-spec
 10. **Implementation** — feature flag, instrumentation, dashboard
 

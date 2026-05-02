@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { migratePrototypeConfigs } from "./migrate-prototype-configs.mjs";
 import { getHostAdapterMatrix } from "./lib/supervibe-host-adapters.mjs";
+import { artifactRel, artifactRoot } from "./lib/supervibe-artifact-roots.mjs";
 
 const PROJECT_ROOT = process.cwd();
 const STALE_DAYS = 30;
@@ -217,12 +218,12 @@ async function reportUpstreamUpdates() {
 }
 
 async function autoMigratePrototypeConfigs() {
-  const protoRoot = join(PROJECT_ROOT, "prototypes");
+  const protoRoot = artifactRoot(PROJECT_ROOT, "prototypes");
   if (!existsSync(protoRoot)) return null;
   try {
     const result = await migratePrototypeConfigs({ projectRoot: PROJECT_ROOT });
     if (result.created.length > 0) {
-      return `Discovered: ${result.created.length} prototype(s) without config.json — backfilled with default web target [375, 1440]. Review prototypes/${result.created.join(", prototypes/")}/config.json to confirm target + viewports match design intent.`;
+      return `Discovered: ${result.created.length} prototype(s) without config.json — backfilled with default web target [375, 1440]. Review ${result.created.map((slug) => artifactRel("prototypes", `${slug}/config.json`)).join(", ")} to confirm target + viewports match design intent.`;
     }
   } catch {
     // never block session start on migration failure

@@ -6,19 +6,18 @@ import {
   pathFromPorcelainLine,
   partitionTrackedPorcelainLines,
 } from "../scripts/lib/installer-managed-checkout.mjs";
-import { MODEL_RELATIVE_PATH } from "../scripts/ensure-onnx-model.mjs";
 
-test("installer-managed checkout paths include package-lock drift and the required ONNX model", () => {
+test("installer-managed checkout paths include package-lock drift only", () => {
   assert.deepEqual(
     INSTALLER_MANAGED_TRACKED_PATHS.map((entry) => entry.path),
-    ["package-lock.json", MODEL_RELATIVE_PATH],
+    ["package-lock.json"],
   );
 });
 
 test("installer-managed tracked artifacts are separated from user-owned tracked edits", () => {
   const lines = [
     " M package-lock.json",
-    ` M ${MODEL_RELATIVE_PATH}`,
+    " M models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx",
     " M scripts/custom-user-change.mjs",
     "?? registry.yaml",
   ];
@@ -27,15 +26,18 @@ test("installer-managed tracked artifacts are separated from user-owned tracked 
 
   assert.deepEqual(
     partitioned.installerManaged.map((entry) => entry.path),
-    ["package-lock.json", MODEL_RELATIVE_PATH],
+    ["package-lock.json"],
   );
-  assert.deepEqual(partitioned.userOwned, [" M scripts/custom-user-change.mjs"]);
+  assert.deepEqual(partitioned.userOwned, [
+    " M models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx",
+    " M scripts/custom-user-change.mjs",
+  ]);
   assert.deepEqual(partitioned.untracked, ["?? registry.yaml"]);
 });
 
 test("porcelain path parsing handles tracked renames by using the destination path", () => {
   assert.equal(
-    pathFromPorcelainLine(`R  old-model.onnx -> ${MODEL_RELATIVE_PATH}`),
-    MODEL_RELATIVE_PATH,
+    pathFromPorcelainLine("R  old-lock.json -> package-lock.json"),
+    "package-lock.json",
   );
 });

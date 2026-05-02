@@ -46,7 +46,7 @@ Per finding, classify:
 4. **For AGREE-WITH-AMENDMENT**: implement variant, document why
 5. **For DISAGREE**: write 2-3 sentence counterargument with code/spec references
 6. **For CLARIFY**: ask reviewer one question per ambiguity
-7. **For DEFER**: create issue/note in `docs/follow-ups.md`
+7. **For DEFER**: create issue/note in `.supervibe/artifacts/follow-ups.md`
 8. **Mark each finding resolved** with link to evidence (commit/PR/issue)
 9. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required
 10. **Re-invoke reviewer** if substantive changes made
@@ -58,7 +58,7 @@ Returns per-finding resolution table:
 | Finding | Classification | Action | Evidence |
 | #1 ...  | AGREE          | fixed  | abc1234  |
 | #2 ...  | DISAGREE       | <argument> | spec.md L42 |
-| #3 ...  | DEFER          | follow-up issue #N | docs/follow-ups.md |
+| #3 ...  | DEFER          | follow-up issue #N | .supervibe/artifacts/follow-ups.md |
 ```
 
 ## Guard rails

@@ -26,7 +26,7 @@ NOT for: tactical code changes, bug fixes, routine refactors.
 
 ## Step 0 — Read source of truth (required)
 
-1. List existing ADRs in `docs/adr/` to find the next number
+1. List existing ADRs in `.supervibe/artifacts/adr/` to find the next number
 2. Read related code to ground the decision in current state
 3. Read related rules in the selected host adapter rules folder for constraints
 4. Find latest ADR template version
@@ -43,8 +43,8 @@ What status?
 
 ## Procedure
 
-1. **Find next number**: `ls docs/adr/ | sort | tail -1` → increment
-2. **Create file**: `docs/adr/NNNN-<short-title>.md`
+1. **Find next number**: `ls .supervibe/artifacts/adr/ | sort | tail -1` → increment
+2. **Create file**: `.supervibe/artifacts/adr/NNNN-<short-title>.md`
 3. **Fill template**:
    ```markdown
    # ADR-NNNN: <Title>
@@ -75,7 +75,7 @@ What status?
 
    ## Related
    - ADR-NNNN: ...
-   - Spec: docs/specs/...
+   - Spec: .supervibe/artifacts/specs/...
    ```
 4. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output
 5. **Cross-link** — update related ADRs / rules / the active host instruction file
@@ -96,7 +96,7 @@ Returns: ADR file path with all sections filled, status declared, alternatives d
 
 ## Verification
 
-- ADR file exists at `docs/adr/NNNN-<title>.md`
+- ADR file exists at `.supervibe/artifacts/adr/NNNN-<title>.md`
 - All sections present
 - Status field set
 - Cross-links updated
@@ -163,7 +163,7 @@ What this ADR does NOT decide. Forces clarity on boundary:
 
 ## Output contract template
 
-Save ADRs to `docs/specs/adr/YYYY-MM-DD-<NNN>-<slug>.md`. Use template at `docs/templates/ADR-template.md`.
+Save ADRs to `.supervibe/artifacts/specs/adr/YYYY-MM-DD-<NNN>-<slug>.md`. Use template at `docs/templates/ADR-template.md`.
 
 Required sections:
 1. **Title**: `ADR-NNN: <decision>`
@@ -236,7 +236,7 @@ Use sparingly — only for clarifications that don't change the decision:
 
 ## Verification
 
-- ADR saved to `docs/specs/adr/YYYY-MM-DD-NNN-<slug>.md`
+- ADR saved to `.supervibe/artifacts/specs/adr/YYYY-MM-DD-NNN-<slug>.md`
 - All 11 sections present
 - ≥3 alternatives scored, including "do nothing"
 - NFRs addressed (each with "no impact" or quantified)

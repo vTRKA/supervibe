@@ -35,13 +35,13 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
   - App router: `frontend/app/`
   - Components: `frontend/components/` (FSD layers)
   - Tests: `frontend/__tests__/`
-- **Prototypes**: `prototypes/`
-  - **Brandbook (source of truth)**: `prototypes/_brandbook/`
+- **Prototypes**: `.supervibe/artifacts/prototypes/`
+  - **Brandbook (source of truth)**: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`
 - **Docs**: `docs/`
-  - ADRs: `docs/adr/`
-  - PRDs: `docs/prd/`
-  - Specs: `docs/specs/`
-  - Plans: `docs/plans/`
+  - ADRs: `.supervibe/artifacts/adr/`
+  - PRDs: `.supervibe/artifacts/prd/`
+  - Specs: `.supervibe/artifacts/specs/`
+  - Plans: `.supervibe/artifacts/plans/`
 
 ## Agent routing — who to dispatch for what
 
@@ -92,7 +92,7 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
 
 - `laravel-developer` touches ONLY `backend/` — never `frontend/`
 - `nextjs-developer` touches ONLY `frontend/` — never `backend/`
-- `prototype-builder` touches ONLY `prototypes/` — never `backend/` or `frontend/`
+- `prototype-builder` touches ONLY `.supervibe/artifacts/prototypes/` — never `backend/` or `frontend/`
 - `postgres-architect` touches ONLY `backend/database/migrations/` and DB-related service files
 - READ-ONLY agents (no Write/Edit): `repo-researcher`, `code-reviewer`, `security-auditor`, `architect-reviewer`, `performance-reviewer`, `dependency-reviewer`, `db-reviewer`, `api-contract-reviewer`, `ui-polish-reviewer`, `accessibility-reviewer`, `laravel-architect`, `nextjs-architect`, all researchers, all designers except prototype-builder
 
@@ -119,7 +119,7 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
 
 **Brand reset / new product:**
 1. `supervibe:_design:creative-director` → direction
-2. `supervibe:_design:prototype-builder` → materialize via `supervibe:brandbook` skill in `prototypes/_brandbook/`
+2. `supervibe:_design:prototype-builder` → materialize via `supervibe:brandbook` skill in `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`
 3. `supervibe:_design:copywriter` + `supervibe:_design:accessibility-reviewer` review
 4. User approval → brandbook becomes source-of-truth for all subsequent `supervibe:prototype` invocations
 

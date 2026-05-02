@@ -145,8 +145,8 @@ test("loop command documents graph inspection surface", async () => {
   const content = await readFile(join(ROOT, "commands", "supervibe-loop.md"), "utf8");
   assert.match(content, /Primary path:/);
   assert.match(content, /--request "validate code/);
-  assert.match(content, /--plan docs\/plans/);
-  assert.match(content, /--from-prd docs\/specs/);
+  assert.match(content, /--plan \.supervibe\/artifacts\/plans/);
+  assert.match(content, /--from-prd \.supervibe\/artifacts\/specs/);
   assert.match(content, /--status --file/);
   assert.match(content, /--graph --file/);
   assert.match(content, /--format text/);
@@ -158,7 +158,7 @@ test("loop command documents graph inspection surface", async () => {
   assert.match(content, /--commit-per-task/);
   assert.match(content, /--assigned-task T1/);
   assert.match(content, /--assigned-write-set src\/auth\.ts/);
-  assert.match(content, /--plan-waves docs\/plans\/example\.md/);
+  assert.match(content, /--plan-waves \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(content, /--assign-ready --explain/);
   assert.match(content, /--setup-worker-presets/);
   assert.match(content, /npm run supervibe:loop -- graph/);
@@ -210,12 +210,12 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
     "--help",
   ], { cwd: ROOT });
   assert.match(stdout, /SUPERVIBE_LOOP_HELP/);
-  assert.match(stdout, /--from-prd docs\/specs\/example.md/);
+  assert.match(stdout, /--from-prd \.supervibe\/artifacts\/specs\/example.md/);
   assert.match(stdout, /graph --file/);
   assert.match(stdout, /--fresh-context --tool codex\|claude\|gemini\|opencode/);
-  assert.match(stdout, /--happy-path --plan docs\/plans\/example\.md/);
+  assert.match(stdout, /--happy-path --plan \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(stdout, /--assigned-task T1 --assigned-write-set src\/file\.ts/);
-  assert.match(stdout, /--plan-waves docs\/plans\/example\.md/);
+  assert.match(stdout, /--plan-waves \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(stdout, /--assign-ready --explain/);
 });
 

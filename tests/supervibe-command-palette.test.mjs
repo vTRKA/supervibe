@@ -16,7 +16,7 @@ test("command palette exposes required actions and exact non-interactive command
   const palette = buildCommandPalette({
     index,
     state: { run_id: "run1" },
-    planPath: "docs/plans/example.md",
+    planPath: ".supervibe/artifacts/plans/example.md",
     graphPath: ".supervibe/memory/work-items/epic/graph.json",
     selectedItemId: "ready-1",
   });

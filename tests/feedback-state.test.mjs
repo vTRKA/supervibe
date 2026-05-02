@@ -23,7 +23,7 @@ test('markFeedbackStatus resolves an entry and selectOpenFeedback filters it out
   const dir = await mkdtemp(join(tmpdir(), 'fb-state-'));
   const status = join(dir, 'status.json');
   await ensureFeedbackTracked(status, [{ id: 'a' }, { id: 'b' }]);
-  await markFeedbackStatus(status, 'a', 'resolved', { resolution: 'prototypes/x/feedback-resolutions/a.md' });
+  await markFeedbackStatus(status, 'a', 'resolved', { resolution: '.supervibe/artifacts/prototypes/x/feedback-resolutions/a.md' });
   const state = await readFeedbackStatus(status);
   const open = selectOpenFeedback([{ id: 'a' }, { id: 'b' }], state);
   assert.deepEqual(open.map(e => e.id), ['b']);

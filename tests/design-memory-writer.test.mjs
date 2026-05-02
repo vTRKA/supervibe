@@ -16,7 +16,7 @@ test("design memory writer builds accepted and rejected entries with evidence", 
     summary: "Accepted compact cards for analytics dashboard charts.",
     rationale: "Matches approved dashboard density.",
     evidenceLinks: ["design-row:charts:12"],
-    artifactPaths: ["prototypes/analytics/spec.md"],
+    artifactPaths: [".supervibe/artifacts/prototypes/analytics/spec.md"],
     tags: ["charts", "tokens"],
     confidence: 9,
   });

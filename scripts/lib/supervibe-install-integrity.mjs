@@ -53,9 +53,11 @@ export function auditInstallIntegrityData(data = {}) {
     "update.sh": scripts.updateSh,
     "update.ps1": scripts.updatePs1,
   })) {
-    requirePattern(source, /installer-managed tracked artifact/, label, "must self-heal installer-managed model/package-lock drift before refusing user edits", issues);
-    requirePattern(source, /model_quantized\.onnx/, label, "must recognize the managed ONNX model artifact", issues);
+    requirePattern(source, /installer-managed tracked artifact/, label, "must self-heal installer-managed package-lock drift before refusing user edits", issues);
+    requirePattern(source, /package-lock\.json/, label, "must recognize the managed package-lock artifact", issues);
   }
+  requirePattern(scripts.installSh, /git -C "\$root" clean -ffdx -e "\$LOCAL_ONNX_MODEL_PATH"/, "install.sh", "must preserve the already-downloaded local ONNX model during cleanup", issues);
+  requirePattern(scripts.installPs1, /'clean', '-ffdx', '-e', \$LocalOnnxModelPath/, "install.ps1", "must preserve the already-downloaded local ONNX model during cleanup", issues);
 
   requirePattern(scripts.installSh, /will modify/i, "install.sh", "must explain modifications before writing", issues);
   requirePattern(scripts.installPs1, /will modify/i, "install.ps1", "must explain modifications before writing", issues);

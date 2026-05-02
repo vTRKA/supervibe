@@ -26,7 +26,7 @@ export function buildCommandPalette({ index = [], state = {}, planPath = null, g
   const actions = [
     action("view-ready-work", "View ready work", "/supervibe-status --view ready-now --file " + graphPath, { enabled: true }),
     action("view-blockers", "View blockers", "/supervibe-status --view blocked --file " + graphPath, { enabled: blockers > 0, blockedReason: blockers > 0 ? null : "no blockers in current graph" }),
-    action("atomize-plan", "Atomize plan", `/supervibe-loop --atomize-plan ${planPath || "docs/plans/example.md"} --preview`, { enabled: Boolean(planPath), blockedReason: planPath ? null : "no plan path selected" }),
+    action("atomize-plan", "Atomize plan", `/supervibe-loop --atomize-plan ${planPath || ".supervibe/artifacts/plans/example.md"} --preview`, { enabled: Boolean(planPath), blockedReason: planPath ? null : "no plan path selected" }),
     action("create-work-item", "Create work item", "/supervibe-loop --create-work-item --interactive", { mutates: true, risky: false }),
     action("claim-next-task", "Claim next task", ready ? `/supervibe-loop --claim ${ready.itemId || ready.id} --file ${graphPath}` : "/supervibe-status --view ready-now", { enabled: Boolean(ready), mutates: true, blockedReason: ready ? null : "no ready task" }),
     action("defer-task", "Defer task", `/supervibe-loop --defer ${selectedItemId || "<item-id>"} --until <timestamp> --file ${graphPath}`, { enabled: Boolean(selectedItemId), mutates: true, blockedReason: selectedItemId ? null : "select a task first" }),

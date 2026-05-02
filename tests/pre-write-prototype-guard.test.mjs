@@ -9,11 +9,11 @@ const hookPath = join(process.cwd(), "scripts", "hooks", "pre-write-prototype-gu
 
 async function fixture({ approved = true, status = "approved", tokensState = undefined } = {}) {
   const root = await mkdtemp(join(tmpdir(), "supervibe-prototype-guard-"));
-  await mkdir(join(root, "prototypes", "checkout"), { recursive: true });
-  await writeFile(join(root, "prototypes", "checkout", "config.json"), "{}");
+  await mkdir(join(root, ".supervibe", "artifacts", "prototypes", "checkout"), { recursive: true });
+  await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", "config.json"), "{}");
   if (approved) {
-    await mkdir(join(root, "prototypes", "_design-system"), { recursive: true });
-    await writeFile(join(root, "prototypes", "_design-system", "manifest.json"), JSON.stringify({
+    await mkdir(join(root, ".supervibe", "artifacts", "prototypes", "_design-system"), { recursive: true });
+    await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "_design-system", "manifest.json"), JSON.stringify({
       status,
       ...(tokensState ? { tokensState } : {}),
       sections: { palette: status, spacing: status },
@@ -43,7 +43,7 @@ test("prototype guard blocks raw design values after design system approval", as
     const result = await runHook(root, {
       tool_name: "Write",
       tool_input: {
-        file_path: join(root, "prototypes", "checkout", "index.html"),
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
         content: "<style>.btn{color:#ff00aa;padding:18px}</style>",
       },
     });
@@ -61,7 +61,7 @@ test("prototype guard allows tokenized prototype values after design system appr
     const result = await runHook(root, {
       tool_name: "Write",
       tool_input: {
-        file_path: join(root, "prototypes", "checkout", "index.html"),
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
         content: "<style>.btn{color:var(--color-primary-500);padding:var(--space-4)}</style>",
       },
     });
@@ -79,13 +79,51 @@ test("prototype guard blocks raw design values after candidate design system exi
     const result = await runHook(root, {
       tool_name: "Write",
       tool_input: {
-        file_path: join(root, "prototypes", "checkout", "index.html"),
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
         content: "<style>.btn{color:#ff00aa;padding:18px}</style>",
       },
     });
 
     assert.equal(result.code, 2);
     assert.match(result.stdout, /candidate or final design system exists/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("project artifact root guard blocks legacy root prototype writes", async () => {
+  const root = await fixture({ approved: false });
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, "prototypes", "checkout", "index.html"),
+        content: "<html></html>",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /outside \.supervibe/);
+    assert.match(result.stdout, /\.supervibe\/artifacts\/prototypes\/checkout\/index\.html/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("project artifact root guard blocks legacy root plan writes", async () => {
+  const root = await fixture({ approved: false });
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, "docs", "plans", "checkout.md"),
+        content: "# Plan\n",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /outside \.supervibe/);
+    assert.match(result.stdout, /\.supervibe\/artifacts\/plans\/checkout\.md/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

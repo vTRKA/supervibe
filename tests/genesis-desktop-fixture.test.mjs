@@ -184,3 +184,43 @@ test("full genesis dry run includes host adapter, context migration and agent pr
     assert.match(formatGenesisDryRunReport(report), /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
   });
 });
+
+test("genesis dry run includes related-rule closure for selected profile rules", async () => {
+  const targetRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-closure-target-"));
+  const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-closure-plugin-"));
+  try {
+    await writeFile(join(targetRoot, "AGENTS.md"), "# Existing Codex Instructions\n", "utf8");
+    await mkdir(join(pluginRoot, "rules"), { recursive: true });
+    await writeFile(join(pluginRoot, "rules", "base-rule.md"), [
+      "---",
+      "name: base-rule",
+      "mandatory: true",
+      "related-rules: [optional-rule]",
+      "---",
+      "# Base Rule",
+    ].join("\n"), "utf8");
+    await writeFile(join(pluginRoot, "rules", "optional-rule.md"), [
+      "---",
+      "name: optional-rule",
+      "mandatory: false",
+      "related-rules: []",
+      "---",
+      "# Optional Rule",
+    ].join("\n"), "utf8");
+
+    const report = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot,
+      env: { SUPERVIBE_HOST: "codex" },
+      selectedProfile: "minimal",
+      addOns: [],
+    });
+
+    assert.ok(report.selectedRules.includes("base-rule"));
+    assert.ok(report.selectedRules.includes("optional-rule"));
+    assert.ok(report.filesToCreate.some((entry) => entry.path === ".codex/rules/optional-rule.md"));
+  } finally {
+    await rm(targetRoot, { recursive: true, force: true });
+    await rm(pluginRoot, { recursive: true, force: true });
+  }
+});

@@ -119,7 +119,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Observability: Micrometer registry (Prometheus/OTLP), tracing (Micrometer Tracing + Zipkin/Tempo), structured logging (Logback JSON encoder)
 - Spring Cloud (if present): `spring-cloud-config-client`, `spring-cloud-starter-gateway`, `spring-cloud-starter-netflix-eureka-client`, `spring-cloud-starter-circuitbreaker-resilience4j`
 - Messaging: `spring-kafka`, `spring-rabbit`, or `spring-cloud-stream` if event-driven
-- ADR archive: `docs/adr/`, `.supervibe/memory/decisions/`, or `docs/architecture/decisions/`
+- ADR archive: `.supervibe/artifacts/adr/`, `.supervibe/memory/decisions/`, or `docs/architecture/decisions/`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Skills
@@ -258,7 +258,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters, on-call burden during transition
 13. **Verify against anti-patterns** — walk every anti-pattern below; explicitly mark "not present" or "accepted with mitigation"
 14. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name missing evidence and request it
-15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
+15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `.supervibe/artifacts/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
 
@@ -387,7 +387,7 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 ## Verification
 
 For each architectural recommendation:
-- ADR file exists, signed (author + date + status), filed at `docs/adr/NNNN-title.md`
+- ADR file exists, signed (author + date + status), filed at `.supervibe/artifacts/adr/NNNN-title.md`
 - Alternatives section lists ≥2 rejected options with specific rejection reasons (not "didn't like it")
 - Migration plan lists concrete steps with owner and estimated effort
 - Runtime-model decision has explicit rationale tied to decision-tree drivers (workload shape, blocking-driver inventory, team capacity)

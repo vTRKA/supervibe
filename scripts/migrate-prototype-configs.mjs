@@ -2,6 +2,7 @@ import { readdir, writeFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
+import { artifactRel, artifactRoot } from './lib/supervibe-artifact-roots.mjs';
 
 const DEFAULT_CONFIG = {
   target: 'web',
@@ -17,7 +18,7 @@ const DEFAULT_CONFIG = {
 const RESERVED = new Set(['_design-system', '_brandbook']);
 
 export async function migratePrototypeConfigs({ projectRoot }) {
-  const protoRoot = join(projectRoot, 'prototypes');
+  const protoRoot = artifactRoot(projectRoot, 'prototypes');
   const created = [];
   const skipped = [];
 
@@ -25,7 +26,7 @@ export async function migratePrototypeConfigs({ projectRoot }) {
   try {
     dirents = await readdir(protoRoot, { withFileTypes: true });
   } catch {
-    return { created, skipped, note: 'no prototypes/ directory — nothing to migrate' };
+    return { created, skipped, note: `no ${artifactRel('prototypes')} directory — nothing to migrate` };
   }
 
   for (const entry of dirents) {
@@ -53,7 +54,7 @@ export async function main() {
   const result = await migratePrototypeConfigs({ projectRoot });
   if (result.created.length) {
     console.log(`[migrate-prototype-configs] backfilled config.json for: ${result.created.join(', ')}`);
-    console.log(`  Edit each prototypes/<slug>/config.json to confirm target + viewports match design intent.`);
+    console.log(`  Edit each ${artifactRel('prototypes', '<slug>/config.json')} to confirm target + viewports match design intent.`);
   } else if (result.skipped.length) {
     console.log(`[migrate-prototype-configs] all ${result.skipped.length} prototype(s) already have config.json`);
   } else {

@@ -161,7 +161,7 @@ Before producing any artifact or making any structural recommendation:
    - For each file: `git diff <base>..HEAD <file>` — full diff
    - `git log <base>..HEAD --oneline` — commit history (intent signal)
 2. **Read context**:
-   - Spec/plan that motivated the change (`docs/specs/`, `docs/plans/`)
+   - Spec/plan that motivated the change (`.supervibe/artifacts/specs/`, `.supervibe/artifacts/plans/`)
    - Project rules (the active host instruction file, `selected host rules folder/`)
    - Related code that's NOT in diff but affects correctness (callers/callees)
 3. **Run automated checks**:
@@ -232,7 +232,7 @@ If reviewer cannot produce these, the review itself is BLOCKED — score <9.
 Trigger: branch ready, author requests review, CI green.
 1. Confirm the merge base — `git merge-base origin/main HEAD` — and pin it; all subsequent diffs use this exact SHA.
 2. Map scope: `git diff <base>..HEAD --stat`, `git log <base>..HEAD --oneline`. If >40 files or >1500 added lines, ask author to split before proceeding.
-3. Read intent: linked spec/plan in `docs/specs/` or `docs/plans/`, PR description, and the top of the active host instruction file for any active rules that apply.
+3. Read intent: linked spec/plan in `.supervibe/artifacts/specs/` or `.supervibe/artifacts/plans/`, PR description, and the top of the active host instruction file for any active rules that apply.
 4. Run automated checks verbatim and capture last 20 lines of each: typecheck, full test suite, linter, formatter check, coverage delta if available.
 5. Walk all 8 dimensions per file in priority order; record each finding as `file:line + severity + suggested fix + reproducer`.
 6. Cross-file checks: layer boundaries, secrets/eval/raw-SQL scan, schema/query changes, public API shape changes. Delegate to specialist reviewers if any are non-trivial.

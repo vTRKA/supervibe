@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { artifactRoot } from "./supervibe-artifact-roots.mjs";
 
 const DESIGN_ROOTS = ["prototypes", "mockups", "presentations"];
 const RESERVED_PROTOTYPE_DIRS = new Set(["_brandbook", "_design-system"]);
@@ -29,9 +30,9 @@ const REUSE_PATTERNS = [
   /\biterate\b/i,
   /\brevise\b/i,
   /\brefine\b/i,
-  /\bprototypes[\\/]/i,
-  /\bmockups[\\/]/i,
-  /\bpresentations[\\/]/i,
+  /\.supervibe[\\/]artifacts[\\/]prototypes[\\/]/i,
+  /\.supervibe[\\/]artifacts[\\/]mockups[\\/]/i,
+  /\.supervibe[\\/]artifacts[\\/]presentations[\\/]/i,
   /\bдоработ/i,
   /\bулучш/i,
   /\bпродолж/i,
@@ -64,7 +65,7 @@ function hasAnyPattern(text, patterns) {
 async function collectArtifact(projectRoot, rootName, entryName) {
   if (rootName === "prototypes" && RESERVED_PROTOTYPE_DIRS.has(entryName)) return null;
 
-  const absPath = join(projectRoot, rootName, entryName);
+  const absPath = join(artifactRoot(projectRoot, rootName), entryName);
   const info = await safeStat(absPath);
   if (!info?.isDirectory()) return null;
 
@@ -105,7 +106,7 @@ export async function findExistingDesignArtifacts({ projectRoot = process.cwd(),
   const artifacts = [];
 
   for (const rootName of DESIGN_ROOTS) {
-    const absRoot = join(projectRoot, rootName);
+    const absRoot = artifactRoot(projectRoot, rootName);
     if (!existsSync(absRoot)) continue;
 
     let entries = [];

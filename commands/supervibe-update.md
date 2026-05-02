@@ -68,14 +68,14 @@ Print: current version, target version, changelog summary between them, breaking
 3. **Refuse user-owned tracked local edits; clean stale leftovers.**
    - Run `git -C <resolved-supervibe-plugin-root> status --porcelain`.
    - If user-owned tracked files are modified, print them and exit. Never auto-discard user edits.
-   - Installer-managed `package-lock.json` and ONNX model drift are restored first; the required model is rehydrated again after pull.
+   - Installer-managed `package-lock.json` drift is restored first; the required model is rehydrated again after pull.
    - If only untracked/ignored stale files exist, continue. The managed upgrader runs `git clean -ffdx` before reinstalling dependencies so old routes, commands, generated leftovers, and removed files cannot stay active.
 
 4. **Run the upgrade.**
    ```bash
    cd <resolved-supervibe-plugin-root> && npm run supervibe:upgrade
    ```
-This script does: self-heal installer-managed tracked artifacts -> clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` with LFS smudge disabled -> required ONNX model setup -> `npm ci` -> `npm run registry:build` -> `npm run supervibe:install-doctor`.
+This script does: self-heal installer-managed tracked artifacts -> clean managed checkout -> `git fetch --tags --prune` -> `git pull --ff-only` -> required HuggingFace ONNX model setup -> `npm ci` -> `npm run registry:build` -> `npm run supervibe:install-doctor`.
 
 5. **If upgrade fails:**
 
@@ -97,7 +97,7 @@ npm ci                       # restore old node_modules from package-lock.json
    Rollback executed:
      • Source restored to $PRE_SHA
      • Dependencies reinstalled at pre-upgrade lockfile
-     • LFS state restored
+     • ONNX model rechecked
 
    Plugin remains on v$PRE_VERSION.
    Investigate failure: <error log path>
@@ -134,11 +134,11 @@ npm ci                       # restore old node_modules from package-lock.json
 |---|---|
 | Resolved Supervibe plugin root not set | Print installer URL; exit |
 | User-owned tracked local edits in checkout | List dirty tracked files; instruct stash/commit; exit |
-| Installer-managed ONNX/package-lock drift | Restore those paths with LFS smudge disabled, then continue dirty check |
+| Installer-managed package-lock drift | Restore `package-lock.json`, then continue dirty check |
 | Stale untracked files in checkout | Clean automatically with `git clean -ffdx` before reinstall; install doctor fails if any remain |
 | Network failure during `git pull` | Print message; preserve pre-state; exit (no rollback needed — nothing changed yet) |
 | `npm ci` fails | Stop and print output; rerun after fixing dependency or network issue |
-| ONNX model fetch fails | Stop before declaring success; keep checkout for retry; print Git LFS/HuggingFace recovery hint |
+| ONNX model fetch fails | Stop before declaring success; keep checkout for retry; print HuggingFace recovery hint |
 | Rollback itself fails | Last-resort guidance: `git reflog` to find pre-state SHA; manual `git reset --hard <sha>`; print exact commands |
 
 ## Manual rollback
@@ -187,7 +187,7 @@ Error excerpt: [first 500 chars]
 ✓ Rollback executed:
   - Source restored to abc1234
   - Dependencies reinstalled
-  - LFS restored
+  - ONNX model rechecked
 
 Plugin remains on vX.Y.Z.
 Failure log: .supervibe/memory/incidents/upgrade-failure-2026-04-28T15-30-00.md

@@ -1,5 +1,5 @@
 // MUI theme bridging project design tokens
-// Source: prototypes/_design-system/tokens.css
+// Source: .supervibe/artifacts/prototypes/_design-system/tokens.css
 // Generated: <ISO-date>
 // IMPORTANT: regenerate when tokens.css changes.
 

@@ -268,7 +268,7 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
   - GraphQL: `schema.graphql`, `schema.gql`, `**/*.graphql`, codegen artifacts
   - gRPC: `**/*.proto`, `buf.yaml`, `buf.gen.yaml`
 - Versioning strategy: URL prefix (`/v1/`, `/v2/`), media-type/Accept-Version header, GraphQL field-level `@deprecated`, gRPC package suffix (`v1`, `v1beta1`, `v2`)
-- Deprecation log: `docs/deprecations.md`, `CHANGELOG.md`, `.supervibe/memory/deprecations/`
+- Deprecation log: `.supervibe/artifacts/deprecations.md`, `CHANGELOG.md`, `.supervibe/memory/deprecations/`
 - Consumer registry: SDKs, mobile clients with min-version, internal services with explicit contract dependencies, public partners under SLA
 - Tooling on hand: `openapi-diff`, `oasdiff`, `graphql-inspector diff`, `buf breaking`, `protolock`, `swagger-cli validate`
 - Conventions doc: `docs/api-conventions.md` (pagination, error envelope, auth scheme, naming)

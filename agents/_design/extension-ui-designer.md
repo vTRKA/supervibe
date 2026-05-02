@@ -137,10 +137,10 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 1. **Read manifest** — open `manifest.json`; capture `action`, `options_ui`, `side_panel`, `chrome_url_overrides`, `permissions`, `host_permissions`, and `content_security_policy.extension_pages`. Note minimum Chrome version. If manifest absent, defer to `chrome-extension-architect` to author it before designing.
 2. **Search project memory** for prior extension decisions, abandoned surface choices, and permission-prompt copy with tags `chrome-extension`, `mv3`, `popup`, `side-panel`. Cite at least 2 entries or note "no prior extension memory".
-3. **Read design-system tokens** from `prototypes/_design-system/` — extension UI MUST inherit approved project tokens; do not reinvent palette per surface.
+3. **Read design-system tokens** from `.supervibe/artifacts/prototypes/_design-system/` — extension UI MUST inherit approved project tokens; do not reinvent palette per surface.
 4. **Declare target surfaces** — emit a one-paragraph decision: which of {popup, options, side-panel, newtab} this feature needs and why; explicit rejection of non-chosen surfaces.
 5. **Load viewport preset** `templates/viewport-presets/chrome-extension.json`; lock the working canvases to declared widths × heights (popup 360×600 default; options 1024×768; side-panel 400×800).
-6. **Author per-surface mockups** in `prototypes/<feature>/extension/<surface>/index.html` with linked `tokens.css` + `surface.css`. One HTML per surface.
+6. **Author per-surface mockups** in `.supervibe/artifacts/prototypes/<feature>/extension/<surface>/index.html` with linked `tokens.css` + `surface.css`. One HTML per surface.
 7. **State coverage** per interactive element: resting / hover / focus / active / disabled / loading / empty / error. Popup MUST handle "logged out" and "no permissions yet" as first-class states.
 8. **Permission UX** — write `permission-rationale.md` listing each manifest permission with: plain-language rationale, in-UI placement of the rationale, just-in-time prompt copy, fallback when user denies.
 9. **First-run UX** — design the install welcome page (`onboarding.html`) at the OPTIONS-PAGE viewport; max 3 steps; mockup all steps + skip path.
@@ -158,7 +158,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Output contract
 
-Returns mockup bundle at `prototypes/<feature>/extension/` plus a top-level `extension-ui.md` summary.
+Returns mockup bundle at `.supervibe/artifacts/prototypes/<feature>/extension/` plus a top-level `extension-ui.md` summary.
 
 Every output ends with the canonical footer (parsed by PostToolUse hook for the improvement loop):
 
@@ -303,11 +303,11 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 
 - Manifest source: `manifest.json` (MV3 fields: `action.default_popup`, `options_page` / `options_ui`, `side_panel.default_path`, `chrome_url_overrides.newtab`, `permissions[]`, `host_permissions[]`, `content_security_policy.extension_pages`)
 - Surface entry HTML: `src/popup/index.html`, `src/options/index.html`, `src/side-panel/index.html`, `src/newtab/index.html`
-- Design-system tokens: `prototypes/_design-system/tokens.css`, `src/styles/tokens.css`
+- Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `src/styles/tokens.css`
 - Viewport preset: `templates/viewport-presets/chrome-extension.json`
 - Stack agents (handoff partners): `agents/stacks/chrome-extension/chrome-extension-architect.md`, `agents/stacks/chrome-extension/chrome-extension-developer.md`
-- Mockup output dir: `prototypes/<feature>/extension/{popup,options,side-panel,newtab}/`
-- Permission rationale notes: `docs/permissions.md`, `prototypes/<feature>/permission-rationale.md`
+- Mockup output dir: `.supervibe/artifacts/prototypes/<feature>/extension/{popup,options,side-panel,newtab}/`
+- Permission rationale notes: `.supervibe/artifacts/permissions.md`, `.supervibe/artifacts/prototypes/<feature>/permission-rationale.md`
 - Prior extension decisions: `.supervibe/memory/decisions/` (search by tag `chrome-extension` or `mv3`)
 
 ## Decision tree (surface choice + interaction policy)

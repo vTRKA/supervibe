@@ -80,6 +80,6 @@ test("operational design system is the canonical token and component source", as
   }
 
   const rule = await readFile("rules/design-system-governance.md", "utf8");
-  assert.match(rule, /prototypes\/_design-system/);
+  assert.match(rule, /\.supervibe\/artifacts\/prototypes\/_design-system/);
   assert.match(rule, /pre-write-prototype-guard/);
 });

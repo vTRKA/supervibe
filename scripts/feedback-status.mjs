@@ -21,7 +21,7 @@ if (values.help) {
 Usage:
   feedback-status.mjs --list
   feedback-status.mjs --progress <id>
-  feedback-status.mjs --resolve <id> --resolution prototypes|mockups|presentations/<slug>/feedback-resolutions/<id>.md
+  feedback-status.mjs --resolve <id> --resolution .supervibe/artifacts/<prototypes|mockups|presentations>/<slug>/feedback-resolutions/<id>.md
   feedback-status.mjs --reject <id>`);
   process.exit(0);
 }

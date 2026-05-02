@@ -28,15 +28,15 @@ Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, 
 
 1. **Review before export.** A `.pptx` is produced only after the user approves the HTML slide preview or an existing deck spec.
 2. **One question at a time.** If audience, outcome, source materials, length, or language is unclear, ask one focused question with `Step N/M:`.
-3. **Design-system reuse.** If `prototypes/_design-system/manifest.json` is approved, use its tokens and component language. If deck visuals require new tokens, request a design-system extension instead of inventing a parallel style.
-4. **Reference-aware.** Use web/reference research when the deck category benefits from current visual examples. Record URLs and extraction notes in `presentations/<slug>/references.md`.
+3. **Design-system reuse.** If `.supervibe/artifacts/prototypes/_design-system/manifest.json` is approved, use its tokens and component language. If deck visuals require new tokens, request a design-system extension instead of inventing a parallel style.
+4. **Reference-aware.** Use web/reference research when the deck category benefits from current visual examples. Record URLs and extraction notes in `.supervibe/artifacts/presentations/<slug>/references.md`.
 5. **Media capability-aware.** Before promising video, GIF, or generated motion deliverables, run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json`. If video tooling is unavailable, use storyboard frames, animated HTML preview, poster-frame sequences, SVG/Lottie specs, or static visual metaphors.
 6. **Feedback is stateful.** Read open feedback with `npm run feedback:status`, resolve each item with `node scripts/feedback-status.mjs --resolve <id> --resolution <path>`, and do not rework already resolved feedback unless the user reopens it.
 
 ## Directory layout
 
 ```text
-presentations/<slug>/
+.supervibe/artifacts/presentations/<slug>/
   brief.md
   references.md
   storyboard.md
@@ -53,11 +53,11 @@ presentations/<slug>/
 
 1. **Intake.** Capture deck type, audience, desired action, source materials, language, slide count, deadline, and final destination. Ask one missing item at a time.
 2. **Research.** Search project memory and, when useful, the web for 5-10 relevant references. Record what to borrow and what to avoid.
-3. **Design alignment.** Reuse `prototypes/_design-system/` if present. If missing, ask whether to run `/supervibe-design` first or create a presentation-only direction.
+3. **Design alignment.** Reuse `.supervibe/artifacts/prototypes/_design-system/` if present. If missing, ask whether to run `/supervibe-design` first or create a presentation-only direction.
 4. **Storyboard.** Write slide-by-slide intent: title, message, evidence, visual, speaker note, and transition.
 5. **Deck spec.** Fill `deck.json` using `templates/presentation/deck-spec.json`.
 6. **HTML preview.** Build `preview/index.html` so the user can inspect slides in a browser with the feedback overlay.
-7. **Preview server.** Start `node scripts/preview-server.mjs --root presentations/<slug>/preview --label "<slug> deck"`.
+7. **Preview server.** Start `node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --label "<slug> deck"`.
 8. **Feedback prompt.** After sharing the URL, ask:
 
 ```markdown
@@ -74,8 +74,8 @@ What do we do next?
 ```
 
 9. **Revision loop.** Apply feedback in small rounds. For browser feedback, write a resolution note under `feedback-resolutions/<id>.md` and mark the item resolved.
-10. **Approval marker.** On explicit approval, write `presentations/<slug>/.approval.json` with status, approvedAt, approvedBy, slide count, feedback rounds, and preview URL.
-11. **PPTX export.** Run `node scripts/build-presentation.mjs --input presentations/<slug>/deck.json --output presentations/<slug>/export/<slug>.pptx`.
+10. **Approval marker.** On explicit approval, write `.supervibe/artifacts/presentations/<slug>/.approval.json` with status, approvedAt, approvedBy, slide count, feedback rounds, and preview URL.
+11. **PPTX export.** Run `node scripts/build-presentation.mjs --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx`.
 12. **Google Drive handoff.** Fill `google-drive-handoff.md` from the template. If an authenticated Drive integration exists in the host project, use it; otherwise prepare a drive-ready manifest with file path, title, owner, folder target, and upload steps.
 
 ## Output contract
@@ -83,12 +83,12 @@ What do we do next?
 ```markdown
 === Presentation Deck ===
 Slug:           <slug>
-Location:       presentations/<slug>/
+Location:       .supervibe/artifacts/presentations/<slug>/
 Slides:         <count>
 Preview URL:    http://localhost:NNNN
 Approval:       draft | approved
-Export:         presentations/<slug>/export/<slug>.pptx | pending
-Drive handoff:  presentations/<slug>/google-drive-handoff.md | pending
+Export:         .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx | pending
+Drive handoff:  .supervibe/artifacts/presentations/<slug>/google-drive-handoff.md | pending
 
 Confidence: <N>.<dd>/10
 Override:   <true|false>

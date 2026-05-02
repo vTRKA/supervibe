@@ -119,8 +119,8 @@ test('server reports active SSE clients count', async () => {
 });
 
 test('derivePreviewArtifactSlug supports design preview roots', () => {
-  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/prototypes/checkout/index.html'), 'checkout');
-  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/mockups/landing/index.html'), 'mockup:landing');
-  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/presentations/investor/preview/index.html'), 'presentation:investor');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/.supervibe/artifacts/prototypes/checkout/index.html'), 'checkout');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/.supervibe/artifacts/mockups/landing/index.html'), 'mockup:landing');
+  assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/.supervibe/artifacts/presentations/investor/preview/index.html'), 'presentation:investor');
   assert.strictEqual(derivePreviewArtifactSlug('/workspace/repo/public/index.html'), 'unknown');
 });

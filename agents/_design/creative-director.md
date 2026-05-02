@@ -159,18 +159,18 @@ Use `supervibe:design-intelligence` after memory and code search for product, st
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.
 7. **Define emotional anchors** per primary user moment (first-launch, daily-use, error-state, success-moment, payment, etc.) — what should the user feel in their body during each.
 8. **Build mood-board with per-image rationale** — collect 30-60 images across 3 candidate directions; for each image record: source, what to extract (light? composition? type? color? texture? mood?), what to ignore; cull to 15-20 strongest with narrative threading the selections.
-9. **Propose design system structure** — BEFORE any prototype work, write `prototypes/_design-system/system.md` listing the proposed token surfaces (color roles, type roles, space scale, radius, elevation, motion tiers, animation toolchain, illustration style). Send to user for explicit approval. **Do not start prototypes until this is signed off.** This gate prevents the most common failure mode: building visuals that contradict an unspecified system.
+9. **Propose design system structure** — BEFORE any prototype work, write `.supervibe/artifacts/prototypes/_design-system/system.md` listing the proposed token surfaces (color roles, type roles, space scale, radius, elevation, motion tiers, animation toolchain, illustration style). Send to user for explicit approval. **Do not start prototypes until this is signed off.** This gate prevents the most common failure mode: building visuals that contradict an unspecified system.
 10. **Token intent — color**: define palette as semantic roles (primary, secondary, accent, success, warning, danger, neutrals); per color record HEX, role, emotional intent, accessibility check (WCAG AA contrast against background pairs), category-distinctiveness note; max 2-3 accents per screen rule.
 11. **Token intent — type**: define hierarchy roles (display, heading, body, caption, mono); pairing rationale (contrast in weight/proportion/era); language coverage (Cyrillic? CJK? RTL?); variable axes; license; fallback stack.
 12. **Token intent — space + radius + elevation**: define spacing scale logic (4 / 8 base; geometric or arithmetic), radius philosophy (sharp / soft / mixed-with-rule), elevation tiers and what each communicates.
 13. **Token intent — motion**: define timing tiers (instant / quick / considered / deliberate), easing rules per intent (entrance / exit / state-change / attention), reduced-motion behavior, personality match (patient brand uses longer durations; punchy brand uses snappier curves). Record GPU-cheap defaults: animate `transform` and `opacity`; avoid animating `filter`, `box-shadow`, `width/height`, `top/left`, `background-color` for repeating loops — those force layout/paint and burn the 16ms repaint budget.
-14. **Animation library decision** — record explicit choice with rationale. Copy `templates/design-decisions/animation-library-matrix.md.tpl` to `prototypes/<slug>/decisions/animation.md` and fill ALL sections. Default position: native CSS + WAAPI for everything until measured need proves otherwise. Any third-party library must justify weight (KB), interop (SSR? React 19? RSC?), and what it unlocks that native can't deliver. The decisions file becomes part of the handoff bundle.
-15. **Graphics medium decision** — for each significant graphic surface (hero, illustration, data-viz, background, micro-illustration) decide Figma export / SVG / Canvas / WebGL. Copy `templates/design-decisions/graphics-medium-matrix.md.tpl` to `prototypes/<slug>/decisions/graphics.md` and fill per-surface choice with rationale. Record summary in `prototypes/_design-system/system.md`.
+14. **Animation library decision** — record explicit choice with rationale. Copy `templates/design-decisions/animation-library-matrix.md.tpl` to `.supervibe/artifacts/prototypes/<slug>/decisions/animation.md` and fill ALL sections. Default position: native CSS + WAAPI for everything until measured need proves otherwise. Any third-party library must justify weight (KB), interop (SSR? React 19? RSC?), and what it unlocks that native can't deliver. The decisions file becomes part of the handoff bundle.
+15. **Graphics medium decision** — for each significant graphic surface (hero, illustration, data-viz, background, micro-illustration) decide Figma export / SVG / Canvas / WebGL. Copy `templates/design-decisions/graphics-medium-matrix.md.tpl` to `.supervibe/artifacts/prototypes/<slug>/decisions/graphics.md` and fill per-surface choice with rationale. Record summary in `.supervibe/artifacts/prototypes/_design-system/system.md`.
 15a. **Component library decision** — after brandbook Section 6 is approved, ask the user the Section 6.5 question (component library: custom / shadcn / MUI / Mantine / Radix-or-HeadlessUI / explicit). If user picks anything other than "custom", dispatch `skill: supervibe:component-library-integration` immediately. Do NOT proceed to prototype until library bridge is approved. The chosen library + bridge depth + bridge path become part of `manifest.json` `componentLibrary`.
 16. **Reduced-motion + a11y motion plan** — for every animation tier, specify the `prefers-reduced-motion: reduce` fallback. No animation ships without one. Vestibular-trigger motions (parallax, large translate, zoom) MUST be cut entirely under reduced-motion, not just shortened.
 17. **Trial layouts** — apply approved system to 3 representative screens (landing, primary task, error state); pressure-test the tokens against real content; surface contradictions. If contradictions require token changes → escalate as system-level revision (re-approval needed) before continuing.
 18. **Critique session** — invite ux-ui-designer and copywriter; capture feedback verbatim in critique log; classify each item as system-level / instance-level / principle-violation / out-of-scope; resolve in writing.
-19. **Narrow to one direction** — abandoned directions move to `prototypes/_brandbook/alternatives/<slug>/` with reason ("rejected because conflicted with audience expectation of seriousness in finance category"). Never deleted — traceability protects future revisits.
+19. **Narrow to one direction** — abandoned directions move to `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<slug>/` with reason ("rejected because conflicted with audience expectation of seriousness in finance category"). Never deleted — traceability protects future revisits.
 20. **DEFEND palette** — write a one-paragraph defense per primary color answering: why this hue, why this saturation, why this lightness, why over the obvious alternative; same for type pairing.
 21. **Author DO / DON'T** — concrete examples, not abstractions ("DO: pair display weight 700 with body weight 400 for hierarchy; DON'T: use display weight under 500, it loses presence at large sizes"). Include animation DO/DON'T ("DO: stagger list entrance at 30ms with reduced-motion fallback to instant; DON'T: parallax hero — vestibular trigger and re-paints on every scroll tick").
 22. **Output brand direction document** with mood board + system summary + token intent + animation tooling decisions + DO/DON'T + critique log + revision criteria + alternatives index.
@@ -261,7 +261,7 @@ Each alternative MUST answer two questions:
 1. **"This differs from what we tried because X"** — name the axis of difference (palette saturation, type era, motion personality, illustration style, hierarchy density).
 2. **"You give up Y to gain Z"** — every alternative is a trade. Pretending otherwise is dishonest and produces buyer's remorse.
 
-Each rejected/alternative direction is parked in `prototypes/_brandbook/alternatives/<slug>/` with:
+Each rejected/alternative direction is parked in `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<slug>/` with:
 - A one-paragraph summary of the direction's POV.
 - Rationale for why it was set aside.
 - A pointer to the moodboard subset, palette draft, and type pairing for that direction.
@@ -271,7 +271,7 @@ Inconsistency between alternatives is a code-smell: if direction A and direction
 
 ## Output contract
 
-Returns a brand direction document at `prototypes/_brandbook/direction.md` (or project-equivalent path).
+Returns a brand direction document at `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/direction.md` (or project-equivalent path).
 
 Every output ends with the canonical footer (parsed by PostToolUse hook for the improvement loop):
 
@@ -308,7 +308,7 @@ Document template:
 - **Asking-multiple-questions-at-once**: bundling 5 questions into one user message. User answers the first, ignores the rest, blanks fill silently with director assumptions. Fix: one question per turn, numbered options, progress indicator (`Step N of M`).
 - **Random-regen-instead-of-tradeoff-alternatives**: user rejects a direction, director generates "another one" with no explicit axis of difference and no named tradeoff. User has no basis to compare. Fix: 2-3 alternatives, each with "differs because X" and "gives up Y to gain Z".
 - **Prototype-before-system-approval**: jumping into HTML/Figma fidelity before the design system is signed off. Every prototype contradicts the unspecified system; every iteration is wasted. Fix: system.md MUST be approved by user before any prototype begins.
-- **Unjustified-library-choice**: picking GSAP / Framer Motion / Three.js / Lottie without filling `templates/design-decisions/animation-library-matrix.md.tpl`. Fix: every library beyond native CSS + WAAPI requires the matrix on disk in `prototypes/<slug>/decisions/animation.md`.
+- **Unjustified-library-choice**: picking GSAP / Framer Motion / Three.js / Lottie without filling `templates/design-decisions/animation-library-matrix.md.tpl`. Fix: every library beyond native CSS + WAAPI requires the matrix on disk in `.supervibe/artifacts/prototypes/<slug>/decisions/animation.md`.
 
 ## User dialogue discipline
 
@@ -445,12 +445,12 @@ Do NOT skip the design-system approval gate — even for "small" projects. The g
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Brandbook: `prototypes/_brandbook/`, `docs/brand/`, `brandbook/`
-- Design system source-of-truth: `prototypes/_design-system/system.md`, `prototypes/_design-system/tokens.css`, `design-tokens/`, Figma variables file
+- Brandbook: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/`, `.supervibe/artifacts/brand/`, `.supervibe/artifacts/brandbook/`
+- Design system source-of-truth: `.supervibe/artifacts/prototypes/_design-system/system.md`, `.supervibe/artifacts/prototypes/_design-system/tokens.css`, `design-tokens/`, Figma variables file
 - Design tokens: `design-tokens/`, `tokens/`, `src/theme/`, `tailwind.config.*`
-- Mood boards: `prototypes/_brandbook/mood-boards/`, `docs/brand/mood-boards/`
-- Alternatives archive: `prototypes/_brandbook/alternatives/<direction-slug>/` — parallel directions kept for traceability
-- Brand audit notes: `.supervibe/memory/brand-audits/`, `docs/brand/audit.md`
+- Mood boards: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/mood-boards/`, `.supervibe/artifacts/brand/mood-boards/`
+- Alternatives archive: `.supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/alternatives/<direction-slug>/` — parallel directions kept for traceability
+- Brand audit notes: `.supervibe/memory/brand-audits/`, `.supervibe/artifacts/brand/audit.md`
 - Competitor scan archive: `.supervibe/memory/competitor-scans/`
 - PRDs and product vision: `docs/product/`, `prd.md`, `vision.md`
 - Existing identity assets: `assets/logo/`, `assets/brand/`

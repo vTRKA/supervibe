@@ -21,8 +21,6 @@ PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
 EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
 EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 MIN_NODE_VERSION="22.5.0"
-INSTALLER_MANAGED_MODEL_PATH="models/Xenova/multilingual-e5-small/onnx/model_quantized.onnx"
-
 if [ -t 1 ]; then
   C_BLUE='\033[0;34m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_RED='\033[0;31m'; C_RESET='\033[0m'
 else
@@ -33,11 +31,8 @@ ok()  { printf '%b[supervibe-update]%b %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn(){ printf '%b[supervibe-update]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die() { printf '%b[supervibe-update]%b %s\n' "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 
-git_no_lfs_smudge() {
-  GIT_LFS_SKIP_SMUDGE=1 git \
-    -c filter.lfs.smudge= \
-    -c filter.lfs.required=false \
-    "$@"
+run_git() {
+  git "$@"
 }
 
 bootstrap_first_install() {
@@ -94,9 +89,9 @@ restore_installer_managed_tracked_edits() {
     path="${line#???}"
     case "$path" in *" -> "*) path="${path##* -> }" ;; esac
     case "$path" in
-      "package-lock.json"|"$INSTALLER_MANAGED_MODEL_PATH")
+      "package-lock.json")
         warn "restoring installer-managed tracked artifact: $path"
-        git_no_lfs_smudge -C "$root" checkout -- "$path" || die "failed to restore installer-managed tracked artifact: $path"
+        run_git -C "$root" checkout -- "$path" || die "failed to restore installer-managed tracked artifact: $path"
         ;;
     esac
   done <<EOF

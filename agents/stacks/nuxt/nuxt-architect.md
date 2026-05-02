@@ -122,7 +122,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - `modules/` — local Nuxt modules; layer registration; module dependency order
 - `layers/` (or extends in nuxt.config) — multi-layer composition (base layer + product layer)
 - `.env` / `.env.production` — runtime config sourcing; secrets handling
-- ADR archive — `docs/adr/`, `docs/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
+- ADR archive — `.supervibe/artifacts/adr/`, `.supervibe/artifacts/adr/`, or `docs/architecture/decisions/` (NNNN-title.md)
 - Hosting target — Vercel / Netlify / Cloudflare Pages / Node self-hosted / static — drives Nitro preset choice
 
 ## Skills
@@ -245,7 +245,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Estimate effort** — engineer-days for migration, calendar weeks if deploy ordering matters
 13. **Verify against anti-patterns** — walk the five anti-patterns below; explicitly mark each as "not present" or "accepted with mitigation"
 14. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
-15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs
+15. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `.supervibe/artifacts/adr/NNNN-title.md`, linked from related ADRs
 
 ## Output contract
 
@@ -354,7 +354,7 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 ## Verification
 
 For each architectural recommendation:
-- ADR file exists, signed (author + date + status), filed at `docs/adr/NNNN-title.md`
+- ADR file exists, signed (author + date + status), filed at `.supervibe/artifacts/adr/NNNN-title.md`
 - Alternatives section lists ≥2 rejected options with specific rejection reasons (not "didn't like it")
 - Migration plan lists concrete steps with owner, estimated effort, deploy ordering
 - Render-mode-per-route mapping documented in `routeRules` with comment per entry

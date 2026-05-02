@@ -157,31 +157,32 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.doesNotMatch(sh, /SUPERVIBE_COMPAT_INSTALL/, 'bash installer must not branch into reduced compatibility mode');
   assert.doesNotMatch(ps1, /\$CompatInstall/, 'PowerShell installer must not branch into reduced compatibility mode');
   assert.match(sh, /npm ci --no-audit --no-fund/, 'bash installer must not dirty package-lock.json');
-  assert.match(sh, /restore_installer_managed_tracked_edits/, 'bash installer must self-heal package-lock/model drift left by older installer runs');
+  assert.match(sh, /restore_installer_managed_tracked_edits/, 'bash installer must self-heal package-lock drift left by older installer runs');
   assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
 });
 
-test('install and update scripts self-heal installer-managed tracked artifacts before refusing user edits', () => {
+test('install and update scripts self-heal installer-managed package-lock before refusing user edits', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
   const updateSh = readFileSync(UPD_SH, 'utf8');
   const updatePs1 = readFileSync(UPD_PS1, 'utf8');
 
   for (const [name, src] of [['install.sh', sh], ['update.sh', updateSh]]) {
-    assert.match(src, /INSTALLER_MANAGED_MODEL_PATH/, `${name} must know the managed ONNX path`);
-    assert.match(src, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx/, `${name} must self-heal model drift`);
     assert.match(src, /restore_installer_managed_tracked_edits/, `${name} must restore managed tracked artifacts before dirty refusal`);
     assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
-    assert.match(src, /GIT_LFS_SKIP_SMUDGE=1/, `${name} must restore managed artifacts without LFS smudge`);
+    assert.match(src, /package-lock\.json/, `${name} must self-heal package-lock drift`);
+    assert.doesNotMatch(src, /INSTALLER_MANAGED_MODEL_PATH|GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs/i, `${name} must not require repository large-file smudge handling`);
   }
 
   for (const [name, src] of [['install.ps1', ps1], ['update.ps1', updatePs1]]) {
-    assert.match(src, /\$InstallerManagedModelPath/, `${name} must know the managed ONNX path`);
-    assert.match(src, /models\/Xenova\/multilingual-e5-small\/onnx\/model_quantized\.onnx/, `${name} must self-heal model drift`);
     assert.match(src, /Restore-InstallerManagedTrackedEdits/, `${name} must restore managed tracked artifacts before dirty refusal`);
     assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
-    assert.match(src, /SkipLfsSmudge|Invoke-GitNoLfsSmudge/, `${name} must restore managed artifacts without LFS smudge`);
+    assert.match(src, /package-lock\.json/, `${name} must self-heal package-lock drift`);
+    assert.doesNotMatch(src, /\$InstallerManagedModelPath|GIT_LFS_SKIP_SMUDGE|SkipLfsSmudge|Invoke-GitNoLfsSmudge|filter\.lfs|git lfs/i, `${name} must not require repository large-file smudge handling`);
   }
+
+  assert.match(sh, /git -C "\$root" clean -ffdx -e "\$LOCAL_ONNX_MODEL_PATH"/, 'bash installer must preserve an already-downloaded ignored ONNX model during cleanup');
+  assert.match(ps1, /'clean', '-ffdx', '-e', \$LocalOnnxModelPath/, 'PowerShell installer must preserve an already-downloaded ignored ONNX model during cleanup');
 });
 
 test('dead-code lint is stable in installed checkouts', () => {
@@ -202,16 +203,14 @@ test('dead-code lint is stable in installed checkouts', () => {
   assert.doesNotMatch(prePushHook, /npm\s+run\s+check|npm\s+test|node\s+--test/, 'pre-push must not run the full test suite for user/developer pushes');
 });
 
-test('installers skip Git LFS smudge during clone and checkout', () => {
+test('installers use plain git clone and checkout without large-file smudge hooks', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
 
-  assert.match(sh, /GIT_LFS_SKIP_SMUDGE=1/, 'bash installer must not let LFS smudge block clone');
-  assert.match(sh, /git_no_lfs_smudge clone/, 'bash installer must clone with LFS smudge disabled');
-  assert.match(sh, /git_no_lfs_smudge -C "\$TARGET" checkout/, 'bash installer must checkout with LFS smudge disabled');
-  assert.match(ps1, /GIT_LFS_SKIP_SMUDGE/, 'PowerShell installer must not let LFS smudge block clone');
-  assert.match(ps1, /SkipLfsSmudge/, 'PowerShell installer must expose LFS-smudge-free git operations');
-  assert.match(ps1, /Run-Git @\('clone'.*\) 'clone' -SkipLfsSmudge/, 'PowerShell installer must clone with LFS smudge disabled');
+  assert.match(sh, /run_git clone --quiet/, 'bash installer must clone through the normal git path');
+  assert.match(sh, /run_git -C "\$TARGET" checkout --quiet/, 'bash installer must checkout through the normal git path');
+  assert.match(ps1, /Run-Git @\('clone', '--quiet'/, 'PowerShell installer must clone through the normal git path');
+  assert.doesNotMatch(`${sh}\n${ps1}`, /GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs|SkipLfsSmudge/i, 'installers must not depend on repository large-file filters');
 });
 
 test('installers require the ONNX embedding model before registration', () => {
@@ -226,7 +225,7 @@ test('installers require the ONNX embedding model before registration', () => {
   for (const [name, src] of [['install.sh', sh], ['install.ps1', ps1]]) {
     assert.match(src, /required ONNX embedding model/, `${name} must treat the ONNX model as required`);
     assert.match(src, /ensure-onnx-model\.mjs/, `${name} must use the shared ONNX model setup`);
-    assert.doesNotMatch(src, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS/, `${name} must not let users skip the required ONNX model`);
+    assert.doesNotMatch(src, /SUPERVIBE_SKIP_LFS|SUPERVIBE_PREFETCH_LFS|GIT_LFS_SKIP_SMUDGE|filter\.lfs/i, `${name} must not let users skip the required ONNX model or depend on repository large-file filters`);
     assert.doesNotMatch(src, /lazy-fetch/, `${name} must not complete install with lazy model fetch`);
   }
   assert.notEqual(shModelSetup, -1, 'bash installer must call model setup');
@@ -234,11 +233,8 @@ test('installers require the ONNX embedding model before registration', () => {
   assert.ok(shModelSetup < shRegistration, 'bash installer must prepare model before CLI registration');
   assert.ok(ps1ModelSetup < ps1Registration, 'PowerShell installer must prepare model before CLI registration');
   assert.match(modelScript, /MODEL_DOWNLOAD_URL/, 'shared model setup must have a direct HuggingFace source');
-  assert.match(modelScript, /SUPERVIBE_LFS_STALL_TIMEOUT_MS/, 'shared model setup must detect stalled Git LFS');
-  assert.match(modelScript, /SUPERVIBE_MODEL_STALL_TIMEOUT_MS/, 'shared model setup must allow opt-in direct download stall diagnostics');
-  assert.match(modelScript, /stall timeout disabled by default/, 'shared model setup must not interrupt direct downloads by default');
-  assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT_MS|DEFAULT_DOWNLOAD_TIMEOUT_MS|request\.setTimeout/, 'direct model download must not have default stall or absolute time limits');
-  assert.match(modelScript, /rmSync\(incomplete, \{ recursive: true, force: true \}\)/, 'shared model setup must remove incomplete LFS downloads safely');
+  assert.match(modelScript, /no total timeout and no stall timeout/, 'shared model setup must not interrupt direct downloads');
+  assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_STALL_TIMEOUT|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT|DEFAULT_DOWNLOAD_TIMEOUT|request\.setTimeout|setTimeout\(|GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs/i, 'direct model download must not have stall/absolute time limits or repository large-file fallback');
 });
 
 test('install.sh refuses accidental WSL install unless explicitly allowed', () => {

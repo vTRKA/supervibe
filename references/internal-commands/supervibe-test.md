@@ -66,8 +66,8 @@ Auto-discovered from `package.json` — current composition (320 tests + 10 vali
 | 4 | `validate:agent-footers` | Every agent's Output contract has Confidence + Rubric |
 | 5 | `validate:design-skills` | Design skill bodies have feedback prompt + anti-patterns |
 | 6 | `validate:question-discipline` | Interactive agents have dialogue discipline + anti-pattern |
-| 7 | `validate:spec-artifacts` | Specs in `docs/specs/` meet the 10/10 requirements artifact contract |
-| 8 | `validate:plan-artifacts` | Plans in `docs/plans/` meet the 10/10 execution-readiness contract |
+| 7 | `validate:spec-artifacts` | Specs in `.supervibe/artifacts/specs/` meet the 10/10 requirements artifact contract |
+| 8 | `validate:plan-artifacts` | Plans in `.supervibe/artifacts/plans/` meet the 10/10 execution-readiness contract |
 | 9 | `validate:no-deep-refs` | Reference files stay one level deep |
 | 10 | `validate:agent-section-order` | Agent files keep cache-friendly section ordering |
 | 11 | `lint:dead-code` | knip clean (no orphan exports/files) |

@@ -18,12 +18,12 @@ gate, rollback, support owner, and post-release learning.
 Primary path:
 
 ```bash
-/supervibe-loop --plan docs/plans/payment-integration.md
-/supervibe-loop --from-prd docs/specs/checkout.md --dry-run
-/supervibe-loop --atomize-plan docs/plans/payment-integration.md --plan-review-passed
-/supervibe-loop --from-plan docs/plans/payment-integration.md --atomize --dry-run
+/supervibe-loop --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --plan-review-passed
+/supervibe-loop --from-plan .supervibe/artifacts/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
-/supervibe-loop --happy-path --plan docs/plans/payment-integration.md
+/supervibe-loop --happy-path --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --request "finish onboarding design and wire it into app" --max-loops 20
 /supervibe-loop --guided --max-duration 3h
 /supervibe-loop --epic SV-123 --worktree --max-duration 3h
@@ -36,7 +36,7 @@ Primary path:
 /supervibe-loop --completion bash
 /supervibe-loop --create-work-item --interactive
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
-/supervibe-loop --import-tasks docs/plans/example.md --dry-run
+/supervibe-loop --import-tasks .supervibe/artifacts/plans/example.md --dry-run
 /supervibe-loop --import-tasks tasks.md --interactive
 /supervibe-loop --priority --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -55,7 +55,7 @@ Primary path:
 /supervibe-loop --anchor-doctor
 /supervibe-loop --anchor-doctor --fix-derived
 /supervibe-loop --summarize-changes --task task-123 --file src/example.ts --summary "Changed parser"
-/supervibe-loop --plan-waves docs/plans/example.md
+/supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
 /supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --setup-worker-presets
 /supervibe-loop --status --epic example-epic
@@ -67,8 +67,8 @@ Primary path:
 Advanced diagnostics:
 
 ```bash
-/supervibe-loop --readiness --plan docs/plans/payment-integration.md
-/supervibe-loop --atomize-plan docs/plans/payment-integration.md --preview
+/supervibe-loop --readiness --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --preview
 /supervibe-loop --graph --file .supervibe/memory/loops/<run-id>/state.json --format text
 /supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format mermaid
 /supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json
@@ -87,8 +87,8 @@ Advanced diagnostics:
 Plan atomization:
 
 ```bash
-/supervibe-loop --atomize-plan docs/plans/example.md --dry-run
-/supervibe-loop --atomize-plan docs/plans/example.md --plan-review-passed
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --dry-run
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
 ```
 
 Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed`; `--dry-run` previews the graph without writing.
@@ -212,10 +212,10 @@ Execution modes:
 
 ```bash
 /supervibe-loop --dry-run --request "validate integrations"
-/supervibe-loop --guided --plan docs/plans/payment-integration.md
-/supervibe-loop --manual --plan docs/plans/payment-integration.md
-/supervibe-loop --fresh-context --tool codex --plan docs/plans/payment-integration.md
-/supervibe-loop --commit-per-task --fresh-context --tool codex --plan docs/plans/payment-integration.md
+/supervibe-loop --guided --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --manual --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --commit-per-task --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
 ```
 
 ## Contract
@@ -279,11 +279,11 @@ Wave reviews are checkpoints, not default terminal states. If a wave passes and 
 
 ```bash
 npm run supervibe:loop -- --dry-run --request "validate integrations"
-npm run supervibe:loop -- --happy-path --plan docs/plans/example.md
+npm run supervibe:loop -- --happy-path --plan .supervibe/artifacts/plans/example.md
 npm run supervibe:loop -- --dry-run --request "validate integrations" --notify terminal,inbox
 npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
 npm run supervibe:loop -- --create-work-item --title "Fix checkout bug" --template bug --dry-run
-npm run supervibe:loop -- --atomize-plan docs/plans/example.md --preview
+npm run supervibe:loop -- --atomize-plan .supervibe/artifacts/plans/example.md --preview
 npm run supervibe:eval -- --case plan-review-loop
 npm run supervibe:loop -- graph --file .supervibe/memory/loops/<run-id>/state.json --format dot
 npm run supervibe:loop -- doctor --file .supervibe/memory/loops/<run-id>/state.json

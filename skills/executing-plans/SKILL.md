@@ -16,7 +16,7 @@ last-verified: 2026-04-27
 
 ## When to invoke
 
-WHEN a plan exists at `docs/plans/YYYY-MM-DD-<feature>.md` with confidence-scoring ≥9, OR user explicitly says "execute the plan".
+WHEN a plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md` with confidence-scoring ≥9, OR user explicitly says "execute the plan".
 
 If subagents available, prefer `supervibe:subagent-driven-development` for fresh-context per task.
 

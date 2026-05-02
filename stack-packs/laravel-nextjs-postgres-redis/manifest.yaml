@@ -158,13 +158,13 @@ scaffold:
   directories:
     - { path: "backend/", purpose: "Laravel skeleton (composer create-project laravel/laravel backend)" }
     - { path: "frontend/", purpose: "Next.js skeleton (npx create-next-app@latest frontend)" }
-    - { path: "prototypes/", purpose: "HTML prototypes; brandbook in _brandbook/" }
-    - { path: "prototypes/_brandbook/", purpose: "Source-of-truth brandbook tokens + components" }
+    - { path: ".supervibe/artifacts/prototypes/", purpose: "HTML prototypes; brandbook in _.supervibe/artifacts/brandbook/" }
+    - { path: ".supervibe/artifacts/prototypes/_.supervibe/artifacts/brandbook/", purpose: "Source-of-truth brandbook tokens + components" }
     - { path: "docs/", purpose: "PRDs, ADRs, specs, plans" }
-    - { path: "docs/adr/", purpose: "Architecture Decision Records" }
-    - { path: "docs/prd/", purpose: "Product Requirements Documents" }
-    - { path: "docs/specs/", purpose: "Technical specs (output of brainstorming)" }
-    - { path: "docs/plans/", purpose: "Implementation plans (output of writing-plans)" }
+    - { path: ".supervibe/artifacts/adr/", purpose: "Architecture Decision Records" }
+    - { path: ".supervibe/artifacts/prd/", purpose: "Product Requirements Documents" }
+    - { path: ".supervibe/artifacts/specs/", purpose: "Technical specs (output of brainstorming)" }
+    - { path: ".supervibe/artifacts/plans/", purpose: "Implementation plans (output of writing-plans)" }
     - { path: ".github/workflows/", purpose: "GitHub Actions CI" }
 
 post-genesis-actions:

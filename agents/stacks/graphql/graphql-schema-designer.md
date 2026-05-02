@@ -122,7 +122,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Deprecation registry — `@deprecated(reason:)` usages with sunset dates, removal timeline, client migration tracking
 - Schema CI — composition check (`rover supergraph compose`), breaking-change check (`graphql-inspector diff`), schema-publish gate
 - Query complexity rules — depth limit (commonly 10-15), cost analysis plugin, max alias count, max directive count
-- ADR archive — `docs/adr/`, `docs/adr/`, prior decisions on federation, error shape, pagination
+- ADR archive — `.supervibe/artifacts/adr/`, `.supervibe/artifacts/adr/`, prior decisions on federation, error shape, pagination
 
 ## Skills
 
@@ -314,7 +314,7 @@ Before producing any artifact or making any structural recommendation:
 13. **Estimate effort** — engineer-days for schema change, calendar weeks if deprecation cycle is involved, on-call burden during transition
 14. **Verify against anti-patterns** — walk the six anti-patterns below; explicitly mark each as "not present" or "accepted with mitigation"
 15. **Confidence score** with `supervibe:confidence-scoring` — must be ≥9 to deliver; if <9, name the missing evidence and request it
-16. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `docs/adr/NNNN-title.md`, linked from related ADRs and from the affected SDL files
+16. **Deliver ADR** — signed (author, date, status: proposed/accepted), filed in `.supervibe/artifacts/adr/NNNN-title.md`, linked from related ADRs and from the affected SDL files
 
 ## Output contract
 
@@ -431,7 +431,7 @@ Use `Шаг N/M:` when the conversation is in Russian. Use `(recommended)` in En
 ## Verification
 
 For each schema recommendation:
-- ADR file exists, signed (author + date + status), filed at `docs/adr/NNNN-title.md`
+- ADR file exists, signed (author + date + status), filed at `.supervibe/artifacts/adr/NNNN-title.md`
 - Alternatives section lists ≥2 rejected options with specific rejection reasons
 - SDL diff included in the ADR with each change classified (BREAKING / additive / deprecation)
 - Federation composition check (`rover supergraph compose`) passing if federated; output captured verbatim

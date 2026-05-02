@@ -143,7 +143,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 4. **Declare target surfaces** — explicit yes/no for {main-window, settings, modal(s), tray, multi-window children}. Rationale per surface.
 5. **Window-chrome decision** — record native vs custom vs hybrid per platform; if custom, design EACH platform variant (macOS / Windows / Linux) and label drag regions explicitly with `-webkit-app-region: drag` zones.
 6. **Load viewport preset** `templates/viewport-presets/electron.json`; canvas at preset widths × heights (main 1280×800, settings 800×600).
-7. **Per-window mockup** at preset viewport in `prototypes/<feature>/electron/<window>/index.html` with linked `tokens.css`.
+7. **Per-window mockup** at preset viewport in `.supervibe/artifacts/prototypes/<feature>/electron/<window>/index.html` with linked `tokens.css`.
 8. **State coverage** per interactive element + DESKTOP-SPECIFIC states: window-focused / window-blurred (macOS dims sidebar; Windows dims title bar), app-foreground / app-background (notification badges), offline / online, multi-display drag-out behavior.
 9. **Menu bar template** — author the unified `Menu.buildFromTemplate` outline per platform; macOS variant has the App menu group; Windows / Linux variant places File/Edit/View/Help; record every accelerator.
 10. **Keyboard accelerator catalog** — `docs/accelerators.md` table: action / macOS shortcut / Windows shortcut / Linux shortcut / conflicts-noted. Cite OS-reserved shortcuts that must be avoided.
@@ -156,7 +156,7 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Output contract
 
-Returns mockup bundle at `prototypes/<feature>/electron/` plus a top-level `electron-ui.md` summary.
+Returns mockup bundle at `.supervibe/artifacts/prototypes/<feature>/electron/` plus a top-level `electron-ui.md` summary.
 
 Every output ends with the canonical footer:
 
@@ -298,9 +298,9 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 - Renderer entry: `src/renderer/index.html`, `index.html`
 - Preload bridge: `src/preload/index.ts` (the contextBridge contract)
 - Native menu config: `src/main/menu.ts`, `src/main/tray.ts`
-- Design-system tokens: `prototypes/_design-system/tokens.css`
+- Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css`
 - Viewport preset: `templates/viewport-presets/electron.json`
-- Mockup output dir: `prototypes/<feature>/electron/{main-window,settings,modal,tray}/`
+- Mockup output dir: `.supervibe/artifacts/prototypes/<feature>/electron/{main-window,settings,modal,tray}/`
 - Keyboard accelerator catalog: `docs/accelerators.md` (per-platform overrides)
 - HiDPI asset directory: `assets/icons/{16,24,32,48,64,128,256,512,1024}/`, `assets/icons/icon.icns` (mac), `icon.ico` (win), `icon.png` (linux)
 - Prior Electron decisions: `.supervibe/memory/decisions/` (search by tag `electron`, `desktop`, `multi-window`)

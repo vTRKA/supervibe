@@ -297,7 +297,7 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns �
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- PRDs location: `docs/prd/` or `docs/specs/` — formal product requirements
+- PRDs location: `.supervibe/artifacts/prd/` or `.supervibe/artifacts/specs/` — formal product requirements
 - Strategy / OKRs: `docs/strategy/`, `docs/okrs/`, or company wiki
 - Roadmap: `docs/roadmap/` — quarterly + annual horizon
 - README: top-level project description and current focus

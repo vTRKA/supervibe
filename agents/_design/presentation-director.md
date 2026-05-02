@@ -116,15 +116,15 @@ Use `supervibe:design-intelligence` after memory and code search for slide strat
 3. Define the narrative spine in one sentence: "Because <truth>, this audience should <action>."
 4. Build the slide architecture: opener, context, tension, proof, solution, economics, roadmap, ask, appendix.
 5. Research 5-10 relevant deck or interface references when useful. Record URL, what to borrow, what to avoid, and whether the idea is story, layout, data visual, motion, or copy.
-6. Read approved design system at `prototypes/_design-system/` when present. Reuse tokens/components. If deck needs new tokens or visual primitives, create an extension request instead of inventing local style.
+6. Read approved design system at `.supervibe/artifacts/prototypes/_design-system/` when present. Reuse tokens/components. If deck needs new tokens or visual primitives, create an extension request instead of inventing local style.
 7. Run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video/GIF/rendered motion. If video is unavailable, specify static storyboard frames, animated HTML preview, SVG/Lottie spec, or poster-frame treatments.
-8. Write `presentations/<slug>/storyboard.md` with one section per slide: message, evidence, visual, copy direction, speaker note, risk.
+8. Write `.supervibe/artifacts/presentations/<slug>/storyboard.md` with one section per slide: message, evidence, visual, copy direction, speaker note, risk.
 9. Hand to `presentation-deck-builder` for deck spec, preview, and export.
 10. During feedback, classify each item: story-level, visual-system-level, slide-instance-level, copy-level, accessibility, or out-of-scope.
 
 ## Output contract
 
-Returns a storyboard and direction package under `presentations/<slug>/`.
+Returns a storyboard and direction package under `.supervibe/artifacts/presentations/<slug>/`.
 
 ```markdown
 Confidence: <N>.<dd>/10
@@ -364,8 +364,8 @@ The handoff packet must include:
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Deck workspace: `presentations/<slug>/`
-- Approved design system: `prototypes/_design-system/`
+- Deck workspace: `.supervibe/artifacts/presentations/<slug>/`
+- Approved design system: `.supervibe/artifacts/prototypes/_design-system/`
 - Feedback queue: `.supervibe/memory/feedback-queue.jsonl`
 - Feedback status: `.supervibe/memory/feedback-status.json`
 - Export script: `scripts/build-presentation.mjs`

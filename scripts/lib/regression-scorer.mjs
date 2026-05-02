@@ -75,8 +75,8 @@ async function main() {
   const root = resolveSupervibePluginRoot();
   const baselinePhase = args[baselineIdx + 1];
   const currentPhase = args[currentIdx + 1];
-  const baselinePath = join(root, 'docs', 'audits', 'regression-suite', baselinePhase);
-  const currentPath = join(root, 'docs', 'audits', 'regression-suite', currentPhase);
+  const baselinePath = join(root, '.supervibe', 'audits', 'regression-suite', baselinePhase);
+  const currentPath = join(root, '.supervibe', 'audits', 'regression-suite', currentPhase);
 
   const { regressions, compared } = await diffPhases({ baselinePath, currentPath });
   console.log(`Compared ${compared} task outputs (${baselinePhase} vs ${currentPhase})`);

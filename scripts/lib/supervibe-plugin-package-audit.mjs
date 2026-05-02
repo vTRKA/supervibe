@@ -364,20 +364,28 @@ function validateInstallUpdateSmoke(scripts, issues) {
     "update.sh": scripts.updateSh,
     "update.ps1": scripts.updatePs1,
   })) {
-    if (!/installer-managed tracked artifact/.test(source || "") || !/model_quantized\.onnx/.test(source || "")) {
+    if (!/installer-managed tracked artifact/.test(source || "") || !/package-lock\.json/.test(source || "")) {
       addIssue(
         issues,
         "managed-artifact-self-heal-missing",
-        `${label} must self-heal installer-managed ONNX/package-lock drift before refusing user edits`,
+        `${label} must self-heal installer-managed package-lock drift before refusing user edits`,
         "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
       );
     }
+  }
+  if (!/git -C "\$root" clean -ffdx -e "\$LOCAL_ONNX_MODEL_PATH"/.test(scripts.installSh || "") || !/'clean', '-ffdx', '-e', \$LocalOnnxModelPath/.test(scripts.installPs1 || "")) {
+    addIssue(
+      issues,
+      "onnx-clean-preserve-missing",
+      "install scripts must preserve the ignored local ONNX model during managed checkout cleanup",
+      "Exclude the ready local model from git clean so updates do not force unnecessary re-downloads."
+    );
   }
   if (!/installer-managed tracked artifact/.test(scripts.upgradeMjs || "") || !/partitionTrackedPorcelainLines/.test(scripts.upgradeMjs || "")) {
     addIssue(
       issues,
       "managed-artifact-self-heal-missing",
-      "scripts/supervibe-upgrade.mjs must self-heal installer-managed ONNX/package-lock drift before refusing user edits",
+      "scripts/supervibe-upgrade.mjs must self-heal installer-managed package-lock drift before refusing user edits",
       "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
     );
   }

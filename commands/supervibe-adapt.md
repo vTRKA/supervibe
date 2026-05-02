@@ -22,7 +22,7 @@ The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode s
    ```bash
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --diff-summary --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
    ```
-   The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute.
+   The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, computes `related-rules` closure candidates, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute. Dry-run is read-only by default; use `--refresh-memory-index` only when you intentionally want to rewrite `.supervibe/memory/index.json` during planning.
 
 1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in the resolved Supervibe plugin root under `agents/`, `rules/`, or `skills/`.
 
@@ -31,6 +31,7 @@ The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode s
    - **Upstream-only change** (project file unchanged from prior version baseline) → propose direct update.
    - **Both changed** (project has local customizations + upstream changed) → propose 3-way merge with conflict markers, ask user to resolve manually.
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
+   - **Related-rule closure add** (installed rule references upstream rule missing from selected profile) → propose an `ADD` candidate, showing `mandatory: true/false` and the exact include path.
 
 3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
 
@@ -49,7 +50,7 @@ The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode s
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
    ```
 
-6. **Update metadata.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version and write `baseline.pluginVersion`. If the dry-run reports `UPDATES: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
+6. **Update metadata.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version and write `baseline.pluginVersion`. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 

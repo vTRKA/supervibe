@@ -1,7 +1,7 @@
 # Headless Library Mapping — <library-name>
 
 > Generated: <ISO-date>
-> Source baseline: prototypes/_design-system/components/
+> Source baseline: .supervibe/artifacts/prototypes/_design-system/components/
 
 | Our baseline | Headless primitive | Notes |
 |---|---|---|

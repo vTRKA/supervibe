@@ -1,5 +1,5 @@
 /* Supervibe design-system token catalog.
-   Copy selected groups into prototypes/_design-system/tokens.css.
+   Copy selected groups into .supervibe/artifacts/prototypes/_design-system/tokens.css.
    Values below are placeholders; brandbook must replace them with approved values. */
 
 :root {
