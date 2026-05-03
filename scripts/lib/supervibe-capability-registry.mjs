@@ -278,8 +278,12 @@ function readPackageJson(rootDir) {
   }
 }
 
-export function getCapabilityRouteHint(intent) {
-  const capability = CAPABILITY_DEFINITIONS.find((entry) => entry.intents.includes(intent));
+export function getCapabilityRouteHint(intentOrCommand) {
+  const value = String(intentOrCommand || "").trim();
+  const command = value.startsWith("/") ? value.split(/\s+/)[0] : null;
+  const capability = CAPABILITY_DEFINITIONS.find((entry) => {
+    return entry.intents.includes(value) || (command && entry.commands.includes(command));
+  });
   if (!capability) return null;
   return {
     capabilityId: capability.id,

@@ -34,6 +34,8 @@ test("routes Russian and English design intents without adding lookup commands",
   assert.equal(design.intent, "design_new");
   assert.equal(design.command, "/supervibe-design");
   assert.equal(design.skill, "supervibe:brandbook");
+  assert.equal(design.agentContract.ownerAgentId, "supervibe-orchestrator");
+  assert.ok(design.agentProfile.requiredAgentIds.includes("creative-director"));
   assert.match(design.nextQuestion, /creative direction.*brandbook.*(prototype|прототип)/i);
   assert.equal(design.requiredSafety.includes("creative-direction-first"), true);
 
@@ -42,6 +44,7 @@ test("routes Russian and English design intents without adding lookup commands",
   });
   assert.equal(englishDesign.intent, "design_new");
   assert.equal(englishDesign.skill, "supervibe:brandbook");
+  assert.equal(englishDesign.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.match(englishDesign.nextQuestion, /creative direction.*brandbook.*prototype/i);
 
   const audit = routeTriggerRequest("run a design audit", {

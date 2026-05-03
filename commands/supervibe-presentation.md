@@ -56,7 +56,7 @@ design-system, memory, code, or design-intelligence evidence.
 Ask only one question per message:
 
 ```markdown
-**Step 1/5: deck outcome.**
+**Step N/M: deck outcome.**
 What must this presentation make the audience do?
 
 - Approve budget - strongest for investor or internal decision decks

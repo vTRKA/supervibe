@@ -45,6 +45,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     target,
     flowType,
     requestedExecutionMode,
+    slug,
     mode,
     initialDecisions,
     referenceSources: intake.referenceSources ?? [],
@@ -62,6 +63,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`REFERENCE_SCOPE_REQUIRED: ${intake.needsReferenceSourceScopeQuestion === true}`);
     console.log(`OLD_ARTIFACT_SCOPE_REQUIRED: ${intake.needsOldArtifactScopeQuestion === true}`);
     console.log(`EXECUTION_MODE: ${plan.executionStatus.executionMode}`);
+    console.log(`RECEIPT_GATE: ${plan.executionStatus.receiptGate}`);
+    console.log(`AGENTS_INSTALLED: ${plan.executionStatus.agentsInstalled === true}`);
+    console.log(`HOST_DISPATCH_AVAILABLE: ${plan.executionStatus.hostDispatchAvailable === true}`);
+    console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
+    console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
+    console.log(`MISSING_RUNTIME_PROOFS: ${(plan.executionStatus.missingRuntimeProofs || []).map((proof) => `${proof.subjectId}@${proof.stageId}`).join(",") || "none"}`);
     console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
     console.log(`AGENT_PROVISIONING_READY: ${plan.executionStatus.provisioningPlan?.readyToApply === true}`);
     if (plan.executionStatus.provisioningPlan?.applyCommand) {

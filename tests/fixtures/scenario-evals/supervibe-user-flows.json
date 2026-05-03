@@ -59,8 +59,8 @@
     "id": "codex-target-genesis",
     "request": "/supervibe-genesis --host codex",
     "expected": {
-      "intent": "genesis_setup",
-      "command": "/supervibe-genesis",
+      "intent": "slash_command",
+      "command": "/supervibe-genesis --host codex",
       "requiresDryRun": true,
       "requiresPostDeliveryMenu": true
     },

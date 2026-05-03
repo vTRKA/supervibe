@@ -112,11 +112,19 @@ test("every slash command has a mandatory real-agents profile", () => {
 
   for (const commandId of commandIds) {
     const plan = buildCommandAgentPlan(commandId, { availableAgentIds });
-    assert.equal(plan.executionMode, "real-agents", commandId);
+    assert.equal(plan.executionMode, "agent-dispatch-required", commandId);
+    assert.equal(plan.requestedExecutionMode, "real-agents", commandId);
     assert.equal(plan.ownerAgentId, "supervibe-orchestrator", commandId);
     assert.ok(plan.requiredAgentIds.includes("supervibe-orchestrator"), commandId);
     assert.ok(plan.immediateAgentIds.includes("supervibe-orchestrator"), commandId);
     assert.equal(plan.agentOwnedOutputRequiresReceipts, true, commandId);
+    assert.equal(plan.agentOwnedOutputAllowed, false, commandId);
+    assert.equal(plan.durableWritesAllowed, false, commandId);
+    assert.equal(plan.agentDispatchRequired, true, commandId);
+    assert.equal(plan.receiptGate, "pending-runtime-agent-receipts", commandId);
+    assert.equal(plan.agentsInstalled, true, commandId);
+    assert.equal(plan.agentInvocationsCompleted, false, commandId);
+    assert.equal(plan.agentReceiptsTrusted, false, commandId);
     assert.equal(plan.missingAgents.length, 0, commandId);
   }
 });
@@ -150,16 +158,24 @@ test("command agent plan enforces host dispatch proof policy", () => {
     enforceHostProof: true,
   });
   assert.equal(resolveHostAgentDispatcher("claude").nativeTool, "Task");
-  assert.equal(claude.executionMode, "real-agents");
+  assert.equal(claude.executionMode, "agent-dispatch-required");
+  assert.equal(claude.requestedExecutionMode, "real-agents");
   assert.equal(claude.hostDispatch.status, "supported");
-  assert.equal(claude.durableWritesAllowed, true);
+  assert.equal(claude.durableWritesAllowed, false);
+  assert.equal(claude.agentDispatchRequired, true);
+  assert.equal(claude.receiptGate, "pending-runtime-agent-receipts");
+  assert.equal(claude.agentsInstalled, true);
+  assert.equal(claude.hostDispatchAvailable, true);
+  assert.equal(claude.agentInvocationsCompleted, false);
+  assert.equal(claude.agentReceiptsTrusted, false);
 
   const codex = buildCommandAgentPlan("/supervibe-design", {
     availableAgentIds,
     hostAdapterId: "codex",
     enforceHostProof: true,
   });
-  assert.equal(codex.executionMode, "real-agents");
+  assert.equal(codex.executionMode, "agent-dispatch-required");
+  assert.equal(codex.requestedExecutionMode, "real-agents");
   assert.equal(codex.hostDispatch.nativeTool, "spawn_agent");
   assert.equal(codex.hostDispatch.invocationProof, "codex-spawn-agent");
 
@@ -188,7 +204,8 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
     enforceHostProof: true,
   });
 
-  assert.equal(plan.executionMode, "real-agents");
+  assert.equal(plan.executionMode, "agent-dispatch-required");
+  assert.equal(plan.requestedExecutionMode, "real-agents");
   assert.deepEqual(plan.immediateAgentIds, ["supervibe-orchestrator"]);
   assert.ok(plan.deferredAgentIds.includes("creative-director"));
   assert.equal(plan.stageGate, "design-wizard");
@@ -248,7 +265,8 @@ test("every slash command has codex-safe payloads for every required agent", () 
       enforceHostProof: true,
     });
 
-    assert.equal(plan.executionMode, "real-agents", commandId);
+    assert.equal(plan.executionMode, "agent-dispatch-required", commandId);
+    assert.equal(plan.requestedExecutionMode, "real-agents", commandId);
     assert.equal(plan.codexSpawnPayloads.length, plan.requiredAgentIds.length, commandId);
     for (const spawnPayload of plan.codexSpawnPayloads) {
       assert.deepEqual(Object.keys(spawnPayload.payload).sort(), ["fork_context", "message"], `${commandId}:${spawnPayload.agentId}`);
@@ -272,7 +290,9 @@ test("command-agent-plan CLI prints runtime host plan", () => {
     stdio: ["pipe", "pipe", "pipe"],
   });
   assert.match(claude, /SUPERVIBE_COMMAND_AGENT_PLAN/);
-  assert.match(claude, /EXECUTION_MODE: real-agents/);
+  assert.match(claude, /EXECUTION_MODE: agent-dispatch-required/);
+  assert.match(claude, /DEFAULT_MODE: real-agents/);
+  assert.match(claude, /RECEIPT_GATE: pending-runtime-agent-receipts/);
   assert.match(claude, /HOST_TOOL: Task/);
   assert.match(claude, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
 

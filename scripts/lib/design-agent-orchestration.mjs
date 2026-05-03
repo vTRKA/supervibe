@@ -44,6 +44,7 @@ export function buildDesignAgentPlan({
   pluginRoot = null,
   mode = null,
   requestedExecutionMode = null,
+  slug = null,
   currentWindow = null,
   deviceScaleFactor = null,
   initialDecisions = {},
@@ -155,8 +156,10 @@ export function buildDesignAgentPlan({
   const plan = {
     schemaVersion: 1,
     command: "/supervibe-design",
+    slug,
     target,
     flowType,
+    designSystemStatus,
     requestedExecutionMode: normalizeDesignExecutionMode(requestedExecutionMode || inferExecutionModeFromBrief(text)),
     mode: wizard.mode,
     requiresReceipts: true,
@@ -193,7 +196,16 @@ export function buildDesignWriteGate({ intake = null, plan = null } = {}) {
       message: "specialist agents are unavailable; provision/connect real agents before any design artifact write",
     });
   }
-  if (plan?.executionStatus?.executionMode && plan.executionStatus.executionMode !== "real-agents") {
+  if (plan?.executionStatus?.executionMode === "agent-dispatch-required") {
+    blocked.push({
+      code: "pending-runtime-agent-receipts",
+      message: `specialist agents are installed but durable design writes require runtime-issued receipts first: ${formatMissingRuntimeProofs(plan.executionStatus.missingRuntimeProofs)}`,
+    });
+  }
+  if (
+    plan?.executionStatus?.executionMode
+    && !["real-agents", "agent-required-blocked", "agent-dispatch-required"].includes(plan.executionStatus.executionMode)
+  ) {
     blocked.push({
       code: "non-real-agent-execution-mode",
       message: `${plan.executionStatus.executionMode} mode can save run-state and diagnostics only; agent-owned durable design artifacts require real-agents mode and runtime receipts`,
@@ -379,6 +391,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
   const roster = loadMergedAgentRoster({ rootDir, pluginRoot });
   const available = new Set((roster.agents || []).map((agent) => agent.id));
   const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
+  const runtimeProof = buildDesignRuntimeProofStatus(rootDir, plan);
   const provisioningPlan = missingAgents.length > 0
     ? createAgentProvisioningPlan({
       projectRoot: rootDir,
@@ -388,24 +401,40 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
     })
     : null;
   const explicitMode = normalizeDesignExecutionMode(requestedExecutionMode);
-  const executionMode = explicitMode
-    || (requiredAgentIds.length === 0
-      ? "inline"
-      : missingAgents.length > 0
-        ? "agent-required-blocked"
-        : "real-agents");
+  const requestedMode = explicitMode || (requiredAgentIds.length === 0 ? "inline" : "real-agents");
+  const specialistDispatchDeferred = designWizardStillOpen(plan);
+  const executionMode = deriveDesignExecutionMode({
+    requestedMode,
+    requiredAgentIds,
+    missingAgents,
+    runtimeProof,
+    specialistDispatchDeferred,
+  });
   const realAgentCapable = requiredAgentIds.length > 0 && missingAgents.length === 0;
-  const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid"].includes(executionMode);
-  const nonRealMode = executionMode !== "real-agents";
+  const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid", "agent-dispatch-required"].includes(executionMode);
+  const nonRealMode = executionMode !== "real-agents" && executionMode !== "agent-dispatch-required";
+  const receiptGate = specialistDispatchDeferred
+    ? "deferred-by-wizard-gate"
+    : runtimeProof.producerReceiptsTrusted
+      ? "satisfied"
+      : "pending-runtime-agent-receipts";
 
   return {
     executionMode,
     requestedExecutionMode: explicitMode || null,
-    executionModes: ["inline", "real-agents", "hybrid"],
+    executionModes: ["inline", "real-agents", "hybrid", "agent-dispatch-required"],
     requiredAgentIds,
     requiredSkillIds,
     missingAgents,
     provisioningPlan,
+    agentsInstalled: realAgentCapable,
+    hostDispatchAvailable: runtimeProof.hostDispatchAvailable,
+    agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
+    agentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
+    producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
+    specialistDispatchDeferred,
+    runtimeProofRequirements: runtimeProof.requirements,
+    missingRuntimeProofs: runtimeProof.missingRuntimeProofs,
     agentReceiptsAllowed,
     inlineDraftAllowed: executionMode === "inline" || executionMode === "hybrid",
     manualEmulationAllowed: false,
@@ -415,12 +444,111 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
         ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
         : executionMode === "hybrid"
           ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
-      : "All planned specialist agents are present; durable outputs still require runtime receipts.",
-    receiptGate: "pending-until-runtime-issued-receipts",
-    degradedModeQuestion: missingAgents.length || nonRealMode
+          : executionMode === "agent-dispatch-required"
+            ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs)}.`
+            : specialistDispatchDeferred
+              ? "Agents are installed; specialist dispatch is deferred until wizard gates close."
+              : "Runtime agent receipts are trusted for the active durable-output stage.",
+    receiptGate,
+    degradedModeQuestion: executionMode === "agent-dispatch-required"
+      ? buildAgentDispatchQuestion(runtimeProof, { locale })
+      : missingAgents.length || nonRealMode
       ? buildDegradedModeQuestion(missingAgents, provisioningPlan, { executionMode, locale })
       : null,
   };
+}
+
+function deriveDesignExecutionMode({
+  requestedMode = "real-agents",
+  requiredAgentIds = [],
+  missingAgents = [],
+  runtimeProof = {},
+  specialistDispatchDeferred = false,
+} = {}) {
+  if (requestedMode === "inline") return "inline";
+  if (requestedMode === "hybrid") return "hybrid";
+  if (requiredAgentIds.length === 0) return "inline";
+  if (missingAgents.length > 0) return "agent-required-blocked";
+  if (specialistDispatchDeferred) return "real-agents";
+  return runtimeProof.producerReceiptsTrusted ? "real-agents" : "agent-dispatch-required";
+}
+
+function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
+  const requirements = designReceiptRequirementsForPlan(plan);
+  const receipts = readAllReceipts(rootDir);
+  const statuses = requirements.map((requirement) => {
+    const matching = receipts.filter((receipt) => receiptMatchesRequirement(receipt, requirement));
+    const validationProblems = matching.flatMap((receipt) => validateReceiptShape(rootDir, receipt, {
+      outputArtifact: requirement.outputArtifact,
+      agentId: requirement.subjectId,
+      stageId: requirement.stageId,
+      subjectType: requirement.subjectType,
+    }));
+    const trusted = matching.length > 0 && matching.some((receipt) => validateReceiptShape(rootDir, receipt, {
+      outputArtifact: requirement.outputArtifact,
+      agentId: requirement.subjectId,
+      stageId: requirement.stageId,
+      subjectType: requirement.subjectType,
+    }).length === 0);
+    return {
+      ...requirement,
+      receiptPresent: matching.length > 0,
+      trusted,
+      issues: validationProblems.map((problem) => problem.message),
+    };
+  });
+  const agentStatuses = statuses.filter((item) => isHostAgentSubject(item.subjectType));
+  const missingRuntimeProofs = statuses
+    .filter((item) => item.trusted !== true)
+    .map((item) => ({
+      stageId: item.stageId,
+      subjectType: item.subjectType,
+      subjectId: item.subjectId,
+      outputArtifact: item.outputArtifact,
+      reason: item.receiptPresent ? "untrusted-runtime-receipt" : "missing-runtime-receipt",
+      issues: item.issues,
+    }));
+  const hostDispatchAvailable = receipts.some((receipt) => {
+    if (!isHostAgentSubject(receipt.subjectType)) return false;
+    return Boolean(receipt.hostInvocation?.source && receipt.hostInvocation?.invocationId);
+  });
+
+  return {
+    requirements: statuses,
+    hostDispatchAvailable,
+    agentInvocationsCompleted: agentStatuses.every((item) => item.trusted === true),
+    agentReceiptsTrusted: agentStatuses.every((item) => item.trusted === true),
+    producerReceiptsTrusted: statuses.length === 0 || statuses.every((item) => item.trusted === true),
+    missingRuntimeProofs,
+  };
+}
+
+function designReceiptRequirementsForPlan(plan = {}) {
+  const requirements = [];
+  const add = (requirement) => requirements.push(requirement);
+  const designSystemApproved = plan.designSystemStatus === "approved";
+  if (!designSystemApproved) {
+    add({ command: "/supervibe-design", outputArtifact: ".supervibe/artifacts/brandbook/direction.md", subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
+    for (const artifact of [
+      ".supervibe/artifacts/prototypes/_design-system/tokens.css",
+      ".supervibe/artifacts/prototypes/_design-system/manifest.json",
+      ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+      ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+    ]) {
+      add({ command: "/supervibe-design", outputArtifact: artifact, subjectType: "skill", subjectId: "supervibe:brandbook", stageId: "stage-2-design-system" });
+    }
+    return requirements;
+  }
+
+  if (plan.mode !== "design-system-only") {
+    const slug = plan.slug || "<prototype-slug>";
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+  }
+  return requirements;
 }
 
 function loadMergedAgentRoster({ rootDir = process.cwd(), pluginRoot = null } = {}) {
@@ -433,6 +561,36 @@ function loadMergedAgentRoster({ rootDir = process.cwd(), pluginRoot = null } = 
   }
   const agents = [...byId.values()];
   return { agents, count: agents.length };
+}
+
+function designWizardStillOpen(plan = {}) {
+  return Boolean(
+    plan.wizard?.questionQueue?.length
+    || plan.wizard?.gates?.tokensUnlocked !== true
+    || plan.wizard?.gates?.viewportPolicyRecorded === false,
+  );
+}
+
+function receiptMatchesRequirement(receipt = {}, requirement = {}) {
+  if (receipt.__invalidJson || receipt.status !== "completed") return false;
+  if (receipt.command !== requirement.command) return false;
+  if (receipt.subjectType !== requirement.subjectType) return false;
+  if (receipt.stage !== requirement.stageId) return false;
+  const id = receipt.subjectId ?? receipt.agentId ?? receipt.skillId;
+  if (id !== requirement.subjectId) return false;
+  const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];
+  return outputs.some((output) => sameArtifact(output, requirement.outputArtifact));
+}
+
+function isHostAgentSubject(subjectType = "") {
+  return ["agent", "worker", "reviewer"].includes(String(subjectType || "").toLowerCase());
+}
+
+function formatMissingRuntimeProofs(items = []) {
+  const subjects = unique((items || [])
+    .map((item) => `${item.subjectId}@${item.stageId}`)
+    .filter(Boolean));
+  return subjects.length ? subjects.join(", ") : "none";
 }
 
 function agentGateLine(plan = {}) {
@@ -544,6 +702,37 @@ function buildDegradedModeQuestion(missingAgents, provisioningPlan = null, { exe
         blockedReason: provisioningPlan.applyBlockedReason,
       }
       : null,
+  };
+}
+
+function buildAgentDispatchQuestion(runtimeProof = {}, { locale = "en" } = {}) {
+  const pending = formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs || []);
+  return {
+    locale: String(locale || "en").toLowerCase().startsWith("ru") ? "ru" : "en",
+    prompt: "Runtime agent receipts are missing. Dispatch the required host agents before durable writes?",
+    why: "Installed agent files prove only availability. Durable /supervibe-design artifacts require completed host invocations plus runtime-issued receipts.",
+    decisionUnlocked: "agent-invocations.jsonl, agent-output.json, and workflow receipts for the active stage",
+    ifSkipped: "Keep output in diagnostic scratch only; do not write or claim agent-owned durable artifacts.",
+    choices: [
+      {
+        id: "dispatch-host-agents",
+        label: "Dispatch host agents",
+        tradeoff: `Run/log the missing stage producers before writes: ${pending}.`,
+        recommended: true,
+      },
+      {
+        id: "save-scratch-only",
+        label: "Scratch only",
+        tradeoff: "Allows diagnostics without claiming specialist output or mutating durable artifacts.",
+      },
+      {
+        id: "stop",
+        label: "Stop here",
+        tradeoff: "Preserve state and wait for real agent dispatch.",
+      },
+    ],
+    executionMode: "agent-dispatch-required",
+    missingRuntimeProofs: runtimeProof.missingRuntimeProofs || [],
   };
 }
 

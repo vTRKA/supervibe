@@ -283,8 +283,13 @@ export function buildCommandAgentPlan(commandId, {
       && hostDispatch.status !== "supported",
   );
   const blocked = requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
-  const executionMode = blocked ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode : requestedMode;
+  const executionMode = blocked
+    ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
+    : requestedMode === "inline"
+      ? "inline"
+      : "agent-dispatch-required";
   const inlineOnly = executionMode === "inline";
+  const realAgentCapable = executionMode === "agent-dispatch-required";
   const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline"
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
     : [];
@@ -306,19 +311,25 @@ export function buildCommandAgentPlan(commandId, {
     hostDispatch,
     hostProofRequired: requestedMode !== "inline",
     hostProofBlocked,
+    agentsInstalled: missingAgents.length === 0,
+    hostDispatchAvailable: hostDispatch?.status === "supported",
+    agentInvocationsCompleted: false,
+    agentReceiptsTrusted: false,
+    receiptGate: realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: executionMode === "real-agents" || executionMode === "hybrid",
-    agentOwnedOutputAllowed: executionMode === "real-agents" || executionMode === "hybrid",
-    agentOwnedOutputRequiresReceipts: executionMode === "real-agents" || executionMode === "hybrid",
+    durableWritesAllowed: false,
+    agentOwnedOutputAllowed: false,
+    agentOwnedOutputRequiresReceipts: realAgentCapable,
+    agentDispatchRequired: realAgentCapable,
     inlineDraftAllowed: inlineOnly,
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
       : hostProofBlocked
         ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
-        : blocked
+      : blocked
         ? `Missing required agents: ${missingAgents.join(", ")}.`
-        : "none",
+        : "Agent definitions and host dispatch are available, but durable outputs remain blocked until runtime agent receipts are issued.",
     blockedQuestion: blocked
       ? {
         prompt: "Required real agents or host invocation proof are unavailable. Choose provision agents, connect host agents, or stop.",
@@ -394,6 +405,11 @@ export function formatCommandAgentPlan(plan = {}) {
     `EXECUTION_MODE: ${plan.executionMode || "unknown"}`,
     `DEFAULT_MODE: ${plan.defaultExecutionMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode}`,
     `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
+    `RECEIPT_GATE: ${plan.receiptGate || "unknown"}`,
+    `AGENTS_INSTALLED: ${plan.agentsInstalled === true}`,
+    `HOST_DISPATCH_AVAILABLE: ${plan.hostDispatchAvailable === true}`,
+    `AGENT_INVOCATIONS_COMPLETED: ${plan.agentInvocationsCompleted === true}`,
+    `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `IMMEDIATE_AGENTS: ${(plan.immediateAgentIds || []).join(", ") || "none"}`,

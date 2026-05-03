@@ -3,8 +3,8 @@
     "id": "exact-genesis-command",
     "phrase": "/supervibe-genesis --host codex",
     "expected": {
-      "intent": "genesis_setup",
-      "command": "/supervibe-genesis",
+      "intent": "slash_command",
+      "command": "/supervibe-genesis --host codex",
       "minConfidence": 0.99
     }
   },

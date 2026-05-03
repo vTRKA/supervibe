@@ -14,7 +14,7 @@ Single entry-point for the adaptive design pipeline. Orchestrates 6 design agent
 
 Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `.supervibe/artifacts/prototypes/<slug>/config.json`, `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`, explicit design-system section approvals, and `.supervibe/artifacts/prototypes/<slug>/.approval.json`.
 
-Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question must include explicit answer choices: the recommended/default option first, one-line tradeoff summary for every option, a free-form answer path, and the stop condition. A bare line such as `Step 3/6: main screen or shell?` is invalid until it lists concrete choices.
+Every interactive step asks one question at a time using `Step N/M`. Each question must include explicit answer choices: the recommended/default option first, one-line tradeoff summary for every option, a free-form answer path, and the stop condition. A bare `Step N/M` line is invalid until it lists concrete choices.
 
 ## Design Wizard Contract
 

@@ -100,3 +100,38 @@ test("design artifact write gate accepts explicit defaults and approval evidence
   assert.deepEqual(result.issues, []);
   assert.equal(result.pass, true);
 });
+
+test("design artifact write gate accepts canonical wizard decisions as preferences source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
+  await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", JSON.stringify({ status: "candidate" }, null, 2));
+  await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", JSON.stringify({
+    first_user_design_gate_ack: true,
+    designWizard: {
+      decisions: Object.fromEntries(AXES.map((axis) => [axis, {
+        axis,
+        prompt: `Question for ${axis}`,
+        answer: "Recorded answer",
+        source: "user",
+        answeredAt: "2026-05-03T00:00:00.000Z",
+        decisionUnlocked: "design-system candidate write",
+      }])),
+    },
+  }, null, 2));
+
+  const result = validateDesignArtifactWriteGates(root);
+
+  assert.equal(result.pass, true);
+});
+
+test("design artifact write gate rejects candidate markers in approvals folder", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
+  await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", JSON.stringify(preferences("user"), null, 2));
+  await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/.approvals/palette.json", JSON.stringify({
+    status: "candidate",
+  }, null, 2));
+
+  const result = validateDesignArtifactWriteGates(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => issue.code === "candidate-marker-in-approvals-folder"));
+});

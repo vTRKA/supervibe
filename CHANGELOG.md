@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.65] - 2026-05-04
+## [2.0.66] - 2026-05-04
 
 ### Added
 
+- Added global exact-slash routing coverage so every published `/supervibe-*`
+  command enters the command-agent contract instead of a skill-only static
+  route.
+- Added runtime-proof status fields for command and design plans:
+  `agentsInstalled`, `hostDispatchAvailable`, `agentInvocationsCompleted`,
+  `agentReceiptsTrusted`, and `receiptGate`.
+- Added regression coverage that all 19 slash commands stay
+  `agent-dispatch-required` with durable writes blocked until real host-agent
+  receipts exist.
 - Added staged agent-dispatch metadata for `/supervibe-design`, including
   immediate owner agents, deferred specialist agents, and the design wizard
   stage gate command.
@@ -22,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed command-agent planning so installed agent markdown files no longer
+  count as invoked agents; pre-dispatch command state is now
+  `agent-dispatch-required`, not completed `real-agents`.
+- Fixed exact `/supervibe-design ...` routing so it no longer bypasses the
+  command-agent contract into `supervibe:brandbook` inline handling.
+- Fixed producer receipt matching to require canonical design stage ids, so
+  aliases such as `candidate-design-system` cannot validate stage-2 durable
+  design-system outputs.
+- Fixed design write gates so agent-owned durable artifacts remain blocked
+  while runtime receipts are pending, even when all agent definitions are
+  installed.
 - Fixed `/supervibe-design` agent planning so `supervibe-orchestrator` is the
   immediate real-agent dispatch while specialist design agents are deferred
   until their wizard-gated stages unlock.

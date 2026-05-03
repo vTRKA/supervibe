@@ -53,7 +53,8 @@ test("capability registry catches missing verification hooks and broken links", 
 test("intent router exposes capability metadata for routed commands", () => {
   const route = routeTriggerRequest("/supervibe-genesis --host codex");
 
-  assert.equal(route.intent, "genesis_setup");
+  assert.equal(route.intent, "slash_command");
+  assert.equal(route.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.equal(route.capabilityId, "setup.genesis");
   assert.ok(route.verificationHooks.some((hook) => hook.includes("capability-registry.test.mjs")));
 });

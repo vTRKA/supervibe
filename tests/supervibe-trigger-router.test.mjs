@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -116,6 +117,27 @@ describe("supervibe trigger router", () => {
     assert.equal(route.doNotSearchProject, true);
     assert.equal(route.requiredSafety.includes("slash-command-owns-safety"), true);
     assert.deepEqual(route.safetyBlockers, []);
+  });
+
+  it("routes every published exact slash command through the agent command contract", () => {
+    const commandIds = readdirSync(join(process.cwd(), "commands"))
+      .filter((file) => file.endsWith(".md"))
+      .map((file) => `/${file.replace(/\.md$/, "")}`)
+      .sort();
+
+    for (const commandId of commandIds) {
+      const route = routeTriggerRequest(`${commandId} test request`, {
+        pluginRoot: process.cwd(),
+        projectRoot: process.cwd(),
+      });
+
+      assert.equal(route.intent, "slash_command", commandId);
+      assert.equal(route.skill, null, commandId);
+      assert.equal(route.doNotSearchProject, true, commandId);
+      assert.equal(route.agentContract.ownerAgentId, "supervibe-orchestrator", commandId);
+      assert.ok(route.agentProfile.requiredAgentIds.includes("supervibe-orchestrator"), commandId);
+      assert.match(route.nextQuestion, /slash command|slash-команду/i, commandId);
+    }
   });
 
   it("routes security, network, prompt, and kanban requests through specialized flows", () => {

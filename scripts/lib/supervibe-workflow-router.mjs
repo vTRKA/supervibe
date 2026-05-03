@@ -1,5 +1,9 @@
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
 import {
+  copyCommandAgentContract,
+  getCommandAgentProfile,
+} from "./command-agent-orchestration-contract.mjs";
+import {
   formatNextStepBlock,
   getNextWorkflowStep,
   normalizeWorkflowPhase,
@@ -320,6 +324,7 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
 }
 
 function fromTriggerRoute(route, options = {}) {
+  const agentProfile = route.agentProfile || commandAgentProfileFor(route.command);
   return {
     intent: route.intent,
     phase: route.phase,
@@ -336,6 +341,8 @@ function fromTriggerRoute(route, options = {}) {
     missingArtifacts: route.missingArtifacts ?? [],
     safetyBlockers: route.safetyBlockers ?? [],
     alternatives: route.alternatives ?? [],
+    agentContract: route.agentContract || (agentProfile ? copyCommandAgentContract() : null),
+    agentProfile,
     hardStop: route.hardStop === true,
     doNotSearchProject: route.doNotSearchProject === true,
     handoffBlock: formatNextStepBlock({
@@ -354,32 +361,42 @@ function fromWorkflowStep(phase, options = {}) {
   const edge = getNextWorkflowStep(phase);
   const locale = options.locale === "ru" ? "ru" : "en";
   const nextPromptText = options.question ?? (locale === "ru" ? edge.questionRu : edge.questionEn);
+  const command = options.command ?? edge.command;
+  const agentProfile = commandAgentProfileFor(command);
   return {
     intent: options.intent ?? `continue_${edge.nextPhase}`,
     phase: edge.phase,
-    command: options.command ?? edge.command,
+    command,
     skill: options.skill ?? edge.skill,
     confidence: options.confidence ?? 0.9,
-    mutationRisk: mutationRiskForCommand(options.command ?? edge.command),
+    mutationRisk: mutationRiskForCommand(command),
     source: options.source ?? "workflow-step",
     reason: options.reason ?? edge.why,
     nextPromptText,
     nextQuestion: nextPromptText,
     stopCondition: edge.stopCondition,
-    requiredSafety: safetyForCommand(options.command ?? edge.command),
+    requiredSafety: safetyForCommand(command),
     missingArtifacts: [],
     safetyBlockers: [],
     alternatives: [],
+    agentContract: agentProfile ? copyCommandAgentContract() : null,
+    agentProfile,
     handoffBlock: formatNextStepBlock({
       phase,
       artifactPath: options.artifactOverride,
       locale,
-      command: options.command ?? edge.command,
+      command,
       skill: options.skill ?? edge.skill,
       question: nextPromptText,
       why: options.reason ?? edge.why,
     }),
   };
+}
+
+function commandAgentProfileFor(command = "") {
+  const value = String(command || "").trim();
+  if (!value.startsWith("/supervibe")) return null;
+  return getCommandAgentProfile(value.split(/\s+/)[0]);
 }
 
 function applySafetyState(route, { dirtyGitState, artifacts }) {

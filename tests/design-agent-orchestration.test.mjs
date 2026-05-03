@@ -8,6 +8,9 @@ import test from "node:test";
 const ROOT = process.cwd();
 
 import {
+  DESIGN_WIZARD_AXES,
+} from "../scripts/lib/design-wizard-catalog.mjs";
+import {
   assertDesignWriteAllowed,
   buildDesignAgentPlan,
   buildDesignPrewriteManifest,
@@ -44,6 +47,27 @@ async function writeAgentInvocation(root, {
   return {
     source: "agent-invocations-jsonl",
     invocationId,
+  };
+}
+
+function completedWizardDecisions() {
+  return {
+    viewport: {
+      axis: "viewport",
+      answer: "1440x900",
+      source: "user",
+      timestamp: "2026-05-03T00:00:00.000Z",
+      decisionUnlocked: "viewport policy",
+    },
+    ...Object.fromEntries(DESIGN_WIZARD_AXES.map((axis) => [axis.id, {
+      axis: axis.id,
+      choiceId: axis.defaultChoiceId,
+      answer: axis.choices.find((choice) => choice.id === axis.defaultChoiceId)?.label || axis.defaultChoiceId,
+      source: "explicit-default",
+      prompt: axis.prompt,
+      timestamp: "2026-05-03T00:00:00.000Z",
+      decisionUnlocked: axis.decisionUnlocked,
+    }])),
   };
 }
 
@@ -145,6 +169,34 @@ test("design write gate blocks durable artifacts when wizard or agent questions 
     const prompt = formatDesignPlanPrompt(plan);
     assert.match(prompt, /WRITE_GATE: blocked/);
     assert.match(prompt, /specialist agents are unavailable/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design write gate blocks durable writes after wizard completion until runtime receipts exist", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-receipt-gate-"));
+  try {
+    const plan = buildDesignAgentPlan({
+      brief: "Use safe defaults for a new desktop agent chat design system.",
+      target: "web",
+      mode: "design-system-only",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: completedWizardDecisions(),
+    });
+
+    assert.equal(plan.wizard.questionQueue.length, 0);
+    assert.equal(plan.executionStatus.agentsInstalled, true);
+    assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
+    assert.equal(plan.executionStatus.receiptGate, "pending-runtime-agent-receipts");
+    assert.equal(plan.executionStatus.hostDispatchAvailable, false);
+    assert.equal(plan.executionStatus.agentInvocationsCompleted, false);
+    assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
+    assert.ok(plan.executionStatus.missingRuntimeProofs.some((proof) => proof.subjectId === "creative-director"));
+    assert.equal(plan.writeGate.durableWritesAllowed, false);
+    assert.ok(plan.writeGate.blockedReasons.some((reason) => reason.code === "pending-runtime-agent-receipts"));
+    assert.match(formatDesignPlanPrompt(plan), /Runtime agent receipts are missing/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

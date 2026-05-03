@@ -35,6 +35,43 @@ test("design wizard parses brief coverage and keeps missing axes in the queue", 
   assert.ok(state.questionQueue.every((question) => question.axis === "viewport" || (question.choices || []).length >= 3));
 });
 
+test("wizard prioritizes questions and recommendations by brief profile", () => {
+  const marketing = buildDesignWizardState({
+    brief: "Build a bold marketing landing page for an AI launch with a strong hero and conversion path.",
+    target: "web",
+  });
+  const regulated = buildDesignWizardState({
+    brief: "Compliance banking admin with audit logs, risk review, and high trust requirements.",
+    target: "web",
+  });
+  const developer = buildDesignWizardState({
+    brief: "Tauri developer console for agent workflow, code review, terminal output, and dense logs.",
+    target: "tauri",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+
+  assert.equal(marketing.questionStrategy.profile, "brandLaunch");
+  assert.equal(marketing.questionQueue[1].axis, "visual_direction_tone");
+  assert.equal(marketing.questionQueue[2].axis, "creative_alternatives");
+  assert.match(marketing.questionQueue[1].prompt, /first-impression direction/);
+  assert.equal(marketing.questionQueue[0].choices.find((choiceItem) => choiceItem.recommended).id, "full-prototype-pipeline");
+
+  assert.equal(regulated.questionStrategy.profile, "regulatedTrust");
+  assert.equal(regulated.questionQueue[1].axis, "audience_trust_posture");
+  assert.equal(regulated.questionQueue[1].choices.find((choiceItem) => choiceItem.recommended).id, "regulated-assurance");
+
+  assert.equal(developer.questionStrategy.profile, "developerTool");
+  assert.equal(developer.questionQueue[1].axis, "component_feel");
+  assert.equal(developer.questionQueue[1].choices.find((choiceItem) => choiceItem.recommended).id, "platform-native");
+
+  assert.notDeepEqual(
+    marketing.questionQueue.slice(1, 5).map((question) => question.axis),
+    regulated.questionQueue.slice(1, 5).map((question) => question.axis),
+  );
+});
+
 test("multilingual functional-only reference scope closes only the borrow/avoid axis", () => {
   const parsed = parseDesignBriefPreferences("Сохранить только функционал, не скелет старых прототипов.");
 

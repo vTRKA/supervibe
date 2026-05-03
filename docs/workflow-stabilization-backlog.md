@@ -45,7 +45,7 @@ same failure modes affect every agent-heavy Supervibe command.
   as `ready` for full-pipeline runs or `available` for `design-system-only`,
   and the next action is `Build prototype / revise DS / stop`.
 
-## Fixed In 2.0.65
+## Fixed In 2.0.66
 
 - Agent dispatch timing: `/supervibe-design` command plans now separate
   immediate owner dispatch (`supervibe-orchestrator`) from staged specialist

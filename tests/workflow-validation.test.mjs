@@ -39,3 +39,15 @@ test("workflow validation CLI prints workflow and slug", () => {
   assert.match(out, /SLUG: agent-chat/);
   assert.match(out, /CHECK: design-agent-receipts/);
 });
+
+test("workflow validation resolves design wizard docs from plugin root", () => {
+  const result = validateWorkflow(ROOT, {
+    workflow: "/supervibe-design",
+    slug: "agent-chat",
+    pluginRoot: ROOT,
+  });
+  const wizard = result.checks.find((item) => item.id === "design-wizard");
+
+  assert.equal(wizard.pass, true);
+  assert.equal(wizard.blocking, true);
+});

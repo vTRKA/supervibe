@@ -92,11 +92,12 @@ const RULES = Object.freeze([
   },
 ]);
 
-export function validateDesignFlowGates(rootDir = process.cwd()) {
+export function validateDesignFlowGates(rootDir = process.cwd(), { pluginRoot = null } = {}) {
   const issues = [];
+  const resolvedPluginRoot = pluginRoot || rootDir;
 
   for (const rule of RULES) {
-    const absPath = join(rootDir, ...rule.file.split("/"));
+    const absPath = join(resolveRuleRoot(rule.file, rootDir, resolvedPluginRoot), ...rule.file.split("/"));
     if (!existsSync(absPath)) {
       issues.push({
         file: rule.file,
@@ -126,6 +127,11 @@ export function validateDesignFlowGates(rootDir = process.cwd()) {
   };
 }
 
+function resolveRuleRoot(file, rootDir, pluginRoot) {
+  if (/^(commands|skills|scripts)\//.test(file)) return pluginRoot || rootDir;
+  return rootDir;
+}
+
 export function formatDesignFlowGatesReport(result) {
   const lines = [
     "SUPERVIBE_DESIGN_FLOW_GATES",
@@ -140,7 +146,15 @@ export function formatDesignFlowGatesReport(result) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateDesignFlowGates(process.cwd());
+  const scriptPluginRoot = fileURLToPath(new URL("../", import.meta.url));
+  const rootDir = arg("--root", process.cwd());
+  const pluginRoot = arg("--plugin-root", scriptPluginRoot);
+  const result = validateDesignFlowGates(rootDir, { pluginRoot });
   console.log(formatDesignFlowGatesReport(result));
   process.exit(result.pass ? 0 : 1);
+}
+
+function arg(name, fallback = "") {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : fallback;
 }

@@ -46,6 +46,14 @@ export function validateDesignArtifactWriteGates(rootDir = process.cwd()) {
 
   for (const file of approvalFiles) {
     const approval = readJson(join(rootDir, ...file.split("/")));
+    if (String(approval?.status || "").toLowerCase() === "candidate") {
+      issues.push({
+        file,
+        code: "candidate-marker-in-approvals-folder",
+        message: `${file}: candidate section proposals must use .candidates/ or another non-approval path; .approvals/ is reserved for user-approved evidence`,
+      });
+      continue;
+    }
     const approvalEvidence = validateApprovalEvidence(approval);
     if (!preferenceEvidence.pass && !approvalEvidence.pass) {
       issues.push({
@@ -163,7 +171,13 @@ function validatePreferenceEvidence(preferences) {
 }
 
 function preferenceEntries(preferences) {
-  const matrix = preferences.matrix ?? preferences.preferenceMatrix ?? preferences.axes ?? {};
+  const matrix = preferences.matrix
+    ?? preferences.preferenceMatrix
+    ?? preferences.axes
+    ?? preferences.decisions
+    ?? preferences.designWizard?.decisions
+    ?? preferences.config?.designWizard?.decisions
+    ?? {};
   const entries = new Map();
   if (Array.isArray(matrix)) {
     for (const entry of matrix) {

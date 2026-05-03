@@ -233,6 +233,13 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     subjectId: "supervibe:brandbook",
     stageId: "stage-2-design-system",
   });
+  add({
+    command: "/supervibe-design",
+    outputArtifact: ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+    subjectType: "skill",
+    subjectId: "supervibe:brandbook",
+    stageId: "stage-2-design-system",
+  });
 
   for (const prototype of listPrototypeDirs(rootDir)) {
     const base = `.supervibe/artifacts/prototypes/${prototype}`;
@@ -318,6 +325,7 @@ function receiptMatchesProducerExpectation(receipt = {}, expectation = {}) {
   if (receipt.__invalidJson || receipt.status !== "completed") return false;
   if (receipt.command !== expectation.command) return false;
   if (receipt.subjectType !== expectation.subjectType) return false;
+  if (receipt.stage !== expectation.stageId) return false;
   const id = receipt.subjectId || receipt.agentId || receipt.skillId;
   if (id !== expectation.subjectId) return false;
   const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];

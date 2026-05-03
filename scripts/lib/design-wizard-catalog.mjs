@@ -160,6 +160,161 @@ export const DESIGN_VIEWPORT_CHOICES = Object.freeze([
   choice("custom", "Custom viewport", "Use when target hardware or embedded surface is known."),
 ]);
 
+const DEFAULT_AXIS_ORDER = Object.freeze(DESIGN_WIZARD_AXES.map((axisDef) => axisDef.id));
+
+const DESIGN_QUESTION_PROFILES = Object.freeze({
+  default: {
+    id: "default",
+    viewportPlacement: "early",
+    axisOrder: DEFAULT_AXIS_ORDER,
+    recommendedChoices: {},
+  },
+  desktopOps: {
+    id: "desktopOps",
+    viewportPlacement: "early",
+    axisOrder: [
+      "information_density",
+      "component_feel",
+      "audience_trust_posture",
+      "anti_generic_guardrail",
+      "visual_direction_tone",
+      "typography_personality",
+      "palette_mood",
+      "motion_intensity",
+      "creative_alternatives",
+      "reference_borrow_avoid",
+    ],
+    recommendedChoices: {
+      information_density: "compact",
+      component_feel: "platform-native",
+      audience_trust_posture: "professional-calm",
+      motion_intensity: "strict",
+      visual_direction_tone: "operational-clarity",
+    },
+  },
+  brandLaunch: {
+    id: "brandLaunch",
+    viewportPlacement: "after-creative",
+    axisOrder: [
+      "visual_direction_tone",
+      "creative_alternatives",
+      "palette_mood",
+      "typography_personality",
+      "motion_intensity",
+      "audience_trust_posture",
+      "information_density",
+      "component_feel",
+      "anti_generic_guardrail",
+      "reference_borrow_avoid",
+    ],
+    recommendedChoices: {
+      visual_direction_tone: "bold-launch-energy",
+      creative_alternatives: "three-directions",
+      palette_mood: "light-first",
+      typography_personality: "geometric",
+      motion_intensity: "expressive",
+      audience_trust_posture: "consumer-friendly",
+      information_density: "comfortable",
+    },
+  },
+  regulatedTrust: {
+    id: "regulatedTrust",
+    viewportPlacement: "after-first-axis",
+    axisOrder: [
+      "audience_trust_posture",
+      "information_density",
+      "palette_mood",
+      "typography_personality",
+      "motion_intensity",
+      "component_feel",
+      "visual_direction_tone",
+      "anti_generic_guardrail",
+      "creative_alternatives",
+      "reference_borrow_avoid",
+    ],
+    recommendedChoices: {
+      audience_trust_posture: "regulated-assurance",
+      palette_mood: "high-contrast",
+      motion_intensity: "strict",
+      visual_direction_tone: "operational-clarity",
+      typography_personality: "system-native",
+    },
+  },
+  developerTool: {
+    id: "developerTool",
+    viewportPlacement: "after-first-axis",
+    axisOrder: [
+      "component_feel",
+      "typography_personality",
+      "information_density",
+      "visual_direction_tone",
+      "palette_mood",
+      "motion_intensity",
+      "audience_trust_posture",
+      "anti_generic_guardrail",
+      "creative_alternatives",
+      "reference_borrow_avoid",
+    ],
+    recommendedChoices: {
+      component_feel: "radix-headless",
+      typography_personality: "code-first",
+      information_density: "compact",
+      visual_direction_tone: "technical-command-center",
+      palette_mood: "graphite-cyan",
+      audience_trust_posture: "expert-power",
+    },
+  },
+  referenceRefresh: {
+    id: "referenceRefresh",
+    viewportPlacement: "after-first-axis",
+    axisOrder: [
+      "reference_borrow_avoid",
+      "anti_generic_guardrail",
+      "visual_direction_tone",
+      "creative_alternatives",
+      "information_density",
+      "component_feel",
+      "typography_personality",
+      "palette_mood",
+      "motion_intensity",
+      "audience_trust_posture",
+    ],
+    recommendedChoices: {
+      reference_borrow_avoid: "functional-only",
+      anti_generic_guardrail: "avoid-old-shell-repaint",
+      creative_alternatives: "three-directions",
+    },
+  },
+});
+
+const CONTEXTUAL_AXIS_PROMPTS = Object.freeze({
+  brandLaunch: {
+    visual_direction_tone: "What first-impression direction should make this launch feel specific rather than generic?",
+    palette_mood: "Which color world best supports the offer, conversion moment, and brand memory?",
+    typography_personality: "What type voice should carry the headline, proof points, and product UI together?",
+    motion_intensity: "How expressive should motion be before it starts competing with the offer?",
+  },
+  regulatedTrust: {
+    audience_trust_posture: "What trust posture must be visible before any user studies the details?",
+    palette_mood: "Which palette gives audit-grade clarity without making the product feel hostile?",
+    motion_intensity: "How restrained should motion be for a high-trust workflow?",
+  },
+  developerTool: {
+    component_feel: "What component model best supports power-user speed, keyboard work, and implementation handoff?",
+    typography_personality: "How much developer-native typography should the interface expose?",
+    information_density: "How much operational density can expert users handle before scanning breaks?",
+  },
+  desktopOps: {
+    information_density: "How dense should the working surface be for repeated desktop sessions?",
+    component_feel: "Which component feel best matches the host shell and resize constraints?",
+    audience_trust_posture: "What trust signal should operators see while working quickly?",
+  },
+  referenceRefresh: {
+    reference_borrow_avoid: "What exactly may survive from the reference, and what must be redesigned from scratch?",
+    anti_generic_guardrail: "Which old-shell or generic pattern must the new design actively reject?",
+  },
+});
+
 const WIZARD_LABELS = Object.freeze({
   en: {
     step: "Step",
@@ -360,6 +515,13 @@ export function buildDesignWizardState({
   const decisions = { ...parsed.decisions, ...initialDecisions };
   const explicitDefaults = parsed.explicitDefaults === true;
   const viewportPolicy = resolveDesignViewportPolicy({ target, currentWindow, deviceScaleFactor });
+  const questionStrategy = buildDesignQuestionStrategy({
+    brief,
+    target,
+    mode,
+    decisions,
+    viewportPolicy,
+  });
 
   if (explicitDefaults) {
     for (const axisDef of DESIGN_WIZARD_AXES) {
@@ -376,19 +538,17 @@ export function buildDesignWizardState({
   const questionQueue = [];
 
   if (!mode) {
-    questionQueue.push(modeQuestion(resolvedLocale));
+    questionQueue.push(modeQuestion(resolvedLocale, questionStrategy));
   }
 
-  if (needsViewportQuestion(decisions.viewport, viewportPolicy)) {
-    questionQueue.push(viewportQuestion(viewportPolicy, resolvedLocale));
-  }
-
-  for (const axisId of requiredAxes) {
-    questionQueue.push(axisQuestion(DESIGN_WIZARD_AXES.find((axisDef) => axisDef.id === axisId), resolvedLocale));
-  }
+  const viewportNeeded = needsViewportQuestion(decisions.viewport, viewportPolicy);
+  const axisQuestions = orderedDesignAxisIds(requiredAxes, questionStrategy)
+    .map((axisId) => axisQuestion(DESIGN_WIZARD_AXES.find((axisDef) => axisDef.id === axisId), resolvedLocale, questionStrategy));
+  const viewport = viewportNeeded ? viewportQuestion(viewportPolicy, resolvedLocale, questionStrategy) : null;
+  questionQueue.push(...interleaveViewportQuestion(axisQuestions, viewport, questionStrategy));
   numberQuestionQueue(questionQueue, {
     completedCount: mode
-      ? 1 + Number(!needsViewportQuestion(decisions.viewport, viewportPolicy)) + (DESIGN_WIZARD_AXES.length - missingAxes.length)
+      ? 1 + Number(!viewportNeeded) + (DESIGN_WIZARD_AXES.length - missingAxes.length)
       : 0,
   });
 
@@ -414,6 +574,7 @@ export function buildDesignWizardState({
     },
     explicitDefaults,
     guidedDefaultsChecklist,
+    questionStrategy,
     questionQueue,
     reviewChecks: buildDesignReviewCheckPlan({ target, viewportDecision: decisions.viewport, viewportPolicy }),
     styleboard: {
@@ -803,8 +964,115 @@ function guidedDefaultChecklistItem(axisDef, decision) {
   };
 }
 
-function modeQuestion(locale = "en") {
+function buildDesignQuestionStrategy({
+  brief = "",
+  target = "web",
+  mode = null,
+  decisions = {},
+  viewportPolicy = null,
+} = {}) {
+  const text = `${brief || ""} ${target || ""}`.toLowerCase();
+  const profileId = inferDesignQuestionProfile(text, target);
+  const profile = DESIGN_QUESTION_PROFILES[profileId] || DESIGN_QUESTION_PROFILES.default;
+  const recommendedChoices = {
+    ...profile.recommendedChoices,
+    mode: inferDesignWorkflowModeChoice(text, profileId, mode),
+    ...(isDesktopTarget(target) ? { component_feel: "platform-native" } : {}),
+  };
+  return {
+    schemaVersion: 1,
+    profile: profile.id,
+    signals: designQuestionSignals(text, target),
+    axisOrder: profile.axisOrder,
+    viewportPlacement: viewportPolicy?.requiresActualWindowQuestion ? "early" : profile.viewportPlacement,
+    recommendedChoices,
+    decisionsCount: Object.keys(decisions || {}).length,
+  };
+}
+
+function inferDesignQuestionProfile(text = "", target = "web") {
+  const signals = designQuestionSignals(text, target);
+  if (signals.referenceRefresh) return "referenceRefresh";
+  if (signals.brandLaunch) return "brandLaunch";
+  if (signals.regulatedTrust) return "regulatedTrust";
+  if (signals.developerTool) return "developerTool";
+  if (signals.desktopOps || signals.desktopTarget) return "desktopOps";
+  return "default";
+}
+
+function designQuestionSignals(text = "", target = "web") {
+  const haystack = `${text || ""} ${target || ""}`.toLowerCase();
+  return {
+    desktopTarget: isDesktopTarget(target) || hasAny(haystack, ["tauri", "electron", "desktop", "native app", "app shell", "windows app"]),
+    desktopOps: hasAny(haystack, ["dashboard", "admin", "operator", "support", "backoffice", "ops", "table", "grid", "queue", "monitoring", "control plane"]),
+    brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page"]),
+    regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated"]),
+    developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "workflow", "prompt", "devtool", "debug"]),
+    referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework"]),
+  };
+}
+
+function inferDesignWorkflowModeChoice(text = "", profileId = "default", mode = null) {
+  if (mode) return mode;
+  if (hasAny(text, ["prototype", "preview", "clickable", "html", "screen", "handoff", "tauri", "electron", "full pipeline"])) {
+    return "full-prototype-pipeline";
+  }
+  if (hasAny(text, ["ux spec", "screen spec", " user flow", "flow map", "information architecture", "wireframe", "states"])) {
+    return "design-system-plus-ux";
+  }
+  if (hasAny(text, ["tokens", "brandbook", "design system", "styleboard"])) {
+    return "design-system-only";
+  }
+  if (profileId === "brandLaunch") return "full-prototype-pipeline";
+  return "design-system-only";
+}
+
+function orderedDesignAxisIds(axisIds = [], strategy = {}) {
+  const wanted = new Set(axisIds);
+  const ordered = [];
+  for (const axisId of strategy.axisOrder || DEFAULT_AXIS_ORDER) {
+    if (wanted.has(axisId)) {
+      ordered.push(axisId);
+      wanted.delete(axisId);
+    }
+  }
+  return [...ordered, ...axisIds.filter((axisId) => wanted.has(axisId))];
+}
+
+function interleaveViewportQuestion(axisQuestions = [], viewportQuestionDef = null, strategy = {}) {
+  if (!viewportQuestionDef) return axisQuestions;
+  const placement = strategy.viewportPlacement || "early";
+  if (placement === "after-creative") {
+    const creativeCount = Math.min(2, axisQuestions.length);
+    return [...axisQuestions.slice(0, creativeCount), viewportQuestionDef, ...axisQuestions.slice(creativeCount)];
+  }
+  if (placement === "after-first-axis" && axisQuestions.length > 0) {
+    return [axisQuestions[0], viewportQuestionDef, ...axisQuestions.slice(1)];
+  }
+  return [viewportQuestionDef, ...axisQuestions];
+}
+
+function recommendedChoiceIdFor(axisId, strategy = {}, fallback = null) {
+  return strategy.recommendedChoices?.[axisId] || fallback;
+}
+
+function contextualPromptFor(axisId, fallbackPrompt, locale = "en", strategy = {}) {
+  if (normalizeLocale(locale) !== "en") return fallbackPrompt;
+  return CONTEXTUAL_AXIS_PROMPTS[strategy.profile]?.[axisId] || fallbackPrompt;
+}
+
+function hasAny(text = "", needles = []) {
+  const value = String(text || "").toLowerCase();
+  return needles.some((needle) => value.includes(String(needle).toLowerCase()));
+}
+
+function isDesktopTarget(target = "web") {
+  return /tauri|electron|desktop|native-app|app-shell/i.test(String(target || ""));
+}
+
+function modeQuestion(locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
+  const recommendedMode = recommendedChoiceIdFor("mode", strategy, "design-system-only");
   return {
     id: "mode",
     axis: "mode",
@@ -819,7 +1087,7 @@ function modeQuestion(locale = "en") {
     ifSkipped: normalized === "ru"
       ? "Полный pipeline выбирается только когда brief явно просит prototype delivery; иначе лучше остановиться и спросить."
       : "Use full pipeline only when the brief clearly asks for prototype delivery; otherwise stop and ask.",
-    choices: DESIGN_WIZARD_MODES.map((item, index) => ({ ...localizedChoice(item, normalized, "mode"), recommended: index === 0 })),
+    choices: DESIGN_WIZARD_MODES.map((item) => ({ ...localizedChoice(item, normalized, "mode"), recommended: item.id === recommendedMode })),
     freeFormPath: normalized === "ru"
       ? "Можно ответить своими словами, например: дизайн-система сейчас, прототип после approval."
       : "Name a custom boundary, for example: design system now, prototype after approval.",
@@ -829,16 +1097,17 @@ function modeQuestion(locale = "en") {
   };
 }
 
-function axisQuestion(axisDef, locale = "en") {
+function axisQuestion(axisDef, locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
   const axisCopy = localizedAxisCopy(axisDef, normalized);
+  const recommendedChoice = recommendedChoiceIdFor(axisDef.id, strategy, axisDef.defaultChoiceId);
   return {
     id: axisDef.id,
     axis: axisDef.id,
     step: "N",
     total: "M",
     locale: normalized,
-    prompt: axisCopy.prompt,
+    prompt: contextualPromptFor(axisDef.id, axisCopy.prompt, normalized, strategy),
     why: normalized === "ru"
       ? `${axisCopy.label} сильно меняет ощущение продукта, даже если технически можно идти дальше.`
       : `${axisCopy.label} is not a blocker syntactically, but it materially changes the product feel.`,
@@ -846,7 +1115,7 @@ function axisQuestion(axisDef, locale = "en") {
     ifSkipped: normalized === "ru"
       ? "Рекомендованный дефолт можно использовать только если пользователь явно делегировал этот выбор."
       : "Only use the recommended default when the user explicitly delegates this axis.",
-    choices: axisDef.choices.map((item) => ({ ...localizedChoice(item, normalized, axisDef.id), recommended: item.id === axisDef.defaultChoiceId })),
+    choices: axisDef.choices.map((item) => ({ ...localizedChoice(item, normalized, axisDef.id), recommended: item.id === recommendedChoice })),
     freeFormPath: normalized === "ru"
       ? "Можно написать свой стиль, референс или ограничение, если варианты не подходят."
       : "Answer with a different style, reference, or constraint if none of these options fit.",
@@ -857,7 +1126,7 @@ function axisQuestion(axisDef, locale = "en") {
   };
 }
 
-function viewportQuestion(policy, locale = "en") {
+function viewportQuestion(policy, locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
   return {
     id: "viewport",
@@ -876,6 +1145,7 @@ function viewportQuestion(policy, locale = "en") {
       ? (normalized === "ru" ? "Использовать 1920x1080, 1440x900, 1280x800 и 800x600, записав exactWindow=false." : "Use 1920x1080, 1440x900, 1280x800, and 800x600, then record exactWindow=false.")
       : (normalized === "ru" ? "Использовать web defaults 375px и 1440px." : "Use web defaults 375px and 1440px."),
     choices: policy.choices.map((item, index) => ({ ...localizedChoice(item, normalized, "viewport"), recommended: index === 0 })),
+    strategyProfile: strategy.profile || "default",
     freeFormPath: normalized === "ru"
       ? "Укажите width, height, OS scale, min window, secondary window или target monitor."
       : "Provide width, height, OS scale, min window, secondary window, or monitor target.",

@@ -2,6 +2,10 @@ import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
 import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
 import { getCapabilityRouteHint } from "./supervibe-capability-registry.mjs";
 import { findCommandShortcut, resolveCommandRequest, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
+import {
+  copyCommandAgentContract,
+  getCommandAgentProfile,
+} from "./command-agent-orchestration-contract.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
 const ROUTES = {
@@ -461,10 +465,19 @@ export function routeTriggerRequest(input, options = {}) {
   if (resolvedCommand?.intent === "missing_slash_command") {
     return routeGenericResolvedCommand(resolvedCommand, artifacts, locale);
   }
+  if (resolvedCommand?.intent === "slash_command" && resolvedCommand.doNotSearchProject === true) {
+    return routeGenericResolvedCommand(resolvedCommand, artifacts, locale);
+  }
 
   const commandMatch = matchSlashCommand(text);
   if (commandMatch) {
     const route = ROUTES[commandMatch.intent];
+    const routeArtifacts = inferSlashCommandArtifacts({
+      request,
+      command: route.command,
+      prerequisites: route.prerequisites,
+      artifacts,
+    });
     return withArtifactStatus(
       withRoutingEvidence({
         intent: commandMatch.intent,
@@ -486,7 +499,7 @@ export function routeTriggerRequest(input, options = {}) {
         reason: `Exact slash command match: ${route.command}`,
         matchedPhrase: route.command,
       }], alternativesFromRoutes(commandMatch.intent)),
-      artifacts,
+      routeArtifacts,
     );
   }
 
@@ -905,6 +918,30 @@ function matchSlashCommand(text) {
     .find((candidate) => text === candidate.command || text.startsWith(`${candidate.command} `)) || null;
 }
 
+function inferSlashCommandArtifacts({ request = "", command = "", prerequisites = [], artifacts = {} } = {}) {
+  if (!prerequisites.includes("design-brief") && !prerequisites.includes("user-request")) return artifacts;
+  const rest = slashCommandRest(request, command);
+  if (!rest || isFlagOnlyRest(rest)) return artifacts;
+  return {
+    ...artifacts,
+    request: artifacts.request || rest,
+    userRequest: artifacts.userRequest || rest,
+    ...(prerequisites.includes("design-brief") ? { designBrief: artifacts.designBrief || rest } : {}),
+  };
+}
+
+function slashCommandRest(request = "", command = "") {
+  const raw = String(request || "").trim();
+  const firstToken = String(command || "").trim().split(/\s+/)[0];
+  if (!raw.toLowerCase().startsWith(firstToken.toLowerCase())) return "";
+  return raw.slice(firstToken.length).trim();
+}
+
+function isFlagOnlyRest(rest = "") {
+  const tokens = String(rest || "").trim().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every((token) => token.startsWith("-") || /^[-\w]+=[^\s]+$/.test(token));
+}
+
 function evidenceFor(candidate) {
   return [{
     source: candidate.source,
@@ -915,9 +952,13 @@ function evidenceFor(candidate) {
 }
 
 function withRoutingEvidence(route, evidence, rejectedAlternatives) {
-  const capability = getCapabilityRouteHint(route.intent);
+  const commandId = slashCommandId(route.command);
+  const capability = getCapabilityRouteHint(route.intent) || getCapabilityRouteHint(commandId || route.command);
+  const agentProfile = route.agentProfile || (commandId ? getCommandAgentProfile(commandId) : null);
   return {
     ...route,
+    agentContract: route.agentContract || (agentProfile ? copyCommandAgentContract() : null),
+    agentProfile,
     capabilityId: capability?.capabilityId || null,
     verificationHooks: capability?.verificationHooks || [],
     toolMetadata: { required: Boolean(capability?.toolMetadataRequired), deterministicOrder: true, intentScoped: true },
@@ -925,6 +966,12 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
     routingEvidence: evidence.filter(Boolean),
     rejectedAlternatives: rejectedAlternatives || [],
   };
+}
+
+function slashCommandId(command = "") {
+  const value = String(command || "").trim();
+  if (!value.startsWith("/supervibe")) return null;
+  return value.split(/\s+/)[0];
 }
 
 function hasDesignSurface(text) {

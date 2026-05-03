@@ -51,4 +51,18 @@ describe("supervibe trigger diagnostics", () => {
       await rm(pluginRoot, { recursive: true, force: true });
     }
   });
+
+  it("treats inline slash-command design text as design brief evidence", () => {
+    const report = diagnoseTriggerRequest("/supervibe-design create desktop design system for an agent chat app", {
+      artifacts: { confirmedMutation: true },
+    });
+
+    assert.equal(report.route.intent, "slash_command");
+    assert.equal(report.route.command, "/supervibe-design create desktop design system for an agent chat app");
+    assert.equal(report.route.skill, null);
+    assert.equal(report.route.agentContract.ownerAgentId, "supervibe-orchestrator");
+    assert.ok(report.route.agentProfile.requiredAgentIds.includes("creative-director"));
+    assert.equal(report.evidence.missingArtifacts.includes("design-brief"), false);
+    assert.equal(report.pass, true);
+  });
 });

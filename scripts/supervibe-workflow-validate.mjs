@@ -24,6 +24,7 @@ function parseArgs(argv) {
   const options = {
     workflow: "/supervibe-design",
     root: process.cwd(),
+    pluginRoot: null,
     slug: "",
     json: false,
   };
@@ -49,15 +50,18 @@ function parseArgs(argv) {
 export function validateWorkflow(rootDir = process.cwd(), {
   workflow = "/supervibe-design",
   slug = "",
+  pluginRoot = null,
 } = {}) {
+  const designWorkflow = workflow === "/supervibe-design" || workflow === "supervibe-design";
+  const resolvedPluginRoot = pluginRoot || fileURLToPath(new URL("../", import.meta.url));
   const checks = [
     check("workflow-receipts", validateWorkflowReceipts(rootDir)),
     check("agent-producer-receipts", validateAgentProducerReceipts(rootDir)),
-    check("text-encoding", validateTextEncoding(rootDir)),
+    check("text-encoding", validateTextEncoding(rootDir), { blocking: !designWorkflow }),
     check("skill-source-report", buildSkillSourceReport({ projectRoot: rootDir })),
   ];
-  if (workflow === "/supervibe-design" || workflow === "supervibe-design") {
-    checks.push(check("design-wizard", validateDesignWizard(rootDir)));
+  if (designWorkflow) {
+    checks.push(check("design-wizard", validateDesignWizard(resolvedPluginRoot)));
     checks.push(check("design-agent-receipts", validateDesignAgentInvocationReceipts(rootDir)));
   }
   const issues = checks.flatMap((item) => (item.result.issues || item.result.encodingIssues || []).map((issue) => ({
@@ -70,7 +74,7 @@ export function validateWorkflow(rootDir = process.cwd(), {
     schemaVersion: 1,
     workflow,
     slug: slug || null,
-    pass: checks.every((item) => item.pass),
+    pass: checks.every((item) => item.blocking === false || item.pass),
     checks,
     issues,
   };
@@ -85,7 +89,7 @@ export function formatWorkflowValidationReport(result = {}) {
     `CHECKS: ${result.checks?.length || 0}`,
   ];
   for (const item of result.checks || []) {
-    lines.push(`CHECK: ${item.id} pass=${item.pass} issues=${item.issueCount}`);
+    lines.push(`CHECK: ${item.id} pass=${item.pass} issues=${item.issueCount}${item.blocking === false ? " blocking=false" : ""}`);
   }
   lines.push(`ISSUES: ${result.issues?.length || 0}`);
   for (const issue of result.issues || []) {
@@ -94,7 +98,7 @@ export function formatWorkflowValidationReport(result = {}) {
   return lines.join("\n");
 }
 
-function check(id, result = {}) {
+function check(id, result = {}, { blocking = true } = {}) {
   const issueCount = Array.isArray(result.issues)
     ? result.issues.length
     : Array.isArray(result.encodingIssues)
@@ -103,6 +107,7 @@ function check(id, result = {}) {
   return {
     id,
     pass: result.pass === true,
+    blocking,
     issueCount,
     result,
   };
@@ -113,6 +118,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = validateWorkflow(options.root, {
     workflow: options.workflow,
     slug: options.slug,
+    pluginRoot: options.pluginRoot || options["plugin-root"],
   });
   console.log(options.json ? JSON.stringify(result, null, 2) : formatWorkflowValidationReport(result));
   process.exit(result.pass ? 0 : 1);

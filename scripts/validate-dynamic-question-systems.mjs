@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -39,11 +41,18 @@ export function validateDynamicQuestionSystems() {
       issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-freeform-or-stop", `${question.axis || "unknown"} missing free-form path or stop condition`));
     }
   }
+  validateDesignWizardAdaptivity(issues);
 
+  const postDeliveryFingerprints = [];
   for (const context of POST_DELIVERY_CONTEXTS) {
     const question = buildPostDeliveryQuestion({ command: "/supervibe" }, { context, locale: "en" });
     validateQuestionShape(question, `post-delivery:${context}`, issues, { minChoices: 5 });
+    postDeliveryFingerprints.push(questionFingerprint(question));
   }
+  if (new Set(postDeliveryFingerprints).size !== POST_DELIVERY_CONTEXTS.length) {
+    issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "static-post-delivery-questions", "post-delivery contexts must render distinct prompts and action labels"));
+  }
+  validateCommandQuestionTemplates(issues);
 
   const transparent = buildTransparentStepQuestion({
     question: "Which execution mode should this workflow use?",
@@ -76,7 +85,7 @@ export function validateDynamicQuestionSystems() {
 
   return {
     pass: issues.length === 0,
-    checked: 2 + POST_DELIVERY_CONTEXTS.length,
+    checked: 7 + POST_DELIVERY_CONTEXTS.length,
     issues,
   };
 }
@@ -92,6 +101,94 @@ export function formatDynamicQuestionSystemsReport(result) {
     lines.push(`ISSUE: ${item.code} ${item.file} - ${item.message}`);
   }
   return lines.join("\n");
+}
+
+function validateDesignWizardAdaptivity(issues) {
+  const cases = [
+    {
+      label: "desktop-ops",
+      input: {
+        brief: "Dense Tauri desktop support dashboard with compact tables, queues, and operator workflows.",
+        target: "tauri",
+      },
+    },
+    {
+      label: "brand-launch",
+      input: {
+        brief: "Bold marketing landing page for an AI launch, hero section, conversion path, and waitlist.",
+        target: "web",
+      },
+    },
+    {
+      label: "regulated-trust",
+      input: {
+        brief: "Compliance banking admin with audit logs, risk review, privacy, and high trust requirements.",
+        target: "web",
+      },
+    },
+    {
+      label: "developer-tool",
+      input: {
+        brief: "Developer console for agent workflow, API logs, terminal output, code review, and debugging.",
+        target: "web",
+      },
+    },
+  ];
+  const states = cases.map((item) => ({ label: item.label, state: buildDesignWizardState(item.input) }));
+  const fingerprints = states.map((item) => designWizardFingerprint(item.state));
+  if (new Set(fingerprints).size !== states.length) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-design-wizard-queue", "different design briefs must not produce identical question queues and recommendations"));
+  }
+
+  const profiles = new Set(states.map((item) => item.state.questionStrategy?.profile).filter(Boolean));
+  if (profiles.size < 3) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "weak-design-profile-routing", "design wizard must infer multiple question profiles across different brief intents"));
+  }
+
+  const firstDesignAxes = new Set(states
+    .map((item) => item.state.questionQueue.find((question) => !["mode", "viewport"].includes(question.axis))?.axis)
+    .filter(Boolean));
+  if (firstDesignAxes.size < 3) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-first-design-axis", "different design briefs must prioritize different first design axes"));
+  }
+}
+
+function designWizardFingerprint(state = {}) {
+  const queue = (state.questionQueue || []).slice(0, 6).map((question) => {
+    const recommended = (question.choices || []).find((choice) => choice.recommended)?.id || "none";
+    return `${question.axis}:${recommended}:${question.prompt}`;
+  });
+  return [
+    state.questionStrategy?.profile || "none",
+    ...queue,
+  ].join("|");
+}
+
+function questionFingerprint(question = {}) {
+  const choices = (question.choices || []).map((choice) => {
+    return `${choice.id}:${choice.label}:${choice.tradeoff || choice.description || ""}`;
+  }).join("|");
+  return `${question.context || ""}:${question.prompt || ""}:${question.recommendation || ""}:${choices}`;
+}
+
+function validateCommandQuestionTemplates(issues) {
+  const commandsRoot = fileURLToPath(new URL("../commands/", import.meta.url));
+  let files = [];
+  try {
+    files = readdirSync(commandsRoot).filter((file) => file.endsWith(".md")).sort();
+  } catch {
+    issues.push(issue("commands", "missing-command-directory", "command question template audit could not read commands directory"));
+    return;
+  }
+
+  for (const file of files) {
+    const path = join(commandsRoot, file);
+    const content = readFileSync(path, "utf8");
+    const literalStepMatches = [...content.matchAll(/\bStep\s+(?!0(?:b)?\/N\b)(\d+)\/(\d+)\s*:/gi)];
+    for (const match of literalStepMatches) {
+      issues.push(issue(`commands/${file}`, "static-command-step-template", `use adaptive Step N/M instead of literal ${match[0]}`));
+    }
+  }
 }
 
 function validateQuestionShape(question, label, issues, { minChoices }) {
