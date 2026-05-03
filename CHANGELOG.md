@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.65] - 2026-05-04
+
+### Added
+
+- Added staged agent-dispatch metadata for `/supervibe-design`, including
+  immediate owner agents, deferred specialist agents, and the design wizard
+  stage gate command.
+- Added resume coverage for saved design `config.json` state in
+  `design-agent-plan.mjs --slug`, including mode, execution mode, target,
+  flow type, wizard decisions, and configured viewports.
+- Added `COVERAGE_STATUS` to receipt validators so zero-receipt passes are
+  visibly reported as not-started rather than evidence of agent work.
+
+### Fixed
+
+- Fixed `/supervibe-design` agent planning so `supervibe-orchestrator` is the
+  immediate real-agent dispatch while specialist design agents are deferred
+  until their wizard-gated stages unlock.
+- Fixed `validate-design-wizard.mjs` when launched from a user project root by
+  defaulting validation to the plugin root unless `--root` is provided.
+- Added a Russian replay test for the functional-only old-artifact scope phrase
+  from user feedback.
+
 ## [2.0.64] - 2026-05-04
 
 ### Added

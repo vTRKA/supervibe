@@ -138,7 +138,13 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "accessibility-reviewer",
     "ui-polish-reviewer",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["target-platform-designers", "competitive-design-researcher"] }),
+  ], {
+    dynamicAgentSelectors: ["target-platform-designers", "competitive-design-researcher"],
+    immediateAgentIds: ["supervibe-orchestrator"],
+    stageGate: "design-wizard",
+    stageGateCommand: "node <resolved-supervibe-plugin-root>/scripts/design-agent-plan.mjs --status --plan-writes --slug <slug>",
+    stageGateReason: "Stage 0 wizard gates collect mode, viewport, and preference coverage before specialist design agents can produce durable artifacts.",
+  }),
   profile("/supervibe-doctor", [
     "supervibe-orchestrator",
     "repo-researcher",
@@ -263,6 +269,8 @@ export function buildCommandAgentPlan(commandId, {
     ...profile.requiredAgentIds,
     ...extraRequiredAgentIds,
   ]);
+  const immediateAgentIds = normalizeImmediateAgentIds(profile, requiredAgentIds);
+  const deferredAgentIds = requiredAgentIds.filter((agentId) => !immediateAgentIds.includes(agentId));
   const available = availableAgentIds ? new Set([...availableAgentIds].map(String)) : null;
   const missingAgents = available
     ? requiredAgentIds.filter((agentId) => !available.has(agentId))
@@ -288,6 +296,11 @@ export function buildCommandAgentPlan(commandId, {
     requestedExecutionMode: requestedMode,
     defaultExecutionMode: profile.defaultExecutionMode,
     requiredAgentIds,
+    immediateAgentIds,
+    deferredAgentIds,
+    stageGate: profile.stageGate || null,
+    stageGateCommand: profile.stageGateCommand || null,
+    stageGateReason: profile.stageGateReason || null,
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     missingAgents,
     hostDispatch,
@@ -383,6 +396,11 @@ export function formatCommandAgentPlan(plan = {}) {
     `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
+    `IMMEDIATE_AGENTS: ${(plan.immediateAgentIds || []).join(", ") || "none"}`,
+    `DEFERRED_AGENTS: ${(plan.deferredAgentIds || []).join(", ") || "none"}`,
+    `AGENT_STAGE_GATE: ${plan.stageGate || "none"}`,
+    `AGENT_STAGE_GATE_COMMAND: ${plan.stageGateCommand || "none"}`,
+    `AGENT_STAGE_GATE_REASON: ${plan.stageGateReason || "none"}`,
     `DYNAMIC_SELECTORS: ${(plan.dynamicAgentSelectors || []).join(", ") || "none"}`,
     `MISSING_AGENTS: ${(plan.missingAgents || []).join(", ") || "none"}`,
     `HOST_DISPATCH: ${plan.hostDispatch?.hostAdapterId || "unspecified"}:${plan.hostDispatch?.status || "not-checked"}`,
@@ -404,6 +422,17 @@ export function formatCommandAgentPlan(plan = {}) {
     lines.push("CODEX_SPAWN_PAYLOADS:");
     for (const payload of plan.codexSpawnPayloads || []) {
       lines.push(`- ${payload.agentId}: ${JSON.stringify(payload.payload)}`);
+    }
+    if (plan.stageGate && plan.immediateAgentIds?.length) {
+      const immediate = new Set(plan.immediateAgentIds || []);
+      lines.push("CODEX_SPAWN_NOW_PAYLOADS:");
+      for (const payload of plan.codexSpawnPayloads || []) {
+        if (immediate.has(payload.agentId)) lines.push(`- ${payload.agentId}: ${JSON.stringify(payload.payload)}`);
+      }
+      lines.push("CODEX_DEFERRED_SPAWN_PAYLOADS:");
+      for (const payload of plan.codexSpawnPayloads || []) {
+        if (!immediate.has(payload.agentId)) lines.push(`- ${payload.agentId}: deferred until ${plan.stageGate}`);
+      }
     }
     lines.push("CODEX_RECEIPT_LOG_COMMANDS:");
     for (const payload of plan.codexSpawnPayloads || []) {
@@ -436,6 +465,11 @@ export function validateCommandAgentProfiles({
     }
     if (!profile.requiredAgentIds.includes(profile.ownerAgentId)) {
       issues.push(issue(commandId, "missing-owner-in-required-agents", "requiredAgentIds must include the owner agent."));
+    }
+    for (const agentId of profile.immediateAgentIds || []) {
+      if (!profile.requiredAgentIds.includes(agentId)) {
+        issues.push(issue(commandId, "immediate-agent-not-required", `Immediate agent must also be required: ${agentId}`));
+      }
     }
     if (new Set(profile.requiredAgentIds).size !== profile.requiredAgentIds.length) {
       issues.push(issue(commandId, "duplicate-required-agent", "requiredAgentIds must not contain duplicates."));
@@ -484,6 +518,10 @@ function profile(commandId, requiredAgentIds, options = {}) {
     defaultExecutionMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode,
     requiredAgentIds: Object.freeze(unique(requiredAgentIds)),
     dynamicAgentSelectors: Object.freeze(options.dynamicAgentSelectors || []),
+    immediateAgentIds: Object.freeze(options.immediateAgentIds || []),
+    stageGate: options.stageGate || null,
+    stageGateCommand: options.stageGateCommand || null,
+    stageGateReason: options.stageGateReason || null,
     executionModes: COMMAND_AGENT_ORCHESTRATION_CONTRACT.executionModes,
     blockedMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode,
     requiredPlanFields: COMMAND_AGENT_ORCHESTRATION_CONTRACT.requiredPlanFields,
@@ -508,6 +546,7 @@ function copyCommandAgentProfile(profile) {
     ...profile,
     requiredAgentIds: [...profile.requiredAgentIds],
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
+    immediateAgentIds: [...(profile.immediateAgentIds || [])],
     executionModes: [...profile.executionModes],
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
@@ -521,7 +560,17 @@ function nextActionForPlan(plan = {}) {
     return "Resolve the blocked agent plan before durable work.";
   }
   if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
+  if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {
+    return `Invoke immediate owner agent(s) now: ${plan.immediateAgentIds.join(", ")}. Then run ${plan.stageGateCommand || "the workflow gate"}; defer staged specialist agents (${plan.deferredAgentIds.join(", ")}) until the gate unlocks their stages.`;
+  }
   return "Invoke required host agents, capture invocation ids, then issue workflow receipts before completion claims.";
+}
+
+function normalizeImmediateAgentIds(profile, requiredAgentIds) {
+  const configured = unique(profile.immediateAgentIds || []);
+  if (configured.length === 0) return [...requiredAgentIds];
+  const required = new Set(requiredAgentIds);
+  return configured.filter((agentId) => required.has(agentId));
 }
 
 function normalizeCommandId(commandId) {

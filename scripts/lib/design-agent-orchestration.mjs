@@ -41,11 +41,12 @@ export function buildDesignAgentPlan({
   flowType = "in-product",
   designSystemStatus = "missing",
   rootDir = process.cwd(),
-  pluginRoot = process.cwd(),
+  pluginRoot = null,
   mode = null,
   requestedExecutionMode = null,
   currentWindow = null,
   deviceScaleFactor = null,
+  initialDecisions = {},
   intake = null,
 } = {}) {
   const text = String(brief ?? "");
@@ -54,6 +55,12 @@ export function buildDesignAgentPlan({
   const hostWindowMetrics = readDesignWindowMetrics({ rootDir, target });
   const resolvedCurrentWindow = currentWindow || hostWindowMetrics?.currentWindow || null;
   const resolvedDeviceScaleFactor = deviceScaleFactor ?? hostWindowMetrics?.deviceScaleFactor ?? null;
+  const resolvedInitialDecisions = {
+    ...(initialDecisions || {}),
+    ...(intake?.referenceScopeDecision
+      ? { reference_borrow_avoid: intake.referenceScopeDecision }
+      : {}),
+  };
   const wizard = buildDesignWizardState({
     brief,
     target,
@@ -61,11 +68,15 @@ export function buildDesignAgentPlan({
     mode,
     currentWindow: resolvedCurrentWindow,
     deviceScaleFactor: resolvedDeviceScaleFactor,
-    initialDecisions: intake?.referenceScopeDecision
-      ? { reference_borrow_avoid: intake.referenceScopeDecision }
-      : {},
+    initialDecisions: resolvedInitialDecisions,
   });
 
+  stages.push(stage({
+    id: "stage-0-orchestrator",
+    agentId: "supervibe-orchestrator",
+    reason: "own the design workflow state machine, wizard gate, specialist dispatch timing, and receipt evidence",
+    immediate: true,
+  }));
   stages.push(stage({
     id: "stage-0-memory",
     skillId: "supervibe:project-memory",
@@ -355,23 +366,23 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   }
   return [
     gate.durableWritesAllowed ? "WRITE_GATE: ready" : "WRITE_GATE: blocked",
-    "EXECUTION_GATE: real-agents required",
+    agentGateLine(plan),
     "NEXT_WIZARD_QUESTION:",
     formatDesignWizardQuestion(nextQuestion),
   ].join("\n");
 }
 
-function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = process.cwd(), requestedExecutionMode = null, locale = "en" } = {}) {
+function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = null, requestedExecutionMode = null, locale = "en" } = {}) {
   const stages = Array.isArray(plan.stages) ? plan.stages : [];
   const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
   const requiredSkillIds = unique(stages.map((item) => item.skillId).filter(Boolean));
-  const roster = loadAgentRosterSync({ rootDir });
+  const roster = loadMergedAgentRoster({ rootDir, pluginRoot });
   const available = new Set((roster.agents || []).map((agent) => agent.id));
   const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
   const provisioningPlan = missingAgents.length > 0
     ? createAgentProvisioningPlan({
       projectRoot: rootDir,
-      pluginRoot,
+      pluginRoot: pluginRoot || rootDir,
       agentIds: requiredAgentIds,
       skillIds: requiredSkillIds,
     })
@@ -410,6 +421,25 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
       ? buildDegradedModeQuestion(missingAgents, provisioningPlan, { executionMode, locale })
       : null,
   };
+}
+
+function loadMergedAgentRoster({ rootDir = process.cwd(), pluginRoot = null } = {}) {
+  const byId = new Map();
+  for (const root of unique([rootDir, pluginRoot].filter(Boolean))) {
+    const roster = loadAgentRosterSync({ rootDir: root });
+    for (const agent of roster.agents || []) {
+      if (!byId.has(agent.id)) byId.set(agent.id, agent);
+    }
+  }
+  const agents = [...byId.values()];
+  return { agents, count: agents.length };
+}
+
+function agentGateLine(plan = {}) {
+  if (plan.wizard?.questionQueue?.length) {
+    return "AGENT_GATE: invoke supervibe-orchestrator now; defer specialist design agents until wizard gates close";
+  }
+  return "AGENT_GATE: invoke each stage specialist before writing its durable output";
 }
 
 function designWorkflowStageForPlan(plan = {}) {

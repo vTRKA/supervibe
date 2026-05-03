@@ -125,6 +125,24 @@ test("explicit functional-only old artifact scope closes the intake scope questi
   }
 });
 
+test("exact Russian functional-only answer closes old artifact scope", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "Изучи старые прототипы и сохранить только функционал, не скелет",
+    });
+
+    assert.equal(intake.mode, "reference-scope-explicit");
+    assert.equal(intake.needsQuestion, false);
+    assert.equal(intake.needsOldArtifactScopeQuestion, false);
+    assert.equal(intake.referenceScopeDecision.choiceId, "functional-only");
+    assert.match(intake.referenceScopeDecision.quote, /сохранить только функционал|не скелет/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("website references ask for source scope before reading or artifact writes", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
   try {

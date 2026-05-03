@@ -82,6 +82,8 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.equal(match.agentProfile.defaultExecutionMode, "real-agents");
   assert.ok(match.agentProfile.requiredAgentIds.includes("creative-director"));
   assert.ok(match.agentProfile.requiredAgentIds.includes("prototype-builder"));
+  assert.deepEqual(match.agentProfile.immediateAgentIds, ["supervibe-orchestrator"]);
+  assert.equal(match.agentProfile.stageGate, "design-wizard");
   assert.deepEqual(match.agentContract.requiredPlanFields, ["agentPlan", "requiredAgentIds"]);
   assert.deepEqual(match.agentContract.requiredReceiptFields, ["hostInvocation.source", "hostInvocation.invocationId"]);
 
@@ -113,6 +115,7 @@ test("every slash command has a mandatory real-agents profile", () => {
     assert.equal(plan.executionMode, "real-agents", commandId);
     assert.equal(plan.ownerAgentId, "supervibe-orchestrator", commandId);
     assert.ok(plan.requiredAgentIds.includes("supervibe-orchestrator"), commandId);
+    assert.ok(plan.immediateAgentIds.includes("supervibe-orchestrator"), commandId);
     assert.equal(plan.agentOwnedOutputRequiresReceipts, true, commandId);
     assert.equal(plan.missingAgents.length, 0, commandId);
   }
@@ -186,6 +189,9 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   });
 
   assert.equal(plan.executionMode, "real-agents");
+  assert.deepEqual(plan.immediateAgentIds, ["supervibe-orchestrator"]);
+  assert.ok(plan.deferredAgentIds.includes("creative-director"));
+  assert.equal(plan.stageGate, "design-wizard");
   assert.ok(plan.codexSpawnPayloadRules.some((rule) => /fork_context=true.*omit agent_type, model, reasoning_effort/i.test(rule)));
   assert.ok(plan.codexSpawnPayloadRules.some((rule) => /Supervibe logical agent.*message.*not.*agent_type/i.test(rule)));
 
@@ -214,8 +220,16 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(report, /encode Supervibe logical agent role in message/);
   assert.match(report, /CODEX_SPAWN_PAYLOADS:/);
   assert.match(report, /creative-director: \{"fork_context":true,"message":/);
+  assert.match(report, /CODEX_SPAWN_NOW_PAYLOADS:/);
+  assert.match(report, /supervibe-orchestrator: \{"fork_context":true,"message":/);
+  assert.match(report, /CODEX_DEFERRED_SPAWN_PAYLOADS:/);
+  assert.match(report, /creative-director: deferred until design-wizard/);
   assert.match(report, /CODEX_RECEIPT_LOG_COMMANDS:/);
   assert.match(report, /--changed-files <paths>/);
+  assert.match(report, /IMMEDIATE_AGENTS: supervibe-orchestrator/);
+  assert.match(report, /DEFERRED_AGENTS: .*creative-director.*prototype-builder/);
+  assert.match(report, /AGENT_STAGE_GATE: design-wizard/);
+  assert.match(report, /NEXT: Invoke immediate owner agent\(s\) now: supervibe-orchestrator/);
 });
 
 test("every slash command has codex-safe payloads for every required agent", () => {

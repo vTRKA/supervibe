@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   evaluateDesignArtifactIntake,
@@ -24,13 +26,16 @@ function arg(name, fallback = "") {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const scriptPluginRoot = fileURLToPath(new URL("../", import.meta.url));
-  const brief = arg("--brief", "");
-  const target = arg("--target", "unknown");
-  const flowType = arg("--flow", "in-product");
-  const requestedExecutionMode = arg("--execution-mode", "");
   const slug = arg("--slug", "");
   const projectRoot = arg("--root", process.cwd());
   const pluginRoot = arg("--plugin-root", scriptPluginRoot);
+  const persistedConfig = slug ? readPersistedDesignConfig(projectRoot, slug) : null;
+  const brief = arg("--brief", persistedConfig?.brief || persistedConfig?.userBrief || "");
+  const target = arg("--target", persistedConfig?.target || "unknown");
+  const flowType = arg("--flow", persistedConfig?.flowType || persistedConfig?.flow || "in-product");
+  const requestedExecutionMode = arg("--execution-mode", persistedConfig?.executionMode || "");
+  const mode = arg("--mode", persistedConfig?.mode || persistedConfig?.designWizard?.mode || "");
+  const initialDecisions = extractPersistedDesignDecisions(persistedConfig);
   const json = process.argv.includes("--json");
   const status = process.argv.includes("--status");
   const planWrites = process.argv.includes("--plan-writes");
@@ -40,6 +45,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     target,
     flowType,
     requestedExecutionMode,
+    mode,
+    initialDecisions,
     referenceSources: intake.referenceSources ?? [],
     rootDir: projectRoot,
     pluginRoot,
@@ -79,4 +86,52 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }
   }
+}
+
+function readPersistedDesignConfig(projectRoot, slug) {
+  const configPath = join(projectRoot, ".supervibe", "artifacts", "prototypes", slug, "config.json");
+  if (!existsSync(configPath)) return null;
+  try {
+    return JSON.parse(readFileSync(configPath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function extractPersistedDesignDecisions(config = null) {
+  const decisions = {
+    ...(config?.designWizard?.decisions || {}),
+    ...(config?.decisions || {}),
+  };
+  if (!decisions.viewport && Array.isArray(config?.viewports) && config.viewports.length > 0) {
+    decisions.viewport = viewportDecisionFromConfig(config.viewports[0]);
+  }
+  return decisions;
+}
+
+function viewportDecisionFromConfig(viewport) {
+  if (typeof viewport === "string") {
+    return {
+      axis: "viewport",
+      answer: viewport,
+      choiceId: viewport,
+      source: "config.json",
+    };
+  }
+  if (viewport && typeof viewport === "object") {
+    const width = viewport.width || viewport.w;
+    const height = viewport.height || viewport.h;
+    return {
+      axis: "viewport",
+      answer: width && height ? `${width}x${height}` : viewport.label || viewport.id || "configured viewport",
+      choiceId: viewport.id || null,
+      value: viewport,
+      source: "config.json",
+    };
+  }
+  return {
+    axis: "viewport",
+    answer: "configured viewport",
+    source: "config.json",
+  };
 }

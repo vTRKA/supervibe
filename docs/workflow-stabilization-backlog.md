@@ -45,10 +45,37 @@ same failure modes affect every agent-heavy Supervibe command.
   as `ready` for full-pipeline runs or `available` for `design-system-only`,
   and the next action is `Build prototype / revise DS / stop`.
 
+## Fixed In 2.0.65
+
+- Agent dispatch timing: `/supervibe-design` command plans now separate
+  immediate owner dispatch (`supervibe-orchestrator`) from staged specialist
+  dispatch (`creative-director`, `ux-ui-designer`, `copywriter`,
+  `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer`,
+  `quality-gate-reviewer`). The CLI no longer implies that every specialist
+  should spawn before the wizard gate closes.
+- Wizard-gated design agents: `design-agent-plan` now lists
+  `stage-0-orchestrator`, prints an explicit `AGENT_GATE`, and keeps specialist
+  stages deferred until mode, viewport, and preference coverage unlock the
+  relevant durable output stage.
+- Resume/state loop: `design-agent-plan.mjs --slug <slug>` now reads the
+  saved prototype `config.json` for `mode`, `executionMode`, `target`,
+  `flowType`, `designWizard.decisions`, and configured viewports before
+  rebuilding the executable wizard state.
+- Project-root validation: `validate-design-wizard.mjs` defaults to the plugin
+  root when launched from a user project, while still supporting explicit
+  `--root` / `--plugin-root`.
+- Receipt validator UX: workflow, agent-producer, and design-agent receipt
+  validators now print `COVERAGE_STATUS` so `PASS: true` with zero receipts is
+  visibly `not-started`, not evidence that agents ran.
+- Russian intent replay: the exact functional-only old-artifact answer from
+  user feedback is covered as `functional-only` old-artifact scope.
+
 ## Still Design Principles
 
 - Command receipts never substitute for specialist agent, worker, or reviewer
   output.
+- Real-agent command plans must distinguish agents to spawn now from staged
+  agents that are blocked behind workflow gates.
 - Candidate design-system artifacts never set `approved` and never unlock
   prototype work without explicit approval.
 - Approved design-system artifacts alone do not equal a final UI prototype or

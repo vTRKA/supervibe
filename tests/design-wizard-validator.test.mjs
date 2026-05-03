@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -31,4 +32,21 @@ test("current design wizard catalog and docs pass wizard validation", () => {
 
   assert.deepEqual(result.issues, []);
   assert.equal(result.pass, true);
+});
+
+test("design wizard validator CLI defaults to plugin root when launched from a project root", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-design-wizard-project-"));
+  try {
+    const output = execFileSync(process.execPath, [
+      join(process.cwd(), "scripts", "validate-design-wizard.mjs"),
+    ], {
+      cwd: projectRoot,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /SUPERVIBE_DESIGN_WIZARD/);
+    assert.match(output, /PASS: true/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });

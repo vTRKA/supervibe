@@ -91,6 +91,43 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
       stdio: ["pipe", "pipe", "pipe"],
     });
     assert.match(validation, /PASS: true/);
+    assert.match(validation, /COVERAGE_STATUS: agent-receipts-present/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("receipt validators label zero-receipt runs as not started", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-zero-receipts-"));
+  try {
+    const producer = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-agent-producer-receipts.mjs"),
+    ], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const workflow = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-workflow-receipts.mjs"),
+    ], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const design = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-design-agent-receipts.mjs"),
+    ], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(producer, /PASS: true/);
+    assert.match(producer, /COVERAGE_STATUS: not-started-no-durable-outputs/);
+    assert.match(workflow, /PASS: true/);
+    assert.match(workflow, /COVERAGE_STATUS: not-started-no-receipts/);
+    assert.match(design, /PASS: true/);
+    assert.match(design, /COVERAGE_STATUS: not-started-no-durable-design-outputs/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

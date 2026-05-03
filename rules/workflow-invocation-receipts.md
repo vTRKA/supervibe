@@ -30,6 +30,8 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Link produced artifacts through the colocated `artifact-links.json` file.
 - Include command, subject type, subject id, stage, reason, input evidence, output artifacts, timestamps, handoff id, canonical runtime timestamp, runtime issuer, HMAC signature, canonical hash, and output artifact hashes.
 - Run `npm run validate:workflow-receipts` before claiming an invocation or delegated artifact is complete.
+- Treat `PASS: true` with `COVERAGE_STATUS: not-started-*` as "nothing was
+  available to validate", not as evidence that agents or receipts ran.
 - Match the receipt subject to the claimed producer. A command receipt proves the command ran; it does not prove a specialist agent, reviewer, worker, validator, skill, or external tool produced the artifact.
 - For `subjectType=agent`, `subjectType=worker`, or `subjectType=reviewer`, include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run (for example the Task hook entry in `.supervibe/memory/agent-invocations.jsonl` or a host trace file). Runtime receipt issue must fail when this proof is missing. The invocation logger also writes `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json` and `summary.md`; receipts should expose that stable evidence path when available.
 - Run `npm run validate:agent-producer-receipts` before claiming any agent, worker, or reviewer output. This validator maps durable outputs to exact producers and verifies that agent-like receipts point to real host invocation evidence.

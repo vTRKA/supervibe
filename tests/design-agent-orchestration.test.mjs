@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+
+const ROOT = process.cwd();
 
 import {
   assertDesignWriteAllowed,
@@ -62,6 +65,7 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "mode"));
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "viewport"));
   assert.equal(plan.viewportPolicy.requiresActualWindowQuestion, true);
+  assert.ok(plan.stages.some((stage) => stage.agentId === "supervibe-orchestrator" && stage.immediate === true));
   assert.ok(plan.stages.some((stage) => stage.agentId === "creative-director"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:brandbook"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "ux-ui-designer"));
@@ -71,7 +75,50 @@ test("design agent plan maps source types and stages to explicit agents and skil
 
   const prompt = formatDesignPlanPrompt(plan);
   assert.match(prompt, /NEXT_WIZARD_QUESTION/);
+  assert.match(prompt, /AGENT_GATE: invoke supervibe-orchestrator now; defer specialist design agents until wizard gates close/);
   assert.match(prompt, /Step 1\//);
+});
+
+test("design agent plan CLI resumes mode and decisions from saved prototype config", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-resume-config-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat-ds/config.json", `${JSON.stringify({
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+      designWizard: {
+        decisions: {
+          reference_borrow_avoid: {
+            axis: "reference_borrow_avoid",
+            choiceId: "functional-only",
+            answer: "сохранить только функционал, не скелет",
+            source: "user",
+          },
+        },
+      },
+    }, null, 2)}\n`);
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--slug",
+      "agent-chat-ds",
+      "--root",
+      root,
+      "--json",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    const parsed = JSON.parse(output);
+
+    assert.equal(parsed.plan.mode, "full-prototype-pipeline");
+    assert.equal(parsed.plan.executionStatus.executionMode, "real-agents");
+    assert.equal(parsed.plan.wizard.decisions.reference_borrow_avoid.choiceId, "functional-only");
+    assert.equal(parsed.plan.wizard.questionQueue[0].axis, "viewport");
+    assert.equal(parsed.plan.wizard.questionQueue[0].step, 3);
+    assert.match(parsed.plan.wizard.gates.blockedReason, /missing viewport policy/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {

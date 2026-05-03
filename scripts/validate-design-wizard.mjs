@@ -133,7 +133,14 @@ function issue(file, code, message) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateDesignWizard(process.cwd());
+  const scriptPluginRoot = fileURLToPath(new URL("../", import.meta.url));
+  const rootDir = arg("--root", arg("--plugin-root", scriptPluginRoot));
+  const result = validateDesignWizard(rootDir);
   console.log(formatDesignWizardReport(result));
   process.exit(result.pass ? 0 : 1);
+}
+
+function arg(name, fallback = "") {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : fallback;
 }

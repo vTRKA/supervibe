@@ -386,7 +386,11 @@ export function buildDesignWizardState({
   for (const axisId of requiredAxes) {
     questionQueue.push(axisQuestion(DESIGN_WIZARD_AXES.find((axisDef) => axisDef.id === axisId), resolvedLocale));
   }
-  numberQuestionQueue(questionQueue);
+  numberQuestionQueue(questionQueue, {
+    completedCount: mode
+      ? 1 + Number(!needsViewportQuestion(decisions.viewport, viewportPolicy)) + (DESIGN_WIZARD_AXES.length - missingAxes.length)
+      : 0,
+  });
 
   const guidedDefaultsChecklist = explicitDefaults
     ? DESIGN_WIZARD_AXES.map((axisDef) => guidedDefaultChecklistItem(axisDef, decisions[axisDef.id], resolvedLocale))
@@ -971,10 +975,10 @@ function dedupeViewports(viewports) {
   return out;
 }
 
-function numberQuestionQueue(questionQueue) {
-  const total = questionQueue.length;
+function numberQuestionQueue(questionQueue, { completedCount = 0, totalCount = null } = {}) {
+  const total = totalCount || questionQueue.length + completedCount;
   for (const [index, question] of questionQueue.entries()) {
-    question.step = index + 1;
+    question.step = completedCount + index + 1;
     question.total = total;
   }
   return questionQueue;

@@ -47,6 +47,10 @@ Every published `/supervibe-*` command must have a profile with:
 - Build `agentPlan` from the command profile before durable command work.
 - Run `scripts/command-agent-plan.mjs` before durable command work and follow
   its host dispatch/proof result.
+- When a profile prints `IMMEDIATE_AGENTS`, `DEFERRED_AGENTS`, or
+  `AGENT_STAGE_GATE`, invoke only the immediate owner/control-plane agents
+  before the gate. Staged specialists must wait until the executable workflow
+  state says their stage is ready.
 - Invoke the listed host agents when the command performs domain work,
   review, implementation, design, audit, planning, scoring, or handoff.
 - Add dynamic stack/domain specialists when the command profile asks for
@@ -54,7 +58,8 @@ Every published `/supervibe-*` command must have a profile with:
 - For agent, worker, or reviewer output, issue runtime workflow receipts with
   real host invocation proof.
 - For Codex, use the `CODEX_SPAWN_PAYLOAD_RULES` and
-  `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`. Forked
+  `CODEX_SPAWN_NOW_PAYLOADS` / staged payload information printed by
+  `command-agent-plan.mjs`. Forked
   payloads must set `fork_context=true`, must omit `agent_type`, `model`, and
   `reasoning_effort`, and must encode the Supervibe logical role in `message`
   instead of Codex `agent_type`.
@@ -71,6 +76,9 @@ Every published `/supervibe-*` command must have a profile with:
   diagnostic or dry-run output.
 - Do not claim `real-agents` unless the host actually invoked the agents and
   receipts include host invocation ids.
+- Do not treat `REQUIRED_AGENTS` as "spawn all immediately" when a workflow
+  gate is present; it means those agents are required before their stage can be
+  claimed complete.
 - Do not copy the full profile logic into command markdown. Commands should
   point to the executable profile and this rule, so duplicated prose cannot
   drift into an emulation path.
