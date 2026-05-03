@@ -10,6 +10,10 @@ export function formatDesignAgentReceiptsReport(result) {
     `PASS: ${result.pass}`,
     `CHECKED: ${result.checked}`,
     `RECEIPTS: ${result.receipts}`,
+    `EXECUTION_MODE: ${result.executionMode || "unknown"}`,
+    `MISSING_AGENTS: ${(result.missingAgents || []).join(",") || "none"}`,
+    `MISSING_SUBJECTS: ${(result.missingSubjects || []).join(",") || "none"}`,
+    `QUALITY_IMPACT: ${result.qualityImpact || "none"}`,
     `ISSUES: ${result.issues.length}`,
   ];
   for (const issue of result.issues) {

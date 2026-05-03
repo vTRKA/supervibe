@@ -24,6 +24,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     target,
     flowType,
     referenceSources: intake.referenceSources ?? [],
+    rootDir: projectRoot,
   });
 
   if (json) {
@@ -32,6 +33,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log("SUPERVIBE_DESIGN_AGENT_PLAN");
     console.log(`REFERENCE_SCOPE_REQUIRED: ${intake.needsReferenceSourceScopeQuestion === true}`);
     console.log(`OLD_ARTIFACT_SCOPE_REQUIRED: ${intake.needsOldArtifactScopeQuestion === true}`);
+    console.log(`EXECUTION_MODE: ${plan.executionStatus.executionMode}`);
+    console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
+    console.log(`WIZARD_COVERAGE: ${plan.wizard.coverage.score}`);
+    console.log(`WIZARD_BLOCKED_REASON: ${plan.wizard.gates.blockedReason || "none"}`);
     for (const stage of plan.stages) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }

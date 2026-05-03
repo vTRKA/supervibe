@@ -30,12 +30,15 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Link produced artifacts through the colocated `artifact-links.json` file.
 - Include command, subject type, subject id, stage, reason, input evidence, output artifacts, timestamps, handoff id, runtime issuer, HMAC signature, canonical hash, and output artifact hashes.
 - Run `npm run validate:workflow-receipts` before claiming an invocation or delegated artifact is complete.
+- Match the receipt subject to the claimed producer. A command receipt proves the command ran; it does not prove a specialist agent, reviewer, worker, validator, skill, or external tool produced the artifact.
+- Run any domain-specific receipt validator required by the workflow, such as `node scripts/validate-design-agent-receipts.mjs` for `/supervibe-design`, before claiming a delegated workflow is complete.
 
 ## What not to do
 
 - Hand-written receipts are untrusted. Do not hand-write JSON receipts.
 - Do not create command-specific receipt runtimes that duplicate the shared workflow receipt runtime.
 - Do not claim an agent, skill, reviewer, worker, validator, command, or external tool was invoked when a trusted completed receipt is missing.
+- Do not substitute a command receipt for a missing specialist receipt. If a specialist was unavailable, record `executionMode: degraded-manual` or `executionMode: skills-only`, list `missingAgents`, and surface the quality impact before user approval.
 - Do not use a receipt to bypass an approval gate; receipts prove invocation provenance, not user approval.
 
 ## Enforcement

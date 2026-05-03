@@ -16,6 +16,50 @@ Lifecycle: `draft -> review -> approved -> handoff`. Persist state in `.supervib
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question must include explicit answer choices: the recommended/default option first, one-line tradeoff summary for every option, a free-form answer path, and the stop condition. A bare line such as `Step 3/6: main screen or shell?` is invalid until it lists concrete choices.
 
+## Design Wizard Contract
+
+`/supervibe-design` uses the executable wizard catalog in `scripts/lib/design-wizard-catalog.mjs`, not only this markdown file, for Stage 0-2 interaction. Run `node scripts/design-agent-plan.mjs --brief "<brief>" --json` to build `plan.wizard`, `plan.executionStatus`, `plan.viewportPolicy`, and `plan.stages`.
+
+The first wizard step is a **mode question** with these choices: design system only, design system plus UX spec, full pipeline to prototype preview, or continue an existing approved design system. Save the answer to `config.json.mode`, `config.json.stageTriage`, and `config.json.executionMode`. If the mode is ambiguous after design-system approval, ask the **Continuation question after approved design system**: continue to UX spec, build prototype, export tokens, or stop on approved DS.
+
+The wizard state is persisted in `config.json.designWizard` and must include:
+
+- `questionQueue` - ordered one-question-at-a-time prompts for missing or conflicting decisions.
+- `decisions` - axis, answer/default, source, confidence, quote/evidence, decisionUnlocked, and timestamp.
+- `guidedDefaultsChecklist` - shown when the user says to use defaults; every axis offers `Accept default / Compare alternatives / Customize`.
+- `coverage` - required axes, covered axes, missing axes, conflicts, and score.
+- `gates` - `tokensUnlocked` stays false until mandatory questions are closed or explicitly delegated/defaulted by the user.
+
+### Stage Question Catalog
+
+Use the catalog choices from `DESIGN_WIZARD_AXES`; do not invent a thin recommended/alternative/stop menu for creative axes.
+
+- Vision: 3-5 mood directions with risk and tradeoff.
+- Typography: system-native, geometric, humanist, code-first.
+- Palette: graphite+amber, graphite+cyan, light-first, high-contrast.
+- Density: compact, balanced, comfortable.
+- Radius/elevation: flat, tactile, layered when detailed in the design-system section.
+- Motion: strict, subtle, expressive.
+- Components: Radix/headless, custom, shadcn-style adapter, platform-native.
+- Viewport: current 1:1, 1280x800, 1440x900, 1920x1080, or custom.
+
+If the brief already covers an axis, the wizard stores `source=user` with a short quote. If the user explicitly says "use defaults", the wizard stores `source=explicit-default` and shows the editable `guidedDefaultsChecklist`; defaults are not a silent collapse of the design interview. `source=inferred` remains forbidden for the Preference Coverage Matrix.
+
+Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
+
+For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1280x800` plus `800x600` as the desktop baseline.
+
+Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `degraded-manual`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality was lost. If a required specialist is missing, ask one degraded-mode question before any approval: stop and connect agents, run degraded manual draft, run deterministic skill stages only, or stop here.
+
+Run both receipt validators before claiming design workflow completion:
+
+```bash
+node scripts/workflow-receipt.mjs validate
+node scripts/validate-design-agent-receipts.mjs
+```
+
+`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output.
+
 ## Continuation Contract
 
 `/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the next mandatory approval gate, prototype feedback gate, or explicit blocker. Continue through all applicable non-blocking stages when the next stage can be completed from the current brief, approved artifacts, and documented safe defaults; stages may be marked `reuse`, `delegated`, `skipped`, or `N/A` only through documented triage. Delegated design decisions can fill safe defaults, but they cannot satisfy creative-direction selection, required design-system section approval, prototype approval, safety/policy gates, production approvals, or destructive-operation consent.
@@ -134,7 +178,7 @@ Run a product-fit style matrix before committing to a visual direction: product 
 ## Hard rules (the user feedback that drives this command)
 
 1. **Native HTML/CSS/JS only** for prototypes. No React, Vue, Svelte, Next.js, Nuxt. Pure web platform. Frameworks come AFTER approval, in the handoff-to-stack step.
-2. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user upfront if they want different, but never silently expand.
+2. **Viewport target is platform-specific.** Web defaults to `375px` mobile + `1440px` desktop. Desktop/Tauri/Electron defaults to an actual 1:1 window when available; otherwise use `1280x800` main window plus `800x600` minimum window and record `exactWindow`, `deviceScaleFactor`, `mainWindow`, `secondaryWindow`, and `largeWindow` metadata. Ask user upfront if they want different, but never silently expand.
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
 4. **Design system lifecycle is explicit.** Start with candidate tokens for design-system review only, approve required sections explicitly, then unlock prototypes only when `design_system.status = approved`. Every visual decision references the current approved system instead of inventing one-off values.
 4a. **Design system is project-level, not per-mockup.** Build it once at `.supervibe/artifacts/prototypes/_design-system/`, then reuse it for every future mockup. New work may extend the system through an explicit extension request; it must not rebuild palette/type/components from scratch unless the user asked for a rebrand.
@@ -324,10 +368,10 @@ If design system missing OR Stage 1 just produced a new direction OR the user ex
 
 0. Verify `.supervibe/artifacts/prototypes/<slug>/config.json.stageTriage`, `.supervibe/artifacts/brandbook/preferences.json`, and `.supervibe/artifacts/brandbook/direction.md` exist for new/rebrand runs. `preferences.json` must include `first_user_design_gate_ack=true` and no source=`inferred` matrix entries. Do not create candidate tokens, `manifest.json`, or section completion markers until the Preference Coverage Matrix and selected creative direction are satisfied.
 1. Invoke `supervibe:brandbook` skill in full-pass mode only when Stage 2 triage is `required` (up to 8 sub-sections — palette, typography, spacing, motion, voice, components-baseline, accessibility, manifest), and run `workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook ...` before claiming candidate or approved design-system outputs.
-2. Each sub-section is a separate decision record (one question at a time only when clarification is actually needed, markdown with `Step N/M` progress).
+2. Each sub-section is a separate decision record driven by the wizard `questionQueue`. Ask one question at a time for every required or user-visible creative choice, even when a safe default exists, unless the user explicitly accepted the guided default for that axis.
 3. Each sub-section writes a `draft`, `candidate`, `needs_revision`, or `approved` marker. Candidate markers are completion/proposal records, not user approval.
 4. Output: `.supervibe/artifacts/prototypes/_design-system/{tokens.css, motion.css, voice.md, components/, accessibility.md, manifest.json, design-flow-state.json}` with candidate tokens and `design_system.status === "candidate"` until explicit section approvals are complete.
-5. Show a review packet/styleboard and ask explicit approval for every required section: `palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, and `accessibility-platform`. Every section must have a visible summary plus `approve / revise / compare alternative / stop` choices. A bulk phrase such as "approve all 8 sections" is valid only after that packet was already shown in the current run and all eight section summaries are visible in chat.
+5. Show a review packet/styleboard and ask explicit approval for every required section: `palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, and `accessibility-platform`. Every section must have a visible summary plus approve / revise / compare alternative / stop choices. The default UX is per-section review; a bulk phrase such as "approve all 8 sections" is valid only after `styleboard.html` was shown in the current run and all eight section summaries are visible in chat.
 6. Only after every required section is explicitly approved, write `design_system.status = "approved"` with `approved_at`, `approved_by`, `approved_sections`, per-section evidence, and `feedback_hash` or equivalent user-message evidence in `design-flow-state.json`.
 
 After candidate completion: design system is a **review packet**, not a prototype source of truth. It blocks downstream prototype stages until `design_system.status = "approved"` and every required section is approved. No preview server starts while the system is candidate or needs_revision.
@@ -377,7 +421,7 @@ Dispatch `prototype-builder` agent and run `workflow-receipt.mjs issue --command
 
 Both skills enforce:
 - Pure native (no frameworks, no npm)
-- Default viewports `[375, 1440]` — agent asks once if user wants different
+- Viewports come from `plan.viewportPolicy`: web defaults to `[375, 1440]`; desktop/Tauri/Electron uses actual 1:1 window metadata or `[1280x800, 800x600]` fallback and asks once if user wants different
 - `design_system.status = approved` and every required section approved before writing prototype HTML/CSS/JS
 - All visuals through `.supervibe/artifacts/prototypes/_design-system/tokens.css` (no raw hex / magic px)
 - All animations from `.supervibe/artifacts/prototypes/_design-system/motion.css` (no inline cubic-beziers)
@@ -480,6 +524,8 @@ When the user explicitly approves the artifact:
 Brief:        <one-line>
 Brand:        .supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
 System:       .supervibe/artifacts/prototypes/_design-system/design-flow-state.json + manifest.json (candidate | needs_revision | approved | final metadata)
+Wizard:       coverage <covered>/<required>, queue <N>, guidedDefaultsChecklist <N>
+Execution:    executionMode <real-agents | degraded-manual | skills-only>, missingAgents <list|none>, qualityImpact <text|none>
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md
 Prototype:    .supervibe/artifacts/prototypes/<slug>/index.html

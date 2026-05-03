@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.58] - 2026-05-03
+
+### Added
+
+- Added executable `/supervibe-design` wizard catalog with workflow mode
+  selection, per-axis choice queues, guided defaults, brief coverage parsing,
+  and desktop/Tauri viewport policy.
+- Added `validate-design-wizard` and regression tests for rich design
+  interaction, guided defaults, viewport metadata, and styleboard contract.
+- Added a tracked design workflow hardening TODO covering the discovered
+  blockers and follow-up host adapter work.
+
+### Changed
+
+- `/supervibe-design` now exposes wizard coverage, `questionQueue`,
+  `guidedDefaultsChecklist`, execution mode, missing agents, quality impact,
+  and the mandatory continuation question after design-system approval.
+- Design agent receipt validation now reports `executionMode`,
+  `missingAgents`, `missingSubjects`, and `qualityImpact`.
+- Workflow receipt rules now forbid substituting a command receipt for a
+  claimed specialist agent, reviewer, worker, validator, skill, or tool
+  invocation.
+- Brandbook guidance now requires a visible `styleboard.html` before
+  design-system section approval.
+
+### Fixed
+
+- Fixed the design workflow gap where "use defaults" could collapse the
+  creative interview without showing editable per-axis decisions.
+- Fixed the desktop viewport model so Tauri/Electron flows ask for actual
+  window size, `deviceScaleFactor`, and min/main/secondary/large window policy
+  instead of relying only on browser `375 + 1440` defaults.
+- Fixed the receipt-gate blind spot where a `/supervibe-design` command
+  receipt could be confused with a real `creative-director` stage receipt.
+
 ## [2.0.57] - 2026-05-03
 
 ### Added

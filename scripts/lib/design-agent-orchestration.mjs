@@ -1,5 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
+import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
+import {
+  buildDesignWizardState,
+  resolveDesignViewportPolicy,
+} from "./design-wizard-catalog.mjs";
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
@@ -24,10 +29,18 @@ export function buildDesignAgentPlan({
   referenceSources = [],
   flowType = "in-product",
   designSystemStatus = "missing",
+  rootDir = process.cwd(),
+  mode = null,
 } = {}) {
   const text = String(brief ?? "");
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
   const stages = [];
+  const wizard = buildDesignWizardState({
+    brief,
+    target,
+    designSystemStatus,
+    mode,
+  });
 
   stages.push(stage({
     id: "stage-0-memory",
@@ -104,15 +117,21 @@ export function buildDesignAgentPlan({
     reason: "accessibility review is required before prototype approval",
   }));
 
-  return {
+  const plan = {
     schemaVersion: 1,
     command: "/supervibe-design",
     target,
     flowType,
+    mode: wizard.mode,
     requiresReceipts: true,
     receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
+    executionStatus: null,
+    wizard,
+    viewportPolicy: resolveDesignViewportPolicy({ target }),
     stages: dedupeStages(stages),
   };
+  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan);
+  return plan;
 }
 
 export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), options = {}) {
@@ -147,8 +166,53 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
     pass: issues.length === 0,
     checked: expected.length,
     receipts: receipts.length,
+    executionMode: deriveDesignReceiptExecutionMode({ receipts, expected, issues }),
+    missingAgents: missingAgentsForIssues(issues),
+    missingSubjects: missingSubjectsForIssues(issues),
+    qualityImpact: qualityImpactForIssues(issues),
     issues,
   };
+}
+
+function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}) {
+  const stages = Array.isArray(plan.stages) ? plan.stages : [];
+  const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
+  const requiredSkillIds = unique(stages.map((item) => item.skillId).filter(Boolean));
+  const roster = loadAgentRosterSync({ rootDir });
+  const available = new Set((roster.agents || []).map((agent) => agent.id));
+  const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
+  const executionMode = requiredAgentIds.length === 0
+    ? "skills-only"
+    : missingAgents.length > 0
+      ? "degraded-manual"
+      : "real-agents";
+
+  return {
+    executionMode,
+    requiredAgentIds,
+    requiredSkillIds,
+    missingAgents,
+    qualityImpact: missingAgents.length
+      ? `Specialist stages cannot be claimed as multi-agent output without these agents: ${missingAgents.join(", ")}`
+      : "All planned specialist agents are present; durable outputs still require runtime receipts.",
+    receiptGate: "pending-until-runtime-issued-receipts",
+    degradedModeQuestion: missingAgents.length
+      ? buildDegradedModeQuestion(missingAgents)
+      : null,
+  };
+}
+
+function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues = [] } = {}) {
+  if (expected.length === 0) return "not-started";
+  const designReceipts = receipts.filter((receipt) => receipt.command === "/supervibe-design" && !receipt.__invalidJson);
+  const agentReceipts = designReceipts.filter((receipt) => receipt.agentId || receipt.subjectType === "agent");
+  const skillReceipts = designReceipts.filter((receipt) => receipt.skillId || receipt.subjectType === "skill");
+  const missingAgentIssues = issues.filter((issue) => issue.code === "missing-design-agent-receipt");
+  if (missingAgentIssues.length > 0 && skillReceipts.length > 0 && agentReceipts.length === 0) return "skills-only";
+  if (missingAgentIssues.length > 0) return "degraded-manual";
+  if (agentReceipts.length > 0) return "real-agents";
+  if (skillReceipts.length > 0) return "skills-only";
+  return "degraded-manual";
 }
 
 function stage(fields) {
@@ -168,6 +232,39 @@ function dedupeStages(stages) {
     out.push(item);
   }
   return out;
+}
+
+function buildDegradedModeQuestion(missingAgents) {
+  return {
+    prompt: "Step N/M: specialist agents are unavailable. Continue degraded or stop?",
+    why: "A manual draft can be useful, but it must not be presented as completed multi-agent design work.",
+    decisionUnlocked: "config.json.executionMode, missingAgents, and qualityImpact",
+    ifSkipped: "Stop and ask the user to connect the missing agents.",
+    choices: [
+      {
+        id: "stop-connect-agents",
+        label: "Stop and connect agents",
+        tradeoff: "Preserves workflow quality and prevents false specialist claims.",
+        recommended: true,
+      },
+      {
+        id: "degraded-manual",
+        label: "Run degraded manual draft",
+        tradeoff: "Allows progress, but marks outputs degraded and blocks specialist completion claims.",
+      },
+      {
+        id: "skills-only",
+        label: "Run deterministic skill stages only",
+        tradeoff: "Limits work to validation, memory, receipts, and materialization steps.",
+      },
+      {
+        id: "stop",
+        label: "Stop here",
+        tradeoff: "Saves current state and makes no hidden progress.",
+      },
+    ],
+    missingAgents,
+  };
 }
 
 function expectedReceiptsForDurableOutputs(rootDir) {
@@ -194,6 +291,31 @@ function expectedReceiptsForDurableOutputs(rootDir) {
   }
 
   return expected;
+}
+
+function missingAgentsForIssues(issues) {
+  return unique((issues || [])
+    .filter((issue) => issue.code === "missing-design-agent-receipt")
+    .map((issue) => issue.expectedAgentId)
+    .filter((id) => !String(id).includes(":"))
+    .filter(Boolean));
+}
+
+function missingSubjectsForIssues(issues) {
+  return unique((issues || [])
+    .filter((issue) => issue.code === "missing-design-agent-receipt")
+    .map((issue) => issue.expectedAgentId)
+    .filter(Boolean));
+}
+
+function qualityImpactForIssues(issues) {
+  const missing = missingSubjectsForIssues(issues);
+  if (missing.length === 0) return null;
+  return `Durable design artifacts were found without completed specialist receipts for: ${missing.join(", ")}. Treat this run as degraded until real agent receipts are issued.`;
+}
+
+function unique(values) {
+  return [...new Set(values)];
 }
 
 function listPrototypeDirs(rootDir) {

@@ -90,6 +90,10 @@ If the brief points at an older prototype or path such as `docs/old prototypes`,
 
 If the brief points at a website, PDF, image/screenshot, Figma link, or other external/local reference, ask the Reference source scope question before scraping, opening, uploading, parsing, or using it: functional inventory only, information architecture, visual inspiration, authoritative brand source, ignore, or stop. Record that answer into the `reference borrow/avoid` axis.
 
+Use the executable design wizard contract from `scripts/lib/design-wizard-catalog.mjs` when `/supervibe-design` invokes this skill. The wizard owns `questionQueue`, `decisions`, `coverage`, and `guided defaults checklist` state. If the user says to use defaults, show the guided defaults checklist before durable token writes; every axis must expose `Accept default / Compare alternatives / Customize` so defaults remain editable instead of silently closing the design interview.
+
+Before approval, create or show `styleboard.html` in `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/`. It must contain palette swatches, typography samples, density examples, controls, table, dialog, shell, motion notes, and component feel examples. The styleboard is required evidence for section approval; markdown summaries alone are not enough for visual-system approval.
+
 Use dry-run mode for uncertain or first-pass generation: show the review packet in chat or write it to `.supervibe/artifacts/prototypes/_design-system/.scratch/<run-id>/` only. Promote to `.supervibe/artifacts/brandbook/` or `_design-system/` after `first_user_design_gate_ack=true` and the complete matrix evidence exist.
 
 When the brandbook skill produces durable design-system outputs for `/supervibe-design`, do not hand-write invocation receipts. Use `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook ...` so the receipt is runtime-issued with HMAC provenance, artifact hashes, ledger entry, and the shared workflow `artifact-links.json`.

@@ -31,6 +31,11 @@ test("design agent plan maps source types and stages to explicit agents and skil
 
   assert.equal(plan.requiresReceipts, true);
   assert.equal(plan.receiptDirectory, ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/");
+  assert.equal(plan.executionStatus.executionMode, "real-agents");
+  assert.equal(plan.executionStatus.missingAgents.length, 0);
+  assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "mode"));
+  assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "viewport"));
+  assert.equal(plan.viewportPolicy.requiresActualWindowQuestion, true);
   assert.ok(plan.stages.some((stage) => stage.agentId === "creative-director"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:brandbook"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "ux-ui-designer"));
@@ -48,8 +53,39 @@ test("design agent receipt validator rejects durable outputs without completed r
     const result = validateDesignAgentInvocationReceipts(root);
 
     assert.equal(result.pass, false);
+    assert.equal(result.executionMode, "degraded-manual");
+    assert.deepEqual(result.missingAgents.sort(), ["creative-director", "ux-ui-designer"].sort());
+    assert.match(result.qualityImpact, /creative-director/);
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "creative-director"));
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "ux-ui-designer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent receipt validator does not let command receipts substitute specialist receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-agent-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "command",
+      subjectId: "supervibe-design",
+      stage: "stage-1-brand-direction",
+      invocationReason: "main command drafted direction manually",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+      secret: "test-secret",
+    });
+
+    const result = validateDesignAgentInvocationReceipts(root, { secret: "test-secret" });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.executionMode, "degraded-manual");
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "creative-director"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

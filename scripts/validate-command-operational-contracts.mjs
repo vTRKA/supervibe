@@ -104,6 +104,8 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
       /workflow-invocation-ledger\.jsonl/i,
       /Hand-written receipts/i,
       /validate:workflow-receipts/i,
+      /Do not substitute a command receipt/i,
+      /validate-design-agent-receipts\.mjs/i,
     ],
   },
 ]);
