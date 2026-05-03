@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { validateCommandAgentProfiles } from "./lib/command-agent-orchestration-contract.mjs";
 
 const REQUIRED_SECTIONS = Object.freeze([
   {
@@ -24,6 +26,10 @@ const REQUIRED_SECTIONS = Object.freeze([
     code: "workflow-invocation-receipts",
     pattern: /^##\s+Workflow Invocation Receipts\b/im,
   },
+  {
+    code: "agent-orchestration-contract",
+    pattern: /^##\s+Agent Orchestration Contract\b/im,
+  },
 ]);
 
 const WORKFLOW_RECEIPT_COMMAND_PATTERNS = Object.freeze([
@@ -35,6 +41,21 @@ const WORKFLOW_RECEIPT_COMMAND_PATTERNS = Object.freeze([
   /validate:agent-producer-receipts/i,
   /hostInvocation\.source/i,
   /hostInvocation\.invocationId/i,
+  /command or skill receipts must not substitute/i,
+]);
+
+const AGENT_ORCHESTRATION_COMMAND_PATTERNS = Object.freeze([
+  /command-agent-orchestration-contract\.mjs/i,
+  /rules\/command-agent-orchestration\.md/i,
+  /ownerAgentId/i,
+  /agentPlan/i,
+  /requiredAgentIds/i,
+  /real-agents/i,
+  /agent-required-blocked/i,
+  /hostInvocation\.source/i,
+  /hostInvocation\.invocationId/i,
+  /inline[\s\S]{0,80}diagnostic\/dry-run|diagnostic\/dry-run[\s\S]{0,80}inline/i,
+  /Do not emulate|must not emulate|never emulate/i,
   /command or skill receipts must not substitute/i,
 ]);
 
@@ -87,6 +108,14 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
       /workflow-receipt\.mjs issue/i,
       /hand-written receipts are untrusted/i,
       /validate:workflow-receipts/i,
+      /Agent Orchestration Contract/i,
+      /supervibe-orchestrator/i,
+      /agentPlan/i,
+      /requiredAgentIds/i,
+      /real-agents/i,
+      /agent-required-blocked/i,
+      /hostInvocation\.invocationId/i,
+      /do not emulate specialist output/i,
     ],
   },
   {
@@ -97,6 +126,29 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
       /hardStop/i,
       /Hard stop: report the missing slash command/i,
       /HARD_STOP: true/i,
+      /COMMAND_AGENT_ORCHESTRATION_CONTRACT/i,
+      /getCommandAgentProfile/i,
+      /agentContract/i,
+      /agentProfile/i,
+      /AGENT_BLOCKED_MODE/i,
+      /AGENT_EMULATION/i,
+      /REQUIRED_AGENTS/i,
+    ],
+  },
+  {
+    file: "scripts/lib/command-agent-orchestration-contract.mjs",
+    label: "central executable command agent profiles",
+    required: [
+      /COMMAND_AGENT_ORCHESTRATION_CONTRACT/i,
+      /defaultExecutionMode: "real-agents"/i,
+      /COMMAND_AGENT_PROFILES/i,
+      /buildCommandAgentPlan/i,
+      /validateCommandAgentProfiles/i,
+      /ownerAgentId: "supervibe-orchestrator"/i,
+      /requiredAgentIds/i,
+      /agent-required-blocked/i,
+      /hostInvocation\.invocationId/i,
+      /Do not emulate specialist agents/i,
     ],
   },
   {
@@ -157,6 +209,35 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
         });
       }
     }
+    for (const pattern of AGENT_ORCHESTRATION_COMMAND_PATTERNS) {
+      if (!pattern.test(text)) {
+        issues.push({
+          file: relPath,
+          code: "missing-agent-orchestration-contract",
+          message: `${relPath}: command must require real agent orchestration via ${pattern}`,
+        });
+      }
+    }
+    if (/Every `\/supervibe-\*` command invocation has an explicit owner agent/i.test(text)) {
+      issues.push({
+        file: relPath,
+        code: "duplicated-agent-orchestration-prose",
+        message: `${relPath}: command duplicated the old prose contract instead of referencing the executable profile`,
+      });
+    }
+  }
+
+  const commandIds = files.map((file) => `/${file.replace(/\.md$/, "")}`);
+  const profileResult = validateCommandAgentProfiles({
+    commandIds,
+    availableAgentIds: listAvailableAgentIds(rootDir),
+  });
+  for (const profileIssue of profileResult.issues) {
+    issues.push({
+      file: "scripts/lib/command-agent-orchestration-contract.mjs",
+      code: profileIssue.code,
+      message: `${profileIssue.commandId}: ${profileIssue.message}`,
+    });
   }
 
   for (const rule of CONTINUATION_COMMAND_RULES) {
@@ -209,6 +290,25 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
     checked: files.length,
     issues,
   };
+}
+
+function listAvailableAgentIds(rootDir) {
+  const agentsDir = join(rootDir, "agents");
+  const ids = new Set();
+  if (!existsSync(agentsDir)) return ids;
+  const visit = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const path = join(dir, entry);
+      const stat = statSync(path);
+      if (stat.isDirectory()) {
+        visit(path);
+      } else if (entry.endsWith(".md")) {
+        ids.add(entry.replace(/\.md$/, ""));
+      }
+    }
+  };
+  visit(agentsDir);
+  return ids;
 }
 
 export function formatCommandOperationalContractsReport(result) {

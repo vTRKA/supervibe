@@ -24,7 +24,10 @@ const DOC_RULES = Object.freeze([
       /styleboard\.html/i,
       /diagnostic scratch/i,
       /executionMode/i,
-      /agent-required-blocked/i,
+      /inline.*real-agents.*hybrid|real-agents.*hybrid.*inline/i,
+      /anti-generic|generic admin/i,
+      /visual regression|1920x1080/i,
+      /promote-design-approval\.mjs/i,
       /validate-agent-producer-receipts\.mjs/i,
       /validate-design-agent-receipts\.mjs/i,
       /Continuation question after approved design system/i,
@@ -55,6 +58,12 @@ export function validateDesignWizard(rootDir = process.cwd()) {
   }
   if (DESIGN_WIZARD_AXES.length < 8) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-axis-catalog", "design wizard must expose at least eight design axes"));
+  }
+  if (!DESIGN_WIZARD_AXES.some((axis) => axis.id === "creative_alternatives")) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-creative-alternatives-axis", "design wizard must require creative alternatives before tokens"));
+  }
+  if (!DESIGN_WIZARD_AXES.some((axis) => axis.id === "anti_generic_guardrail")) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-anti-generic-axis", "design wizard must include an anti-generic guardrail"));
   }
   for (const axis of DESIGN_WIZARD_AXES) {
     if ((axis.choices || []).length < 3) {

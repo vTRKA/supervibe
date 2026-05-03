@@ -88,6 +88,48 @@ test("workflow receipt runtime rejects hand-written command receipts", async () 
   }
 });
 
+test("workflow receipt runtime keeps multiple receipt links for the same artifact", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/plans/shared-todo.md", "# Shared Todo\n");
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:project-memory",
+      stage: "discovery",
+      invocationReason: "memory search informed the todo",
+      outputArtifacts: [".supervibe/artifacts/plans/shared-todo.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "shared-todo",
+      secret: "test-secret",
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:code-search",
+      stage: "discovery",
+      invocationReason: "code search informed the same todo",
+      outputArtifacts: [".supervibe/artifacts/plans/shared-todo.md"],
+      startedAt: "2026-05-03T00:02:00.000Z",
+      completedAt: "2026-05-03T00:03:00.000Z",
+      handoffId: "shared-todo",
+      secret: "test-secret",
+    });
+
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+
+    assert.equal(result.pass, true);
+    assert.equal(result.checked, 2);
+    assert.deepEqual(result.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt runtime rejects ledger tampering and artifact drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {

@@ -20,7 +20,7 @@ Every interactive step asks one question at a time using `Step N/M` or `Step N/M
 
 `/supervibe-design` uses the executable wizard catalog in `scripts/lib/design-wizard-catalog.mjs`, not only this markdown file, for Stage 0-2 interaction. Run `node scripts/design-agent-plan.mjs --brief "<brief>" --json` to build `plan.wizard`, `plan.executionStatus`, `plan.viewportPolicy`, and `plan.stages`.
 
-The first wizard step is a **mode question** with these choices: design system only, design system plus UX spec, full pipeline to prototype preview, or continue an existing approved design system. Save the answer to `config.json.mode`, `config.json.stageTriage`, and `config.json.executionMode`. If the mode is ambiguous after design-system approval, ask the **Continuation question after approved design system**: continue to UX spec, build prototype, export tokens, or stop on approved DS.
+The first wizard step is a **mode question** with these choices: design system only, design system plus UX spec, full pipeline to prototype preview, or continue an existing approved design system. Save the answer to `config.json.mode`, `config.json.stageTriage`, and `config.json.executionMode`. Execution mode is a separate explicit choice: `inline`, `real-agents`, or `hybrid`. If the mode is ambiguous after design-system approval, ask the **Continuation question after approved design system**: continue to UX spec, build prototype, export tokens, or stop on approved DS.
 
 The wizard state is persisted in `config.json.designWizard` and must include:
 
@@ -43,16 +43,22 @@ Use the catalog choices from `DESIGN_WIZARD_AXES`; do not invent a thin recommen
 - Motion: strict, subtle, expressive.
 - Components: Radix/headless, custom, shadcn-style adapter, platform-native.
 - Viewport: current 1:1, 1280x800, 1440x900, 1920x1080, or custom.
+- Creative alternatives: require 2-3 compared directions before tokens unless the user supplied an already-approved direction.
+- Anti-generic guardrail: document what avoids generic admin, safe blue/gray SaaS cards, old sidebar skeletons, and repainted old shells.
 
 If the brief already covers an axis, the wizard stores `source=user` with a short quote. If the user explicitly says "use defaults", the wizard stores `source=explicit-default` and shows the editable `guidedDefaultsChecklist`; defaults are not a silent collapse of the design interview. `source=inferred` remains forbidden for the Preference Coverage Matrix.
 
-Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. A full review styleboard is allowed only after mode, target, reference scope, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that point, only diagnostic scratch is allowed and it must not present itself as a visual direction. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
+Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. A full review styleboard is allowed only after mode, target, viewport policy, reference scope, creative alternatives, anti-generic guardrail, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that point, only diagnostic scratch is allowed and it must not present itself as a visual direction. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
 
-For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1280x800` plus `800x600` as the desktop baseline.
+For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1920x1080`, `1440x900`, `1280x800`, plus `800x600` as the desktop baseline.
 
-Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `agent-required-blocked`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality is blocked. If a required specialist is missing, ask one blocked-mode question before any approval: install missing agents with `scripts/provision-agents.mjs`, connect host-native agents, run deterministic skill stages only, or stop here. Manual emulation is not an allowed design workflow path and is never a completed agent stage.
+Execution visibility is mandatory. `config.json.executionMode` must be one of `inline`, `real-agents`, or `hybrid`; `agent-required-blocked` is a hard-stop status when requested real/hybrid agents are unavailable. `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality is blocked. If a required specialist is missing, ask one blocked-mode question before any approval: install missing agents with `scripts/provision-agents.mjs`, connect host-native agents, choose `hybrid` with real receipts for agent-owned outputs, save an `inline` draft without agent claims, or stop here. Manual emulation is not an allowed design workflow path and is never a completed agent stage.
 
-Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode="agent-required-blocked"`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
+Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode!="real-agents"`, `plan.wizard.gates.viewportPolicyRecorded=false`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
+
+Approval promotion must be automated. After explicit approval, run `node scripts/promote-design-approval.mjs --slug <slug> --approved-by "<user>" --feedback-hash "<hash>"` so `manifest.json`, `design-flow-state.json`, `.approvals/*.json`, `config.json`, `.approval.json`, component docs, status comments, and `designer-package.json` move from candidate/draft to approved together. The designer package points to `direction.md`, `tokens.css`, `styleboard.html`, `spec.md`, screenshots, rejected alternatives, approval state, and known risks.
+
+Visual regression is part of the design gate, not a nice-to-have. For desktop/Tauri/Electron, capture and review screenshots at `1920x1080`, `1440x900`, and `1280x800`, then run DOM overflow, text overlap, contrast audit, focus-visible, reduced-motion, and Tauri webview smoke checks. Web flows include mobile `375x812`, `1440x900`, and `1920x1080`.
 
 Run both receipt validators before claiming design workflow completion:
 
@@ -529,7 +535,7 @@ Brief:        <one-line>
 Brand:        .supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
 System:       .supervibe/artifacts/prototypes/_design-system/design-flow-state.json + manifest.json (candidate | needs_revision | approved | final metadata)
 Wizard:       coverage <covered>/<required>, queue <N>, guidedDefaultsChecklist <N>
-Execution:    executionMode <real-agents | agent-required-blocked | skills-only>, missingAgents <list|none>, provisioning <ready|blocked|none>, qualityImpact <text|none>
+Execution:    executionMode <inline | real-agents | hybrid | agent-required-blocked>, missingAgents <list|none>, provisioning <ready|blocked|none>, qualityImpact <text|none>
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md
 Prototype:    .supervibe/artifacts/prototypes/<slug>/index.html
@@ -540,6 +546,7 @@ Feedback rounds: <count>
 Approval:     <draft | approved>     ← .supervibe/artifacts/prototypes/<slug>/.approval.json
 Tokens:       <candidate | final>
 Handoff:      <pending | .supervibe/artifacts/prototypes/<slug>/handoff/>
+DesignerPkg:  <pending | .supervibe/artifacts/prototypes/<slug>/designer-package.json>
 
 Confidence: <N>.<dd>/10
 Override:   <true|false>
@@ -568,6 +575,11 @@ Rubric:     prototype
 - `mcp-server-figma`, `mcp-server-firecrawl`, `mcp-playwright` — optional MCPs that improve specific stages
 - `docs/figma-source-of-truth.md` — optional Figma variables/components/token/code parity flow
 
+## Agent Orchestration Contract
+
+This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
+
+Before durable work or completion claims, invoke the real host agents named by the profile and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts
 
 Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.

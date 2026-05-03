@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.61] - 2026-05-03
+
+### Added
+
+- Added approval promotion tooling via `promote-design-approval.mjs` to move
+  design-system manifests, flow state, section approvals, prototype config,
+  approval markers, component docs, and designer package manifests from
+  candidate/draft to approved together.
+- Added design review check planning for desktop/web screenshot sizes,
+  DOM overflow, contrast audit, focus-visible, reduced-motion, and Tauri
+  webview smoke coverage.
+- Added a command-wide Agent Orchestration Contract requiring every slash
+  command to declare an owner agent, `agentPlan`, `requiredAgentIds`, real
+  host invocation proof, and blocked-mode behavior when agents are missing.
+- Added executable command-agent profiles for every published slash command,
+  defaulting to `real-agents` and mapping commands to required specialists.
+
+### Changed
+
+- Design wizard questions now detect Russian briefs and localize visible
+  scaffolding labels, choice labels, recommended markers, and stop/free-form
+  text instead of mixing English labels into Russian prompts.
+- `/supervibe-design` now separates `inline`, `real-agents`, and `hybrid`
+  execution modes; non-real modes stay visibly degraded and cannot satisfy
+  specialist agent output claims.
+- The design wizard now requires creative alternatives and an anti-generic
+  guardrail before review styleboards/prototypes for new design systems.
+- Desktop viewport defaults now include FullHD-first review coverage at
+  `1920x1080`, `1440x900`, and `1280x800`.
+- Workflow receipt artifact links now support multiple runtime receipts for
+  the same output artifact without invalidating older receipts.
+- Command operational validation now rejects command docs that allow specialist
+  output to be emulated, summarized, or satisfied by command/skill receipts.
+- Command agent orchestration is now centralized in one profile module and one
+  mandatory rule so command markdown cannot drift into duplicated emulation
+  logic.
+
+### Fixed
+
+- Fixed transparent step question formatting so Russian questions use
+  localized Russian labels for why, decision impact, and skip fallback.
+
 ## [2.0.60] - 2026-05-03
 
 ### Added

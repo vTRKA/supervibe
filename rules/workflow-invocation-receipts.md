@@ -5,7 +5,7 @@ applies-to: [any]
 mandatory: true
 version: 1.0
 last-verified: 2026-05-03
-related-rules: [confidence-discipline, operational-safety, instruction-surface-integrity]
+related-rules: [command-agent-orchestration, confidence-discipline, operational-safety, instruction-surface-integrity]
 ---
 
 # Workflow Invocation Receipts
@@ -46,6 +46,8 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 ## Enforcement
 
 - Every command file must contain the Workflow Invocation Receipts contract.
+- Every command file must reference the shared Command Agent Orchestration
+  contract; command-specific prose must not replace the executable profile map.
 - `scripts/validate-command-operational-contracts.mjs` checks all command surfaces for the shared receipt contract.
 - `scripts/validate-workflow-receipts.mjs` verifies runtime signatures, ledger chain integrity, output artifact hashes, and artifact links.
 - `scripts/validate-agent-producer-receipts.mjs` verifies global producer contracts and rejects agent, worker, or reviewer receipts that lack real host invocation proof.

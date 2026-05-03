@@ -43,6 +43,7 @@ export function buildDesignAgentPlan({
   rootDir = process.cwd(),
   pluginRoot = process.cwd(),
   mode = null,
+  requestedExecutionMode = null,
   currentWindow = null,
   deviceScaleFactor = null,
   intake = null,
@@ -145,6 +146,7 @@ export function buildDesignAgentPlan({
     command: "/supervibe-design",
     target,
     flowType,
+    requestedExecutionMode: normalizeDesignExecutionMode(requestedExecutionMode || inferExecutionModeFromBrief(text)),
     mode: wizard.mode,
     requiresReceipts: true,
     receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
@@ -161,7 +163,7 @@ export function buildDesignAgentPlan({
     writeGate: null,
     stages: dedupeStages(stages),
   };
-  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, { pluginRoot });
+  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, { pluginRoot, requestedExecutionMode: plan.requestedExecutionMode, locale: wizard.locale });
   plan.writeGate = buildDesignWriteGate({ intake, plan });
   return plan;
 }
@@ -178,6 +180,18 @@ export function buildDesignWriteGate({ intake = null, plan = null } = {}) {
     blocked.push({
       code: "agent-required-blocked",
       message: "specialist agents are unavailable; provision/connect real agents before any design artifact write",
+    });
+  }
+  if (plan?.executionStatus?.executionMode && plan.executionStatus.executionMode !== "real-agents") {
+    blocked.push({
+      code: "non-real-agent-execution-mode",
+      message: `${plan.executionStatus.executionMode} mode can save run-state and diagnostics only; agent-owned durable design artifacts require real-agents mode and runtime receipts`,
+    });
+  }
+  if (plan?.wizard?.gates?.viewportPolicyRecorded === false) {
+    blocked.push({
+      code: "viewport-policy-open",
+      message: "viewport policy must be recorded before review styleboards, prototypes, or visual approval evidence",
     });
   }
   if (plan?.wizard?.gates?.tokensUnlocked !== true) {
@@ -277,9 +291,12 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   }
   const status = plan.executionStatus || {};
   if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
+    const executionGate = status.executionMode === "agent-required-blocked"
+      ? "EXECUTION_GATE: specialist agents are unavailable; manual emulation is not allowed"
+      : `EXECUTION_GATE: ${status.executionMode} mode selected; specialist output claims require real-agents receipts`;
     return [
       "WRITE_GATE: blocked",
-      "EXECUTION_GATE: real-agents unavailable; manual emulation is not allowed",
+      executionGate,
       status.provisioningPlan?.readyToApply ? `AGENT_PROVISIONING: ${status.provisioningPlan.applyCommand}` : null,
       formatDesignWizardQuestion(status.degradedModeQuestion),
     ].filter(Boolean).join("\n");
@@ -299,7 +316,7 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   ].join("\n");
 }
 
-function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = process.cwd() } = {}) {
+function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = process.cwd(), requestedExecutionMode = null, locale = "en" } = {}) {
   const stages = Array.isArray(plan.stages) ? plan.stages : [];
   const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
   const requiredSkillIds = unique(stages.map((item) => item.skillId).filter(Boolean));
@@ -314,25 +331,38 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
       skillIds: requiredSkillIds,
     })
     : null;
-  const executionMode = requiredAgentIds.length === 0
-    ? "skills-only"
-    : missingAgents.length > 0
-      ? "agent-required-blocked"
-      : "real-agents";
+  const explicitMode = normalizeDesignExecutionMode(requestedExecutionMode);
+  const executionMode = explicitMode
+    || (requiredAgentIds.length === 0
+      ? "inline"
+      : missingAgents.length > 0
+        ? "agent-required-blocked"
+        : "real-agents");
+  const realAgentCapable = requiredAgentIds.length > 0 && missingAgents.length === 0;
+  const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid"].includes(executionMode);
+  const nonRealMode = executionMode !== "real-agents";
 
   return {
     executionMode,
+    requestedExecutionMode: explicitMode || null,
+    executionModes: ["inline", "real-agents", "hybrid"],
     requiredAgentIds,
     requiredSkillIds,
     missingAgents,
     provisioningPlan,
+    agentReceiptsAllowed,
+    inlineDraftAllowed: executionMode === "inline" || executionMode === "hybrid",
     manualEmulationAllowed: false,
     qualityImpact: missingAgents.length
       ? `Specialist stages cannot run or be claimed without real project agents: ${missingAgents.join(", ")}`
+      : executionMode === "inline"
+        ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
+        : executionMode === "hybrid"
+          ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
       : "All planned specialist agents are present; durable outputs still require runtime receipts.",
     receiptGate: "pending-until-runtime-issued-receipts",
-    degradedModeQuestion: missingAgents.length
-      ? buildDegradedModeQuestion(missingAgents, provisioningPlan)
+    degradedModeQuestion: missingAgents.length || nonRealMode
+      ? buildDegradedModeQuestion(missingAgents, provisioningPlan, { executionMode, locale })
       : null,
   };
 }
@@ -368,38 +398,52 @@ function dedupeStages(stages) {
   return out;
 }
 
-function buildDegradedModeQuestion(missingAgents, provisioningPlan = null) {
+function buildDegradedModeQuestion(missingAgents, provisioningPlan = null, { executionMode = "agent-required-blocked", locale = "en" } = {}) {
+  const ru = String(locale || "en").toLowerCase().startsWith("ru");
   const canProvision = provisioningPlan?.readyToApply === true;
   return {
-    prompt: "Step N/M: specialist agents are unavailable. Install/connect real agents or stop?",
-    why: "Supervibe must not emulate specialist agent stages. Durable design work stays blocked until real agents are present and runtime receipts can be issued.",
+    locale: ru ? "ru" : "en",
+    prompt: ru
+      ? "Режим выполнения не доказывает работу specialist agents. Что делаем?"
+      : "Execution mode cannot prove specialist agent work. What should happen?",
+    why: ru
+      ? "Supervibe не должен эмулировать specialist agent stages. Durable design work блокируется, пока реальные агенты не запущены и receipts не выпущены runtime."
+      : "Supervibe must not emulate specialist agent stages. Durable design work stays blocked until real agents are present and runtime receipts can be issued.",
     decisionUnlocked: "config.json.executionMode, missingAgents, and qualityImpact",
-    ifSkipped: "Stop and ask the user to install or connect the missing agents.",
+    ifSkipped: ru
+      ? "Остановиться и попросить установить или подключить реальные агенты."
+      : "Stop and ask the user to install or connect the missing agents.",
     choices: [
       {
         id: "install-missing-agents",
-        label: "Install missing agents",
+        label: ru ? "Установить недостающих агентов" : "Install missing agents",
         tradeoff: canProvision
-          ? `Copies required agents and support skills into the detected host adapter: ${provisioningPlan.applyCommand}`
-          : "Requires a resolvable plugin source and unambiguous host adapter before continuing.",
+          ? (ru ? `Скопирует нужных агентов и skills в host adapter: ${provisioningPlan.applyCommand}` : `Copies required agents and support skills into the detected host adapter: ${provisioningPlan.applyCommand}`)
+          : (ru ? "Нужен понятный plugin source и однозначный host adapter." : "Requires a resolvable plugin source and unambiguous host adapter before continuing."),
         recommended: true,
       },
       {
         id: "connect-host-agents",
-        label: "Connect host agents",
-        tradeoff: "Use this when the host already has a native agent registry or connector outside filesystem provisioning.",
+        label: ru ? "Подключить host agents" : "Connect host agents",
+        tradeoff: ru ? "Выбрать, если host уже имеет native agent registry или connector вне filesystem provisioning." : "Use this when the host already has a native agent registry or connector outside filesystem provisioning.",
       },
       {
-        id: "skills-only",
-        label: "Run deterministic skill stages only",
-        tradeoff: "Allows validation, memory, and diagnostics only; it cannot complete agent-owned outputs.",
+        id: "hybrid",
+        label: ru ? "Hybrid: skills inline, агенты реально" : "Hybrid: skills inline, agents real",
+        tradeoff: ru ? "Skills/diagnostics можно вести inline, но agent-owned outputs требуют настоящих host receipts." : "Skills and diagnostics may run inline, but agent-owned outputs still require real host receipts.",
+      },
+      {
+        id: "inline",
+        label: ru ? "Inline draft без agent claims" : "Inline draft without agent claims",
+        tradeoff: ru ? "Можно сохранить черновик/диагностику, но нельзя говорить, что creative-director или другие agents работали." : "Can save drafts or diagnostics, but cannot claim creative-director or other agents ran.",
       },
       {
         id: "stop",
-        label: "Stop here",
-        tradeoff: "Saves current state and makes no hidden progress.",
+        label: ru ? "Остановиться" : "Stop here",
+        tradeoff: ru ? "Сохранить состояние и не продолжать скрыто." : "Saves current state and makes no hidden progress.",
       },
     ],
+    executionMode,
     missingAgents,
     provisioning: provisioningPlan
       ? {
@@ -411,6 +455,23 @@ function buildDegradedModeQuestion(missingAgents, provisioningPlan = null) {
   };
 }
 
+function inferExecutionModeFromBrief(text = "") {
+  const value = String(text || "").toLowerCase();
+  if (/\bhybrid\b|гибрид/i.test(value)) return "hybrid";
+  if (/\binline\b|без\s+агент|черновик/i.test(value)) return "inline";
+  if (/\breal[- ]agents?\b|реальн[а-яё]+\s+агент/i.test(value)) return "real-agents";
+  return null;
+}
+
+function normalizeDesignExecutionMode(value) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/_/g, "-");
+  if (!normalized) return null;
+  if (["real", "real-agent", "real-agents", "agents"].includes(normalized)) return "real-agents";
+  if (["inline", "manual", "draft"].includes(normalized)) return "inline";
+  if (normalized === "hybrid") return "hybrid";
+  return null;
+}
+
 function nextDesignBlockingQuestion({ intake = null, plan = null } = {}) {
   if (intake?.needsQuestion === true) {
     return {
@@ -419,10 +480,10 @@ function nextDesignBlockingQuestion({ intake = null, plan = null } = {}) {
       markdown: formatDesignArtifactChoiceQuestion(intake),
     };
   }
-  if (plan?.executionStatus?.executionMode === "agent-required-blocked") {
+  if (plan?.executionStatus?.executionMode && plan.executionStatus.executionMode !== "real-agents") {
     return {
       source: "execution-status",
-      reason: "agent-required-blocked",
+      reason: plan.executionStatus.executionMode,
       question: plan.executionStatus.degradedModeQuestion,
       markdown: formatDesignWizardQuestion(plan.executionStatus.degradedModeQuestion),
     };

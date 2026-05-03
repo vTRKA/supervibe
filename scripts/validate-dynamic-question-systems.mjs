@@ -7,6 +7,7 @@ import {
 import {
   buildPostDeliveryQuestion,
   buildTransparentStepQuestion,
+  formatTransparentStepQuestion,
 } from "./lib/supervibe-dialogue-contract.mjs";
 
 const POST_DELIVERY_CONTEXTS = Object.freeze([
@@ -55,6 +56,23 @@ export function validateDynamicQuestionSystems() {
     ],
   });
   validateQuestionShape(transparent, "transparent-step", issues, { minChoices: 3 });
+
+  const localizedTransparent = buildTransparentStepQuestion({
+    locale: "ru",
+    question: "Какой режим запускаем?",
+    why: "Это влияет на следующий шаг.",
+    decision: "executionMode",
+    assumption: "Если пропустить, остановимся.",
+    choices: [
+      { id: "real-agents", label: "Реальные агенты", tradeoff: "Нужны receipts." },
+      { id: "inline", label: "Черновик", tradeoff: "Без agent claims." },
+      { id: "stop", label: "Остановиться", tradeoff: "Без скрытого продолжения." },
+    ],
+  });
+  const localizedMarkdown = formatTransparentStepQuestion(localizedTransparent);
+  if (/Why:|Decision unlocked:|If skipped:|\(recommended\)/.test(localizedMarkdown)) {
+    issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "mixed-language-transparent-step", "localized transparent question leaked English scaffolding labels"));
+  }
 
   return {
     pass: issues.length === 0,

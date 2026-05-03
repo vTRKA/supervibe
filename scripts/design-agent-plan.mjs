@@ -18,6 +18,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const brief = arg("--brief", "");
   const target = arg("--target", "unknown");
   const flowType = arg("--flow", "in-product");
+  const requestedExecutionMode = arg("--execution-mode", "");
   const projectRoot = arg("--root", process.cwd());
   const pluginRoot = arg("--plugin-root", scriptPluginRoot);
   const json = process.argv.includes("--json");
@@ -26,6 +27,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     brief,
     target,
     flowType,
+    requestedExecutionMode,
     referenceSources: intake.referenceSources ?? [],
     rootDir: projectRoot,
     pluginRoot,

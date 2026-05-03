@@ -1,10 +1,17 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
+import {
+  COMMAND_AGENT_ORCHESTRATION_CONTRACT,
+  copyCommandAgentContract,
+  getCommandAgentProfile,
+} from "./command-agent-orchestration-contract.mjs";
+
 export const SOURCE_RAG_INDEX_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress";
 export const LIST_MISSING_INDEX_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing";
 export const CODEGRAPH_INDEX_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health";
 export const MEMORY_WATCH_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs";
+export { COMMAND_AGENT_ORCHESTRATION_CONTRACT } from "./command-agent-orchestration-contract.mjs";
 
 const KNOWN_NPM_SCRIPT_SHORTCUTS = Object.freeze({
   "code:index": "index-rag-codegraph",
@@ -388,10 +395,12 @@ export function resolveCommandRequest(request, {
       slashCommandStatus: slashCommand ? "present" : "missing",
       doNotSearchProject: true,
       hardStop: !slashCommand,
+      agentContract: copyCommandAgentContract(),
+      agentProfile: getCommandAgentProfile(explicitSlash.name),
       directRoute: false,
       mutationRisk: "delegates-to-slash-command",
       nextAction: slashCommand
-        ? "Run this exact slash command in the active AI CLI; no repository search is needed."
+        ? "Run this exact slash command in the active AI CLI; no repository search is needed. The slash command must build agentPlan/requiredAgentIds and require real host-agent receipts for specialist output."
         : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
     };
   }
@@ -493,6 +502,7 @@ export function buildProjectCommandCatalog({
     generatedAt: "deterministic-local",
     pluginRoot,
     projectRoot,
+    agentContract: copyCommandAgentContract(),
     shortcuts: getCommandShortcuts(),
     slashCommands: readSlashCommands(pluginRoot),
     npmScripts: readNpmScripts(projectRoot, "project"),
@@ -507,6 +517,9 @@ export function formatCommandCatalog(catalog = buildProjectCommandCatalog()) {
     `SLASH_COMMANDS: ${catalog.slashCommands?.length || 0}`,
     `NPM_SCRIPTS: ${catalog.npmScripts?.length || 0}`,
     `PLUGIN_NPM_SCRIPTS: ${catalog.pluginNpmScripts?.length || 0}`,
+    `AGENT_OWNER: ${catalog.agentContract?.ownerAgentId || COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId}`,
+    `AGENT_EXECUTION_MODES: ${(catalog.agentContract?.executionModes || COMMAND_AGENT_ORCHESTRATION_CONTRACT.executionModes).join(", ")}`,
+    `AGENT_BLOCKED_MODE: ${catalog.agentContract?.blockedMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode}`,
   ];
   for (const shortcut of catalog.shortcuts || []) {
     lines.push(`- ${shortcut.id}: ${shortcut.intent} -> ${shortcut.command}`);
@@ -544,6 +557,12 @@ export function formatCommandMatch(match) {
     match.hardStop ? `HARD_STOP: true` : null,
     `DO_NOT_SEARCH_PROJECT: ${match.doNotSearchProject === true}`,
     `COMMAND: ${match.command || "none"}`,
+    match.agentContract ? `OWNER_AGENT: ${match.agentContract.ownerAgentId}` : null,
+    match.agentContract ? `AGENT_EXECUTION_MODES: ${match.agentContract.executionModes.join(", ")}` : null,
+    match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
+    match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
+    match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
+    match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),
     `WHY: ${match.reason}`,
     `NEXT: ${match.nextAction}`,
@@ -564,10 +583,12 @@ function createSlashShortcut(profile) {
     description: `Route to ${profile.command} from natural-language English/Russian command requests.`,
     aliases: profile.aliases || [],
     keywordGroups: profile.keywordGroups || [],
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile(profile.command),
     mutationRisk: "delegates-to-slash-command",
     directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
-    nextAction: `Run ${profile.command} in the active AI CLI; the slash command owns safety checks and follow-up questions.`,
+    nextAction: `Run ${profile.command} in the active AI CLI; the slash command owns safety checks, agentPlan/requiredAgentIds, real-agent receipts, and follow-up questions.`,
   };
 }
 
@@ -613,6 +634,8 @@ function readSlashCommands(pluginRoot) {
         id: `/${basename(file, ".md")}`,
         path: relative(pluginRoot, path).replace(/\\/g, "/"),
         description: parseDescription(raw),
+        agentContract: copyCommandAgentContract(),
+        agentProfile: getCommandAgentProfile(`/${basename(file, ".md")}`),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -643,6 +666,8 @@ function copyShortcut(shortcut) {
     keywordGroups: (shortcut.keywordGroups || []).map((group) => [...group]),
     requiredGroupIndexes: [...(shortcut.requiredGroupIndexes || [])],
     followUpCommands: [...(shortcut.followUpCommands || [])],
+    agentContract: shortcut.agentContract ? copyCommandAgentContract(shortcut.agentContract) : undefined,
+    agentProfile: shortcut.agentProfile ? copyAgentProfile(shortcut.agentProfile) : undefined,
   };
 }
 
@@ -651,6 +676,17 @@ function enrichMatch(shortcut, fields = {}) {
     ...shortcut,
     doNotSearchProject: true,
     ...fields,
+  };
+}
+
+function copyAgentProfile(profile) {
+  return {
+    ...profile,
+    requiredAgentIds: [...(profile.requiredAgentIds || [])],
+    dynamicAgentSelectors: [...(profile.dynamicAgentSelectors || [])],
+    executionModes: [...(profile.executionModes || [])],
+    requiredPlanFields: [...(profile.requiredPlanFields || [])],
+    requiredReceiptFields: [...(profile.requiredReceiptFields || [])],
   };
 }
 

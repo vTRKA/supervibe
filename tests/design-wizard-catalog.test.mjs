@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DESIGN_STYLEBOARD_REQUIRED_AXES,
   DESIGN_WIZARD_AXES,
+  buildDesignReviewCheckPlan,
   buildDesignWizardState,
   evaluateDesignStyleboardReadiness,
   formatDesignWizardQuestion,
@@ -61,7 +62,9 @@ test("explicit defaults create editable guided checklist instead of silent colla
   assert.equal(state.explicitDefaults, true);
   assert.equal(state.coverage.score, `${DESIGN_WIZARD_AXES.length}/${DESIGN_WIZARD_AXES.length}`);
   assert.equal(state.gates.tokensUnlocked, true);
-  assert.equal(state.gates.reviewStyleboardUnlocked, true);
+  assert.equal(state.gates.reviewStyleboardUnlocked, false);
+  assert.equal(state.gates.viewportPolicyRecorded, false);
+  assert.ok(state.questionQueue.some((question) => question.axis === "viewport"));
   assert.equal(state.guidedDefaultsChecklist.length, DESIGN_WIZARD_AXES.length);
   assert.ok(state.guidedDefaultsChecklist.every((item) => {
     return item.actions.map((action) => action.id).join(",") === "accept-default,compare-alternatives,customize";
@@ -82,7 +85,10 @@ test("review styleboard is blocked until required preference axes are recorded",
   const complete = evaluateDesignStyleboardReadiness({
     mode: "design-system-only",
     target: "web",
-    decisions: Object.fromEntries(DESIGN_STYLEBOARD_REQUIRED_AXES.map((axis) => [axis, { axis, source: "user" }])),
+    decisions: {
+      ...Object.fromEntries(DESIGN_STYLEBOARD_REQUIRED_AXES.map((axis) => [axis, { axis, source: "user" }])),
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
   });
 
   assert.equal(complete.pass, true);
@@ -123,4 +129,49 @@ test("wizard answers update state and formatted questions include decision conte
   assert.match(markdown, /Decision unlocked:/);
   assert.match(markdown, /Free-form answer:/);
   assert.match(markdown, /Stop condition:/);
+});
+
+test("wizard localizes Russian questions and adds anti-generic creative gates", () => {
+  const state = buildDesignWizardState({
+    brief: "Нужен уникальный Tauri интерфейс, не generic SaaS, не старый sidebar admin, FullHD 1920x1080.",
+    target: "tauri",
+  });
+
+  assert.equal(state.locale, "ru");
+  assert.ok(state.coverage.requiredAxes.includes("creative_alternatives"));
+  assert.ok(state.coverage.requiredAxes.includes("anti_generic_guardrail"));
+  assert.ok(state.questionQueue.some((question) => question.axis === "creative_alternatives"));
+  assert.ok(state.questionQueue.some((question) => question.axis === "anti_generic_guardrail"));
+
+  const markdown = formatDesignWizardQuestion(state.questionQueue[0]);
+  assert.match(markdown, /Шаг 1\//);
+  assert.match(markdown, /Зачем:/);
+  assert.match(markdown, /Что изменится:/);
+  assert.match(markdown, /Если пропустить:/);
+  assert.doesNotMatch(markdown, /Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)/);
+});
+
+test("viewport decisions are captured before styleboard and drive visual checks", () => {
+  const state = buildDesignWizardState({
+    brief: "FullHD-first review at 1920x1080 for a desktop shell.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+  });
+
+  assert.equal(state.decisions.viewport.answer, "1920x1080");
+  assert.ok(!state.questionQueue.some((question) => question.axis === "viewport"));
+  assert.equal(state.gates.viewportPolicyRecorded, true);
+
+  const plan = buildDesignReviewCheckPlan({
+    target: "tauri",
+    viewportDecision: state.decisions.viewport,
+  });
+
+  assert.deepEqual(
+    plan.screenshotViewports.map((viewport) => `${viewport.width}x${viewport.height}`),
+    ["1920x1080", "1440x900", "1280x800"],
+  );
+  assert.ok(plan.checks.includes("dom-overflow"));
+  assert.ok(plan.checks.includes("contrast-audit"));
+  assert.ok(plan.checks.includes("tauri-webview-smoke"));
 });

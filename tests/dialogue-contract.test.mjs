@@ -174,6 +174,30 @@ test('transparent step questions expose why, decision, and skip assumption', () 
   assert.match(formatted, /minimal \(recommended\)/);
 });
 
+test('transparent step questions localize all visible scaffolding labels', () => {
+  const question = buildTransparentStepQuestion({
+    step: 1,
+    total: 3,
+    locale: 'ru',
+    question: 'Какой режим запускаем?',
+    why: 'Это определяет, где остановится workflow.',
+    decision: 'executionMode и разрешенные записи.',
+    assumption: 'Если пропустить, остановимся без скрытого продолжения.',
+    choices: [
+      { label: 'Реальные агенты', tradeoff: 'Лучшее качество, нужны receipts.' },
+      { label: 'Только черновик', tradeoff: 'Без заявлений, что агенты работали.' },
+      { label: 'Остановиться', tradeoff: 'Сохранить состояние.' },
+    ],
+  });
+  const formatted = formatTransparentStepQuestion(question);
+
+  assert.match(formatted, /Зачем:/);
+  assert.match(formatted, /Что изменится:/);
+  assert.match(formatted, /Если пропустить:/);
+  assert.match(formatted, /Реальные агенты \(рекомендуется\)/);
+  assert.doesNotMatch(formatted, /Why:|Decision unlocked:|If skipped:|\(recommended\)|Free-form answer|Stop condition/);
+});
+
 test('dialogue contract rejects raw action-id delivery menus', () => {
   const issues = validateDialogueContract({
     path: 'commands/example.md',

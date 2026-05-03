@@ -101,6 +101,34 @@ test("design write gate blocks durable artifacts when wizard or agent questions 
   }
 });
 
+test("design execution modes are explicit and non-real modes cannot claim specialist output", () => {
+  const inlinePlan = buildDesignAgentPlan({
+    brief: "Draft a design direction using deterministic checks only.",
+    target: "web",
+    rootDir: process.cwd(),
+    requestedExecutionMode: "inline",
+    mode: "design-system-only",
+  });
+
+  assert.equal(inlinePlan.executionStatus.executionMode, "inline");
+  assert.equal(inlinePlan.executionStatus.agentReceiptsAllowed, false);
+  assert.equal(inlinePlan.writeGate.durableWritesAllowed, false);
+  assert.ok(inlinePlan.writeGate.blockedReasons.some((reason) => reason.code === "non-real-agent-execution-mode"));
+
+  const hybridPlan = buildDesignAgentPlan({
+    brief: "Hybrid design run with agents for final outputs.",
+    target: "web",
+    rootDir: process.cwd(),
+    requestedExecutionMode: "hybrid",
+    mode: "design-system-only",
+  });
+
+  assert.equal(hybridPlan.executionStatus.executionMode, "hybrid");
+  assert.equal(hybridPlan.executionStatus.agentReceiptsAllowed, true);
+  assert.equal(hybridPlan.writeGate.durableWritesAllowed, false);
+  assert.match(formatDesignPlanPrompt(hybridPlan), /hybrid/i);
+});
+
 test("design write gate prioritizes intake question before wizard or artifact writes", () => {
   const intake = {
     needsQuestion: true,

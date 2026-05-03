@@ -284,11 +284,19 @@ function validateArtifactLinks(rootDir, receipt) {
     return { pass: false, issues: [`artifact link manifest missing for receipt ${receipt.receiptId}`] };
   }
   for (const output of receipt.outputHashes || []) {
-    const link = (manifest.links || []).find((candidate) => normalizeRelPath(candidate.artifactPath) === normalizeRelPath(output.path));
-    if (!link) {
+    const link = (manifest.links || []).find((candidate) => {
+      return normalizeRelPath(candidate.artifactPath) === normalizeRelPath(output.path)
+        && candidate.receiptId === receipt.receiptId;
+    });
+    const legacySharedLink = !link && (manifest.links || []).some((candidate) => {
+      return normalizeRelPath(candidate.artifactPath) === normalizeRelPath(output.path)
+        && candidate.sha256 === output.sha256;
+    });
+    if (!link && !legacySharedLink) {
       issues.push(`artifact link missing for ${output.path}`);
       continue;
     }
+    if (legacySharedLink) continue;
     if (link.receiptId !== receipt.receiptId) {
       issues.push(`artifact link receipt mismatch for ${output.path}`);
     }
@@ -327,7 +335,10 @@ async function upsertArtifactLinks(path, receipt, receiptPath) {
     }
   }
   const links = Array.isArray(manifest.links) ? manifest.links : [];
-  const nextLinks = links.filter((link) => !receipt.outputHashes.some((output) => normalizeRelPath(output.path) === normalizeRelPath(link.artifactPath)));
+  const nextLinks = links.filter((link) => !receipt.outputHashes.some((output) => {
+    return normalizeRelPath(output.path) === normalizeRelPath(link.artifactPath)
+      && link.receiptId === receipt.receiptId;
+  }));
   for (const output of receipt.outputHashes) {
     nextLinks.push({
       artifactPath: output.path,

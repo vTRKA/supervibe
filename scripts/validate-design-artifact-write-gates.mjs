@@ -4,6 +4,8 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REQUIRED_AXES = Object.freeze([
+  ["creative_alternatives", "creative alternatives before tokens"],
+  ["anti_generic_guardrail", "anti-generic guardrail"],
   ["visual_direction_tone", "visual direction and tone"],
   ["audience_trust_posture", "audience and trust/risk posture"],
   ["information_density", "information density"],

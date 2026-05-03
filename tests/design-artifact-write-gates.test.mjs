@@ -9,6 +9,8 @@ import {
 } from "../scripts/validate-design-artifact-write-gates.mjs";
 
 const AXES = [
+  "creative_alternatives",
+  "anti_generic_guardrail",
   "visual_direction_tone",
   "audience_trust_posture",
   "information_density",

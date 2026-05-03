@@ -476,9 +476,9 @@ export function buildTransparentStepQuestion({
   decision,
   assumption,
   choices = [],
-  locale = 'en',
+  locale = null,
 } = {}) {
-  const normalized = normalizeLocale(locale);
+  const normalized = normalizeLocale(locale || detectDialogueLocale(`${question || ''} ${why || ''} ${decision || ''} ${assumption || ''}`));
   return {
     prompt: normalized === 'ru'
       ? `Шаг ${step}/${total}: ${question || 'что выбираем?'}`
@@ -495,17 +495,18 @@ export function buildTransparentStepQuestion({
 }
 
 export function formatTransparentStepQuestion(question) {
+  const labels = transparentStepLabels(question.locale);
   const lines = [
     `**${question.prompt}**`,
     '',
-    `Why: ${question.why}`,
-    `Decision unlocked: ${question.decision}`,
-    `If skipped: ${question.assumption}`,
+    `${labels.why}: ${question.why}`,
+    `${labels.decision}: ${question.decision}`,
+    `${labels.assumption}: ${question.assumption}`,
     '',
   ];
   for (const choice of question.choices || []) {
     const suffix = choice.recommended ? (question.locale === 'ru' ? ' (рекомендуется)' : ' (recommended)') : '';
-    lines.push(`- ${choice.label}${suffix} - ${choice.tradeoff || choice.description || 'No tradeoff provided.'}`);
+    lines.push(`- ${choice.label}${suffix} - ${choice.tradeoff || choice.description || labels.noTradeoff}`);
   }
   return lines.join('\n');
 }
@@ -650,6 +651,24 @@ function detectDialogueLocale(text) {
 
 function normalizeLocale(locale) {
   return String(locale || 'en').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}
+
+function transparentStepLabels(locale) {
+  const normalized = normalizeLocale(locale);
+  if (normalized === 'ru') {
+    return {
+      why: 'Зачем',
+      decision: 'Что изменится',
+      assumption: 'Если пропустить',
+      noTradeoff: 'Компромисс не указан.',
+    };
+  }
+  return {
+    why: 'Why',
+    decision: 'Decision unlocked',
+    assumption: 'If skipped',
+    noTradeoff: 'No tradeoff provided.',
+  };
 }
 
 function normalizePath(path) {
