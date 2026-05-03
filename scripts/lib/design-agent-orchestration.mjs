@@ -1,6 +1,9 @@
 import { sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
+  formatDesignArtifactChoiceQuestion,
+} from "./design-artifact-intake.mjs";
+import {
   buildDesignWizardState,
   formatDesignWizardQuestion,
   resolveDesignViewportPolicy,
@@ -16,6 +19,7 @@ import {
   expectedProducerReceiptsForDurableOutputs,
   validateHostInvocationProof,
 } from "./agent-producer-contract.mjs";
+import { createAgentProvisioningPlan } from "./agent-provisioning.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -37,9 +41,11 @@ export function buildDesignAgentPlan({
   flowType = "in-product",
   designSystemStatus = "missing",
   rootDir = process.cwd(),
+  pluginRoot = process.cwd(),
   mode = null,
   currentWindow = null,
   deviceScaleFactor = null,
+  intake = null,
 } = {}) {
   const text = String(brief ?? "");
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
@@ -54,6 +60,9 @@ export function buildDesignAgentPlan({
     mode,
     currentWindow: resolvedCurrentWindow,
     deviceScaleFactor: resolvedDeviceScaleFactor,
+    initialDecisions: intake?.referenceScopeDecision
+      ? { reference_borrow_avoid: intake.referenceScopeDecision }
+      : {},
   });
 
   stages.push(stage({
@@ -149,10 +158,72 @@ export function buildDesignAgentPlan({
       }),
       metricsSource: hostWindowMetrics?.source || null,
     },
+    writeGate: null,
     stages: dedupeStages(stages),
   };
-  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan);
+  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, { pluginRoot });
+  plan.writeGate = buildDesignWriteGate({ intake, plan });
   return plan;
+}
+
+export function buildDesignWriteGate({ intake = null, plan = null } = {}) {
+  const blocked = [];
+  if (intake?.needsQuestion === true) {
+    blocked.push({
+      code: "intake-question-open",
+      message: `design intake requires one question before artifact writes: ${intake.reason || "unspecified intake blocker"}`,
+    });
+  }
+  if (plan?.executionStatus?.executionMode === "agent-required-blocked") {
+    blocked.push({
+      code: "agent-required-blocked",
+      message: "specialist agents are unavailable; provision/connect real agents before any design artifact write",
+    });
+  }
+  if (plan?.wizard?.gates?.tokensUnlocked !== true) {
+    blocked.push({
+      code: "tokens-locked",
+      message: plan?.wizard?.gates?.blockedReason || "wizard preference coverage matrix is incomplete",
+    });
+  }
+
+  const durableWritesAllowed = blocked.length === 0;
+  const reviewStyleboardAllowed = durableWritesAllowed && plan?.wizard?.gates?.reviewStyleboardUnlocked === true;
+  const nextQuestion = nextDesignBlockingQuestion({ intake, plan });
+  return {
+    schemaVersion: 1,
+    durableWritesAllowed,
+    artifactWritesAllowed: durableWritesAllowed,
+    reviewStyleboardAllowed,
+    diagnosticScratchAllowed: true,
+    allowedWriteClasses: durableWritesAllowed
+      ? ["run-state", "diagnostic-scratch", "review-styleboard", "durable-design-artifacts"]
+      : ["run-state", "diagnostic-scratch"],
+    blockedWriteClasses: durableWritesAllowed
+      ? []
+      : ["durable-design-artifacts", "review-styleboard", "prototype"],
+    protectedArtifacts: [
+      ".supervibe/artifacts/brandbook/direction.md",
+      ".supervibe/artifacts/prototypes/_design-system/tokens.css",
+      ".supervibe/artifacts/prototypes/_design-system/manifest.json",
+      ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+      ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+      ".supervibe/artifacts/prototypes/_design-system/.approvals/*.json",
+    ],
+    blockedReasons: blocked,
+    blockedReason: blocked.map((item) => item.message).join("; ") || null,
+    nextQuestion,
+  };
+}
+
+export function assertDesignWriteAllowed(writeGate = {}, {
+  writeClass = "durable-design-artifacts",
+  artifact = "design artifact",
+} = {}) {
+  const allowed = new Set(writeGate.allowedWriteClasses || []);
+  if (allowed.has(writeClass)) return true;
+  const reason = writeGate.blockedReason || "design write gate is blocked";
+  throw new Error(`${artifact}: ${writeClass} write blocked by /supervibe-design writeGate: ${reason}`);
 }
 
 export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), options = {}) {
@@ -195,35 +266,54 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
   };
 }
 
-export function formatDesignPlanPrompt(plan = {}) {
+export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = null } = {}) {
+  const gate = writeGate || plan.writeGate || buildDesignWriteGate({ intake, plan });
+  if (gate.nextQuestion?.source === "intake") {
+    return [
+      "WRITE_GATE: blocked",
+      "NEXT_BLOCKING_QUESTION:",
+      gate.nextQuestion.markdown,
+    ].join("\n");
+  }
   const status = plan.executionStatus || {};
   if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
     return [
-      "EXECUTION_GATE: real-agents unavailable",
+      "WRITE_GATE: blocked",
+      "EXECUTION_GATE: real-agents unavailable; manual emulation is not allowed",
+      status.provisioningPlan?.readyToApply ? `AGENT_PROVISIONING: ${status.provisioningPlan.applyCommand}` : null,
       formatDesignWizardQuestion(status.degradedModeQuestion),
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
   const nextQuestion = plan.wizard?.questionQueue?.[0] || null;
   if (!nextQuestion) {
     return [
-      "EXECUTION_GATE: ready",
+      gate.durableWritesAllowed ? "WRITE_GATE: ready" : "WRITE_GATE: blocked",
       "NEXT_WIZARD_QUESTION: none",
     ].join("\n");
   }
   return [
+    gate.durableWritesAllowed ? "WRITE_GATE: ready" : "WRITE_GATE: blocked",
     "EXECUTION_GATE: real-agents required",
     "NEXT_WIZARD_QUESTION:",
     formatDesignWizardQuestion(nextQuestion),
   ].join("\n");
 }
 
-function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}) {
+function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = process.cwd() } = {}) {
   const stages = Array.isArray(plan.stages) ? plan.stages : [];
   const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
   const requiredSkillIds = unique(stages.map((item) => item.skillId).filter(Boolean));
   const roster = loadAgentRosterSync({ rootDir });
   const available = new Set((roster.agents || []).map((agent) => agent.id));
   const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
+  const provisioningPlan = missingAgents.length > 0
+    ? createAgentProvisioningPlan({
+      projectRoot: rootDir,
+      pluginRoot,
+      agentIds: requiredAgentIds,
+      skillIds: requiredSkillIds,
+    })
+    : null;
   const executionMode = requiredAgentIds.length === 0
     ? "skills-only"
     : missingAgents.length > 0
@@ -235,12 +325,14 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}) {
     requiredAgentIds,
     requiredSkillIds,
     missingAgents,
+    provisioningPlan,
+    manualEmulationAllowed: false,
     qualityImpact: missingAgents.length
-      ? `Specialist stages cannot be claimed as multi-agent output without these agents: ${missingAgents.join(", ")}`
+      ? `Specialist stages cannot run or be claimed without real project agents: ${missingAgents.join(", ")}`
       : "All planned specialist agents are present; durable outputs still require runtime receipts.",
     receiptGate: "pending-until-runtime-issued-receipts",
     degradedModeQuestion: missingAgents.length
-      ? buildDegradedModeQuestion(missingAgents)
+      ? buildDegradedModeQuestion(missingAgents, provisioningPlan)
       : null,
   };
 }
@@ -276,28 +368,31 @@ function dedupeStages(stages) {
   return out;
 }
 
-function buildDegradedModeQuestion(missingAgents) {
+function buildDegradedModeQuestion(missingAgents, provisioningPlan = null) {
+  const canProvision = provisioningPlan?.readyToApply === true;
   return {
-    prompt: "Step N/M: specialist agents are unavailable. Continue degraded or stop?",
-    why: "A manual draft can be useful, but it must not be presented as completed multi-agent design work.",
+    prompt: "Step N/M: specialist agents are unavailable. Install/connect real agents or stop?",
+    why: "Supervibe must not emulate specialist agent stages. Durable design work stays blocked until real agents are present and runtime receipts can be issued.",
     decisionUnlocked: "config.json.executionMode, missingAgents, and qualityImpact",
-    ifSkipped: "Stop and ask the user to connect the missing agents.",
+    ifSkipped: "Stop and ask the user to install or connect the missing agents.",
     choices: [
       {
-        id: "stop-connect-agents",
-        label: "Stop and connect agents",
-        tradeoff: "Preserves workflow quality and prevents false specialist claims.",
+        id: "install-missing-agents",
+        label: "Install missing agents",
+        tradeoff: canProvision
+          ? `Copies required agents and support skills into the detected host adapter: ${provisioningPlan.applyCommand}`
+          : "Requires a resolvable plugin source and unambiguous host adapter before continuing.",
         recommended: true,
       },
       {
-        id: "save-manual-draft",
-        label: "Save non-agent manual draft",
-        tradeoff: "Allows notes, but blocks agent-stage completion and marks quality impact visibly.",
+        id: "connect-host-agents",
+        label: "Connect host agents",
+        tradeoff: "Use this when the host already has a native agent registry or connector outside filesystem provisioning.",
       },
       {
         id: "skills-only",
         label: "Run deterministic skill stages only",
-        tradeoff: "Limits work to validation, memory, receipts, and materialization steps.",
+        tradeoff: "Allows validation, memory, and diagnostics only; it cannot complete agent-owned outputs.",
       },
       {
         id: "stop",
@@ -306,7 +401,42 @@ function buildDegradedModeQuestion(missingAgents) {
       },
     ],
     missingAgents,
+    provisioning: provisioningPlan
+      ? {
+        readyToApply: provisioningPlan.readyToApply,
+        applyCommand: provisioningPlan.applyCommand,
+        blockedReason: provisioningPlan.applyBlockedReason,
+      }
+      : null,
   };
+}
+
+function nextDesignBlockingQuestion({ intake = null, plan = null } = {}) {
+  if (intake?.needsQuestion === true) {
+    return {
+      source: "intake",
+      reason: intake.reason || "design intake question required",
+      markdown: formatDesignArtifactChoiceQuestion(intake),
+    };
+  }
+  if (plan?.executionStatus?.executionMode === "agent-required-blocked") {
+    return {
+      source: "execution-status",
+      reason: "agent-required-blocked",
+      question: plan.executionStatus.degradedModeQuestion,
+      markdown: formatDesignWizardQuestion(plan.executionStatus.degradedModeQuestion),
+    };
+  }
+  const question = plan?.wizard?.questionQueue?.[0] || null;
+  if (question) {
+    return {
+      source: "wizard",
+      reason: plan?.wizard?.gates?.blockedReason || "wizard question required",
+      question,
+      markdown: formatDesignWizardQuestion(question),
+    };
+  }
+  return null;
 }
 
 function expectedReceiptsForDurableOutputs(rootDir) {

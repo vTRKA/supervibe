@@ -2,6 +2,7 @@ import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { createAgentCapabilityRegistry, matchAgentForTask } from "./supervibe-agent-capability-registry.mjs";
 import { explainAssignment } from "./supervibe-assignment-explainer.mjs";
+import { loadAgentRoster } from "./supervibe-agent-roster.mjs";
 import { selectReviewerPreset, selectWorkerPreset } from "./supervibe-worker-reviewer-presets.mjs";
 
 const DEFAULT_CHAINS = {
@@ -83,25 +84,22 @@ function selectAnchorOwner(task = {}, ownership = {}) {
 }
 
 export async function loadAvailableAgents(rootDir) {
-  const candidates = {
-    "repo-researcher": "agents/_core/repo-researcher.md",
-    "dependency-reviewer": "agents/_ops/dependency-reviewer.md",
+  const roster = await loadAgentRoster({ rootDir });
+  const available = Object.fromEntries((roster.agents || []).map((agent) => [agent.id, agent.path]));
+  await addLegacyAvailabilityAliases(rootDir, available);
+  return available;
+}
+
+async function addLegacyAvailabilityAliases(rootDir, available) {
+  if (!available["stack-developer"]) {
+    const stackAgent = Object.entries(available).find(([, relPath]) => normalizeRel(relPath).includes("/stacks/"));
+    if (stackAgent) available["stack-developer"] = stackAgent[1];
+  }
+  const legacy = {
     "stack-developer": "agents/stacks/react/react-implementer.md",
-    "qa-test-engineer": "agents/_product/qa-test-engineer.md",
-    "quality-gate-reviewer": "agents/_core/quality-gate-reviewer.md",
-    "creative-director": "agents/_design/creative-director.md",
-    "ux-ui-designer": "agents/_design/ux-ui-designer.md",
-    "prototype-builder": "agents/_design/prototype-builder.md",
-    "ui-polish-reviewer": "agents/_design/ui-polish-reviewer.md",
-    "systems-analyst": "agents/_product/systems-analyst.md",
-    "architect-reviewer": "agents/_core/architect-reviewer.md",
-    "code-reviewer": "agents/_core/code-reviewer.md",
-    "security-auditor": "agents/_core/security-auditor.md",
-    "devops-sre": "agents/_ops/devops-sre.md",
-    "root-cause-debugger": "agents/_core/root-cause-debugger.md",
   };
-  const available = {};
-  for (const [id, relPath] of Object.entries(candidates)) {
+  for (const [id, relPath] of Object.entries(legacy)) {
+    if (available[id]) continue;
     try {
       await access(join(rootDir, relPath));
       available[id] = relPath;
@@ -109,11 +107,14 @@ export async function loadAvailableAgents(rootDir) {
       // Missing specialists are handled by dispatch confidence caps.
     }
   }
-  return available;
 }
 
 function checkAvailabilitySync(primary, reviewer, availableAgents) {
   if (!availableAgents) return { available: true, missing: [] };
   const missing = [primary, reviewer].filter((agent) => !(agent in availableAgents));
   return { available: missing.length === 0, missing };
+}
+
+function normalizeRel(value) {
+  return String(value || "").replace(/\\/g, "/");
 }

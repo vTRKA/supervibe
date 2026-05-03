@@ -57,6 +57,17 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     pain: ["without losing quality", "token waste", "без потери качества", "без рисков отупления"],
   },
   {
+    intent: "agent_provisioning",
+    baseConfidence: 0.9,
+    minGroups: 2,
+    concepts: [
+      ["agent", "agents", "specialist", "specialists", "агент", "агенты", "агентов", "специалист", "специалисты"],
+      ["missing", "unavailable", "not installed", "not connected", "not invoked", "emulated", "real agents", "не хватает", "недоступны", "не установлены", "не подключены", "не вызываются", "эмулируются", "настоящих агентов"],
+      ["provision", "install", "add", "connect", "copy", "sync", "установи", "добавь", "подключи", "скопируй", "синхронизируй"],
+    ],
+    pain: ["agents are being emulated", "real agents are not being invoked", "агенты не вызываются", "агенты эмулируются", "подключи настоящих агентов"],
+  },
+  {
     intent: "security_audit",
     baseConfidence: 0.88,
     minGroups: 2,

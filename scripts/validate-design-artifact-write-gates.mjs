@@ -21,6 +21,7 @@ const PROTECTED_RELATIVE_PATHS = Object.freeze([
   ".supervibe/artifacts/prototypes/_design-system/tokens.css",
   ".supervibe/artifacts/prototypes/_design-system/manifest.json",
   ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+  ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
 ]);
 
 export function validateDesignArtifactWriteGates(rootDir = process.cwd()) {

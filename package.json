@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.59",
+  "version": "2.0.60",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -41,6 +41,7 @@
     "supervibe:status": "node scripts/supervibe-status.mjs",
     "supervibe:commands": "node scripts/supervibe-commands.mjs",
     "supervibe:adapt": "node scripts/supervibe-adapt.mjs",
+    "supervibe:provision-agents": "node scripts/provision-agents.mjs",
     "supervibe:loop": "node scripts/supervibe-loop.mjs",
     "supervibe:eval": "node scripts/supervibe-loop.mjs --eval",
     "supervibe:loop:status": "node scripts/supervibe-loop.mjs --status",

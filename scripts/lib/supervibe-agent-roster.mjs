@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import matter from "gray-matter";
+import { getHostAdapterMatrix } from "./supervibe-host-adapters.mjs";
 
 const CATEGORY_LABELS = Object.freeze({
   _core: "Core workflow",
@@ -13,70 +14,46 @@ const CATEGORY_LABELS = Object.freeze({
 });
 
 export async function loadAgentRoster({ rootDir = process.cwd() } = {}) {
-  const agentsDir = join(rootDir, "agents");
-  if (!existsSync(agentsDir)) {
+  const roots = agentScanRoots(rootDir);
+  if (roots.length === 0) {
     return { rootDir, agents: [], count: 0, categories: [] };
   }
 
-  const agents = [];
-  for await (const filePath of walk(agentsDir)) {
-    if (!filePath.endsWith(".md")) continue;
-    const raw = await readFile(filePath, "utf8");
-    const { data } = matter(raw);
-    const relPath = toRepoRelative(rootDir, filePath);
-    const id = String(data.name || basename(filePath, ".md"));
-    const namespace = String(data.namespace || inferNamespace(relPath));
-    const category = categoryFor(relPath, namespace);
-    const description = compactDescription(data.description || "");
-    agents.push({
-      id,
-      namespace,
-      category,
-      path: relPath,
-      description,
-      responsibility: description || fallbackResponsibility(id, category),
-      capabilities: asArray(data.capabilities).map(String),
-      stacks: asArray(data.stacks).map(String),
-      skills: asArray(data.skills).map(String),
-      tools: asArray(data.tools).map(String),
-    });
+  const byId = new Map();
+  for (const root of roots) {
+    for await (const filePath of walk(root.absPath)) {
+      if (!filePath.endsWith(".md")) continue;
+      const raw = await readFile(filePath, "utf8");
+      const agent = parseAgentFile({ rootDir, filePath, raw, host: root.host });
+      if (!byId.has(agent.id)) byId.set(agent.id, agent);
+      else byId.get(agent.id).locations.push(agent.path);
+    }
   }
 
+  const agents = [...byId.values()];
   agents.sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
   const categories = [...new Set(agents.map((agent) => agent.category))];
   return { rootDir, agents, count: agents.length, categories };
 }
 
 export function loadAgentRosterSync({ rootDir = process.cwd() } = {}) {
-  const agentsDir = join(rootDir, "agents");
-  if (!existsSync(agentsDir)) {
+  const roots = agentScanRoots(rootDir);
+  if (roots.length === 0) {
     return { rootDir, agents: [], count: 0, categories: [] };
   }
 
-  const agents = [];
-  for (const filePath of walkSync(agentsDir)) {
-    if (!filePath.endsWith(".md")) continue;
-    const raw = readFileSync(filePath, "utf8");
-    const { data } = matter(raw);
-    const relPath = toRepoRelative(rootDir, filePath);
-    const id = String(data.name || basename(filePath, ".md"));
-    const namespace = String(data.namespace || inferNamespace(relPath));
-    const category = categoryFor(relPath, namespace);
-    const description = compactDescription(data.description || "");
-    agents.push({
-      id,
-      namespace,
-      category,
-      path: relPath,
-      description,
-      responsibility: description || fallbackResponsibility(id, category),
-      capabilities: asArray(data.capabilities).map(String),
-      stacks: asArray(data.stacks).map(String),
-      skills: asArray(data.skills).map(String),
-      tools: asArray(data.tools).map(String),
-    });
+  const byId = new Map();
+  for (const root of roots) {
+    for (const filePath of walkSync(root.absPath)) {
+      if (!filePath.endsWith(".md")) continue;
+      const raw = readFileSync(filePath, "utf8");
+      const agent = parseAgentFile({ rootDir, filePath, raw, host: root.host });
+      if (!byId.has(agent.id)) byId.set(agent.id, agent);
+      else byId.get(agent.id).locations.push(agent.path);
+    }
   }
 
+  const agents = [...byId.values()];
   agents.sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
   const categories = [...new Set(agents.map((agent) => agent.category))];
   return { rootDir, agents, count: agents.length, categories };
@@ -192,16 +169,16 @@ function fallbackResponsibility(id, category) {
 
 function categoryFor(relPath, namespace) {
   const normalized = relPath.replace(/\\/g, "/");
-  const parts = normalized.split("/");
-  if (parts[1] === "stacks" && parts[2]) {
-    return `Stack: ${parts[2]}`;
+  const parts = partsAfterAgents(normalized);
+  if (parts[0] === "stacks" && parts[1]) {
+    return `Stack: ${parts[1]}`;
   }
   return CATEGORY_LABELS[namespace] || CATEGORY_LABELS[parts[1]] || "Other";
 }
 
 function inferNamespace(relPath) {
-  const parts = relPath.replace(/\\/g, "/").split("/");
-  return parts[1] || "agents";
+  const parts = partsAfterAgents(relPath);
+  return parts[0] || "agents";
 }
 
 function toRepoRelative(rootDir, filePath) {
@@ -212,4 +189,55 @@ function asArray(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (value === undefined || value === null || value === "") return [];
   return [value];
+}
+
+function agentScanRoots(rootDir) {
+  const candidates = [
+    { host: "shared", relPath: "agents" },
+    ...getHostAdapterMatrix().map((adapter) => ({ host: adapter.id, relPath: adapter.agentsFolder })),
+  ];
+  const seen = new Set();
+  const out = [];
+  for (const candidate of candidates) {
+    const relPath = normalizeRel(candidate.relPath);
+    if (seen.has(relPath)) continue;
+    seen.add(relPath);
+    const absPath = join(rootDir, ...relPath.split("/"));
+    if (existsSync(absPath)) out.push({ ...candidate, relPath, absPath });
+  }
+  return out;
+}
+
+function parseAgentFile({ rootDir, filePath, raw, host }) {
+  const { data } = matter(raw);
+  const relPath = toRepoRelative(rootDir, filePath);
+  const id = String(data.name || basename(filePath, ".md"));
+  const namespace = String(data.namespace || inferNamespace(relPath));
+  const category = categoryFor(relPath, namespace);
+  const description = compactDescription(data.description || "");
+  return {
+    id,
+    namespace,
+    category,
+    path: relPath,
+    locations: [relPath],
+    host,
+    description,
+    responsibility: description || fallbackResponsibility(id, category),
+    capabilities: asArray(data.capabilities).map(String),
+    stacks: asArray(data.stacks).map(String),
+    skills: asArray(data.skills).map(String),
+    tools: asArray(data.tools).map(String),
+  };
+}
+
+function partsAfterAgents(relPath) {
+  const parts = normalizeRel(relPath).split("/");
+  const agentsIndex = parts.lastIndexOf("agents");
+  if (agentsIndex >= 0) return parts.slice(agentsIndex + 1);
+  return parts.slice(1);
+}
+
+function normalizeRel(value) {
+  return String(value || "").replace(/\\/g, "/");
 }

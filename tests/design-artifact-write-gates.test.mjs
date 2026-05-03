@@ -48,6 +48,28 @@ test("design artifact write gate rejects tokens without first user preference ev
   assert.ok(result.issues.some((issue) => issue.code === "missing-first-user-design-gate"));
 });
 
+test("design artifact write gate rejects durable styleboard before preference evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
+  await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/styleboard.html", "<!doctype html><title>Styleboard</title>");
+
+  const result = validateDesignArtifactWriteGates(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.protectedFiles.includes(".supervibe/artifacts/prototypes/_design-system/styleboard.html"));
+  assert.ok(result.issues.some((issue) => issue.code === "missing-first-user-design-gate"));
+});
+
+test("design artifact write gate allows diagnostic scratch styleboard before preference evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
+  await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/.scratch/run-1/styleboard.html", "<!doctype html><title>Scratch</title>");
+
+  const result = validateDesignArtifactWriteGates(root);
+
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.protectedFiles, []);
+});
+
+
 test("design artifact write gate rejects inferred preference matrix sources", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
   await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", JSON.stringify({ status: "candidate" }, null, 2));

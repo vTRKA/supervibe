@@ -11,7 +11,7 @@ const KNOWN_NPM_SCRIPT_SHORTCUTS = Object.freeze({
 });
 
 const PACKAGE_SCRIPT_ACTION_WORDS = Object.freeze([
-  "run", "start", "execute", "launch", "show", "check", "validate", "audit", "build", "open", "list", "print", "repair",
+  "run", "start", "execute", "launch", "show", "check", "validate", "audit", "build", "open", "list", "print", "repair", "add", "provision", "connect", "copy",
   "запусти", "стартуй", "выполни", "покажи", "проверь", "валидируй", "проаудируй", "собери", "открой", "выведи", "почини",
 ]);
 
@@ -288,6 +288,64 @@ const COMMAND_SHORTCUTS = Object.freeze([
     directRoute: false,
     nextAction: "Run status first when the user asked to inspect rather than start indexing.",
   },
+  {
+    id: "agent-provisioning",
+    intent: "agent_provisioning",
+    title: "Provision Supervibe agents and skills into the active host",
+    command: "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs",
+    description: "Dry-run or apply missing agent/skill installation into the selected host adapter and refresh managed instructions.",
+    aliases: [
+      "add missing agents",
+      "install missing agents",
+      "provision agents",
+      "connect real agents",
+      "real agents are not being invoked",
+      "agents are being emulated",
+      "copy agents from plugin to project",
+      "sync agents and skills into project",
+      "добавь недостающих агентов",
+      "установи недостающих агентов",
+      "подключи настоящих агентов",
+      "агенты не вызываются",
+      "агенты эмулируются",
+      "скопируй агентов из плагина в проект",
+      "синхронизируй агентов и скилы в проект",
+    ],
+    keywordGroups: [
+      ["add", "install", "provision", "connect", "copy", "sync", "invoke", "invoked", "emulated", "real", "missing", "unavailable", "добавь", "установи", "подключи", "подключены", "скопируй", "синхронизируй", "вызываются", "эмулируются", "настоящих", "не хватает", "недоступны", "отсутствуют"],
+      ["agent", "agents", "skill", "skills", "агент", "агенты", "агентов", "скил", "скилы", "скиллы", "skills"],
+    ],
+    mutationRisk: "unknown",
+    directRoute: true,
+    nextAction: "Run the provisioning dry-run first. Apply only after confirming the host, agents, skills, and managed instruction refresh.",
+  },
+  {
+    id: "design-pipeline-synonyms",
+    intent: "design_new",
+    title: "Route design-system, styleboard, and prototype requests",
+    command: "/supervibe-design",
+    description: "Route English/Russian design system, styleboard, UI mockup, and prototype phrasing to the design workflow.",
+    aliases: [
+      "create a design system",
+      "build a new design system",
+      "make a styleboard",
+      "design system from old prototypes",
+      "make the interface design",
+      "создай новую дизайн систему",
+      "сделай дизайн систему",
+      "сделай стайлборд",
+      "сделай прототип",
+      "сделай макет ui",
+      "дизайн система из старых прототипов",
+    ],
+    keywordGroups: [
+      ["design system", "styleboard", "brandbook", "tokens", "дизайн система", "дизайн-система", "стайлборд", "токены"],
+      ["create", "build", "make", "redesign", "improve", "from old", "сделай", "создай", "построй", "переработай", "улучши", "старых", "старые"],
+    ],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    nextAction: "Run /supervibe-design in the active AI CLI; the design workflow owns intake, wizard, agent, and receipt gates.",
+  },
   ...SLASH_COMMAND_SHORTCUTS,
 ]);
 
@@ -494,16 +552,20 @@ export function formatCommandMatch(match) {
 
 function createSlashShortcut(profile) {
   const name = profile.command.replace(/^\//, "");
+  const intent = profile.command === "/supervibe-design"
+    ? "design_new"
+    : profile.intent || name.replaceAll("-", "_");
+  const directRoute = profile.directRoute === true;
   return {
     id: `shortcut:${name}`,
-    intent: name.replaceAll("-", "_"),
+    intent,
     title: profile.title,
     command: profile.command,
     description: `Route to ${profile.command} from natural-language English/Russian command requests.`,
     aliases: profile.aliases || [],
     keywordGroups: profile.keywordGroups || [],
     mutationRisk: "delegates-to-slash-command",
-    directRoute: false,
+    directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
     nextAction: `Run ${profile.command} in the active AI CLI; the slash command owns safety checks and follow-up questions.`,
   };

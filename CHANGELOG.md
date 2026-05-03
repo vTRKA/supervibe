@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.60] - 2026-05-03
+
+### Added
+
+- Added agent provisioning dry-run/apply tooling that installs missing
+  Supervibe agents and skills into the detected host adapter.
+- Added managed instruction refresh and provisioning state output so newly
+  installed agents are visible to routing, dispatch, and receipt gates.
+
+### Changed
+
+- `/supervibe-design` now hard-stops durable artifact writes when intake,
+  agent availability, or wizard preference coverage gates are still open.
+- Agent roster and autonomous dispatch availability now read host-specific
+  agent folders, not only the plugin source `agents/` tree.
+
+### Fixed
+
+- Fixed multilingual design intake so "functional-only, not visual skeleton"
+  closes only the reference borrow/avoid axis while keeping creative axes open.
+- Removed the manual/degraded draft path from missing-agent design execution;
+  workflows must install/connect real agents, run deterministic skills only, or stop.
+
 ## [2.0.59] - 2026-05-03
 
 ### Added

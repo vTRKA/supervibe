@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DESIGN_STYLEBOARD_REQUIRED_AXES,
   DESIGN_WIZARD_AXES,
   buildDesignWizardState,
+  evaluateDesignStyleboardReadiness,
   formatDesignWizardQuestion,
   parseDesignBriefPreferences,
   recordDesignWizardAnswer,
@@ -30,6 +32,24 @@ test("design wizard parses brief coverage and keeps missing axes in the queue", 
   assert.ok(state.questionQueue.every((question) => question.axis === "viewport" || (question.choices || []).length >= 3));
 });
 
+test("multilingual functional-only reference scope closes only the borrow/avoid axis", () => {
+  const parsed = parseDesignBriefPreferences("Сохранить только функционал, не скелет старых прототипов.");
+
+  assert.equal(parsed.decisions.reference_borrow_avoid.choiceId, "functional-only");
+  assert.deepEqual(parsed.coveredAxes, ["reference_borrow_avoid"]);
+
+  const state = buildDesignWizardState({
+    brief: "Сохранить только функционал, не скелет старых прототипов.",
+    target: "web",
+    mode: "design-system-only",
+  });
+
+  assert.equal(state.coverage.score, `1/${DESIGN_WIZARD_AXES.length}`);
+  assert.equal(state.gates.tokensUnlocked, false);
+  assert.ok(state.questionQueue.some((question) => question.axis === "visual_direction_tone"));
+  assert.ok(!state.questionQueue.some((question) => question.axis === "reference_borrow_avoid"));
+});
+
 test("explicit defaults create editable guided checklist instead of silent collapse", () => {
   const state = buildDesignWizardState({
     brief: "Use safe defaults for a new design system.",
@@ -41,10 +61,32 @@ test("explicit defaults create editable guided checklist instead of silent colla
   assert.equal(state.explicitDefaults, true);
   assert.equal(state.coverage.score, `${DESIGN_WIZARD_AXES.length}/${DESIGN_WIZARD_AXES.length}`);
   assert.equal(state.gates.tokensUnlocked, true);
+  assert.equal(state.gates.reviewStyleboardUnlocked, true);
   assert.equal(state.guidedDefaultsChecklist.length, DESIGN_WIZARD_AXES.length);
   assert.ok(state.guidedDefaultsChecklist.every((item) => {
     return item.actions.map((action) => action.id).join(",") === "accept-default,compare-alternatives,customize";
   }));
+});
+
+test("review styleboard is blocked until required preference axes are recorded", () => {
+  const partial = buildDesignWizardState({
+    brief: "Use graphite cyan and compact density.",
+    target: "web",
+    mode: "design-system-only",
+  });
+
+  assert.equal(partial.styleboard.phase, "diagnostic-scratch");
+  assert.equal(partial.gates.reviewStyleboardUnlocked, false);
+  assert.ok(partial.styleboard.missingAxes.includes("typography_personality"));
+
+  const complete = evaluateDesignStyleboardReadiness({
+    mode: "design-system-only",
+    target: "web",
+    decisions: Object.fromEntries(DESIGN_STYLEBOARD_REQUIRED_AXES.map((axis) => [axis, { axis, source: "user" }])),
+  });
+
+  assert.equal(complete.pass, true);
+  assert.deepEqual(complete.missingAxes, []);
 });
 
 test("desktop viewport policy prefers actual window metadata over web defaults", () => {

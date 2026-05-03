@@ -114,6 +114,16 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
   }),
 ]);
 
+export const DESIGN_STYLEBOARD_REQUIRED_AXES = Object.freeze([
+  "visual_direction_tone",
+  "information_density",
+  "palette_mood",
+  "typography_personality",
+  "component_feel",
+  "motion_intensity",
+  "reference_borrow_avoid",
+]);
+
 export const DESIGN_VIEWPORT_CHOICES = Object.freeze([
   choice("actual-window", "Current 1:1 window", "Best desktop fidelity; requires actual window size, OS scale, and min-resize policy."),
   choice("tauri-main", "1280x800 desktop", "Good Tauri main-window baseline; does not prove small-window behavior."),
@@ -164,9 +174,10 @@ export function buildDesignWizardState({
   mode = null,
   currentWindow = null,
   deviceScaleFactor = null,
+  initialDecisions = {},
 } = {}) {
   const parsed = parseDesignBriefPreferences(brief);
-  const decisions = { ...parsed.decisions };
+  const decisions = { ...parsed.decisions, ...initialDecisions };
   const explicitDefaults = parsed.explicitDefaults === true;
 
   if (explicitDefaults) {
@@ -196,6 +207,7 @@ export function buildDesignWizardState({
   const guidedDefaultsChecklist = explicitDefaults
     ? DESIGN_WIZARD_AXES.map((axisDef) => guidedDefaultChecklistItem(axisDef, decisions[axisDef.id]))
     : [];
+  const styleboardReadiness = evaluateDesignStyleboardReadiness({ mode, target, decisions });
 
   return {
     schemaVersion: 1,
@@ -213,9 +225,18 @@ export function buildDesignWizardState({
     explicitDefaults,
     guidedDefaultsChecklist,
     questionQueue,
+    styleboard: {
+      phase: styleboardReadiness.pass ? "review-styleboard" : "diagnostic-scratch",
+      requiredAxes: DESIGN_STYLEBOARD_REQUIRED_AXES,
+      missingAxes: styleboardReadiness.missingAxes,
+      allowedBeforePreferenceGate: "diagnostic-scratch-only",
+      reviewStyleboardAllowed: styleboardReadiness.pass,
+    },
     gates: {
       mandatoryQuestionsClosed: requiredAxes.length === 0 && Boolean(mode),
       tokensUnlocked: requiredAxes.length === 0 && parsed.conflicts.length === 0 && Boolean(mode),
+      reviewStyleboardUnlocked: styleboardReadiness.pass,
+      styleboardBlockedReason: styleboardReadiness.blockedReason,
       blockedReason: !mode
         ? "missing workflow mode"
         : requiredAxes.length > 0
@@ -261,10 +282,25 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
     missingAxes: missing,
     score: `${covered.length}/${DESIGN_WIZARD_AXES.length}`,
   };
+  const styleboardReadiness = evaluateDesignStyleboardReadiness({
+    mode: next.mode,
+    target: next.target,
+    decisions: next.decisions,
+  });
+  next.styleboard = {
+    ...(next.styleboard || {}),
+    phase: styleboardReadiness.pass ? "review-styleboard" : "diagnostic-scratch",
+    requiredAxes: DESIGN_STYLEBOARD_REQUIRED_AXES,
+    missingAxes: styleboardReadiness.missingAxes,
+    allowedBeforePreferenceGate: "diagnostic-scratch-only",
+    reviewStyleboardAllowed: styleboardReadiness.pass,
+  };
   next.gates = {
     ...(next.gates || {}),
     mandatoryQuestionsClosed: missing.length === 0 && Boolean(next.mode),
     tokensUnlocked: missing.length === 0 && Boolean(next.mode),
+    reviewStyleboardUnlocked: styleboardReadiness.pass,
+    styleboardBlockedReason: styleboardReadiness.blockedReason,
     blockedReason: !next.mode
       ? "missing workflow mode"
       : missing.length > 0
@@ -273,6 +309,22 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   };
   next.questionQueue = (next.questionQueue || []).filter((question) => question.axis !== axisId);
   return next;
+}
+
+export function evaluateDesignStyleboardReadiness({ mode = null, target = null, decisions = {} } = {}) {
+  const missingAxes = DESIGN_STYLEBOARD_REQUIRED_AXES.filter((axisId) => !decisions?.[axisId]);
+  const missing = [];
+  if (!mode) missing.push("mode");
+  if (!target || String(target).toLowerCase() === "unknown") missing.push("target");
+  missing.push(...missingAxes);
+  return {
+    pass: missing.length === 0,
+    missing,
+    missingAxes,
+    blockedReason: missing.length > 0
+      ? `review styleboard requires ${missing.join(", ")}`
+      : null,
+  };
 }
 
 export function resolveDesignViewportPolicy({ target = "web", currentWindow = null, deviceScaleFactor = null } = {}) {
@@ -367,7 +419,19 @@ function aliasesFor(id, label) {
     "light-first": ["light theme", "light mode"],
     "high-contrast": ["contrast", "wcag"],
     "visual-inspiration": ["visual inspiration", "style reference", "in the style of"],
-    "functional-only": ["functional inventory", "functions only"],
+    "functional-only": [
+      "functional inventory",
+      "functions only",
+      "functionality only",
+      "only functionality",
+      "только функционал",
+      "сохранить только функционал",
+      "не скелет",
+      "без скелета",
+      "без визуального скелета",
+      "не копировать скелет",
+      "не брать визуал",
+    ],
     "ia-only": ["information architecture", "navigation only"],
     "authoritative-brand": ["brand guide", "design source of truth"],
   };
@@ -488,7 +552,7 @@ function detectViewportPreference(text) {
 }
 
 function hasExplicitDefaultRequest(text) {
-  return /\b(use|safe|recommended)\s+defaults?\b|\bno preference\b|\bdefault everything\b/i.test(String(text || ""));
+  return /\b(use|safe|recommended)\s+defaults?\b|\bno preference\b|\bdefault everything\b|\bпо умолчанию\b|\bдефолт/i.test(String(text || ""));
 }
 
 function snippetFor(text, index) {

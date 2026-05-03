@@ -29,6 +29,7 @@ The wizard state is persisted in `config.json.designWizard` and must include:
 - `guidedDefaultsChecklist` - shown when the user says to use defaults; every axis offers `Accept default / Compare alternatives / Customize`.
 - `coverage` - required axes, covered axes, missing axes, conflicts, and score.
 - `gates` - `tokensUnlocked` stays false until mandatory questions are closed or explicitly delegated/defaulted by the user.
+- `writeGate` - executable hard-stop for artifact writes. If `intake.needsQuestion=true`, `executionMode="agent-required-blocked"`, or `wizard.gates.tokensUnlocked=false`, ask exactly one blocking question and write only run-state or diagnostic scratch. Durable design artifacts, review styleboards, prototypes, tokens, and section markers are forbidden until the gate is ready.
 
 ### Stage Question Catalog
 
@@ -45,11 +46,13 @@ Use the catalog choices from `DESIGN_WIZARD_AXES`; do not invent a thin recommen
 
 If the brief already covers an axis, the wizard stores `source=user` with a short quote. If the user explicitly says "use defaults", the wizard stores `source=explicit-default` and shows the editable `guidedDefaultsChecklist`; defaults are not a silent collapse of the design interview. `source=inferred` remains forbidden for the Preference Coverage Matrix.
 
-Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
+Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. A full review styleboard is allowed only after mode, target, reference scope, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that point, only diagnostic scratch is allowed and it must not present itself as a visual direction. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
 
 For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1280x800` plus `800x600` as the desktop baseline.
 
-Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `agent-required-blocked`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality was lost. If a required specialist is missing, ask one blocked-mode question before any approval: stop and connect agents, run deterministic skill stages only, save a non-agent manual draft with visible quality impact, or stop here. A manual draft is never a completed agent stage.
+Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `agent-required-blocked`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality is blocked. If a required specialist is missing, ask one blocked-mode question before any approval: install missing agents with `scripts/provision-agents.mjs`, connect host-native agents, run deterministic skill stages only, or stop here. Manual emulation is not an allowed design workflow path and is never a completed agent stage.
+
+Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode="agent-required-blocked"`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
 
 Run both receipt validators before claiming design workflow completion:
 
@@ -526,7 +529,7 @@ Brief:        <one-line>
 Brand:        .supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
 System:       .supervibe/artifacts/prototypes/_design-system/design-flow-state.json + manifest.json (candidate | needs_revision | approved | final metadata)
 Wizard:       coverage <covered>/<required>, queue <N>, guidedDefaultsChecklist <N>
-Execution:    executionMode <real-agents | agent-required-blocked | skills-only>, missingAgents <list|none>, qualityImpact <text|none>
+Execution:    executionMode <real-agents | agent-required-blocked | skills-only>, missingAgents <list|none>, provisioning <ready|blocked|none>, qualityImpact <text|none>
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md
 Prototype:    .supervibe/artifacts/prototypes/<slug>/index.html

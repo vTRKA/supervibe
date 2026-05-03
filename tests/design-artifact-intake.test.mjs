@@ -84,12 +84,12 @@ test("conflicting fresh and reuse brief asks before touching prior work", async 
   }
 });
 
-test("old prototype path references ask for borrow/avoid scope before artifact writes", async () => {
+test("old prototype path references ask for borrow/avoid scope before artifact writes when scope is missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
   try {
     const intake = await evaluateDesignArtifactIntake({
       projectRoot: root,
-      brief: "create a new desktop app design; study C:\\legacy-ui\\docs\\old prototypes but keep only functionality, not the shell",
+      brief: "create a new desktop app design; study C:\\legacy-ui\\docs\\old prototypes",
     });
 
     assert.equal(intake.mode, "ask");
@@ -102,6 +102,24 @@ test("old prototype path references ask for borrow/avoid scope before artifact w
     assert.match(question, /Old artifact reference scope/);
     assert.match(question, /Functional inventory only/);
     assert.match(question, /Stop here - make no hidden progress/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("explicit functional-only old artifact scope closes the intake scope question", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "создать новую дизайн систему; старые прототипы сохранить только функционал, не скелет",
+    });
+
+    assert.equal(intake.mode, "reference-scope-explicit");
+    assert.equal(intake.needsQuestion, false);
+    assert.equal(intake.needsOldArtifactScopeQuestion, false);
+    assert.equal(intake.referenceScopeDecision.choiceId, "functional-only");
+    assert.match(intake.referenceScopeDecision.quote, /только функционал|не скелет/i);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -155,7 +173,7 @@ test("old artifact references take priority over generic website or pdf referenc
   try {
     const intake = await evaluateDesignArtifactIntake({
       projectRoot: root,
-      brief: "study C:\\legacy-ui\\docs\\old prototypes and https://example.com but keep only functionality",
+      brief: "study C:\\legacy-ui\\docs\\old prototypes and https://example.com",
     });
 
     assert.equal(intake.needsOldArtifactScopeQuestion, true);

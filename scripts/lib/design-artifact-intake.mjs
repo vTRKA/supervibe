@@ -49,6 +49,8 @@ const OLD_ARTIFACT_REFERENCE_PATTERNS = [
   /\bold prototypes?\b/gi,
   /\blegacy prototypes?\b/gi,
   /\bprevious prototypes?\b/gi,
+  /стар(?:ые|ый|ого|ым|ыми)\s+прототип(?:ы|ам|ов|е)?/gi,
+  /прошл(?:ые|ый|ого|ым|ыми)\s+прототип(?:ы|ам|ов|е)?/gi,
 ];
 
 const REFERENCE_SOURCE_PATTERNS = Object.freeze([
@@ -58,6 +60,56 @@ const REFERENCE_SOURCE_PATTERNS = Object.freeze([
   ["website", /\bhttps?:\/\/(?![^/\s)"'`]*figma\.com\b)(?![^\s)"'`]+\.(?:pdf|png|jpe?g|webp|gif|svg)\b)[^\s)"'`]+/gi],
   ["screenshot", /\b(?:screenshot|screen capture|скриншот|скрин)\b/gi],
   ["existing-design-system", /\.supervibe[\\/]artifacts[\\/]prototypes[\\/]_design-system\b/gi],
+]);
+
+const REFERENCE_SCOPE_DECISION_PATTERNS = Object.freeze([
+  {
+    choiceId: "functional-only",
+    answer: "Functional inventory only",
+    patterns: [
+      /\bfunctional inventory only\b/i,
+      /\bfunctions? only\b/i,
+      /\bfunctionality only\b/i,
+      /\bonly functionality\b/i,
+      /только функционал/i,
+      /сохранить только функционал/i,
+      /не скелет/i,
+      /без скелета/i,
+      /без визуального скелета/i,
+      /не копировать скелет/i,
+      /не брать визуал/i,
+    ],
+  },
+  {
+    choiceId: "ia-only",
+    answer: "Information architecture only",
+    patterns: [
+      /\binformation architecture only\b/i,
+      /\bnavigation only\b/i,
+      /только структуру/i,
+      /только навигацию/i,
+    ],
+  },
+  {
+    choiceId: "visual-inspiration",
+    answer: "Visual inspiration",
+    patterns: [
+      /\bvisual inspiration\b/i,
+      /\bstyle reference\b/i,
+      /как визуальный референс/i,
+      /визуальн(?:ый|ого|ые) референс/i,
+    ],
+  },
+  {
+    choiceId: "ignore-references",
+    answer: "Ignore references",
+    patterns: [
+      /\bignore (?:the )?references?\b/i,
+      /\bdo not use (?:the )?references?\b/i,
+      /не использовать референс/i,
+      /игнорировать референс/i,
+    ],
+  },
 ]);
 
 async function safeStat(path) {
@@ -105,6 +157,28 @@ function findDesignReferenceSources(text) {
     }
   }
   return sources.slice(0, 8);
+}
+
+function detectExplicitReferenceScope(text) {
+  const value = String(text ?? "");
+  for (const scope of REFERENCE_SCOPE_DECISION_PATTERNS) {
+    for (const pattern of scope.patterns) {
+      const match = value.match(pattern);
+      if (!match) continue;
+      return {
+        axis: "reference_borrow_avoid",
+        answer: scope.answer,
+        choiceId: scope.choiceId,
+        source: "user",
+        confidence: 0.88,
+        quote: snippetFor(value, match.index ?? value.toLowerCase().indexOf(match[0].toLowerCase())),
+        prompt: "How should references influence this design?",
+        decisionUnlocked: "reference scope, borrow/avoid list, and old-artifact reuse boundary",
+        timestamp: "1970-01-01T00:00:00.000Z",
+      };
+    }
+  }
+  return null;
 }
 
 async function collectArtifact(projectRoot, rootName, entryName) {
@@ -181,8 +255,9 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
   const hasExisting = artifacts.length > 0;
   const oldArtifactReferences = findOldArtifactReferences(text);
   const referenceSources = findDesignReferenceSources(text);
+  const referenceScopeDecision = detectExplicitReferenceScope(text);
 
-  if (oldArtifactReferences.length > 0) {
+  if (oldArtifactReferences.length > 0 && !referenceScopeDecision) {
     return {
       mode: "ask",
       needsQuestion: true,
@@ -191,10 +266,11 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
       artifacts,
       oldArtifactReferences,
       referenceSources,
+      referenceScopeDecision,
     };
   }
 
-  if (referenceSources.length > 0) {
+  if (referenceSources.length > 0 && !referenceScopeDecision) {
     return {
       mode: "ask",
       needsQuestion: true,
@@ -203,22 +279,39 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
       artifacts,
       oldArtifactReferences,
       referenceSources,
+      referenceScopeDecision,
+    };
+  }
+
+  if ((oldArtifactReferences.length > 0 || referenceSources.length > 0) && referenceScopeDecision) {
+    return {
+      mode: "reference-scope-explicit",
+      needsQuestion: false,
+      needsOldArtifactScopeQuestion: false,
+      needsReferenceSourceScopeQuestion: false,
+      reason: oldArtifactReferences.length > 0
+        ? "old-artifact-reference-scope-explicit"
+        : "reference-source-scope-explicit",
+      artifacts,
+      oldArtifactReferences,
+      referenceSources,
+      referenceScopeDecision,
     };
   }
 
   if (!hasExisting) {
-    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts, oldArtifactReferences, referenceSources };
+    return { mode: "new", needsQuestion: false, reason: "no-existing-design-artifacts", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
   }
 
   if (explicitFresh && !explicitReuse) {
-    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts, oldArtifactReferences, referenceSources };
+    return { mode: "new", needsQuestion: false, reason: "explicit-new-from-scratch", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
   }
 
   if (explicitReuse && !explicitFresh) {
-    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts, oldArtifactReferences, referenceSources };
+    return { mode: "reuse", needsQuestion: false, reason: "explicit-existing-artifact", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
   }
 
-  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences, referenceSources };
+  return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
 }
 
 export function formatDesignArtifactChoiceQuestion(intake) {
@@ -274,6 +367,13 @@ What should I do?
 - Continue an existing artifact - pick the path or say "latest".
 - Create a new design from scratch - new slug, no edits to old artifacts.
 - Create an alternative next to the old one - keep the old artifact parked for comparison.`;
+}
+
+function snippetFor(text, index) {
+  const value = String(text || "");
+  const start = Math.max(0, Number(index || 0) - 48);
+  const end = Math.min(value.length, Number(index || 0) + 88);
+  return value.slice(start, end).replace(/\s+/g, " ").trim();
 }
 
 const isMain = (() => {

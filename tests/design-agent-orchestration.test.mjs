@@ -5,7 +5,9 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import {
+  assertDesignWriteAllowed,
   buildDesignAgentPlan,
+  buildDesignWriteGate,
   formatDesignPlanPrompt,
   validateDesignAgentInvocationReceipts,
 } from "../scripts/lib/design-agent-orchestration.mjs";
@@ -68,6 +70,58 @@ test("design agent plan maps source types and stages to explicit agents and skil
   const prompt = formatDesignPlanPrompt(plan);
   assert.match(prompt, /NEXT_WIZARD_QUESTION/);
   assert.match(prompt, /Step 1\//);
+});
+
+test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
+  try {
+    const plan = buildDesignAgentPlan({
+      brief: "New Tauri design. Use graphite cyan only.",
+      target: "tauri",
+      rootDir: root,
+      intake: { needsQuestion: false },
+    });
+
+    assert.equal(plan.executionStatus.executionMode, "agent-required-blocked");
+    assert.equal(plan.writeGate.durableWritesAllowed, false);
+    assert.ok(plan.writeGate.blockedReasons.some((reason) => reason.code === "agent-required-blocked"));
+    assert.ok(plan.writeGate.blockedReasons.some((reason) => reason.code === "tokens-locked"));
+    assert.deepEqual(plan.writeGate.allowedWriteClasses, ["run-state", "diagnostic-scratch"]);
+    assert.equal(assertDesignWriteAllowed(plan.writeGate, { writeClass: "diagnostic-scratch", artifact: "scratch" }), true);
+    assert.throws(
+      () => assertDesignWriteAllowed(plan.writeGate, { writeClass: "durable-design-artifacts", artifact: "tokens.css" }),
+      /durable-design-artifacts write blocked/,
+    );
+
+    const prompt = formatDesignPlanPrompt(plan);
+    assert.match(prompt, /WRITE_GATE: blocked/);
+    assert.match(prompt, /specialist agents are unavailable/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design write gate prioritizes intake question before wizard or artifact writes", () => {
+  const intake = {
+    needsQuestion: true,
+    needsOldArtifactScopeQuestion: true,
+    reason: "old-artifact-reference-scope-required",
+    oldArtifactReferences: ["docs/old prototypes"],
+    referenceSources: [],
+    artifacts: [],
+  };
+  const plan = buildDesignAgentPlan({
+    brief: "Use old prototypes.",
+    target: "web",
+    mode: "design-system-only",
+    intake,
+  });
+  const gate = buildDesignWriteGate({ intake, plan });
+
+  assert.equal(gate.durableWritesAllowed, false);
+  assert.equal(gate.nextQuestion.source, "intake");
+  assert.match(gate.nextQuestion.markdown, /Old artifact reference scope/);
+  assert.match(formatDesignPlanPrompt(plan, { intake, writeGate: gate }), /NEXT_BLOCKING_QUESTION/);
 });
 
 test("design agent receipt validator rejects durable outputs without completed receipts", async () => {

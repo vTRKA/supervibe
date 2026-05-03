@@ -261,6 +261,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: inspect weak agents from telemetry and propose strengthening through a user gate?",
     prerequisites: [],
   },
+  agent_provisioning: {
+    phase: "setup",
+    command: "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs",
+    skill: "supervibe:genesis",
+    nextQuestionRu: "Шаг 1/1: показать dry-run установки недостающих агентов и обновления host instructions?",
+    nextQuestionEn: "Step 1/1: show the dry-run for installing missing agents and refreshing host instructions?",
+    prerequisites: ["user-request"],
+  },
   memory_audit: {
     phase: "audit",
     command: "/supervibe-audit --memory",
@@ -438,7 +446,7 @@ const RULES = [
   {
     intent: "design_new",
     confidence: 0.85,
-    test: (text) => hasDesignSurface(text) && hasAny(text, ["make", "build", "create", "сделай", "нарисуй", "улучши"]),
+    test: (text) => hasDesignSurface(text) && hasAny(text, ["make", "build", "create", "сделай", "создай", "нарисуй", "улучши"]),
   },
 ];
 
@@ -820,7 +828,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
-  if (["brainstorm_to_plan", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -843,6 +851,7 @@ function requiredSafetyFor(intent) {
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];
   if (intent === "prompt_ai_engineering") return [...base, "eval-before-claim", "tool-boundary-review"];
+  if (intent === "agent_provisioning") return [...base, "dry-run-before-host-file-write", "refresh-managed-instructions", "no-agent-emulation"];
   if (intent === "design_new") return [...base, "creative-direction-first", "preference-coverage-matrix", "design-system-approval-gate"];
   if (intent === "design_continue") return [...base, "resume-design-flow-state", "final-gates-cannot-be-delegated"];
   return base;
