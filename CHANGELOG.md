@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.67] - 2026-05-04
+
+### Added
+
+- Added global provider regression coverage proving every published slash
+  command remains agent-first across Claude, Codex, Cursor, Gemini, OpenCode,
+  and unknown host adapters.
+- Added per-artifact design prewrite proof status so completed stage outputs
+  are reported as complete without unblocking later producer stages.
+- Added `agent-invocation.mjs log --issue-receipt` to bridge host-agent
+  invocation evidence, typed agent-output artifacts, and workflow receipts in
+  one runtime command.
+- Added `/supervibe-design --dispatch-host-agents` next-dispatch guidance that
+  runs the orchestrator while wizard gates are open and defers specialists
+  until their stage is unlocked.
+
+### Fixed
+
+- Fixed producer receipt reporting to distinguish host-agent receipts from
+  deterministic skill producer receipts.
+- Fixed Codex command-agent receipt guidance so every generated spawn payload
+  includes the receipt bridge instead of requiring separate manual glue.
+- Fixed `agent-invocation.mjs --help` to exit before log argument validation.
+
 ## [2.0.66] - 2026-05-04
 
 ### Added

@@ -145,6 +145,31 @@ test("design agent plan CLI resumes mode and decisions from saved prototype conf
   }
 });
 
+test("design agent plan dispatches orchestrator before specialists while wizard is open", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-dispatch-wizard-"));
+  try {
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+      "--dispatch-host-agents",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /NEXT_DISPATCH: agent:supervibe-orchestrator@stage-0-orchestrator/);
+    assert.match(output, /SPECIALISTS_DEFERRED: true/);
+    assert.doesNotMatch(output, /NEXT_HOST_AGENT: creative-director@stage-1-brand-direction/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
   try {
@@ -268,6 +293,57 @@ test("design prewrite manifest lists blocked durable writes before artifact muta
   assert.match(report, /SUPERVIBE_DESIGN_PREWRITE_MANIFEST/);
   assert.match(report, /WORKFLOW_STAGE:/);
   assert.match(report, /FILES:/);
+});
+
+test("design prewrite manifest completes per-artifact receipts without unblocking later stages", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-prewrite-per-artifact-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      stage: "stage-1-brand-direction",
+      invocationReason: "brand direction required",
+      inputEvidence: [".supervibe/artifacts/brandbook/preferences.json"],
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+      hostInvocation: await writeAgentInvocation(root),
+    });
+
+    const plan = buildDesignAgentPlan({
+      brief: "Use completed preferences for a desktop agent chat design system.",
+      target: "web",
+      mode: "design-system-only",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: completedWizardDecisions(),
+    });
+    const manifest = buildDesignPrewriteManifest(plan, { slug: "agent-chat" });
+    const direction = manifest.files.find((file) => file.path === ".supervibe/artifacts/brandbook/direction.md");
+    const tokens = manifest.files.find((file) => file.path.endsWith("tokens.css"));
+    const report = formatDesignPrewriteManifest(manifest);
+
+    assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
+    assert.equal(plan.executionStatus.agentReceiptsTrusted, true);
+    assert.equal(plan.executionStatus.producerReceiptsTrusted, false);
+    assert.equal(manifest.durableWritesAllowed, false);
+    assert.equal(direction.status, "complete");
+    assert.equal(direction.receiptTrusted, true);
+    assert.equal(tokens.status, "blocked");
+    assert.equal(tokens.producerType, "skill");
+    assert.equal(tokens.producerId, "supervibe:brandbook");
+    assert.equal(manifest.nextProducer.producerId, "supervibe:brandbook");
+    assert.match(report, /complete durable-design-artifacts .supervibe\/artifacts\/brandbook\/direction\.md/);
+    assert.match(report, /NEXT_PRODUCER: skill:supervibe:brandbook@stage-2-design-system/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design agent receipt validator rejects durable outputs without completed receipts", async () => {

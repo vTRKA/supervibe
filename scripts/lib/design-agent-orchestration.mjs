@@ -266,6 +266,14 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/a11y.md`, writeClass: "review-styleboard" },
   ];
   const allowed = new Set(gate.allowedWriteClasses || []);
+  const producerProofs = producerProofsByArtifact(plan);
+  const files = planned.map((item) => perArtifactWriteStatus({
+    item,
+    proof: producerProofs.get(normalizeRelPath(item.path)),
+    gate,
+    allowed,
+  }));
+  const nextProducer = firstPendingProducer(files);
   return {
     schemaVersion: 1,
     command: "/supervibe-design",
@@ -273,12 +281,9 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     durableWritesAllowed: gate.durableWritesAllowed === true,
     reviewStyleboardAllowed: gate.reviewStyleboardAllowed === true,
     blockedReason: gate.blockedReason || null,
+    nextProducer,
     nextQuestion: gate.nextQuestion?.reason || null,
-    files: planned.map((item) => ({
-      ...item,
-      status: allowed.has(item.writeClass) ? "allowed" : "blocked",
-      gateReason: allowed.has(item.writeClass) ? null : gate.blockedReason || `${item.writeClass} is blocked`,
-    })),
+    files,
   };
 }
 
@@ -289,11 +294,15 @@ export function formatDesignPrewriteManifest(manifest = {}) {
     `DURABLE_WRITES_ALLOWED: ${manifest.durableWritesAllowed === true}`,
     `REVIEW_STYLEBOARD_ALLOWED: ${manifest.reviewStyleboardAllowed === true}`,
     `BLOCKED_REASON: ${manifest.blockedReason || "none"}`,
+    `NEXT_PRODUCER: ${formatProducerSummary(manifest.nextProducer)}`,
     `NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
     "FILES:",
   ];
   for (const file of manifest.files || []) {
-    lines.push(`- ${file.status} ${file.writeClass} ${file.path}${file.gateReason ? ` :: ${file.gateReason}` : ""}`);
+    const producer = file.producerId
+      ? ` [producer=${file.producerType}:${file.producerId}@${file.stageId}; receipt=${file.receiptTrusted ? "trusted" : file.receiptPresent ? "present-untrusted" : "missing"}]`
+      : "";
+    lines.push(`- ${file.status} ${file.writeClass} ${file.path}${producer}${file.gateReason ? ` :: ${file.gateReason}` : ""}`);
   }
   return lines.join("\n");
 }
@@ -615,6 +624,74 @@ function writeClassForDesignArtifact(path = "") {
   if (/\.approvals\//.test(path)) return "run-state";
   if (/design-flow-state\.json|config\.json/.test(path)) return "run-state";
   return "durable-design-artifacts";
+}
+
+function producerProofsByArtifact(plan = {}) {
+  const entries = plan.executionStatus?.runtimeProofRequirements || [];
+  return new Map(entries.map((proof) => [normalizeRelPath(proof.outputArtifact), proof]));
+}
+
+function perArtifactWriteStatus({ item = {}, proof = null, gate = {}, allowed = new Set() } = {}) {
+  const base = {
+    ...item,
+    producerType: proof?.subjectType || null,
+    producerId: proof?.subjectId || null,
+    stageId: proof?.stageId || null,
+    receiptPresent: proof?.receiptPresent === true,
+    receiptTrusted: proof?.trusted === true,
+  };
+  if (proof?.trusted === true) {
+    return {
+      ...base,
+      status: "complete",
+      gateReason: null,
+    };
+  }
+  if (proof) {
+    return {
+      ...base,
+      status: "blocked",
+      gateReason: producerGateReason(proof),
+    };
+  }
+  const classAllowed = allowed.has(item.writeClass);
+  return {
+    ...base,
+    status: classAllowed ? "allowed" : "blocked",
+    gateReason: classAllowed ? null : gate.blockedReason || `${item.writeClass} is blocked`,
+  };
+}
+
+function producerGateReason(proof = {}) {
+  const producer = `${proof.subjectType || "producer"}:${proof.subjectId || "unknown"}@${proof.stageId || "unknown-stage"}`;
+  if (proof.receiptPresent) {
+    const issues = (proof.issues || []).filter(Boolean);
+    return `producer receipt present but untrusted for ${producer}${issues.length ? `: ${issues.join("; ")}` : ""}`;
+  }
+  return `pending producer receipt for ${producer}`;
+}
+
+function firstPendingProducer(files = []) {
+  const pending = files.find((file) => file.status === "blocked" && file.producerId);
+  if (!pending) return null;
+  return {
+    producerType: pending.producerType,
+    producerId: pending.producerId,
+    stageId: pending.stageId,
+    outputArtifact: pending.path,
+    receiptPresent: pending.receiptPresent === true,
+    receiptTrusted: pending.receiptTrusted === true,
+  };
+}
+
+function formatProducerSummary(producer = null) {
+  if (!producer) return "none";
+  const receipt = producer.receiptTrusted
+    ? "trusted"
+    : producer.receiptPresent
+      ? "present-untrusted"
+      : "missing";
+  return `${producer.producerType}:${producer.producerId}@${producer.stageId} -> ${producer.outputArtifact} (${receipt})`;
 }
 
 function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues = [] } = {}) {

@@ -10,8 +10,9 @@ test('isInScope true for windows path separators', () => {
   assert.equal(isInScope('agents\\_product\\systems-analyst.md'), true);
 });
 
-test('isInScope false for code-reviewer (not in applies-to)', () => {
-  assert.equal(isInScope('agents/_core/code-reviewer.md'), false);
+test('isInScope true for every agent path', () => {
+  assert.equal(isInScope('agents/_core/code-reviewer.md'), true);
+  assert.equal(isInScope('agents/_core/security-auditor.md'), true);
 });
 
 test('agent without discipline section fails', () => {
@@ -26,7 +27,7 @@ test('agent without discipline section fails', () => {
 test('agent with discipline section passes', () => {
   const body = [
     '## User dialogue discipline',
-    'Шаг N/M format used with outcome-oriented labels.',
+    'Use localized Step marker guidance with outcome-oriented labels.',
     'Why: this answer changes scope.',
     'Decision unlocked: select the safest path.',
     'If skipped: use the documented default.',
@@ -54,10 +55,28 @@ test('agent with stale option placeholders fails', () => {
   assert.ok(issues.some((issue) => issue.code === 'stale-dialogue-placeholder'), JSON.stringify(issues));
 });
 
+test('agent dialogue rejects wrong Russian step marker guidance', () => {
+  const body = [
+    '## User dialogue discipline',
+    'Use Step N/M with outcome-oriented labels.',
+    'Why: this answer changes scope.',
+    'Decision unlocked: select the safest path.',
+    'If skipped: use the documented default.',
+    'Use an adaptive progress indicator and recompute M from current triage, saved workflow state, skipped stages, and delegated safe decisions.',
+    'If a NEXT_STEP_HANDOFF or workflowSignal exists and the user changes topic, ask whether to continue, skip/delegate, pause and switch, or stop/archive.',
+    'Use `Step N/M:` when the conversation is in Russian.',
+    '## Anti-patterns',
+    '- asking-multiple-questions-at-once',
+    '',
+  ].join('\n');
+  const issues = checkAgentDiscipline('agents/_product/systems-analyst.md', {}, body);
+  assert.ok(issues.some((issue) => issue.code === 'wrong-russian-step-marker'), JSON.stringify(issues));
+});
+
 test('stale placeholders outside dialogue section do not fail dialogue check', () => {
   const body = [
     '## User dialogue discipline',
-    'Шаг N/M format used with outcome-oriented labels.',
+    'Use localized Step marker guidance with outcome-oriented labels.',
     'Why: this answer changes scope.',
     'Decision unlocked: select the safest path.',
     'If skipped: use the documented default.',
@@ -77,7 +96,7 @@ test('stale placeholders outside dialogue section do not fail dialogue check', (
 test('agent dialogue section must explain why, decision, and skip default', () => {
   const body = [
     '## User dialogue discipline',
-    'Шаг N/M format used with outcome-oriented labels.',
+    'Use localized Step marker guidance with outcome-oriented labels.',
     '## Anti-patterns',
     '- asking-multiple-questions-at-once',
     '',
@@ -91,7 +110,7 @@ test('agent dialogue section must explain why, decision, and skip default', () =
 test('agent dialogue section must keep adaptive stage and topic-resume guidance', () => {
   const body = [
     '## User dialogue discipline',
-    'Шаг N/M format used with outcome-oriented labels.',
+    'Use localized Step marker guidance with outcome-oriented labels.',
     'Why: this answer changes scope.',
     'Decision unlocked: select the safest path.',
     'If skipped: use the documented default.',
@@ -113,7 +132,7 @@ test('noninteractive frontmatter override skips check', () => {
   assert.equal(issues.length, 0);
 });
 
-test('agent NOT in applies-to scope is skipped', () => {
-  const issues = checkAgentDiscipline('agents/_core/code-reviewer.md', {}, '');
+test('non-agent paths are skipped by agent discipline check', () => {
+  const issues = checkAgentDiscipline('rules/example.md', {}, '');
   assert.equal(issues.length, 0);
 });

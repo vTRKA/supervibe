@@ -223,6 +223,7 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(creativeDirector.payload.message, /Do not claim inline emulation/);
   assert.match(creativeDirector.payload.message, /typed output contract/);
   assert.match(creativeDirector.receipt.logCommand, /--changed-files <paths> --risks <items> --recommendations <items>/);
+  assert.match(creativeDirector.receipt.logCommand, /--issue-receipt --command <command-id> --stage <stage-id>/);
   assert.equal(creativeDirector.receipt.structuredOutput, ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json");
 
   const prototypeBuilder = plan.codexSpawnPayloads.find((payload) => payload.agentId === "prototype-builder");
@@ -243,6 +244,7 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(report, /creative-director: deferred until design-wizard/);
   assert.match(report, /CODEX_RECEIPT_LOG_COMMANDS:/);
   assert.match(report, /--changed-files <paths>/);
+  assert.match(report, /--issue-receipt --command <command-id>/);
   assert.match(report, /IMMEDIATE_AGENTS: supervibe-orchestrator/);
   assert.match(report, /DEFERRED_AGENTS: .*creative-director.*prototype-builder/);
   assert.match(report, /AGENT_STAGE_GATE: design-wizard/);
@@ -273,7 +275,75 @@ test("every slash command has codex-safe payloads for every required agent", () 
       assert.equal(spawnPayload.payload.fork_context, true, `${commandId}:${spawnPayload.agentId}`);
       assert.match(spawnPayload.payload.message, new RegExp(`Supervibe required specialist agent \`${spawnPayload.agentId}\``), `${commandId}:${spawnPayload.agentId}`);
       assert.doesNotMatch(JSON.stringify(spawnPayload.payload), /"agent_type"|"model"|"reasoning_effort"/, `${commandId}:${spawnPayload.agentId}`);
+      assert.equal(spawnPayload.receipt.hostInvocationSource, "codex-spawn-agent", `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /agent-invocation\.mjs log/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--issue-receipt/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--command <command-id>/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--stage <stage-id>/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--handoff-id <handoff-id>/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--output-artifacts <paths>/, `${commandId}:${spawnPayload.agentId}`);
+      assert.equal(spawnPayload.receipt.structuredOutput, ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json", `${commandId}:${spawnPayload.agentId}`);
     }
+  }
+});
+
+test("every command stays agent-first across host providers and blocks inline claims", () => {
+  const commandIds = readdirSync(join(ROOT, "commands"))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => `/${file.replace(/\.md$/, "")}`)
+    .sort();
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  for (const commandId of commandIds) {
+    for (const hostAdapterId of ["claude", "codex"]) {
+      const plan = buildCommandAgentPlan(commandId, {
+        availableAgentIds,
+        hostAdapterId,
+        enforceHostProof: true,
+      });
+
+      assert.equal(plan.defaultExecutionMode, "real-agents", `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.requestedExecutionMode, "real-agents", `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.executionMode, "agent-dispatch-required", `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.hostDispatchAvailable, true, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.agentDispatchRequired, true, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.agentOwnedOutputAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.durableWritesAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.inlineDraftAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.receiptGate, "pending-runtime-agent-receipts", `${commandId}:${hostAdapterId}`);
+      assert.deepEqual(plan.requiredReceiptFields, ["hostInvocation.source", "hostInvocation.invocationId"], `${commandId}:${hostAdapterId}`);
+      assert.match(plan.qualityImpact, /runtime agent receipts/i, `${commandId}:${hostAdapterId}`);
+    }
+
+    for (const hostAdapterId of ["cursor", "gemini", "opencode", "unknown-host"]) {
+      const plan = buildCommandAgentPlan(commandId, {
+        availableAgentIds,
+        hostAdapterId,
+        enforceHostProof: true,
+      });
+
+      assert.equal(plan.executionMode, "agent-required-blocked", `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.hostProofBlocked, true, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.agentOwnedOutputAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.durableWritesAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.equal(plan.inlineDraftAllowed, false, `${commandId}:${hostAdapterId}`);
+      assert.match(plan.qualityImpact, /requires runtime invocation proof|requires real-agent dispatch/i, `${commandId}:${hostAdapterId}`);
+    }
+
+    const inline = buildCommandAgentPlan(commandId, {
+      availableAgentIds,
+      hostAdapterId: "codex",
+      requestedExecutionMode: "inline",
+      enforceHostProof: true,
+    });
+    assert.equal(inline.executionMode, "inline", commandId);
+    assert.equal(inline.agentOwnedOutputAllowed, false, commandId);
+    assert.equal(inline.durableWritesAllowed, false, commandId);
+    assert.equal(inline.agentOwnedOutputRequiresReceipts, false, commandId);
+    assert.equal(inline.inlineDraftAllowed, true, commandId);
+    assert.match(inline.qualityImpact, /diagnostic\/dry-run only/i, commandId);
   }
 });
 

@@ -39,6 +39,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const json = process.argv.includes("--json");
   const status = process.argv.includes("--status");
   const planWrites = process.argv.includes("--plan-writes");
+  const dispatchHostAgents = process.argv.includes("--dispatch-host-agents") || process.argv.includes("--continue");
   const intake = await evaluateDesignArtifactIntake({ brief, projectRoot });
   const plan = buildDesignAgentPlan({
     brief,
@@ -53,10 +54,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     pluginRoot,
     intake,
   });
+  const prewriteManifest = buildDesignPrewriteManifest(plan, { slug });
+  const nextDispatch = nextDispatchTarget(plan, prewriteManifest.nextProducer);
 
   if (json) {
-    const prewriteManifest = planWrites ? buildDesignPrewriteManifest(plan, { slug }) : null;
-    console.log(JSON.stringify({ intake, plan, prewriteManifest }, null, 2));
+    console.log(JSON.stringify({ intake, plan, prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null }, null, 2));
   } else {
     console.log("SUPERVIBE_DESIGN_AGENT_PLAN");
     console.log("STAGES: intake -> candidate DS -> review styleboard -> approval -> prototype unlock");
@@ -68,6 +70,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`HOST_DISPATCH_AVAILABLE: ${plan.executionStatus.hostDispatchAvailable === true}`);
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
+    console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
+    console.log(`NEXT_DISPATCH: ${formatDispatchTarget(nextDispatch)}`);
+    console.log(`NEXT_PRODUCER: ${formatNextProducer(prewriteManifest.nextProducer)}`);
     console.log(`MISSING_RUNTIME_PROOFS: ${(plan.executionStatus.missingRuntimeProofs || []).map((proof) => `${proof.subjectId}@${proof.stageId}`).join(",") || "none"}`);
     console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
     console.log(`AGENT_PROVISIONING_READY: ${plan.executionStatus.provisioningPlan?.readyToApply === true}`);
@@ -86,13 +91,66 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       }
     }
     if (planWrites) {
-      console.log(formatDesignPrewriteManifest(buildDesignPrewriteManifest(plan, { slug })));
+      console.log(formatDesignPrewriteManifest(prewriteManifest));
+    }
+    if (dispatchHostAgents) {
+      console.log("DISPATCH_HOST_AGENTS:");
+      console.log(dispatchGuidance(nextDispatch));
     }
     console.log(formatDesignPlanPrompt(plan, { intake }));
     for (const stage of plan.stages) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }
   }
+}
+
+function nextDispatchTarget(plan = {}, producer = null) {
+  if (plan.executionStatus?.specialistDispatchDeferred === true) {
+    return {
+      producerType: "agent",
+      producerId: "supervibe-orchestrator",
+      stageId: "stage-0-orchestrator",
+      outputArtifact: "<run-state-or-scratch-artifact>",
+      receiptPresent: false,
+      receiptTrusted: false,
+      reason: "wizard-gate-open",
+    };
+  }
+  return producer;
+}
+
+function formatDispatchTarget(target = null) {
+  if (!target) return "none";
+  return `${target.producerType}:${target.producerId}@${target.stageId} (${target.reason || "producer-proof"})`;
+}
+
+function formatNextProducer(producer = null) {
+  if (!producer) return "none";
+  const receipt = producer.receiptTrusted
+    ? "trusted"
+    : producer.receiptPresent
+      ? "present-untrusted"
+      : "missing";
+  return `${producer.producerType}:${producer.producerId}@${producer.stageId} -> ${producer.outputArtifact} (${receipt})`;
+}
+
+function dispatchGuidance(producer = null) {
+  if (!producer) return "NEXT: no pending producer proof";
+  if (["agent", "worker", "reviewer"].includes(String(producer.producerType || "").toLowerCase())) {
+    return [
+      `NEXT_HOST_AGENT: ${producer.producerId}@${producer.stageId}`,
+      producer.reason === "wizard-gate-open"
+        ? "SPECIALISTS_DEFERRED: true; run the owner/orchestrator agent now, then return to the wizard gate before creative-director or later specialists."
+        : "SPECIALISTS_DEFERRED: false; run this stage producer before claiming or approving its durable output.",
+      "SPAWN: use the host-native agent tool for this logical Supervibe agent; in Codex use spawn_agent with fork_context=true and encode the role in message.",
+      `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent ${producer.producerId} --host <host> --host-invocation-id <returned-host-agent-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage ${producer.stageId} --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts ${producer.outputArtifact}`,
+    ].join("\n");
+  }
+  return [
+    `NEXT_SKILL_PRODUCER: ${producer.producerId}@${producer.stageId}`,
+    "RUN: execute the deterministic skill producer, then issue a skill workflow receipt for its durable outputs.",
+    `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue --command /supervibe-design --skill ${producer.producerId} --stage ${producer.stageId} --reason <summary> --handoff <handoff-id> --input <paths> --output ${producer.outputArtifact}`,
+  ].join("\n");
 }
 
 function readPersistedDesignConfig(projectRoot, slug) {

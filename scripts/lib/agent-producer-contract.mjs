@@ -38,6 +38,15 @@ function isHostAgentReceipt(receipt = {}) {
   return HOST_AGENT_SUBJECT_TYPES.includes(subjectType);
 }
 
+function isProducerReceipt(receipt = {}) {
+  const subjectType = String(receipt.subjectType || "").toLowerCase();
+  return subjectType === "skill" || HOST_AGENT_SUBJECT_TYPES.includes(subjectType);
+}
+
+function isSkillProducerReceipt(receipt = {}) {
+  return String(receipt.subjectType || "").toLowerCase() === "skill";
+}
+
 function readAgentInvocationLog(rootDir = process.cwd()) {
   const logPath = join(rootDir, ...AGENT_INVOCATION_LOG_RELATIVE_PATH.split("/"));
   if (!existsSync(logPath)) return [];
@@ -156,7 +165,7 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
 
   for (const receipt of receipts) {
     if (receipt.__invalidJson) continue;
-    if (!isHostAgentReceipt(receipt)) continue;
+    if (!isProducerReceipt(receipt)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
     for (const message of trust.issues) {
       issues.push({
@@ -167,7 +176,9 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
         message: `${receipt.__file}: ${message}`,
       });
     }
-    issues.push(...validateHostInvocationProof(rootDir, receipt, options));
+    if (isHostAgentReceipt(receipt)) {
+      issues.push(...validateHostInvocationProof(rootDir, receipt, options));
+    }
   }
 
   for (const expectation of expectations) {
@@ -191,6 +202,9 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
     pass: issues.length === 0,
     checked: receipts.length + expectations.length,
     receipts: receipts.length,
+    producerReceipts: receipts.filter(isProducerReceipt).length,
+    hostAgentReceipts: receipts.filter(isHostAgentReceipt).length,
+    skillReceipts: receipts.filter(isSkillProducerReceipt).length,
     agentReceipts: receipts.filter(isHostAgentReceipt).length,
     expectations: expectations.length,
     issues: dedupeIssues(issues),

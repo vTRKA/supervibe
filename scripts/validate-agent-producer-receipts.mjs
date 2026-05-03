@@ -11,6 +11,9 @@ export function formatAgentProducerReceiptsReport(result) {
     `PASS: ${result.pass}`,
     `CHECKED: ${result.checked}`,
     `RECEIPTS: ${result.receipts}`,
+    `PRODUCER_RECEIPTS: ${result.producerReceipts ?? result.receipts}`,
+    `HOST_AGENT_RECEIPTS: ${result.hostAgentReceipts ?? result.agentReceipts}`,
+    `SKILL_RECEIPTS: ${result.skillReceipts ?? 0}`,
     `AGENT_RECEIPTS: ${result.agentReceipts}`,
     `EXPECTATIONS: ${result.expectations}`,
     `COVERAGE_STATUS: ${coverageStatus(result)}`,
@@ -24,9 +27,10 @@ export function formatAgentProducerReceiptsReport(result) {
 
 function coverageStatus(result = {}) {
   if (result.receipts === 0 && result.expectations === 0) return "not-started-no-durable-outputs";
-  if (result.agentReceipts === 0 && result.expectations > 0) return "blocked-missing-agent-receipts";
-  if (result.agentReceipts === 0) return "no-agent-receipts";
-  return "agent-receipts-present";
+  if ((result.producerReceipts ?? 0) === 0 && result.expectations > 0) return "blocked-missing-producer-receipts";
+  if ((result.hostAgentReceipts ?? result.agentReceipts ?? 0) === 0 && (result.skillReceipts ?? 0) > 0) return "skill-producer-receipts-present";
+  if ((result.hostAgentReceipts ?? result.agentReceipts ?? 0) === 0) return "no-host-agent-receipts";
+  return "host-agent-receipts-present";
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

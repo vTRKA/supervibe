@@ -367,7 +367,7 @@ function buildCodexSpawnPayload(agentId, { commandId = "unknown" } = {}) {
     },
     receipt: {
       hostInvocationSource: "codex-spawn-agent",
-      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10> --changed-files <paths> --risks <items> --recommendations <items>",
+      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10> --changed-files <paths> --risks <items> --recommendations <items> --issue-receipt --command <command-id> --stage <stage-id> --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts <paths>",
       structuredOutput: ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json",
     },
   };

@@ -6,17 +6,11 @@ import matter from 'gray-matter';
 import { validateDialogueContract } from './lib/supervibe-dialogue-contract.mjs';
 
 const APPLIES_TO_GLOBS = [
-  /^agents[\\/]_design[\\/]/,
-  /^agents[\\/]_product[\\/]/,
-  /^agents[\\/]_meta[\\/]supervibe-orchestrator\.md$/,
-  /^agents[\\/]_core[\\/]repo-researcher\.md$/,
-  /^agents[\\/]_core[\\/]root-cause-debugger\.md$/,
-  /^agents[\\/]_ops[\\/]/,
-  /^agents[\\/]stacks[\\/]/,
+  /^agents[\\/]/,
 ];
 
 const DISCIPLINE_MARKER_A = '## User dialogue discipline';
-const DISCIPLINE_MARKER_B = 'Шаг N/M';
+const DISCIPLINE_MARKER_B_RE = /localized Step marker|localize the visible word "Step"|Шаг N\/M/i;
 const ANTI_PATTERN_REQUIRED = 'asking-multiple-questions-at-once';
 const OUTCOME_LABEL_MARKER = 'outcome-oriented labels';
 const WHY_MARKER_RE = /\bWhy:|\bWhy this matters:|\bContext:/i;
@@ -24,8 +18,9 @@ const DECISION_MARKER_RE = /\bDecision unlocked:|\bDecision recorded:|\bDecision
 const SKIP_MARKER_RE = /\bIf skipped:|\bDefault if skipped:|\bSkip assumption:/i;
 const ADAPTIVE_PROGRESS_RE = /adaptive progress indicator|Recompute `?M`?|current triage|saved workflow state|skipped stages|delegated safe decisions/i;
 const TOPIC_RESUME_RE = /NEXT_STEP_HANDOFF|workflowSignal|changes topic|pause and switch|stop\/archive|continue, skip\/delegate/i;
-const STALE_OPTION_PLACEHOLDER_RE = /<option [abc]>|one-line rationale per option/i;
-const STALE_RECOMMENDED_MARKER_RE = /<Recommended action>\s+\(recommended\)/;
+const STALE_OPTION_PLACEHOLDER_RE = /<option [abc]>|<Recommended action>|<Second action>|<Stop here>|<one focused question>|one-line rationale per option/i;
+const STALE_RECOMMENDED_MARKER_RE = /<Recommended action>\s+\((?:recommended|<recommended marker)/i;
+const WRONG_RUSSIAN_STEP_MARKER_RE = /Use `Step N\/M:` when the conversation is in Russian/i;
 const DELIVERY_COMMAND_SCOPE = new Set([
   'commands/supervibe-design.md',
   'commands/supervibe-genesis.md',
@@ -55,13 +50,13 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
 
   const issues = [];
   const hasMarkerA = body.includes(DISCIPLINE_MARKER_A);
-  const hasMarkerB = body.includes(DISCIPLINE_MARKER_B);
+  const hasMarkerB = DISCIPLINE_MARKER_B_RE.test(body);
   const dialogueSection = extractDialogueSection(body);
   if (!hasMarkerA && !hasMarkerB) {
     issues.push({
       file: relPath,
       code: 'missing-dialogue-discipline',
-      message: `Add '## User dialogue discipline' section or use 'Шаг N/M' format. Or set frontmatter 'dialogue: noninteractive' if agent has no user dialogue.`,
+      message: `Add '## User dialogue discipline' section or localized Step marker guidance. Or set frontmatter 'dialogue: noninteractive' if agent has no user dialogue.`,
     });
   }
   if (!body.includes(ANTI_PATTERN_REQUIRED)) {
@@ -125,6 +120,13 @@ export function checkAgentDiscipline(relPath, frontmatter, body) {
       file: relPath,
       code: 'hardcoded-english-recommended-marker',
       message: 'Use a localized recommended marker, e.g. (recommended) in English and (рекомендуется) in Russian.',
+    });
+  }
+  if (WRONG_RUSSIAN_STEP_MARKER_RE.test(dialogueSection)) {
+    issues.push({
+      file: relPath,
+      code: 'wrong-russian-step-marker',
+      message: 'Dialogue discipline must say to use `Шаг N/M:` in Russian conversations, not `Step N/M:`.',
     });
   }
   return issues;

@@ -72,6 +72,45 @@ test("wizard prioritizes questions and recommendations by brief profile", () => 
   );
 });
 
+test("wizard renders context-specific choice labels instead of reusable templates", () => {
+  const state = buildDesignWizardState({
+    brief: "Новая дизайн система для десктопного приложения под агентскую систему чатов. Нужен креативный UI, не generic SaaS admin, graphite cyan, code-first typography, subtle motion.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+  const creative = state.questionQueue.find((question) => question.axis === "creative_alternatives");
+  const density = state.questionQueue.find((question) => question.axis === "information_density");
+
+  assert.ok(creative);
+  assert.ok(density);
+  assert.match(creative.prompt, /агентского чат-пространства|agent/i);
+  assert.match(density.prompt, /агентское чат-пространство|agent/i);
+  assert.deepEqual(
+    creative.choices.map((choiceItem) => choiceItem.label),
+    [
+      "Сравнить cockpit, editorial workspace и command center",
+      "Сравнить консоль и редакторский чат",
+      "Зафиксировать выбранный agent-chat cockpit",
+    ],
+  );
+  assert.deepEqual(
+    density.choices.map((choiceItem) => choiceItem.label),
+    [
+      "Сбалансировать чат, трассы и инспектор",
+      "Плотный cockpit для agent traces",
+      "Фокус на диалоге с деталями по запросу",
+    ],
+  );
+
+  const markdown = `${formatDesignWizardQuestion(creative)}\n${formatDesignWizardQuestion(density)}`;
+  assert.doesNotMatch(markdown, /- 3 разных направления(?:\s|\()/);
+  assert.doesNotMatch(markdown, /- Balanced(?:\s|\()/);
+  assert.match(markdown, /это не общий пункт анкеты/);
+});
+
 test("multilingual functional-only reference scope closes only the borrow/avoid axis", () => {
   const parsed = parseDesignBriefPreferences("Сохранить только функционал, не скелет старых прототипов.");
 

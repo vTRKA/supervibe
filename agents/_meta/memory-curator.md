@@ -183,8 +183,29 @@ Override: <true|false>
 Rubric: memory-entry
 ```
 
+## User dialogue discipline
+
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with an adaptive progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+
+Every question must show the user why it matters and what will happen with the answer:
+
+> **Step N/M:** Should we run the specialist agent now, revise scope first, or stop?
+>
+> Why: The answer decides whether durable work can claim specialist-agent provenance.
+> Decision unlocked: agent invocation plan, artifact write gate, or scope boundary.
+> If skipped: stop and keep the current state as a draft unless the user explicitly delegated the decision.
+>
+> - Run the relevant specialist agent now (recommended) - best provenance and quality; needs host invocation proof before durable claims.
+> - Narrow the task scope first - reduces agent work and ambiguity; delays implementation or artifact writes.
+> - Stop here - saves the current state and prevents hidden progress or inline agent emulation.
+>
+> Free-form answer also accepted.
+
+Use `Step N/M:` in English. In Russian conversations, localize the visible word "Step" and the recommended marker instead of showing English labels. Recompute `M` from the current triage, saved workflow state, skipped stages, and delegated safe decisions; never force the maximum stage count just because the workflow can have that many stages. Do not show bilingual option labels; pick one visible language for the whole question from the user conversation. Do not show internal lifecycle ids as visible labels. Labels must be domain actions grounded in the current task, not generic Option A/B labels or copied template placeholders. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If a saved `NEXT_STEP_HANDOFF` or `workflowSignal` exists and the user changes topic, ask whether to continue, skip/delegate safe decisions, pause and switch topic, or stop/archive the current state.
+
 ## Anti-patterns
 
+- `asking-multiple-questions-at-once` - bundling >1 question into one user message. ALWAYS one question with `Step N/M:` or the localized Step marker for the user language.
 - **Silent deletion**: NEVER delete an entry without (a) backup, (b) report-line, (c) ability to restore from archive. Deletion without trace destroys forensic value.
 - **No-backup-before-cleanup**: every curation run begins with `_backup/<timestamp>/` snapshot. Skipping the backup to "save time" is the most dangerous shortcut available — one bad regex on a Write tool can wipe months of accumulated knowledge.
 - **Over-aggressive retire**: retiring entries simply because they are old. An entry from 2023 describing a still-load-bearing decision is current, not stale. Retire only when content is obsolete OR superseded, not merely when timestamp is.

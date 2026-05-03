@@ -289,29 +289,73 @@ const DESIGN_QUESTION_PROFILES = Object.freeze({
 
 const CONTEXTUAL_AXIS_PROMPTS = Object.freeze({
   brandLaunch: {
-    visual_direction_tone: "What first-impression direction should make this launch feel specific rather than generic?",
+    visual_direction_tone: "What first-impression direction should make {subject} feel specific rather than generic?",
     palette_mood: "Which color world best supports the offer, conversion moment, and brand memory?",
     typography_personality: "What type voice should carry the headline, proof points, and product UI together?",
     motion_intensity: "How expressive should motion be before it starts competing with the offer?",
+    creative_alternatives: "Which launch directions should the creative director compare for {subject}?",
+    information_density: "How much information should {subject} show before the call to action starts to feel crowded?",
   },
   regulatedTrust: {
     audience_trust_posture: "What trust posture must be visible before any user studies the details?",
     palette_mood: "Which palette gives audit-grade clarity without making the product feel hostile?",
     motion_intensity: "How restrained should motion be for a high-trust workflow?",
+    creative_alternatives: "Which trust-building directions should be compared for {subject}?",
+    information_density: "How dense can {subject} become before audit clarity and confidence suffer?",
   },
   developerTool: {
     component_feel: "What component model best supports power-user speed, keyboard work, and implementation handoff?",
     typography_personality: "How much developer-native typography should the interface expose?",
     information_density: "How much operational density can expert users handle before scanning breaks?",
+    creative_alternatives: "Which product directions should the creative director compare for {subject}?",
   },
   desktopOps: {
     information_density: "How dense should the working surface be for repeated desktop sessions?",
     component_feel: "Which component feel best matches the host shell and resize constraints?",
     audience_trust_posture: "What trust signal should operators see while working quickly?",
+    creative_alternatives: "Which desktop workspace directions should be compared for {subject}?",
   },
   referenceRefresh: {
     reference_borrow_avoid: "What exactly may survive from the reference, and what must be redesigned from scratch?",
     anti_generic_guardrail: "Which old-shell or generic pattern must the new design actively reject?",
+    creative_alternatives: "Which redesign directions should be compared before {subject} inherits any old-shell decisions?",
+    information_density: "How much density should {subject} keep from the reference before it starts feeling like a repaint?",
+  },
+});
+
+const CONTEXTUAL_AXIS_PROMPTS_RU = Object.freeze({
+  brandLaunch: {
+    visual_direction_tone: "Какое первое впечатление должно сделать {subject}, чтобы запуск не выглядел шаблонно?",
+    palette_mood: "Какая цветовая среда поддержит оффер, конверсию и запоминаемость {subject}?",
+    typography_personality: "Какой голос типографики должен связать заголовки, доказательства и UI {subject}?",
+    motion_intensity: "Насколько выразительным может быть motion в {subject}, прежде чем он начнет спорить с оффером?",
+    creative_alternatives: "Какие launch-направления creative director должен сравнить для {subjectGen}?",
+    information_density: "Сколько информации может показать {subject}, пока первый CTA не начал теряться?",
+  },
+  regulatedTrust: {
+    audience_trust_posture: "Какое доверие {subject} должен показать до того, как пользователь начнет читать детали?",
+    palette_mood: "Какая палитра даст {subject} audit-grade ясность без ощущения враждебности?",
+    motion_intensity: "Насколько сдержанным должен быть motion в {subject} для high-trust workflow?",
+    creative_alternatives: "Какие trust-направления нужно сравнить для {subjectGen}?",
+    information_density: "Какую плотность выдержит {subject}, прежде чем пострадают audit clarity и уверенность?",
+  },
+  developerTool: {
+    component_feel: "Какая компонентная модель даст {subject} скорость power-user, клавиатурность и чистый handoff?",
+    typography_personality: "Сколько developer-native типографики должен показать {subject}?",
+    information_density: "Какую плотность выдержит {subject}, прежде чем сломается сканирование?",
+    creative_alternatives: "Какие продуктовые направления creative director должен сравнить для {subjectGen}?",
+  },
+  desktopOps: {
+    information_density: "Какой ритм плотности нужен для {subjectGen} при повторной desktop-работе?",
+    component_feel: "Какие компоненты лучше совпадут с shell, resize и desktop-ограничениями {subject}?",
+    audience_trust_posture: "Какой сигнал доверия оператор должен видеть в {subject}, пока работает быстро?",
+    creative_alternatives: "Какие desktop-направления нужно сравнить для {subjectGen}?",
+  },
+  referenceRefresh: {
+    reference_borrow_avoid: "Что именно может пережить редизайн {subjectGen}, а что надо собрать заново?",
+    anti_generic_guardrail: "Какой old-shell или generic pattern {subject} должен активно отвергнуть?",
+    creative_alternatives: "Какие redesign-направления сравнить, прежде чем {subject} унаследует старые решения?",
+    information_density: "Какую плотность {subject} может сохранить из референса, прежде чем это станет перекраской?",
   },
 });
 
@@ -974,6 +1018,7 @@ function buildDesignQuestionStrategy({
   const text = `${brief || ""} ${target || ""}`.toLowerCase();
   const profileId = inferDesignQuestionProfile(text, target);
   const profile = DESIGN_QUESTION_PROFILES[profileId] || DESIGN_QUESTION_PROFILES.default;
+  const signals = designQuestionSignals(text, target);
   const recommendedChoices = {
     ...profile.recommendedChoices,
     mode: inferDesignWorkflowModeChoice(text, profileId, mode),
@@ -982,7 +1027,8 @@ function buildDesignQuestionStrategy({
   return {
     schemaVersion: 1,
     profile: profile.id,
-    signals: designQuestionSignals(text, target),
+    signals,
+    subject: inferDesignQuestionSubject(text, target, signals),
     axisOrder: profile.axisOrder,
     viewportPlacement: viewportPolicy?.requiresActualWindowQuestion ? "early" : profile.viewportPlacement,
     recommendedChoices,
@@ -1003,12 +1049,13 @@ function inferDesignQuestionProfile(text = "", target = "web") {
 function designQuestionSignals(text = "", target = "web") {
   const haystack = `${text || ""} ${target || ""}`.toLowerCase();
   return {
-    desktopTarget: isDesktopTarget(target) || hasAny(haystack, ["tauri", "electron", "desktop", "native app", "app shell", "windows app"]),
-    desktopOps: hasAny(haystack, ["dashboard", "admin", "operator", "support", "backoffice", "ops", "table", "grid", "queue", "monitoring", "control plane"]),
-    brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page"]),
-    regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated"]),
-    developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "workflow", "prompt", "devtool", "debug"]),
-    referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework"]),
+    desktopTarget: isDesktopTarget(target) || hasAny(haystack, ["tauri", "electron", "desktop", "desktop app", "native app", "app shell", "windows app", "десктоп", "десктопн", "настольн", "таури"]),
+    desktopOps: hasAny(haystack, ["dashboard", "admin", "operator", "support", "backoffice", "ops", "table", "grid", "queue", "monitoring", "control plane", "админ", "оператор", "таблиц", "очеред", "мониторинг"]),
+    brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page", "лендинг", "маркетинг", "запуск", "главная", "конверси"]),
+    regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated", "комплаенс", "аудит", "банк", "финанс", "медицин", "безопасн", "приват", "риск"]),
+    developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "workflow", "prompt", "devtool", "debug", "разработ", "код", "агент", "api", "cli", "терминал", "воркфлоу", "промпт", "дебаг"]),
+    referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
+    agentChat: hasAny(haystack, ["agent chat", "agentic chat", "chat system", "conversation workspace", "агентск", "агентская система чатов", "чат", "чаты", "диалог"]),
   };
 }
 
@@ -1057,8 +1104,240 @@ function recommendedChoiceIdFor(axisId, strategy = {}, fallback = null) {
 }
 
 function contextualPromptFor(axisId, fallbackPrompt, locale = "en", strategy = {}) {
-  if (normalizeLocale(locale) !== "en") return fallbackPrompt;
-  return CONTEXTUAL_AXIS_PROMPTS[strategy.profile]?.[axisId] || fallbackPrompt;
+  const normalized = normalizeLocale(locale);
+  const promptMap = normalized === "ru" ? CONTEXTUAL_AXIS_PROMPTS_RU : CONTEXTUAL_AXIS_PROMPTS;
+  const prompt = promptMap[strategy.profile]?.[axisId] || fallbackPrompt;
+  return hydrateQuestionText(prompt, strategy, normalized);
+}
+
+function contextualWhyFor(axisId, axisLabel, locale = "en", strategy = {}) {
+  const normalized = normalizeLocale(locale);
+  const subject = subjectForLocale(strategy.subject, normalized, "genitive");
+  if (normalized === "ru") {
+    return `Этот выбор меняет конкретный сценарий ${subject}; это не общий пункт анкеты и не безопасный шаблон.`;
+  }
+  return `${axisLabel} changes the concrete ${subject} experience; this is not a reusable questionnaire default.`;
+}
+
+function contextualChoicesFor(axisDef, locale = "en", strategy = {}) {
+  const normalized = normalizeLocale(locale);
+  const recommendedChoice = recommendedChoiceIdFor(axisDef.id, strategy, axisDef.defaultChoiceId);
+  return axisDef.choices.map((item) => {
+    const baseChoice = localizedChoice(item, normalized, axisDef.id);
+    const contextual = contextualChoiceFor(axisDef.id, item.id, baseChoice, normalized, strategy);
+    return {
+      ...contextual,
+      recommended: item.id === recommendedChoice,
+    };
+  });
+}
+
+function contextualChoiceFor(axisId, choiceId, baseChoice, locale = "en", strategy = {}) {
+  const normalized = normalizeLocale(locale);
+  if (axisId === "creative_alternatives") {
+    return contextualCreativeAlternativeChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "information_density") {
+    return contextualDensityChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  return contextualFallbackChoice(baseChoice, normalized, strategy);
+}
+
+function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  const profile = strategy.profile || "default";
+  const agentChat = strategy.signals?.agentChat || profile === "developerTool";
+  if (locale === "ru") {
+    if (agentChat) {
+      const map = {
+        "three-directions": ["Сравнить cockpit, editorial workspace и command center", `Три реально разных подхода для ${subject}: рабочая консоль, выразительный чат и системный центр управления.`],
+        "two-directions": ["Сравнить консоль и редакторский чат", `Быстрее для ${subject}, но меньше шанс найти неожиданный агентский UX.`],
+        "single-locked-direction": ["Зафиксировать выбранный agent-chat cockpit", `Только если направление ${subject} уже принято пользователем и не требует creative-director сравнения.`],
+      };
+      return contextualChoiceFromMap(choiceId, baseChoice, map);
+    }
+    if (profile === "brandLaunch") {
+      const map = {
+        "three-directions": ["Сравнить premium launch, proof-led и product-first", `Три разных launch-рамки для ${subject}: эмоция, доверие и демонстрация продукта.`],
+        "two-directions": ["Сравнить brand-led и conversion-led", `Быстрее для ${subject}, но меньше пространства для неожиданного первого экрана.`],
+        "single-locked-direction": ["Зафиксировать выбранную launch-рамку", `Только если позиционирование ${subject} уже утверждено.`],
+      };
+      return contextualChoiceFromMap(choiceId, baseChoice, map);
+    }
+    const map = {
+      "three-directions": [`Сравнить три разные рамки для ${subject}`, "Больше творческого покрытия; снижает риск одного безопасного дефолта."],
+      "two-directions": [`Сравнить два сфокусированных пути для ${subject}`, "Быстрее, но меньше проверяет необычные решения."],
+      "single-locked-direction": [`Зафиксировать уже выбранный путь для ${subject}`, "Только если направление уже ясно и подтверждено."],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+
+  if (agentChat) {
+    const map = {
+      "three-directions": ["Compare cockpit, editorial workspace, and command center", `Three genuinely different frames for ${subject}: operating console, expressive chat, and system control.`],
+      "two-directions": ["Compare console and editorial chat", `Faster for ${subject}, but leaves less room for a surprising agentic UX.`],
+      "single-locked-direction": ["Lock the chosen agent-chat cockpit", `Only if the ${subject} direction is already approved and does not need creative-director comparison.`],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+  if (profile === "brandLaunch") {
+    const map = {
+      "three-directions": ["Compare premium launch, proof-led, and product-first", `Three launch frames for ${subject}: emotion, trust, and product demonstration.`],
+      "two-directions": ["Compare brand-led and conversion-led", `Faster for ${subject}, with less room for an unexpected first impression.`],
+      "single-locked-direction": ["Lock the chosen launch frame", `Only if ${subject} positioning is already approved.`],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+  const map = {
+    "three-directions": [`Compare three distinct frames for ${subject}`, "Broader creative coverage; reduces one safe default becoming the design."],
+    "two-directions": [`Compare two focused paths for ${subject}`, "Faster, but explores fewer unusual moves."],
+    "single-locked-direction": [`Lock the already chosen path for ${subject}`, "Only when direction is already clear and approved."],
+  };
+  return contextualChoiceFromMap(choiceId, baseChoice, map);
+}
+
+function contextualDensityChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  const profile = strategy.profile || "default";
+  const agentChat = strategy.signals?.agentChat || profile === "developerTool";
+  if (locale === "ru") {
+    if (agentChat) {
+      const map = {
+        balanced: ["Сбалансировать чат, трассы и инспектор", `Для ${subject}: хороший скан без перегруза, но часть деталей уйдет в раскрытия.`],
+        compact: ["Плотный cockpit для agent traces", `Для ${subject}: больше логов, статусов и действий в окне; иерархия должна быть жестче.`],
+        comfortable: ["Фокус на диалоге с деталями по запросу", `Для ${subject}: спокойнее читать чат, но меньше состояния агентов видно сразу.`],
+      };
+      return contextualChoiceFromMap(choiceId, baseChoice, map);
+    }
+    if (profile === "brandLaunch") {
+      const map = {
+        balanced: ["Дать офферу и proof равный вес", `Для ${subject}: сканируемо, но без агрессивного above-the-fold.`],
+        compact: ["Уплотнить proof и CTA", `Для ${subject}: больше аргументов сразу, выше риск визуального шума.`],
+        comfortable: ["Сделать hero и историю просторнее", `Для ${subject}: сильнее впечатление, меньше деталей на первом экране.`],
+      };
+      return contextualChoiceFromMap(choiceId, baseChoice, map);
+    }
+    const map = {
+      balanced: [`Сбалансировать плотность для ${subject}`, "Сохраняет скорость сканирования без ощущения перегруза."],
+      compact: [`Уплотнить рабочий экран ${subject}`, "Больше информации в окне; требуется сильнее контролировать иерархию."],
+      comfortable: [`Дать ${subject} больше воздуха`, "Легче читать и нажимать; меньше информации видно сразу."],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+
+  if (agentChat) {
+    const map = {
+      balanced: ["Balance chat, traces, and inspector", `For ${subject}: good scan speed without crowding, with some detail moved into disclosure.`],
+      compact: ["Dense cockpit for agent traces", `For ${subject}: more logs, statuses, and actions per window; hierarchy must work harder.`],
+      comfortable: ["Conversation focus with details on demand", `For ${subject}: calmer reading, but less agent state visible at once.`],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+  if (profile === "brandLaunch") {
+    const map = {
+      balanced: ["Give offer and proof equal weight", `For ${subject}: scannable without an aggressive above-the-fold.`],
+      compact: ["Compress proof and CTA density", `For ${subject}: more arguments immediately, with higher visual-noise risk.`],
+      comfortable: ["Give the hero and story more air", `For ${subject}: stronger impression, fewer details visible first.`],
+    };
+    return contextualChoiceFromMap(choiceId, baseChoice, map);
+  }
+  const map = {
+    balanced: [`Balance density for ${subject}`, "Keeps scanning fast without crowding the workflow."],
+    compact: [`Compress the ${subject} working screen`, "Shows more at once; hierarchy must be stricter."],
+    comfortable: [`Give ${subject} more breathing room`, "Easier reading and controls; less is visible immediately."],
+  };
+  return contextualChoiceFromMap(choiceId, baseChoice, map);
+}
+
+function contextualFallbackChoice(baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  if (locale === "ru") {
+    return {
+      ...baseChoice,
+      label: `${baseChoice.label} для ${subject}`,
+      tradeoff: `${baseChoice.tradeoff} Применять именно к ${subject}, а не как готовый пункт анкеты.`,
+    };
+  }
+  return {
+    ...baseChoice,
+    label: `${baseChoice.label} for ${subject}`,
+    tradeoff: `${baseChoice.tradeoff} Apply it specifically to ${subject}, not as a reusable questionnaire default.`,
+  };
+}
+
+function contextualChoiceFromMap(choiceId, baseChoice, map) {
+  const copy = map[choiceId];
+  if (!copy) return baseChoice;
+  return {
+    ...baseChoice,
+    label: copy[0],
+    tradeoff: copy[1],
+  };
+}
+
+function hydrateQuestionText(text, strategy = {}, locale = "en") {
+  return String(text || "")
+    .replace(/\{subjectGen\}/g, subjectForLocale(strategy.subject, locale, "genitive"))
+    .replace(/\{subject\}/g, subjectForLocale(strategy.subject, locale, "nominative"));
+}
+
+function inferDesignQuestionSubject(text = "", target = "web", signals = {}) {
+  if (signals.agentChat) {
+    return {
+      en: "agent chat workspace",
+      ru: "агентского чат-пространства",
+      ruNominative: "агентское чат-пространство",
+      ruGenitive: "агентского чат-пространства",
+    };
+  }
+  if (signals.developerTool) {
+    return {
+      en: "developer workflow surface",
+      ru: "developer workflow-поверхности",
+      ruNominative: "developer workflow-поверхность",
+      ruGenitive: "developer workflow-поверхности",
+    };
+  }
+  if (signals.regulatedTrust) {
+    return {
+      en: "high-trust workflow",
+      ru: "high-trust workflow",
+      ruNominative: "high-trust workflow",
+      ruGenitive: "high-trust workflow",
+    };
+  }
+  if (signals.brandLaunch) {
+    return {
+      en: "launch surface",
+      ru: "launch-поверхности",
+      ruNominative: "launch-поверхность",
+      ruGenitive: "launch-поверхности",
+    };
+  }
+  if (signals.desktopTarget || isDesktopTarget(target)) {
+    return {
+      en: "desktop workspace",
+      ru: "desktop workspace",
+      ruNominative: "desktop workspace",
+      ruGenitive: "desktop workspace",
+    };
+  }
+  return {
+    en: "this product surface",
+    ru: "этой продуктовой поверхности",
+    ruNominative: "эта продуктовая поверхность",
+    ruGenitive: "этой продуктовой поверхности",
+  };
+}
+
+function subjectForLocale(subject = null, locale = "en", form = "genitive") {
+  const normalized = normalizeLocale(locale);
+  if (normalized === "ru") {
+    if (form === "nominative") return subject?.ruNominative || subject?.ru || "эта продуктовая поверхность";
+    if (form === "genitive") return subject?.ruGenitive || subject?.ru || "этой продуктовой поверхности";
+    return subject?.ru || "этой продуктовой поверхности";
+  }
+  return subject?.en || "this product surface";
 }
 
 function hasAny(text = "", needles = []) {
@@ -1100,7 +1379,6 @@ function modeQuestion(locale = "en", strategy = {}) {
 function axisQuestion(axisDef, locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
   const axisCopy = localizedAxisCopy(axisDef, normalized);
-  const recommendedChoice = recommendedChoiceIdFor(axisDef.id, strategy, axisDef.defaultChoiceId);
   return {
     id: axisDef.id,
     axis: axisDef.id,
@@ -1108,14 +1386,12 @@ function axisQuestion(axisDef, locale = "en", strategy = {}) {
     total: "M",
     locale: normalized,
     prompt: contextualPromptFor(axisDef.id, axisCopy.prompt, normalized, strategy),
-    why: normalized === "ru"
-      ? `${axisCopy.label} сильно меняет ощущение продукта, даже если технически можно идти дальше.`
-      : `${axisCopy.label} is not a blocker syntactically, but it materially changes the product feel.`,
+    why: contextualWhyFor(axisDef.id, axisCopy.label, normalized, strategy),
     decisionUnlocked: axisCopy.decisionUnlocked,
     ifSkipped: normalized === "ru"
       ? "Рекомендованный дефолт можно использовать только если пользователь явно делегировал этот выбор."
       : "Only use the recommended default when the user explicitly delegates this axis.",
-    choices: axisDef.choices.map((item) => ({ ...localizedChoice(item, normalized, axisDef.id), recommended: item.id === recommendedChoice })),
+    choices: contextualChoicesFor(axisDef, normalized, strategy),
     freeFormPath: normalized === "ru"
       ? "Можно написать свой стиль, референс или ограничение, если варианты не подходят."
       : "Answer with a different style, reference, or constraint if none of these options fit.",

@@ -42,6 +42,7 @@ export function validateDynamicQuestionSystems() {
     }
   }
   validateDesignWizardAdaptivity(issues);
+  validateDesignWizardRuntimeCopy(issues);
 
   const postDeliveryFingerprints = [];
   for (const context of POST_DELIVERY_CONTEXTS) {
@@ -85,7 +86,7 @@ export function validateDynamicQuestionSystems() {
 
   return {
     pass: issues.length === 0,
-    checked: 7 + POST_DELIVERY_CONTEXTS.length,
+    checked: 8 + POST_DELIVERY_CONTEXTS.length,
     issues,
   };
 }
@@ -150,6 +151,37 @@ function validateDesignWizardAdaptivity(issues) {
     .filter(Boolean));
   if (firstDesignAxes.size < 3) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-first-design-axis", "different design briefs must prioritize different first design axes"));
+  }
+}
+
+function validateDesignWizardRuntimeCopy(issues) {
+  const state = buildDesignWizardState({
+    brief: "Новая дизайн система десктопного приложения под агентскую систему чатов, без generic SaaS admin, code-first typography, graphite cyan, subtle motion.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+  const creative = state.questionQueue.find((question) => question.axis === "creative_alternatives");
+  const density = state.questionQueue.find((question) => question.axis === "information_density");
+  const rendered = [
+    creative,
+    density,
+  ].filter(Boolean).map((question) => {
+    const choices = (question.choices || []).map((choice) => choice.label).join(" | ");
+    return `${question.prompt} | ${choices}`;
+  }).join("\n");
+
+  if (!creative || !density) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-contextual-design-axes", "agent-chat design brief must still ask creative alternatives and density when not answered"));
+    return;
+  }
+  if (!/agent|агент|chat|чат/i.test(rendered)) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "context-free-design-question-copy", "design wizard runtime questions must include brief/domain context"));
+  }
+  if (/(^|\n|\| )3 distinct directions\b|(^|\n|\| )3 разных направления\b|(^|\n|\| )Balanced\b/.test(rendered)) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-design-choice-copy", "design wizard must not render reusable catalog labels as runtime choices for contextual briefs"));
   }
 }
 
