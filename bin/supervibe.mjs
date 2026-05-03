@@ -4,6 +4,8 @@ import { spawnSync } from "node:child_process";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { getCommandAgentProfile } from "../scripts/lib/command-agent-orchestration-contract.mjs";
+
 const PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const RUNNABLE_COMMANDS = Object.freeze({
@@ -169,12 +171,19 @@ function formatHelp() {
 }
 
 function formatAiOnlyCommand(commandName) {
+  const slashCommand = `/${commandName}`;
+  const profile = getCommandAgentProfile(slashCommand);
   return [
     "SUPERVIBE_TERMINAL_COMMAND",
     `COMMAND: ${commandName}`,
-    `SLASH_COMMAND: /${commandName}`,
+    `SLASH_COMMAND: ${slashCommand}`,
     "AI_CLI_ONLY: true",
     "STATUS: terminal shim available",
+    "AGENT_DEFAULT_MODE: real-agents",
+    `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${slashCommand}`,
+    `REQUIRED_AGENTS: ${profile?.requiredAgentIds?.join(", ") || "none"}`,
+    "AGENT_GATE: run AGENT_PLAN_COMMAND in the active AI CLI, invoke the listed host agents, and record host invocation ids before durable work.",
+    "AGENT_EMULATION_ALLOWED: false",
     "NEXT: open the target project in your AI CLI session and send the slash command above.",
     "HELP: run `supervibe commands` or `supervibe-doctor --host all` for local command diagnostics.",
   ].join("\n");

@@ -332,6 +332,8 @@ const COMMAND_SHORTCUTS = Object.freeze([
     title: "Route design-system, styleboard, and prototype requests",
     command: "/supervibe-design",
     description: "Route English/Russian design system, styleboard, UI mockup, and prototype phrasing to the design workflow.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-design"),
     aliases: [
       "create a design system",
       "build a new design system",
@@ -351,7 +353,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     ],
     mutationRisk: "delegates-to-slash-command",
     directRoute: true,
-    nextAction: "Run /supervibe-design in the active AI CLI; the design workflow owns intake, wizard, agent, and receipt gates.",
+    nextAction: "Run /supervibe-design in the active AI CLI; first run command-agent-plan.mjs for /supervibe-design, then invoke required host agents before durable work and receipts.",
   },
   ...SLASH_COMMAND_SHORTCUTS,
 ]);
@@ -400,7 +402,7 @@ export function resolveCommandRequest(request, {
       directRoute: false,
       mutationRisk: "delegates-to-slash-command",
       nextAction: slashCommand
-        ? "Run this exact slash command in the active AI CLI; no repository search is needed. The slash command must build agentPlan/requiredAgentIds and require real host-agent receipts for specialist output."
+        ? "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
         : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
     };
   }
@@ -562,6 +564,7 @@ export function formatCommandMatch(match) {
     match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
     match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
     match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
+    match.agentProfile ? `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${match.agentProfile.commandId}` : null,
     match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),
     `WHY: ${match.reason}`,
@@ -588,7 +591,7 @@ function createSlashShortcut(profile) {
     mutationRisk: "delegates-to-slash-command",
     directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
-    nextAction: `Run ${profile.command} in the active AI CLI; the slash command owns safety checks, agentPlan/requiredAgentIds, real-agent receipts, and follow-up questions.`,
+    nextAction: `Run ${profile.command} in the active AI CLI; first run command-agent-plan.mjs for ${profile.command}, then invoke required host agents before durable work and receipts.`,
   };
 }
 

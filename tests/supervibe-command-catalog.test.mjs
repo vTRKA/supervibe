@@ -15,12 +15,15 @@ import {
 } from "../scripts/lib/supervibe-command-catalog.mjs";
 import {
   buildCommandAgentPlan,
+  formatCommandAgentPlan,
   listCommandAgentProfiles,
+  resolveHostAgentDispatcher,
   validateCommandAgentProfiles,
 } from "../scripts/lib/command-agent-orchestration-contract.mjs";
 
 const ROOT = process.cwd();
 const COMMANDS_SCRIPT = join(ROOT, "scripts", "supervibe-commands.mjs");
+const AGENT_PLAN_SCRIPT = join(ROOT, "scripts", "command-agent-plan.mjs");
 
 test("project command catalog exposes slash commands, npm scripts, and fast shortcuts", () => {
   const catalog = buildProjectCommandCatalog({ pluginRoot: ROOT, projectRoot: ROOT });
@@ -65,7 +68,7 @@ test("command resolver resolves every published slash command explicitly without
     assert.equal(match.doNotSearchProject, true, commandId);
     assert.equal(match.command, `${commandId} --help`, commandId);
     assert.equal(match.agentContract.ownerAgentId, COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId, commandId);
-    assert.match(match.nextAction, /agentPlan\/requiredAgentIds/, commandId);
+    assert.match(match.nextAction, /command-agent-plan\.mjs/, commandId);
   }
 });
 
@@ -88,6 +91,7 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.match(report, /AGENT_BLOCKED_MODE: agent-required-blocked/);
   assert.match(report, /AGENT_PROOF: hostInvocation\.source, hostInvocation\.invocationId/);
   assert.match(report, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
+  assert.match(report, /AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/command-agent-plan\.mjs --command \/supervibe-design/);
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
 });
 
@@ -130,6 +134,76 @@ test("command agent plan blocks missing real agents and keeps inline diagnostic 
   assert.equal(inline.durableWritesAllowed, false);
   assert.equal(inline.agentOwnedOutputAllowed, false);
   assert.match(inline.qualityImpact, /diagnostic\/dry-run only/);
+});
+
+test("command agent plan enforces host dispatch proof policy", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  const claude = buildCommandAgentPlan("/supervibe-design", {
+    availableAgentIds,
+    hostAdapterId: "claude",
+    enforceHostProof: true,
+  });
+  assert.equal(resolveHostAgentDispatcher("claude").nativeTool, "Task");
+  assert.equal(claude.executionMode, "real-agents");
+  assert.equal(claude.hostDispatch.status, "supported");
+  assert.equal(claude.durableWritesAllowed, true);
+
+  const codex = buildCommandAgentPlan("/supervibe-design", {
+    availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+  });
+  assert.equal(codex.executionMode, "real-agents");
+  assert.equal(codex.hostDispatch.nativeTool, "spawn_agent");
+  assert.equal(codex.hostDispatch.invocationProof, "codex-spawn-agent");
+
+  const unsupported = buildCommandAgentPlan("/supervibe-design", {
+    availableAgentIds,
+    hostAdapterId: "cursor",
+    enforceHostProof: true,
+  });
+  assert.equal(unsupported.executionMode, "agent-required-blocked");
+  assert.equal(unsupported.hostProofBlocked, true);
+  assert.equal(unsupported.durableWritesAllowed, false);
+  const report = formatCommandAgentPlan(unsupported);
+  assert.match(report, /SUPERVIBE_COMMAND_AGENT_PLAN/);
+  assert.match(report, /HOST_DISPATCH: cursor:requires-runtime-proof/);
+  assert.match(report, /EMULATION_ALLOWED: false/);
+});
+
+test("command-agent-plan CLI prints runtime host plan", () => {
+  const claude = execFileSync(process.execPath, [
+    AGENT_PLAN_SCRIPT,
+    "--command",
+    "/supervibe-design",
+    "--host",
+    "claude",
+  ], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  assert.match(claude, /SUPERVIBE_COMMAND_AGENT_PLAN/);
+  assert.match(claude, /EXECUTION_MODE: real-agents/);
+  assert.match(claude, /HOST_TOOL: Task/);
+  assert.match(claude, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
+
+  const blocked = execFileSync(process.execPath, [
+    AGENT_PLAN_SCRIPT,
+    "--command",
+    "/supervibe-design",
+    "--host",
+    "cursor",
+  ], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  assert.match(blocked, /EXECUTION_MODE: agent-required-blocked/);
+  assert.match(blocked, /HOST_DISPATCH: cursor:requires-runtime-proof/);
 });
 
 test("command resolver resolves plugin npm scripts from projects that do not define them", () => {
@@ -476,9 +550,13 @@ test("genesis managed context tells agents to use command lookup before broad se
   assert.match(source, /command-agent-orchestration-contract\.mjs/);
   assert.match(source, /rules\/command-agent-orchestration\.md/);
   assert.match(source, /supervibe-orchestrator/);
+  assert.match(source, /command-agent-plan\.mjs/);
+  assert.match(source, /SUPERVIBE_COMMAND_AGENT_PLAN/);
   assert.match(source, /agentPlan/);
   assert.match(source, /requiredAgentIds/);
   assert.match(source, /agent-required-blocked/);
+  assert.match(source, /agent-invocation\.mjs/);
+  assert.match(source, /spawn_agent/);
   assert.match(source, /supervibe-commands\.mjs --match/);
   assert.match(source, /npm run code:index/);
   assert.match(source, /--resume --source-only/);

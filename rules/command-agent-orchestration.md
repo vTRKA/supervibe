@@ -21,6 +21,17 @@ agent invocation, handoff, receipt, or reviewer accountability happened.
 The executable command profile map lives in
 `scripts/lib/command-agent-orchestration-contract.mjs`.
 
+Every command must materialize the profile through the runtime preflight:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-design
+```
+
+The preflight prints `SUPERVIBE_COMMAND_AGENT_PLAN`, required agents, selected
+host dispatch support, proof source, and whether durable writes are allowed.
+If the plan says `executionMode = agent-required-blocked`, the command must
+stop before durable artifacts.
+
 Every published `/supervibe-*` command must have a profile with:
 
 - `ownerAgentId = supervibe-orchestrator`
@@ -34,12 +45,17 @@ Every published `/supervibe-*` command must have a profile with:
 ## What to do
 
 - Build `agentPlan` from the command profile before durable command work.
+- Run `scripts/command-agent-plan.mjs` before durable command work and follow
+  its host dispatch/proof result.
 - Invoke the listed host agents when the command performs domain work,
   review, implementation, design, audit, planning, scoring, or handoff.
 - Add dynamic stack/domain specialists when the command profile asks for
   `dynamicAgentSelectors`.
 - For agent, worker, or reviewer output, issue runtime workflow receipts with
   real host invocation proof.
+- For Codex, invoke specialists through `spawn_agent`, record the returned
+  runtime id with `scripts/agent-invocation.mjs log`, and use the same id in
+  workflow receipts as `hostInvocation.invocationId`.
 - If a required agent is unavailable or proof is missing, set
   `executionMode = agent-required-blocked`, explain what is blocked, and offer
   provision/connect/stop choices.
@@ -60,6 +76,8 @@ Every published `/supervibe-*` command must have a profile with:
 
 - `scripts/validate-command-operational-contracts.mjs` verifies every command
   has a concise orchestration section and an executable profile.
+- `scripts/command-agent-plan.mjs` is the mandatory runtime preflight for
+  every slash command before durable artifacts or completion claims.
 - `validateCommandAgentProfiles()` verifies every published command defaults
   to `real-agents`, references existing agents, and forbids emulation.
 - `npm run validate:workflow-receipts` and

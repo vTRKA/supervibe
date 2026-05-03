@@ -15,7 +15,8 @@ let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
 let _flightRecorderPath = process.env.SUPERVIBE_FLIGHT_RECORDER_LOG
   || join(PROJECT_ROOT, '.supervibe', 'memory', 'telemetry', 'flight-recorder.jsonl');
 
-export function INVOCATION_LOG_PATH_FOR_TEST(path) { _logPath = path; }
+export function setInvocationLogPath(path) { _logPath = path; }
+export function INVOCATION_LOG_PATH_FOR_TEST(path) { setInvocationLogPath(path); }
 export function FLIGHT_RECORDER_PATH_FOR_TEST(path) { _flightRecorderPath = path; }
 
 export async function logInvocation(entry) {

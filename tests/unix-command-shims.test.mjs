@@ -31,6 +31,10 @@ test("terminal dispatcher gives AI-only slash commands a deterministic fallback"
   assert.match(stdout, /COMMAND: supervibe-brainstorm/);
   assert.match(stdout, /SLASH_COMMAND: \/supervibe-brainstorm/);
   assert.match(stdout, /AI_CLI_ONLY: true/);
+  assert.match(stdout, /AGENT_DEFAULT_MODE: real-agents/);
+  assert.match(stdout, /AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/command-agent-plan\.mjs --command \/supervibe-brainstorm/);
+  assert.match(stdout, /REQUIRED_AGENTS: .*product-manager.*systems-analyst/);
+  assert.match(stdout, /AGENT_EMULATION_ALLOWED: false/);
 });
 
 test("terminal dispatcher does not execute mutating commands for --help", async () => {

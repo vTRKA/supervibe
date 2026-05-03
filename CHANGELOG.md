@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.62] - 2026-05-03
+
+### Added
+
+- Added `command-agent-plan.mjs`, a runtime preflight that materializes each
+  slash command's required real agents, host dispatch support, proof source,
+  and durable-write gate before command work can continue.
+- Added `agent-invocation.mjs` to record host agent invocation ids, including
+  Codex `spawn_agent` ids, into the shared invocation log used by workflow
+  receipt validators.
+
+### Changed
+
+- Terminal slash-command shims and command catalog matches now print the
+  mandatory agent-plan command so AI-only workflows cannot skip real-agent
+  orchestration and silently fall back to inline role-play.
+
 ## [2.0.61] - 2026-05-03
 
 ### Added

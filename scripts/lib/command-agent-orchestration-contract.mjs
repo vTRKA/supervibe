@@ -11,6 +11,49 @@ export const COMMAND_AGENT_ORCHESTRATION_CONTRACT = Object.freeze({
   durableOutputPolicy: "blocked-without-real-agent-receipts",
 });
 
+const HOST_AGENT_DISPATCHERS = Object.freeze({
+  claude: dispatcher({
+    hostAdapterId: "claude",
+    status: "supported",
+    nativeTool: "Task",
+    invocationProof: "claude-post-tool-use-hook",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Invoke every required specialist through the Claude Code Task tool using the exact subagent_type, then issue receipts with the logged invocation id.",
+  }),
+  codex: dispatcher({
+    hostAdapterId: "codex",
+    status: "supported",
+    nativeTool: "spawn_agent",
+    invocationProof: "codex-spawn-agent",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Invoke every required specialist through the Codex spawn_agent tool, log the returned agent id as the host invocation id, then issue receipts with hostInvocation.source=codex-spawn-agent.",
+  }),
+  cursor: dispatcher({
+    hostAdapterId: "cursor",
+    status: "requires-runtime-proof",
+    nativeTool: "host-agent-dispatch",
+    invocationProof: "cursor-host-trace-required",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Use Cursor-native agent dispatch only when the runtime exposes invocation proof; otherwise enter agent-required-blocked.",
+  }),
+  gemini: dispatcher({
+    hostAdapterId: "gemini",
+    status: "requires-runtime-proof",
+    nativeTool: "host-agent-dispatch",
+    invocationProof: "gemini-host-trace-required",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Use Gemini-native agent dispatch only when the runtime exposes invocation proof; otherwise enter agent-required-blocked.",
+  }),
+  opencode: dispatcher({
+    hostAdapterId: "opencode",
+    status: "requires-runtime-proof",
+    nativeTool: "host-agent-dispatch",
+    invocationProof: "opencode-host-trace-required",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Use OpenCode-native agent dispatch only when the runtime exposes invocation proof; otherwise enter agent-required-blocked.",
+  }),
+});
+
 const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
   profile("/supervibe", [
     "supervibe-orchestrator",
@@ -149,6 +192,8 @@ export function buildCommandAgentPlan(commandId, {
   requestedExecutionMode,
   availableAgentIds,
   extraRequiredAgentIds = [],
+  hostAdapterId = null,
+  enforceHostProof = false,
 } = {}) {
   const profile = getCommandAgentProfile(commandId);
   if (!profile) {
@@ -172,7 +217,14 @@ export function buildCommandAgentPlan(commandId, {
   const missingAgents = available
     ? requiredAgentIds.filter((agentId) => !available.has(agentId))
     : [];
-  const blocked = requestedMode !== "inline" && missingAgents.length > 0;
+  const hostDispatch = resolveHostAgentDispatcher(hostAdapterId);
+  const hostProofBlocked = Boolean(
+    enforceHostProof
+      && requestedMode !== "inline"
+      && hostDispatch
+      && hostDispatch.status !== "supported",
+  );
+  const blocked = requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
   const executionMode = blocked ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode : requestedMode;
   const inlineOnly = executionMode === "inline";
 
@@ -185,6 +237,9 @@ export function buildCommandAgentPlan(commandId, {
     requiredAgentIds,
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     missingAgents,
+    hostDispatch,
+    hostProofRequired: requestedMode !== "inline",
+    hostProofBlocked,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
     durableWritesAllowed: executionMode === "real-agents" || executionMode === "hybrid",
@@ -193,17 +248,56 @@ export function buildCommandAgentPlan(commandId, {
     inlineDraftAllowed: inlineOnly,
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
-      : blocked
+      : hostProofBlocked
+        ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
+        : blocked
         ? `Missing required agents: ${missingAgents.join(", ")}.`
         : "none",
     blockedQuestion: blocked
       ? {
-        prompt: "Required real agents are unavailable. Choose provision agents, connect host agents, or stop.",
+        prompt: "Required real agents or host invocation proof are unavailable. Choose provision agents, connect host agents, or stop.",
         choices: ["provision-agents", "connect-host-agents", "stop"],
       }
       : null,
     emulationPolicy: profile.emulationPolicy,
   };
+}
+
+export function resolveHostAgentDispatcher(hostAdapterId) {
+  const normalized = String(hostAdapterId || "").trim().toLowerCase();
+  if (!normalized) return null;
+  const dispatcherConfig = HOST_AGENT_DISPATCHERS[normalized];
+  return dispatcherConfig ? copyDispatcher(dispatcherConfig) : dispatcher({
+    hostAdapterId: normalized,
+    status: "unsupported",
+    nativeTool: "unknown",
+    invocationProof: "unknown",
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+    instructions: "Host adapter has no registered real-agent dispatch contract; enter agent-required-blocked.",
+  });
+}
+
+export function formatCommandAgentPlan(plan = {}) {
+  const lines = [
+    "SUPERVIBE_COMMAND_AGENT_PLAN",
+    `COMMAND: ${plan.commandId || "unknown"}`,
+    `OWNER_AGENT: ${plan.ownerAgentId || "none"}`,
+    `EXECUTION_MODE: ${plan.executionMode || "unknown"}`,
+    `DEFAULT_MODE: ${plan.defaultExecutionMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode}`,
+    `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
+    `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
+    `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
+    `DYNAMIC_SELECTORS: ${(plan.dynamicAgentSelectors || []).join(", ") || "none"}`,
+    `MISSING_AGENTS: ${(plan.missingAgents || []).join(", ") || "none"}`,
+    `HOST_DISPATCH: ${plan.hostDispatch?.hostAdapterId || "unspecified"}:${plan.hostDispatch?.status || "not-checked"}`,
+    `HOST_TOOL: ${plan.hostDispatch?.nativeTool || "unspecified"}`,
+    `HOST_PROOF: ${plan.hostDispatch?.invocationProof || "unspecified"}`,
+    `HOST_EVIDENCE: ${plan.hostDispatch?.evidencePath || "unspecified"}`,
+    `QUALITY_IMPACT: ${plan.qualityImpact || "none"}`,
+    `EMULATION_ALLOWED: false`,
+    `NEXT: ${nextActionForPlan(plan)}`,
+  ];
+  return lines.join("\n");
 }
 
 export function validateCommandAgentProfiles({
@@ -287,6 +381,14 @@ function profile(commandId, requiredAgentIds, options = {}) {
   });
 }
 
+function dispatcher(fields) {
+  return Object.freeze({ ...fields });
+}
+
+function copyDispatcher(dispatcherConfig) {
+  return { ...dispatcherConfig };
+}
+
 function copyCommandAgentProfile(profile) {
   return {
     ...profile,
@@ -296,6 +398,16 @@ function copyCommandAgentProfile(profile) {
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
   };
+}
+
+function nextActionForPlan(plan = {}) {
+  if (plan.executionMode === COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode) {
+    if (plan.hostProofBlocked) return "Connect a host runtime that records invocation ids, or stop; do not emulate specialists.";
+    if (plan.missingAgents?.length) return "Provision/connect the missing agents, then rebuild this plan; do not emulate specialists.";
+    return "Resolve the blocked agent plan before durable work.";
+  }
+  if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
+  return "Invoke required host agents, capture invocation ids, then issue workflow receipts before completion claims.";
 }
 
 function normalizeCommandId(commandId) {
