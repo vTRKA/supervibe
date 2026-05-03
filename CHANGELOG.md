@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.63] - 2026-05-04
+
+### Fixed
+
+- Codex command-agent plans now emit fork-safe `spawn_agent` payloads for every
+  required specialist: `fork_context=true`, Supervibe role encoded in
+  `message`, and no `agent_type`, `model`, or `reasoning_effort` overrides.
+- Added Codex role execution hints and command-wide validation so slash
+  commands cannot drift back to unsafe or emulated specialist dispatch.
+
 ## [2.0.62] - 2026-05-03
 
 ### Added

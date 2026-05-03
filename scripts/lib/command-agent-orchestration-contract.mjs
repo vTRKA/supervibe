@@ -26,7 +26,7 @@ const HOST_AGENT_DISPATCHERS = Object.freeze({
     nativeTool: "spawn_agent",
     invocationProof: "codex-spawn-agent",
     evidencePath: ".supervibe/memory/agent-invocations.jsonl",
-    instructions: "Invoke every required specialist through the Codex spawn_agent tool, log the returned agent id as the host invocation id, then issue receipts with hostInvocation.source=codex-spawn-agent.",
+    instructions: "Invoke every required specialist through Codex spawn_agent using the generated fork-safe payloads. With fork_context=true, omit agent_type, model, and reasoning_effort; encode the Supervibe role in message, log the returned agent id, then issue receipts with hostInvocation.source=codex-spawn-agent.",
   }),
   cursor: dispatcher({
     hostAdapterId: "cursor",
@@ -52,6 +52,56 @@ const HOST_AGENT_DISPATCHERS = Object.freeze({
     evidencePath: ".supervibe/memory/agent-invocations.jsonl",
     instructions: "Use OpenCode-native agent dispatch only when the runtime exposes invocation proof; otherwise enter agent-required-blocked.",
   }),
+});
+
+const CODEX_FORK_CONTEXT_FORBIDDEN_OVERRIDES = Object.freeze([
+  "agent_type",
+  "model",
+  "reasoning_effort",
+]);
+
+const CODEX_SPAWN_PAYLOAD_RULES = Object.freeze([
+  "fork_context=true: omit agent_type, model, reasoning_effort because Codex inherits them from the parent agent.",
+  "encode Supervibe logical agent role in message, not Codex agent_type.",
+  "capture the returned Codex agent id as receipt evidence before issuing workflow receipts.",
+  "use fork_context=false only for compact-context spawns that intentionally need agent_type/model/reasoning_effort overrides.",
+]);
+
+const CODEX_WORKER_AGENT_PATTERNS = Object.freeze([
+  /(?:^|-)builder$/,
+  /(?:^|-)developer$/,
+  /(?:^|-)engineer$/,
+  /(?:^|-)implementer$/,
+]);
+
+const CODEX_EXECUTION_MODE_HINT_OVERRIDES = Object.freeze({
+  "accessibility-reviewer": "default",
+  "ai-agent-orchestrator": "default",
+  "api-contract-reviewer": "default",
+  "architect-reviewer": "default",
+  "code-reviewer": "default",
+  "competitive-design-researcher": "default",
+  "copywriter": "default",
+  "creative-director": "default",
+  "db-reviewer": "default",
+  "dependency-reviewer": "default",
+  "memory-curator": "default",
+  "performance-reviewer": "default",
+  "product-manager": "default",
+  "quality-gate-reviewer": "default",
+  "repo-researcher": "default",
+  "root-cause-debugger": "default",
+  "rules-curator": "default",
+  "security-auditor": "default",
+  "security-researcher": "default",
+  "supervibe-orchestrator": "default",
+  "systems-analyst": "default",
+  "ui-polish-reviewer": "default",
+  "ux-ui-designer": "default",
+  "prototype-builder": "worker",
+  "presentation-deck-builder": "worker",
+  "react-implementer": "worker",
+  "tauri-rust-engineer": "worker",
 });
 
 const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
@@ -227,6 +277,9 @@ export function buildCommandAgentPlan(commandId, {
   const blocked = requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
   const executionMode = blocked ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode : requestedMode;
   const inlineOnly = executionMode === "inline";
+  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline"
+    ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
+    : [];
 
   return {
     commandId: profile.commandId,
@@ -260,7 +313,49 @@ export function buildCommandAgentPlan(commandId, {
       }
       : null,
     emulationPolicy: profile.emulationPolicy,
+    codexSpawnPayloadRules: codexSpawnPayloads.length ? [...CODEX_SPAWN_PAYLOAD_RULES] : undefined,
+    codexSpawnPayloads: codexSpawnPayloads.length ? codexSpawnPayloads : undefined,
   };
+}
+
+function buildCodexSpawnPayloads(requiredAgentIds = [], { commandId = "unknown" } = {}) {
+  return unique(requiredAgentIds).map((agentId) => buildCodexSpawnPayload(agentId, { commandId }));
+}
+
+function buildCodexSpawnPayload(agentId, { commandId = "unknown" } = {}) {
+  const normalizedAgentId = String(agentId || "").trim();
+  const normalizedCommandId = normalizeCommandId(commandId) || "unknown";
+  const message = [
+    `You are acting as the Supervibe required specialist agent \`${normalizedAgentId}\` for \`${normalizedCommandId}\`.`,
+    "Use the installed Supervibe agent instructions for this logical role when available.",
+    "This is a real Codex spawn_agent invocation; Do not claim inline emulation or substitute skill-only output.",
+    "Return artifact paths, decisions, blockers, confidence score, and receipt-ready evidence for the orchestrator.",
+  ].join(" ");
+
+  return {
+    agentId: normalizedAgentId,
+    codexExecutionModeHint: resolveCodexExecutionModeHint(normalizedAgentId),
+    forkContext: true,
+    forbiddenWhenForked: [...CODEX_FORK_CONTEXT_FORBIDDEN_OVERRIDES],
+    payload: {
+      fork_context: true,
+      message,
+    },
+    receipt: {
+      hostInvocationSource: "codex-spawn-agent",
+      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10>",
+    },
+  };
+}
+
+function resolveCodexExecutionModeHint(agentId) {
+  const normalizedAgentId = String(agentId || "").trim();
+  if (!normalizedAgentId) return "default";
+  const override = CODEX_EXECUTION_MODE_HINT_OVERRIDES[normalizedAgentId];
+  if (override) return override;
+  return CODEX_WORKER_AGENT_PATTERNS.some((pattern) => pattern.test(normalizedAgentId))
+    ? "worker"
+    : "default";
 }
 
 export function resolveHostAgentDispatcher(hostAdapterId) {
@@ -295,8 +390,22 @@ export function formatCommandAgentPlan(plan = {}) {
     `HOST_EVIDENCE: ${plan.hostDispatch?.evidencePath || "unspecified"}`,
     `QUALITY_IMPACT: ${plan.qualityImpact || "none"}`,
     `EMULATION_ALLOWED: false`,
-    `NEXT: ${nextActionForPlan(plan)}`,
   ];
+  if (plan.codexSpawnPayloadRules?.length) {
+    lines.push("CODEX_SPAWN_PAYLOAD_RULES:");
+    for (const rule of plan.codexSpawnPayloadRules) {
+      lines.push(`- ${rule}`);
+    }
+    lines.push("CODEX_ROLE_EXECUTION_MODES:");
+    for (const payload of plan.codexSpawnPayloads || []) {
+      lines.push(`- ${payload.agentId}: ${payload.codexExecutionModeHint} (hint only; do not pass as agent_type when fork_context=true)`);
+    }
+    lines.push("CODEX_SPAWN_PAYLOADS:");
+    for (const payload of plan.codexSpawnPayloads || []) {
+      lines.push(`- ${payload.agentId}: ${JSON.stringify(payload.payload)}`);
+    }
+  }
+  lines.push(`NEXT: ${nextActionForPlan(plan)}`);
   return lines.join("\n");
 }
 

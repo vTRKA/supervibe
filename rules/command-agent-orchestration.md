@@ -53,9 +53,14 @@ Every published `/supervibe-*` command must have a profile with:
   `dynamicAgentSelectors`.
 - For agent, worker, or reviewer output, issue runtime workflow receipts with
   real host invocation proof.
-- For Codex, invoke specialists through `spawn_agent`, record the returned
-  runtime id with `scripts/agent-invocation.mjs log`, and use the same id in
-  workflow receipts as `hostInvocation.invocationId`.
+- For Codex, use the `CODEX_SPAWN_PAYLOAD_RULES` and
+  `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`. Forked
+  payloads must set `fork_context=true`, must omit `agent_type`, `model`, and
+  `reasoning_effort`, and must encode the Supervibe logical role in `message`
+  instead of Codex `agent_type`.
+- For Codex, record each returned runtime id with
+  `scripts/agent-invocation.mjs log`, and use the same id in workflow receipts
+  as `hostInvocation.invocationId`.
 - If a required agent is unavailable or proof is missing, set
   `executionMode = agent-required-blocked`, explain what is blocked, and offer
   provision/connect/stop choices.

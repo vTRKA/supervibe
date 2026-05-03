@@ -174,6 +174,72 @@ test("command agent plan enforces host dispatch proof policy", () => {
   assert.match(report, /EMULATION_ALLOWED: false/);
 });
 
+test("codex command agent plan emits fork-safe spawn payloads", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  const plan = buildCommandAgentPlan("/supervibe-design", {
+    availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+  });
+
+  assert.equal(plan.executionMode, "real-agents");
+  assert.ok(plan.codexSpawnPayloadRules.some((rule) => /fork_context=true.*omit agent_type, model, reasoning_effort/i.test(rule)));
+  assert.ok(plan.codexSpawnPayloadRules.some((rule) => /Supervibe logical agent.*message.*not.*agent_type/i.test(rule)));
+
+  const creativeDirector = plan.codexSpawnPayloads.find((payload) => payload.agentId === "creative-director");
+  assert.ok(creativeDirector);
+  assert.equal(creativeDirector.codexExecutionModeHint, "default");
+  assert.equal(creativeDirector.payload.fork_context, true);
+  assert.equal(Object.hasOwn(creativeDirector.payload, "agent_type"), false);
+  assert.equal(Object.hasOwn(creativeDirector.payload, "model"), false);
+  assert.equal(Object.hasOwn(creativeDirector.payload, "reasoning_effort"), false);
+  assert.match(creativeDirector.payload.message, /Supervibe required specialist agent `creative-director`/);
+  assert.match(creativeDirector.payload.message, /Do not claim inline emulation/);
+
+  const prototypeBuilder = plan.codexSpawnPayloads.find((payload) => payload.agentId === "prototype-builder");
+  assert.ok(prototypeBuilder);
+  assert.equal(prototypeBuilder.codexExecutionModeHint, "worker");
+  assert.equal(prototypeBuilder.payload.fork_context, true);
+  assert.equal(Object.hasOwn(prototypeBuilder.payload, "agent_type"), false);
+
+  const report = formatCommandAgentPlan(plan);
+  assert.match(report, /CODEX_SPAWN_PAYLOAD_RULES:/);
+  assert.match(report, /fork_context=true: omit agent_type, model, reasoning_effort/);
+  assert.match(report, /encode Supervibe logical agent role in message/);
+  assert.match(report, /CODEX_SPAWN_PAYLOADS:/);
+  assert.match(report, /creative-director: \{"fork_context":true,"message":/);
+});
+
+test("every slash command has codex-safe payloads for every required agent", () => {
+  const commandIds = readdirSync(join(ROOT, "commands"))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => `/${file.replace(/\.md$/, "")}`)
+    .sort();
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  for (const commandId of commandIds) {
+    const plan = buildCommandAgentPlan(commandId, {
+      availableAgentIds,
+      hostAdapterId: "codex",
+      enforceHostProof: true,
+    });
+
+    assert.equal(plan.executionMode, "real-agents", commandId);
+    assert.equal(plan.codexSpawnPayloads.length, plan.requiredAgentIds.length, commandId);
+    for (const spawnPayload of plan.codexSpawnPayloads) {
+      assert.deepEqual(Object.keys(spawnPayload.payload).sort(), ["fork_context", "message"], `${commandId}:${spawnPayload.agentId}`);
+      assert.equal(spawnPayload.payload.fork_context, true, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.payload.message, new RegExp(`Supervibe required specialist agent \`${spawnPayload.agentId}\``), `${commandId}:${spawnPayload.agentId}`);
+      assert.doesNotMatch(JSON.stringify(spawnPayload.payload), /"agent_type"|"model"|"reasoning_effort"/, `${commandId}:${spawnPayload.agentId}`);
+    }
+  }
+});
+
 test("command-agent-plan CLI prints runtime host plan", () => {
   const claude = execFileSync(process.execPath, [
     AGENT_PLAN_SCRIPT,
@@ -190,6 +256,23 @@ test("command-agent-plan CLI prints runtime host plan", () => {
   assert.match(claude, /EXECUTION_MODE: real-agents/);
   assert.match(claude, /HOST_TOOL: Task/);
   assert.match(claude, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
+
+  const codex = execFileSync(process.execPath, [
+    AGENT_PLAN_SCRIPT,
+    "--command",
+    "/supervibe-design",
+    "--host",
+    "codex",
+  ], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  assert.match(codex, /HOST_TOOL: spawn_agent/);
+  assert.match(codex, /CODEX_SPAWN_PAYLOAD_RULES:/);
+  assert.match(codex, /fork_context=true: omit agent_type, model, reasoning_effort/);
+  assert.doesNotMatch(codex, /"agent_type"/);
+  assert.doesNotMatch(codex, /"reasoning_effort"/);
 
   const blocked = execFileSync(process.execPath, [
     AGENT_PLAN_SCRIPT,
