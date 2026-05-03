@@ -230,6 +230,51 @@ export function buildDesignWriteGate({ intake = null, plan = null } = {}) {
   };
 }
 
+export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
+  const gate = plan.writeGate || buildDesignWriteGate({ plan });
+  const protectedArtifacts = gate.protectedArtifacts || [];
+  const prototypeSlug = slug || "<prototype-slug>";
+  const planned = [
+    ...protectedArtifacts.map((path) => ({ path, writeClass: writeClassForDesignArtifact(path) })),
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/spec.md`, writeClass: "durable-design-artifacts" },
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/content/copy.md`, writeClass: "durable-design-artifacts" },
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/index.html`, writeClass: "prototype" },
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/polish.md`, writeClass: "review-styleboard" },
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/a11y.md`, writeClass: "review-styleboard" },
+  ];
+  const allowed = new Set(gate.allowedWriteClasses || []);
+  return {
+    schemaVersion: 1,
+    command: "/supervibe-design",
+    workflowStage: designWorkflowStageForPlan(plan),
+    durableWritesAllowed: gate.durableWritesAllowed === true,
+    reviewStyleboardAllowed: gate.reviewStyleboardAllowed === true,
+    blockedReason: gate.blockedReason || null,
+    nextQuestion: gate.nextQuestion?.reason || null,
+    files: planned.map((item) => ({
+      ...item,
+      status: allowed.has(item.writeClass) ? "allowed" : "blocked",
+      gateReason: allowed.has(item.writeClass) ? null : gate.blockedReason || `${item.writeClass} is blocked`,
+    })),
+  };
+}
+
+export function formatDesignPrewriteManifest(manifest = {}) {
+  const lines = [
+    "SUPERVIBE_DESIGN_PREWRITE_MANIFEST",
+    `WORKFLOW_STAGE: ${manifest.workflowStage || "unknown"}`,
+    `DURABLE_WRITES_ALLOWED: ${manifest.durableWritesAllowed === true}`,
+    `REVIEW_STYLEBOARD_ALLOWED: ${manifest.reviewStyleboardAllowed === true}`,
+    `BLOCKED_REASON: ${manifest.blockedReason || "none"}`,
+    `NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
+    "FILES:",
+  ];
+  for (const file of manifest.files || []) {
+    lines.push(`- ${file.status} ${file.writeClass} ${file.path}${file.gateReason ? ` :: ${file.gateReason}` : ""}`);
+  }
+  return lines.join("\n");
+}
+
 export function assertDesignWriteAllowed(writeGate = {}, {
   writeClass = "durable-design-artifacts",
   artifact = "design artifact",
@@ -365,6 +410,23 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
       ? buildDegradedModeQuestion(missingAgents, provisioningPlan, { executionMode, locale })
       : null,
   };
+}
+
+function designWorkflowStageForPlan(plan = {}) {
+  if (plan.writeGate?.nextQuestion?.source === "intake") return "intake";
+  if (plan.executionStatus?.executionMode && plan.executionStatus.executionMode !== "real-agents") return "agent-proof";
+  if (plan.wizard?.questionQueue?.length) return "candidate-design-system";
+  if (plan.wizard?.gates?.reviewStyleboardUnlocked !== true) return "review-styleboard";
+  if (plan.mode === "design-system-only") return "approval";
+  return "prototype-unlock";
+}
+
+function writeClassForDesignArtifact(path = "") {
+  if (/styleboard\.html|_reviews\//.test(path)) return "review-styleboard";
+  if (/index\.html$/.test(path)) return "prototype";
+  if (/\.approvals\//.test(path)) return "run-state";
+  if (/design-flow-state\.json|config\.json/.test(path)) return "run-state";
+  return "durable-design-artifacts";
 }
 
 function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues = [] } = {}) {

@@ -29,6 +29,12 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
       "Create brand direction",
       "--confidence",
       "9",
+      "--changed-files",
+      ".supervibe/artifacts/brandbook/direction.md",
+      "--risks",
+      "Needs approval",
+      "--recommendations",
+      "Review styleboard",
     ], {
       cwd: ROOT,
       encoding: "utf8",
@@ -37,11 +43,16 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
     assert.match(logged, /SUPERVIBE_AGENT_INVOCATION_LOGGED/);
     assert.match(logged, /HOST_SOURCE: codex-spawn-agent/);
     assert.match(logged, /INVOCATION_ID: codex-agent-123/);
+    assert.match(logged, /AGENT_OUTPUT_JSON: \.supervibe\/artifacts\/_agent-outputs\/codex-agent-123\/agent-output\.json/);
 
     const record = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), "utf8").trim());
     assert.equal(record.agent_id, "creative-director");
     assert.equal(record.invocation_id, "codex-agent-123");
     assert.equal(record.host_invocation_source, "codex-spawn-agent");
+    assert.equal(record.structured_output.json, ".supervibe/artifacts/_agent-outputs/codex-agent-123/agent-output.json");
+    const agentOutput = JSON.parse(readFileSync(join(projectRoot, ...record.structured_output.json.split("/")), "utf8"));
+    assert.deepEqual(agentOutput.changedFiles, [".supervibe/artifacts/brandbook/direction.md"]);
+    assert.deepEqual(agentOutput.risks, ["Needs approval"]);
 
     const receipt = execFileSync(process.execPath, [
       join(ROOT, "scripts", "workflow-receipt.mjs"),
@@ -70,6 +81,7 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
       stdio: ["pipe", "pipe", "pipe"],
     });
     assert.match(receipt, /SUPERVIBE_WORKFLOW_RECEIPT_ISSUED/);
+    assert.match(receipt, /HOST_INVOCATION_EVIDENCE: \.supervibe\/artifacts\/_agent-outputs\/codex-agent-123\/agent-output\.json/);
 
     const validation = execFileSync(process.execPath, [
       join(ROOT, "scripts", "validate-agent-producer-receipts.mjs"),

@@ -73,6 +73,7 @@ function normalizeHostInvocationProof(rootDir = process.cwd(), proof = null) {
     if (match && !match.__invalidJson) {
       out.agentId = out.agentId || match.agent_id;
       out.taskSummaryHash = taskSummaryHash(match.task_summary || "");
+      out.evidencePath = out.evidencePath || match.structured_output?.json || null;
     }
   }
   return out;
@@ -308,6 +309,7 @@ function normalizeAgentInvocationRecord(record = {}, index = 0) {
     agent_id: agentId,
     task_summary: taskSummary,
     ts,
+    structured_output: record.structured_output || null,
     __line: index + 1,
   };
 }

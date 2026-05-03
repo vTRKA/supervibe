@@ -90,7 +90,9 @@ If the brief points at an older prototype or path such as `docs/old prototypes`,
 
 If the brief points at a website, PDF, image/screenshot, Figma link, or other external/local reference, ask the Reference source scope question before scraping, opening, uploading, parsing, or using it: functional inventory only, information architecture, visual inspiration, authoritative brand source, ignore, or stop. Record that answer into the `reference borrow/avoid` axis.
 
-Use the executable design wizard contract from `scripts/lib/design-wizard-catalog.mjs` when `/supervibe-design` invokes this skill. The wizard owns `questionQueue`, `decisions`, `coverage`, and `guided defaults checklist` state. If the user says to use defaults, show the guided defaults checklist before durable token writes; every axis must expose `Accept default / Compare alternatives / Customize` so defaults remain editable instead of silently closing the design interview.
+Use the executable design wizard contract from `scripts/lib/design-wizard-catalog.mjs` when `/supervibe-design` invokes this skill. The wizard owns `questionQueue`, `decisions`, `coverage`, `runtimeStatus`, `resumeToken`, gates, and `guided defaults checklist` state. If the user says to use defaults, show the guided defaults checklist before durable token writes; every axis must expose `Accept default / Compare alternatives / Customize` so defaults remain editable instead of silently closing the design interview.
+
+Before writing candidate design-system files, run or consume the prewrite manifest from `node scripts/design-agent-plan.mjs --brief "<brief>" --status --plan-writes --slug <slug>`. If the manifest marks `durable-design-artifacts`, `review-styleboard`, or `prototype` as blocked, write only run-state or diagnostic scratch and ask the listed next question.
 
 Before approval, create or show `styleboard.html` in `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/`. It must contain palette swatches, typography samples, density examples, controls, table, dialog, shell, motion notes, and component feel examples. The review styleboard is allowed only after mode, target, viewport policy, creative alternatives, anti-generic guardrail, reference scope, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that, only diagnostic scratch is allowed; it may explain evidence or blockers, but it must not present a full visual direction. The styleboard is required evidence for section approval; markdown summaries alone are not enough for visual-system approval.
 
@@ -348,6 +350,8 @@ After prototype approval, `/supervibe-design` may add final handoff metadata by 
 ### Approval markers per section
 
 After each section completes, write a per-section completion marker to `.supervibe/artifacts/prototypes/_design-system/.approvals/<section>.json` so partial work survives session restarts and the next session knows what's left. Status must be explicit: `draft`, `candidate`, `needs_revision`, or `approved`. Candidate markers are not user approval; only explicit approved markers plus `design-flow-state.json` can unlock prototype work.
+
+After `design_system.status = approved`, do not present the overall design command as final UI delivery unless a prototype is also approved. Recompute status with `supervibe-design status --slug <slug>` or `node scripts/design-agent-plan.mjs --status --slug <slug>` and surface `prototype missing` plus `handoff blocked` when `index.html` or `.approval.json` is absent. The next visible choice must be `Build prototype / revise DS / stop`; `design-system-only` may stop only after the user explicitly accepts that boundary.
 
 ### Extension mode (fast path for later mockups)
 

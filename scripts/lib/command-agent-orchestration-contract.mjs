@@ -329,7 +329,7 @@ function buildCodexSpawnPayload(agentId, { commandId = "unknown" } = {}) {
     `You are acting as the Supervibe required specialist agent \`${normalizedAgentId}\` for \`${normalizedCommandId}\`.`,
     "Use the installed Supervibe agent instructions for this logical role when available.",
     "This is a real Codex spawn_agent invocation; Do not claim inline emulation or substitute skill-only output.",
-    "Return artifact paths, decisions, blockers, confidence score, and receipt-ready evidence for the orchestrator.",
+    "Return a typed output contract: changedFiles, risks, recommendations, artifact paths, decisions, blockers, confidence score, and receipt-ready evidence for the orchestrator.",
   ].join(" ");
 
   return {
@@ -343,7 +343,8 @@ function buildCodexSpawnPayload(agentId, { commandId = "unknown" } = {}) {
     },
     receipt: {
       hostInvocationSource: "codex-spawn-agent",
-      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10>",
+      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10> --changed-files <paths> --risks <items> --recommendations <items>",
+      structuredOutput: ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json",
     },
   };
 }
@@ -403,6 +404,10 @@ export function formatCommandAgentPlan(plan = {}) {
     lines.push("CODEX_SPAWN_PAYLOADS:");
     for (const payload of plan.codexSpawnPayloads || []) {
       lines.push(`- ${payload.agentId}: ${JSON.stringify(payload.payload)}`);
+    }
+    lines.push("CODEX_RECEIPT_LOG_COMMANDS:");
+    for (const payload of plan.codexSpawnPayloads || []) {
+      lines.push(`- ${payload.agentId}: ${payload.receipt.logCommand}`);
     }
   }
   lines.push(`NEXT: ${nextActionForPlan(plan)}`);

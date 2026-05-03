@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.64] - 2026-05-04
+
+### Added
+
+- Added workflow-level validation, skill source conflict reporting, and design
+  status/prewrite diagnostics for `/supervibe-design`.
+- Added typed agent output artifacts with stable `agent-output.json` and
+  `summary.md` proof paths for spawned-agent work.
+
+### Changed
+
+- Design wizard state is now runtime-owned with status, resume tokens, gate
+  coverage, and explicit stage labels from intake through prototype unlock.
+- Design-system approval now keeps prototype/handoff state explicit: approved DS
+  unlocks the prototype phase, marks missing prototypes, blocks handoff until a
+  prototype is approved, and prompts the next prototype action.
+
+### Fixed
+
+- Serialized workflow receipt issuance with a ledger lock and canonical run
+  timestamp so parallel receipt writes preserve the chain.
+- Fixed `workflow-receipt.mjs issue --help` to show usage without attempting
+  receipt issuance.
+- Added encoding and source-resolution checks to expose duplicate skill sources
+  and mojibake before trigger diagnostics drift.
+
 ## [2.0.63] - 2026-05-04
 
 ### Fixed

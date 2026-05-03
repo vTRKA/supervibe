@@ -5,6 +5,9 @@ import {
   REQUIRED_DESIGN_SYSTEM_SECTIONS,
 } from "./design-flow-state.mjs";
 import {
+  buildDesignPrototypeStageTriage,
+} from "./design-workflow-status.mjs";
+import {
   artifactRoot,
 } from "./supervibe-artifact-roots.mjs";
 
@@ -37,10 +40,12 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
   if (slug) {
     const prototypeRoot = join(prototypesRoot, slug);
     if (existsSync(prototypeRoot)) {
-      await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles });
-      await writePrototypeApproval(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
-      await promoteMarkdownStatuses(rootDir, prototypeRoot, { updatedFiles });
-      await writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, { approvedAt, updatedFiles, createdFiles });
+      await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
+      if (prototypeArtifactExists(prototypeRoot) && approvalScope !== "design-system-only") {
+        await writePrototypeApproval(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
+        await promoteMarkdownStatuses(rootDir, prototypeRoot, { updatedFiles });
+        await writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, { approvedAt, updatedFiles, createdFiles });
+      }
     } else {
       issues.push(`prototype not found: ${normalizeRelPath(relative(rootDir, prototypeRoot))}`);
     }
@@ -117,6 +122,9 @@ async function promoteFlowState(rootDir, designSystemRoot, context) {
   flow.prototype = {
     ...(flow.prototype || {}),
     requested: "ALLOWED",
+    status: flow.prototype?.status || "prototype-ready",
+    next_action: "Build prototype / revise DS / stop",
+    handoff_blocked_reason: "handoff requires approved prototype, not only approved design system",
   };
   await writeJson(path, flow);
   context.updatedFiles.push(rel(rootDir, path));
@@ -142,17 +150,29 @@ async function promoteSectionApprovals(rootDir, designSystemRoot, context) {
 
 async function promotePrototypeConfig(rootDir, prototypeRoot, context) {
   const path = join(prototypeRoot, "config.json");
-  if (!existsSync(path)) return;
-  const config = await readJson(path);
+  const existed = existsSync(path);
+  const config = existed ? await readJson(path) : {};
   if (!config) return;
-  config.approval = "approved";
-  config.status = "approved";
+  const hasPrototype = prototypeArtifactExists(prototypeRoot);
+  config.approval = hasPrototype && context.approvalScope !== "design-system-only" ? "approved" : "design-system-approved";
+  config.status = hasPrototype && context.approvalScope !== "design-system-only" ? "approved" : "prototype-ready";
   config.approvedAt = context.approvedAt;
   config.approvedBy = context.approvedBy;
   config.feedbackHash = context.feedbackHash;
   config.approvalScope = context.approvalScope;
+  config.prototypeUnlocked = true;
+  config.prototypeExists = hasPrototype;
+  config.handoffBlocked = !hasPrototype || context.approvalScope === "design-system-only";
+  config.nextAction = hasPrototype && context.approvalScope !== "design-system-only"
+    ? "Package handoff"
+    : "Build prototype / revise DS / stop";
+  config.stageTriage = buildDesignPrototypeStageTriage(config.stageTriage, {
+    mode: config.mode || config.executionMode || "full-prototype-pipeline",
+    reason: "design-system approved; prototype phase ready",
+  });
   await writeJson(path, config);
-  context.updatedFiles.push(rel(rootDir, path));
+  (existed ? context.updatedFiles : context.createdFiles).push(rel(rootDir, path));
+  if (!existed) context.updatedFiles.push(rel(rootDir, path));
 }
 
 async function writePrototypeApproval(rootDir, prototypeRoot, context) {
@@ -192,6 +212,10 @@ function promoteSections(value) {
       : "approved";
   }
   return sections;
+}
+
+function prototypeArtifactExists(prototypeRoot) {
+  return existsSync(join(prototypeRoot, "index.html"));
 }
 
 function walkMarkdown(dir) {

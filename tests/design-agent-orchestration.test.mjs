@@ -7,7 +7,9 @@ import test from "node:test";
 import {
   assertDesignWriteAllowed,
   buildDesignAgentPlan,
+  buildDesignPrewriteManifest,
   buildDesignWriteGate,
+  formatDesignPrewriteManifest,
   formatDesignPlanPrompt,
   validateDesignAgentInvocationReceipts,
 } from "../scripts/lib/design-agent-orchestration.mjs";
@@ -150,6 +152,23 @@ test("design write gate prioritizes intake question before wizard or artifact wr
   assert.equal(gate.nextQuestion.source, "intake");
   assert.match(gate.nextQuestion.markdown, /Old artifact reference scope/);
   assert.match(formatDesignPlanPrompt(plan, { intake, writeGate: gate }), /NEXT_BLOCKING_QUESTION/);
+});
+
+test("design prewrite manifest lists blocked durable writes before artifact mutation", () => {
+  const plan = buildDesignAgentPlan({
+    brief: "New web design with graphite cyan only.",
+    target: "web",
+    mode: "design-system-only",
+  });
+  const manifest = buildDesignPrewriteManifest(plan, { slug: "agent-chat" });
+  const report = formatDesignPrewriteManifest(manifest);
+
+  assert.equal(manifest.durableWritesAllowed, false);
+  assert.ok(manifest.files.some((file) => file.path.endsWith("tokens.css") && file.status === "blocked"));
+  assert.ok(manifest.files.some((file) => file.path.endsWith("agent-chat/index.html") && file.writeClass === "prototype"));
+  assert.match(report, /SUPERVIBE_DESIGN_PREWRITE_MANIFEST/);
+  assert.match(report, /WORKFLOW_STAGE:/);
+  assert.match(report, /FILES:/);
 });
 
 test("design agent receipt validator rejects durable outputs without completed receipts", async () => {

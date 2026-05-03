@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.63",
+  "version": "2.0.64",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -26,7 +26,8 @@
     "supervibe-status": "bin/supervibe.mjs",
     "supervibe-strengthen": "bin/supervibe.mjs",
     "supervibe-ui": "bin/supervibe.mjs",
-    "supervibe-update": "bin/supervibe.mjs"
+    "supervibe-update": "bin/supervibe.mjs",
+    "supervibe-validate": "bin/supervibe.mjs"
   },
   "overrides": {
     "onnxruntime-node": "1.25.1"
@@ -103,6 +104,8 @@
     "design:promote-approval": "node scripts/promote-design-approval.mjs",
     "workflow:receipt": "node scripts/workflow-receipt.mjs",
     "workflow:agent-invocation": "node scripts/agent-invocation.mjs",
+    "supervibe:skill-sources": "node scripts/skill-source-report.mjs",
+    "validate:workflow": "node scripts/supervibe-workflow-validate.mjs",
     "validate:design-flow-gates": "node scripts/validate-design-flow-gates.mjs",
     "validate:design-artifact-write-gates": "node scripts/validate-design-artifact-write-gates.mjs",
     "validate:workflow-receipts": "node scripts/validate-workflow-receipts.mjs",

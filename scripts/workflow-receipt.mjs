@@ -70,10 +70,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const options = parseArgs(process.argv);
   const rootDir = options.root || process.cwd();
 
+  if (options.help || options.h) {
+    console.log(usage());
+    process.exit(0);
+  }
+
   if (options.operation === "issue") {
     const command = options.command || options["workflow-command"] || options.cmd;
     const subjectType = inferSubjectType(options);
     const subjectId = inferSubjectId(options);
+    const runTimestamp = options["run-timestamp"] || process.env.SUPERVIBE_RUN_TIMESTAMP || new Date().toISOString();
     const result = await issueWorkflowInvocationReceipt({
       rootDir,
       command,
@@ -85,8 +91,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       invocationReason: options.reason,
       inputEvidence: options.input,
       outputArtifacts: options.output,
-      startedAt: options.startedAt || new Date().toISOString(),
-      completedAt: options.completedAt || new Date().toISOString(),
+      startedAt: options.startedAt || runTimestamp,
+      completedAt: options.completedAt || runTimestamp,
+      runTimestamp,
       handoffId: options.handoff || options.slug,
       receiptDir: options["receipt-dir"] || null,
       hostInvocation: buildHostInvocation(options),
@@ -96,6 +103,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`RECEIPT_PATH: ${result.receiptPath}`);
     console.log(`ARTIFACT_LINKS: ${result.artifactLinksPath}`);
     console.log(`LEDGER_ENTRY: ${result.ledgerEntry.entryHash}`);
+    console.log(`RUN_TIMESTAMP: ${result.receipt.runtime.runTimestamp}`);
+    if (result.receipt.hostInvocation?.evidencePath) {
+      console.log(`HOST_INVOCATION_EVIDENCE: ${result.receipt.hostInvocation.evidencePath}`);
+    }
     process.exit(0);
   }
 

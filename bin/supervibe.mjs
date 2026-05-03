@@ -19,6 +19,7 @@ const RUNNABLE_COMMANDS = Object.freeze({
   "supervibe-status": "scripts/supervibe-status.mjs",
   "supervibe-ui": "scripts/supervibe-ui.mjs",
   "supervibe-update": "scripts/supervibe-upgrade.mjs",
+  "supervibe-validate": "scripts/supervibe-workflow-validate.mjs",
 });
 
 const AI_CLI_ONLY_COMMANDS = Object.freeze(new Set([
@@ -57,6 +58,7 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   ui: "supervibe-ui",
   update: "supervibe-update",
   upgrade: "supervibe-update",
+  validate: "supervibe-validate",
 });
 
 const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
@@ -75,6 +77,18 @@ const resolved = resolveInvocation({ argv1: process.argv[1], args });
 if (resolved.rootHelp) {
   console.log(formatHelp());
   process.exit(0);
+}
+
+if (resolved.commandName === "supervibe-design" && isDesignDiagnosticInvocation(resolved.args)) {
+  const result = spawnSync(process.execPath, [join(PLUGIN_ROOT, "scripts/design-agent-plan.mjs"), ...normalizeDesignDiagnosticArgs(resolved.args)], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SUPERVIBE_PLUGIN_ROOT: process.env.SUPERVIBE_PLUGIN_ROOT || PLUGIN_ROOT,
+    },
+    stdio: "inherit",
+  });
+  process.exit(result.status ?? 0);
 }
 
 if (AI_CLI_ONLY_COMMANDS.has(resolved.commandName)) {
@@ -208,4 +222,13 @@ function formatUnknownCommand(commandName) {
     "STATUS: unknown",
     "NEXT: run `supervibe --help` or `supervibe commands` to inspect available commands.",
   ].join("\n");
+}
+
+function isDesignDiagnosticInvocation(args = []) {
+  return args[0] === "status" || args.includes("--status") || args.includes("--plan-writes");
+}
+
+function normalizeDesignDiagnosticArgs(args = []) {
+  const rest = args[0] === "status" ? args.slice(1) : args;
+  return rest.includes("--status") ? rest : ["--status", ...rest];
 }

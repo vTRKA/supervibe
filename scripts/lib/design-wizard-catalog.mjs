@@ -394,7 +394,7 @@ export function buildDesignWizardState({
   const styleboardReadiness = evaluateDesignStyleboardReadiness({ mode, target, decisions });
   const viewportPolicyRecorded = !needsViewportQuestion(decisions.viewport, viewportPolicy);
 
-  return {
+  const state = {
     schemaVersion: 1,
     locale: resolvedLocale,
     mode: mode || null,
@@ -436,6 +436,7 @@ export function buildDesignWizardState({
           : null,
     },
   };
+  return attachDesignWizardRuntime(state);
 }
 
 export function recordDesignWizardAnswer(state = {}, answer = {}) {
@@ -515,7 +516,73 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
         : null,
   };
   next.questionQueue = (next.questionQueue || []).filter((question) => question.axis !== axisId);
-  return next;
+  return attachDesignWizardRuntime(next);
+}
+
+export function transitionDesignWizardState(state = {}, event = {}) {
+  const type = String(event.type || "answer").toLowerCase();
+  if (type !== "answer") {
+    throw new Error(`Unsupported design wizard transition: ${event.type || "(missing)"}`);
+  }
+  const axis = event.axis || event.answer?.axis || state.questionQueue?.[0]?.axis;
+  if (!axis) throw new Error("design wizard transition requires an axis or a queued question");
+  return recordDesignWizardAnswer(state, {
+    ...(event.answer || {}),
+    axis,
+    choiceId: event.choiceId || event.answer?.choiceId,
+    value: event.value || event.answer?.value,
+    source: event.source || event.answer?.source || "user",
+    timestamp: event.timestamp || event.answer?.timestamp,
+  });
+}
+
+function buildDesignWizardRuntimeStatus(state = {}) {
+  const missing = state.coverage?.missingAxes || [];
+  const answered = state.coverage?.coveredAxes || [];
+  const queue = state.questionQueue || [];
+  const blockedReasons = [];
+  if (!state.mode) blockedReasons.push("mode");
+  if (state.gates?.viewportPolicyRecorded === false) blockedReasons.push("viewport");
+  blockedReasons.push(...missing);
+  if (state.coverage?.conflicts?.length) {
+    blockedReasons.push(...state.coverage.conflicts.map((item) => `conflict:${item.axis}`));
+  }
+  const nextQuestion = queue[0] || null;
+  return {
+    schemaVersion: 1,
+    answered: answered.length,
+    missing: missing.length,
+    queued: queue.length,
+    progress: `${answered.length}/${DESIGN_WIZARD_AXES.length}`,
+    mode: state.mode || null,
+    target: state.target || "unknown",
+    nextQuestionAxis: nextQuestion?.axis || null,
+    blockedReasons,
+    gates: state.gates || {},
+    unlocked: {
+      tokens: state.gates?.tokensUnlocked === true,
+      styleboard: state.gates?.reviewStyleboardUnlocked === true,
+      prototype: state.mode === "full-prototype-pipeline" && state.gates?.reviewStyleboardUnlocked === true,
+    },
+    resumeToken: buildDesignWizardResumeToken(state),
+  };
+}
+
+export function formatDesignWizardStatus(state = {}) {
+  const status = state.runtimeStatus || buildDesignWizardRuntimeStatus(state);
+  return [
+    "SUPERVIBE_DESIGN_WIZARD_STATUS",
+    `PROGRESS: ${status.progress}`,
+    `ANSWERED: ${status.answered}`,
+    `MISSING: ${status.missing}`,
+    `QUEUED: ${status.queued}`,
+    `NEXT: ${status.nextQuestionAxis || "none"}`,
+    `TOKENS_UNLOCKED: ${status.unlocked.tokens}`,
+    `STYLEBOARD_UNLOCKED: ${status.unlocked.styleboard}`,
+    `PROTOTYPE_UNLOCKED: ${status.unlocked.prototype}`,
+    `BLOCKED: ${status.blockedReasons.join(",") || "none"}`,
+    `RESUME_TOKEN: ${status.resumeToken}`,
+  ].join("\n");
 }
 
 export function evaluateDesignStyleboardReadiness({ mode = null, target = null, decisions = {} } = {}) {
@@ -911,6 +978,26 @@ function numberQuestionQueue(questionQueue) {
     question.total = total;
   }
   return questionQueue;
+}
+
+function attachDesignWizardRuntime(state = {}) {
+  const runtimeStatus = buildDesignWizardRuntimeStatus(state);
+  return {
+    ...state,
+    runtimeStatus,
+    resumeToken: runtimeStatus.resumeToken,
+  };
+}
+
+function buildDesignWizardResumeToken(state = {}) {
+  const payload = {
+    mode: state.mode || null,
+    target: state.target || "unknown",
+    covered: state.coverage?.coveredAxes || [],
+    missing: state.coverage?.missingAxes || [],
+    next: state.questionQueue?.[0]?.axis || null,
+  };
+  return Buffer.from(JSON.stringify(payload)).toString("base64url").slice(0, 32);
 }
 
 function detectDesignLocale(text) {

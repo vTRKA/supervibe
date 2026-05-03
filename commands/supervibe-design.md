@@ -18,7 +18,9 @@ Every interactive step asks one question at a time using `Step N/M` or `Step N/M
 
 ## Design Wizard Contract
 
-`/supervibe-design` uses the executable wizard catalog in `scripts/lib/design-wizard-catalog.mjs`, not only this markdown file, for Stage 0-2 interaction. Run `node scripts/design-agent-plan.mjs --brief "<brief>" --json` to build `plan.wizard`, `plan.executionStatus`, `plan.viewportPolicy`, and `plan.stages`.
+`/supervibe-design` uses the executable wizard catalog in `scripts/lib/design-wizard-catalog.mjs`, not only this markdown file, for Stage 0-2 interaction. Run `node scripts/design-agent-plan.mjs --brief "<brief>" --status --plan-writes --slug <slug>` or `node scripts/design-agent-plan.mjs --brief "<brief>" --json --plan-writes` to build `plan.wizard`, `plan.executionStatus`, `plan.viewportPolicy`, `plan.stages`, wizard progress, resume token, and the prewrite manifest.
+
+CLI output must show the stage ladder explicitly: `intake -> candidate DS -> review styleboard -> approval -> prototype unlock`. The wizard runtime owns the transition `questionQueue -> decision -> coverage -> gates`; agents should call `recordDesignWizardAnswer` or `transitionDesignWizardState` instead of manually patching `config.json` fields such as axes, coverage, timestamps, or blocked reasons.
 
 The first wizard step is a **mode question** with these choices: design system only, design system plus UX spec, full pipeline to prototype preview, or continue an existing approved design system. Save the answer to `config.json.mode`, `config.json.stageTriage`, and `config.json.executionMode`. Execution mode is a separate explicit choice: `inline`, `real-agents`, or `hybrid`. If the mode is ambiguous after design-system approval, ask the **Continuation question after approved design system**: continue to UX spec, build prototype, export tokens, or stop on approved DS.
 
@@ -60,7 +62,13 @@ Approval promotion must be automated. After explicit approval, run `node scripts
 
 Visual regression is part of the design gate, not a nice-to-have. For desktop/Tauri/Electron, capture and review screenshots at `1920x1080`, `1440x900`, and `1280x800`, then run DOM overflow, text overlap, contrast audit, focus-visible, reduced-motion, and Tauri webview smoke checks. Web flows include mobile `375x812`, `1440x900`, and `1920x1080`.
 
-Run both receipt validators before claiming design workflow completion:
+Run the unified workflow validator before claiming design workflow completion:
+
+```bash
+node scripts/supervibe-workflow-validate.mjs --workflow /supervibe-design --slug <slug>
+```
+
+At minimum, run both receipt validators before claiming design workflow completion:
 
 ```bash
 node scripts/workflow-receipt.mjs validate
@@ -68,7 +76,7 @@ node scripts/validate-agent-producer-receipts.mjs
 node scripts/validate-design-agent-receipts.mjs
 ```
 
-`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output. Every agent, worker, or reviewer receipt must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run.
+`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output. Every agent, worker, or reviewer receipt must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run, plus the typed output artifact `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json` recorded by `agent-invocation.mjs`.
 
 ## Continuation Contract
 
@@ -398,6 +406,8 @@ If `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` or `m
    - proposed token/component contract
    - approval status
 5. Ask exactly one approval question for that extension. Do not reopen the entire design system.
+
+After design-system approval, recompute design status and stage triage before replying. Run `supervibe-design status --slug <slug>` or `node scripts/design-agent-plan.mjs --status --slug <slug>` and show whether the state is `approved DS`, `prototype missing`, and `handoff blocked`. If the original mode was `full-prototype-pipeline`, continue automatically to prototype intake after the approval summary. If the original mode was `design-system-only`, do not imply the final UI is done; ask the next-action prompt `Build prototype / revise DS / stop`. When the user chooses build prototype, switch to prototype phase, ask for interaction depth, create or update prototype `config.json`, and recalculate `stageTriage` so Stage 3, Stage 4, Stage 5, and Stage 6 become `ready` or `available` instead of staying `skipped`.
 
 ### Stage 3 — UX spec
 

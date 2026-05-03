@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { logInvocation, readInvocations, updateLatestInvocation, INVOCATION_LOG_PATH_FOR_TEST } from '../scripts/lib/agent-invocation-logger.mjs';
@@ -26,6 +26,11 @@ test('logInvocation: appends entry to JSONL', async () => {
   const entries = await readInvocations();
   assert.strictEqual(entries.length, 1);
   assert.strictEqual(entries[0].agent_id, 'laravel-developer');
+  assert.ok(entries[0].structured_output.json.endsWith('/agent-output.json'));
+  const output = JSON.parse(await readFile(join(sandbox, entries[0].structured_output.json), 'utf8'));
+  assert.strictEqual(output.agentId, 'laravel-developer');
+  assert.strictEqual(output.taskSummary, 'Add login endpoint');
+  assert.ok((await readFile(join(sandbox, entries[0].structured_output.summary), 'utf8')).includes('# Agent Output: laravel-developer'));
 });
 
 test('readInvocations: filters by agent_id', async () => {

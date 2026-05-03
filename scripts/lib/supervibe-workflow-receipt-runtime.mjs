@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 
@@ -8,8 +8,11 @@ export const WORKFLOW_RECEIPT_ISSUER = "supervibe-workflow-receipt-runtime";
 const ALGORITHM = "hmac-sha256";
 const KEY_RELATIVE_PATH = ".supervibe/memory/workflow-receipt-runtime.key";
 const LEDGER_RELATIVE_PATH = ".supervibe/memory/workflow-invocation-ledger.jsonl";
+const LEDGER_LOCK_RELATIVE_PATH = ".supervibe/memory/workflow-invocation-ledger.lock";
 const DEFAULT_RECEIPT_DIR = ".supervibe/artifacts/_workflow-invocations";
 const ARTIFACT_LINKS_FILE = "artifact-links.json";
+const RECEIPT_LOCK_TIMEOUT_MS = 30_000;
+const RECEIPT_LOCK_RETRY_MS = 25;
 
 export function defaultWorkflowReceiptKeyPath(rootDir = process.cwd()) {
   return join(rootDir, ...KEY_RELATIVE_PATH.split("/"));
@@ -17,6 +20,10 @@ export function defaultWorkflowReceiptKeyPath(rootDir = process.cwd()) {
 
 export function defaultWorkflowReceiptLedgerPath(rootDir = process.cwd()) {
   return join(rootDir, ...LEDGER_RELATIVE_PATH.split("/"));
+}
+
+function defaultWorkflowReceiptLedgerLockPath(rootDir = process.cwd()) {
+  return join(rootDir, ...LEDGER_LOCK_RELATIVE_PATH.split("/"));
 }
 
 export async function issueWorkflowInvocationReceipt({
@@ -31,7 +38,8 @@ export async function issueWorkflowInvocationReceipt({
   inputEvidence = [],
   outputArtifacts = [],
   startedAt,
-  completedAt = new Date().toISOString(),
+  completedAt = null,
+  runTimestamp = null,
   handoffId,
   receiptDir = null,
   receiptPrefix = "workflow",
@@ -54,12 +62,13 @@ export async function issueWorkflowInvocationReceipt({
   }
 
   const resolvedSecret = await ensureReceiptSecret(rootDir, secret);
+  const resolvedRunTimestamp = resolveWorkflowRunTimestamp({ runTimestamp, startedAt, completedAt });
   const absReceiptDir = receiptDir
     ? resolveReceiptDir(rootDir, receiptDir)
     : join(rootDir, ...DEFAULT_RECEIPT_DIR.split("/"), sanitizeId(command), sanitizeId(handoffId));
   const receiptPath = join(absReceiptDir, `${sanitizeId(subjectId)}-${sanitizeId(stage)}.json`);
   const relReceiptPath = normalizeRelPath(relative(rootDir, receiptPath));
-  const issuedAt = new Date().toISOString();
+  const issuedAt = resolvedRunTimestamp;
   const keyId = keyIdForSecret(resolvedSecret);
   const inputHashes = inputEvidence.map((path) => hashEvidencePath(rootDir, path, { required: false }));
   const outputHashes = outputArtifacts.map((path) => hashEvidencePath(rootDir, path, { required: true }));
@@ -71,6 +80,7 @@ export async function issueWorkflowInvocationReceipt({
   const runtime = {
     issuer: WORKFLOW_RECEIPT_ISSUER,
     issuedAt,
+    runTimestamp: resolvedRunTimestamp,
     keyId,
     algorithm: ALGORITHM,
   };
@@ -90,8 +100,8 @@ export async function issueWorkflowInvocationReceipt({
     outputArtifacts: normalizePathList(outputArtifacts, rootDir),
     inputHashes,
     outputHashes,
-    startedAt,
-    completedAt,
+    startedAt: startedAt || resolvedRunTimestamp,
+    completedAt: completedAt || resolvedRunTimestamp,
     handoffId,
     hostInvocation: normalizedHostInvocation,
     runtime,
@@ -107,23 +117,26 @@ export async function issueWorkflowInvocationReceipt({
     },
   };
 
-  await mkdir(absReceiptDir, { recursive: true });
-  await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
+  const { relArtifactLinksPath, ledgerEntry } = await withWorkflowReceiptLedgerLock(rootDir, async () => {
+    await mkdir(absReceiptDir, { recursive: true });
+    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
 
-  const artifactLinksPath = join(absReceiptDir, ARTIFACT_LINKS_FILE);
-  const relArtifactLinksPath = normalizeRelPath(relative(rootDir, artifactLinksPath));
-  await upsertArtifactLinks(artifactLinksPath, receipt, relReceiptPath);
+    const artifactLinksPath = join(absReceiptDir, ARTIFACT_LINKS_FILE);
+    const relLinksPath = normalizeRelPath(relative(rootDir, artifactLinksPath));
+    await upsertArtifactLinks(artifactLinksPath, receipt, relReceiptPath);
 
-  const ledgerEntry = await appendReceiptLedger(rootDir, {
-    receiptId,
-    command,
-    subjectType,
-    subjectId,
-    receiptPath: relReceiptPath,
-    artifactLinksPath: relArtifactLinksPath,
-    canonicalHash,
-    signature,
-    issuedAt,
+    const entry = await appendReceiptLedger(rootDir, {
+      receiptId,
+      command,
+      subjectType,
+      subjectId,
+      receiptPath: relReceiptPath,
+      artifactLinksPath: relLinksPath,
+      canonicalHash,
+      signature,
+      issuedAt,
+    });
+    return { relArtifactLinksPath: relLinksPath, ledgerEntry: entry };
   });
 
   return {
@@ -368,6 +381,38 @@ async function appendReceiptLedger(rootDir, entry) {
   return ledgerEntry;
 }
 
+async function withWorkflowReceiptLedgerLock(rootDir, callback) {
+  const lockPath = defaultWorkflowReceiptLedgerLockPath(rootDir);
+  await mkdir(dirname(lockPath), { recursive: true });
+  const started = Date.now();
+  let handle = null;
+  while (!handle) {
+    try {
+      handle = await open(lockPath, "wx");
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      if (Date.now() - started > RECEIPT_LOCK_TIMEOUT_MS) {
+        throw new Error(`workflow receipt ledger lock timeout: ${normalizeRelPath(relative(rootDir, lockPath))}`);
+      }
+      await sleep(RECEIPT_LOCK_RETRY_MS);
+    }
+  }
+
+  try {
+    await handle.writeFile(`${process.pid}:${new Date().toISOString()}\n`, "utf8");
+    return await callback();
+  } finally {
+    await handle.close();
+    await unlink(lockPath).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function readReceiptLedgerSync(rootDir) {
   const ledgerPath = defaultWorkflowReceiptLedgerPath(rootDir);
   if (!existsSync(ledgerPath)) return [];
@@ -470,6 +515,7 @@ function enrichHostInvocationProof(rootDir, proof) {
     if (match) {
       out.agentId = out.agentId || match.agent_id;
       out.taskSummaryHash = sha256(match.task_summary || "");
+      out.evidencePath = out.evidencePath || match.structured_output?.json || null;
     }
   }
   return out;
@@ -506,6 +552,7 @@ function readAgentInvocationRecord(rootDir, invocationId) {
       return {
         agent_id: record.agent_id || record.agentId || record.subagent_type || record.subjectId,
         task_summary: record.task_summary || record.taskSummary || record.description || "",
+        structured_output: record.structured_output || null,
       };
     } catch {
       // Invalid log entries are reported by the producer validator, not receipt issue.
@@ -552,6 +599,14 @@ function sanitizeId(value) {
 
 function keyIdForSecret(secret) {
   return `key-${sha256(secret).slice(0, 12)}`;
+}
+
+function resolveWorkflowRunTimestamp({ runTimestamp = null, startedAt = null, completedAt = null } = {}) {
+  return runTimestamp
+    || process.env.SUPERVIBE_RUN_TIMESTAMP
+    || completedAt
+    || startedAt
+    || new Date().toISOString();
 }
 
 function ledgerEntryHash(entry) {

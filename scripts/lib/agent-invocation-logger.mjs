@@ -36,6 +36,7 @@ export async function logInvocation(entry) {
     }),
     ...entry,
   };
+  record.structured_output = structuredOutputPathsForRecord(record);
   if (entry.evidence || entry.retrievalPolicy) {
     record.evidence_gate = createEvidenceRecord({
       taskId: entry.task_id || entry.taskId || entry.task_summary,
@@ -52,6 +53,7 @@ export async function logInvocation(entry) {
   }
   await mkdir(dirname(_logPath), { recursive: true });
   await appendFile(_logPath, JSON.stringify(record) + '\n');
+  await writeStructuredAgentOutput(record);
   return record;
 }
 
@@ -150,4 +152,84 @@ function redactFlightRecorderEntry(entry) {
   }
   out.redactionStatus = redactionStatus;
   return out;
+}
+
+function structuredOutputPathsForRecord(record = {}) {
+  const dir = `.supervibe/artifacts/_agent-outputs/${sanitizePathSegment(record.invocation_id || 'unknown')}`;
+  return {
+    schemaVersion: 1,
+    directory: dir,
+    json: `${dir}/agent-output.json`,
+    summary: `${dir}/summary.md`,
+  };
+}
+
+async function writeStructuredAgentOutput(record = {}) {
+  const paths = record.structured_output || structuredOutputPathsForRecord(record);
+  const rootDir = rootDirFromInvocationLogPath();
+  const dir = join(rootDir, ...paths.directory.split('/'));
+  await mkdir(dir, { recursive: true });
+  const payload = {
+    schemaVersion: 1,
+    invocationId: record.invocation_id,
+    agentId: record.agent_id,
+    host: record.host || null,
+    hostInvocationSource: record.host_invocation_source || record.source || null,
+    taskSummary: record.task_summary,
+    status: record.status || 'completed',
+    confidenceScore: record.confidence_score,
+    changedFiles: normalizeList(record.changedFiles || record.changed_files),
+    risks: normalizeList(record.risks),
+    recommendations: normalizeList(record.recommendations),
+    evidenceGate: record.evidence_gate?.summary || record.evidence_gate || null,
+    loggedAt: record.ts,
+  };
+  await writeFile(join(dir, 'agent-output.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  await writeFile(join(dir, 'summary.md'), formatAgentOutputSummary(payload), 'utf8');
+}
+
+function formatAgentOutputSummary(payload = {}) {
+  const lines = [
+    `# Agent Output: ${payload.agentId || 'unknown'}`,
+    '',
+    `Invocation: ${payload.invocationId || 'unknown'}`,
+    `Status: ${payload.status || 'unknown'}`,
+    `Confidence: ${payload.confidenceScore ?? 'unknown'}`,
+    '',
+    '## Summary',
+    '',
+    payload.taskSummary || 'No task summary recorded.',
+    '',
+    '## Changed Files',
+    '',
+    ...(payload.changedFiles?.length ? payload.changedFiles.map((file) => `- ${file}`) : ['- none recorded']),
+    '',
+    '## Risks',
+    '',
+    ...(payload.risks?.length ? payload.risks.map((risk) => `- ${risk}`) : ['- none recorded']),
+    '',
+    '## Recommendations',
+    '',
+    ...(payload.recommendations?.length ? payload.recommendations.map((item) => `- ${item}`) : ['- none recorded']),
+    '',
+  ];
+  return lines.join('\n');
+}
+
+function rootDirFromInvocationLogPath() {
+  const normalized = String(_logPath || '').replace(/\\/g, '/');
+  const marker = '/.supervibe/memory/agent-invocations.jsonl';
+  const index = normalized.lastIndexOf(marker);
+  if (index >= 0) return normalized.slice(0, index);
+  return PROJECT_ROOT;
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (!value) return [];
+  return String(value).split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function sanitizePathSegment(value) {
+  return String(value ?? 'unknown').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'unknown';
 }

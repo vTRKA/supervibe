@@ -198,6 +198,9 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.equal(Object.hasOwn(creativeDirector.payload, "reasoning_effort"), false);
   assert.match(creativeDirector.payload.message, /Supervibe required specialist agent `creative-director`/);
   assert.match(creativeDirector.payload.message, /Do not claim inline emulation/);
+  assert.match(creativeDirector.payload.message, /typed output contract/);
+  assert.match(creativeDirector.receipt.logCommand, /--changed-files <paths> --risks <items> --recommendations <items>/);
+  assert.equal(creativeDirector.receipt.structuredOutput, ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json");
 
   const prototypeBuilder = plan.codexSpawnPayloads.find((payload) => payload.agentId === "prototype-builder");
   assert.ok(prototypeBuilder);
@@ -211,6 +214,8 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(report, /encode Supervibe logical agent role in message/);
   assert.match(report, /CODEX_SPAWN_PAYLOADS:/);
   assert.match(report, /creative-director: \{"fork_context":true,"message":/);
+  assert.match(report, /CODEX_RECEIPT_LOG_COMMANDS:/);
+  assert.match(report, /--changed-files <paths>/);
 });
 
 test("every slash command has codex-safe payloads for every required agent", () => {

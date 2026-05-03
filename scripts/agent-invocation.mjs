@@ -37,10 +37,10 @@ function usage() {
   return [
     "SUPERVIBE_AGENT_INVOCATION",
     "USAGE:",
-    "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10>",
+    "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> [--changed-files a,b] [--risks text] [--recommendations text]",
     "",
     "NOTES:",
-    "  This records a real host agent invocation id in .supervibe/memory/agent-invocations.jsonl.",
+    "  This records a real host agent invocation id in .supervibe/memory/agent-invocations.jsonl and writes typed agent-output artifacts.",
     "  Use the same id in workflow receipts as --host-invocation-id with the matching --host-invocation-source.",
   ].join("\n");
 }
@@ -83,6 +83,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       status: options.status || "completed",
       trace_id: options["trace-id"] || null,
       span_id: options["span-id"] || null,
+      changedFiles: splitList(options["changed-files"] || options.changedFiles),
+      risks: splitList(options.risks),
+      recommendations: splitList(options.recommendations),
     });
 
     console.log("SUPERVIBE_AGENT_INVOCATION_LOGGED");
@@ -91,10 +94,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`HOST_SOURCE: ${source}`);
     console.log(`INVOCATION_ID: ${record.invocation_id}`);
     console.log("EVIDENCE: .supervibe/memory/agent-invocations.jsonl");
+    console.log(`AGENT_OUTPUT_JSON: ${record.structured_output.json}`);
+    console.log(`AGENT_OUTPUT_SUMMARY: ${record.structured_output.summary}`);
     process.exit(0);
   } catch (error) {
     console.error("SUPERVIBE_AGENT_INVOCATION_ERROR");
     console.error(`ERROR: ${error.message}`);
     process.exit(2);
   }
+}
+
+function splitList(value) {
+  if (!value) return [];
+  return String(value).split(",").map((item) => item.trim()).filter(Boolean);
 }

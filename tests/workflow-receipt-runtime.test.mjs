@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -130,6 +130,42 @@ test("workflow receipt runtime keeps multiple receipt links for the same artifac
   }
 });
 
+test("workflow receipt runtime serializes parallel ledger appends", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
+  try {
+    const outputs = Array.from({ length: 8 }, (_, index) => `.supervibe/artifacts/parallel/out-${index}.md`);
+    for (const [index, output] of outputs.entries()) {
+      await writeUtf8(root, output, `# Output ${index}\n`);
+    }
+
+    await Promise.all(outputs.map((output, index) => issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "skill",
+      subjectId: `supervibe:parallel-${index}`,
+      stage: `stage-${index}`,
+      invocationReason: `parallel output ${index}`,
+      outputArtifacts: [output],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "parallel-ledger",
+      secret: "test-secret",
+    })));
+
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+    const ledger = validateWorkflowReceiptLedgerChain(root, { secret: "test-secret" });
+    const ledgerLines = (await readFile(defaultWorkflowReceiptLedgerPath(root), "utf8")).trim().split(/\r?\n/);
+
+    assert.equal(result.pass, true);
+    assert.equal(result.checked, outputs.length);
+    assert.equal(ledger.pass, true);
+    assert.equal(ledger.entries, outputs.length);
+    assert.equal(ledgerLines.length, outputs.length);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt runtime rejects ledger tampering and artifact drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {
@@ -199,4 +235,16 @@ test("workflow receipt CLI supports command-wide agent aliases", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("workflow receipt CLI shows issue help before attempting issuance", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    "scripts/workflow-receipt.mjs",
+    "issue",
+    "--help",
+  ], { cwd: REPO_ROOT });
+
+  assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT/);
+  assert.match(stdout, /USAGE:/);
+  assert.match(stdout, /issue --command/);
 });

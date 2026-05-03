@@ -7,10 +7,12 @@ import {
   buildDesignReviewCheckPlan,
   buildDesignWizardState,
   evaluateDesignStyleboardReadiness,
+  formatDesignWizardStatus,
   formatDesignWizardQuestion,
   parseDesignBriefPreferences,
   recordDesignWizardAnswer,
   resolveDesignViewportPolicy,
+  transitionDesignWizardState,
 } from "../scripts/lib/design-wizard-catalog.mjs";
 
 test("design wizard parses brief coverage and keeps missing axes in the queue", () => {
@@ -123,12 +125,31 @@ test("wizard answers update state and formatted questions include decision conte
   });
   assert.equal(updated.decisions.typography_personality.choiceId, "humanist");
   assert.ok(!updated.questionQueue.some((question) => question.axis === "typography_personality"));
+  assert.equal(updated.runtimeStatus.progress, `1/${DESIGN_WIZARD_AXES.length}`);
+  assert.ok(updated.resumeToken);
 
   const markdown = formatDesignWizardQuestion(state.questionQueue.find((question) => question.axis === "visual_direction_tone"));
   assert.match(markdown, /Why:/);
   assert.match(markdown, /Decision unlocked:/);
   assert.match(markdown, /Free-form answer:/);
   assert.match(markdown, /Stop condition:/);
+});
+
+test("wizard transition exposes status and resume token", () => {
+  const state = buildDesignWizardState({ brief: "", target: "web", mode: "design-system-only" });
+  const next = transitionDesignWizardState(state, {
+    type: "answer",
+    axis: "palette_mood",
+    choiceId: "light-first",
+    timestamp: "2026-05-03T00:00:00.000Z",
+  });
+  const report = formatDesignWizardStatus(next);
+
+  assert.equal(next.decisions.palette_mood.choiceId, "light-first");
+  assert.ok(next.runtimeStatus.queued < state.runtimeStatus.queued);
+  assert.match(report, /SUPERVIBE_DESIGN_WIZARD_STATUS/);
+  assert.match(report, /RESUME_TOKEN:/);
+  assert.match(report, /TOKENS_UNLOCKED: false/);
 });
 
 test("wizard localizes Russian questions and adds anti-generic creative gates", () => {
