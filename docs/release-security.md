@@ -1,6 +1,6 @@
 # Release Security
 
-Supervibe v2.0.58 release candidates must pass the local release security gate before publishing or tagging.
+Supervibe v2.0.59 release candidates must pass the local release security gate before publishing or tagging.
 
 ## Release Provenance
 
@@ -58,7 +58,7 @@ Known vulnerability exceptions are allowed only when each exception includes:
 
 Expired vulnerability exceptions fail the release gate. High or critical npm audit findings without an exception fail the release gate.
 
-Current v2.0.58 status: no active vulnerability exceptions are recorded.
+Current v2.0.59 status: no active vulnerability exceptions are recorded.
 
 ## Release Notes Requirement
 

@@ -4,10 +4,14 @@ import { appendFile, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createEvidenceRecord } from './supervibe-evidence-ledger.mjs';
+import {
+  createAgentInvocationId,
+  AGENT_INVOCATION_LOG_RELATIVE_PATH,
+} from './agent-producer-contract.mjs';
 
 const PROJECT_ROOT = process.cwd();
 let _logPath = process.env.SUPERVIBE_INVOCATION_LOG
-  || join(PROJECT_ROOT, '.supervibe', 'memory', 'agent-invocations.jsonl');
+  || join(PROJECT_ROOT, ...AGENT_INVOCATION_LOG_RELATIVE_PATH.split('/'));
 let _flightRecorderPath = process.env.SUPERVIBE_FLIGHT_RECORDER_LOG
   || join(PROJECT_ROOT, '.supervibe', 'memory', 'telemetry', 'flight-recorder.jsonl');
 
@@ -19,8 +23,16 @@ export async function logInvocation(entry) {
   if (!entry.task_summary) throw new Error('task_summary required');
   if (typeof entry.confidence_score !== 'number') throw new Error('confidence_score required (number)');
 
+  const ts = entry.ts || new Date().toISOString();
   const record = {
-    ts: new Date().toISOString(),
+    schemaVersion: 1,
+    ts,
+    invocation_id: entry.invocation_id || entry.invocationId || createAgentInvocationId({
+      agentId: entry.agent_id,
+      taskSummary: entry.task_summary,
+      ts,
+      sessionId: entry.session_id || entry.sessionId || '',
+    }),
     ...entry,
   };
   if (entry.evidence || entry.retrievalPolicy) {

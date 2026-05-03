@@ -120,6 +120,14 @@ test("workflow receipt CLI supports command-wide agent aliases", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    await writeUtf8(root, ".supervibe/memory/agent-invocations.jsonl", `${JSON.stringify({
+      schemaVersion: 1,
+      invocation_id: "creative-director-run-1",
+      ts: "2026-05-03T00:00:30.000Z",
+      agent_id: "creative-director",
+      task_summary: "brand direction was produced",
+      confidence_score: 9.5,
+    })}\n`);
 
     const { stdout } = await execFileAsync(process.execPath, [
       "scripts/workflow-receipt.mjs",
@@ -130,6 +138,8 @@ test("workflow receipt CLI supports command-wide agent aliases", async () => {
       "/supervibe-design",
       "--agent",
       "creative-director",
+      "--host-invocation-id",
+      "creative-director-run-1",
       "--stage",
       "stage-1-brand-direction",
       "--reason",

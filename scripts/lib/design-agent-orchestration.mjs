@@ -1,14 +1,21 @@
-import { existsSync, readdirSync } from "node:fs";
-import { join, sep } from "node:path";
+import { sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
   buildDesignWizardState,
+  formatDesignWizardQuestion,
   resolveDesignViewportPolicy,
 } from "./design-wizard-catalog.mjs";
+import {
+  readDesignWindowMetrics,
+} from "./design-window-metrics.mjs";
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import {
+  expectedProducerReceiptsForDurableOutputs,
+  validateHostInvocationProof,
+} from "./agent-producer-contract.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -31,15 +38,22 @@ export function buildDesignAgentPlan({
   designSystemStatus = "missing",
   rootDir = process.cwd(),
   mode = null,
+  currentWindow = null,
+  deviceScaleFactor = null,
 } = {}) {
   const text = String(brief ?? "");
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
   const stages = [];
+  const hostWindowMetrics = readDesignWindowMetrics({ rootDir, target });
+  const resolvedCurrentWindow = currentWindow || hostWindowMetrics?.currentWindow || null;
+  const resolvedDeviceScaleFactor = deviceScaleFactor ?? hostWindowMetrics?.deviceScaleFactor ?? null;
   const wizard = buildDesignWizardState({
     brief,
     target,
     designSystemStatus,
     mode,
+    currentWindow: resolvedCurrentWindow,
+    deviceScaleFactor: resolvedDeviceScaleFactor,
   });
 
   stages.push(stage({
@@ -127,7 +141,14 @@ export function buildDesignAgentPlan({
     receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
     executionStatus: null,
     wizard,
-    viewportPolicy: resolveDesignViewportPolicy({ target }),
+    viewportPolicy: {
+      ...resolveDesignViewportPolicy({
+        target,
+        currentWindow: resolvedCurrentWindow,
+        deviceScaleFactor: resolvedDeviceScaleFactor,
+      }),
+      metricsSource: hostWindowMetrics?.source || null,
+    },
     stages: dedupeStages(stages),
   };
   plan.executionStatus = buildDesignExecutionStatus(rootDir, plan);
@@ -174,6 +195,28 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
   };
 }
 
+export function formatDesignPlanPrompt(plan = {}) {
+  const status = plan.executionStatus || {};
+  if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
+    return [
+      "EXECUTION_GATE: real-agents unavailable",
+      formatDesignWizardQuestion(status.degradedModeQuestion),
+    ].join("\n");
+  }
+  const nextQuestion = plan.wizard?.questionQueue?.[0] || null;
+  if (!nextQuestion) {
+    return [
+      "EXECUTION_GATE: ready",
+      "NEXT_WIZARD_QUESTION: none",
+    ].join("\n");
+  }
+  return [
+    "EXECUTION_GATE: real-agents required",
+    "NEXT_WIZARD_QUESTION:",
+    formatDesignWizardQuestion(nextQuestion),
+  ].join("\n");
+}
+
 function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}) {
   const stages = Array.isArray(plan.stages) ? plan.stages : [];
   const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
@@ -184,7 +227,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}) {
   const executionMode = requiredAgentIds.length === 0
     ? "skills-only"
     : missingAgents.length > 0
-      ? "degraded-manual"
+      ? "agent-required-blocked"
       : "real-agents";
 
   return {
@@ -208,11 +251,10 @@ function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues
   const agentReceipts = designReceipts.filter((receipt) => receipt.agentId || receipt.subjectType === "agent");
   const skillReceipts = designReceipts.filter((receipt) => receipt.skillId || receipt.subjectType === "skill");
   const missingAgentIssues = issues.filter((issue) => issue.code === "missing-design-agent-receipt");
-  if (missingAgentIssues.length > 0 && skillReceipts.length > 0 && agentReceipts.length === 0) return "skills-only";
-  if (missingAgentIssues.length > 0) return "degraded-manual";
+  if (missingAgentIssues.length > 0) return "agent-required-blocked";
   if (agentReceipts.length > 0) return "real-agents";
   if (skillReceipts.length > 0) return "skills-only";
-  return "degraded-manual";
+  return "agent-required-blocked";
 }
 
 function stage(fields) {
@@ -248,9 +290,9 @@ function buildDegradedModeQuestion(missingAgents) {
         recommended: true,
       },
       {
-        id: "degraded-manual",
-        label: "Run degraded manual draft",
-        tradeoff: "Allows progress, but marks outputs degraded and blocks specialist completion claims.",
+        id: "save-manual-draft",
+        label: "Save non-agent manual draft",
+        tradeoff: "Allows notes, but blocks agent-stage completion and marks quality impact visibly.",
       },
       {
         id: "skills-only",
@@ -268,29 +310,14 @@ function buildDegradedModeQuestion(missingAgents) {
 }
 
 function expectedReceiptsForDurableOutputs(rootDir) {
-  const expected = [];
-  const add = (relPath, agentId, stageId) => {
-    if (existsSync(join(rootDir, ...relPath.split("/")))) {
-      expected.push({ outputArtifact: relPath, agentId, stageId });
-    }
-  };
-
-  add(".supervibe/artifacts/brandbook/direction.md", "creative-director", "stage-1-brand-direction");
-  add(".supervibe/artifacts/prototypes/_design-system/tokens.css", "supervibe:brandbook", "stage-2-design-system");
-  add(".supervibe/artifacts/prototypes/_design-system/manifest.json", "supervibe:brandbook", "stage-2-design-system");
-  add(".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", "supervibe:brandbook", "stage-2-design-system");
-
-  for (const prototype of listPrototypeDirs(rootDir)) {
-    const base = `.supervibe/artifacts/prototypes/${prototype}`;
-    add(`${base}/spec.md`, "ux-ui-designer", "stage-3-screen-spec");
-    add(`${base}/content/copy.md`, "copywriter", "stage-4-copy");
-    add(`${base}/index.html`, "prototype-builder", "stage-5-prototype-build");
-    add(`${base}/_reviews/polish.md`, "ui-polish-reviewer", "stage-6-polish-review");
-    add(`${base}/_reviews/a11y.md`, "accessibility-reviewer", "stage-6-a11y-review");
-    add(`${base}/_reviews/seo.md`, "seo-specialist", "stage-6-seo-review");
-  }
-
-  return expected;
+  return expectedProducerReceiptsForDurableOutputs(rootDir)
+    .filter((expectation) => expectation.command === "/supervibe-design")
+    .map((expectation) => ({
+      outputArtifact: expectation.outputArtifact,
+      agentId: expectation.subjectId,
+      stageId: expectation.stageId,
+      subjectType: expectation.subjectType,
+    }));
 }
 
 function missingAgentsForIssues(issues) {
@@ -318,23 +345,14 @@ function unique(values) {
   return [...new Set(values)];
 }
 
-function listPrototypeDirs(rootDir) {
-  const root = join(rootDir, ".supervibe", "artifacts", "prototypes");
-  if (!existsSync(root)) return [];
-  return readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => !name.startsWith("_"))
-    .sort();
-}
-
 function readAllReceipts(rootDir) {
   return readWorkflowReceipts(rootDir).filter((receipt) => receipt.command === "/supervibe-design");
 }
 
 function receiptMatches(receipt, expected) {
   if (receipt.__invalidJson) return false;
-  const id = receipt.agentId ?? receipt.agent_id ?? receipt.skillId ?? receipt.skill_id;
+  if (expected.subjectType && receipt.subjectType !== expected.subjectType) return false;
+  const id = receipt.subjectId ?? receipt.agentId ?? receipt.agent_id ?? receipt.skillId ?? receipt.skill_id;
   if (id !== expected.agentId) return false;
   const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];
   return outputs.some((output) => sameArtifact(output, expected.outputArtifact));
@@ -350,6 +368,16 @@ function validateReceiptShape(rootDir, receipt, expected, options = {}) {
   }
   if (receipt.invokedBy !== "supervibe-design") {
     issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: invokedBy must be supervibe-design` });
+  }
+  if (expected.subjectType && receipt.subjectType !== expected.subjectType) {
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: subjectType must be ${expected.subjectType} for durable output ${expected.outputArtifact}` });
+  }
+  const subjectId = receipt.subjectId ?? receipt.agentId ?? receipt.skillId;
+  if (subjectId !== expected.agentId) {
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: subject must be ${expected.agentId} for durable output ${expected.outputArtifact}` });
+  }
+  if (receipt.stage !== expected.stageId) {
+    issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: stage must be ${expected.stageId} for durable output ${expected.outputArtifact}` });
   }
   if (receipt.status !== "completed") {
     issues.push({ code: "invalid-design-agent-receipt", message: `${receipt.__file}: status must be completed for durable output ${expected.outputArtifact}` });
@@ -367,6 +395,12 @@ function validateReceiptShape(rootDir, receipt, expected, options = {}) {
         ? "missing-design-artifact-receipt-link"
         : "untrusted-design-agent-receipt",
       message: `${receipt.__file}: ${message}`,
+    });
+  }
+  for (const problem of validateHostInvocationProof(rootDir, receipt, options)) {
+    issues.push({
+      code: problem.code,
+      message: problem.message,
     });
   }
   return issues;

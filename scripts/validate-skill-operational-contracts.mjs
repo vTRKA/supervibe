@@ -36,6 +36,8 @@ const HIGH_RISK_SKILL_RULES = Object.freeze([
       /Worker Execution Packet/i,
       /not alone in the codebase/i,
       /Continue through every ready wave/i,
+      /hostInvocation\.invocationId/i,
+      /validate:agent-producer-receipts/i,
     ],
   },
   {
@@ -68,6 +70,8 @@ const HIGH_RISK_SKILL_RULES = Object.freeze([
       /self-contained worker packet/i,
       /Do not stop after the first subagent returns/i,
       /write-set conflicts/i,
+      /hostInvocation\.invocationId/i,
+      /validate:agent-producer-receipts/i,
     ],
   },
 ]);

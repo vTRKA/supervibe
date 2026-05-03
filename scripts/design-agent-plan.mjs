@@ -5,6 +5,7 @@ import {
 } from "./lib/design-artifact-intake.mjs";
 import {
   buildDesignAgentPlan,
+  formatDesignPlanPrompt,
 } from "./lib/design-agent-orchestration.mjs";
 
 function arg(name, fallback = "") {
@@ -37,6 +38,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
     console.log(`WIZARD_COVERAGE: ${plan.wizard.coverage.score}`);
     console.log(`WIZARD_BLOCKED_REASON: ${plan.wizard.gates.blockedReason || "none"}`);
+    console.log(formatDesignPlanPrompt(plan));
     for (const stage of plan.stages) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }

@@ -34,7 +34,7 @@ function usage() {
   return `SUPERVIBE_WORKFLOW_RECEIPT
 USAGE:
   node scripts/workflow-receipt.mjs issue --command /supervibe-plan --subject-type skill --subject-id supervibe:writing-plans --stage <stage> --reason <text> --output <path> --handoff <id>
-  node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
+  node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --host-invocation-id <id> --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
   node scripts/workflow-receipt.mjs validate
 
@@ -89,6 +89,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       completedAt: options.completedAt || new Date().toISOString(),
       handoffId: options.handoff || options.slug,
       receiptDir: options["receipt-dir"] || null,
+      hostInvocation: buildHostInvocation(options),
     });
     console.log("SUPERVIBE_WORKFLOW_RECEIPT_ISSUED");
     console.log(`RECEIPT_ID: ${result.receipt.receiptId}`);
@@ -106,4 +107,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   console.log(usage());
   process.exit(options.operation === "help" ? 0 : 1);
+}
+
+function buildHostInvocation(options) {
+  const invocationId = options["host-invocation-id"] || options["invocation-id"];
+  const evidencePath = options["host-trace"] || options["host-invocation-evidence"];
+  if (!invocationId && !evidencePath) return null;
+  return {
+    source: options["host-invocation-source"] || (evidencePath ? "host-trace-file" : "agent-invocations-jsonl"),
+    invocationId: invocationId || options["host-trace-id"] || evidencePath,
+    evidencePath: evidencePath || null,
+    traceId: options["host-trace-id"] || null,
+    spanId: options["host-span-id"] || null,
+  };
 }

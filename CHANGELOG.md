@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.59] - 2026-05-03
+
+### Added
+
+- Added global agent producer receipt validation requiring real host invocation
+  proof for agent, worker, and reviewer receipts.
+- Added dynamic question system validation for design wizard queues,
+  post-delivery feedback choices, and transparent step questions.
+
+### Changed
+
+- All slash-command workflow receipt contracts now require
+  `hostInvocation.source`, `hostInvocation.invocationId`, and
+  `validate:agent-producer-receipts` before claiming specialist work.
+- `/supervibe-design` now consumes the shared producer expectation map instead
+  of maintaining a duplicate durable-output receipt map.
+
+### Fixed
+
+- Blocked command or skill receipts from substituting for specialist agent,
+  worker, or reviewer outputs.
+- Removed the temporary design workflow hardening TODO after promoting its
+  critical items into executable contracts and validators.
+
 ## [2.0.58] - 2026-05-03
 
 ### Added

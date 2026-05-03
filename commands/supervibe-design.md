@@ -49,16 +49,17 @@ Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/ar
 
 For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1280x800` plus `800x600` as the desktop baseline.
 
-Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `degraded-manual`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality was lost. If a required specialist is missing, ask one degraded-mode question before any approval: stop and connect agents, run degraded manual draft, run deterministic skill stages only, or stop here.
+Execution visibility is mandatory. `config.json.executionMode` must be one of `real-agents`, `agent-required-blocked`, or `skills-only`; `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality was lost. If a required specialist is missing, ask one blocked-mode question before any approval: stop and connect agents, run deterministic skill stages only, save a non-agent manual draft with visible quality impact, or stop here. A manual draft is never a completed agent stage.
 
 Run both receipt validators before claiming design workflow completion:
 
 ```bash
 node scripts/workflow-receipt.mjs validate
+node scripts/validate-agent-producer-receipts.mjs
 node scripts/validate-design-agent-receipts.mjs
 ```
 
-`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output.
+`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output. Every agent, worker, or reviewer receipt must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run.
 
 ## Continuation Contract
 
@@ -525,7 +526,7 @@ Brief:        <one-line>
 Brand:        .supervibe/artifacts/brandbook/direction.md     (score: X.X/10)
 System:       .supervibe/artifacts/prototypes/_design-system/design-flow-state.json + manifest.json (candidate | needs_revision | approved | final metadata)
 Wizard:       coverage <covered>/<required>, queue <N>, guidedDefaultsChecklist <N>
-Execution:    executionMode <real-agents | degraded-manual | skills-only>, missingAgents <list|none>, qualityImpact <text|none>
+Execution:    executionMode <real-agents | agent-required-blocked | skills-only>, missingAgents <list|none>, qualityImpact <text|none>
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md
 Prototype:    .supervibe/artifacts/prototypes/<slug>/index.html
@@ -566,4 +567,4 @@ Rubric:     prototype
 
 ## Workflow Invocation Receipts
 
-Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` before claiming the command, delegated stage, or produced artifact is complete.
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.

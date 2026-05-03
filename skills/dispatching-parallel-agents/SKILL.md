@@ -46,6 +46,10 @@ Do not stop after the first subagent returns. A failed subagent does not cancel
 independent completed outputs, but it must block the final claim until repaired,
 quarantined, or explicitly accepted as partial.
 
+Every successful subagent result must come from a real host Agent/Task call and
+carry a host invocation id. Do not emulate a subagent result in the parent
+agent; save non-agent notes separately if the host dispatch did not run.
+
 ## Definition Of Done
 
 Parallel work is done only when aggregation has checked write-set conflicts,
@@ -86,6 +90,8 @@ If parallel OK, count tasks:
    c. Wait for all to return
    d. Aggregate outputs
    e. Score combined result with `supervibe:confidence-scoring`
+   f. For durable outputs, issue workflow receipts with `hostInvocation.source`
+      and `hostInvocation.invocationId`, then run `npm run validate:agent-producer-receipts`
 5. **Per-agent verification** — each subagent's output verified separately
 6. **Aggregation review** — does combined output meet original goal?
 
@@ -93,7 +99,7 @@ If parallel OK, count tasks:
 
 Returns:
 - Task list with parallel/sequential decision
-- If parallel: dispatch confirmation, per-agent outcome, aggregated result
+- If parallel: dispatch confirmation, per-agent outcome, host invocation ids, aggregated result
 - Combined confidence score
 
 ## Guard rails
@@ -102,6 +108,7 @@ Returns:
 - DO NOT: pass conversation context to subagent (write self-contained brief)
 - DO NOT: dispatch >5 in single message (too noisy to follow)
 - DO NOT: aggregate outputs blindly (each may have made conflicting decisions)
+- DO NOT: claim a worker/reviewer/subagent ran when no host invocation id exists
 - ALWAYS: per-task brief includes WHY the task matters + expected output format
 - ALWAYS: verify aggregation makes sense before claiming done
 

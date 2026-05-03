@@ -65,7 +65,8 @@ them.
 A wave is done only after every task in the wave is `SUCCESS`, `BLOCKED`, or
 `QUARANTINED` with evidence. `SUCCESS` requires worker evidence, independent
 Stage 2 review, verification output, side-effect reconciliation, scope safety,
-and confidence at least 9/10. Rejected or partial worker output is not progress
+`hostInvocation.source` + `hostInvocation.invocationId` for the real host
+subagent run, and confidence at least 9/10. Rejected or partial worker output is not progress
 until it is repaired or explicitly accepted as partial by the user.
 
 ## Step 0 — Read source of truth (required)
@@ -109,6 +110,7 @@ Per task: which subagent type?
 7. **Re-dispatch with corrected brief** if rejected
 8. **After wave completes** — proceed to next wave
 9. **Heartbeat/status** - update the session registry after each wave and mark stale/cleanup-blocked sessions explicitly.
+10. **Producer receipt gate** - for every durable worker/reviewer artifact, issue runtime workflow receipts with host invocation proof and run `npm run validate:agent-producer-receipts` before claiming the wave complete.
 
 ## Output contract
 
@@ -132,6 +134,7 @@ Final: combined deliverable + per-wave confidence score
 - DO NOT: dispatch work already owned by another active worktree session
 - DO NOT: let a worker review its own output or share an overlapping write set in the same wave
 - DO NOT: reward a worker for adding extra functionality that was not in the plan
+- DO NOT: emulate a subagent, worker, or reviewer in the controller. If the host agent call did not run, stop or save a non-agent draft; never mark the task `SUCCESS`.
 - ALWAYS: brief includes WHY the task matters + project conventions
 - ALWAYS: per-task verification before claiming wave done
 - ALWAYS: include stop/resume/status commands for long autonomous waves
@@ -141,6 +144,7 @@ Final: combined deliverable + per-wave confidence score
 ## Verification
 
 - Every task has dispatch + Stage 1 + Stage 2 outputs
+- Every successful worker/reviewer has a `hostInvocation.invocationId` linked to a runtime-issued workflow receipt
 - Failed tasks have new brief + re-dispatch evidence
 - Stage 2 review confirms no unapproved scope expansion shipped
 - Final deliverable passes overall agent-output rubric ≥9

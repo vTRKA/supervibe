@@ -56,6 +56,7 @@ test("hook: logs Task tool dispatch with agent_id from subagent_type", () => {
   assert.strictEqual(last.agent_id, "laravel-developer");
   assert.strictEqual(last.task_summary, "Add login endpoint");
   assert.strictEqual(last.confidence_score, 9.2);
+  assert.match(last.invocation_id, /^agent-/);
 });
 
 test("hook: ignores non-Task tools", () => {

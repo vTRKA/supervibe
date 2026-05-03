@@ -162,6 +162,8 @@ export function buildDesignWizardState({
   designSystemStatus = "missing",
   timestamp = new Date().toISOString(),
   mode = null,
+  currentWindow = null,
+  deviceScaleFactor = null,
 } = {}) {
   const parsed = parseDesignBriefPreferences(brief);
   const decisions = { ...parsed.decisions };
@@ -189,7 +191,7 @@ export function buildDesignWizardState({
     questionQueue.push(axisQuestion(DESIGN_WIZARD_AXES.find((axisDef) => axisDef.id === axisId)));
   }
 
-  questionQueue.push(viewportQuestion(resolveDesignViewportPolicy({ target })));
+  questionQueue.push(viewportQuestion(resolveDesignViewportPolicy({ target, currentWindow, deviceScaleFactor })));
 
   const guidedDefaultsChecklist = explicitDefaults
     ? DESIGN_WIZARD_AXES.map((axisDef) => guidedDefaultChecklistItem(axisDef, decisions[axisDef.id]))

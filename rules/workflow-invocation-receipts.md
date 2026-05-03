@@ -31,6 +31,8 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Include command, subject type, subject id, stage, reason, input evidence, output artifacts, timestamps, handoff id, runtime issuer, HMAC signature, canonical hash, and output artifact hashes.
 - Run `npm run validate:workflow-receipts` before claiming an invocation or delegated artifact is complete.
 - Match the receipt subject to the claimed producer. A command receipt proves the command ran; it does not prove a specialist agent, reviewer, worker, validator, skill, or external tool produced the artifact.
+- For `subjectType=agent`, `subjectType=worker`, or `subjectType=reviewer`, include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run (for example the Task hook entry in `.supervibe/memory/agent-invocations.jsonl` or a host trace file). Runtime receipt issue must fail when this proof is missing.
+- Run `npm run validate:agent-producer-receipts` before claiming any agent, worker, or reviewer output. This validator maps durable outputs to exact producers and verifies that agent-like receipts point to real host invocation evidence.
 - Run any domain-specific receipt validator required by the workflow, such as `node scripts/validate-design-agent-receipts.mjs` for `/supervibe-design`, before claiming a delegated workflow is complete.
 
 ## What not to do
@@ -38,7 +40,7 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Hand-written receipts are untrusted. Do not hand-write JSON receipts.
 - Do not create command-specific receipt runtimes that duplicate the shared workflow receipt runtime.
 - Do not claim an agent, skill, reviewer, worker, validator, command, or external tool was invoked when a trusted completed receipt is missing.
-- Do not substitute a command receipt for a missing specialist receipt. If a specialist was unavailable, record `executionMode: degraded-manual` or `executionMode: skills-only`, list `missingAgents`, and surface the quality impact before user approval.
+- Do not substitute a command receipt for a missing specialist receipt. If a specialist agent, worker, or reviewer was unavailable, stop before the agent-required durable artifact; do not mark the stage complete as `degraded-manual`. Manual drafts may be saved only as non-agent drafts with visible quality impact.
 - Do not use a receipt to bypass an approval gate; receipts prove invocation provenance, not user approval.
 
 ## Enforcement
@@ -46,6 +48,7 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Every command file must contain the Workflow Invocation Receipts contract.
 - `scripts/validate-command-operational-contracts.mjs` checks all command surfaces for the shared receipt contract.
 - `scripts/validate-workflow-receipts.mjs` verifies runtime signatures, ledger chain integrity, output artifact hashes, and artifact links.
+- `scripts/validate-agent-producer-receipts.mjs` verifies global producer contracts and rejects agent, worker, or reviewer receipts that lack real host invocation proof.
 - Specialized validators may add domain checks, but they must consume the shared workflow receipts instead of creating a duplicate receipt system.
 
 ## Related rules

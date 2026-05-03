@@ -36,6 +36,8 @@ export async function issueWorkflowInvocationReceipt({
   receiptDir = null,
   receiptPrefix = "workflow",
   secret = null,
+  hostInvocation = null,
+  allowMissingHostInvocationProof = false,
 } = {}) {
   if (!command) throw new Error("command required");
   if (!subjectId) throw new Error("subjectId required");
@@ -43,6 +45,13 @@ export async function issueWorkflowInvocationReceipt({
   if (!invocationReason) throw new Error("invocationReason required");
   if (!handoffId) throw new Error("handoffId required");
   if (!outputArtifacts?.length) throw new Error("outputArtifacts required");
+  if (isHostAgentSubject(subjectType) && !hostInvocation && !allowMissingHostInvocationProof) {
+    throw new Error("hostInvocation proof required for agent, worker, and reviewer receipts");
+  }
+  const normalizedHostInvocation = enrichHostInvocationProof(rootDir, hostInvocation);
+  if (isHostAgentSubject(subjectType) && !allowMissingHostInvocationProof) {
+    assertHostInvocationProofExists(rootDir, normalizedHostInvocation, agentId || subjectId);
+  }
 
   const resolvedSecret = await ensureReceiptSecret(rootDir, secret);
   const absReceiptDir = receiptDir
@@ -84,6 +93,7 @@ export async function issueWorkflowInvocationReceipt({
     startedAt,
     completedAt,
     handoffId,
+    hostInvocation: normalizedHostInvocation,
     runtime,
   };
   const canonicalHash = sha256(stableStringify(canonical));
@@ -422,8 +432,75 @@ function canonicalReceiptForVerification(receipt) {
     startedAt: receipt.startedAt,
     completedAt: receipt.completedAt,
     handoffId: receipt.handoffId,
+    hostInvocation: receipt.hostInvocation || null,
     runtime,
   };
+}
+
+function isHostAgentSubject(subjectType) {
+  return ["agent", "worker", "reviewer"].includes(String(subjectType || "").toLowerCase());
+}
+
+function enrichHostInvocationProof(rootDir, proof) {
+  if (!proof) return null;
+  const source = proof.source || "agent-invocations-jsonl";
+  const invocationId = proof.invocationId || proof.invocation_id || proof.id || null;
+  const out = {
+    source,
+    invocationId,
+    evidencePath: proof.evidencePath || proof.evidence_path || null,
+    agentId: proof.agentId || proof.agent_id || null,
+    taskSummaryHash: proof.taskSummaryHash || proof.task_summary_hash || null,
+    traceId: proof.traceId || proof.trace_id || null,
+    spanId: proof.spanId || proof.span_id || null,
+  };
+  if (source !== "host-trace-file" && invocationId && !out.taskSummaryHash) {
+    const match = readAgentInvocationRecord(rootDir, invocationId);
+    if (match) {
+      out.agentId = out.agentId || match.agent_id;
+      out.taskSummaryHash = sha256(match.task_summary || "");
+    }
+  }
+  return out;
+}
+
+function assertHostInvocationProofExists(rootDir, proof, expectedAgentId) {
+  if (!proof?.source || !proof?.invocationId) {
+    throw new Error("hostInvocation proof required for agent, worker, and reviewer receipts");
+  }
+  if (proof.source === "host-trace-file") {
+    if (!proof.evidencePath) throw new Error("hostInvocation evidencePath required for host-trace-file receipts");
+    const absPath = join(rootDir, ...String(proof.evidencePath).split(/[\\/]/));
+    if (!existsSync(absPath)) throw new Error(`hostInvocation evidence file not found: ${proof.evidencePath}`);
+    return;
+  }
+  const match = readAgentInvocationRecord(rootDir, proof.invocationId);
+  if (!match) {
+    throw new Error(`hostInvocation ${proof.invocationId} not found in .supervibe/memory/agent-invocations.jsonl`);
+  }
+  if (expectedAgentId && match.agent_id && match.agent_id !== expectedAgentId) {
+    throw new Error(`hostInvocation agent mismatch: expected ${expectedAgentId}, got ${match.agent_id}`);
+  }
+}
+
+function readAgentInvocationRecord(rootDir, invocationId) {
+  const logPath = join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl");
+  if (!existsSync(logPath)) return null;
+  const lines = readFileSync(logPath, "utf8").split(/\r?\n/).filter(Boolean);
+  for (const line of lines) {
+    try {
+      const record = JSON.parse(line);
+      const id = record.invocation_id || record.invocationId;
+      if (id !== invocationId) continue;
+      return {
+        agent_id: record.agent_id || record.agentId || record.subagent_type || record.subjectId,
+        task_summary: record.task_summary || record.taskSummary || record.description || "",
+      };
+    } catch {
+      // Invalid log entries are reported by the producer validator, not receipt issue.
+    }
+  }
+  return null;
 }
 
 function signCanonical(canonical, secret) {

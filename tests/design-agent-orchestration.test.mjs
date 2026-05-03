@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   buildDesignAgentPlan,
+  formatDesignPlanPrompt,
   validateDesignAgentInvocationReceipts,
 } from "../scripts/lib/design-agent-orchestration.mjs";
 import {
@@ -16,6 +17,27 @@ async function writeUtf8(root, relPath, content) {
   const absPath = join(root, ...relPath.split("/"));
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, content, "utf8");
+}
+
+async function writeAgentInvocation(root, {
+  invocationId = "agent-invocation-1",
+  agentId = "creative-director",
+  taskSummary = "brand direction required",
+  ts = "2026-05-03T00:00:30.000Z",
+  confidenceScore = 9.5,
+} = {}) {
+  await writeUtf8(root, ".supervibe/memory/agent-invocations.jsonl", `${JSON.stringify({
+    schemaVersion: 1,
+    invocation_id: invocationId,
+    ts,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: confidenceScore,
+  })}\n`);
+  return {
+    source: "agent-invocations-jsonl",
+    invocationId,
+  };
 }
 
 test("design agent plan maps source types and stages to explicit agents and skills", () => {
@@ -42,6 +64,10 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.agentId === "prototype-builder"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:mcp-discovery" && stage.reason.includes("website")));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:design-intelligence" && stage.reason.includes("pdf")));
+
+  const prompt = formatDesignPlanPrompt(plan);
+  assert.match(prompt, /NEXT_WIZARD_QUESTION/);
+  assert.match(prompt, /Step 1\//);
 });
 
 test("design agent receipt validator rejects durable outputs without completed receipts", async () => {
@@ -53,11 +79,34 @@ test("design agent receipt validator rejects durable outputs without completed r
     const result = validateDesignAgentInvocationReceipts(root);
 
     assert.equal(result.pass, false);
-    assert.equal(result.executionMode, "degraded-manual");
+    assert.equal(result.executionMode, "agent-required-blocked");
     assert.deepEqual(result.missingAgents.sort(), ["creative-director", "ux-ui-designer"].sort());
     assert.match(result.qualityImpact, /creative-director/);
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "creative-director"));
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "ux-ui-designer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent plan consumes host-provided Tauri window metrics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-window-metrics-"));
+  try {
+    await writeUtf8(root, ".supervibe/memory/desktop-window-metrics.json", `${JSON.stringify({
+      target: "tauri",
+      currentWindow: { width: 1366, height: 768, deviceScaleFactor: 1.25, label: "Current Tauri window" },
+      minWindow: { width: 800, height: 600 },
+    })}\n`);
+
+    const plan = buildDesignAgentPlan({
+      brief: "Tauri desktop app",
+      target: "tauri",
+      rootDir: root,
+    });
+
+    assert.equal(plan.viewportPolicy.metricsSource, ".supervibe/memory/desktop-window-metrics.json");
+    assert.equal(plan.viewportPolicy.defaultViewports[0].width, 1366);
+    assert.equal(plan.viewportPolicy.defaultViewports[0].deviceScaleFactor, 1.25);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -84,7 +133,7 @@ test("design agent receipt validator does not let command receipts substitute sp
     const result = validateDesignAgentInvocationReceipts(root, { secret: "test-secret" });
 
     assert.equal(result.pass, false);
-    assert.equal(result.executionMode, "degraded-manual");
+    assert.equal(result.executionMode, "agent-required-blocked");
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "creative-director"));
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -121,11 +170,41 @@ test("design agent receipt validator rejects hand-written completed receipts wit
   }
 });
 
-test("design agent receipt validator accepts runtime-issued receipts with ledger and artifact hashes", async () => {
+test("design agent receipt validator rejects runtime-issued agent receipts without host invocation proof", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-agent-receipts-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
     await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+
+    await assert.rejects(
+      issueWorkflowInvocationReceipt({
+        rootDir: root,
+        command: "/supervibe-design",
+        subjectType: "agent",
+        subjectId: "creative-director",
+        agentId: "creative-director",
+        stage: "stage-1-brand-direction",
+        invocationReason: "brand direction required",
+        inputEvidence: [".supervibe/artifacts/brandbook/preferences.json"],
+        outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+        startedAt: "2026-05-03T00:00:00.000Z",
+        completedAt: "2026-05-03T00:01:00.000Z",
+        handoffId: "design-agent-chat",
+        secret: "test-secret",
+      }),
+      /hostInvocation proof required/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent receipt validator accepts runtime-issued receipts with host invocation proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-agent-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    const hostInvocation = await writeAgentInvocation(root);
 
     await issueWorkflowInvocationReceipt({
       rootDir: root,
@@ -140,6 +219,7 @@ test("design agent receipt validator accepts runtime-issued receipts with ledger
       startedAt: "2026-05-03T00:00:00.000Z",
       completedAt: "2026-05-03T00:01:00.000Z",
       handoffId: "design-agent-chat",
+      hostInvocation,
       secret: "test-secret",
     });
 
@@ -170,6 +250,7 @@ test("design agent receipt validator rejects output artifact hash drift", async 
       startedAt: "2026-05-03T00:00:00.000Z",
       completedAt: "2026-05-03T00:01:00.000Z",
       handoffId: "design-agent-chat",
+      hostInvocation: await writeAgentInvocation(root),
       secret: "test-secret",
     });
     await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Changed after receipt\n");
@@ -201,6 +282,7 @@ test("design agent receipt validator rejects missing artifact link manifest", as
       startedAt: "2026-05-03T00:00:00.000Z",
       completedAt: "2026-05-03T00:01:00.000Z",
       handoffId: "design-agent-chat",
+      hostInvocation: await writeAgentInvocation(root),
       secret: "test-secret",
     });
     await rm(join(root, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-design", "design-agent-chat", "artifact-links.json"), { force: true });

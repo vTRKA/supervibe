@@ -120,8 +120,9 @@ async function main() {
   const score = confidence ?? 0;
 
   // 1. JSONL append-only log (always)
+  let invocationRecord = null;
   try {
-    await logInvocation({
+    invocationRecord = await logInvocation({
       agent_id,
       task_summary: taskSummary,
       confidence_score: score,
@@ -131,6 +132,9 @@ async function main() {
       subtool_usage: subtoolUsage,
       evidence_contract: evidenceContract,
     });
+    if (invocationRecord?.invocation_id) {
+      console.log(`[supervibe] agent-invocation-id: ${invocationRecord.invocation_id}`);
+    }
   } catch { /* silent */ }
 
   // 2. SQLite mirror + low-confidence dispatch hint.

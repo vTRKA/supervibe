@@ -32,6 +32,10 @@ const WORKFLOW_RECEIPT_COMMAND_PATTERNS = Object.freeze([
   /workflow-invocation-ledger\.jsonl/i,
   /artifact-links\.json/i,
   /validate:workflow-receipts/i,
+  /validate:agent-producer-receipts/i,
+  /hostInvocation\.source/i,
+  /hostInvocation\.invocationId/i,
+  /command or skill receipts must not substitute/i,
 ]);
 
 const CONTINUATION_COMMAND_RULES = Object.freeze([
@@ -104,6 +108,9 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
       /workflow-invocation-ledger\.jsonl/i,
       /Hand-written receipts/i,
       /validate:workflow-receipts/i,
+      /validate:agent-producer-receipts/i,
+      /hostInvocation\.source/i,
+      /hostInvocation\.invocationId/i,
       /Do not substitute a command receipt/i,
       /validate-design-agent-receipts\.mjs/i,
     ],
