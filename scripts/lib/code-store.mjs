@@ -55,6 +55,24 @@ function positiveInt(value, fallback) {
   return Number.isFinite(num) && num > 0 ? Math.trunc(num) : fallback;
 }
 
+function redactIndexableSecrets(value = '') {
+  let redacted = false;
+  const text = String(value || '')
+    .replace(/\bsk-[A-Za-z0-9_-]{6,}\b/g, () => {
+      redacted = true;
+      return '[REDACTED_SECRET]';
+    })
+    .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, () => {
+      redacted = true;
+      return '[REDACTED_AWS_KEY]';
+    })
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, () => {
+      redacted = true;
+      return '[REDACTED_PRIVATE_KEY]';
+    });
+  return { text, redacted };
+}
+
 function nonNegativeNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) && num >= 0 ? num : fallback;
@@ -743,18 +761,19 @@ export class CodeStore {
 
       for (let i = 0; i < chunks.length; i++) {
         const c = chunks[i];
+        const safeChunk = redactIndexableSecrets(c.text);
         let embeddingBuf = null;
         if (this.useEmbeddings) {
           await enter('embeddings', { chunk: i + 1, chunks: chunks.length });
           try {
             const { embed, vectorToBuffer } = await loadEmbeddingHelpers();
-            const vec = await embed(c.text, 'passage');
+            const vec = await embed(safeChunk.text, 'passage');
             embeddingBuf = vectorToBuffer(vec);
           } catch {}
         }
-        insertChunk.run(relPath, i, c.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
+        insertChunk.run(relPath, i, safeChunk.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
         await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
-        insertFTS.run(relPath, i, c.text, c.name || '');
+        insertFTS.run(relPath, i, safeChunk.text, c.name || '');
       }
 
       // Phase D: also extract code graph (symbols + edges) for this file.
@@ -858,7 +877,7 @@ export class CodeStore {
     };
 
     const flush = () => {
-      const chunkText = currentLines.join('\n').trim();
+      const chunkText = redactIndexableSecrets(currentLines.join('\n').trim()).text;
       if (!chunkText) {
         currentLines = [];
         currentBytes = 0;

@@ -107,6 +107,50 @@ same failure modes affect every agent-heavy Supervibe command.
 - Agent role source visibility: command agent plans report each required role
   source as `project artifact`, `plugin-only`, or `logical role`.
 
+## 10/10 Agent System Hardening
+
+Status: passed by `node scripts/supervibe-agent-maturity.mjs` on 2026-05-04.
+Source of truth for keeping the whole plugin at an evidence-backed 10/10
+agent system, not only a strong scripted workflow.
+
+- [x] Add a machine-readable maturity audit:
+  `node scripts/supervibe-agent-maturity.mjs`. The report scores roster
+  coverage, command orchestration, specialist questions, continuation gates,
+  receipt reliability, host-agent telemetry, Code Graph readiness, eval
+  coverage, and backlog/docs.
+- [x] Add strict host-agent receipt mode:
+  `node scripts/validate-agent-producer-receipts.mjs --strict-host-agents
+  --min-agent-invocations 10`. This makes "no real agent telemetry" visible as
+  a blocker instead of a soft status line.
+- [x] Promote `SpecialistQuestionContract` to a shared module, not only a
+  design-wizard convention. Negative specialist-question evals must reject
+  catalog-copy, context-free, no-impact, and silently-defaulted questions.
+- [x] Accumulate at least 10 real host-agent invocation records across command
+  stages and bind them with host-agent receipts. Synthetic receipts do not
+  count.
+- [x] Count only trusted receipt-bound host invocation IDs in strict producer
+  validation. Unbound JSONL rows must not satisfy 10/10 maturity telemetry.
+- [x] Keep Code Graph graph-ready for structural/refactor workflows:
+  `node scripts/build-code-index.mjs --root . --resume --graph --max-files 200
+  --health`.
+- [x] Make `SpecialistQuestionContract` Unicode-safe for non-English questions
+  and context-aware in both validation and scoring.
+- [x] Add an audit receipt-writing mode contract. Read-only audits stay no-write;
+  trusted 10/10 audit mode must print `MUTATED:` receipt/log paths.
+- [x] Add semantic trigger fallback to `supervibe-commands --match` so implicit
+  agent/tool/RAG/CodeGraph complaints route before broad repo search.
+- [x] Tighten agent retrieval health so thin samples and missing evidence
+  ledgers cannot print a false `10/10`.
+- [ ] Extend specialist-generated question proposals to additional multi-stage
+  workflows beyond the shared contract fixtures: plan review, autonomous loop,
+  audit/strengthen, feature intake, and pre-PR review.
+- [ ] Add more bad/good agent-output eval fixtures for stage ownership, recovery
+  UX, receipt repair, and continuation prompts.
+
+The plugin cannot honestly report `10/10` unless the maturity audit has no
+blockers. Code can enforce the gates, but operational telemetry requires real
+host-agent runs.
+
 ## Still Design Principles
 
 - Command receipts never substitute for specialist agent, worker, or reviewer

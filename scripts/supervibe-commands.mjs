@@ -9,6 +9,7 @@ import {
   resolveCommandRequest,
 } from "./lib/supervibe-command-catalog.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
+import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -19,7 +20,8 @@ try {
   if (args.help) {
     console.log(formatHelp());
   } else if (args.match) {
-    const match = resolveCommandRequest(args.match, { pluginRoot, projectRoot });
+    const match = resolveCommandRequest(args.match, { pluginRoot, projectRoot })
+      || semanticTriggerFallback(args.match, { pluginRoot, projectRoot });
     if (args.json) console.log(JSON.stringify({ match }, null, 2));
     else console.log(formatCommandMatch(match));
     if (!match) process.exitCode = 2;
@@ -31,6 +33,28 @@ try {
 } catch (error) {
   console.error(`supervibe-commands error: ${error.message}`);
   process.exit(1);
+}
+
+function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
+  const route = routeTriggerRequest(request, { pluginRoot, projectRoot });
+  if (!route || route.intent === "unknown") return null;
+  return {
+    id: `semantic-trigger:${route.intent}`,
+    intent: route.intent,
+    title: `Semantic route: ${route.intent}`,
+    command: route.command,
+    confidence: route.confidence,
+    reason: `semantic trigger fallback: ${route.reason}`,
+    doNotSearchProject: true,
+    directRoute: false,
+    mutationRisk: route.mutationRisk || "delegates-to-command",
+    nextAction: route.command
+      ? `Run ${route.command} through the routed workflow; use command-agent-plan.mjs when this is a Supervibe slash command.`
+      : "Report the routed diagnostic and avoid broad repository search.",
+    agentContract: route.agentContract || null,
+    agentProfile: route.agentProfile || null,
+    followUpCommands: route.followUpCommands || [],
+  };
 }
 
 function parseArgs(argv) {

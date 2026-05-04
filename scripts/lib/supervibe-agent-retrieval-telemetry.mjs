@@ -124,22 +124,30 @@ export function buildAgentRetrievalTelemetryReport({
   });
   const evidenceFailed = evidenceEntries.filter((entry) => entry.gate && !entry.gate.pass);
   const failingAgents = agents.filter((agent) => agent.violations.length > 0);
+  const globalViolations = detectGlobalRetrievalTelemetryViolations({
+    invocations,
+    agents,
+    evidenceEntries,
+    thresholds: policy,
+  });
   const strengtheningTasks = createStrengtheningTasks({ agents: failingAgents, underperformers, evidenceFailed });
-  const pass = failingAgents.length === 0 && evidenceFailed.length === 0;
+  const pass = globalViolations.length === 0 && failingAgents.length === 0 && evidenceFailed.length === 0;
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     pass,
-    maturityScore: pass ? 10 : Math.max(0, 10 - Math.min(6, failingAgents.length + evidenceFailed.length)),
+    maturityScore: pass ? 10 : Math.max(0, 10 - Math.min(6, globalViolations.length + failingAgents.length + evidenceFailed.length)),
     thresholds: policy,
     summary: {
       agents: agents.length,
       invocations: invocations.length,
       evidenceEntries: evidenceEntries.length,
+      globalViolations: globalViolations.length,
       failingAgents: failingAgents.length,
       evidenceFailed: evidenceFailed.length,
       strengtheningTasks: strengtheningTasks.length,
     },
+    globalViolations,
     agents: agents.sort((a, b) => a.agentId.localeCompare(b.agentId)),
     underperformers,
     evidenceFailed,
@@ -201,10 +209,14 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     `MATURITY_SCORE: ${report.maturityScore ?? 0}/10`,
     `AGENTS: ${report.summary?.agents || 0}`,
     `INVOCATIONS: ${report.summary?.invocations || 0}`,
+    `GLOBAL_VIOLATIONS: ${report.summary?.globalViolations || 0}`,
     `FAILING_AGENTS: ${report.summary?.failingAgents || 0}`,
     `EVIDENCE_FAILED: ${report.summary?.evidenceFailed || 0}`,
     `STRENGTHENING_TASKS: ${report.summary?.strengtheningTasks || 0}`,
   ];
+  for (const violation of report.globalViolations || []) {
+    lines.push(`WARN: ${violation}`);
+  }
   for (const agent of report.agents || []) {
     const status = agent.violations?.length ? "WARN" : "OK";
     lines.push(`${status}: ${agent.agentId} sample=${agent.sample} mem=${pct(agent.memoryRate)} rag=${pct(agent.ragRate)} graph=${pct(agent.codegraphRate)} evidence=${pct(agent.evidenceContractPassRate)} confidence=${agent.avgConfidence}`);
@@ -214,6 +226,25 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     lines.push(`TASK: ${task.id} agent=${task.agentId} priority=${task.priority} reason=${task.reason}`);
   }
   return lines.join("\n");
+}
+
+function detectGlobalRetrievalTelemetryViolations({
+  invocations = [],
+  agents = [],
+  evidenceEntries = [],
+  thresholds,
+} = {}) {
+  const violations = [];
+  if (invocations.length < thresholds.minSample) {
+    violations.push(`insufficient invocation sample ${invocations.length} < ${thresholds.minSample}`);
+  }
+  if (invocations.length > 0 && agents.length > 0 && agents.every((agent) => agent.sample < thresholds.minSample)) {
+    violations.push(`no agent has enough retrieval samples for a trusted health score; need at least ${thresholds.minSample} per evaluated agent`);
+  }
+  if (invocations.length >= thresholds.minSample && evidenceEntries.length === 0) {
+    violations.push("missing evidence ledger entries for retrieval quality scoring");
+  }
+  return violations;
 }
 
 function detectRetrievalViolations(agentId, metrics, thresholds) {

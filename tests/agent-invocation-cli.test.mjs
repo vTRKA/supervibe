@@ -92,7 +92,7 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
     });
     assert.match(validation, /PASS: true/);
     assert.match(validation, /HOST_AGENT_RECEIPTS: 1/);
-    assert.match(validation, /COVERAGE_STATUS: host-agent-receipts-present/);
+    assert.match(validation, /COVERAGE_STATUS: trusted-host-agent-receipts-present/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

@@ -171,6 +171,16 @@ describe("supervibe trigger router", () => {
     assert.equal(memoryAudit.command, "/supervibe-audit --memory");
   });
 
+  it("uses request text as user-request evidence for diagnostic specialist routes", () => {
+    const network = routeTriggerRequest("diagnose router vpn wifi network stability");
+    const prompt = routeTriggerRequest("review prompt agent router evals and safety boundaries");
+
+    assert.equal(network.intent, "network_ops");
+    assert.equal(network.missingArtifacts.includes("user-request"), false);
+    assert.equal(prompt.intent, "prompt_ai_engineering");
+    assert.equal(prompt.missingArtifacts.includes("user-request"), false);
+  });
+
   it("routes design continuation phrases back into the design pipeline", () => {
     const route = routeTriggerRequest("продолжай все оставшиеся этапы дизайна", {
       artifacts: { designBrief: true, designArtifact: true },

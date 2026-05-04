@@ -25,6 +25,7 @@ export async function logInvocation(entry) {
   if (typeof entry.confidence_score !== 'number') throw new Error('confidence_score required (number)');
 
   const ts = entry.ts || new Date().toISOString();
+  const redactedEntry = redactInvocationEntry(entry);
   const record = {
     schemaVersion: 1,
     ts,
@@ -34,7 +35,7 @@ export async function logInvocation(entry) {
       ts,
       sessionId: entry.session_id || entry.sessionId || '',
     }),
-    ...entry,
+    ...redactedEntry,
   };
   record.structured_output = structuredOutputPathsForRecord(record);
   if (entry.evidence || entry.retrievalPolicy) {
@@ -151,6 +152,30 @@ function redactFlightRecorderEntry(entry) {
     else out[key] = sanitize(value);
   }
   out.redactionStatus = redactionStatus;
+  return out;
+}
+
+function redactInvocationEntry(entry = {}) {
+  let redactionStatus = 'clean';
+  const sanitize = (value) => {
+    if (typeof value !== 'string') return value;
+    const next = value
+      .replace(/\bsk-[A-Za-z0-9_-]{6,}\b/g, '[REDACTED_SECRET]')
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]')
+      .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, '[REDACTED_AWS_KEY]')
+      .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_PRIVATE_KEY]');
+    if (next !== value) redactionStatus = 'redacted';
+    return next;
+  };
+  const visit = (value) => {
+    if (Array.isArray(value)) return value.map(visit);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, visit(nested)]));
+    }
+    return sanitize(value);
+  };
+  const out = visit(entry);
+  out.redaction_status = redactionStatus;
   return out;
 }
 

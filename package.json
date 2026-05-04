@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.69",
+  "version": "2.0.70",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -108,6 +108,7 @@
     "workflow:receipt": "node scripts/workflow-receipt.mjs",
     "workflow:agent-invocation": "node scripts/agent-invocation.mjs",
     "supervibe:stage": "node scripts/supervibe-stage.mjs",
+    "supervibe:agent-maturity": "node scripts/supervibe-agent-maturity.mjs",
     "supervibe:skill-sources": "node scripts/skill-source-report.mjs",
     "validate:workflow": "node scripts/supervibe-workflow-validate.mjs",
     "validate:design-flow-gates": "node scripts/validate-design-flow-gates.mjs",

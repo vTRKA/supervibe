@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -37,6 +37,22 @@ async function writeInvocation(root, {
     source: "agent-invocations-jsonl",
     invocationId,
   };
+}
+
+async function appendInvocation(root, {
+  invocationId,
+  agentId = "repo-researcher",
+  taskSummary = "unbound diagnostic task",
+} = {}) {
+  await mkdir(dirname(join(root, ".supervibe/memory/agent-invocations.jsonl")), { recursive: true });
+  await appendFile(join(root, ".supervibe/memory/agent-invocations.jsonl"), `${JSON.stringify({
+    schemaVersion: 1,
+    invocation_id: invocationId,
+    ts: "2026-05-03T00:10:00.000Z",
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: 8.9,
+  })}\n`, "utf8");
 }
 
 test("agent producer validator rejects durable agent outputs without exact producer receipt", async () => {
@@ -259,7 +275,105 @@ test("agent producer validator distinguishes trusted skill producers from host a
     assert.match(report, /PRODUCER_RECEIPTS: 1/);
     assert.match(report, /SKILL_RECEIPTS: 1/);
     assert.match(report, /HOST_AGENT_RECEIPTS: 0/);
+    assert.match(report, /AGENT_INVOCATIONS: 0/);
     assert.match(report, /COVERAGE_STATUS: skill-producer-receipts-present/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agent producer validator strict mode requires host receipts and telemetry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-strict-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/tokens.css", ":root { --color-primary: #123456; }\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "brandbook skill produced candidate tokens",
+      inputEvidence: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+    });
+
+    const result = validateAgentProducerReceipts(root, {
+      requireHostAgentReceipts: true,
+      minAgentInvocations: 10,
+    });
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "insufficient-host-agent-receipts"));
+    assert.ok(result.issues.some((issue) => issue.code === "insufficient-agent-telemetry"));
+
+    let cliError = null;
+    try {
+      execFileSync(process.execPath, [
+        join(ROOT, "scripts", "validate-agent-producer-receipts.mjs"),
+        "--strict-host-agents",
+        "--min-agent-invocations",
+        "10",
+      ], {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    } catch (error) {
+      cliError = error;
+    }
+    assert.ok(cliError);
+    assert.match(cliError.stdout, /ISSUE: insufficient-agent-telemetry/);
+    assert.match(cliError.stdout, /NEXT_ACTION:/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agent producer validator strict mode counts only trusted receipt-bound host invocations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-bound-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    const hostInvocation = await writeInvocation(root, {
+      invocationId: "bound-agent-1",
+      agentId: "creative-director",
+      taskSummary: "brand direction required",
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      stage: "stage-1-brand-direction",
+      invocationReason: "brand direction required",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+      hostInvocation,
+      secret: "test-secret",
+    });
+    for (let index = 2; index <= 10; index += 1) {
+      await appendInvocation(root, {
+        invocationId: `unbound-agent-${index}`,
+        agentId: "repo-researcher",
+        taskSummary: `unbound diagnostic task ${index}`,
+      });
+    }
+
+    const result = validateAgentProducerReceipts(root, {
+      secret: "test-secret",
+      requireHostAgentReceipts: true,
+      minAgentInvocations: 10,
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.loggedAgentInvocations, 10);
+    assert.equal(result.agentInvocations, 1);
+    assert.ok(result.issues.some((issue) => issue.code === "insufficient-agent-telemetry"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -161,7 +161,10 @@ export function validateHostInvocationProof(rootDir = process.cwd(), receipt = {
 export function validateAgentProducerReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readWorkflowReceipts(rootDir);
   const expectations = expectedProducerReceiptsForDurableOutputs(rootDir);
+  const invocationLog = options.agentInvocationLog || readAgentInvocationLog(rootDir);
   const issues = [];
+  const trustedHostAgentReceiptIds = new Set();
+  const receiptBoundInvocationIds = new Set();
 
   for (const receipt of receipts) {
     if (receipt.__invalidJson) continue;
@@ -177,7 +180,13 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
       });
     }
     if (isHostAgentReceipt(receipt)) {
-      issues.push(...validateHostInvocationProof(rootDir, receipt, options));
+      const hostIssues = validateHostInvocationProof(rootDir, receipt, { ...options, agentInvocationLog: invocationLog });
+      issues.push(...hostIssues);
+      if (receipt.status === "completed" && trust.issues.length === 0 && hostIssues.length === 0) {
+        trustedHostAgentReceiptIds.add(receipt.receiptId || receipt.__file);
+        const proof = normalizeHostInvocationProof(rootDir, receipt.hostInvocation);
+        if (proof?.invocationId) receiptBoundInvocationIds.add(proof.invocationId);
+      }
     }
   }
 
@@ -193,9 +202,30 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
     }
     for (const receipt of matching) {
       if (isHostAgentReceipt(receipt)) {
-        issues.push(...validateHostInvocationProof(rootDir, receipt, options));
+        issues.push(...validateHostInvocationProof(rootDir, receipt, { ...options, agentInvocationLog: invocationLog }));
       }
     }
+  }
+
+  const hostAgentReceipts = receipts.filter(isHostAgentReceipt).length;
+  const trustedHostAgentReceipts = trustedHostAgentReceiptIds.size;
+  const validAgentInvocations = invocationLog.filter((entry) => !entry.__invalidJson).length;
+  const receiptBoundAgentInvocations = receiptBoundInvocationIds.size;
+  const minHostAgentReceipts = numberOrZero(options.minHostAgentReceipts ?? (options.requireHostAgentReceipts ? 1 : 0));
+  const minAgentInvocations = numberOrZero(options.minAgentInvocations ?? 0);
+  if (minHostAgentReceipts > 0 && trustedHostAgentReceipts < minHostAgentReceipts) {
+    issues.push({
+      code: "insufficient-host-agent-receipts",
+      file: ".supervibe/artifacts/_workflow-invocations",
+      message: `trusted host-agent receipt coverage ${trustedHostAgentReceipts}/${minHostAgentReceipts}; run real host agents and log them with scripts/agent-invocation.mjs --issue-receipt`,
+    });
+  }
+  if (minAgentInvocations > 0 && receiptBoundAgentInvocations < minAgentInvocations) {
+    issues.push({
+      code: "insufficient-agent-telemetry",
+      file: AGENT_INVOCATION_LOG_RELATIVE_PATH,
+      message: `receipt-bound agent invocation telemetry ${receiptBoundAgentInvocations}/${minAgentInvocations}; complete real agent stages before claiming maturity`,
+    });
   }
 
   return {
@@ -203,12 +233,20 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
     checked: receipts.length + expectations.length,
     receipts: receipts.length,
     producerReceipts: receipts.filter(isProducerReceipt).length,
-    hostAgentReceipts: receipts.filter(isHostAgentReceipt).length,
+    hostAgentReceipts,
+    trustedHostAgentReceipts,
     skillReceipts: receipts.filter(isSkillProducerReceipt).length,
-    agentReceipts: receipts.filter(isHostAgentReceipt).length,
+    agentReceipts: trustedHostAgentReceipts,
+    agentInvocations: receiptBoundAgentInvocations,
+    loggedAgentInvocations: validAgentInvocations,
     expectations: expectations.length,
     issues: dedupeIssues(issues),
   };
+}
+
+function numberOrZero(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.trunc(number) : 0;
 }
 
 export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd()) {

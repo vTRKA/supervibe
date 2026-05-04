@@ -56,3 +56,23 @@ test("agent retrieval telemetry creates strengthening tasks for weak retrieval b
   assert.ok(report.agents[0].violations.some((item) => item.includes("CodeGraph")));
   assert.equal(report.strengtheningTasks[0].agentId, "refactoring-specialist");
 });
+
+test("agent retrieval telemetry does not report 10/10 when samples are too thin", () => {
+  const invocations = Array.from({ length: 4 }, (_, index) => ({
+    ts: `2026-05-02T00:00:0${index}.000Z`,
+    agent_id: `specialist-${index}`,
+    task_summary: "audit memory rag codegraph usage",
+    confidence_score: 9,
+    subtool_usage: { memory: 0, "code-search": 0, "code-graph": 0 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: [],
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.maturityScore < 10);
+  assert.ok(report.globalViolations.some((item) => item.includes("insufficient invocation sample")));
+});

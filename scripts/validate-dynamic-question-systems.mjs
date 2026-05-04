@@ -8,6 +8,9 @@ import {
   formatDesignWizardQuestion,
 } from "./lib/design-wizard-catalog.mjs";
 import {
+  validateSpecialistQuestionProposal as validateSpecialistQuestionContract,
+} from "./lib/specialist-question-contract.mjs";
+import {
   buildPostDeliveryQuestion,
   buildTransparentStepQuestion,
   formatTransparentStepQuestion,
@@ -52,7 +55,9 @@ export function validateDynamicQuestionSystems() {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-specialist-question-contract", "design wizard must expose SpecialistQuestionContract questionProposals for every queued question"));
   }
   for (const proposal of wizard.questionProposals || []) {
-    validateSpecialistQuestionProposal(proposal, issues);
+    issues.push(...validateSpecialistQuestionContract(proposal, {
+      file: "scripts/lib/design-wizard-catalog.mjs",
+    }));
   }
   validateDesignWizardAdaptivity(issues);
   validateDesignWizardRuntimeCopy(issues);
@@ -251,25 +256,6 @@ function validateQuestionShape(question, label, issues, { minChoices }) {
     if (!choice.id || !choice.label || !(choice.tradeoff || choice.description)) {
       issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "weak-choice", `${label}:${choice.id || "unknown"} missing id, label, or tradeoff`));
     }
-  }
-}
-
-function validateSpecialistQuestionProposal(proposal, issues) {
-  const label = proposal?.proposalId || "unknown-proposal";
-  if (!proposal?.stage || !proposal?.specialist || !proposal?.question) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "invalid-specialist-question-proposal", `${label} missing stage, specialist, or question`));
-  }
-  if (!Array.isArray(proposal?.choices) || proposal.choices.length < 3) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "thin-specialist-question-proposal", `${label} must include at least 3 choices`));
-  }
-  if (!Array.isArray(proposal?.blocks) || proposal.blocks.length === 0 || !proposal.artifactImpact) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-specialist-question-impact", `${label} must name blocked artifacts and artifact impact`));
-  }
-  if (!proposal.skipDefault || proposal.canAnswerFromEvidence !== false) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-specialist-question-default-policy", `${label} must define skip/default behavior and avoid already-answerable questions`));
-  }
-  if (/option a|option b|recommended\/alternative|template/i.test(`${proposal.question} ${(proposal.choices || []).map((choice) => choice.label).join(" ")}`)) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "catalog-copy-specialist-question", `${label} looks like reusable catalog copy instead of a specialist proposal`));
   }
 }
 

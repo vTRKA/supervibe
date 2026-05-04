@@ -67,6 +67,12 @@ as `--refresh-*`, `--apply`, or `--write`, and keep the default path no-write.
 Tests for read-only commands should compare file metadata or content hashes for
 known mutable state files where regressions are likely.
 
+Workflow receipts and agent-invocation logs are writes. A read-only command may
+inspect existing receipts, but it must not issue new receipts unless the user
+has selected an explicit evidence-writing mode such as `--write-receipts`. When
+that mode is used, the final output must list every receipt/log path as
+`MUTATED: <path>` and must not describe the run as no-write.
+
 ## Deletion Requires Proof and Consent
 
 Before deleting any file, function, config block, database object, route, rule,

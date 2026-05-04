@@ -193,6 +193,19 @@ const RULES = Object.freeze([
     ],
     forbidden: [],
   },
+  {
+    file: "commands/supervibe-audit.md",
+    label: "audit command receipt mode",
+    required: [
+      /## Audit Receipt Mode/i,
+      /read-only\/no-write diagnostic/i,
+      /receipt-writing mode/i,
+      /MUTATED: \.supervibe\/memory\/agent-invocations\.jsonl/i,
+      /supervibe-agent-maturity\.mjs/i,
+      /strict host-agent telemetry/i,
+    ],
+    forbidden: [],
+  },
 ]);
 
 export function validateWorkflowContinuation(rootDir = process.cwd()) {

@@ -456,7 +456,15 @@ const RULES = [
 
 export function routeTriggerRequest(input, options = {}) {
   const request = typeof input === "string" ? input : input?.request;
-  const artifacts = typeof input === "object" && input?.artifacts ? input.artifacts : options.artifacts ?? {};
+  const providedArtifacts = typeof input === "object" && input?.artifacts ? input.artifacts : options.artifacts ?? {};
+  const requestText = String(request ?? "").trim();
+  const artifacts = requestText
+    ? {
+        request: requestText,
+        userRequest: requestText,
+        ...providedArtifacts,
+      }
+    : providedArtifacts;
   const text = normalize(request ?? "");
   const locale = detectLocale(text);
   const corpus = options.corpus ?? getTriggerIntentCorpus();

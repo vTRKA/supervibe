@@ -33,6 +33,22 @@ test('logInvocation: appends entry to JSONL', async () => {
   assert.ok((await readFile(join(sandbox, entries[0].structured_output.summary), 'utf8')).includes('# Agent Output: laravel-developer'));
 });
 
+test('logInvocation: redacts durable task, risk, and recommendation text', async () => {
+  const record = await logInvocation({
+    agent_id: 'security-auditor',
+    task_summary: 'Investigate key sk-testsecret123 and owner admin@example.com',
+    confidence_score: 8.5,
+    risks: ['AWS AKIA1234567890ABCDEF appears in prompt'],
+    recommendations: ['Contact admin@example.com'],
+  });
+
+  assert.strictEqual(record.redaction_status, 'redacted');
+  assert.doesNotMatch(record.task_summary, /sk-testsecret123|admin@example\.com/);
+  assert.doesNotMatch(JSON.stringify(record.risks), /AKIA1234567890ABCDEF/);
+  const output = JSON.parse(await readFile(join(sandbox, record.structured_output.json), 'utf8'));
+  assert.doesNotMatch(JSON.stringify(output), /sk-testsecret123|admin@example\.com|AKIA1234567890ABCDEF/);
+});
+
 test('readInvocations: filters by agent_id', async () => {
   await logInvocation({ agent_id: 'a', task_summary: 't1', confidence_score: 8 });
   await logInvocation({ agent_id: 'b', task_summary: 't2', confidence_score: 9 });

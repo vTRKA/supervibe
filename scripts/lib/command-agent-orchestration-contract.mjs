@@ -125,7 +125,13 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "repo-researcher",
     "memory-curator",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["audit-domain-specialists"] }),
+  ], {
+    dynamicAgentSelectors: ["audit-domain-specialists"],
+    immediateAgentIds: ["supervibe-orchestrator"],
+    stageGate: "audit-maturity",
+    stageGateCommand: "node <resolved-supervibe-plugin-root>/scripts/supervibe-agent-maturity.mjs",
+    stageGateReason: "Audit and 10/10 maturity claims must pass strict receipts, host-agent telemetry, Code RAG/CodeGraph readiness, specialist-question quality, and continuation gates before completion claims.",
+  }),
   profile("/supervibe-brainstorm", [
     "supervibe-orchestrator",
     "product-manager",

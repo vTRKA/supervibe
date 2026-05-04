@@ -69,6 +69,22 @@ test('CodeStore.indexFile: force refreshes unchanged file rows', async () => {
   assert.notEqual(row.chunkText, 'stale chunk');
 });
 
+test('CodeStore.indexFile: redacts secret-like content before chunk storage', async () => {
+  const absPath = join(sandbox, 'src', 'secrets.ts');
+  try {
+    await writeFile(absPath, "export const token = 'sk-testsecret123456';\n");
+
+    await store.indexFile(absPath, { force: true });
+    const row = store.db.prepare('SELECT chunk_text AS chunkText FROM code_chunks WHERE path = ? AND chunk_idx = 0').get('src/secrets.ts');
+
+    assert.ok(row.chunkText.includes('[REDACTED_SECRET]'));
+    assert.doesNotMatch(row.chunkText, /sk-testsecret123456/);
+  } finally {
+    await store.removeFile(absPath);
+    await rm(absPath, { force: true });
+  }
+});
+
 test('CodeStore.indexAll: walks directory and indexes supported files', async () => {
   await store.indexAll(sandbox);
   const stats = store.stats();

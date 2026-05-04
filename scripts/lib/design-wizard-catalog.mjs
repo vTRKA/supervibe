@@ -1,3 +1,7 @@
+import {
+  buildSpecialistQuestionProposal,
+} from "./specialist-question-contract.mjs";
+
 const DEFAULT_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
 export const DESIGN_WIZARD_MODES = Object.freeze([
@@ -1760,8 +1764,7 @@ function specialistQuestionMetadata(question = {}) {
 
 function specialistQuestionProposal(question = {}) {
   const metadata = specialistQuestionMetadata(question);
-  return {
-    schemaVersion: 1,
+  return buildSpecialistQuestionProposal({
     proposalId: `${metadata.stage}:${metadata.specialist}:${question.axis || "question"}`,
     stage: metadata.stage,
     specialist: metadata.specialist,
@@ -1776,7 +1779,9 @@ function specialistQuestionProposal(question = {}) {
     artifactImpact: metadata.artifactImpact,
     skipDefault: metadata.skipDefault,
     canAnswerFromEvidence: metadata.canAnswerFromEvidence,
-  };
+    decisionUnlocked: question.decisionUnlocked || question.decision || metadata.artifactImpact,
+    currentContext: `${question.axis || "design"} ${metadata.stage} ${metadata.specialist}`,
+  });
 }
 
 function buildDesignWizardResumeToken(state = {}) {

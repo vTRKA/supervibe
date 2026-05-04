@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.70] - 2026-05-04
+
+### Added
+
+- Added a global `supervibe-agent-maturity` gate that reports 10/10 only when
+  command orchestration, specialist questions, continuation contracts, workflow
+  receipts, receipt-bound host-agent telemetry, CodeGraph readiness, eval
+  coverage, and backlog docs all pass.
+- Added semantic trigger fallback to `supervibe-commands --match` so implicit
+  agent/tool/RAG/CodeGraph complaints route before broad repository search.
+
+### Changed
+
+- Tightened strict agent producer validation to count only trusted
+  receipt-bound host invocation IDs, not unbound JSONL telemetry rows.
+- Made `SpecialistQuestionContract` Unicode-safe for non-English proposals and
+  context-aware in both validation and scoring.
+- Made audit receipt-writing mode explicit: read-only audits stay no-write, and
+  trusted evidence mode must print `MUTATED:` paths.
+
+### Fixed
+
+- Prevented agent retrieval health from reporting a false 10/10 when samples
+  are too thin or evidence ledger entries are missing.
+- Redacted secret-like values before writing durable agent invocation logs,
+  structured agent outputs, and Code RAG chunks.
+
 ## [2.0.69] - 2026-05-04
 
 ### Added

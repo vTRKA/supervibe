@@ -97,6 +97,28 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
 });
 
+test("audit command defers domain specialists behind the global maturity gate", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  const plan = buildCommandAgentPlan("/supervibe-audit", {
+    availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+  });
+  const report = formatCommandAgentPlan(plan);
+
+  assert.deepEqual(plan.immediateAgentIds, ["supervibe-orchestrator"]);
+  assert.equal(plan.stageGate, "audit-maturity");
+  assert.match(plan.stageGateCommand, /supervibe-agent-maturity\.mjs/);
+  assert.ok(plan.deferredAgentIds.includes("repo-researcher"));
+  assert.ok(plan.deferredAgentIds.includes("memory-curator"));
+  assert.ok(plan.deferredAgentIds.includes("quality-gate-reviewer"));
+  assert.match(report, /AGENT_STAGE_GATE: audit-maturity/);
+  assert.match(report, /CODEX_DEFERRED_SPAWN_PAYLOADS:/);
+});
+
 test("every slash command has a mandatory real-agents profile", () => {
   const commandIds = readdirSync(join(ROOT, "commands"))
     .filter((file) => file.endsWith(".md"))
@@ -750,6 +772,23 @@ test("supervibe-commands CLI prints the exact matched command", () => {
   assert.match(out, /COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/build-code-index\.mjs --root \. --resume --source-only/);
   assert.match(out, /FOLLOW_UP_COMMANDS:/);
   assert.match(out, /--resume --graph/);
+});
+
+test("supervibe-commands CLI falls back to semantic trigger routing before broad search", () => {
+  const out = execFileSync(process.execPath, [
+    COMMANDS_SCRIPT,
+    "--match",
+    "agents do not use memory rag or codegraph",
+    "--no-color",
+  ], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  assert.match(out, /MATCH: semantic-trigger:agent_strengthen/);
+  assert.match(out, /COMMAND: \/supervibe-strengthen/);
+  assert.match(out, /DO_NOT_SEARCH_PROJECT: true/);
 });
 
 test("supervibe-commands CLI exposes no-tty help", () => {
