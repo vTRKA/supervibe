@@ -17,3 +17,27 @@ test("server deploy request requires full preflight and safe access references",
   assert.ok(preflight.approval_lease.duration.includes("loops"));
   assert.ok(createPreflightQuestions(preflight).some((question) => question.includes("SSH host alias")));
 });
+
+test("preflight degrades unsupported fresh-context providers before execution", () => {
+  const preflight = buildPreflight({
+    request: "finish epic",
+    tasks: [{
+      id: "t1",
+      goal: "Implement feature",
+      category: "implementation",
+      acceptanceCriteria: ["done"],
+      verificationCommands: ["npm test"],
+      stopConditions: ["policy_stop"],
+    }],
+    options: {
+      executionMode: "fresh-context",
+      tool: "cursor",
+    },
+  });
+
+  assert.equal(preflight.provider_capabilities.freshContextAdapter, false);
+  assert.equal(preflight.provider_capabilities.recommendedMode, "guided");
+  assert.ok(preflight.missing_data.includes("cursor fresh-context adapter"));
+  assert.ok(preflight.blocked_actions.includes("fresh-context execution"));
+  assert.equal(preflight.confidence_score, 6);
+});

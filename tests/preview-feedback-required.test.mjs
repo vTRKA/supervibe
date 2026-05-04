@@ -23,6 +23,15 @@ test("feedback overlay injects a visible mandatory button and artifact slug", as
   assert.doesNotMatch(html, new RegExp(["supervibeLegacy", "__" + retiredBrand, retiredBrand + "-fb"].join("|")));
 });
 
+test("feedback overlay cancel path hides an open comment panel", async () => {
+  const html = await injectOverlay("<html><body><main>Preview</main></body></html>", {
+    prototypeSlug: "checkout",
+  });
+
+  assert.match(html, /function disarm\(\) \{[\s\S]*panel\.style\.display = 'none';[\s\S]*button\.textContent = 'Feedback'/);
+  assert.match(html, /addEventListener\('keydown'[\s\S]*e\.key !== 'Escape'[\s\S]*disarm\(\)/);
+});
+
 test("design preview roots cannot disable feedback overlay", () => {
   const prototypeRoot = join("workspace", ".supervibe", "artifacts", "prototypes", "checkout");
   const presentationRoot = join("workspace", ".supervibe", "artifacts", "presentations", "investor");

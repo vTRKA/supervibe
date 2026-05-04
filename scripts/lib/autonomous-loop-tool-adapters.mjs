@@ -1,16 +1,37 @@
 import { spawn } from "node:child_process";
 import { scanProviderCommand } from "./autonomous-loop-provider-policy-guard.mjs";
+import {
+  getHostLoopCapabilityMatrix,
+  resolveHostLoopCapabilities,
+} from "./supervibe-host-adapters.mjs";
 
 export const EXECUTION_MODES = Object.freeze(["dry-run", "guided", "fresh-context", "manual"]);
 export const TOOL_ADAPTER_IDS = Object.freeze(["codex", "claude", "gemini", "opencode", "generic-shell-stub"]);
 
 const ADAPTER_DEFINITIONS = {
-  codex: { label: "Codex CLI", command: "codex" },
-  claude: { label: "Claude CLI", command: "claude" },
-  gemini: { label: "Gemini CLI", command: "gemini" },
-  opencode: { label: "OpenCode CLI", command: "opencode" },
-  "generic-shell-stub": { label: "Generic shell stub", command: "stub" },
+  codex: { label: "Codex CLI", command: "codex", hostId: "codex" },
+  claude: { label: "Claude CLI", command: "claude", hostId: "claude" },
+  gemini: { label: "Gemini CLI", command: "gemini", hostId: "gemini" },
+  opencode: { label: "OpenCode CLI", command: "opencode", hostId: "opencode" },
+  "generic-shell-stub": { label: "Generic shell stub", command: "stub", hostId: "generic-shell-stub" },
 };
+
+const STUB_LOOP_CAPABILITIES = Object.freeze({
+  freshContextAdapter: true,
+  supportedExecutionModes: ["dry-run", "guided", "fresh-context", "manual"],
+  nativeContinuation: "test-stub",
+  nativeGoalWorkflows: false,
+  stopHooks: false,
+  teammateIdleHooks: false,
+  worktreeIsolation: true,
+  backgroundProcesses: false,
+  recommendedMode: "dry-run",
+  fallbackMode: "manual",
+  stabilityScore: 10,
+  qualityGateStrategy: "supervibe-quality-gate",
+  degradedWhen: [],
+  notes: ["local stub adapter is deterministic and never spawns provider CLIs"],
+});
 
 export function normalizeExecutionMode(mode = "dry-run") {
   const normalized = String(mode || "dry-run").trim().toLowerCase();
@@ -25,6 +46,7 @@ export function detectToolAdapters({
   const enabled = new Set(enabledAdapters);
   return TOOL_ADAPTER_IDS.map((id) => {
     const definition = ADAPTER_DEFINITIONS[id];
+    const capabilities = resolveToolLoopCapabilities(id);
     if (id === "generic-shell-stub") {
       return {
         id,
@@ -33,7 +55,11 @@ export function detectToolAdapters({
         available: true,
         configured: true,
         safeDefault: true,
-        executionModes: ["dry-run", "guided", "fresh-context", "manual"],
+        executionModes: [...capabilities.supportedExecutionModes],
+        capabilities,
+        continuationMode: capabilities.nativeContinuation,
+        recommendedMode: capabilities.recommendedMode,
+        fallbackMode: capabilities.fallbackMode,
         reason: "local stub adapter is always available for tests and prompt generation",
       };
     }
@@ -50,7 +76,11 @@ export function detectToolAdapters({
       available,
       configured,
       safeDefault: false,
-      executionModes: ["guided", "fresh-context", "manual"],
+      executionModes: capabilities.supportedExecutionModes.filter((mode) => mode !== "dry-run"),
+      capabilities,
+      continuationMode: capabilities.nativeContinuation,
+      recommendedMode: capabilities.recommendedMode,
+      fallbackMode: capabilities.fallbackMode,
       reason: available
         ? "configured by environment or injected command inventory"
         : configured
@@ -69,6 +99,61 @@ export function summarizeToolAdapterAvailability(adapters = []) {
     external_available: available.filter((id) => id !== "generic-shell-stub"),
     stub_available: available.includes("generic-shell-stub"),
   };
+}
+
+export function getLoopProviderCapabilityMatrix({ includeStub = false } = {}) {
+  const supportedToolIds = new Set(TOOL_ADAPTER_IDS);
+  const rows = getHostLoopCapabilityMatrix().map((entry) => ({
+    ...entry,
+    toolAdapter: supportedToolIds.has(entry.id) ? entry.id : null,
+    loopAdapterSupported: supportedToolIds.has(entry.id) && entry.freshContextAdapter,
+    degradedModeRequired: !entry.freshContextAdapter,
+  }));
+  if (includeStub) {
+    rows.push({
+      id: "generic-shell-stub",
+      ...copyCapabilities(STUB_LOOP_CAPABILITIES),
+      toolAdapter: "generic-shell-stub",
+      loopAdapterSupported: true,
+      degradedModeRequired: false,
+    });
+  }
+  return rows;
+}
+
+export function summarizeLoopProviderCapabilities(matrix = getLoopProviderCapabilityMatrix()) {
+  const freshContext = matrix.filter((entry) => entry.freshContextAdapter).map((entry) => entry.id);
+  const degraded = matrix.filter((entry) => !entry.freshContextAdapter).map((entry) => entry.id);
+  const nativeGoalWorkflows = matrix.filter((entry) => entry.nativeGoalWorkflows).map((entry) => entry.id);
+  const stopHooks = matrix.filter((entry) => entry.stopHooks || entry.teammateIdleHooks).map((entry) => entry.id);
+  return {
+    fresh_context: freshContext,
+    guided_or_manual_only: degraded,
+    native_goal_workflows: nativeGoalWorkflows,
+    native_stop_hooks: stopHooks,
+    portable_state_baseline: matrix.every((entry) => Boolean(entry.qualityGateStrategy)),
+    lowest_stability_score: matrix.length ? Math.min(...matrix.map((entry) => entry.stabilityScore)) : 0,
+  };
+}
+
+export function resolveToolLoopCapabilities(id = "generic-shell-stub") {
+  if (id === "generic-shell-stub") return copyCapabilities(STUB_LOOP_CAPABILITIES);
+  const definition = ADAPTER_DEFINITIONS[id];
+  return resolveHostLoopCapabilities(definition?.hostId || id);
+}
+
+export function formatLoopProviderCapabilityMatrix(matrix = getLoopProviderCapabilityMatrix()) {
+  return [
+    "SUPERVIBE_LOOP_PROVIDER_CAPABILITIES",
+    ...matrix.map((entry) => [
+      entry.id,
+      `fresh_context=${entry.freshContextAdapter}`,
+      `continuation=${entry.nativeContinuation}`,
+      `recommended=${entry.recommendedMode}`,
+      `fallback=${entry.fallbackMode}`,
+      `stability=${entry.stabilityScore}`,
+    ].join(" ")),
+  ].join("\n");
 }
 
 export function createToolAdapter(id, config = {}) {
@@ -293,4 +378,13 @@ function parseEnabledAdapters(value = "") {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function copyCapabilities(capabilities) {
+  return {
+    ...capabilities,
+    supportedExecutionModes: [...capabilities.supportedExecutionModes],
+    degradedWhen: [...capabilities.degradedWhen],
+    notes: [...capabilities.notes],
+  };
 }

@@ -83,6 +83,7 @@ Advanced diagnostics:
 /supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
 /supervibe-loop --import-sync-bundle .supervibe/memory/bundles/<run-id>-sync --dry-run
 /supervibe-loop --eval --case plan-review-loop --out .supervibe/audits/autonomous-loop-evals/latest-report.json
+/supervibe-loop --provider-matrix
 ```
 
 Plan atomization:
@@ -217,7 +218,17 @@ Execution modes:
 /supervibe-loop --manual --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --commit-per-task --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --provider-matrix
 ```
+
+The provider capability matrix is the single source of truth for loop
+execution across hosts. Claude, Codex, Gemini, and OpenCode currently expose
+fresh-context adapters. Cursor and Copilot are package/docs-supported but
+degrade to guided or manual execution until portable fresh-context adapters
+exist. Codex can use native goal workflows when available, Claude can use
+Stop/SubagentStop/TeammateIdle hook continuations, and every host keeps the
+Supervibe state files, receipt gates, quality gates, and stop/resume/status
+commands as the portable baseline.
 
 ## Contract
 

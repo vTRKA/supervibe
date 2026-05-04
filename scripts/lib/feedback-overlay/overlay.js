@@ -40,6 +40,8 @@
   }
   function disarm() {
     armed = false;
+    panel.style.display = 'none';
+    panel.innerHTML = '';
     button.textContent = 'Feedback';
     document.documentElement.style.cursor = '';
     if (highlight) { highlight.remove(); highlight = null; }
@@ -49,6 +51,12 @@
     e.stopPropagation();
     if (armed) disarm(); else arm();
   });
+
+  document.addEventListener('keydown', e => {
+    if (!armed || e.key !== 'Escape') return;
+    e.preventDefault();
+    disarm();
+  }, true);
 
   function selectorOf(el) {
     if (!el || !el.tagName) return 'unknown';

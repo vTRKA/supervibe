@@ -155,6 +155,7 @@ test("loop command documents graph inspection surface", async () => {
   assert.match(content, /export --file/);
   assert.match(content, /import --file/);
   assert.match(content, /--fresh-context --tool codex/);
+  assert.match(content, /provider capability matrix/i);
   assert.match(content, /--commit-per-task/);
   assert.match(content, /--assigned-task T1/);
   assert.match(content, /--assigned-write-set src\/auth\.ts/);
@@ -213,6 +214,7 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
   assert.match(stdout, /--from-prd \.supervibe\/artifacts\/specs\/example.md/);
   assert.match(stdout, /graph --file/);
   assert.match(stdout, /--fresh-context --tool codex\|claude\|gemini\|opencode/);
+  assert.match(stdout, /--provider-matrix/);
   assert.match(stdout, /--happy-path --plan \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(stdout, /--assigned-task T1 --assigned-write-set src\/file\.ts/);
   assert.match(stdout, /--plan-waves \.supervibe\/artifacts\/plans\/example\.md/);
@@ -228,6 +230,7 @@ test("loop status exits cleanly when no loop state exists", async () => {
     ], { cwd: rootDir });
     assert.match(stdout, /SUPERVIBE_LOOP_STATUS/);
     assert.match(stdout, /STATUS: no loop state found/);
+    assert.match(stdout, /PROVIDER_CAPABILITIES:/);
     assert.match(stdout, /NEXT_ACTION:/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });

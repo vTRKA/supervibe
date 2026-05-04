@@ -26,7 +26,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.0.72");
+  assert.equal(result.packageVersion, "2.0.73");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 
@@ -40,6 +40,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   assert.ok(codex.checks.some((check) => check.id === "codex-legacy-plugin-link" && check.status === "info"));
   assert.ok(codex.checks.some((check) => check.id === "codex-native-skills" && check.status === "warn"));
   assert.ok(codex.checks.some((check) => check.id === "codex-acp-slash-palette" && check.status === "info"));
+  assert.ok(codex.checks.some((check) => check.id === "loop-continuation-mode" && /codex-goal/.test(check.message)));
 
   const opencode = result.hosts.find((host) => host.host === "opencode");
   assert.ok(opencode.checks.some((check) => check.id === "opencode-skills-hook" && check.status === "pass"));
@@ -47,6 +48,7 @@ test("host doctor validates current multi-host package surfaces without local ho
 
   const copilot = result.hosts.find((host) => host.host === "copilot");
   assert.ok(copilot.checks.some((check) => check.id === "fresh-context-adapter" && check.status === "info"));
+  assert.ok(copilot.checks.some((check) => check.id === "loop-continuation-mode" && /manual-guided/.test(check.message)));
 });
 
 test("strict host doctor fails when Codex CLI and registration are absent", async () => {

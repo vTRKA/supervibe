@@ -59,10 +59,18 @@ export function scoreAutonomyReadiness({ tasks = [], graph = null, contracts = n
     check("graph-validity", graphValidation.valid, "Fix graph duplicates, unknown dependencies, cycles, or impossible ready front."),
     check("contract-coverage", taskGraph.tasks.every((task) => byTask.has(task.id)), "Generate one execution contract per task."),
     check("verification-coverage", contractList.every((contract) => contract.verificationRefs.length > 0 || contract.moduleType === "DOCUMENTATION"), "Add verification commands or accepted test-gap rationale."),
-    check("policy-readiness", gates.every((gate) => !["open", "waiting", "blocked"].includes(gate.status)), "Resolve open policy/approval gates before autonomous execution."),
+    check(
+      "policy-readiness",
+      gates.every((gate) => !["open", "waiting", "blocked"].includes(gate.status)) && (preflight.blocked_actions || []).length === 0,
+      "Resolve open policy/approval gates and preflight blocked actions before autonomous execution."
+    ),
     check("evidence-expectations", contractList.every((contract) => contract.outputs.length > 0), "Define expected outputs/evidence for every contract."),
     check("rollback-expectations", Boolean(preflight.rollback_expectation), "Define rollback or cleanup expectation in preflight."),
-    check("tool-access", Array.isArray(preflight.allowed_write_scope) && preflight.allowed_write_scope.length > 0, "Define allowed write/tool scope."),
+    check(
+      "tool-access",
+      Array.isArray(preflight.allowed_write_scope) && preflight.allowed_write_scope.length > 0 && !(preflight.blocked_actions || []).includes("fresh-context execution"),
+      "Define allowed write/tool scope and select a provider mode supported by the host capability matrix."
+    ),
     check("reviewer-independence", reviewerAvailable === true, "Provide independent reviewer availability."),
     check("progress-resume", taskGraph.tasks.every((task) => task.stopConditions?.length > 0), "Define stop conditions and resume path for every task."),
     check("side-effect-boundaries", contractList.every((contract) => contract.forbiddenBehavior.includes("unapproved production mutation")), "Declare forbidden side effects and production mutation boundaries."),

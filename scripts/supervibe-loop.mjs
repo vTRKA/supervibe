@@ -46,6 +46,10 @@ import {
   upsertWorktreeSessionFile,
   validateExistingWorktree,
 } from "./lib/supervibe-worktree-session-manager.mjs";
+import {
+  formatLoopProviderCapabilityMatrix,
+  getLoopProviderCapabilityMatrix,
+} from "./lib/autonomous-loop-tool-adapters.mjs";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -100,6 +104,7 @@ function parseArgs(argv) {
     "happy-path",
     "checkpoint-status",
     "repair-checkpoints",
+    "provider-matrix",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -280,6 +285,11 @@ async function main() {
     console.log("SUPERVIBE_WORKER_REVIEWER_PRESETS");
     console.log(`PRESETS: ${PRESET_NAMES.join(",")}`);
     console.log(formatPresetSummary(selectWorkerPreset({ category: "implementation" })));
+    return;
+  }
+
+  if (args["provider-matrix"]) {
+    console.log(formatLoopProviderCapabilityMatrix(getLoopProviderCapabilityMatrix()));
     return;
   }
 
@@ -513,6 +523,7 @@ async function main() {
       console.log("SUPERVIBE_LOOP_STATUS");
       console.log("STATUS: no loop state found");
       console.log(`STATE: ${stateFile}`);
+      console.log(`PROVIDER_CAPABILITIES: ${getLoopProviderCapabilityMatrix().map((entry) => `${entry.id}:${entry.nativeContinuation}`).join(",")}`);
       console.log("NEXT_ACTION: start a loop with npm run supervibe:loop -- --request \"validate integrations\" --dry-run");
     }
     return;
@@ -656,8 +667,18 @@ async function main() {
     });
     const contracts = generateContracts(tasks);
     const readiness = scoreAutonomyReadiness({ tasks, contracts, preflight });
+    const nextReadinessAction = preflight.blocked_actions.includes("fresh-context execution")
+      ? `use --${preflight.provider_capabilities.recommendedMode} or --${preflight.provider_capabilities.fallbackMode} for ${args.tool || preflight.execution_policy.provider.selected_tool}`
+      : readiness.pass ? "ready_for_safe_execution" : readiness.remediation[0];
     if (args.json) {
-      console.log(JSON.stringify({ readiness, contracts, toolAdapters: preflight.tool_adapters }, null, 2));
+      console.log(JSON.stringify({
+        readiness,
+        contracts,
+        toolAdapters: preflight.tool_adapters,
+        providerCapabilities: preflight.provider_capabilities,
+        providerCapabilitySummary: preflight.provider_capability_summary,
+        nextAction: nextReadinessAction,
+      }, null, 2));
     } else {
       console.log("SUPERVIBE_LOOP_READINESS");
       console.log(`SCORE: ${readiness.score}/10`);
@@ -665,7 +686,10 @@ async function main() {
       console.log(`MISSING: ${readiness.missing.join(", ") || "none"}`);
       console.log(`EXECUTION_MODE: ${preflight.execution_policy.mode}`);
       console.log(`ADAPTERS: ${preflight.tool_adapter_summary.available.join(",") || "none"}`);
-      console.log(`NEXT_ACTION: ${readiness.pass ? "ready_for_safe_execution" : readiness.remediation[0]}`);
+      console.log(`CONTINUATION_MODE: ${preflight.provider_capabilities.nativeContinuation}`);
+      console.log(`PROVIDER_RECOMMENDED_MODE: ${preflight.provider_capabilities.recommendedMode}`);
+      console.log(`PROVIDER_FALLBACK_MODE: ${preflight.provider_capabilities.fallbackMode}`);
+      console.log(`NEXT_ACTION: ${nextReadinessAction}`);
     }
     return;
   }
@@ -897,6 +921,7 @@ Primary:
   supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
   supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --setup-worker-presets
+  supervibe-loop --provider-matrix
 
 Advanced:
   supervibe-loop --readiness --plan .supervibe/artifacts/plans/example.md
@@ -918,6 +943,7 @@ Execution modes:
   --guided
   --manual
   --fresh-context --tool codex|claude|gemini|opencode
+  --provider-matrix
   --commit-per-task
   --worktree --epic <epic-id> --max-duration 3h
   --worktree --epic <epic-id> --assigned-task T1 --assigned-write-set src/file.ts

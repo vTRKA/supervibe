@@ -90,6 +90,28 @@ test("autonomy readiness returns concrete remediation below 9", () => {
   assert.ok(readiness.remediation.some((item) => item.includes("verification")));
 });
 
+test("autonomy readiness blocks unsupported fresh-context provider modes", () => {
+  const tasks = [{
+    id: "t1",
+    goal: "Build core",
+    category: "implementation",
+    acceptanceCriteria: ["Core works"],
+    verificationCommands: ["npm test"],
+    stopConditions: ["policy_stop"],
+    policyRiskLevel: "low",
+  }];
+  const preflight = buildPreflight({
+    request: "build core",
+    tasks,
+    options: { executionMode: "fresh-context", tool: "cursor" },
+  });
+  const readiness = scoreAutonomyReadiness({ tasks, contracts: generateContracts(tasks), preflight });
+
+  assert.equal(readiness.pass, false);
+  assert.ok(readiness.missing.includes("tool-access"));
+  assert.ok(readiness.remediation.some((item) => item.includes("provider mode")));
+});
+
 test("supervibe-loop readiness command supports JSON output", () => {
   const output = execFileSync("node", [
     "scripts/supervibe-loop.mjs",
@@ -102,4 +124,5 @@ test("supervibe-loop readiness command supports JSON output", () => {
 
   assert.equal(typeof parsed.readiness.score, "number");
   assert.ok(Array.isArray(parsed.contracts));
+  assert.equal(parsed.providerCapabilities.nativeContinuation, "test-stub");
 });

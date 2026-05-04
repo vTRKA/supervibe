@@ -30,6 +30,9 @@ export function createState(fields = {}) {
     gates: fields.gates || [],
     gate_summary: fields.gateSummary || null,
     tool_adapters: fields.toolAdapters || [],
+    provider_capabilities: fields.providerCapabilities || null,
+    provider_capability_summary: fields.providerCapabilitySummary || null,
+    provider_capability_matrix: fields.providerCapabilityMatrix || [],
     execution_mode: fields.executionMode || "dry-run",
     commit_per_task: Boolean(fields.commitPerTask),
     attempts: fields.attempts || [],
@@ -64,6 +67,7 @@ export function formatStatus(state) {
   const worktreeSummary = summarizeWorktreeSessions({ sessions: state.worktree_sessions || [] });
   const permissionSummary = state.permission_audit_summary || summarizePermissionAudit(state.permission_audit || null);
   const observability = state.observability_summary || summarizeRunObservability({ state });
+  const providerCapabilities = state.provider_capabilities || state.preflight?.provider_capabilities || null;
   const lines = [
     "SUPERVIBE_LOOP_STATUS",
     `STATUS: ${state.status}`,
@@ -77,6 +81,9 @@ export function formatStatus(state) {
     `STALE_CLAIMS: ${staleClaims}`,
     `OPEN_GATES: ${openGates}`,
     `EXECUTION_MODE: ${state.execution_mode || "dry-run"}`,
+    `CONTINUATION_MODE: ${providerCapabilities?.nativeContinuation || "unknown"}`,
+    `PROVIDER_RECOMMENDED_MODE: ${providerCapabilities?.recommendedMode || "unknown"}`,
+    `PROVIDER_STABILITY: ${providerCapabilities?.stabilityScore ?? "unknown"}`,
     `POLICY_PROFILE: ${state.policy_profile?.name || "none"}`,
     `POLICY_ROLE: ${state.policy_profile?.role || "none"}`,
     `ADAPTERS: ${adapterSummary.available.join(",") || "none"}`,

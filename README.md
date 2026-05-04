@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.72 initialized for this project
+[supervibe] welcome  plugin v2.0.73 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -251,6 +251,14 @@ secrets, billing, deploys, production mutations, and credential changes are
 never bypassed. Missing credentials, missing provider permissions,
 CI/external access failures, worktree conflicts, policy stops, stale claims, and
 sync drift become blocked states with a next safe action.
+
+Provider behavior is resolved from one shared capability matrix. Use
+`/supervibe-loop --provider-matrix` or `/supervibe-loop --readiness --json` to
+see whether the selected host has a fresh-context adapter, native continuation
+support, Codex goal workflow support, Claude hook support, and the safe fallback
+mode. Requests for fresh-context execution on package-only hosts such as Cursor
+or Copilot block readiness and degrade to guided/manual mode instead of
+silently running through another provider.
 
 For parallel work on one epic, scope each worktree session with
 `--assigned-task` and `--assigned-write-set`. The registry is lock-protected and

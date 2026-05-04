@@ -3,9 +3,12 @@ import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { describeHostAutoUpdateStrategies } from "./supervibe-auto-update.mjs";
+import {
+  formatHostLoopCapabilitySummary,
+  resolveHostLoopCapabilities,
+} from "./supervibe-host-adapters.mjs";
 
 export const HOST_IDS = Object.freeze(["claude", "codex", "cursor", "gemini", "opencode", "copilot"]);
-const ADAPTER_HOSTS = new Set(["claude", "codex", "gemini", "opencode"]);
 
 const HOST_DEFINITIONS = {
   claude: {
@@ -151,7 +154,7 @@ async function diagnoseHost(hostId, context) {
   await checkLocalRegistration(hostId, definition, context, checks);
   await checkHostDocs(hostId, context, checks);
   checkAutoUpdateStrategy(hostId, checks);
-  checkFreshContextAdapter(hostId, checks);
+  checkLoopCapabilities(hostId, checks);
 
   const failCount = checks.filter((check) => check.status === "fail").length;
   const warnCount = checks.filter((check) => check.status === "warn").length;
@@ -430,12 +433,24 @@ async function checkHostDocs(hostId, context, checks) {
   }
 }
 
-function checkFreshContextAdapter(hostId, checks) {
-  if (ADAPTER_HOSTS.has(hostId)) {
+function checkLoopCapabilities(hostId, checks) {
+  const capabilities = resolveHostLoopCapabilities(hostId);
+  if (capabilities.freshContextAdapter) {
     checks.push(pass("fresh-context-adapter", `${hostId} is supported by /supervibe-loop --fresh-context --tool ${hostId}`));
   } else {
-    checks.push(info("fresh-context-adapter", `${hostId} has package/install support but no fresh-context execution adapter yet`));
+    checks.push(info(
+      "fresh-context-adapter",
+      `${hostId} has package/install support but no fresh-context execution adapter yet; use ${capabilities.recommendedMode}/${capabilities.fallbackMode}`
+    ));
   }
+  checks.push(info(
+    "loop-continuation-mode",
+    `${hostId} continuation=${capabilities.nativeContinuation}; quality gate=${capabilities.qualityGateStrategy}; stability=${capabilities.stabilityScore}/10`
+  ));
+  checks.push(info(
+    "loop-provider-matrix",
+    `shared matrix: ${formatHostLoopCapabilitySummary(["claude", "codex", "gemini", "opencode", "cursor", "copilot"])}`
+  ));
 }
 
 function checkAutoUpdateStrategy(hostId, checks) {

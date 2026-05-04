@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.73] - 2026-05-04
+
+### Added
+
+- Added a shared `/supervibe-loop` provider capability matrix for Claude,
+  Codex, Cursor, Gemini, OpenCode, and Copilot covering fresh-context adapters,
+  native continuation modes, Codex goal workflow support, Claude hook support,
+  quality-gate strategy, safe fallback mode, and provider stability.
+- Added `--provider-matrix` plus readiness/status/doctor output for provider
+  continuation mode and fallback behavior.
+
+### Changed
+
+- Blocked unsupported fresh-context provider requests during preflight and
+  readiness instead of silently falling back to another adapter.
+- Extended loop state and final reports with provider capability evidence so
+  long-running runs remain resumable and auditable across host providers.
+
 ## [2.0.72] - 2026-05-04
 
 ### Added

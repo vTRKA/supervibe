@@ -56,6 +56,28 @@ adapters require visible spawn approval and a permission prompt bridge for
 non-interactive execution. Raw secret values are never written to logs, reports,
 memory, exported bundles, or the side-effect ledger.
 
+## Provider Capability Matrix
+
+Every loop preflight must include the shared provider capability matrix and the
+selected provider's continuation mode. The matrix covers Claude, Codex, Cursor,
+Gemini, OpenCode, and Copilot so command behavior does not depend on stale
+per-command assumptions.
+
+- Claude: fresh-context adapter plus Stop/SubagentStop/TeammateIdle hook
+  continuation where the host exposes hooks.
+- Codex: fresh-context adapter plus Supervibe file state as the portable
+  baseline and native goal workflows when the installed Codex build supports
+  them.
+- Gemini and OpenCode: fresh-context adapters with Supervibe file-state
+  continuation.
+- Cursor and Copilot: guided/manual execution until a portable fresh-context
+  adapter exists.
+
+If a user requests `--fresh-context` for a host without a fresh-context adapter,
+readiness must block on `tool-access`, the preflight confidence must cap below
+9/10, and the next safe action must be guided or manual execution for that
+provider.
+
 ## Evidence Requirements
 
 | Area | Required evidence |

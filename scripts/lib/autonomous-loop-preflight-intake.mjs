@@ -1,7 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { nowIso, versionEnvelope } from "./autonomous-loop-constants.mjs";
-import { EXECUTION_MODES, detectToolAdapters, normalizeExecutionMode, summarizeToolAdapterAvailability } from "./autonomous-loop-tool-adapters.mjs";
+import {
+  EXECUTION_MODES,
+  detectToolAdapters,
+  getLoopProviderCapabilityMatrix,
+  normalizeExecutionMode,
+  resolveToolLoopCapabilities,
+  summarizeLoopProviderCapabilities,
+  summarizeToolAdapterAvailability,
+} from "./autonomous-loop-tool-adapters.mjs";
 import { createPermissionAudit } from "./autonomous-loop-permission-audit.mjs";
 
 export function classifyPreflight({ request = "", tasks = [] } = {}) {
@@ -23,6 +31,9 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   });
   const adapterId = options.adapterId || options.tool || "generic-shell-stub";
   const adapter = toolAdapters.find((candidate) => candidate.id === adapterId) || toolAdapters.find((candidate) => candidate.id === "generic-shell-stub");
+  const providerCapabilities = resolveProviderCapabilities(adapterId, adapter?.id || "generic-shell-stub");
+  const providerCapabilityMatrix = getLoopProviderCapabilityMatrix();
+  const providerCapabilitySummary = summarizeLoopProviderCapabilities(providerCapabilityMatrix);
   const permissionAudit = createPermissionAudit({
     executionMode,
     adapterId,
@@ -68,9 +79,14 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   if (/(server|deploy|remote|production)/i.test(request) && !options.serverAccessReference) {
     missingData.push("server access reference");
   }
+  if (executionMode === "fresh-context" && !providerCapabilities.freshContextAdapter) {
+    missingData.push(`${adapterId} fresh-context adapter`);
+  }
 
+  const remoteApprovalMissing = missingData.some((item) => ["production approval policy", "server access reference"].includes(item));
   const blockedActions = [
-    ...(missingData.length > 0 ? ["remote mutation", "production deploy"] : []),
+    ...(remoteApprovalMissing ? ["remote mutation", "production deploy"] : []),
+    ...(missingData.some((item) => item.includes("fresh-context adapter")) ? ["fresh-context execution"] : []),
     ...permissionAudit.blockers.map((blocker) => blocker.status),
   ];
 
@@ -110,6 +126,19 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
       bypass_disabled: permissionAudit.bypassDisabled,
       denied_tool_classes: permissionAudit.deniedToolClasses,
       prompt_required_tool_classes: permissionAudit.promptRequiredToolClasses,
+      provider: {
+        selected_adapter: adapter?.id || "generic-shell-stub",
+        selected_tool: adapterId,
+        continuation_mode: providerCapabilities.nativeContinuation,
+        recommended_mode: providerCapabilities.recommendedMode,
+        fallback_mode: providerCapabilities.fallbackMode,
+        native_goal_workflows: providerCapabilities.nativeGoalWorkflows,
+        stop_hooks: providerCapabilities.stopHooks,
+        teammate_idle_hooks: providerCapabilities.teammateIdleHooks,
+        fresh_context_adapter: providerCapabilities.freshContextAdapter,
+        quality_gate_strategy: providerCapabilities.qualityGateStrategy,
+        stability_score: providerCapabilities.stabilityScore,
+      },
     },
     policy_profile: options.policyProfile ? {
       name: options.policyProfile.name,
@@ -122,6 +151,9 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
     } : null,
     tool_adapters: toolAdapters,
     tool_adapter_summary: summarizeToolAdapterAvailability(toolAdapters),
+    provider_capabilities: providerCapabilities,
+    provider_capability_summary: providerCapabilitySummary,
+    provider_capability_matrix: providerCapabilityMatrix,
     provider_permission_audit: permissionAudit,
     provider_permission_audit_summary: {
       pass: permissionAudit.pass,
@@ -191,4 +223,12 @@ function normalizeArgs(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
   return String(value).split(/\s+/).filter(Boolean);
+}
+
+function resolveProviderCapabilities(requestedId, fallbackId) {
+  try {
+    return resolveToolLoopCapabilities(requestedId);
+  } catch {
+    return resolveToolLoopCapabilities(fallbackId);
+  }
 }

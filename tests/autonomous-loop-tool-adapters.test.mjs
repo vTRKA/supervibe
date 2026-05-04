@@ -9,8 +9,12 @@ import {
   detectToolAdapters,
   extractChangedFiles,
   extractCompletionSignal,
+  formatLoopProviderCapabilityMatrix,
+  getLoopProviderCapabilityMatrix,
   normalizeExecutionMode,
   renderFreshContextPrompt,
+  resolveToolLoopCapabilities,
+  summarizeLoopProviderCapabilities,
   summarizeToolAdapterAvailability,
 } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
 
@@ -68,4 +72,21 @@ test("unsafe adapter flags are rejected", () => {
   assert.equal(assertSafeAdapterCommand("codex", ["--model", "x"]), true);
   assert.equal(normalizeExecutionMode("fresh-context"), "fresh-context");
   assert.equal(normalizeExecutionMode("unknown"), "dry-run");
+});
+
+test("provider capability matrix captures native continuation and degraded modes", () => {
+  const matrix = getLoopProviderCapabilityMatrix();
+  const summary = summarizeLoopProviderCapabilities(matrix);
+  const codex = matrix.find((entry) => entry.id === "codex");
+  const claude = matrix.find((entry) => entry.id === "claude");
+  const cursor = matrix.find((entry) => entry.id === "cursor");
+
+  assert.equal(codex.nativeGoalWorkflows, true);
+  assert.match(codex.nativeContinuation, /codex-goal/);
+  assert.equal(claude.stopHooks, true);
+  assert.equal(cursor.freshContextAdapter, false);
+  assert.ok(summary.fresh_context.includes("codex"));
+  assert.ok(summary.guided_or_manual_only.includes("cursor"));
+  assert.match(formatLoopProviderCapabilityMatrix(matrix), /SUPERVIBE_LOOP_PROVIDER_CAPABILITIES/);
+  assert.equal(resolveToolLoopCapabilities("cursor").recommendedMode, "guided");
 });

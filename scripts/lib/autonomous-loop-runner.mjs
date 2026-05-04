@@ -521,6 +521,9 @@ export async function runAutonomousLoop(options = {}) {
     claims,
     progressSummary: summarizeProgress(progressEntries),
     toolAdapters: preflight.tool_adapters,
+    providerCapabilities: preflight.provider_capabilities,
+    providerCapabilitySummary: preflight.provider_capability_summary,
+    providerCapabilityMatrix: preflight.provider_capability_matrix,
     executionMode,
     commitPerTask,
     attempts,
@@ -561,6 +564,9 @@ export async function runAutonomousLoop(options = {}) {
   state.commit_per_task = commitPerTask;
   state.tool_adapters = preflight.tool_adapters;
   state.tool_adapter_summary = preflight.tool_adapter_summary;
+  state.provider_capabilities = preflight.provider_capabilities;
+  state.provider_capability_summary = preflight.provider_capability_summary;
+  state.provider_capability_matrix = preflight.provider_capability_matrix;
   state.permission_audit = permissionAudit;
   state.permission_audit_summary = preflight.provider_permission_audit_summary;
   state.attempts = attempts;
@@ -660,6 +666,9 @@ Environment: ${preflight.environment_target}
 - Provenance score task ids: ${provenance.scoreTaskIds.length}
 
 ## Provider Compliance
+- Provider continuation: ${state.provider_capabilities?.nativeContinuation || "unknown"}
+- Provider recommended mode: ${state.provider_capabilities?.recommendedMode || "unknown"} (fallback: ${state.provider_capabilities?.fallbackMode || "unknown"})
+- Provider stability: ${state.provider_capabilities?.stabilityScore ?? "unknown"}/10
 - Permission audit: ${state.permission_audit?.pass ? "pass" : "fail"} (${state.permission_audit?.status || "missing"})
 - Permission mode: ${state.permission_audit?.permissionMode || "unknown"}
 - Bypass disabled: ${state.permission_audit?.bypassDisabled !== false}
