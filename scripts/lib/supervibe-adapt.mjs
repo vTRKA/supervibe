@@ -53,7 +53,8 @@ export async function createAdaptPlan({
   const counts = countPlanItems(items);
   const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
   const baselineVersionDrift = Boolean(currentVersion && baseline.pluginVersion !== currentVersion);
-  const metadataUpdateRequired = versionDrift || baselineVersionDrift;
+  const baselineRefreshRequired = counts.baselineRefresh > 0;
+  const metadataUpdateRequired = versionDrift || baselineVersionDrift || baselineRefreshRequired;
 
   return {
     kind: "adapt-plan",
@@ -69,6 +70,7 @@ export async function createAdaptPlan({
     baselineVersion: baseline.pluginVersion || null,
     versionDrift,
     baselineVersionDrift,
+    baselineRefreshRequired,
     metadataUpdateRequired,
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
@@ -84,9 +86,9 @@ export async function applyAdaptPlan(plan, {
   refreshMemoryIndex = true,
 } = {}) {
   const approved = new Set(include.map(normalizeRel));
-  const applied = [];
   const skipped = [];
   const blocked = [];
+  const candidates = [];
 
   for (const item of plan.items) {
     if (item.action !== "update" && item.action !== "add") continue;
@@ -107,17 +109,33 @@ export async function applyAdaptPlan(plan, {
       blocked.push({ ...item, reason: "target already exists" });
       continue;
     }
+    candidates.push(item);
+  }
+
+  if (blocked.length > 0) {
+    return buildBlockedApplyResult(plan, { skipped, blocked });
+  }
+
+  const applied = [];
+  const mutatedPaths = [];
+  for (const item of candidates) {
     const content = await readFile(item.upstreamAbs, "utf8");
     await mkdir(dirname(item.projectAbs), { recursive: true });
     await writeFile(item.projectAbs, content, "utf8");
     applied.push(item);
+    mutatedPaths.push(item.projectRel);
   }
 
+  const baselineRefreshItems = baselineRefreshCandidates(plan);
+  const baselineItems = dedupeBaselineItems([...applied, ...baselineRefreshItems]);
+  const baselineRefreshed = baselineRefreshItems.length > 0;
   const metadataOnlyUpdate = plan.counts.update === 0 && plan.counts.add === 0 && plan.metadataUpdateRequired;
-  const metadataUpdated = Boolean(plan.currentVersion && (applied.length > 0 || metadataOnlyUpdate));
+  const metadataUpdated = Boolean(plan.currentVersion && (applied.length > 0 || metadataOnlyUpdate || baselineItems.length > 0));
   if (metadataUpdated) {
-    await writeBaseline(plan, applied);
+    const baselinePath = await writeBaseline(plan, baselineItems);
+    mutatedPaths.push(baselinePath);
     await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
+    mutatedPaths.push(".supervibe/memory/.supervibe-version");
   }
 
   const postApplyPlan = await createAdaptPlan({
@@ -138,6 +156,8 @@ export async function applyAdaptPlan(plan, {
     skipped,
     blocked,
     metadataUpdated,
+    baselineRefreshed,
+    mutatedPaths: [...new Set(mutatedPaths)],
     postApply: {
       updates: postApplyPlan.counts.update,
       adds: postApplyPlan.counts.add,
@@ -152,7 +172,62 @@ export async function applyAdaptPlan(plan, {
     include,
     applyAll,
   });
+  result.mutatedPaths.push(result.lifecycleState.path);
+  if (result.memoryIndex?.refreshed && result.memoryIndex?.path) result.mutatedPaths.push(result.memoryIndex.path);
+  result.mutatedPaths = [...new Set(result.mutatedPaths)];
   return result;
+}
+
+export async function resolveAdaptPlanItems(plan, paths = []) {
+  const requested = new Set((Array.isArray(paths) ? paths : [paths]).map(normalizeRel).filter(Boolean));
+  const resolved = [];
+  const blocked = [];
+  for (const path of requested) {
+    const item = (plan.items || []).find((candidate) => normalizeRel(candidate.projectRel) === path);
+    if (!item) {
+      blocked.push({ projectRel: path, reason: "artifact not found in adapt plan" });
+      continue;
+    }
+    if (!item.upstreamAbs) {
+      blocked.push({ ...item, reason: "missing upstream file" });
+      continue;
+    }
+    const projectContent = readFileSync(item.projectAbs, "utf8");
+    const upstreamContent = readFileSync(item.upstreamAbs, "utf8");
+    if (hashComparableContent(projectContent) !== hashComparableContent(upstreamContent)) {
+      blocked.push({ ...item, reason: "manual merge differs from upstream" });
+      continue;
+    }
+    resolved.push({
+      ...item,
+      upstreamHash: hashContent(upstreamContent),
+      lineEndingOnly: hashContent(projectContent) !== hashContent(upstreamContent),
+    });
+  }
+
+  const mutatedPaths = [];
+  let baselineUpdated = false;
+  if (resolved.length > 0 && blocked.length === 0) {
+    const baselinePath = await writeBaseline(plan, resolved);
+    mutatedPaths.push(baselinePath);
+    baselineUpdated = true;
+    if (plan.currentVersion) {
+      await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
+      mutatedPaths.push(".supervibe/memory/.supervibe-version");
+    }
+  }
+
+  return {
+    kind: "adapt-resolve",
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    host: plan.host,
+    currentVersion: plan.currentVersion,
+    resolved,
+    blocked,
+    baselineUpdated,
+    mutatedPaths: [...new Set(mutatedPaths)],
+  };
 }
 
 export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
@@ -161,11 +236,13 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `HOST: ${plan.host.adapterId}`,
     `VERSION: ${plan.lastSeenVersion || "none"} -> ${plan.currentVersion || "unknown"}`,
     `VERSION_DRIFT: ${plan.versionDrift ? "true" : "false"}`,
+    `BASELINE_REFRESH_REQUIRED: ${plan.baselineRefreshRequired ? "true" : "false"}`,
     `METADATA_UPDATE_REQUIRED: ${plan.metadataUpdateRequired ? "true" : "false"}`,
     `ARTIFACTS: ${plan.items.length}`,
     `ADDS: ${plan.counts.add}`,
     `UPDATES: ${plan.counts.update}`,
     `CONFLICTS: ${plan.counts.conflicts}`,
+    `LINE_ENDING_ONLY_DRIFT: ${plan.counts.lineEndingOnly}`,
     `IDENTICAL: ${plan.counts.identical}`,
     `PROJECT_ONLY: ${plan.counts.projectOnly}`,
     `FAST_PATH_ELIGIBLE: ${plan.fastPath?.eligible === true}`,
@@ -182,6 +259,8 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
       lines.push(`ADD: ${item.projectRel} <= ${item.upstreamRel} (${item.classification}; mandatory: ${mandatory})`);
     } else if (item.action === "update") {
       lines.push(`UPDATE: ${item.projectRel} <= ${item.upstreamRel} (${item.classification})`);
+    } else if (item.classification === "line-ending-only-drift") {
+      lines.push(`LINE_ENDING_ONLY: ${item.projectRel} <= ${item.upstreamRel} (baseline refresh only)`);
     } else if (item.action === "project-only") {
       lines.push(`PROJECT_ONLY: ${item.projectRel} (no upstream match; keep unless explicitly archived)`);
     }
@@ -204,6 +283,7 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `SKIPPED: ${result.skipped.length}`,
     `BLOCKED: ${result.blocked.length}`,
     `METADATA_UPDATED: ${result.metadataUpdated ? "true" : "false"}`,
+    `BASELINE_REFRESHED: ${result.baselineRefreshed ? "true" : "false"}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
   ];
@@ -213,6 +293,11 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
   for (const item of result.blocked) lines.push(`BLOCKED_FILE: ${item.projectRel} - ${item.reason}`);
   if (result.metadataUpdated) {
     lines.push("VERSION_MARKER: updated");
+  }
+  if ((result.mutatedPaths || []).length === 0) {
+    lines.push("MUTATED: none");
+  } else {
+    for (const path of result.mutatedPaths || []) lines.push(`MUTATED: ${path}`);
   }
   lines.push(`MEMORY_INDEX: ${result.memoryIndex?.status || "unknown"}`);
   lines.push(`MEMORY_INDEX_REFRESHED: ${result.memoryIndex?.refreshed ? "true" : "false"}`);
@@ -224,6 +309,24 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     lines.push(`INDEX_REASON: ${result.indexGate.reason || result.indexGate.failed || "unknown"}`);
     lines.push(`NEXT_INDEX_REPAIR: ${result.indexGate.repairCommand || DEFAULT_INDEX_REPAIR_COMMAND}`);
   }
+  return lines.join("\n");
+}
+
+export function formatAdaptResolve(result) {
+  const lines = [
+    "SUPERVIBE_ADAPT_RESOLVE",
+    `HOST: ${result.host?.adapterId || "unknown"}`,
+    `VERSION: ${result.currentVersion || "unknown"}`,
+    `RESOLVED: ${result.resolved.length}`,
+    `BLOCKED: ${result.blocked.length}`,
+    `BASELINE_UPDATED: ${result.baselineUpdated ? "true" : "false"}`,
+  ];
+  for (const item of result.resolved) {
+    lines.push(`RESOLVED_FILE: ${item.projectRel} (${item.lineEndingOnly ? "line-ending-only" : "content-equal"})`);
+  }
+  for (const item of result.blocked) lines.push(`BLOCKED_FILE: ${item.projectRel} - ${item.reason}`);
+  if ((result.mutatedPaths || []).length === 0) lines.push("MUTATED: none");
+  else for (const path of result.mutatedPaths || []) lines.push(`MUTATED: ${path}`);
   return lines.join("\n");
 }
 
@@ -251,6 +354,7 @@ export function summarizeAdaptPlan(plan) {
     },
     counts: plan.counts,
     fastPath: plan.fastPath,
+    baselineRefreshRequired: plan.baselineRefreshRequired === true,
     approvalRequired: plan.approvalRequired === true,
     memoryIndex: plan.memoryIndex,
     changedItems: changed.map((item) => ({
@@ -280,10 +384,27 @@ export function summarizeAdaptApply(result) {
     skipped: (result.skipped || []).map((item) => item.projectRel),
     blocked: (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason })),
     metadataUpdated: result.metadataUpdated === true,
+    baselineRefreshed: result.baselineRefreshed === true,
+    mutatedPaths: result.mutatedPaths || [],
     lifecycleState: result.lifecycleState,
     postApply: result.postApply,
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
+  };
+}
+
+export function summarizeAdaptResolve(result) {
+  return {
+    kind: "adapt-resolve-summary",
+    host: result.host,
+    version: result.currentVersion || null,
+    resolved: (result.resolved || []).map((item) => ({
+      path: item.projectRel,
+      lineEndingOnly: item.lineEndingOnly === true,
+    })),
+    blocked: (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason })),
+    baselineUpdated: result.baselineUpdated === true,
+    mutatedPaths: result.mutatedPaths || [],
   };
 }
 
@@ -340,8 +461,12 @@ function classifyArtifact({ artifact, upstream, baselineHash }) {
   const upstreamContent = readFileSync(upstream.upstreamAbs, "utf8");
   const projectHash = hashContent(projectContent);
   const upstreamHash = hashContent(upstreamContent);
-  const identical = projectHash === upstreamHash;
-  const classification = classifyHashes({ projectHash, upstreamHash, baselineHash });
+  const comparableIdentical = hashComparableContent(projectContent) === hashComparableContent(upstreamContent);
+  const lineEndingOnly = projectHash !== upstreamHash && comparableIdentical;
+  const identical = projectHash === upstreamHash || lineEndingOnly;
+  const classification = lineEndingOnly
+    ? "line-ending-only-drift"
+    : classifyHashes({ projectHash, upstreamHash, baselineHash });
   const diff = identical ? { additions: 0, deletions: 0 } : summarizeLineDiff(projectContent, upstreamContent);
 
   return {
@@ -353,6 +478,8 @@ function classifyArtifact({ artifact, upstream, baselineHash }) {
     projectHash,
     upstreamHash,
     baselineHash,
+    lineEndingOnly,
+    baselineRefreshRequired: identical && baselineHash !== upstreamHash,
     diff,
   };
 }
@@ -537,6 +664,8 @@ function countPlanItems(items) {
     add: items.filter((item) => item.action === "add").length,
     update: items.filter((item) => item.action === "update").length,
     conflicts: items.filter((item) => item.classification === "both-changed").length,
+    lineEndingOnly: items.filter((item) => item.classification === "line-ending-only-drift").length,
+    baselineRefresh: items.filter((item) => item.baselineRefreshRequired === true).length,
     identical: items.filter((item) => item.action === "identical").length,
     projectOnly: items.filter((item) => item.action === "project-only").length,
   };
@@ -565,7 +694,7 @@ async function writeBaseline(plan, applied) {
   const current = readBaseline(plan.projectRoot);
   const artifacts = { ...(current.artifacts || {}) };
   const updatedAt = new Date().toISOString();
-  for (const item of applied) {
+  for (const item of dedupeBaselineItems(applied)) {
     artifacts[item.projectRel] = {
       hash: item.upstreamHash,
       upstream: item.upstreamRel,
@@ -579,6 +708,7 @@ async function writeBaseline(plan, applied) {
     hostAdapter: plan.host.adapterId,
     artifacts,
   }, null, 2) + "\n");
+  return normalizeRel(relative(plan.projectRoot, path));
 }
 
 async function writeAdaptLifecycleState(plan, result, { include = [], applyAll = false } = {}) {
@@ -768,8 +898,68 @@ function splitLines(value) {
   return normalized.endsWith("\n") ? normalized.slice(0, -1).split("\n") : normalized.split("\n");
 }
 
+function hashComparableContent(value) {
+  return hashContent(String(value || "").replace(/\r\n/g, "\n"));
+}
+
 function hashContent(value) {
   return createHash("sha256").update(String(value), "utf8").digest("hex");
+}
+
+function baselineRefreshCandidates(plan) {
+  return (plan.items || []).filter((item) => item.baselineRefreshRequired === true);
+}
+
+function dedupeBaselineItems(items = []) {
+  const byPath = new Map();
+  for (const item of items || []) {
+    if (!item?.projectRel || !item.upstreamHash) continue;
+    byPath.set(item.projectRel, item);
+  }
+  return [...byPath.values()].sort((a, b) => a.projectRel.localeCompare(b.projectRel));
+}
+
+async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}) {
+  const postApplyPlan = await createAdaptPlan({
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    adapterId: plan.host.adapterId,
+    refreshMemoryIndex: false,
+  });
+  const indexGate = await inspectIndexGate(plan.projectRoot);
+  return {
+    kind: "adapt-apply",
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    host: plan.host,
+    currentVersion: plan.currentVersion,
+    lastSeenVersion: plan.lastSeenVersion,
+    applied: [],
+    skipped,
+    blocked,
+    metadataUpdated: false,
+    baselineRefreshed: false,
+    mutatedPaths: [],
+    postApply: {
+      updates: postApplyPlan.counts.update,
+      adds: postApplyPlan.counts.add,
+      identical: postApplyPlan.counts.identical,
+      projectOnly: postApplyPlan.counts.projectOnly,
+      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0,
+    },
+    memoryIndex: postApplyPlan.memoryIndex,
+    indexGate,
+    lifecycleState: {
+      path: "not-written",
+      lifecycle: "blocked_no_mutation",
+      updatedArtifacts: [],
+      validators: {
+        artifactAdaptClean: false,
+        codeIndexReady: indexGate?.ready === true,
+        blockedCount: blocked.length,
+      },
+    },
+  };
 }
 
 function normalizeRel(value) {

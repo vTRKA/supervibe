@@ -940,11 +940,11 @@ function ownerVoicePrefix(ownerAgent = "", locale = "en") {
   const owner = String(ownerAgent || "");
   if (!owner) return "";
   const label = {
-    "creative-director": locale === "ru" ? "Creative director:" : "Creative director:",
-    "ux-ui-designer": locale === "ru" ? "UX/UI designer:" : "UX/UI designer:",
+    "creative-director": locale === "ru" ? "Креативный директор:" : "Creative director:",
+    "ux-ui-designer": locale === "ru" ? "UX/UI дизайнер:" : "UX/UI designer:",
     "supervibe:brandbook": locale === "ru" ? "Brandbook producer:" : "Brandbook producer:",
     "supervibe:design-intelligence": locale === "ru" ? "Design intelligence:" : "Design intelligence:",
-    "supervibe-orchestrator": locale === "ru" ? "Orchestrator:" : "Orchestrator:",
+    "supervibe-orchestrator": locale === "ru" ? "Оркестратор:" : "Orchestrator:",
   }[owner];
   return label || `${owner}:`;
 }
@@ -1143,7 +1143,7 @@ function designQuestionSignals(text = "", target = "web") {
     desktopOps: hasAny(haystack, ["dashboard", "admin", "operator", "support", "backoffice", "ops", "table", "grid", "queue", "monitoring", "control plane", "админ", "оператор", "таблиц", "очеред", "мониторинг"]),
     brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page", "лендинг", "маркетинг", "запуск", "главная", "конверси"]),
     regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated", "комплаенс", "аудит", "банк", "финанс", "медицин", "безопасн", "приват", "риск"]),
-    developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "workflow", "prompt", "devtool", "debug", "разработ", "код", "агент", "api", "cli", "терминал", "воркфлоу", "промпт", "дебаг"]),
+    developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "prompt", "devtool", "debug", "разработ", "код", "агент", "api", "cli", "терминал", "промпт", "дебаг"]),
     referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
     agentChat: hasAny(haystack, ["agent chat", "agentic chat", "chat system", "conversation workspace", "агентск", "агентская система чатов", "чат", "чаты", "диалог"]),
   };
@@ -1226,7 +1226,11 @@ function contextualWhyFor(axisId, axisLabel, locale = "en", strategy = {}) {
 function contextualChoicesFor(axisDef, locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
   const recommendedChoice = recommendedChoiceIdFor(axisDef.id, strategy, axisDef.defaultChoiceId);
-  return axisDef.choices.map((item) => {
+  const choiceIds = contextualChoiceIdsFor(axisDef.id, strategy);
+  const choices = choiceIds
+    ? choiceIds.map((choiceId) => axisDef.choices.find((item) => item.id === choiceId)).filter(Boolean)
+    : axisDef.choices;
+  return choices.map((item) => {
     const baseChoice = localizedChoice(item, normalized, axisDef.id);
     const contextual = contextualChoiceFor(axisDef.id, item.id, baseChoice, normalized, strategy);
     return {
@@ -1236,11 +1240,35 @@ function contextualChoicesFor(axisDef, locale = "en", strategy = {}) {
   });
 }
 
+function contextualChoiceIdsFor(axisId, strategy = {}) {
+  if (axisId !== "visual_direction_tone") return null;
+  const profile = strategy.profile || "default";
+  const signals = strategy.signals || {};
+  if (signals.brandLaunch || profile === "brandLaunch") {
+    return ["bold-launch-energy", "premium-editorial", "warm-product-utility", "operational-clarity"];
+  }
+  if (signals.regulatedTrust || profile === "regulatedTrust") {
+    return ["operational-clarity", "technical-command-center", "premium-editorial", "warm-product-utility"];
+  }
+  if (signals.referenceRefresh || profile === "referenceRefresh") {
+    return ["operational-clarity", "technical-command-center", "premium-editorial", "warm-product-utility"];
+  }
+  if (signals.agentChat || signals.developerTool || profile === "developerTool") {
+    return ["technical-command-center", "operational-clarity", "premium-editorial", "warm-product-utility"];
+  }
+  if (signals.desktopTarget || profile === "desktopOps") {
+    return ["operational-clarity", "technical-command-center", "warm-product-utility", "premium-editorial"];
+  }
+  return null;
+}
+
 function withChoiceImpacts(choices = [], axisId = "design", strategy = {}) {
   return choices.map((choiceItem) => ({
     ...choiceItem,
     unlocks: choiceUnlocksFor(axisId, choiceItem.id, strategy),
     risk: choiceRiskFor(axisId, choiceItem),
+    evidence: choiceEvidenceFor(axisId, choiceItem.id, strategy),
+    artifactImpact: choiceArtifactImpactFor(axisId, choiceItem.id, strategy),
   }));
 }
 
@@ -1263,6 +1291,36 @@ function artifactUnlockForChoice(axisId = "", choiceId = "") {
   if (axisId === "component_feel") return "component implementation ownership";
   if (axisId === "reference_borrow_avoid") return "old artifact reuse boundary";
   return "next specialist output shape";
+}
+
+function choiceEvidenceFor(axisId = "design", choiceId = "", strategy = {}) {
+  const owner = DESIGN_QUESTION_OWNERS[axisId] || DESIGN_QUESTION_OWNERS.mode;
+  const evidence = [
+    ...(strategy.evidence || []),
+    `artifact impact: ${choiceArtifactImpactFor(axisId, choiceId, strategy)}`,
+    `owner specialist: ${owner.specialist}`,
+  ];
+  if (strategy.signals?.agentChat) evidence.push("product risk: pending approvals, subagents, tool calls, traces, and memory proposals compete for first-layer hierarchy");
+  if (strategy.signals?.referenceRefresh) evidence.push("old prototype signal: reference must become flows/states/capabilities, not visual shell reuse");
+  if (strategy.signals?.developerTool) evidence.push("code/workflow signal: command, terminal, API log, or Code Graph surface in brief");
+  if (axisId === "reference_borrow_avoid") evidence.push("artifact impact: reference-inventory.md borrow/avoid boundary");
+  return [...new Set(evidence)].filter(Boolean).slice(0, 6);
+}
+
+function choiceArtifactImpactFor(axisId = "design", choiceId = "", strategy = {}) {
+  const owner = DESIGN_QUESTION_OWNERS[axisId] || DESIGN_QUESTION_OWNERS.mode;
+  const base = owner.blocks?.join(", ") || "next specialist artifact";
+  if (axisId === "mode") return "config.json executionMode, stage triage, and continuation boundary";
+  if (axisId === "viewport") return "config.json viewports, screenshot matrix, and resize review policy";
+  if (axisId === "creative_alternatives") return "direction.md alternatives, selected direction, rejected rationale, and styleboard framing";
+  if (axisId === "reference_borrow_avoid") return "reference-inventory.md, borrow/avoid list, and old-artifact reuse boundary";
+  if (axisId === "information_density") return "screen spec density, trace rail hierarchy, table/card sizing, and styleboard spacing";
+  if (axisId === "component_feel") return "component inventory, implementation adapter, interaction states, and handoff ownership";
+  if (axisId === "palette_mood") return "tokens.css color ramps, semantic aliases, chart/accent policy, and contrast review";
+  if (axisId === "typography_personality") return "tokens.css type stack, scale, mono usage, and language fallback";
+  if (axisId === "motion_intensity") return "motion.css timing tiers, reduced-motion policy, and transition budget";
+  if (axisId === "audience_trust_posture") return "direction.md trust posture, assurance cues, and copy tone";
+  return `${base}${choiceId ? ` for ${choiceId}` : ""}`;
 }
 
 function choiceRiskFor(axisId = "design", choice = {}) {
@@ -1317,14 +1375,28 @@ function whyNowForQuestion(axisId = "design", locale = "en", strategy = {}) {
       : "Reference scope is needed before visual decisions so old prototypes provide evidence, not an accidental shell.";
   }
   return normalized === "ru"
-    ? `Этот вопрос сейчас первый риск профиля ${profile}: ответ меняет следующий артефакт, а не только анкету.`
-    : `This is the current ${profile} profile risk: the answer changes the next artifact, not just a questionnaire slot.`;
+    ? `Этот выбор нужен до следующего producer: для ${subject} он меняет ${artifactImpactForWhyNow(axisId)}, а не только формулировку в wizard.`
+    : `This needs a decision before the next producer because it changes ${artifactImpactForWhyNow(axisId)} for ${subject}.`;
+}
+
+function artifactImpactForWhyNow(axisId = "design") {
+  if (axisId === "palette_mood") return "semantic tokens, contrast policy, and chart accents";
+  if (axisId === "typography_personality") return "type stack, scale, mono usage, and fallback behavior";
+  if (axisId === "motion_intensity") return "motion budget, timing tiers, and reduced-motion behavior";
+  if (axisId === "component_feel") return "component ownership, state variants, and implementation adapter";
+  if (axisId === "audience_trust_posture") return "trust cues, copy tone, and visual restraint";
+  if (axisId === "anti_generic_guardrail") return "the critique gate and avoid-list before visual exploration";
+  if (axisId === "visual_direction_tone") return "direction.md mood, risk, and product-fit rationale";
+  return "the next durable design artifact";
 }
 
 function contextualChoiceFor(axisId, choiceId, baseChoice, locale = "en", strategy = {}) {
   const normalized = normalizeLocale(locale);
   if (axisId === "creative_alternatives") {
     return contextualCreativeAlternativeChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "visual_direction_tone") {
+    return contextualVisualDirectionChoice(choiceId, baseChoice, normalized, strategy);
   }
   if (axisId === "information_density") {
     return contextualDensityChoice(choiceId, baseChoice, normalized, strategy);
@@ -1398,6 +1470,104 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
     "single-locked-direction": [`Lock the already chosen path for ${subject}`, "Only when direction is already clear and approved."],
   };
   return contextualChoiceFromMap(choiceId, baseChoice, map);
+}
+
+function contextualVisualDirectionChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  const profile = strategy.profile || "default";
+  const signals = strategy.signals || {};
+  const brandLaunch = signals.brandLaunch || profile === "brandLaunch";
+  const regulatedTrust = signals.regulatedTrust || profile === "regulatedTrust";
+  const referenceRefresh = signals.referenceRefresh || profile === "referenceRefresh";
+  const agentWorkspace = !brandLaunch && !regulatedTrust && !referenceRefresh
+    && (signals.agentChat || signals.developerTool || profile === "developerTool");
+  const desktopOps = signals.desktopTarget || profile === "desktopOps";
+
+  if (locale === "ru") {
+    if (agentWorkspace) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "technical-command-center": ["Операционный cockpit с закрепленным evidence", `Для ${subject}: logs, status rails и action gates делают запуск агента проверяемым; выше плотность для casual review.`],
+        "operational-clarity": ["Командный центр с первым слоем trace", `Для ${subject}: tool calls, approvals, subagents и memory proposals сразу в первом слое сканирования; меньше места для выразительной подачи.`],
+        "premium-editorial": ["Рабочее пространство расследования", `Для ${subject}: ответы читаются как case file с явной иерархией; медленнее для повторного command execution.`],
+        "warm-product-utility": ["Совместный рабочий стол агента", `Для ${subject}: chat и вмешательства остаются доступными, trace не прячется; может слабее сигналить debug power.`],
+      });
+    }
+    if (brandLaunch) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "bold-launch-energy": ["Фирменный launch-момент", `Для ${subject}: первый экран строит память через motion, контраст и историю; после hero нужны fatigue guardrails.`],
+        "premium-editorial": ["Редакционный запуск через доказательства", `Для ${subject}: выше доверие к claims, кейсам и polish; меньше сырой продуктовой плотности.`],
+        "warm-product-utility": ["Проводник к product trial", `Для ${subject}: проще понять оффер и перейти к conversion; менее заметно как brand move.`],
+        "operational-clarity": ["Ясный путь к конверсии", `Для ${subject}: CTA, proof и навигация очевидны; может ощущаться скорее product page, чем кампания.`],
+      });
+    }
+    if (regulatedTrust) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "operational-clarity": ["Ясность вокруг audit trail", `Для ${subject}: статус, audit trails и risk review первичны; меньше брендовой выразительности.`],
+        "technical-command-center": ["Контрольная комната evidence", `Для ${subject}: logs, decision history и approval gates видны сразу; выше когнитивная нагрузка.`],
+        "premium-editorial": ["Executive brief по assurance", `Для ${subject}: polished overview помогает stakeholders; операционные детали могут уйти в summary.`],
+        "warm-product-utility": ["Проводник по compliance review", `Для ${subject}: сложные review paths становятся дружелюбнее; нельзя смягчить severity cues.`],
+      });
+    }
+    if (referenceRefresh) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "operational-clarity": ["Редизайн с сохранением функций", `Для ${subject}: flows, states и capabilities из старых прототипов остаются evidence; визуальный язык строится заново.`],
+        "technical-command-center": ["Жесткий отказ от old shell", `Для ${subject}: inherited sidebars, cards и chrome явно попадают в avoid list; можно потерять знакомые shortcuts.`],
+        "premium-editorial": ["Новый визуальный язык поверх старых flow", `Для ${subject}: референсы влияют на IA, но не на стиль; нужен explicit borrow/avoid list.`],
+        "warm-product-utility": ["Мягкая миграция без repaint", `Для ${subject}: сохраняет знакомые touchpoints без repaint; визуальный разрыв будет менее решительным.`],
+      });
+    }
+    if (desktopOps) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "operational-clarity": ["Операционная поверхность от resize", `Для ${subject}: Tauri window, queues, panels и repeated scanning первичны; меньше запоминаемости бренда.`],
+        "technical-command-center": ["Плотная desktop control room", `Для ${subject}: rails и status zones держат high-throughput работу; нужно доказать overflow и resize.`],
+        "warm-product-utility": ["Тихое utility-пространство", `Для ${subject}: долгие сессии спокойнее и читабельнее; меньше expert drama на первом экране.`],
+        "premium-editorial": ["Направляемый review workspace", `Для ${subject}: добавляет reading rhythm для сложных задач; снижает raw density.`],
+      });
+    }
+  }
+
+  if (agentWorkspace) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "technical-command-center": ["Pinned-evidence operations cockpit", `For ${subject}: logs, status rails, and action gates make each agent run inspectable; denser for casual review.`],
+      "operational-clarity": ["Trace-first command center", `For ${subject}: tool calls, approvals, subagents, and memory proposals sit in the first scanning layer; less room for expressive presentation.`],
+      "premium-editorial": ["Investigation workspace", `For ${subject}: outputs read like a guided case file with clear narrative hierarchy; slower for repeated command execution.`],
+      "warm-product-utility": ["Collaborative agent desk", `For ${subject}: chat and interventions stay approachable while trace access remains visible; may under-signal debugging power.`],
+    });
+  }
+  if (brandLaunch) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "bold-launch-energy": ["Signature launch moment", `For ${subject}: motion, contrast, and story make the first viewport memorable; needs fatigue guardrails after the hero.`],
+      "premium-editorial": ["Proof-led editorial launch", `For ${subject}: claims, case-study proof, and visual polish carry the page; gives up some raw product density.`],
+      "warm-product-utility": ["Guided product trial", `For ${subject}: the offer and conversion path are easier to understand; less distinctive as a brand move.`],
+      "operational-clarity": ["Conversion clarity lane", `For ${subject}: CTA, proof, and navigation stay obvious; can feel more product page than campaign.`],
+    });
+  }
+  if (regulatedTrust) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "operational-clarity": ["Audit-first clarity", `For ${subject}: status, audit trails, and risk review lead the layout; less expressive brand memory.`],
+      "technical-command-center": ["Evidence control room", `For ${subject}: logs, decision history, and approval gates are visible immediately; increases cognitive load.`],
+      "premium-editorial": ["Executive assurance brief", `For ${subject}: polished overview helps stakeholders; operational detail can hide behind summaries.`],
+      "warm-product-utility": ["Guided compliance utility", `For ${subject}: complex review paths become friendlier; severity cues must stay sharp.`],
+    });
+  }
+  if (referenceRefresh) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "operational-clarity": ["Function-preserving redesign", `For ${subject}: old flows, states, and capabilities survive as evidence while the visual language is rebuilt.`],
+      "technical-command-center": ["Old-shell rejection pass", `For ${subject}: inherited sidebars, cards, and chrome are explicitly rejected before tokens; familiar shortcuts may be lost.`],
+      "premium-editorial": ["New visual language over old flows", `For ${subject}: references shape IA, not style; requires an explicit borrow/avoid list.`],
+      "warm-product-utility": ["Gentler migration path", `For ${subject}: familiar touchpoints remain without a repaint; the visual break is less decisive.`],
+    });
+  }
+  if (desktopOps) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "operational-clarity": ["Resize-first operations surface", `For ${subject}: Tauri window behavior, queues, panels, and repeated scanning lead the composition; less brand memorability.`],
+      "technical-command-center": ["Dense desktop control room", `For ${subject}: rails and status zones support high-throughput work; overflow and resize proof are mandatory.`],
+      "warm-product-utility": ["Quiet utility workspace", `For ${subject}: long sessions stay calm and legible; less expert drama in the first viewport.`],
+      "premium-editorial": ["Guided review workspace", `For ${subject}: reading rhythm and prioritization help complex tasks; lower raw density.`],
+    });
+  }
+
+  return contextualFallbackChoice(baseChoice, locale, strategy);
 }
 
 function contextualDensityChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
@@ -1581,13 +1751,13 @@ function contextualFallbackChoice(baseChoice, locale = "en", strategy = {}) {
     return {
       ...baseChoice,
       label: `${baseChoice.label} для ${subject}`,
-      tradeoff: `${baseChoice.tradeoff} Применять именно к ${subject}, а не как готовый пункт анкеты.`,
+      tradeoff: baseChoice.tradeoff,
     };
   }
   return {
     ...baseChoice,
     label: `${baseChoice.label} for ${subject}`,
-    tradeoff: `${baseChoice.tradeoff} Apply it specifically to ${subject}, not as a reusable questionnaire default.`,
+    tradeoff: baseChoice.tradeoff,
   };
 }
 
@@ -1616,14 +1786,6 @@ function inferDesignQuestionSubject(text = "", target = "web", signals = {}) {
       ruGenitive: "агентского чат-пространства",
     };
   }
-  if (signals.developerTool) {
-    return {
-      en: "developer workflow surface",
-      ru: "developer workflow-поверхности",
-      ruNominative: "developer workflow-поверхность",
-      ruGenitive: "developer workflow-поверхности",
-    };
-  }
   if (signals.regulatedTrust) {
     return {
       en: "high-trust workflow",
@@ -1638,6 +1800,14 @@ function inferDesignQuestionSubject(text = "", target = "web", signals = {}) {
       ru: "launch-поверхности",
       ruNominative: "launch-поверхность",
       ruGenitive: "launch-поверхности",
+    };
+  }
+  if (signals.developerTool) {
+    return {
+      en: "developer workflow surface",
+      ru: "developer workflow-поверхности",
+      ruNominative: "developer workflow-поверхность",
+      ruGenitive: "developer workflow-поверхности",
     };
   }
   if (signals.desktopTarget || isDesktopTarget(target)) {
@@ -1902,6 +2072,8 @@ function specialistQuestionProposal(question = {}) {
       tradeoff: choiceItem.tradeoff || choiceItem.description || "",
       unlocks: choiceItem.unlocks || metadata.blocks,
       risk: choiceItem.risk || "Risk must be reviewed by the owner specialist.",
+      evidence: choiceItem.evidence || evidenceForQuestion(question.axis, question),
+      artifactImpact: choiceItem.artifactImpact || metadata.artifactImpact,
       recommended: choiceItem.recommended === true,
     })),
     blocks: metadata.blocks,
@@ -1909,6 +2081,7 @@ function specialistQuestionProposal(question = {}) {
     skipDefault: metadata.skipDefault,
     canAnswerFromEvidence: metadata.canAnswerFromEvidence,
     evidence: question.evidence || evidenceForQuestion(question.axis, question),
+    locale: question.locale || "en",
     decisionUnlocked: question.decisionUnlocked || question.decision || metadata.artifactImpact,
     currentContext: `${question.axis || "design"} ${metadata.stage} ${metadata.specialist}`,
     freeformAllowed: true,

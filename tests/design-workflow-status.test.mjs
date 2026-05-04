@@ -89,6 +89,22 @@ test("design workflow status exposes continuation actions for candidate design s
   }
 });
 
+test("design workflow status points missing design system back to wizard instead of review", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-status-missing-ds-"));
+  try {
+    const status = readDesignWorkflowStatus(root, { slug: "agent-chat" });
+    const report = formatDesignWorkflowStatus(status);
+
+    assert.equal(status.designSystem.status, "missing");
+    assert.equal(status.prototype.unlocked, false);
+    assert.equal(status.nextAction, "Answer design wizard question / close creative direction axes");
+    assert.match(report, /NEXT_ACTION: Answer design wizard question \/ close creative direction axes/);
+    assert.doesNotMatch(report, /NEXT_ACTION: Review design system/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design workflow status flags config drift when prototype exists but state says missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-status-drift-"));
   try {

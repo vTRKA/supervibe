@@ -355,7 +355,7 @@ function extractLocalArtifactReferences(body = "") {
   const text = String(body || "");
   const codeRefPattern = /`([^`\n]+\.(?:mjs|js|ts|tsx|jsx|json|md|yaml|yml|rs|py|toml|css|html)(?::\d+)?)`/gi;
   const markdownLinkPattern = /\[[^\]]+\]\((?!https?:\/\/|mailto:)([^)#\s]+)(?::\d+)?(?:#[^)]+)?\)/gi;
-  const plainPathPattern = /\b((?:scripts|tests|docs|agents|skills|rules|commands|confidence-rubrics|stack-packs|references|\.codex-plugin|\.claude-plugin|\.cursor-plugin|\.opencode)\/[A-Za-z0-9._/@:+-]+\.(?:mjs|js|ts|tsx|jsx|json|md|yaml|yml|rs|py|toml|css|html)(?::\d+)?)\b/gi;
+  const plainPathPattern = /(?<![A-Za-z0-9._/@:+-])((?:scripts|tests|docs|agents|skills|rules|commands|confidence-rubrics|stack-packs|references|\.codex|\.supervibe|\.github|\.codex-plugin|\.claude-plugin|\.cursor-plugin|\.opencode)\/[A-Za-z0-9._/@:+-]+\.(?:mjs|js|ts|tsx|jsx|json|md|yaml|yml|rs|py|toml|css|html)(?::\d+)?)(?![A-Za-z0-9._/@:+-])/gi;
   for (const pattern of [codeRefPattern, markdownLinkPattern, plainPathPattern]) {
     let match;
     while ((match = pattern.exec(text))) refs.add(match[1]);
@@ -372,7 +372,6 @@ function normalizeReferencePath(reference = "") {
   normalized = normalized.replace(/:\d+$/, "");
   normalized = normalized.replace(/^\.\//, "");
   if (normalized.includes("*")) return "";
-  if (normalized.startsWith(".supervibe/")) return "";
   if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return "";
   if (normalized.includes("..")) return "";
   if (!normalized.includes("/") && !["package.json", "package-lock.json", "README.md", "CHANGELOG.md"].includes(normalized)) return "";
@@ -393,6 +392,9 @@ function isReferenceScopeValid(reference = "") {
     skills: new Set([".md"]),
     "stack-packs": new Set([".yaml", ".yml", ".json", ".md"]),
     tests: new Set([".mjs", ".js", ".json"]),
+    ".codex": new Set([".md", ".json", ".yaml", ".yml"]),
+    ".supervibe": new Set([".md", ".json", ".yaml", ".yml", ".css", ".html"]),
+    ".github": new Set([".md", ".yaml", ".yml"]),
   };
   if (!reference.includes("/")) return true;
   return byScope[scope]?.has(ext) ?? false;

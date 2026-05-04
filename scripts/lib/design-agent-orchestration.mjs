@@ -1,6 +1,7 @@
 import { sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
+  buildReferenceInventoryPlan,
   formatDesignArtifactChoiceQuestion,
 } from "./design-artifact-intake.mjs";
 import {
@@ -53,6 +54,7 @@ export function buildDesignAgentPlan({
   const text = String(brief ?? "");
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
   const stages = [];
+  const referenceInventory = buildReferenceInventoryPlan({ slug, intake });
   const hostWindowMetrics = readDesignWindowMetrics({ rootDir, target });
   const resolvedCurrentWindow = currentWindow || hostWindowMetrics?.currentWindow || null;
   const resolvedDeviceScaleFactor = deviceScaleFactor ?? hostWindowMetrics?.deviceScaleFactor ?? null;
@@ -106,6 +108,15 @@ export function buildDesignAgentPlan({
         reference: source.value,
       }));
     }
+  }
+
+  if (referenceInventory) {
+    stages.push(stage({
+      id: "stage-0-reference-inventory",
+      skillId: "supervibe:design-intelligence",
+      reason: `produce ${referenceInventory.path} with flows, states, capabilities, and explicit avoid list before creative direction`,
+      referenceInventory,
+    }));
   }
 
   stages.push(stage({
@@ -170,6 +181,7 @@ export function buildDesignAgentPlan({
     requiresReceipts: true,
     receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
     executionStatus: null,
+    referenceInventory,
     wizard,
     viewportPolicy: {
       ...resolveDesignViewportPolicy({
@@ -447,6 +459,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
     agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
     agentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
     producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
+    completedStageSubjects: runtimeProof.completedStageSubjects,
     specialistDispatchDeferred,
     runtimeProofRequirements: runtimeProof.requirements,
     missingRuntimeProofs: runtimeProof.missingRuntimeProofs,
@@ -527,6 +540,13 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
     if (!isHostAgentSubject(receipt.subjectType)) return false;
     return Boolean(receipt.hostInvocation?.source && receipt.hostInvocation?.invocationId);
   });
+  const completedStageSubjects = receipts
+    .filter((receipt) => validateWorkflowReceiptTrust(rootDir, receipt).pass === true)
+    .map((receipt) => ({
+      subjectType: receipt.subjectType,
+      subjectId: receipt.subjectId ?? receipt.agentId ?? receipt.skillId,
+      stageId: receipt.stage,
+    }));
 
   return {
     requirements: statuses,
@@ -534,6 +554,7 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
     agentInvocationsCompleted: agentStatuses.every((item) => item.trusted === true),
     agentReceiptsTrusted: agentStatuses.every((item) => item.trusted === true),
     producerReceiptsTrusted: statuses.length === 0 || statuses.every((item) => item.trusted === true),
+    completedStageSubjects,
     missingRuntimeProofs,
   };
 }
@@ -791,28 +812,41 @@ function buildDegradedModeQuestion(missingAgents, provisioningPlan = null, { exe
 
 function buildAgentDispatchQuestion(runtimeProof = {}, { locale = "en" } = {}) {
   const pending = formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs || []);
+  const ru = String(locale || "en").toLowerCase().startsWith("ru");
   return {
-    locale: String(locale || "en").toLowerCase().startsWith("ru") ? "ru" : "en",
-    prompt: "Runtime agent receipts are missing. Dispatch the required host agents before durable writes?",
-    why: "Installed agent files prove only availability. Durable /supervibe-design artifacts require completed host invocations plus runtime-issued receipts.",
-    decisionUnlocked: "agent-invocations.jsonl, agent-output.json, and workflow receipts for the active stage",
-    ifSkipped: "Keep output in diagnostic scratch only; do not write or claim agent-owned durable artifacts.",
+    locale: ru ? "ru" : "en",
+    prompt: ru
+      ? "Нет runtime receipts от специалистов. Запустить нужных host agents перед durable writes?"
+      : "Runtime agent receipts are missing. Dispatch the required host agents before durable writes?",
+    why: ru
+      ? "Файлы agents доказывают только доступность. Durable /supervibe-design artifacts требуют завершенных host invocations и runtime-issued receipts."
+      : "Installed agent files prove only availability. Durable /supervibe-design artifacts require completed host invocations plus runtime-issued receipts.",
+    decisionUnlocked: ru
+      ? "agent-invocations.jsonl, agent-output.json и workflow receipts для активного stage"
+      : "agent-invocations.jsonl, agent-output.json, and workflow receipts for the active stage",
+    ifSkipped: ru
+      ? "Держать результат только в diagnostic scratch; не писать и не claiming agent-owned durable artifacts."
+      : "Keep output in diagnostic scratch only; do not write or claim agent-owned durable artifacts.",
     choices: [
       {
         id: "dispatch-host-agents",
-        label: "Dispatch host agents",
-        tradeoff: `Run/log the missing stage producers before writes: ${pending}.`,
+        label: ru ? "Запустить host agents" : "Dispatch host agents",
+        tradeoff: ru
+          ? `Запустить и залогировать missing stage producers перед writes: ${pending}.`
+          : `Run/log the missing stage producers before writes: ${pending}.`,
         recommended: true,
       },
       {
         id: "save-scratch-only",
-        label: "Scratch only",
-        tradeoff: "Allows diagnostics without claiming specialist output or mutating durable artifacts.",
+        label: ru ? "Только scratch" : "Scratch only",
+        tradeoff: ru
+          ? "Разрешает диагностику без claims на specialist output и без durable artifact mutations."
+          : "Allows diagnostics without claiming specialist output or mutating durable artifacts.",
       },
       {
         id: "stop",
-        label: "Stop here",
-        tradeoff: "Preserve state and wait for real agent dispatch.",
+        label: ru ? "Остановиться" : "Stop here",
+        tradeoff: ru ? "Сохранить state и ждать real agent dispatch." : "Preserve state and wait for real agent dispatch.",
       },
     ],
     executionMode: "agent-dispatch-required",

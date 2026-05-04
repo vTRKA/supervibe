@@ -171,6 +171,108 @@ test("design agent plan dispatches orchestrator before specialists while wizard 
   }
 });
 
+test("design agent plan does not redispatch orchestrator after trusted stage-0 receipt", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-dispatch-orchestrator-done-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/_agent-outputs/orchestrator/agent-output.json", "{\"ok\":true}\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "supervibe-orchestrator",
+      agentId: "supervibe-orchestrator",
+      stage: "stage-0-orchestrator",
+      invocationReason: "wizard gate triage completed",
+      outputArtifacts: [".supervibe/artifacts/_agent-outputs/orchestrator/agent-output.json"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "agent-chat",
+      hostInvocation: await writeAgentInvocation(root, {
+        invocationId: "orchestrator-invocation-1",
+        agentId: "supervibe-orchestrator",
+        taskSummary: "wizard gate triage completed",
+      }),
+    });
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+      "--dispatch-host-agents",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /NEXT_DISPATCH: none/);
+    assert.match(output, /NEXT_HOST_DISPATCH: none/);
+    assert.match(output, /NEXT_WIZARD_QUESTION/);
+    assert.doesNotMatch(output, /NEXT_DISPATCH: agent:supervibe-orchestrator@stage-0-orchestrator/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent plan localizes runtime dispatch question for Russian briefs", () => {
+  const plan = buildDesignAgentPlan({
+    brief: "Использовать безопасные дефолты для новой дизайн-системы агентского чата.",
+    target: "web",
+    mode: "design-system-only",
+    rootDir: process.cwd(),
+    pluginRoot: ROOT,
+    initialDecisions: completedWizardDecisions(),
+  });
+  const prompt = formatDesignPlanPrompt(plan);
+
+  assert.equal(plan.wizard.locale, "ru");
+  assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
+  assert.doesNotMatch(prompt, /Runtime agent receipts are missing|Dispatch host agents|Scratch only|Stop here/);
+  assert.match(prompt, /runtime receipts|Запустить host agents|Только scratch|Остановиться/);
+});
+
+test("design agent plan inserts functional reference inventory before creative direction for old prototypes", () => {
+  const intake = {
+    needsQuestion: false,
+    reason: "old-artifact-reference-scope-explicit",
+    oldArtifactReferences: ["docs/old prototypes/agent-chat"],
+    referenceSources: [],
+    referenceScopeDecision: {
+      axis: "reference_borrow_avoid",
+      choiceId: "functional-only",
+      answer: "Functional inventory only",
+      source: "user",
+    },
+    artifacts: [
+      {
+        path: ".supervibe/artifacts/prototypes/old-agent-chat",
+        kind: "prototype",
+        status: "draft",
+        target: "tauri",
+        signals: ["config.json", "spec.md", "index.html"],
+      },
+    ],
+  };
+  const plan = buildDesignAgentPlan({
+    brief: "Create a new agent chat design; old prototypes are functional inventory only.",
+    target: "tauri",
+    slug: "agent-chat-desktop",
+    mode: "full-prototype-pipeline",
+    intake,
+  });
+  const referenceStageIndex = plan.stages.findIndex((stage) => stage.id === "stage-0-reference-inventory");
+  const creativeStageIndex = plan.stages.findIndex((stage) => stage.id === "stage-1-brand-direction");
+
+  assert.ok(referenceStageIndex >= 0);
+  assert.ok(creativeStageIndex > referenceStageIndex);
+  assert.equal(plan.referenceInventory.path, ".supervibe/artifacts/prototypes/agent-chat-desktop/reference-inventory.md");
+  assert.deepEqual(plan.referenceInventory.requiredSections, ["flows", "states", "capabilities", "explicit-avoid-list"]);
+  assert.match(plan.referenceInventory.sources[0], /old-agent-chat|old prototypes/);
+});
+
 test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
   try {

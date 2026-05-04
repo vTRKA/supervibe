@@ -92,6 +92,8 @@ test("wizard emits specialist question proposals with artifact impact", () => {
   assert.ok(proposal.whyNow);
   assert.ok(proposal.evidence.length >= 2);
   assert.ok(proposal.options.every((option) => option.unlocks.length > 0 && option.risk));
+  assert.ok(proposal.options.every((option) => Array.isArray(option.evidence) && option.evidence.length >= 2));
+  assert.ok(proposal.options.every((option) => option.artifactImpact));
   assert.ok(proposal.recommendedOption);
   assert.equal(proposal.canAnswerFromEvidence, false);
   assert.ok(proposal.choices.length >= 3);
@@ -133,9 +135,98 @@ test("wizard renders context-specific choice labels instead of reusable template
   const markdown = `${formatDesignWizardQuestion(creative)}\n${formatDesignWizardQuestion(density)}`;
   assert.doesNotMatch(markdown, /- 3 разных направления(?:\s|\()/);
   assert.doesNotMatch(markdown, /- Balanced(?:\s|\()/);
-  assert.match(markdown, /Creative director:/);
-  assert.match(markdown, /UX\/UI designer:/);
+  assert.match(markdown, /Креативный директор:/);
+  assert.match(markdown, /UX\/UI дизайнер:/);
   assert.match(markdown, /agent-chat|trace|cockpit/i);
+  assert.doesNotMatch(markdown, /Apply it specifically|reusable questionnaire default/);
+});
+
+test("creative direction options are specialist-specific instead of the catalog template list", () => {
+  const cases = [
+    {
+      label: "agent",
+      input: {
+        brief: "Agent operations workspace with approvals, tool calls, subagents, memory proposals, terminal output, and trace review.",
+        target: "tauri",
+        mode: "full-prototype-pipeline",
+      },
+      expected: /tool calls, approvals, subagents, and memory proposals/i,
+    },
+    {
+      label: "brand",
+      input: {
+        brief: "Marketing launch page for AI product with hero, conversion path, waitlist, and proof.",
+        target: "web",
+        mode: "full-prototype-pipeline",
+      },
+      expected: /Signature launch moment|Proof-led editorial launch|Guided product trial/,
+    },
+    {
+      label: "regulated",
+      input: {
+        brief: "Banking compliance workflow with audit logs, privacy review, and risk queue.",
+        target: "web",
+        mode: "full-prototype-pipeline",
+      },
+      expected: /Audit-first clarity|Evidence control room|Guided compliance utility/,
+    },
+    {
+      label: "desktop",
+      input: {
+        brief: "Tauri desktop support dashboard with queues, panels, and compact tables.",
+        target: "tauri",
+        mode: "full-prototype-pipeline",
+      },
+      expected: /Resize-first operations surface|Dense desktop control room|overflow and resize proof/,
+    },
+  ];
+  const catalogLabels = new Set([
+    "Operational clarity",
+    "Technical command center",
+    "Premium editorial",
+    "Warm product utility",
+    "Bold launch energy",
+  ].map((label) => label.toLowerCase()));
+  const states = cases.map((item) => ({
+    ...item,
+    state: buildDesignWizardState(item.input),
+  }));
+
+  for (const item of states) {
+    const question = item.state.questionQueue.find((entry) => entry.axis === "visual_direction_tone");
+    assert.ok(question, `${item.label} should ask visual_direction_tone`);
+    const visible = question.choices.map((choiceItem) => `${choiceItem.label} ${choiceItem.tradeoff}`).join("\n");
+    assert.match(visible, item.expected, `${item.label} should use evidence-bound creative options`);
+    assert.ok(
+      question.choices.every((choiceItem) => !catalogLabels.has(String(choiceItem.label).toLowerCase())),
+      `${item.label} must not expose the base catalog labels`,
+    );
+  }
+
+  const idSets = states.map((item) => {
+    const question = item.state.questionQueue.find((entry) => entry.axis === "visual_direction_tone");
+    return question.choices.map((choiceItem) => choiceItem.id).join("|");
+  });
+  assert.ok(new Set(idSets).size >= 3, "brief profiles should receive different creative-direction option sets");
+
+  const agentProposal = states[0].state.questionProposals.find((entry) => entry.proposalId.endsWith(":visual_direction_tone"));
+  assert.ok(agentProposal);
+  assert.match(
+    agentProposal.options.map((option) => `${option.label} ${option.tradeoff}`).join("\n"),
+    /tool calls, approvals, subagents, and memory proposals/i,
+  );
+
+  const ruState = buildDesignWizardState({
+    brief: "Новая дизайн система для десктопного приложения под агентскую систему чатов: approvals, tool calls, subagents, memory proposals и trace review.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+  });
+  const ruVisual = ruState.questionQueue.find((entry) => entry.axis === "visual_direction_tone");
+  assert.ok(ruVisual);
+  const ruMarkdown = formatDesignWizardQuestion(ruVisual);
+  assert.doesNotMatch(ruMarkdown, /Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/);
+  assert.match(ruMarkdown, /Командный центр с первым слоем trace|Операционный cockpit с закрепленным evidence/);
+  assert.ok(ruVisual.choices.every((choiceItem) => /[А-Яа-яЁё]/u.test(choiceItem.label)));
 });
 
 test("wizard contextualizes palette and typography choices for runtime copy", () => {
@@ -158,6 +249,7 @@ test("wizard contextualizes palette and typography choices for runtime copy", ()
   const markdown = `${formatDesignWizardQuestion(palette)}\n${formatDesignWizardQuestion(typography)}`;
   assert.doesNotMatch(markdown, /Graphite \+ cyan \(recommended\)|System native \(recommended\)/);
   assert.match(markdown, /starting hypothesis/);
+  assert.doesNotMatch(markdown, /This is the current .*profile risk/);
 });
 
 test("multilingual functional-only reference scope closes only the borrow/avoid axis", () => {
@@ -292,6 +384,7 @@ test("wizard localizes Russian questions and adds anti-generic creative gates", 
   const markdown = formatDesignWizardQuestion(state.questionQueue[0]);
   assert.doesNotMatch(markdown, /Шаг 1\/|Зачем:|Что изменится:|Если пропустить:/);
   assert.doesNotMatch(markdown, /Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)/);
+  assert.match(markdown, /Креативный директор:|UX\/UI дизайнер:|Оркестратор:/);
   assert.match(markdown, /Можно выбрать вариант выше/);
 });
 

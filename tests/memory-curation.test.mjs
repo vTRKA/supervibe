@@ -186,6 +186,40 @@ test("memory curator queues missing references and near-duplicate active entries
   assert.match(formatMemoryCurationReport(report), /DUPLICATE: checkout-token-budget-a ~ checkout-token-budget-b/);
 });
 
+test("memory curator validates hidden project path references without stripping their scope", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-hidden-refs-"));
+  const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+  await mkdir(decisionsDir, { recursive: true });
+  await mkdir(join(rootDir, ".codex", "agents"), { recursive: true });
+  await mkdir(join(rootDir, ".supervibe", "artifacts", "prototypes", "agent-chat"), { recursive: true });
+  await mkdir(join(rootDir, ".github"), { recursive: true });
+  await writeFile(join(rootDir, ".codex", "agents", "prototype-builder.md"), "# Prototype builder\n", "utf8");
+  await writeFile(join(rootDir, ".supervibe", "artifacts", "prototypes", "agent-chat", "config.json"), "{\"ok\":true}\n", "utf8");
+  await writeFile(join(rootDir, ".github", "PULL_REQUEST_TEMPLATE.md"), "# PR\n", "utf8");
+  await writeFile(join(decisionsDir, "hidden-refs.md"), [
+    "---",
+    "id: hidden-path-references",
+    "type: decision",
+    "date: 2026-05-04",
+    "tags: [commands, validation]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Hidden refs cite `.codex/agents/prototype-builder.md`, `.supervibe/artifacts/prototypes/agent-chat/config.json`, `.github/PULL_REQUEST_TEMPLATE.md`, and `.codex/agents/missing.md`.",
+  ].join("\n"), "utf8");
+
+  const report = await curateProjectMemory({
+    rootDir,
+    now: "2026-05-04T00:00:00.000Z",
+    changedFiles: [".codex/agents/prototype-builder.md"],
+  });
+
+  assert.equal(report.referenceIssues.length, 1);
+  assert.equal(report.referenceIssues[0].reference, ".codex/agents/missing.md");
+  assert.equal(report.invalidationCandidates.length, 1);
+  assert.equal(report.invalidationCandidates[0].changedFiles[0], ".codex/agents/prototype-builder.md");
+});
+
 test("memory curator builds hierarchy and queues git-diff invalidation candidates", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-invalidation-"));
   const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");

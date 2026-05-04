@@ -82,7 +82,9 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
       : !prototypeApproved
         ? "prototype draft"
         : "handoff ready";
-  const nextAction = designSystemStatus === "approved" && !prototypeExists
+  const nextAction = !designSystemStatus || designSystemStatus === "missing"
+    ? "Answer design wizard question / close creative direction axes"
+    : designSystemStatus === "approved" && !prototypeExists
     ? "Build prototype / revise DS / stop"
     : prototypeExists && !prototypeApproved
       ? "Review prototype / revise prototype / approve / stop"

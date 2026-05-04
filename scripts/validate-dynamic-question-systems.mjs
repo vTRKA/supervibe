@@ -176,6 +176,33 @@ function validateDesignWizardAdaptivity(issues) {
   if (firstDesignAxes.size < 3) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-first-design-axis", "different design briefs must prioritize different first design axes"));
   }
+
+  const visualQuestions = states
+    .map((item) => ({
+      label: item.label,
+      question: item.state.questionQueue.find((question) => question.axis === "visual_direction_tone"),
+    }))
+    .filter((item) => item.question);
+  const visualIdSets = visualQuestions.map((item) => item.question.choices.map((choice) => choice.id).join("|"));
+  if (new Set(visualIdSets).size < 3) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-creative-direction-option-set", "creative-direction questions must vary visible option sets across specialist brief profiles"));
+  }
+  for (const item of visualQuestions) {
+    const catalogLabels = new Set([
+      "operational clarity",
+      "technical command center",
+      "premium editorial",
+      "warm product utility",
+      "bold launch energy",
+    ]);
+    const leakedCatalogLabels = (item.question.choices || []).filter((choice) => {
+      const core = String(choice.label || "").toLowerCase().replace(/\s+for\s+.+$/i, "").trim();
+      return catalogLabels.has(core);
+    });
+    if (leakedCatalogLabels.length > 0) {
+      issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "catalog-creative-direction-options", `${item.label} creative-direction options expose base catalog labels instead of specialist-authored choices`));
+    }
+  }
 }
 
 function validateDesignWizardRuntimeCopy(issues) {
@@ -188,17 +215,19 @@ function validateDesignWizardRuntimeCopy(issues) {
     },
   });
   const creative = state.questionQueue.find((question) => question.axis === "creative_alternatives");
+  const visualDirection = state.questionQueue.find((question) => question.axis === "visual_direction_tone");
   const density = state.questionQueue.find((question) => question.axis === "information_density");
   const rendered = [
     creative,
+    visualDirection,
     density,
   ].filter(Boolean).map((question) => {
     const choices = (question.choices || []).map((choice) => choice.label).join(" | ");
     return `${question.prompt} | ${choices}`;
   }).join("\n");
 
-  if (!creative || !density) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-contextual-design-axes", "agent-chat design brief must still ask creative alternatives and density when not answered"));
+  if (!creative || !visualDirection || !density) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-contextual-design-axes", "agent-chat design brief must still ask creative alternatives, visual direction, and density when not answered"));
     return;
   }
   if (!/agent|агент|chat|чат/i.test(rendered)) {
@@ -207,7 +236,10 @@ function validateDesignWizardRuntimeCopy(issues) {
   if (/(^|\n|\| )3 distinct directions\b|(^|\n|\| )3 разных направления\b|(^|\n|\| )Balanced\b/.test(rendered)) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-design-choice-copy", "design wizard must not render reusable catalog labels as runtime choices for contextual briefs"));
   }
-  const userFacingMarkdown = [creative, density].filter(Boolean).map((question) => formatDesignWizardQuestion(question)).join("\n");
+  if (/Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/i.test(rendered)) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "catalog-visual-direction-runtime-copy", "agent-chat creative-direction question must not render the base catalog option list"));
+  }
+  const userFacingMarkdown = [creative, visualDirection, density].filter(Boolean).map((question) => formatDesignWizardQuestion(question)).join("\n");
   if (/Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)|\bStep\s+\d+\/\d+:|Шаг\s+\d+\/\d+:|Зачем:|Что изменится:|Если пропустить:/i.test(userFacingMarkdown)) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "protocol-design-question-copy", "user-facing design questions must hide protocol scaffolding behind planner state instead of rendering it inline"));
   }

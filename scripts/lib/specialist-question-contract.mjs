@@ -5,6 +5,7 @@ const CATALOG_COPY_PATTERN = /option a|option b|recommended\/alternative|templat
 export function buildSpecialistQuestionProposal({
   schemaVersion = 1,
   proposalId = null,
+  locale = "en",
   stage,
   specialist,
   ownerAgent = null,
@@ -28,6 +29,8 @@ export function buildSpecialistQuestionProposal({
     tradeoff: choice.tradeoff || choice.description || "",
     unlocks: Array.isArray(choice.unlocks) ? choice.unlocks : [],
     risk: choice.risk || "",
+    evidence: Array.isArray(choice.evidence) ? choice.evidence : [],
+    artifactImpact: choice.artifactImpact || artifactImpact || "",
     recommended: choice.recommended === true,
   }));
   const recommended = normalizedChoices.find((choice) => choice.recommended) || normalizedChoices[0] || null;
@@ -36,17 +39,20 @@ export function buildSpecialistQuestionProposal({
     proposalId: proposalId || `${stage || "stage"}:${resolvedOwnerAgent || "specialist"}:${questionSlug(question || "question")}`,
     stage,
     specialist,
+    locale: normalizeLocale(locale),
     ownerAgent: resolvedOwnerAgent,
     question,
     why,
     whyNow: whyNow || why,
     choices: normalizedChoices.map(({ recommended: _recommended, ...choice }) => choice),
-    options: normalizedChoices.map(({ id, label, tradeoff, unlocks, risk, recommended }) => ({
+    options: normalizedChoices.map(({ id, label, tradeoff, unlocks, risk, evidence, artifactImpact, recommended }) => ({
       id,
       label,
       tradeoff,
       unlocks,
       risk,
+      evidence,
+      artifactImpact,
       recommended,
     })),
     recommendedOption: recommended?.id || null,
@@ -71,6 +77,7 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   const text = [
     proposal.question,
     proposal.why,
+    proposal.whyNow,
     proposal.artifactImpact,
     ...(proposal.choices || []).map((choice) => `${choice.label} ${choice.tradeoff || ""}`),
   ].join(" ");
@@ -102,6 +109,9 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
     if (!Array.isArray(option.unlocks) || option.unlocks.length === 0 || !option.risk) {
       issues.push(issue(file, "weak-specialist-question-option-impact", `${label}:${option.id || "unknown"} must name unlocks and risk`));
     }
+    if (!Array.isArray(option.evidence) || option.evidence.length < 2 || !option.artifactImpact) {
+      issues.push(issue(file, "missing-specialist-question-option-evidence", `${label}:${option.id || "unknown"} must bind option evidence and artifact impact`));
+    }
   }
   if (!proposal.recommendedOption || !(proposal.options || []).some((option) => option.id === proposal.recommendedOption)) {
     issues.push(issue(file, "missing-specialist-question-recommendation", `${label} must name a recommendedOption from options`));
@@ -117,6 +127,15 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   }
   if (CATALOG_COPY_PATTERN.test(text)) {
     issues.push(issue(file, "catalog-copy-specialist-question", `${label} looks like reusable catalog copy instead of a specialist proposal`));
+  }
+  if (/current\s+\w+\s+profile\s+risk|questionnaire slot|referenceRefresh profile risk/i.test(String(proposal.whyNow || ""))) {
+    issues.push(issue(file, "generic-specialist-question-why-now", `${label} whyNow must explain the user's concrete design risk, not internal profile metadata`));
+  }
+  if (hasRepeatedOptionSuffix(proposal.options || proposal.choices || [])) {
+    issues.push(issue(file, "repeated-specialist-question-option-suffix", `${label} options repeat the same visible suffix instead of distinct specialist tradeoffs`));
+  }
+  if (normalizeLocale(proposal.locale) === "ru" && visibleRussianShare(proposal) < 0.15) {
+    issues.push(issue(file, "mixed-language-specialist-question", `${label} locale=ru but visible question copy is mostly non-Russian`));
   }
   if (!Array.isArray(proposal.evidence) || proposal.evidence.length < 2) {
     issues.push(issue(file, "thin-specialist-question-evidence", `${label} must cite at least two current evidence signals`));
@@ -149,6 +168,36 @@ function hasContextSignal(proposal = {}) {
     ...(proposal.blocks || []),
   ].join(" ");
   return /brief|domain|screen|prototype|dashboard|brand|tokens|copy|a11y|ux|repo|rules|memory|security|audit|privacy|rag|codegraph|code graph/i.test(text);
+}
+
+function hasRepeatedOptionSuffix(options = []) {
+  const tradeoffs = options
+    .map((option) => String(option.tradeoff || option.description || "").trim())
+    .filter(Boolean);
+  if (tradeoffs.some((text) => /apply it specifically|reusable questionnaire default/i.test(text))) return true;
+  const counts = new Map();
+  for (const text of tradeoffs) {
+    const normalized = text.toLowerCase().replace(/[^a-z0-9а-яё\s-]+/giu, "").replace(/\s+/g, " ").trim();
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+  return [...counts.values()].some((count) => count >= 2);
+}
+
+function visibleRussianShare(proposal = {}) {
+  const visible = [
+    proposal.question,
+    proposal.why,
+    proposal.whyNow,
+    ...(proposal.options || proposal.choices || []).flatMap((option) => [option.label, option.tradeoff || option.description]),
+  ].join(" ");
+  const letters = visible.match(/\p{L}/gu) || [];
+  if (!letters.length) return 0;
+  const cyrillic = visible.match(/[а-яё]/giu) || [];
+  return cyrillic.length / letters.length;
+}
+
+function normalizeLocale(locale = "en") {
+  return String(locale || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
 }
 
 function questionSlug(value = "") {

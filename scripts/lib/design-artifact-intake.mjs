@@ -314,6 +314,30 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
   return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
 }
 
+export function buildReferenceInventoryPlan({ slug = "", intake = null } = {}) {
+  const sources = [
+    ...((intake?.artifacts || []).map((artifact) => artifact.path).filter(Boolean)),
+    ...((intake?.oldArtifactReferences || []).filter(Boolean)),
+    ...((intake?.referenceSources || []).map((source) => `${source.kind}: ${source.value}`).filter(Boolean)),
+  ];
+  const hasReferenceSignal = sources.length > 0
+    || intake?.needsOldArtifactScopeQuestion === true
+    || intake?.needsReferenceSourceScopeQuestion === true
+    || /reference-scope|old-artifact|existing-artifact|reuse/i.test(String(intake?.reason || ""));
+  if (!hasReferenceSignal) return null;
+  const prototypeSlug = slug || "<prototype-slug>";
+  return {
+    schemaVersion: 1,
+    path: `.supervibe/artifacts/prototypes/${prototypeSlug}/reference-inventory.md`,
+    producer: "supervibe:design-intelligence",
+    stageId: "stage-0-reference-inventory",
+    scope: intake?.referenceScopeDecision?.choiceId || "needs-user-scope",
+    requiredSections: ["flows", "states", "capabilities", "explicit-avoid-list"],
+    sources: [...new Set(sources)].slice(0, 12),
+    purpose: "functional inventory for old/reference prototypes before creative direction; not a visual style source unless explicitly approved",
+  };
+}
+
 export function formatDesignArtifactChoiceQuestion(intake) {
   if (intake.needsOldArtifactScopeQuestion) {
     const refs = (intake.oldArtifactReferences ?? []).map((ref, index) => `${index + 1}. ${ref}`).join("\n");

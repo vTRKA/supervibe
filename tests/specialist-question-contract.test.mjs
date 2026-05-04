@@ -16,9 +16,9 @@ test("specialist question contract accepts contextual artifact-changing question
     why: "The answer changes the screen spec, navigation priority, and table density.",
     whyNow: "The screen spec cannot lock navigation or density until the workflow priority is explicit.",
     choices: [
-      { id: "review-speed", label: "Review speed", tradeoff: "Fast scanning, fewer controls visible.", unlocks: ["spec.md"], risk: "May hide dispatch controls.", recommended: true },
-      { id: "dispatch-control", label: "Dispatch control", tradeoff: "More commands visible, higher density.", unlocks: ["prototype/index.html"], risk: "May increase cognitive load." },
-      { id: "incident-recovery", label: "Incident recovery", tradeoff: "Stronger alerting and audit trail, less calm.", unlocks: ["error states"], risk: "May make the default screen feel too severe." },
+      { id: "review-speed", label: "Review speed", tradeoff: "Fast scanning, fewer controls visible.", unlocks: ["spec.md"], risk: "May hide dispatch controls.", evidence: ["review queue signal", "screen spec impact"], artifactImpact: "review table density", recommended: true },
+      { id: "dispatch-control", label: "Dispatch control", tradeoff: "More commands visible, higher density.", unlocks: ["prototype/index.html"], risk: "May increase cognitive load.", evidence: ["tool-call controls", "prototype command bar"], artifactImpact: "dispatch action hierarchy" },
+      { id: "incident-recovery", label: "Incident recovery", tradeoff: "Stronger alerting and audit trail, less calm.", unlocks: ["error states"], risk: "May make the default screen feel too severe.", evidence: ["incident state risk", "audit trail copy"], artifactImpact: "recovery state model" },
     ],
     blocks: ["spec.md", "prototype/index.html"],
     artifactImpact: "screen spec layout, navigation, and primary action hierarchy",
@@ -54,6 +54,59 @@ test("specialist question contract rejects catalog-copy and context-free prompts
   assert.ok(issues.some((issue) => issue.code === "context-free-specialist-question"));
   assert.ok(issues.some((issue) => issue.code === "missing-specialist-question-default-policy"));
   assert.ok(scoreSpecialistQuestionProposal(proposal).score < 8);
+});
+
+test("specialist question contract rejects generic whyNow, missing option evidence, and repeated suffixes", () => {
+  const proposal = buildSpecialistQuestionProposal({
+    stage: "stage-1-brand-direction",
+    specialist: "creative-director",
+    ownerAgent: "creative-director",
+    question: "Which direction should the agent chat workspace use?",
+    why: "The answer changes direction.md and styleboard.html.",
+    whyNow: "This is the current referenceRefresh profile risk.",
+    choices: [
+      { id: "a", label: "Trace-first command center", tradeoff: "Apply it specifically to agent chat workspace.", unlocks: ["direction.md"], risk: "May feel dense.", recommended: true },
+      { id: "b", label: "Chat-first command center", tradeoff: "Apply it specifically to agent chat workspace.", unlocks: ["direction.md"], risk: "May hide traces." },
+      { id: "c", label: "Approval-first command center", tradeoff: "Apply it specifically to agent chat workspace.", unlocks: ["direction.md"], risk: "May slow chat." },
+    ],
+    blocks: ["direction.md", "styleboard.html"],
+    artifactImpact: "brand direction, styleboard, and token candidates",
+    skipDefault: "Stop and ask for a creative direction.",
+    canAnswerFromEvidence: false,
+    evidence: ["agent chat workspace brief", "pending approvals scenario"],
+    currentContext: "agent chat workspace",
+  });
+
+  const issues = validateSpecialistQuestionProposal(proposal);
+  assert.ok(issues.some((issue) => issue.code === "generic-specialist-question-why-now"));
+  assert.ok(issues.some((issue) => issue.code === "missing-specialist-question-option-evidence"));
+  assert.ok(issues.some((issue) => issue.code === "repeated-specialist-question-option-suffix"));
+});
+
+test("specialist question contract rejects visible locale mismatch", () => {
+  const proposal = buildSpecialistQuestionProposal({
+    locale: "ru",
+    stage: "stage-2-design-system",
+    specialist: "ux-ui-designer",
+    ownerAgent: "ux-ui-designer",
+    question: "Which layout density should we use?",
+    why: "The answer changes UX spec density.",
+    whyNow: "Density must be chosen before screen spec.",
+    choices: [
+      { id: "balanced", label: "Balanced", tradeoff: "Moderate density.", unlocks: ["spec.md"], risk: "May hide details.", evidence: ["brief", "artifact impact"], artifactImpact: "density model", recommended: true },
+      { id: "compact", label: "Compact", tradeoff: "More state visible.", unlocks: ["spec.md"], risk: "May overload.", evidence: ["trace panel", "artifact impact"], artifactImpact: "trace density" },
+      { id: "comfortable", label: "Comfortable", tradeoff: "More readable.", unlocks: ["spec.md"], risk: "May reduce throughput.", evidence: ["chat panel", "artifact impact"], artifactImpact: "reading rhythm" },
+    ],
+    blocks: ["spec.md"],
+    artifactImpact: "screen spec density",
+    skipDefault: "Ask in Russian before using a default.",
+    canAnswerFromEvidence: false,
+    evidence: ["русский brief", "screen spec"],
+    currentContext: "agent chat dashboard",
+  });
+
+  const issues = validateSpecialistQuestionProposal(proposal);
+  assert.ok(issues.some((issue) => issue.code === "mixed-language-specialist-question"));
 });
 
 test("specialist question contract keeps non-English proposal ids unique and context scoring strict", () => {

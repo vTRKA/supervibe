@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.74] - 2026-05-04
+
+### Added
+
+- Added `supervibe-adapt --resolve <path>` for manually merged managed
+  artifacts and baseline refresh recovery.
+- Added dynamic question validation that rejects catalog-style creative
+  direction option lists, repeated visible suffixes, generic why-now copy, weak
+  option evidence, and mixed-locale specialist questions.
+
+### Changed
+
+- Normalized managed artifact comparisons for CRLF/LF-only drift, refreshes
+  stale baselines during metadata-only applies, and keeps blocked adapt applies
+  from mutating durable state.
+- Made `/supervibe-design` creative-direction options specialist-authored by
+  brief profile, with distinct option sets for agent workspaces, launch pages,
+  regulated workflows, reference refreshes, and desktop ops.
+- Improved design workflow status, reference inventory planning, orchestrator
+  receipt closure, and hidden-path memory reference validation.
+
 ## [2.0.73] - 2026-05-04
 
 ### Added

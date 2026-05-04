@@ -108,6 +108,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
 function nextDispatchTarget(plan = {}, producer = null) {
   if (plan.executionStatus?.specialistDispatchDeferred === true) {
+    if (hasCompletedStageSubject(plan, {
+      subjectType: "agent",
+      subjectId: "supervibe-orchestrator",
+      stageId: "stage-0-orchestrator",
+    })) {
+      return null;
+    }
     return {
       producerType: "agent",
       producerId: "supervibe-orchestrator",
@@ -119,6 +126,14 @@ function nextDispatchTarget(plan = {}, producer = null) {
     };
   }
   return producer;
+}
+
+function hasCompletedStageSubject(plan = {}, expected = {}) {
+  return (plan.executionStatus?.completedStageSubjects || []).some((item) => {
+    return item.subjectType === expected.subjectType
+      && item.subjectId === expected.subjectId
+      && item.stageId === expected.stageId;
+  });
 }
 
 function formatDispatchTarget(target = null) {

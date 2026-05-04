@@ -8,8 +8,11 @@ import {
   filterAdaptPlanItems,
   formatAdaptApply,
   formatAdaptPlan,
+  formatAdaptResolve,
+  resolveAdaptPlanItems,
   summarizeAdaptApply,
   summarizeAdaptPlan,
+  summarizeAdaptResolve,
 } from "./lib/supervibe-adapt.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
 
@@ -30,10 +33,17 @@ try {
     pluginRoot,
     env: process.env,
     adapterId: args.host,
-    refreshMemoryIndex: resolveMemoryRefresh(args),
+    refreshMemoryIndex: args.apply || args.resolve ? false : resolveMemoryRefresh(args),
   });
 
-  if (args.apply) {
+  if (args.resolve) {
+    const result = await resolveAdaptPlanItems(plan, String(args.resolve).split(",").filter(Boolean));
+    printAdaptValue(result, {
+      summary: summarizeAdaptResolve,
+      formatter: formatAdaptResolve,
+    });
+    if (result.blocked.length > 0) process.exitCode = 2;
+  } else if (args.apply) {
     const result = await applyAdaptPlan(plan, {
       include: args.include ? String(args.include).split(",").filter(Boolean) : [],
       applyAll: Boolean(args.all),
@@ -75,6 +85,7 @@ Usage:
 Options:
   --dry-run                 Inspect artifact and metadata drift (default)
   --apply                   Apply approved artifact updates or metadata-only drift
+  --resolve <paths>         Mark manually merged files resolved when they match upstream, ignoring CRLF/LF
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update
   --diff-summary            Print per-file addition/deletion summary
@@ -94,6 +105,7 @@ Options:
 Examples:
   node scripts/supervibe-adapt.mjs --dry-run
   node scripts/supervibe-adapt.mjs --apply --include ".codex/agents/repo-researcher.md"
+  node scripts/supervibe-adapt.mjs --resolve ".codex/agents/repo-researcher.md"
   node scripts/supervibe-adapt.mjs --apply
 `.trim();
 }
