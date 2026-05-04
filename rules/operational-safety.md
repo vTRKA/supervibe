@@ -6,8 +6,8 @@ description: >-
 applies-to:
   - any
 mandatory: true
-version: 1
-last-verified: 2026-04-30T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-04T00:00:00.000Z
 related-rules:
   - git-discipline
   - no-dead-code
@@ -54,6 +54,18 @@ formatters. It makes risky actions explicit and reversible.
    during incident recovery or security remediation.
 5. **Evidence over confidence.** Cite command output, file:line, config diff, or
    health check. Do not claim "safe" from intuition.
+
+## Read-only Command Contract
+
+Any command surfaced as `read-only`, `search`, `status`, `audit`, `dry-run`, or
+`diagnostic` must either perform no writes at all or print every intentional
+write as `MUTATED: <path>` before completion. Quiet timestamp refreshes,
+memory-index rewrites, ledger rewrites, cache saves, and generated report writes
+are mutations. If a command needs to refresh state, expose an explicit flag such
+as `--refresh-*`, `--apply`, or `--write`, and keep the default path no-write.
+
+Tests for read-only commands should compare file metadata or content hashes for
+known mutable state files where regressions are likely.
 
 ## Deletion Requires Proof and Consent
 

@@ -14,6 +14,7 @@ import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from 
 import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
+const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
 
 export async function createAdaptPlan({
@@ -72,6 +73,7 @@ export async function createAdaptPlan({
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
     counts,
+    fastPath: buildAdaptFastPath({ counts, items }),
     items,
   };
 }
@@ -97,13 +99,17 @@ export async function applyAdaptPlan(plan, {
       blocked.push({ ...item, reason: "missing upstream file" });
       continue;
     }
+    if (item.classification === "both-changed") {
+      blocked.push({ ...item, reason: "conflict requires manual merge" });
+      continue;
+    }
     if (item.action === "add" && existsSync(item.projectAbs)) {
       blocked.push({ ...item, reason: "target already exists" });
       continue;
     }
     const content = await readFile(item.upstreamAbs, "utf8");
     await mkdir(dirname(item.projectAbs), { recursive: true });
-    await writeFile(item.projectAbs, content);
+    await writeFile(item.projectAbs, content, "utf8");
     applied.push(item);
   }
 
@@ -121,8 +127,7 @@ export async function applyAdaptPlan(plan, {
     refreshMemoryIndex,
   });
   const indexGate = await inspectIndexGate(plan.projectRoot);
-
-  return {
+  const result = {
     kind: "adapt-apply",
     projectRoot: plan.projectRoot,
     pluginRoot: plan.pluginRoot,
@@ -143,6 +148,11 @@ export async function applyAdaptPlan(plan, {
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,
   };
+  result.lifecycleState = await writeAdaptLifecycleState(plan, result, {
+    include,
+    applyAll,
+  });
+  return result;
 }
 
 export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
@@ -155,8 +165,12 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `ARTIFACTS: ${plan.items.length}`,
     `ADDS: ${plan.counts.add}`,
     `UPDATES: ${plan.counts.update}`,
+    `CONFLICTS: ${plan.counts.conflicts}`,
     `IDENTICAL: ${plan.counts.identical}`,
     `PROJECT_ONLY: ${plan.counts.projectOnly}`,
+    `FAST_PATH_ELIGIBLE: ${plan.fastPath?.eligible === true}`,
+    `FAST_PATH_ROLES: ${(plan.fastPath?.requiredRoles || []).join(",") || "none"}`,
+    `FAST_PATH_EXECUTION: ${plan.fastPath?.allowedExecution || "unknown"}`,
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
@@ -190,6 +204,8 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `SKIPPED: ${result.skipped.length}`,
     `BLOCKED: ${result.blocked.length}`,
     `METADATA_UPDATED: ${result.metadataUpdated ? "true" : "false"}`,
+    `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
+    `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
@@ -211,8 +227,75 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
   return lines.join("\n");
 }
 
+export function filterAdaptPlanItems(plan, { changedOnly = false, quietIdentical = false } = {}) {
+  const keep = (item) => {
+    if (changedOnly) return item.action === "add" || item.action === "update" || item.action === "project-only";
+    if (quietIdentical) return item.action !== "identical";
+    return true;
+  };
+  return {
+    ...plan,
+    items: (plan.items || []).filter(keep),
+  };
+}
+
+export function summarizeAdaptPlan(plan) {
+  const changed = (plan.items || []).filter((item) => item.action === "add" || item.action === "update" || item.action === "project-only");
+  return {
+    kind: "adapt-summary",
+    host: plan.host,
+    version: {
+      from: plan.lastSeenVersion || null,
+      to: plan.currentVersion || null,
+      drift: plan.versionDrift === true,
+    },
+    counts: plan.counts,
+    fastPath: plan.fastPath,
+    approvalRequired: plan.approvalRequired === true,
+    memoryIndex: plan.memoryIndex,
+    changedItems: changed.map((item) => ({
+      path: item.projectRel,
+      action: item.action,
+      classification: item.classification,
+      upstream: item.upstreamRel,
+      diff: item.diff || null,
+    })),
+    nextApply: plan.approvalRequired
+      ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${changed.filter((item) => item.action !== "project-only").map((item) => item.projectRel).join(",")}"`
+      : plan.metadataUpdateRequired
+        ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
+        : null,
+  };
+}
+
+export function summarizeAdaptApply(result) {
+  return {
+    kind: "adapt-apply-summary",
+    host: result.host,
+    version: {
+      from: result.lastSeenVersion || null,
+      to: result.currentVersion || null,
+    },
+    applied: (result.applied || []).map((item) => item.projectRel),
+    skipped: (result.skipped || []).map((item) => item.projectRel),
+    blocked: (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason })),
+    metadataUpdated: result.metadataUpdated === true,
+    lifecycleState: result.lifecycleState,
+    postApply: result.postApply,
+    memoryIndex: result.memoryIndex,
+    indexGate: result.indexGate,
+  };
+}
+
 function formatAdaptDiffSummary(plan) {
-  const updates = (plan.items || []).filter((item) => item.action === "update" || item.diff);
+  const updates = (plan.items || []).filter((item) => {
+    const diff = item.diff || {};
+    return item.action === "update"
+      || item.action === "add"
+      || item.classification === "both-changed"
+      || Number(diff.additions || 0) > 0
+      || Number(diff.deletions || 0) > 0;
+  });
   const lines = [
     "SUPERVIBE_ADAPT_DIFF_SUMMARY",
     `FILES: ${updates.length}`,
@@ -222,6 +305,25 @@ function formatAdaptDiffSummary(plan) {
     lines.push(`DIFF: ${item.projectRel} +${diff.additions || 0} -${diff.deletions || 0} (${item.classification})`);
   }
   return lines.join("\n");
+}
+
+function buildAdaptFastPath({ counts = {}, items = [] } = {}) {
+  const changed = items.filter((item) => item.action === "add" || item.action === "update");
+  const eligible = Number(counts.add || 0) === 0
+    && Number(counts.update || 0) <= 1
+    && Number(counts.projectOnly || 0) === 0
+    && Number(counts.conflicts || 0) === 0;
+  return {
+    eligible,
+    reason: eligible
+      ? "low-risk upstream-only adapt can use CLI apply plus quality gate"
+      : "standard adapt workflow required by adds, conflicts, project-only files, or multiple updates",
+    requiredRoles: eligible
+      ? ["supervibe-orchestrator", "quality-gate-reviewer"]
+      : ["supervibe-orchestrator", "repo-researcher", "rules-curator", "memory-curator", "quality-gate-reviewer"],
+    allowedExecution: eligible ? "cli-apply-plus-validators" : "standard-agent-plan",
+    changedArtifacts: changed.map((item) => item.projectRel),
+  };
 }
 
 function classifyArtifact({ artifact, upstream, baselineHash }) {
@@ -434,6 +536,7 @@ function countPlanItems(items) {
   return {
     add: items.filter((item) => item.action === "add").length,
     update: items.filter((item) => item.action === "update").length,
+    conflicts: items.filter((item) => item.classification === "both-changed").length,
     identical: items.filter((item) => item.action === "identical").length,
     projectOnly: items.filter((item) => item.action === "project-only").length,
   };
@@ -476,6 +579,63 @@ async function writeBaseline(plan, applied) {
     hostAdapter: plan.host.adapterId,
     artifacts,
   }, null, 2) + "\n");
+}
+
+async function writeAdaptLifecycleState(plan, result, { include = [], applyAll = false } = {}) {
+  const path = join(plan.projectRoot, ...STATE_PATH);
+  const now = new Date().toISOString();
+  const approvedArtifacts = applyAll
+    ? (plan.items || []).filter((item) => item.action === "add" || item.action === "update").map((item) => item.projectRel)
+    : include.map(normalizeRel);
+  const updatedArtifacts = (result.applied || []).map((item) => item.projectRel);
+  const blockedArtifacts = (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason }));
+  const lifecycle = blockedArtifacts.length > 0 ? "failed_recoverable" : "verified";
+  const state = {
+    schemaVersion: 1,
+    command: "/supervibe-adapt",
+    lifecycle,
+    currentStage: lifecycle,
+    host: result.host,
+    currentVersion: result.currentVersion,
+    previousVersion: result.lastSeenVersion || null,
+    approvedArtifacts,
+    updatedArtifacts,
+    blockedArtifacts,
+    evidence: {
+      fastPath: plan.fastPath || null,
+      metadataUpdated: result.metadataUpdated === true,
+      memoryIndex: result.memoryIndex,
+      postApply: result.postApply,
+      indexGate: result.indexGate,
+    },
+    validators: {
+      artifactAdaptClean: result.postApply?.clean === true,
+      codeIndexReady: result.indexGate?.ready === true,
+      blockedCount: blockedArtifacts.length,
+    },
+    history: [
+      { state: "approved", at: now, artifacts: approvedArtifacts },
+      { state: "applied", at: now, artifacts: updatedArtifacts },
+      {
+        state: lifecycle,
+        at: now,
+        validators: {
+          artifactAdaptClean: result.postApply?.clean === true,
+          codeIndexReady: result.indexGate?.ready === true,
+          blockedCount: blockedArtifacts.length,
+        },
+      },
+    ],
+    updatedAt: now,
+  };
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return {
+    path: normalizeRel(relative(plan.projectRoot, path)),
+    lifecycle,
+    updatedArtifacts,
+    validators: state.validators,
+  };
 }
 
 async function ensureMemoryIndex(projectRoot) {

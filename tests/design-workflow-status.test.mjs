@@ -61,3 +61,30 @@ test("design workflow status shows approved DS with missing prototype and blocke
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("design workflow status exposes continuation actions for candidate design system", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-status-candidate-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", `${JSON.stringify({
+      design_system: {
+        status: "candidate",
+        approved_sections: [],
+      },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/styleboard.html", "<!doctype html><html><body>Candidate</body></html>\n");
+
+    const status = readDesignWorkflowStatus(root, { slug: "agent-chat" });
+    const report = formatDesignWorkflowStatus(status);
+
+    assert.equal(status.prototype.unlocked, false);
+    assert.deepEqual(
+      status.nextUserActions.map((action) => action.id),
+      ["approve_design_system", "revise_styleboard", "compare_alternatives", "stop"],
+    );
+    assert.match(report, /NEXT_USER_ACTIONS:/);
+    assert.match(report, /approve_design_system: Approve design system/);
+    assert.match(report, /PROTOTYPE_UNLOCKED: false/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

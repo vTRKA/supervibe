@@ -160,6 +160,21 @@ export const DESIGN_VIEWPORT_CHOICES = Object.freeze([
   choice("custom", "Custom viewport", "Use when target hardware or embedded surface is known."),
 ]);
 
+const DESIGN_QUESTION_OWNERS = Object.freeze({
+  mode: { stage: "stage-0-orchestrator", specialist: "supervibe-orchestrator", blocks: ["config.json.mode", "stageTriage"] },
+  viewport: { stage: "stage-0-orchestrator", specialist: "supervibe-orchestrator", blocks: ["config.json.viewports", "review screenshots"] },
+  creative_alternatives: { stage: "stage-1-brand-direction", specialist: "creative-director", blocks: ["direction.md", "tokens", "styleboard"] },
+  anti_generic_guardrail: { stage: "stage-1-brand-direction", specialist: "creative-director", blocks: ["direction.md", "critique gate"] },
+  visual_direction_tone: { stage: "stage-1-brand-direction", specialist: "creative-director", blocks: ["direction.md", "tokens"] },
+  audience_trust_posture: { stage: "stage-1-brand-direction", specialist: "creative-director", blocks: ["direction.md", "copy tone", "assurance cues"] },
+  information_density: { stage: "stage-2-design-system", specialist: "ux-ui-designer", blocks: ["spacing-density", "screen spec"] },
+  typography_personality: { stage: "stage-2-design-system", specialist: "supervibe:brandbook", blocks: ["tokens.css", "type scale"] },
+  palette_mood: { stage: "stage-2-design-system", specialist: "supervibe:brandbook", blocks: ["tokens.css", "semantic colors"] },
+  motion_intensity: { stage: "stage-2-design-system", specialist: "supervibe:brandbook", blocks: ["motion.css", "reduced-motion policy"] },
+  component_feel: { stage: "stage-2-design-system", specialist: "ux-ui-designer", blocks: ["component docs", "library adapter"] },
+  reference_borrow_avoid: { stage: "stage-0-design-intelligence", specialist: "supervibe:design-intelligence", blocks: ["reference scope", "borrow/avoid list"] },
+});
+
 const DEFAULT_AXIS_ORDER = Object.freeze(DESIGN_WIZARD_AXES.map((axisDef) => axisDef.id));
 
 const DESIGN_QUESTION_PROFILES = Object.freeze({
@@ -620,6 +635,7 @@ export function buildDesignWizardState({
     guidedDefaultsChecklist,
     questionStrategy,
     questionQueue,
+    questionProposals: questionQueue.map((question) => specialistQuestionProposal(question)),
     reviewChecks: buildDesignReviewCheckPlan({ target, viewportDecision: decisions.viewport, viewportPolicy }),
     styleboard: {
       phase: styleboardReadiness.pass ? "review-styleboard" : "diagnostic-scratch",
@@ -1715,6 +1731,7 @@ function numberQuestionQueue(questionQueue, { completedCount = 0, totalCount = n
   for (const [index, question] of questionQueue.entries()) {
     question.step = completedCount + index + 1;
     question.total = total;
+    Object.assign(question, specialistQuestionMetadata(question));
   }
   return questionQueue;
 }
@@ -1723,8 +1740,42 @@ function attachDesignWizardRuntime(state = {}) {
   const runtimeStatus = buildDesignWizardRuntimeStatus(state);
   return {
     ...state,
+    questionProposals: (state.questionQueue || []).map((question) => specialistQuestionProposal(question)),
     runtimeStatus,
     resumeToken: runtimeStatus.resumeToken,
+  };
+}
+
+function specialistQuestionMetadata(question = {}) {
+  const owner = DESIGN_QUESTION_OWNERS[question.axis] || DESIGN_QUESTION_OWNERS.mode;
+  return {
+    stage: owner.stage,
+    specialist: owner.specialist,
+    blocks: [...owner.blocks],
+    artifactImpact: question.decisionUnlocked || question.decision || owner.blocks.join(", "),
+    skipDefault: question.ifSkipped || "Stop or use an explicitly delegated safe default; never assume silently.",
+    canAnswerFromEvidence: false,
+  };
+}
+
+function specialistQuestionProposal(question = {}) {
+  const metadata = specialistQuestionMetadata(question);
+  return {
+    schemaVersion: 1,
+    proposalId: `${metadata.stage}:${metadata.specialist}:${question.axis || "question"}`,
+    stage: metadata.stage,
+    specialist: metadata.specialist,
+    question: question.prompt || question.question || "",
+    why: question.why || `${metadata.artifactImpact} changes if this answer changes.`,
+    choices: (question.choices || []).map((choiceItem) => ({
+      id: choiceItem.id,
+      label: choiceItem.label,
+      tradeoff: choiceItem.tradeoff || choiceItem.description || "",
+    })),
+    blocks: metadata.blocks,
+    artifactImpact: metadata.artifactImpact,
+    skipDefault: metadata.skipDefault,
+    canAnswerFromEvidence: metadata.canAnswerFromEvidence,
   };
 }
 

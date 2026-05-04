@@ -2,7 +2,15 @@
 
 import { fileURLToPath } from "node:url";
 
-import { applyAdaptPlan, createAdaptPlan, formatAdaptApply, formatAdaptPlan } from "./lib/supervibe-adapt.mjs";
+import {
+  applyAdaptPlan,
+  createAdaptPlan,
+  filterAdaptPlanItems,
+  formatAdaptApply,
+  formatAdaptPlan,
+  summarizeAdaptApply,
+  summarizeAdaptPlan,
+} from "./lib/supervibe-adapt.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
 
 const rawArgs = process.argv.slice(2);
@@ -31,18 +39,29 @@ try {
       applyAll: Boolean(args.all),
       refreshMemoryIndex: resolveMemoryRefresh(args),
     });
-    print(result, (value) => formatAdaptApply(value, { diffSummary: Boolean(args["diff-summary"] || args.all) }));
+    printAdaptValue(result, {
+      summary: summarizeAdaptApply,
+      formatter: (value) => formatAdaptApply(value, { diffSummary: Boolean(args["diff-summary"] || args.all || args["evidence-summary"]) }),
+    });
     if (result.blocked.length > 0) process.exitCode = 2;
   } else {
-    print(plan, (value) => formatAdaptPlan(value, { diffSummary: Boolean(args["diff-summary"]) }));
+    const visiblePlan = filterAdaptPlanItems(plan, {
+      changedOnly: Boolean(args["changed-only"]),
+      quietIdentical: Boolean(args["quiet-identical"]),
+    });
+    printAdaptValue(visiblePlan, {
+      summary: summarizeAdaptPlan,
+      formatter: (value) => formatAdaptPlan(value, { diffSummary: Boolean(args["diff-summary"] || args["evidence-summary"]) }),
+    });
   }
 } catch (error) {
   console.error(`supervibe-adapt error: ${error.message}`);
   process.exit(1);
 }
 
-function print(value, formatter) {
-  if (args.json) console.log(JSON.stringify(value, null, 2));
+function printAdaptValue(value, { summary, formatter }) {
+  if (args["summary-json"]) console.log(JSON.stringify(summary(value), null, 2));
+  else if (args.json) console.log(JSON.stringify(value, null, 2));
   else console.log(formatter(value));
 }
 
@@ -59,6 +78,10 @@ Options:
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update
   --diff-summary            Print per-file addition/deletion summary
+  --summary-json            Print compact machine-readable counts, changes, and evidence
+  --changed-only            Omit identical artifacts from JSON/text item output
+  --evidence-summary        Include compact diff/evidence lines in text output
+  --quiet-identical         Suppress identical artifact details in machine-readable output
   --refresh-memory-index    Refresh .supervibe/memory/index.json during planning
   --no-refresh-memory-index Do not refresh memory index (dry-run default)
   --project <path>          Project root to adapt
@@ -88,6 +111,10 @@ function parseArgs(argv) {
     "all",
     "dry-run",
     "json",
+    "summary-json",
+    "changed-only",
+    "evidence-summary",
+    "quiet-identical",
     "no-color",
     "diff-summary",
     "refresh-memory-index",

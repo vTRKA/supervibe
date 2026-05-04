@@ -116,7 +116,10 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "rules-curator",
     "memory-curator",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["changed-artifact-specialists"] }),
+  ], {
+    dynamicAgentSelectors: ["changed-artifact-specialists", "low-risk-fast-path"],
+    lowRiskRequiredAgentIds: ["supervibe-orchestrator", "quality-gate-reviewer"],
+  }),
   profile("/supervibe-audit", [
     "supervibe-orchestrator",
     "repo-researcher",
@@ -247,9 +250,11 @@ export function getCommandAgentProfile(commandId) {
 export function buildCommandAgentPlan(commandId, {
   requestedExecutionMode,
   availableAgentIds,
+  availableAgentSources = null,
   extraRequiredAgentIds = [],
   hostAdapterId = null,
   enforceHostProof = false,
+  workflowContext = {},
 } = {}) {
   const profile = getCommandAgentProfile(commandId);
   if (!profile) {
@@ -264,9 +269,10 @@ export function buildCommandAgentPlan(commandId, {
   }
 
   const requestedMode = normalizeExecutionMode(requestedExecutionMode || profile.defaultExecutionMode);
+  const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
   const requiredAgentIds = unique([
     profile.ownerAgentId,
-    ...profile.requiredAgentIds,
+    ...(lowRiskFastPath ? profile.lowRiskRequiredAgentIds : profile.requiredAgentIds),
     ...extraRequiredAgentIds,
   ]);
   const immediateAgentIds = normalizeImmediateAgentIds(profile, requiredAgentIds);
@@ -297,10 +303,12 @@ export function buildCommandAgentPlan(commandId, {
   return {
     commandId: profile.commandId,
     ownerAgentId: profile.ownerAgentId,
+    agentSelectionMode: lowRiskFastPath ? "low-risk-fast-path" : "standard",
     executionMode,
     requestedExecutionMode: requestedMode,
     defaultExecutionMode: profile.defaultExecutionMode,
     requiredAgentIds,
+    requiredAgentSources: agentSourcesFor(requiredAgentIds, availableAgentSources),
     immediateAgentIds,
     deferredAgentIds,
     stageGate: profile.stageGate || null,
@@ -329,7 +337,9 @@ export function buildCommandAgentPlan(commandId, {
         ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
       : blocked
         ? `Missing required agents: ${missingAgents.join(", ")}.`
-        : "Agent definitions and host dispatch are available, but durable outputs remain blocked until runtime agent receipts are issued.",
+        : lowRiskFastPath
+          ? "Low-risk workflow context selected the owner plus quality gate fast path; durable outputs still require runtime receipts for any claimed producer."
+          : "Agent definitions and host dispatch are available, but durable outputs remain blocked until runtime agent receipts are issued.",
     blockedQuestion: blocked
       ? {
         prompt: "Required real agents or host invocation proof are unavailable. Choose provision agents, connect host agents, or stop.",
@@ -402,6 +412,7 @@ export function formatCommandAgentPlan(plan = {}) {
     "SUPERVIBE_COMMAND_AGENT_PLAN",
     `COMMAND: ${plan.commandId || "unknown"}`,
     `OWNER_AGENT: ${plan.ownerAgentId || "none"}`,
+    `AGENT_SELECTION_MODE: ${plan.agentSelectionMode || "standard"}`,
     `EXECUTION_MODE: ${plan.executionMode || "unknown"}`,
     `DEFAULT_MODE: ${plan.defaultExecutionMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode}`,
     `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
@@ -412,6 +423,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
+    `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
     `IMMEDIATE_AGENTS: ${(plan.immediateAgentIds || []).join(", ") || "none"}`,
     `DEFERRED_AGENTS: ${(plan.deferredAgentIds || []).join(", ") || "none"}`,
     `AGENT_STAGE_GATE: ${plan.stageGate || "none"}`,
@@ -533,6 +545,7 @@ function profile(commandId, requiredAgentIds, options = {}) {
     ownerAgentId: COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId,
     defaultExecutionMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode,
     requiredAgentIds: Object.freeze(unique(requiredAgentIds)),
+    lowRiskRequiredAgentIds: Object.freeze(unique(options.lowRiskRequiredAgentIds || requiredAgentIds)),
     dynamicAgentSelectors: Object.freeze(options.dynamicAgentSelectors || []),
     immediateAgentIds: Object.freeze(options.immediateAgentIds || []),
     stageGate: options.stageGate || null,
@@ -561,12 +574,39 @@ function copyCommandAgentProfile(profile) {
   return {
     ...profile,
     requiredAgentIds: [...profile.requiredAgentIds],
+    lowRiskRequiredAgentIds: [...(profile.lowRiskRequiredAgentIds || profile.requiredAgentIds)],
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     immediateAgentIds: [...(profile.immediateAgentIds || [])],
     executionModes: [...profile.executionModes],
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
   };
+}
+
+function isLowRiskFastPath(profile = {}, workflowContext = {}) {
+  if (!profile.lowRiskRequiredAgentIds?.length) return false;
+  if (workflowContext.lowRisk === true || workflowContext["low-risk"] === true) return true;
+  const adds = Number(workflowContext.adds ?? workflowContext.add ?? NaN);
+  const updates = Number(workflowContext.updates ?? workflowContext.update ?? NaN);
+  const projectOnly = Number(workflowContext.projectOnly ?? workflowContext["project-only"] ?? NaN);
+  const conflicts = Number(workflowContext.conflicts ?? workflowContext.conflict ?? NaN);
+  if ([adds, updates, projectOnly, conflicts].some((value) => !Number.isFinite(value))) return false;
+  return adds === 0 && updates <= 1 && projectOnly === 0 && conflicts === 0;
+}
+
+function agentSourcesFor(agentIds = [], availableAgentSources = null) {
+  const sourceMap = availableAgentSources instanceof Map
+    ? availableAgentSources
+    : new Map(Object.entries(availableAgentSources || {}));
+  return agentIds.map((agentId) => ({
+    agentId,
+    source: sourceMap.get(agentId) || "logical role",
+  }));
+}
+
+function formatAgentSources(sources = []) {
+  if (!sources.length) return "none";
+  return sources.map((item) => `${item.agentId}=${item.source}`).join(", ");
 }
 
 function nextActionForPlan(plan = {}) {

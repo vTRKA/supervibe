@@ -70,12 +70,53 @@ same failure modes affect every agent-heavy Supervibe command.
 - Russian intent replay: the exact functional-only old-artifact answer from
   user feedback is covered as `functional-only` old-artifact scope.
 
+## Fixed In 2.0.69
+
+- Low-risk adapt fast path: `/supervibe-adapt` plans now compute
+  `FAST_PATH_ELIGIBLE` for `adds=0`, `updates<=1`, `projectOnly=0`, and
+  `conflicts=0`, and `command-agent-plan.mjs` selects only
+  `supervibe-orchestrator` plus `quality-gate-reviewer` for that case.
+- Adapt output modes: `supervibe-adapt` supports `--summary-json`,
+  `--changed-only`, `--evidence-summary`, and `--quiet-identical` so dry-runs
+  can show only changed evidence instead of every identical artifact.
+- Adapt lifecycle state: apply writes `.supervibe/memory/adapt/state.json`
+  with approved/applied/verified history, updated artifacts, evidence, and
+  validator outcomes.
+- Receipt hardening: the shared receipt runtime rejects mutable/log-like output
+  artifacts before writing receipts, recommends stable per-agent output JSON or
+  summaries, and makes repeated receipt issue for the same receipt path
+  idempotent by replacing the ledger entry and rebuilding the chain.
+- Receipt validator recovery UX: failed validation reports
+  `NEXT_SAFE_ACTION`, including `workflow-receipt.mjs rebuild-ledger
+  --prune-stale`, instead of repeating signature mismatch lines without repair
+  guidance.
+- Read-only memory search: `search-memory.mjs` now curates in memory without
+  rewriting `.supervibe/memory/index.json`; explicit mutation remains confined
+  to commands that ask for a refresh.
+- Stage runner contract: `supervibe-stage run` is the global path for supported
+  agent/skill stages to bind producer output, host invocation evidence,
+  receipts, validation, and continuation actions in one runtime operation.
+- Specialist question provenance: design wizard questions now carry
+  `SpecialistQuestionContract` proposals with stage owner, artifact impact,
+  blocked artifacts, skip/default behavior, and evidence-answerability checks;
+  the dynamic question validator rejects catalog-copy questions.
+- Post-stage continuation: gated stages now expose `NEXT_USER_ACTIONS` through
+  the shared stage-state helper. Candidate design systems must end with
+  approve / revise / compare / stop choices and explain what unlocks prototype
+  work.
+- Agent role source visibility: command agent plans report each required role
+  source as `project artifact`, `plugin-only`, or `logical role`.
+
 ## Still Design Principles
 
 - Command receipts never substitute for specialist agent, worker, or reviewer
   output.
 - Real-agent command plans must distinguish agents to spawn now from staged
   agents that are blocked behind workflow gates.
+- Every gated lifecycle stop must produce explicit user choices, not just
+  `NEXT_ACTION` or "done".
+- Low-risk fast paths may reduce required roles, but they do not remove receipt,
+  validator, approval, or evidence obligations.
 - Candidate design-system artifacts never set `approved` and never unlock
   prototype work without explicit approval.
 - Approved design-system artifacts alone do not equal a final UI prototype or

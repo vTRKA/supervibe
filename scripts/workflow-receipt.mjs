@@ -13,6 +13,9 @@ import {
   formatWorkflowReceiptsReport,
 } from "./validate-workflow-receipts.mjs";
 
+process.on("uncaughtException", reportWorkflowReceiptError);
+process.on("unhandledRejection", reportWorkflowReceiptError);
+
 function parseArgs(argv) {
   const operation = argv[2] || "help";
   const options = { operation, input: [], output: [] };
@@ -48,7 +51,7 @@ USAGE:
   node scripts/workflow-receipt.mjs validate
 
 NOTES:
-  issue writes a runtime-signed receipt, appends the hash-chain ledger, and updates artifact-links.json.`;
+  issue writes a runtime-signed receipt, upserts the hash-chain ledger idempotently, and updates artifact-links.json.`;
 }
 
 function inferSubjectType(options) {
@@ -213,4 +216,11 @@ function buildHostInvocation(options) {
     traceId: options["host-trace-id"] || null,
     spanId: options["host-span-id"] || null,
   };
+}
+
+function reportWorkflowReceiptError(error) {
+  console.error("SUPERVIBE_WORKFLOW_RECEIPT_ERROR");
+  console.error(`ERROR: ${error?.message || error}`);
+  console.error("NEXT_SAFE_ACTION: use a stable per-agent output JSON/summary for receipt outputs; for ledger drift run `node scripts/workflow-receipt.mjs recovery-status` then the printed repair command.");
+  process.exit(2);
 }

@@ -147,6 +147,37 @@ test("command agent plan blocks missing real agents and keeps inline diagnostic 
   assert.match(inline.qualityImpact, /diagnostic\/dry-run only/);
 });
 
+test("adapt command agent plan uses low-risk fast path and reports role sources", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+  const availableAgentSources = {
+    "supervibe-orchestrator": "project artifact",
+    "quality-gate-reviewer": "plugin-only",
+  };
+
+  const plan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds,
+    availableAgentSources,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: {
+      adds: 0,
+      updates: 1,
+      projectOnly: 0,
+      conflicts: 0,
+    },
+  });
+  const report = formatCommandAgentPlan(plan);
+
+  assert.equal(plan.agentSelectionMode, "low-risk-fast-path");
+  assert.deepEqual(plan.requiredAgentIds, ["supervibe-orchestrator", "quality-gate-reviewer"]);
+  assert.equal(plan.requiredAgentSources.find((item) => item.agentId === "supervibe-orchestrator").source, "project artifact");
+  assert.equal(plan.requiredAgentSources.find((item) => item.agentId === "quality-gate-reviewer").source, "plugin-only");
+  assert.match(report, /AGENT_SELECTION_MODE: low-risk-fast-path/);
+  assert.match(report, /REQUIRED_AGENT_SOURCES: .*supervibe-orchestrator=project artifact.*quality-gate-reviewer=plugin-only/);
+});
+
 test("command agent plan enforces host dispatch proof policy", () => {
   const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
     .filter((entry) => String(entry).endsWith(".md"))

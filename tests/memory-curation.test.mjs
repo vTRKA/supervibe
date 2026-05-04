@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -109,6 +109,36 @@ test("memory search hides superseded entries by default and exposes them only as
   assert.match(withHistory, /feedback-websocket-v2/);
   assert.match(withHistory, /old-feedback-websocket/);
   assert.match(withHistory, /Freshness: superseded \(stale\)/);
+});
+
+test("memory search does not rewrite generated index timestamps", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-readonly-"));
+  const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+  await mkdir(decisionsDir, { recursive: true });
+  await writeFile(join(decisionsDir, "feedback.md"), [
+    "---",
+    "id: feedback-current",
+    "type: decision",
+    "date: 2026-05-01",
+    "tags: [feedback, websocket]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Feedback websocket uses reviewed v2 event envelope.",
+  ].join("\n"), "utf8");
+
+  execFileSync(process.execPath, [buildMemoryIndexScript, "--now", "2026-05-01T00:00:00.000Z"], {
+    cwd: rootDir,
+    encoding: "utf8",
+  });
+  const before = await readFile(join(rootDir, ".supervibe", "memory", "index.json"), "utf8");
+  execFileSync(process.execPath, [searchMemoryScript, "--query", "feedback websocket"], {
+    cwd: rootDir,
+    encoding: "utf8",
+  });
+  const after = await readFile(join(rootDir, ".supervibe", "memory", "index.json"), "utf8");
+
+  assert.equal(after, before);
 });
 
 test("memory curator queues missing references and near-duplicate active entries", async () => {

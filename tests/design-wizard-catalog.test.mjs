@@ -73,6 +73,25 @@ test("wizard prioritizes questions and recommendations by brief profile", () => 
   );
 });
 
+test("wizard emits specialist question proposals with artifact impact", () => {
+  const state = buildDesignWizardState({
+    brief: "Developer console for agent workflow with compact data and command center behavior.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+  const proposal = state.questionProposals.find((item) => item.specialist === "creative-director");
+
+  assert.ok(proposal);
+  assert.equal(proposal.stage, "stage-1-brand-direction");
+  assert.ok(proposal.blocks.includes("direction.md"));
+  assert.ok(proposal.artifactImpact);
+  assert.equal(proposal.canAnswerFromEvidence, false);
+  assert.ok(proposal.choices.length >= 3);
+});
+
 test("wizard renders context-specific choice labels instead of reusable templates", () => {
   const state = buildDesignWizardState({
     brief: "Новая дизайн система для десктопного приложения под агентскую систему чатов. Нужен креативный UI, не generic SaaS admin, graphite cyan, code-first typography, subtle motion.",

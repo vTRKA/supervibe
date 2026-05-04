@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.69] - 2026-05-04
+
+### Added
+
+- Added low-risk `/supervibe-adapt` fast-path planning, compact adapt output
+  modes, and automatic `.supervibe/memory/adapt/state.json` lifecycle updates.
+- Added `supervibe-stage run` as a shared stage runner for supported design
+  agent/skill stages, binding host invocation evidence, receipts, validation,
+  and continuation actions.
+- Added shared post-stage continuation state with `NEXT_USER_ACTIONS` so gated
+  stages surface approve, revise, compare, stop, or recovery choices.
+
+### Changed
+
+- Hardened workflow receipts to reject mutable/log-like output artifacts before
+  issuance and to upsert rerun ledger entries idempotently.
+- Strengthened design wizard questions with specialist provenance, artifact
+  impact, skip/default behavior, and validator coverage against catalog-copy
+  questions.
+- Extended global orchestration and operational safety rules for role source
+  visibility, read-only no-write behavior, stage runners, and recovery UX.
+
+### Fixed
+
+- Fixed `search-memory` read-only behavior so memory search no longer refreshes
+  `.supervibe/memory/index.json` by default.
+- Fixed receipt validator failure output to include a concrete
+  `NEXT_SAFE_ACTION` repair command.
+
 ## [2.0.68] - 2026-05-04
 
 ### Added

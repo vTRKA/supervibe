@@ -88,6 +88,47 @@ test("brandbook executable producer promotes scratch outputs and issues skill re
   }
 });
 
+test("brandbook producer rerun keeps receipt ledger trusted", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-brandbook-rerun-"));
+  try {
+    const source = ".supervibe/artifacts/prototypes/_design-system/.scratch/run-1";
+    await writeUtf8(root, `${source}/tokens.css`, ":root { --color-primary-500: #123456; }\n");
+    await writeUtf8(root, `${source}/manifest.json`, JSON.stringify({ version: "1.0.0", status: "candidate" }, null, 2));
+    await writeUtf8(root, `${source}/design-flow-state.json`, JSON.stringify({ design_system: { status: "candidate" } }, null, 2));
+    await writeUtf8(root, `${source}/styleboard.html`, "<!doctype html><html><body><main>Styleboard</main></body></html>\n");
+
+    for (const stamp of ["2026-05-04T00:00:00.000Z", "2026-05-04T00:01:00.000Z"]) {
+      execFileSync(process.execPath, [
+        join(ROOT, "scripts", "brandbook-producer.mjs"),
+        "run",
+        "--root",
+        root,
+        "--plugin-root",
+        ROOT,
+        "--source",
+        source,
+        "--handoff",
+        "agent-chat",
+        "--slug",
+        "agent-chat",
+        "--target",
+        "web",
+        "--run-timestamp",
+        stamp,
+        "--secret",
+        "test-secret",
+      ], { cwd: ROOT, encoding: "utf8" });
+    }
+
+    const receiptResult = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(receiptResult.pass, true);
+    assert.equal(receiptResult.receipts, 1);
+    assert.equal(receiptResult.ledgerEntries, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("brandbook producer plan blocks incomplete source packets before durable writes", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-brandbook-producer-plan-"));
   try {

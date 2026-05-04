@@ -65,6 +65,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       slug: options.slug || null,
       handoffId: options.handoff || options.slug,
       reason: options.reason || undefined,
+      runTimestamp: options["run-timestamp"] || null,
       dryRun: options["dry-run"] === true,
       secret: options.secret || null,
     });

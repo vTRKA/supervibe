@@ -16,6 +16,7 @@ const RUNNABLE_COMMANDS = Object.freeze({
   "supervibe-gc": "scripts/supervibe-gc.mjs",
   "supervibe-loop": "scripts/supervibe-loop.mjs",
   "supervibe-preview": "scripts/preview-server.mjs",
+  "supervibe-stage": "scripts/supervibe-stage.mjs",
   "supervibe-status": "scripts/supervibe-status.mjs",
   "supervibe-ui": "scripts/supervibe-ui.mjs",
   "supervibe-update": "scripts/supervibe-upgrade.mjs",
@@ -50,6 +51,7 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   plan: "supervibe-plan",
   presentation: "supervibe-presentation",
   preview: "supervibe-preview",
+  stage: "supervibe-stage",
   score: "supervibe-score",
   "security-audit": "supervibe-security-audit",
   security: "supervibe-security-audit",
@@ -68,6 +70,7 @@ const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
   "supervibe-gc",
   "supervibe-loop",
   "supervibe-preview",
+  "supervibe-stage",
   "supervibe-ui",
 ]));
 

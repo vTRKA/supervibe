@@ -15,6 +15,8 @@ The slash form runs inside the Claude Code, Codex, Gemini, Cursor, or OpenCode s
 /supervibe-adapt --dry-run
 /supervibe-adapt --apply
 supervibe-adapt --dry-run --diff-summary
+supervibe-adapt --dry-run --summary-json --changed-only
+supervibe-adapt --dry-run --evidence-summary --quiet-identical
 supervibe-adapt --apply --include "<project-relative-path>"
 ```
 
@@ -43,7 +45,7 @@ supervibe-adapt --apply --include "<project-relative-path>"
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
    - **Related-rule closure add** (installed rule references upstream rule missing from selected profile) → propose an `ADD` candidate, showing `mandatory: true/false` and the exact include path.
 
-3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred.
+3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred. If the plan prints `FAST_PATH_ELIGIBLE: true` (`ADDS: 0`, `UPDATES <= 1`, `PROJECT_ONLY: 0`, `CONFLICTS: 0`), use the low-risk fast path: owner/orchestrator plus quality gate, CLI apply, and validators. Do not dispatch repo/rules/memory curators for a single upstream-only artifact unless the plan reports conflicts, project-only files, rule closure adds, or memory writes.
 
 4. **Show summary.** Before any write, print a table:
    ```
@@ -53,14 +55,14 @@ supervibe-adapt --apply --include "<project-relative-path>"
    <adapter>/rules/no-half-finished.md     unchanged  unchanged skip
    <adapter>/agents/_legacy/*.md           DELETED    present   ask user
    ```
-   The CLI also prints `SUPERVIBE_ADAPT_DIFF_SUMMARY` with per-file additions/deletions. If a slash-flow uses `--apply --all` after explicit user approval, keep that summary visible in the transcript so the applied files are auditable.
+   The CLI also prints `SUPERVIBE_ADAPT_DIFF_SUMMARY` with per-file additions/deletions. Use `--summary-json --changed-only` for compact machine output, `--evidence-summary` for a terse text proof packet, and `--quiet-identical` when unchanged artifacts would drown the actual diff. If a slash-flow uses `--apply --all` after explicit user approval, keep that summary visible in the transcript so the applied files are auditable.
 
 5. **Per-file diff gate.** For each non-trivial action, show the diff and wait for user "yes" / "skip" / "abort". Never write without explicit per-file approval. Apply only approved files:
    ```bash
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
    ```
 
-6. **Update metadata.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version` to the current plugin version and write `baseline.pluginVersion`. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
+6. **Update metadata and lifecycle state.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version`, write `baseline.pluginVersion`, and let apply write `.supervibe/memory/adapt/state.json` with `approved -> applied -> verified` or `failed_recoverable`, evidence, updated artifacts, blocked artifacts, and validator outcomes. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
@@ -73,8 +75,10 @@ supervibe-adapt --apply --include "<project-relative-path>"
 Upgraded:    <count>
 Skipped:     <count>
 Conflicts:   <count> (manual resolution needed)
+Fast path:   eligible | standard-agent-plan
 Archived:    <count>
 Deleted:     <count>
+State:       .supervibe/memory/adapt/state.json (verified | failed_recoverable)
 
 Confidence:  N/10  Rubric: agent-delivery
 ```
@@ -109,7 +113,7 @@ managed block.
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, and durable-write permission before any agent-owned artifact is produced.
+Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt --adds <n> --updates <n> --project-only <n> --conflicts <n>` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, and durable-write permission before any agent-owned artifact is produced. Role sources must be visible as `project artifact`, `plugin-only`, or `logical role` so users can tell whether a role is installed into the project or supplied by the plugin profile.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts

@@ -7,6 +7,9 @@ import {
 import {
   artifactRoot,
 } from "./supervibe-artifact-roots.mjs";
+import {
+  buildPostStageContinuation,
+} from "./supervibe-stage-state.mjs";
 
 const READY_PROTOTYPE_STAGES = Object.freeze([
   "stage-3-screen-spec",
@@ -71,6 +74,14 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
       : prototypeApproved
         ? "Package handoff"
         : "Review design system";
+  const continuation = buildDesignContinuation({
+    designSystemStatus,
+    mode,
+    prototypeUnlocked,
+    prototypeExists,
+    prototypeApproved,
+    handoffReason: handoffBlocked ? "handoff requires approved prototype, not only approved design system" : null,
+  });
 
   return {
     schemaVersion: 1,
@@ -97,6 +108,8 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
       reason: handoffBlocked ? "handoff requires approved prototype, not only approved design system" : null,
     },
     nextAction,
+    nextUserActions: continuation.nextUserActions,
+    continuation,
     stageTriage: config?.stageTriage || {},
     recommendedStageTriage: prototypeUnlocked && !prototypeExists
       ? buildDesignPrototypeStageTriage(config?.stageTriage, { mode: mode || "full-prototype-pipeline" })
@@ -119,6 +132,19 @@ export function formatDesignWorkflowStatus(status = {}) {
     `NEXT_ACTION: ${status.nextAction || "none"}`,
     `NEXT_QUESTION: ${status.prototype?.nextQuestion?.id || "none"}`,
   ];
+  if (status.nextUserActions?.length) {
+    lines.push("NEXT_USER_ACTIONS:");
+    for (const action of status.nextUserActions) {
+      const detail = action.unlocks?.length
+        ? ` unlocks=${action.unlocks.join(",")}`
+        : action.asks?.length
+          ? ` asks=${action.asks.join(",")}`
+          : action.uses?.length
+            ? ` uses=${action.uses.join(",")}`
+            : "";
+      lines.push(`- ${action.id}: ${action.label}${detail}`);
+    }
+  }
   if (status.recommendedStageTriage) {
     lines.push("READY_STAGES:");
     for (const [stage, value] of Object.entries(status.recommendedStageTriage)) {
@@ -126,6 +152,58 @@ export function formatDesignWorkflowStatus(status = {}) {
     }
   }
   return lines.join("\n");
+}
+
+function buildDesignContinuation({
+  designSystemStatus,
+  mode,
+  prototypeUnlocked,
+  prototypeExists,
+  prototypeApproved,
+  handoffReason,
+} = {}) {
+  if (designSystemStatus !== "approved") {
+    return buildPostStageContinuation({
+      workflow: "/supervibe-design",
+      currentStage: "candidate_design_system",
+      artifact: ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+      status: "review_required",
+      mode,
+      prototypeUnlocked: false,
+      handoffBlockedReason: "prototype unlock requires approved design system and required section approvals",
+    });
+  }
+  if (!prototypeExists) {
+    return buildPostStageContinuation({
+      workflow: "/supervibe-design",
+      currentStage: "approved_design_system",
+      artifact: ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+      status: "approved",
+      mode,
+      prototypeUnlocked,
+      handoffBlockedReason: handoffReason,
+    });
+  }
+  if (!prototypeApproved) {
+    return buildPostStageContinuation({
+      workflow: "/supervibe-design",
+      currentStage: "prototype_review",
+      artifact: ".supervibe/artifacts/prototypes/<slug>/index.html",
+      status: "review_required",
+      mode,
+      prototypeUnlocked,
+      handoffBlockedReason: handoffReason,
+    });
+  }
+  return buildPostStageContinuation({
+    workflow: "/supervibe-design",
+    currentStage: "prototype_approved",
+    artifact: ".supervibe/artifacts/prototypes/<slug>/.approval.json",
+    status: prototypeApproved ? "approved" : "review_required",
+    mode,
+    prototypeUnlocked,
+    handoffBlockedReason: handoffReason,
+  });
 }
 
 function prototypeInteractionDepthQuestion() {

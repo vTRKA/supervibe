@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   WORKFLOW_RECEIPT_ISSUER,
+  classifyWorkflowReceiptOutputArtifact,
   defaultWorkflowReceiptKeyPath,
   defaultWorkflowReceiptLedgerPath,
   issueWorkflowInvocationReceipt,
@@ -57,6 +58,16 @@ test("workflow receipt runtime accepts command receipts for brainstorm outputs",
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("workflow receipt output classifier blocks mutable log-like artifacts", () => {
+  const blocked = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/agent-invocations.jsonl");
+  const stable = classifyWorkflowReceiptOutputArtifact(".supervibe/artifacts/_agent-outputs/run-1/agent-output.json");
+
+  assert.equal(blocked.receiptable, false);
+  assert.equal(blocked.reason, "mutable-log-like-output-artifact");
+  assert.match(blocked.recommendation, /stable per-agent/i);
+  assert.equal(stable.receiptable, true);
 });
 
 test("workflow receipt runtime rejects hand-written command receipts", async () => {
@@ -125,6 +136,73 @@ test("workflow receipt runtime keeps multiple receipt links for the same artifac
     assert.equal(result.pass, true);
     assert.equal(result.checked, 2);
     assert.deepEqual(result.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt runtime rejects mutable log-like output artifacts before issuing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-mutable-"));
+  try {
+    await writeUtf8(root, ".supervibe/memory/agent-invocations.jsonl", "{}\n");
+
+    await assert.rejects(
+      issueWorkflowInvocationReceipt({
+        rootDir: root,
+        command: "/supervibe-design",
+        subjectType: "agent",
+        subjectId: "creative-director",
+        agentId: "creative-director",
+        stage: "stage-1-brand-direction",
+        invocationReason: "bad mutable output",
+        outputArtifacts: [".supervibe/memory/agent-invocations.jsonl"],
+        startedAt: "2026-05-03T00:00:00.000Z",
+        completedAt: "2026-05-03T00:01:00.000Z",
+        handoffId: "design-agent-chat",
+        allowMissingHostInvocationProof: true,
+      }),
+      /mutable\/log-like.*per-agent.*agent-output\.json/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt runtime reruns replace same receipt path without stale ledger entries", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-rerun-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Run\n");
+    const base = {
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop-runner",
+      stage: "wave-1",
+      invocationReason: "loop wave completed",
+      outputArtifacts: [".supervibe/artifacts/loops/checkout/run.md"],
+      handoffId: "loop-checkout",
+      secret: "test-secret",
+    };
+    await issueWorkflowInvocationReceipt({
+      ...base,
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      runTimestamp: "2026-05-03T00:01:00.000Z",
+    });
+    await issueWorkflowInvocationReceipt({
+      ...base,
+      startedAt: "2026-05-03T00:02:00.000Z",
+      completedAt: "2026-05-03T00:03:00.000Z",
+      runTimestamp: "2026-05-03T00:03:00.000Z",
+    });
+
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+    const ledger = validateWorkflowReceiptLedgerChain(root, { secret: "test-secret" });
+
+    assert.equal(result.pass, true);
+    assert.equal(result.receipts, 1);
+    assert.equal(ledger.pass, true);
+    assert.equal(ledger.entries, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

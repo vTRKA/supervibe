@@ -68,6 +68,9 @@ test("supervibe-adapt dry-run plans host-aware project artifact updates without 
     assert.match(out, /SUPERVIBE_ADAPT_DRY_RUN/);
     assert.match(out, /HOST: codex/);
     assert.match(out, new RegExp(`VERSION: 2\\.0\\.27 -> ${CURRENT_VERSION.replaceAll(".", "\\.")}`));
+    assert.match(out, /CONFLICTS: 0/);
+    assert.match(out, /FAST_PATH_ELIGIBLE: true/);
+    assert.match(out, /FAST_PATH_ROLES: .*supervibe-orchestrator.*quality-gate-reviewer/);
     assert.match(out, /UPDATE: \.codex\/agents\/repo-researcher\.md/);
     assert.match(out, /APPROVAL_REQUIRED: true/);
     assert.doesNotMatch(out, /SUPERVIBE_GENESIS_DRY_RUN/);
@@ -122,6 +125,27 @@ test("supervibe-adapt applies only explicitly approved files and updates version
       readFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "utf8").trim(),
       CURRENT_VERSION,
     );
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+    assert.equal(state.lifecycle, "verified");
+    assert.deepEqual(state.updatedArtifacts, [approvedPath]);
+    assert.equal(state.validators.artifactAdaptClean, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt summary-json changed-only omits identical artifact payload noise", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--dry-run", "--summary-json", "--changed-only", "--no-color"]);
+    const summary = JSON.parse(out);
+
+    assert.equal(summary.kind, "adapt-summary");
+    assert.equal(summary.counts.update, 1);
+    assert.equal(summary.fastPath.eligible, true);
+    assert.equal(summary.changedItems.length, 1);
+    assert.equal(summary.changedItems[0].path, ".codex/agents/repo-researcher.md");
+    assert.equal(Object.hasOwn(summary, "items"), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

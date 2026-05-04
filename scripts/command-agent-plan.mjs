@@ -39,6 +39,7 @@ function parseArgs(argv) {
     else if (key === "plugin-root") options.pluginRoot = value;
     else if (key === "execution-mode") options.executionMode = value;
     else if (key === "host") options.host = value;
+    else if (key === "adds" || key === "updates" || key === "project-only" || key === "conflicts") options[key] = Number(value);
     else options[key] = value;
   }
   return options;
@@ -50,10 +51,13 @@ function usage() {
     "USAGE:",
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host claude",
     "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --json",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --low-risk",
     "",
     "NOTES:",
     "  Default execution mode is real-agents.",
+    "  Text output includes AGENT_SELECTION_MODE and REQUIRED_AGENT_SOURCES.",
     "  Unsupported or unverifiable host dispatch enters agent-required-blocked.",
+    "  Workflow counts can select dynamic required roles, including low-risk fast paths.",
     "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
   ].join("\n");
 }
@@ -71,17 +75,26 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const env = { ...process.env };
     if (options.host) env.SUPERVIBE_HOST = options.host;
     const hostSelection = selectHostAdapter({ rootDir: projectRoot, env });
-    const availableAgentIds = listAvailableAgentIds({
+    const availableAgentSources = listAvailableAgentSources({
       pluginRoot,
       projectRoot,
       hostAgentsFolder: hostSelection.adapter.agentsFolder,
       installedOnly: options.installedOnly,
     });
+    const availableAgentIds = [...availableAgentSources.keys()];
     const plan = buildCommandAgentPlan(options.command, {
       requestedExecutionMode: options.executionMode,
       availableAgentIds,
+      availableAgentSources,
       hostAdapterId: hostSelection.adapter.id,
       enforceHostProof: options.enforceHostProof,
+      workflowContext: {
+        lowRisk: options["low-risk"] === true,
+        adds: options.adds,
+        updates: options.updates,
+        projectOnly: options["project-only"],
+        conflicts: options.conflicts,
+      },
     });
     const report = {
       pass: plan.executionMode !== "agent-required-blocked",
@@ -110,27 +123,28 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
-function listAvailableAgentIds({
+function listAvailableAgentSources({
   pluginRoot,
   projectRoot,
   hostAgentsFolder,
   installedOnly = false,
 }) {
-  const ids = new Set();
-  if (!installedOnly) addAgentIds(ids, join(pluginRoot, "agents"));
-  if (hostAgentsFolder) addAgentIds(ids, join(projectRoot, ...hostAgentsFolder.split("/")));
-  return [...ids].sort();
+  const sources = new Map();
+  if (!installedOnly) addAgentSources(sources, join(pluginRoot, "agents"), "plugin-only");
+  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "project artifact");
+  return sources;
 }
 
-function addAgentIds(ids, dir) {
+function addAgentSources(sources, dir, source) {
   if (!existsSync(dir)) return;
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     const stat = statSync(path);
     if (stat.isDirectory()) {
-      addAgentIds(ids, path);
+      addAgentSources(sources, path, source);
     } else if (entry.endsWith(".md")) {
-      ids.add(entry.replace(/\.md$/, ""));
+      const id = entry.replace(/\.md$/, "");
+      if (source === "project artifact" || !sources.has(id)) sources.set(id, source);
     }
   }
 }

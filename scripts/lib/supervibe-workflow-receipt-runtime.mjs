@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { appendFile, mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 
@@ -13,6 +13,17 @@ const DEFAULT_RECEIPT_DIR = ".supervibe/artifacts/_workflow-invocations";
 const ARTIFACT_LINKS_FILE = "artifact-links.json";
 const RECEIPT_LOCK_TIMEOUT_MS = 30_000;
 const RECEIPT_LOCK_RETRY_MS = 25;
+const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
+  /^\.supervibe\/memory\/agent-invocations\.jsonl$/i,
+  /^\.supervibe\/memory\/workflow-invocation-ledger\.jsonl$/i,
+  /^\.supervibe\/memory\/workflow-receipt-runtime\.key$/i,
+  /^\.supervibe\/memory\/workflow-invocation-ledger\.lock$/i,
+  /^\.supervibe\/memory\/index\.json$/i,
+  /\.jsonl$/i,
+  /\.log$/i,
+  /\.lock$/i,
+  /\.key$/i,
+]);
 
 export function defaultWorkflowReceiptKeyPath(rootDir = process.cwd()) {
   return join(rootDir, ...KEY_RELATIVE_PATH.split("/"));
@@ -56,6 +67,7 @@ export async function issueWorkflowInvocationReceipt({
   if (isHostAgentSubject(subjectType) && !hostInvocation && !allowMissingHostInvocationProof) {
     throw new Error("hostInvocation proof required for agent, worker, and reviewer receipts");
   }
+  assertReceiptableOutputArtifacts(outputArtifacts, rootDir);
   const normalizedHostInvocation = enrichHostInvocationProof(rootDir, hostInvocation);
   if (isHostAgentSubject(subjectType) && !allowMissingHostInvocationProof) {
     assertHostInvocationProofExists(rootDir, normalizedHostInvocation, agentId || subjectId);
@@ -125,7 +137,7 @@ export async function issueWorkflowInvocationReceipt({
     const relLinksPath = normalizeRelPath(relative(rootDir, artifactLinksPath));
     await upsertArtifactLinks(artifactLinksPath, receipt, relReceiptPath);
 
-    const entry = await appendReceiptLedger(rootDir, {
+    const entry = await upsertReceiptLedger(rootDir, {
       receiptId,
       command,
       subjectType,
@@ -236,8 +248,9 @@ export function readWorkflowReceipts(rootDir = process.cwd()) {
 export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readAllWorkflowReceipts(rootDir);
   const issues = [];
+  const ledger = validateWorkflowReceiptLedgerChain(rootDir, options);
   for (const receipt of receipts) {
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { ...options, skipLedgerChain: true });
     for (const message of trust.issues) {
       issues.push({
         code: /artifact link manifest missing|artifact link missing/i.test(message)
@@ -248,7 +261,6 @@ export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) 
       });
     }
   }
-  const ledger = validateWorkflowReceiptLedgerChain(rootDir, options);
   for (const message of ledger.issues) {
     issues.push({
       code: "invalid-workflow-receipt-ledger",
@@ -261,6 +273,7 @@ export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) 
     checked: receipts.length,
     receipts: receipts.length,
     ledgerEntries: ledger.entries,
+    nextRepairCommand: repairCommandForReceiptIssues(issues),
     issues,
   };
 }
@@ -406,7 +419,7 @@ export async function rebuildWorkflowReceiptLedger({
 
 function validateReceiptLedgerEntry(rootDir, receipt, options = {}) {
   const entries = readReceiptLedgerSync(rootDir);
-  const chain = validateWorkflowReceiptLedgerChain(rootDir, options);
+  const chain = options.skipLedgerChain ? { issues: [] } : validateWorkflowReceiptLedgerChain(rootDir, options);
   const issues = [...chain.issues];
   const match = entries.find((entry) => entry.receiptId === receipt.receiptId);
   if (!match) {
@@ -435,6 +448,40 @@ function receiptArtifactDriftIssues(rootDir, receipt = {}) {
     }
   }
   return issues;
+}
+
+export function classifyWorkflowReceiptOutputArtifact(path, rootDir = process.cwd()) {
+  const relPath = normalizeInputPath(path, rootDir);
+  const mutable = MUTABLE_OUTPUT_PATTERNS.some((pattern) => pattern.test(relPath));
+  return {
+    path: relPath,
+    receiptable: !mutable,
+    reason: mutable ? "mutable-log-like-output-artifact" : null,
+    recommendation: mutable
+      ? "Use a stable per-agent or per-stage output artifact such as .supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json or summary.md."
+      : null,
+  };
+}
+
+function assertReceiptableOutputArtifacts(outputArtifacts = [], rootDir = process.cwd()) {
+  const blocked = (outputArtifacts || [])
+    .map((path) => classifyWorkflowReceiptOutputArtifact(path, rootDir))
+    .filter((item) => item.receiptable !== true);
+  if (blocked.length === 0) return true;
+  const paths = blocked.map((item) => item.path).join(", ");
+  const recommendation = blocked[0].recommendation;
+  throw new Error(`output artifact is mutable/log-like and cannot be receipt output: ${paths}. ${recommendation}`);
+}
+
+function repairCommandForReceiptIssues(issues = []) {
+  if (!issues.length) return null;
+  if (issues.some((item) => /ledger/i.test(`${item.code} ${item.message}`))) {
+    return "node scripts/workflow-receipt.mjs rebuild-ledger --prune-stale";
+  }
+  if (issues.some((item) => /hash mismatch|missing/.test(String(item.message || "")))) {
+    return "node scripts/workflow-receipt.mjs recovery-status";
+  }
+  return "node scripts/workflow-receipt.mjs recovery-status";
 }
 
 function receiptSignatureIssues(rootDir, receipt = {}, options = {}) {
@@ -533,10 +580,12 @@ async function upsertArtifactLinks(path, receipt, receiptPath) {
     }
   }
   const links = Array.isArray(manifest.links) ? manifest.links : [];
-  const nextLinks = links.filter((link) => !receipt.outputHashes.some((output) => {
-    return normalizeRelPath(output.path) === normalizeRelPath(link.artifactPath)
-      && link.receiptId === receipt.receiptId;
-  }));
+  const nextLinks = links.filter((link) => {
+    if (normalizeRelPath(link.receiptPath) === normalizeRelPath(receiptPath)) return false;
+    return !receipt.outputHashes.some((output) => {
+      return normalizeRelPath(output.path) === normalizeRelPath(link.artifactPath);
+    });
+  });
   for (const output of receipt.outputHashes) {
     nextLinks.push({
       artifactPath: output.path,
@@ -548,22 +597,36 @@ async function upsertArtifactLinks(path, receipt, receiptPath) {
   await writeFile(path, `${JSON.stringify({ schemaVersion: 1, links: nextLinks }, null, 2)}\n`, "utf8");
 }
 
-async function appendReceiptLedger(rootDir, entry) {
+async function upsertReceiptLedger(rootDir, entry) {
   const ledgerPath = defaultWorkflowReceiptLedgerPath(rootDir);
-  const previous = readReceiptLedgerSync(rootDir);
-  const previousEntryHash = previous.length ? previous[previous.length - 1].entryHash : null;
-  const withChain = {
-    schemaVersion: 1,
-    ...entry,
-    previousEntryHash,
-  };
-  const ledgerEntry = {
-    ...withChain,
-    entryHash: ledgerEntryHash(withChain),
-  };
+  const retained = readReceiptLedgerSync(rootDir)
+    .filter((item) => !item.__invalidJson)
+    .filter((item) => normalizeRelPath(item.receiptPath) !== normalizeRelPath(entry.receiptPath));
+  const chained = rebuildLedgerEntries([...retained, { schemaVersion: 1, ...entry }]);
+  const ledgerEntry = chained[chained.length - 1];
   await mkdir(dirname(ledgerPath), { recursive: true });
-  await appendFile(ledgerPath, `${JSON.stringify(ledgerEntry)}\n`, "utf8");
+  await writeFile(ledgerPath, `${chained.map((item) => JSON.stringify(item)).join("\n")}\n`, "utf8");
   return ledgerEntry;
+}
+
+function rebuildLedgerEntries(entries = []) {
+  let previousEntryHash = null;
+  const chained = [];
+  for (const item of entries) {
+    const withChain = {
+      ...item,
+      schemaVersion: item.schemaVersion || 1,
+      previousEntryHash,
+    };
+    delete withChain.entryHash;
+    const entry = {
+      ...withChain,
+      entryHash: ledgerEntryHash(withChain),
+    };
+    previousEntryHash = entry.entryHash;
+    chained.push(entry);
+  }
+  return chained;
 }
 
 async function withWorkflowReceiptLedgerLock(rootDir, callback) {

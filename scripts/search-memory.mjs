@@ -38,7 +38,7 @@ const opts = {
 
 try {
   const includeHistory = Boolean(values['include-history'] || values['include-superseded']);
-  const curation = await curateProjectMemory({ rootDir: PROJECT_ROOT, rebuildSqlite: false });
+  const curation = await curateProjectMemory({ rootDir: PROJECT_ROOT, rebuildSqlite: false, writeIndex: false });
   const searchLimit = includeHistory ? opts.limit : Math.max(opts.limit * 4, opts.limit);
   const rawResults = await searchMemory(PROJECT_ROOT, { ...opts, limit: searchLimit });
   const results = filterCurrentMemoryResults(rawResults, curation, {

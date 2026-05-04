@@ -14,6 +14,9 @@ export function formatWorkflowReceiptsReport(result) {
     `COVERAGE_STATUS: ${coverageStatus(result)}`,
     `ISSUES: ${result.issues.length}`,
   ];
+  if (!result.pass) {
+    lines.push(`NEXT_SAFE_ACTION: ${result.nextRepairCommand || "node scripts/workflow-receipt.mjs recovery-status"}`);
+  }
   for (const issue of result.issues) {
     lines.push(`ISSUE: ${issue.code} ${issue.file} - ${issue.message}`);
   }

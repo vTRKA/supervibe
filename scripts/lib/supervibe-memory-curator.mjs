@@ -13,9 +13,10 @@ export async function curateProjectMemory({
   rebuildSqlite = false,
   useEmbeddings = false,
   changedFiles = [],
+  writeIndex = true,
 } = {}) {
   const memoryDir = join(rootDir, ".supervibe", "memory");
-  await mkdir(memoryDir, { recursive: true });
+  if (writeIndex) await mkdir(memoryDir, { recursive: true });
   const entries = await readMarkdownMemoryEntries({ rootDir, now });
   const validation = validateMemoryEntries(entries);
   const contradictions = detectMemoryContradictions(entries);
@@ -71,13 +72,16 @@ export async function curateProjectMemory({
       hierarchy,
     },
   };
-  await writeFile(join(memoryDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  if (writeIndex) {
+    await writeFile(join(memoryDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  }
   const sqlite = rebuildSqlite ? await rebuildMemory(rootDir, { useEmbeddings }) : null;
   return {
     pass: validation.errors.length === 0,
     markdownEntries: entries.length,
     sqliteEntries: sqlite?.entriesIndexed ?? null,
     indexPath: join(memoryDir, "index.json"),
+    indexWritten: writeIndex,
     validation,
     contradictions,
     referenceIssues,

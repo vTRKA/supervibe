@@ -3,8 +3,8 @@ name: command-agent-orchestration
 description: "All Supervibe slash commands must build a real agent plan by default and must block rather than emulate missing specialist agents."
 applies-to: [slash-command, command-routing, workflow-orchestration]
 mandatory: true
-version: 1.0
-last-verified: 2026-05-03
+version: 1.1
+last-verified: 2026-05-04
 related-rules: [workflow-invocation-receipts, confidence-discipline, operational-safety, instruction-surface-integrity]
 ---
 
@@ -55,6 +55,15 @@ Every published `/supervibe-*` command must have a profile with:
   review, implementation, design, audit, planning, scoring, or handoff.
 - Add dynamic stack/domain specialists when the command profile asks for
   `dynamicAgentSelectors`.
+- Let command profiles select dynamic required roles from workflow context.
+  Low-risk fast paths may reduce required roles, but only when the executable
+  plan prints the selected mode and the counts/evidence that made it safe.
+- Print required role sources as `project artifact`, `plugin-only`, or
+  `logical role` so users can tell whether an agent is installed in the
+  project or supplied by the plugin profile.
+- Use the shared stage runner when a workflow provides it. A stage runner owns
+  producer execution or host-invocation binding, receipt issue, validation,
+  planner/state refresh, and post-stage continuation output for that stage.
 - For agent, worker, or reviewer output, issue runtime workflow receipts with
   real host invocation proof.
 - For Codex, use the `CODEX_SPAWN_PAYLOAD_RULES` and
@@ -84,6 +93,9 @@ Every published `/supervibe-*` command must have a profile with:
   drift into an emulation path.
 - Do not substitute command or skill receipts for missing specialist agent,
   worker, or reviewer receipts.
+- Do not leave users at a lifecycle gate with only `NEXT_ACTION` or "done".
+  Stage plans must surface explicit continuation choices when review,
+  approval, recovery, or prototype unlock is pending.
 
 ## Enforcement
 
