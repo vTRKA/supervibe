@@ -8,6 +8,9 @@ import {
   formatDesignWizardQuestion,
 } from "./lib/design-wizard-catalog.mjs";
 import {
+  readDesignWizardRuntimeState,
+} from "./lib/design-wizard-runtime-state.mjs";
+import {
   validateSpecialistQuestionProposal as validateSpecialistQuestionContract,
 } from "./lib/specialist-question-contract.mjs";
 import {
@@ -492,8 +495,10 @@ function validateRuntimeDesignRunQuestions({
     return 1;
   }
 
-  const queue = Array.isArray(config.designWizard?.questionQueue)
-    ? config.designWizard.questionQueue
+  const runtimeState = readDesignWizardRuntimeState(rootDir, config);
+  const designWizard = runtimeState || config.designWizard || {};
+  const queue = Array.isArray(designWizard.questionQueue)
+    ? designWizard.questionQueue
     : [];
   const trusted = queue.filter((question) => question.trustedSpecialistProposal === true && question.source === "real-specialist-proposal");
   if (requireTrustedSpecialistProposal && queue.length > 0 && trusted.length === 0) {

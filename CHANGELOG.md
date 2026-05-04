@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.81] - 2026-05-05
+
+### Changed
+
+- Split heavy `/supervibe-design` wizard runtime state out of prototype
+  `config.json` into `.supervibe/memory/design-wizard/<slug>.runtime.json`,
+  leaving a compact decision/gate summary and runtime pointer in config.
+- Made `design-agent-plan --continue --dispatch` the natural continuation path
+  after explicit wizard choices, with friendlier default output and protocol
+  output kept behind `--protocol` / JSON.
+
+### Fixed
+
+- Added a slug-level design wizard state lock that rejects concurrent answer
+  writes by default and preserves explicit revision checks.
+- Stopped `NEXT_USER_ACTIONS` from offering design-system approval before
+  tokens, manifest, design-flow-state, and styleboard review evidence exist.
+- Promoted brandbook outputs transactionally with backup/rollback before the
+  producer receipt is issued.
+
 ## [2.0.80] - 2026-05-05
 
 ### Added

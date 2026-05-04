@@ -24,8 +24,15 @@ CLI output must show the stage ladder explicitly: `intake -> candidate DS -> rev
 
 The first wizard step is a **mode question** owned by the orchestrator proposal, not by markdown text. Save the answer through `node scripts/design-wizard-answer.mjs --slug <slug> --axis mode --choice <choice> --source user` or the `recordDesignWizardAnswer` API. Execution mode is a separate explicit choice: `inline`, `real-agents`, or `hybrid`. If the mode is ambiguous after design-system approval, ask the continuation question through the same proposal/answer API instead of patching `config.json` by hand.
 
-The wizard state is persisted in `config.json.designWizard` and must include:
+The wizard compact state is persisted in `config.json.designWizard`; the full
+runtime packet is persisted at the `runtimeStatePath` it references. Together
+they must include:
 
+- `storage` / `runtimeStatePath` - `config.json` stores only compact workflow
+  state, decisions, gates, progress, and the pointer to the full runtime state.
+  Heavy queues, proposals, and guided runtime packets live in
+  `.supervibe/memory/design-wizard/<slug>.runtime.json`; controllers must read
+  that file instead of inflating `config.json`.
 - `questionQueue` - ordered one-question-at-a-time prompts for missing or conflicting decisions.
 - `questionProposals` - `SpecialistQuestionContract` records from the owning specialist/stage before durable work. The orchestrator may deduplicate and sort by impact, but it must not invent specialist questions itself.
 - `decisions` - axis, answer/default, source, confidence, quote/evidence, decisionUnlocked, and timestamp.
@@ -72,6 +79,14 @@ The design question engine must cover these decision families without exposing t
 
 If the brief already covers an axis, the wizard stores `source=user` with a short quote. If the user explicitly says "use defaults", the wizard stores `source=explicit-default` and shows the editable `guidedDefaultsChecklist`; defaults are not a silent collapse of the design interview. `source=inferred` remains forbidden for the Preference Coverage Matrix.
 
+Wizard answer writes must go through `node scripts/design-wizard-answer.mjs`.
+That command owns the slug-level state mutex at
+`.supervibe/memory/locks/design-wizard/<slug>.lock`, rejects concurrent writes by
+default, and increments `configRevision`. Use `--wait-for-lock` only when the
+caller intentionally wants to serialize behind an active writer. Do not launch
+multiple answer writes against one slug in parallel; stale revisions must fail
+instead of being silently replayed in an arbitrary order.
+
 Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. A full review styleboard is allowed only after mode, target, viewport policy, reference scope, creative alternatives, anti-generic guardrail, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that point, only diagnostic scratch is allowed and it must not present itself as a visual direction. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
 
 For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1920x1080`, `1440x900`, `1280x800`, plus `800x600` as the desktop baseline.
@@ -112,11 +127,25 @@ node scripts/validate-design-agent-receipts.mjs
 
 Resume mode uses `supervibe-design --continue` or `node scripts/design-agent-plan.mjs --continue --status --plan-writes --slug <slug>`. The output must expose exactly one canonical `NEXT_ACTION` and one canonical `NEXT_QUESTION` for controllers, with any nested status/prewrite next fields namespaced so they cannot contradict the orchestration decision.
 
+After the user explicitly picks a recommended direction or any other concrete
+wizard option, continue with `node scripts/design-agent-plan.mjs --continue
+--dispatch --status --plan-writes --slug <slug>` instead of asking a second
+"dispatch host agents?" question. The command prints one friendly continuation
+summary for users and keeps protocol fields behind `--protocol` or JSON output.
+User-facing copy should say "run required specialists" or "continue from the
+last trusted stage"; reserve receipt/producers/stage ids for machine output and
+developer commands.
+
 Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Coverage Matrix Gate is incomplete for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
 
 Every run must persist a `stageTriage` map in `.supervibe/artifacts/prototypes/<slug>/config.json`. Mark each stage as `required`, `reuse`, `delegated`, `skipped`, or `N/A` with rationale. Existing approved design systems enter `system-reuse mode` by default for prototype/refinement work, so the command reuses prior preference and visual-system decisions instead of forcing the user through a fresh eight-stage path. Existing candidate systems enter design-system review/resume mode and cannot unlock prototype generation.
 
 Every gated stage must also expose the shared post-stage continuation object from `scripts/lib/supervibe-stage-state.mjs`: `currentStage`, `artifact`, `status`, `prototypeUnlocked`, `handoffBlockedReason`, and `NEXT_USER_ACTIONS[]`. If the stage ends as `candidate`, `review_required`, or `outputs_ready`, the final user-facing answer must offer approve / revise / compare / stop choices with consequences. If `PROTOTYPE_UNLOCKED: false`, explain exactly which approval or artifact unlocks prototype work. If mode was `design-system-only`, still offer the safe continuation path from approved design system to screen spec/prototype. The command must not finish with only "done" or `NEXT_ACTION` while review or approval is required.
+
+`NEXT_USER_ACTIONS[]` must not offer `approve_design_system` until
+`tokens.css`, `manifest.json`, `design-flow-state.json`, and `styleboard.html`
+exist for the candidate design system. Before that review packet exists, offer
+answer-next-question / continue-specialists / resume-last-trusted / stop.
 
 ## Topic Drift / Resume Contract
 

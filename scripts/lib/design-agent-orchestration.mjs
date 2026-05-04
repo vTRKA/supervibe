@@ -449,6 +449,42 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   ].join("\n");
 }
 
+export function formatDesignPlanUserPrompt(plan = {}, { intake = null, writeGate = null } = {}) {
+  const gate = writeGate || plan.writeGate || buildDesignWriteGate({ intake, plan });
+  if (gate.nextQuestion?.source === "intake") {
+    return [
+      "Before I write design artifacts, one blocking decision is still open.",
+      gate.nextQuestion.markdown,
+    ].join("\n");
+  }
+  const status = plan.executionStatus || {};
+  if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
+    return [
+      status.executionMode === "agent-required-blocked"
+        ? "Required specialists are unavailable, so durable design work stays paused."
+        : "Required specialist work has not been recorded yet, so durable design work stays paused.",
+      status.provisioningPlan?.readyToApply ? `Setup command: ${status.provisioningPlan.applyCommand}` : null,
+      formatDesignWizardQuestion(status.degradedModeQuestion),
+    ].filter(Boolean).join("\n");
+  }
+  const nextQuestion = plan.wizard?.questionQueue?.[0] || null;
+  if (!nextQuestion) {
+    return gate.durableWritesAllowed
+      ? "The design wizard has no open question. Continue to the next ready stage."
+      : "The design wizard has no open question, but artifact writes are still paused until the current stage proof is recorded.";
+  }
+  if (!isTrustedDesignWizardQuestion(nextQuestion)) {
+    return [
+      "The next visible design question must come from its owning specialist before I present it as agent-authored.",
+      friendlyQuestionProposalGate(plan, nextQuestion),
+    ].join("\n");
+  }
+  return [
+    "Next design decision:",
+    formatDesignWizardQuestion(nextQuestion),
+  ].join("\n");
+}
+
 function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   pluginRoot = null,
   requestedExecutionMode = null,
@@ -908,31 +944,31 @@ function buildAgentDispatchQuestion(runtimeProof = {}, { locale = "en" } = {}) {
     locale: ru ? "ru" : "en",
     prompt: ru
       ? "Нет runtime receipts от специалистов. Запустить нужных host agents перед durable writes?"
-      : "Runtime agent receipts are missing. Dispatch the required host agents before durable writes?",
+      : "Run the required specialists before writing design artifacts?",
     why: ru
       ? "Файлы agents доказывают только доступность. Durable /supervibe-design artifacts требуют завершенных host invocations и runtime-issued receipts."
-      : "Installed agent files prove only availability. Durable /supervibe-design artifacts require completed host invocations plus runtime-issued receipts.",
+      : "Installed specialist files prove availability only. The workflow needs completed specialist runs for the current stage before durable outputs can be trusted.",
     decisionUnlocked: ru
       ? "agent-invocations.jsonl, agent-output.json и workflow receipts для активного stage"
-      : "agent-invocations.jsonl, agent-output.json, and workflow receipts for the active stage",
+      : "the next trusted stage and permission to write design artifacts",
     ifSkipped: ru
       ? "Держать результат только в diagnostic scratch; не писать и не claiming agent-owned durable artifacts."
-      : "Keep output in diagnostic scratch only; do not write or claim agent-owned durable artifacts.",
+      : "Keep output as diagnostic scratch only; do not write final design artifacts.",
     choices: [
       {
         id: "dispatch-host-agents",
-        label: ru ? "Запустить host agents" : "Dispatch host agents",
+        label: ru ? "Запустить специалистов" : "Run specialists",
         tradeoff: ru
           ? `Запустить и залогировать missing stage producers перед writes: ${pending}.`
-          : `Run/log the missing stage producers before writes: ${pending}.`,
+          : `Continues the chain from the current trusted point: ${pending}.`,
         recommended: true,
       },
       {
         id: "save-scratch-only",
-        label: ru ? "Только scratch" : "Scratch only",
+        label: ru ? "Только черновик" : "Draft only",
         tradeoff: ru
           ? "Разрешает диагностику без claims на specialist output и без durable artifact mutations."
-          : "Allows diagnostics without claiming specialist output or mutating durable artifacts.",
+          : "Keeps notes without final writes or claims that specialists completed the work.",
       },
       {
         id: "stop",
@@ -1056,6 +1092,48 @@ function formatQuestionProposalGate(plan = {}, question = {}) {
     `PRODUCER: ${target}`,
     "REQUIRED_ACTION: dispatch the owner host agent for a scratch SpecialistQuestionContract proposal, issue a runtime receipt for that proposal artifact, then re-run the plan.",
   ].join("\n");
+}
+
+function friendlyQuestionProposalGate(plan = {}, question = {}) {
+  const producer = (plan.executionStatus?.questionProposalProducers || [])
+    .find((item) => item.stageId === question.stage && item.producerId === question.ownerAgent)
+    || (plan.executionStatus?.questionProposalProducers || []).find((item) => item.producerId === question.ownerAgent)
+    || null;
+  const owner = friendlyProducerName(producer?.producerId || question.ownerAgent || question.specialist || "specialist");
+  const stage = friendlyStageName(producer?.stageId || question.stage || "");
+  return [
+    `Next specialist: ${owner}`,
+    `Stage: ${stage}`,
+    "Scope: scratch question proposal only; durable design files remain paused.",
+    "Continue command: node scripts/design-agent-plan.mjs --continue --dispatch --status --plan-writes --slug <slug>",
+  ].join("\n");
+}
+
+function friendlyProducerName(value = "") {
+  const map = {
+    "supervibe-orchestrator": "workflow orchestrator",
+    "creative-director": "creative director",
+    "ux-ui-designer": "UX/UI designer",
+    copywriter: "copywriter",
+    "prototype-builder": "prototype builder",
+    "ui-polish-reviewer": "UI polish reviewer",
+    "accessibility-reviewer": "accessibility reviewer",
+    "quality-gate-reviewer": "quality gate reviewer",
+    "supervibe:brandbook": "brandbook producer",
+  };
+  return map[value] || value || "specialist";
+}
+
+function friendlyStageName(value = "") {
+  if (/stage-0-orchestrator/.test(value)) return "workflow setup";
+  if (/stage-1-brand-direction/.test(value)) return "creative direction";
+  if (/stage-2-design-system/.test(value)) return "design system";
+  if (/stage-3-screen-spec/.test(value)) return "screen specification";
+  if (/stage-4-copy/.test(value)) return "copy pass";
+  if (/stage-5/.test(value)) return "prototype build";
+  if (/stage-6/.test(value)) return "review";
+  if (/stage-7/.test(value)) return "quality gate";
+  return value || "current stage";
 }
 
 function expectedReceiptsForDurableOutputs(rootDir) {

@@ -7,6 +7,13 @@ import {
   buildDesignWizardState,
   recordDesignWizardAnswer,
 } from "./lib/design-wizard-catalog.mjs";
+import {
+  designWizardRuntimeStatePath,
+  designWizardStateLockPath,
+  readDesignWizardRuntimeState,
+  summarizeDesignWizardState,
+  writeDesignWizardRuntimeState,
+} from "./lib/design-wizard-runtime-state.mjs";
 
 const VALUE_ARGS = new Map([
   ["--root", "root"],
@@ -20,12 +27,14 @@ const VALUE_ARGS = new Map([
   ["--source", "source"],
   ["--timestamp", "timestamp"],
   ["--config", "configPath"],
+  ["--runtime-state", "runtimeStatePath"],
   ["--quote", "quote"],
   ["--expected-revision", "expectedRevision"],
 ]);
 
 const BOOLEAN_ARGS = new Map([
   ["--accept-recommended-remaining", "acceptRecommendedRemaining"],
+  ["--wait-for-lock", "waitForLock"],
   ["--help", "help"],
 ]);
 
@@ -53,6 +62,8 @@ async function main() {
   const configPath = options.configPath || (slug
     ? join(root, ".supervibe", "artifacts", "prototypes", slug, "config.json")
     : "");
+  const runtimeStatePath = options.runtimeStatePath || designWizardRuntimeStatePath(root, { slug, configPath });
+  const lockPath = designWizardStateLockPath(root, { slug, configPath });
 
   if (!configPath) throw new Error("Missing --slug or --config");
   if (!axis && !acceptRecommendedRemaining) throw new Error("Missing --axis or --accept-recommended-remaining");
@@ -61,14 +72,21 @@ async function main() {
   let finalRevision = 0;
   const updatedAxes = [];
 
-  await withDesignConfigLock(configPath, async () => {
+  await withDesignWizardStateLock({
+    root,
+    slug,
+    configPath,
+    lockPath,
+    waitForLock: options.waitForLock === true,
+  }, async () => {
     const config = await readDesignConfig(configPath);
     const currentRevision = designConfigRevision(config);
     if (options.expectedRevision !== undefined && String(options.expectedRevision) !== String(currentRevision)) {
       throw new Error(`config revision mismatch: expected ${options.expectedRevision}, got ${currentRevision}`);
     }
 
-    const initialDecisions = extractPersistedDesignDecisions(config);
+    const runtimeState = readDesignWizardRuntimeState(root, config);
+    const initialDecisions = extractPersistedDesignDecisions(config, runtimeState);
     let state = buildDesignWizardState({
       brief: config.brief || config.userBrief || "",
       target: config.target || "unknown",
@@ -116,15 +134,23 @@ async function main() {
     }
 
     finalRevision = currentRevision + 1;
+    await writeDesignWizardRuntimeState(root, runtimeStatePath, {
+      ...state,
+      configRevision: finalRevision,
+      runtimeStatePath,
+      updatedAt: timestamp,
+    });
     const nextConfig = {
       ...config,
       mode: state.mode || config.mode || null,
       target: state.target || config.target || "unknown",
       configRevision: finalRevision,
-      designWizard: {
-        ...state,
+      designWizardRuntimeStatePath: runtimeStatePath,
+      designWizard: summarizeDesignWizardState(state, {
         configRevision: finalRevision,
-      },
+        runtimeStatePath,
+        updatedAt: timestamp,
+      }),
       updatedAt: timestamp,
     };
     await writeDesignConfigAtomic(configPath, nextConfig);
@@ -134,12 +160,15 @@ async function main() {
   console.log([
     "SUPERVIBE_DESIGN_WIZARD_ANSWER",
     `CONFIG: ${normalizePath(configPath)}`,
+    `RUNTIME_STATE: ${normalizePath(runtimeStatePath)}`,
+    `STATE_LOCK: ${normalizePath(lockPath)}`,
     `CONFIG_REVISION: ${finalRevision}`,
     `AXES_UPDATED: ${updatedAxes.join(",") || "none"}`,
     `SOURCE: ${source}`,
     `TOKENS_UNLOCKED: ${finalState?.gates?.tokensUnlocked === true}`,
     `DELEGATED_REVIEW_REQUIRED: ${finalState?.gates?.delegatedReviewRequired === true}`,
     `NEXT: ${finalState?.questionQueue?.[0]?.axis || "none"}`,
+    `CONTINUE_COMMAND: node scripts/design-agent-plan.mjs --root ${quoteCli(root)} --slug ${quoteCli(slug || slugFromConfigPath(configPath))} --continue --dispatch --status --plan-writes`,
   ].join("\n"));
 }
 
@@ -197,17 +226,26 @@ async function writeDesignConfigAtomic(configPath, config) {
   }
 }
 
-async function withDesignConfigLock(configPath, callback) {
-  await mkdir(dirname(configPath), { recursive: true });
-  const lockPath = `${configPath}.lock`;
+async function withDesignWizardStateLock({
+  root,
+  slug = "",
+  configPath,
+  lockPath,
+  waitForLock = false,
+}, callback) {
+  const absLockPath = join(root, ...normalizeRelPath(lockPath).split("/"));
+  await mkdir(dirname(absLockPath), { recursive: true });
   const started = Date.now();
   let handle = null;
   while (!handle) {
     try {
-      handle = await open(lockPath, "wx");
+      handle = await open(absLockPath, "wx");
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
-      await removeStaleLock(lockPath);
+      await removeStaleLock(absLockPath);
+      if (!waitForLock) {
+        throw new Error(`wizard state is already locked for ${slug || slugFromConfigPath(configPath)}: ${normalizePath(lockPath)}; rerun after the current writer finishes or pass --wait-for-lock`);
+      }
       if (Date.now() - started > CONFIG_LOCK_TIMEOUT_MS) {
         throw new Error(`Timed out waiting for config lock: ${normalizePath(lockPath)}`);
       }
@@ -216,11 +254,16 @@ async function withDesignConfigLock(configPath, callback) {
   }
 
   try {
-    await handle.writeFile(`${process.pid}:${new Date().toISOString()}\n`, "utf8");
+    await handle.writeFile(`${JSON.stringify({
+      pid: process.pid,
+      slug: slug || slugFromConfigPath(configPath),
+      configPath: normalizePath(configPath),
+      startedAt: new Date().toISOString(),
+    })}\n`, "utf8");
     return await callback();
   } finally {
     await handle.close();
-    await unlink(lockPath).catch((error) => {
+    await unlink(absLockPath).catch((error) => {
       if (error?.code !== "ENOENT") throw error;
     });
   }
@@ -241,8 +284,9 @@ function designConfigRevision(config = {}) {
   return Number.isInteger(number) && number >= 0 ? number : 0;
 }
 
-function extractPersistedDesignDecisions(config = {}) {
+function extractPersistedDesignDecisions(config = {}, runtimeState = null) {
   const decisions = {
+    ...(runtimeState?.decisions || {}),
     ...(config.designWizard?.decisions || {}),
     ...(config.decisions || {}),
   };
@@ -330,6 +374,22 @@ function normalizePath(path = "") {
   return String(path || "").replace(/\\/g, "/");
 }
 
+function normalizeRelPath(path = "") {
+  return normalizePath(path).replace(/^\.\//, "");
+}
+
+function slugFromConfigPath(configPath = "") {
+  const normalized = normalizePath(configPath);
+  const match = normalized.match(/\/prototypes\/([^/]+)\/config\.json$/);
+  return match?.[1] || "design-run";
+}
+
+function quoteCli(value = "") {
+  const raw = String(value || "");
+  if (!raw) return "\"\"";
+  return `"${raw.replace(/"/g, "\\\"")}"`;
+}
+
 function usage() {
   return [
     "SUPERVIBE_DESIGN_WIZARD_ANSWER_HELP",
@@ -341,7 +401,9 @@ function usage() {
     "NOTES:",
     "  --answer is an alias for --value; multi-choice axes accept --choices or answers like \"1 and 3\".",
     "  Unknown arguments fail fast.",
-    "  config.json writes use a lock, atomic rename, and configRevision increment.",
+    "  Wizard runtime state is stored outside config.json; config.json keeps a compact pointer and decisions summary.",
+    "  Writes use a slug-level command lock, atomic rename, and configRevision increment.",
+    "  Use --wait-for-lock only when the caller intentionally wants to serialize behind an active writer.",
   ].join("\n");
 }
 

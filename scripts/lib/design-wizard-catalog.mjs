@@ -989,8 +989,8 @@ function formatDesignWizardConversationalQuestion(question = {}, options = {}) {
       ? "Можно выбрать один или несколько вариантов выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения."
       : "Можно выбрать вариант выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения.")
     : (question.multiChoice === true
-      ? "Pick one or more options above, or answer in your own words; stop means I save the current state without hidden continuation."
-      : "Pick one option above or answer in your own words; stop means I save the current state without hidden continuation."));
+      ? "Pick one or more options above, answer in your own words, ask for more alternatives, or stop; stop means I save the current state without hidden continuation."
+      : "Pick one option above, answer in your own words, ask for more alternatives, or stop; stop means I save the current state without hidden continuation."));
   return lines.join("\n");
 }
 

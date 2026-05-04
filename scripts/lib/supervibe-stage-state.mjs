@@ -82,6 +82,27 @@ export function buildPostStageContinuation({
       label: "Stop here",
       consequences: "Leaves the artifact as candidate/draft and saves state without hidden continuation.",
     });
+  } else if (stageStatus === "needs_questions" || stageStatus === "not_started" || stageStatus === "questions_answered") {
+    add({
+      id: "answer_next_question",
+      label: "Answer next question",
+      consequences: "Records the missing decision before any review or approval action is offered.",
+    });
+    add({
+      id: "continue_dispatch",
+      label: "Continue required specialists",
+      consequences: "Runs the next required specialist or producer for the active stage when no user answer is blocking.",
+    });
+    add({
+      id: "resume_last_trusted",
+      label: "Resume trusted stage",
+      consequences: "Shows the last trusted checkpoint and continues from there.",
+    });
+    add({
+      id: "stop",
+      label: "Stop here",
+      consequences: "Saves current state without hidden continuation.",
+    });
   } else if (stageStatus === "approved") {
     add({
       id: prototypeUnlocked === false ? "review_unlock_requirements" : "continue_next_stage",

@@ -71,6 +71,8 @@ test("design workflow status exposes continuation actions for candidate design s
         approved_sections: [],
       },
     }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/tokens.css", ":root { --color-primary-500: #123456; }\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", `${JSON.stringify({ status: "candidate" }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/styleboard.html", "<!doctype html><html><body>Candidate</body></html>\n");
 
     const status = readDesignWorkflowStatus(root, { slug: "agent-chat" });
@@ -98,7 +100,12 @@ test("design workflow status points missing design system back to wizard instead
     assert.equal(status.designSystem.status, "missing");
     assert.equal(status.prototype.unlocked, false);
     assert.equal(status.nextAction, "Answer design wizard question / close creative direction axes");
+    assert.deepEqual(
+      status.nextUserActions.map((action) => action.id),
+      ["answer_next_question", "continue_dispatch", "resume_last_trusted", "stop"],
+    );
     assert.match(report, /NEXT_ACTION: Answer design wizard question \/ close creative direction axes/);
+    assert.doesNotMatch(report, /approve_design_system: Approve design system/);
     assert.doesNotMatch(report, /NEXT_ACTION: Review design system/);
   } finally {
     await rm(root, { recursive: true, force: true });

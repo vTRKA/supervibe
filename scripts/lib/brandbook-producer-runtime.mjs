@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { copyFile, mkdir, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 
 import {
@@ -297,15 +297,60 @@ function validateStagedBrandbookOutputs(rootDir, stagedOutputs) {
 
 async function promoteBrandbookOutputs({ rootDir, stagedOutputs }) {
   const promoted = [];
+  const transactionRoot = stagedOutputs[0]?.tempArtifact
+    ? resolveProjectPath(rootDir, stagedOutputs[0].tempArtifact).split(`${sep}write-temp${sep}`)[0]
+    : join(rootDir, ".supervibe", "artifacts", "_workflow-transactions", "supervibe-design", "unknown");
+  const promoteDir = join(transactionRoot, "promote-temp");
+  const backupDir = join(transactionRoot, "promote-backup");
+  const prepared = [];
+  await mkdir(promoteDir, { recursive: true });
+  await mkdir(backupDir, { recursive: true });
+
   for (const item of stagedOutputs) {
     const sourcePath = resolveProjectPath(rootDir, item.tempArtifact);
     const outputPath = resolveProjectPath(rootDir, item.outputArtifact);
-    const tempPath = join(dirname(outputPath), `.tmp-${process.pid}-${Date.now()}-${sanitizeId(item.rel)}`);
-    await mkdir(dirname(outputPath), { recursive: true });
-    await copyFile(sourcePath, tempPath);
-    await rename(tempPath, outputPath);
-    promoted.push(item);
+    const preparedPath = join(promoteDir, ...item.rel.split("/"));
+    const backupPath = join(backupDir, ...item.rel.split("/"));
+    await mkdir(dirname(preparedPath), { recursive: true });
+    if (existsSync(outputPath)) await mkdir(dirname(backupPath), { recursive: true });
+    await copyFile(sourcePath, preparedPath);
+    prepared.push({
+      item,
+      outputPath,
+      preparedPath,
+      backupPath,
+      hadExisting: existsSync(outputPath),
+    });
   }
+
+  try {
+    for (const item of prepared) {
+      await mkdir(dirname(item.outputPath), { recursive: true });
+      if (item.hadExisting) await rename(item.outputPath, item.backupPath);
+    }
+    for (const item of prepared) {
+      await rename(item.preparedPath, item.outputPath);
+      promoted.push(item.item);
+    }
+  } catch (error) {
+    for (const item of prepared.reverse()) {
+      if (existsSync(item.outputPath)) {
+        await rm(item.outputPath, { force: true }).catch(() => {});
+      }
+      if (item.hadExisting && existsSync(item.backupPath)) {
+        await mkdir(dirname(item.outputPath), { recursive: true });
+        await rename(item.backupPath, item.outputPath).catch(() => {});
+      }
+    }
+    throw error;
+  }
+
+  for (const item of prepared) {
+    if (item.hadExisting && existsSync(item.backupPath)) {
+      await rm(item.backupPath, { force: true }).catch(() => {});
+    }
+  }
+  await rm(promoteDir, { recursive: true, force: true }).catch(() => {});
   return promoted;
 }
 

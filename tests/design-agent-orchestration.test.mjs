@@ -214,7 +214,8 @@ test("design agent plan does not redispatch orchestrator after trusted stage-0 r
     assert.match(output, /NEXT_DISPATCH: agent:creative-director@stage-1-brand-direction/);
     assert.match(output, /NEXT_HOST_DISPATCH: agent:creative-director@stage-1-brand-direction/);
     assert.match(output, /SPECIALIST_QUESTION_PROPOSAL: true/);
-    assert.match(output, /SPECIALIST_QUESTION_GATE: blocked/);
+    assert.match(output, /The next visible design question must come from its owning specialist/);
+    assert.match(output, /Continue command: node scripts\/design-agent-plan\.mjs --continue --dispatch --status --plan-writes --slug <slug>/);
     assert.doesNotMatch(output, /NEXT_WIZARD_QUESTION:/);
     assert.doesNotMatch(output, /NEXT_DISPATCH: agent:supervibe-orchestrator@stage-0-orchestrator/);
   } finally {
@@ -465,7 +466,7 @@ test("design write gate blocks durable writes after wizard completion until runt
     assert.ok(plan.executionStatus.missingRuntimeProofs.some((proof) => proof.subjectId === "creative-director"));
     assert.equal(plan.writeGate.durableWritesAllowed, false);
     assert.ok(plan.writeGate.blockedReasons.some((reason) => reason.code === "pending-runtime-agent-receipts"));
-    assert.match(formatDesignPlanPrompt(plan), /Runtime agent receipts are missing/);
+    assert.match(formatDesignPlanPrompt(plan), /Run the required specialists before writing design artifacts/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -130,6 +130,46 @@ same failure modes affect every agent-heavy Supervibe command.
   visible question text so broken Russian such as incorrectly decoded Cyrillic
   cannot ship through runtime question surfaces.
 
+## Fixed In 2.0.81
+
+- Wizard command mutex: `design-wizard-answer.mjs` now uses a slug-level
+  command lock under `.supervibe/memory/locks/design-wizard/` and rejects
+  concurrent writes by default. `--wait-for-lock` is explicit opt-in for callers
+  that intentionally serialize behind another writer.
+- Runtime state split: prototype `config.json` keeps compact decisions, gates,
+  progress, and a runtime pointer; heavy `questionQueue`, proposal, and wizard
+  runtime state moves to `.supervibe/memory/design-wizard/<slug>.runtime.json`.
+- Natural continuation: wizard answer output prints a concrete
+  `design-agent-plan --continue --dispatch --status --plan-writes` command, and
+  `design-agent-plan` accepts `--dispatch` as an alias. User-facing prompt copy
+  says "run required specialists" instead of exposing receipt/protocol jargon.
+- Resume checkpoint: design workflow status prints the last trusted
+  `/supervibe-design` stage plus the continuation command, so interrupts have a
+  deterministic recovery point.
+- Approval action gating: `NEXT_USER_ACTIONS` no longer offers
+  `approve_design_system` while the design-system review packet is missing
+  `tokens.css`, `manifest.json`, `design-flow-state.json`, or
+  `styleboard.html`.
+- Brandbook promotion: executable brandbook producer promotion prepares all
+  staged outputs, backs up existing durable outputs, promotes as one transaction
+  with rollback on failure, then issues the producer receipt.
+- Choice UX: visible wizard questions now always leave custom answer, more
+  alternatives, and stop paths visible in addition to the ordered alternatives
+  and recommendation rationale.
+
+## Feedback TODO Closed In 2.0.81
+
+- [x] Prevent parallel wizard/config writes per slug.
+- [x] Continue automatically after an explicit user choice with
+  `--continue --dispatch`.
+- [x] Hide receipt/protocol wording from default design planner output while
+  keeping machine output available.
+- [x] Add deterministic resume checkpoint after interrupts.
+- [x] Split heavy wizard runtime state out of `config.json`.
+- [x] Promote brandbook outputs transactionally after scratch validation.
+- [x] Avoid misleading approval actions before styleboard/tokens exist.
+- [x] Keep custom / more alternatives / stop visible for design choices.
+
 ## 10/10 Agent System Hardening
 
 Status: passed by `node scripts/supervibe-agent-maturity.mjs` on 2026-05-04.

@@ -4,6 +4,9 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import {
+  readDesignWizardRuntimeState,
+} from "../scripts/lib/design-wizard-runtime-state.mjs";
 
 const ROOT = process.cwd();
 
@@ -50,12 +53,17 @@ test("design-wizard-answer records a single user answer without manual config pa
       encoding: "utf8",
     });
     const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
+    const runtime = readDesignWizardRuntimeState(root, config);
 
     assert.match(output, /SUPERVIBE_DESIGN_WIZARD_ANSWER/);
+    assert.match(output, /RUNTIME_STATE: \.supervibe\/memory\/design-wizard\/agent-chat\.runtime\.json/);
     assert.match(output, /AXES_UPDATED: information_density/);
+    assert.equal(config.designWizard.storage, "external-runtime-state");
+    assert.equal(config.designWizard.runtimeStatePath, ".supervibe/memory/design-wizard/agent-chat.runtime.json");
     assert.equal(config.designWizard.decisions.information_density.choiceId, "compact");
     assert.equal(config.designWizard.decisions.information_density.source, "user");
-    assert.ok(!config.designWizard.questionQueue.some((question) => question.axis === "information_density"));
+    assert.ok(!config.designWizard.questionQueue);
+    assert.ok(!runtime.questionQueue.some((question) => question.axis === "information_density"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -91,6 +99,7 @@ test("design-wizard-answer can delegate remaining recommendations while keeping 
       encoding: "utf8",
     });
     const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
+    const runtime = readDesignWizardRuntimeState(root, config);
 
     assert.match(output, /SOURCE: delegated-to-agent/);
     assert.match(output, /DELEGATED_REVIEW_REQUIRED: true/);
@@ -129,6 +138,7 @@ test("design-wizard-answer accepts --answer alias for viewport values and closes
       encoding: "utf8",
     });
     const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
+    const runtime = readDesignWizardRuntimeState(root, config);
 
     assert.match(output, /CONFIG_REVISION: 1/);
     assert.match(output, /AXES_UPDATED: viewport/);
@@ -136,7 +146,42 @@ test("design-wizard-answer accepts --answer alias for viewport values and closes
     assert.equal(config.designWizard.decisions.viewport.answer, "1920x1080");
     assert.equal(config.designWizard.decisions.viewport.choiceId, "wide-desktop");
     assert.equal(config.designWizard.gates.viewportPolicyRecorded, true);
-    assert.ok(!config.designWizard.questionQueue.some((question) => question.axis === "viewport"));
+    assert.ok(!config.designWizard.questionQueue);
+    assert.ok(!runtime.questionQueue.some((question) => question.axis === "viewport"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design-wizard-answer rejects concurrent writes for the same slug unless explicitly waiting", async () => {
+  const root = await mkdtemp(join(tmpdir(), "design-wizard-answer-lock-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      brief: "Agent chat workspace with approvals and trace review.",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/memory/locks/design-wizard/agent-chat.lock", `${JSON.stringify({
+      pid: 12345,
+      slug: "agent-chat",
+      startedAt: new Date().toISOString(),
+    })}\n`);
+
+    assert.throws(() => execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-wizard-answer.mjs"),
+      "--root",
+      root,
+      "--slug",
+      "agent-chat",
+      "--axis",
+      "information_density",
+      "--choice",
+      "compact",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: "pipe",
+    }), /wizard state is already locked/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

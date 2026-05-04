@@ -10,6 +10,7 @@ import {
   buildDesignPrewriteManifest,
   formatDesignPrewriteManifest,
   formatDesignPlanPrompt,
+  formatDesignPlanUserPrompt,
 } from "./lib/design-agent-orchestration.mjs";
 import {
   formatDesignWizardStatus,
@@ -18,6 +19,9 @@ import {
   formatDesignWorkflowStatus,
   readDesignWorkflowStatus,
 } from "./lib/design-workflow-status.mjs";
+import {
+  mergeRuntimeDesignWizardConfig,
+} from "./lib/design-wizard-runtime-state.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(name);
@@ -40,7 +44,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const json = process.argv.includes("--json");
   const status = process.argv.includes("--status");
   const planWrites = process.argv.includes("--plan-writes");
-  const dispatchHostAgents = process.argv.includes("--dispatch-host-agents") || process.argv.includes("--continue");
+  const dispatchHostAgents = process.argv.includes("--dispatch-host-agents") || process.argv.includes("--dispatch") || process.argv.includes("--continue");
+  const protocolPrompt = process.argv.includes("--protocol");
   const intake = await evaluateDesignArtifactIntake({
     brief,
     projectRoot,
@@ -116,10 +121,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (dispatchHostAgents) {
       console.log("SUPERVIBE_DESIGN_CONTINUE");
       console.log(`MACHINE_JSON: ${JSON.stringify(continuation.machine)}`);
-      console.log("DISPATCH_HOST_AGENTS:");
+      console.log(`NEXT_RUN: ${continuation.nextAction}`);
+      console.log("CONTINUE_GUIDANCE:");
       console.log(dispatchGuidance(nextDispatch));
     }
-    console.log(formatDesignPlanPrompt(plan, { intake }));
+    console.log(protocolPrompt ? formatDesignPlanPrompt(plan, { intake }) : formatDesignPlanUserPrompt(plan, { intake }));
     for (const stage of plan.stages) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }
@@ -252,23 +258,23 @@ function dispatchGuidance(producer = null) {
         ? "SPECIALISTS_DEFERRED: true; run the owner/orchestrator agent now, then collect specialist scratch question proposals before durable writes."
         : producer.reason === "specialist-question-proposal"
           ? "SPECIALIST_QUESTION_PROPOSAL: true; run this specialist for scratch SpecialistQuestionContract output only. Durable artifacts remain locked by the wizard/write gate."
-        : "SPECIALISTS_DEFERRED: false; run this stage producer before claiming or approving its durable output.",
+          : "SPECIALISTS_DEFERRED: false; run this stage producer before claiming or approving its durable output.",
       "SPAWN: use the host-native agent tool for this logical Supervibe agent; in Codex use spawn_agent with fork_context=true and encode the role in message.",
-      `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent ${producer.producerId} --host <host> --host-invocation-id <returned-host-agent-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage ${producer.stageId} --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts ${producer.outputArtifact}`,
+      `RECORD_STAGE: node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent ${producer.producerId} --host <host> --host-invocation-id <returned-host-agent-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage ${producer.stageId} --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts ${producer.outputArtifact}`,
     ].join("\n");
   }
   if (producer.producerId === "supervibe:brandbook") {
     return [
       `NEXT_SKILL_PRODUCER: ${producer.producerId}@${producer.stageId}`,
       "RUN: prepare brandbook outputs in scratch, then let the executable producer promote durable files and issue the skill receipt.",
-      "PRODUCER: node <resolved-supervibe-plugin-root>/scripts/brandbook-producer.mjs run --source <prepared-design-system-dir> --handoff <handoff-id> --slug <prototype-slug> --target <target>",
-      "RECEIPT_BRIDGE: included in brandbook-producer; do not hand-write or separately issue this skill receipt unless the producer reports failure.",
+      "RUN_BRANDBOOK: node <resolved-supervibe-plugin-root>/scripts/brandbook-producer.mjs run --source <prepared-design-system-dir> --handoff <handoff-id> --slug <prototype-slug> --target <target>",
+      "RECORD_STAGE: included in brandbook-producer; do not hand-write or separately issue this skill record unless the producer reports failure.",
     ].join("\n");
   }
   return [
     `NEXT_SKILL_PRODUCER: ${producer.producerId}@${producer.stageId}`,
     "RUN: execute the deterministic skill producer, then issue a skill workflow receipt for its durable outputs.",
-    `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue --command /supervibe-design --skill ${producer.producerId} --stage ${producer.stageId} --reason <summary> --handoff <handoff-id> --input <paths> --output ${producer.outputArtifact}`,
+    `RECORD_STAGE: node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue --command /supervibe-design --skill ${producer.producerId} --stage ${producer.stageId} --reason <summary> --handoff <handoff-id> --input <paths> --output ${producer.outputArtifact}`,
   ].join("\n");
 }
 
@@ -276,7 +282,7 @@ function readPersistedDesignConfig(projectRoot, slug) {
   const configPath = join(projectRoot, ".supervibe", "artifacts", "prototypes", slug, "config.json");
   if (!existsSync(configPath)) return null;
   try {
-    return JSON.parse(readFileSync(configPath, "utf8"));
+    return mergeRuntimeDesignWizardConfig(projectRoot, JSON.parse(readFileSync(configPath, "utf8")));
   } catch {
     return null;
   }
