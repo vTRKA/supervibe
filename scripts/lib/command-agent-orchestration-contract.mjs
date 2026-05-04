@@ -347,14 +347,72 @@ export function buildCommandAgentPlan(commandId, {
           ? "Low-risk workflow context selected the owner plus quality gate fast path; durable outputs still require runtime receipts for any claimed producer."
           : "Agent definitions and host dispatch are available, but durable outputs remain blocked until runtime agent receipts are issued.",
     blockedQuestion: blocked
-      ? {
-        prompt: "Required real agents or host invocation proof are unavailable. Choose provision agents, connect host agents, or stop.",
-        choices: ["provision-agents", "connect-host-agents", "stop"],
-      }
+      ? buildBlockedAgentQuestion({
+        commandId: profile.commandId,
+        missingAgents,
+        hostDispatch,
+        hostProofBlocked,
+        requiredAgentIds,
+      })
       : null,
     emulationPolicy: profile.emulationPolicy,
     codexSpawnPayloadRules: codexSpawnPayloads.length ? [...CODEX_SPAWN_PAYLOAD_RULES] : undefined,
     codexSpawnPayloads: codexSpawnPayloads.length ? codexSpawnPayloads : undefined,
+  };
+}
+
+function buildBlockedAgentQuestion({
+  commandId = "unknown",
+  missingAgents = [],
+  hostDispatch = null,
+  hostProofBlocked = false,
+  requiredAgentIds = [],
+} = {}) {
+  const agentSummary = missingAgents.length
+    ? missingAgents.join(", ")
+    : requiredAgentIds.length
+      ? requiredAgentIds.join(", ")
+      : "required specialists";
+  const hostSummary = hostDispatch?.hostAdapterId
+    ? `${hostDispatch.hostAdapterId} ${hostDispatch.nativeTool || "host dispatch"}`
+    : "host dispatch";
+  const blocker = hostProofBlocked
+    ? `${hostSummary} proof is missing`
+    : `missing agents: ${agentSummary}`;
+
+  return {
+    prompt: `Step 1/1: ${commandId} cannot claim real-agent output yet because ${blocker}. Fix dispatch, run a diagnostic draft, or stop?`,
+    specialist: "supervibe-orchestrator",
+    evidence: [
+      `command=${commandId}`,
+      `missingAgents=${missingAgents.join(",") || "none"}`,
+      `hostDispatch=${hostDispatch?.status || "not-configured"}`,
+    ],
+    artifactImpact: "This answer decides whether durable command outputs remain blocked, agent provisioning runs, or the session stops without emulated specialist work.",
+    choices: [
+      {
+        id: "provision-agents",
+        label: missingAgents.length ? `Install missing agents for ${commandId}` : `Refresh agent availability for ${commandId}`,
+        tradeoff: `Runs the provisioning path for ${agentSummary}; durable outputs stay blocked until receipts exist.`,
+        recommended: missingAgents.length > 0,
+      },
+      {
+        id: "connect-host-agents",
+        label: `Connect ${hostSummary} proof`,
+        tradeoff: "Use the real host invocation path and issue runtime receipts before claiming specialist output.",
+        recommended: missingAgents.length === 0,
+      },
+      {
+        id: "diagnostic-draft",
+        label: `Produce a diagnostic draft for ${commandId}`,
+        tradeoff: "Allows analysis only; it cannot satisfy agent-owned durable artifacts or quality claims.",
+      },
+      {
+        id: "stop",
+        label: "Stop without durable writes",
+        tradeoff: "Preserves the blocker context and avoids hidden emulation or metadata churn.",
+      },
+    ],
   };
 }
 
@@ -471,6 +529,14 @@ export function formatCommandAgentPlan(plan = {}) {
     lines.push("CODEX_RECEIPT_LOG_COMMANDS:");
     for (const payload of plan.codexSpawnPayloads || []) {
       lines.push(`- ${payload.agentId}: ${payload.receipt.logCommand}`);
+    }
+  }
+  if (plan.blockedQuestion) {
+    lines.push(`BLOCKED_QUESTION: ${plan.blockedQuestion.prompt}`);
+    lines.push("BLOCKED_CHOICES:");
+    for (const choice of plan.blockedQuestion.choices || []) {
+      const recommended = choice.recommended ? " recommended" : "";
+      lines.push(`- ${choice.label}${recommended} - ${choice.tradeoff}`);
     }
   }
   lines.push(`NEXT: ${nextActionForPlan(plan)}`);

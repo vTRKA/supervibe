@@ -446,24 +446,234 @@ function contextCopy(context, locale, field, fallback) {
   return context?.[locale]?.[field] || fallback;
 }
 
+const POST_DELIVERY_DEFAULT_SUBJECTS = Object.freeze({
+  genesis_setup: {
+    en: 'Supervibe scaffold',
+    ru: 'Supervibe scaffold',
+  },
+  prototype_delivery: {
+    en: 'prototype',
+    ru: 'прототип',
+  },
+  requirements_delivery: {
+    en: 'requirements package',
+    ru: 'пакет требований',
+  },
+  adaptation_delivery: {
+    en: 'adaptation plan',
+    ru: 'план адаптации',
+  },
+  strengthening_delivery: {
+    en: 'strengthening diff',
+    ru: 'diff усиления',
+  },
+  design_delivery: {
+    en: 'design artifact',
+    ru: 'дизайн-артефакт',
+  },
+});
+
+const POST_DELIVERY_SPECIALISTS = Object.freeze({
+  genesis_setup: 'supervibe-orchestrator',
+  prototype_delivery: 'prototype-builder',
+  requirements_delivery: 'product-strategist',
+  adaptation_delivery: 'supervibe-orchestrator',
+  strengthening_delivery: 'quality-gate-reviewer',
+  design_delivery: 'ux-ui-designer',
+});
+
+function explicitPostDeliverySubject(route = {}, options = {}) {
+  return firstNonEmpty(
+    options.subject,
+    options.artifact,
+    options.artifactName,
+    options.deliveryArtifact,
+    route.subject,
+    route.artifact,
+    route.artifactName,
+    route.deliveryArtifact,
+  );
+}
+
+function derivePostDeliverySubject(route = {}, options = {}, context = null, locale = 'en') {
+  const explicit = explicitPostDeliverySubject(route, options);
+  if (explicit) return sanitizeVisibleText(explicit, 72);
+  const contextId = context?.id || String(options.context || route.intent || '').trim();
+  const fromContext = POST_DELIVERY_DEFAULT_SUBJECTS[contextId]?.[locale];
+  if (fromContext) return fromContext;
+  const command = String(route.command || '').trim();
+  if (command) return sanitizeVisibleText(command.replace(/^node\s+/, ''), 72);
+  return locale === 'ru' ? 'текущий результат' : 'current delivery';
+}
+
+function derivePostDeliverySpecialist(route = {}, options = {}, context = null) {
+  return firstNonEmpty(
+    options.specialist,
+    route.specialist,
+    route.ownerAgent,
+    route.agentProfile?.ownerAgentId,
+    POST_DELIVERY_SPECIALISTS[context?.id],
+    route.skill,
+    'supervibe-orchestrator',
+  );
+}
+
+function derivePostDeliveryEvidence(route = {}, options = {}, context = null, subject = '') {
+  const explicit = [
+    ...asArray(options.evidence),
+    ...asArray(route.evidence),
+    ...asArray(route.routingEvidence).map((item) => item?.reason || item?.matchedPhrase || item?.source).filter(Boolean),
+  ].map((item) => sanitizeVisibleText(item, 120)).filter(Boolean);
+  if (explicit.length > 0) return [...new Set(explicit)].slice(0, 4);
+  const contextId = context?.id || String(options.context || route.intent || '').trim() || 'delivery';
+  return [
+    `${contextId} route selected`,
+    `${subject} is the current user-facing artifact`,
+  ];
+}
+
+function derivePostDeliveryImpact(route = {}, options = {}, context = null, subject = '', locale = 'en') {
+  const explicit = firstNonEmpty(options.artifactImpact, route.artifactImpact, route.questionArtifactImpact);
+  if (explicit) return sanitizeVisibleText(explicit, 160);
+  if (locale === 'ru') {
+    return `Ответ меняет следующий lifecycle шаг для ${subject}.`;
+  }
+  return `The answer changes the next lifecycle action for ${subject}.`;
+}
+
+function scopedPostDeliveryPrompt(prompt, { contextId, explicitSubject, locale, subject }) {
+  if ((!explicitSubject && contextId) || !subject) return prompt;
+  if (locale === 'ru') {
+    if (contextId === 'prototype_delivery') {
+      return `Шаг 1/1: утверждаем ${subject} для handoff или выбираем следующий дизайн-шаг?`;
+    }
+    if (contextId === 'requirements_delivery') {
+      return `Шаг 1/1: утверждаем ${subject} для планирования или уточняем анализ?`;
+    }
+    if (contextId === 'adaptation_delivery') {
+      return `Шаг 1/1: применить ${subject} сейчас или сначала проверить план?`;
+    }
+    if (contextId === 'strengthening_delivery') {
+      return `Шаг 1/1: применить ${subject} сейчас или сначала проверить diff?`;
+    }
+    if (contextId === 'design_delivery') {
+      return `Шаг 1/1: утверждаем ${subject} или выбираем следующее дизайн-действие?`;
+    }
+    if (contextId === 'genesis_setup') {
+      return `Шаг 1/1: применяем ${subject} в проект или сначала меняем план установки?`;
+    }
+    return `Шаг 1/1: какой следующий lifecycle шаг нужен для ${subject}?`;
+  }
+  if (contextId === 'prototype_delivery') {
+    return `Step 1/1: approve ${subject} for handoff, or choose the next design step?`;
+  }
+  if (contextId === 'requirements_delivery') {
+    return `Step 1/1: approve ${subject} for planning, or tighten the analysis first?`;
+  }
+  if (contextId === 'adaptation_delivery') {
+    return `Step 1/1: apply ${subject} now, or inspect the plan first?`;
+  }
+  if (contextId === 'strengthening_delivery') {
+    return `Step 1/1: apply ${subject} now, or inspect the diff first?`;
+  }
+  if (contextId === 'design_delivery') {
+    return `Step 1/1: approve ${subject}, or choose the next design action?`;
+  }
+  if (contextId === 'genesis_setup') {
+    return `Step 1/1: apply ${subject} to this project, or adjust the install plan first?`;
+  }
+  return `Step 1/1: what should happen next with ${subject}?`;
+}
+
+function scopedPostDeliveryRecommendation(recommendation, { explicitSubject, locale, subject }) {
+  if (!explicitSubject || !subject) return recommendation;
+  const suffix = locale === 'ru'
+    ? ` Контекст решения: ${subject}.`
+    : ` Decision context: ${subject}.`;
+  return `${recommendation}${suffix}`;
+}
+
+function scopedPostDeliveryActions(actions, { explicitSubject, locale, subject }) {
+  if (!explicitSubject || !subject) return actions;
+  return actions.map((choice) => ({
+    ...choice,
+    label: scopedPostDeliveryActionLabel(choice, { locale, subject }),
+    tradeoff: scopedPostDeliveryTradeoff(choice.tradeoff, { locale, subject }),
+  }));
+}
+
+function scopedPostDeliveryActionLabel(choice, { locale, subject }) {
+  const shortSubject = sanitizeVisibleText(subject, 44);
+  if (!shortSubject) return choice.label;
+  if (locale === 'ru') {
+    const currentResult = shortSubject === 'текущий результат';
+    if (choice.id === 'approve') return `${currentResult ? 'Применить' : 'Утвердить'} ${shortSubject}`;
+    if (choice.id === 'refine') return `Доработать ${shortSubject}`;
+    if (choice.id === 'alternative') return currentResult ? 'Сравнить другой подход' : `Сравнить другой подход для ${shortSubject}`;
+    if (choice.id === 'deeper-review') return `Проверить ${shortSubject} глубже`;
+    if (choice.id === 'stop') return `Сохранить ${shortSubject} без продолжения`;
+    return `${choice.label}: ${shortSubject}`;
+  }
+  if (choice.id === 'approve') return `Approve ${shortSubject}`;
+  if (choice.id === 'refine') return `Refine ${shortSubject}`;
+  if (choice.id === 'alternative') return `Compare another path for ${shortSubject}`;
+  if (choice.id === 'deeper-review') return `Review ${shortSubject} deeper`;
+  if (choice.id === 'stop') return `Keep ${shortSubject} saved`;
+  return `${choice.label}: ${shortSubject}`;
+}
+
+function scopedPostDeliveryTradeoff(tradeoff, { locale, subject }) {
+  const scoped = locale === 'ru'
+    ? `Затрагивает именно: ${subject}.`
+    : `Scoped to: ${subject}.`;
+  return `${tradeoff} ${scoped}`;
+}
+
 export function buildPostDeliveryQuestion(route = {}, options = {}) {
   const locale = normalizeLocale(options.locale || detectDialogueLocale(route.nextQuestion || route.command || ''));
   const context = resolvePostDeliveryContext(route, options);
+  const subject = derivePostDeliverySubject(route, options, context, locale);
+  const explicitSubject = Boolean(explicitPostDeliverySubject(route, options));
+  const contextId = context?.id || null;
+  const scopeFallback = explicitSubject || !contextId;
+  const prompt = scopedPostDeliveryPrompt(contextCopy(context, locale, 'prompt', locale === 'ru'
+    ? 'Шаг 1/1: какой следующий lifecycle шаг нужен для текущего результата?'
+    : 'Step 1/1: what should happen next with the current delivery?'), {
+    contextId,
+    explicitSubject: scopeFallback,
+    locale,
+    subject,
+  });
+  const recommendation = scopedPostDeliveryRecommendation(contextCopy(context, locale, 'recommendation', locale === 'ru'
+    ? 'Рекомендуемый путь указан первым.'
+    : 'The recommended path is listed first.'), {
+    explicitSubject: scopeFallback,
+    locale,
+    subject,
+  });
+  const choices = scopedPostDeliveryActions(getPostDeliveryActions(locale, context), {
+    explicitSubject: scopeFallback,
+    locale,
+    subject,
+  });
+  const specialist = derivePostDeliverySpecialist(route, options, context);
+  const evidence = derivePostDeliveryEvidence(route, options, context, subject);
+  const artifactImpact = derivePostDeliveryImpact(route, options, context, subject, locale);
   return {
-    prompt: contextCopy(context, locale, 'prompt', locale === 'ru'
-      ? 'Шаг 1/1: выберите следующий шаг для результата.'
-      : 'Step 1/1: choose the next step for this delivery.'),
-    recommendation: contextCopy(context, locale, 'recommendation', locale === 'ru'
-      ? 'Рекомендуемый путь указан первым.'
-      : 'The recommended path is listed first.'),
-    choices: getPostDeliveryActions(locale, context),
+    prompt,
+    recommendation,
+    choices,
     freeFormPath: contextCopy(context, locale, 'freeFormPath', locale === 'ru'
       ? 'Можно ответить своими словами, если ни один вариант не подходит.'
       : 'You can answer in your own words if none of the choices fit.'),
     stopCondition: contextCopy(context, locale, 'stopCondition', locale === 'ru'
       ? 'Остановиться: сохраню состояние и выйду без скрытого продолжения.'
       : 'Stop here: persist state and exit without hidden continuation.'),
-    context: context?.id || null,
+    context: contextId,
+    subject,
+    specialist,
+    evidence,
+    artifactImpact,
     locale,
   };
 }
@@ -477,12 +687,17 @@ export function buildTransparentStepQuestion({
   assumption,
   choices = [],
   locale = null,
+  specialist = 'supervibe-orchestrator',
+  evidence = [],
+  artifactImpact = '',
+  subject = '',
 } = {}) {
   const normalized = normalizeLocale(locale || detectDialogueLocale(`${question || ''} ${why || ''} ${decision || ''} ${assumption || ''}`));
+  const normalizedSubject = sanitizeVisibleText(subject || decision || question || (normalized === 'ru' ? 'решение workflow' : 'workflow decision'), 90);
   return {
     prompt: normalized === 'ru'
-      ? `Шаг ${step}/${total}: ${question || 'что выбираем?'}`
-      : `Step ${step}/${total}: ${question || 'what should we choose?'}`,
+      ? `Шаг ${step}/${total}: ${question || 'какое решение откроет следующий шаг?'}`
+      : `Step ${step}/${total}: ${question || 'which decision unlocks the next step?'}`,
     why: why || (normalized === 'ru' ? 'Этот ответ влияет на следующий шаг.' : 'This answer changes the next step.'),
     decision: decision || (normalized === 'ru' ? 'Зафиксирую выбранное решение в состоянии.' : 'I will record the selected decision in state.'),
     assumption: assumption || (normalized === 'ru' ? 'Если пропустить, использую рекомендуемый безопасный вариант.' : 'If skipped, I will use the recommended safe default.'),
@@ -490,6 +705,16 @@ export function buildTransparentStepQuestion({
       ...choice,
       recommended: choice.recommended ?? index === 0,
     })),
+    subject: normalizedSubject,
+    specialist,
+    evidence: asArray(evidence).length ? asArray(evidence) : [
+      normalized === 'ru'
+        ? `Текущий вопрос влияет на ${normalizedSubject}.`
+        : `Current question affects ${normalizedSubject}.`,
+    ],
+    artifactImpact: artifactImpact || (normalized === 'ru'
+      ? `Ответ фиксирует ${normalizedSubject} и меняет следующий шаг workflow.`
+      : `The answer records ${normalizedSubject} and changes the next workflow step.`),
     locale: normalized,
   };
 }
@@ -537,6 +762,79 @@ export function formatPostDeliveryQuestion(question) {
   }
   lines.push('', `${freeFormHeading} ${question.freeFormPath}`, `${stopHeading} ${question.stopCondition}`);
   return lines.join('\n');
+}
+
+export function validateAgenticQuestion(question = {}, options = {}) {
+  const issues = [];
+  const surface = options.surface || 'question';
+  const minChoices = Number(options.minChoices || 3);
+  const prompt = String(question.prompt || question.nextQuestion || '').trim();
+  const choices = question.choices || question.questionChoices || question.nextQuestionChoices || [];
+  const locale = normalizeLocale(options.locale || question.locale || detectDialogueLocale(prompt));
+
+  if (!prompt) {
+    issues.push(issue('missing-prompt', `${surface} missing visible prompt`));
+  }
+  if (/choose the next step for this delivery|what should we choose\?|выберите следующий шаг для результата|что выбираем\?/i.test(prompt)) {
+    issues.push(issue('generic-prompt', `${surface} uses generic wizard prompt copy instead of task-specific wording`));
+  }
+  if (choices.length < minChoices) {
+    issues.push(issue('thin-choice-set', `${surface} requires at least ${minChoices} visible choices`));
+  }
+
+  const labels = choices.map((choice) => String(choice.label || '').trim()).filter(Boolean);
+  if (labels.length !== new Set(labels.map((label) => label.toLowerCase())).size) {
+    issues.push(issue('duplicate-choice-labels', `${surface} has duplicate visible choice labels`));
+  }
+  const genericEn = ['apply', 'revise', 'try another option', 'review deeper', 'stop here'];
+  const genericRu = ['применить', 'доработать', 'другой вариант', 'проверить глубже', 'остановиться'];
+  const normalizedLabels = labels.map((label) => label.toLowerCase());
+  if (options.disallowGenericChoiceSet !== false) {
+    if (arrayEquals(normalizedLabels, genericEn) || arrayEquals(normalizedLabels, genericRu)) {
+      issues.push(issue('generic-choice-set', `${surface} exposes the base action labels without task-specific option copy`));
+    }
+  }
+
+  for (const choice of choices) {
+    const id = String(choice.id || '').trim();
+    const label = String(choice.label || '').trim();
+    const tradeoff = String(choice.tradeoff || choice.description || '').trim();
+    if (!id || !label || !tradeoff) {
+      issues.push(issue('weak-choice', `${surface}:${id || 'unknown'} missing id, label, or tradeoff`));
+    }
+    if (id && label && id.toLowerCase() === label.toLowerCase()) {
+      issues.push(issue('raw-choice-id', `${surface}:${id} exposes the internal id as the visible label`));
+    }
+    if (/Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/i.test(label)) {
+      issues.push(issue('catalog-choice-label', `${surface}:${id || label} leaks static design catalog labels`));
+    }
+  }
+
+  const repeatedSuffixes = labels
+    .map((label) => label.replace(/^[^:–—-]+[:–—-]\s*/, '').replace(/^.*\bfor\s+/i, 'for ').trim().toLowerCase())
+    .filter((suffix) => suffix.length > 10);
+  if (repeatedSuffixes.length >= 3 && new Set(repeatedSuffixes).size === 1) {
+    issues.push(issue('repeated-choice-suffix', `${surface} choices share the same generated suffix`));
+  }
+
+  if (options.requireEvidence !== false && asArray(question.evidence || question.questionEvidence).length < Number(options.minEvidence || 1)) {
+    issues.push(issue('missing-question-evidence', `${surface} missing project/runtime evidence`));
+  }
+  if (options.requireSpecialist !== false && !firstNonEmpty(question.specialist, question.questionSpecialist, question.ownerAgent)) {
+    issues.push(issue('missing-question-specialist', `${surface} missing specialist or owner provenance`));
+  }
+  if (options.requireArtifactImpact !== false && !firstNonEmpty(question.artifactImpact, question.questionArtifactImpact)) {
+    issues.push(issue('missing-artifact-impact', `${surface} missing artifact impact`));
+  }
+
+  if (locale === 'ru' && /\b(Recommended option|Other options|Free-form answer|Stop condition|Step \d+\/\d+)\b/.test(prompt)) {
+    issues.push(issue('mixed-locale-prompt', `${surface} leaked English scaffolding into a Russian prompt`));
+  }
+  if (locale === 'en' && /\b(Рекомендуемый вариант|Другие варианты|Свободный ответ|Условие остановки|Шаг \d+\/\d+)\b/.test(prompt)) {
+    issues.push(issue('mixed-locale-prompt', `${surface} leaked Russian scaffolding into an English prompt`));
+  }
+
+  return issues;
 }
 
 export function validateDialogueContract({ path = '', content = '', delivery = false } = {}) {
@@ -596,11 +894,12 @@ function dialogueContractMarkdown({
     'Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.',
     'If a saved `NEXT_STEP_HANDOFF`, `workflowSignal`, or stage state exists and the user changes topic, ask whether to continue, skip/delegate safe decisions, pause and switch topic, or stop/archive current state.',
     '',
-    'After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels; keep internal ids only in saved state.',
+    'After every material delivery, ask one explicit next-step question. Use language-matched, outcome-oriented labels adapted to the concrete artifact; keep internal ids only in saved state.',
+    'Question prompts and option lists must carry specialist/owner provenance, evidence, and artifact impact so they read like a specialist decision, not a static wizard.',
     'Never render bilingual slash labels in a visible menu. Pick exactly one locale from the user conversation.',
     '',
-    'English visible labels: `Apply`, `Revise`, `Try another option`, `Review deeper`, `Stop here`.',
-    'Russian visible labels: `Применить`, `Доработать`, `Другой вариант`, `Проверить глубже`, `Остановиться`.',
+    'Fallback English labels may start from `Apply`, `Revise`, `Try another option`, `Review deeper`, `Stop here`, but runtime delivery questions should specialize them by artifact subject.',
+    'Fallback Russian labels may start from `Применить`, `Доработать`, `Другой вариант`, `Проверить глубже`, `Остановиться`, but runtime delivery questions should specialize them by artifact subject.',
   ].join('\n');
 }
 
@@ -651,6 +950,32 @@ function detectDialogueLocale(text) {
 
 function normalizeLocale(locale) {
   return String(locale || 'en').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value !== 'string' && value) return value;
+  }
+  return '';
+}
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined || value === '') return [];
+  return [value];
+}
+
+function sanitizeVisibleText(value, maxLength = 120) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
+function arrayEquals(left, right) {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
 function transparentStepLabels(locale) {

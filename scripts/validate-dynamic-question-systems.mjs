@@ -14,7 +14,10 @@ import {
   buildPostDeliveryQuestion,
   buildTransparentStepQuestion,
   formatTransparentStepQuestion,
+  validateAgenticQuestion,
 } from "./lib/supervibe-dialogue-contract.mjs";
+import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
+import { routeWorkflowIntent } from "./lib/supervibe-workflow-router.mjs";
 
 const POST_DELIVERY_CONTEXTS = Object.freeze([
   "genesis_setup",
@@ -72,11 +75,14 @@ export function validateDynamicQuestionSystems() {
   for (const context of POST_DELIVERY_CONTEXTS) {
     const question = buildPostDeliveryQuestion({ command: "/supervibe" }, { context, locale: "en" });
     validateQuestionShape(question, `post-delivery:${context}`, issues, { minChoices: 5 });
+    pushAgenticIssues(question, `post-delivery:${context}`, issues, { minChoices: 5, disallowGenericChoiceSet: context !== "delivery_control" });
     postDeliveryFingerprints.push(questionFingerprint(question));
   }
   if (new Set(postDeliveryFingerprints).size !== POST_DELIVERY_CONTEXTS.length) {
     issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "static-post-delivery-questions", "post-delivery contexts must render distinct prompts and action labels"));
   }
+  validatePostDeliveryRuntimeAdaptivity(issues);
+  validateRuntimeRouteQuestions(issues);
   validateCommandQuestionTemplates(issues);
 
   const transparent = buildTransparentStepQuestion({
@@ -86,10 +92,11 @@ export function validateDynamicQuestionSystems() {
     choices: [
       { id: "real-agents", label: "Real agents", tradeoff: "Highest quality; requires host invocation proof." },
       { id: "skills-only", label: "Skills only", tradeoff: "Deterministic work only; no agent quality claims." },
-      { id: "stop", label: "Stop", tradeoff: "No hidden progress." },
+      { id: "stop", label: "Stop workflow", tradeoff: "No hidden progress." },
     ],
   });
   validateQuestionShape(transparent, "transparent-step", issues, { minChoices: 3 });
+  pushAgenticIssues(transparent, "transparent-step", issues, { minChoices: 3 });
 
   const localizedTransparent = buildTransparentStepQuestion({
     locale: "ru",
@@ -245,6 +252,89 @@ function validateDesignWizardRuntimeCopy(issues) {
   }
 }
 
+function validatePostDeliveryRuntimeAdaptivity(issues) {
+  const agentWorkspace = buildPostDeliveryQuestion({ intent: "prototype_delivery" }, {
+    locale: "en",
+    subject: "agent chat approval console prototype",
+    specialist: "prototype-builder",
+    evidence: [
+      "old prototype shows pending approvals drawer",
+      "browser feedback mentions subagent/tool-call visibility",
+    ],
+    artifactImpact: "Controls approval state and handoff scope for the agent chat prototype.",
+  });
+  const billingFlow = buildPostDeliveryQuestion({ intent: "prototype_delivery" }, {
+    locale: "en",
+    subject: "billing recovery settings prototype",
+    specialist: "prototype-builder",
+    evidence: [
+      "settings flow includes retry and invoice states",
+      "handoff bundle targets billing admin screens",
+    ],
+    artifactImpact: "Controls approval state and handoff scope for the billing recovery prototype.",
+  });
+  pushAgenticIssues(agentWorkspace, "post-delivery:scoped-agent-workspace", issues, { minChoices: 5 });
+  pushAgenticIssues(billingFlow, "post-delivery:scoped-billing-flow", issues, { minChoices: 5 });
+  if (questionFingerprint(agentWorkspace) === questionFingerprint(billingFlow)) {
+    issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "static-scoped-post-delivery-question", "same post-delivery context must adapt visible prompt/options to the concrete artifact subject"));
+  }
+  if (!/agent chat approval console/i.test(agentWorkspace.prompt) || !agentWorkspace.choices.some((choice) => /agent chat approval console/i.test(choice.label))) {
+    issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "subject-missing-from-scoped-question", "scoped post-delivery questions must include the artifact subject in prompt and choices"));
+  }
+}
+
+function validateRuntimeRouteQuestions(issues) {
+  const designRoute = routeTriggerRequest("make a new design system for an agent chat workspace with approvals drawer", {
+    artifacts: {
+      designBrief: "agent chat workspace with approvals drawer",
+      confirmedMutation: true,
+    },
+  });
+  const memoryRoute = routeTriggerRequest("audit memory and codegraph health", {
+    artifacts: {
+      confirmedMutation: true,
+    },
+  });
+  const workflowRoute = routeWorkflowIntent({
+    userPhrase: "run it",
+    lastCompletedPhase: "plan",
+    artifacts: { plan: true },
+  });
+  const topicDriftRoute = routeWorkflowIntent({
+    userPhrase: "also build a dashboard",
+    recentAssistantOutput: [
+      "NEXT_STEP_HANDOFF",
+      "Current phase: brainstorm",
+      "Artifact: .supervibe/artifacts/specs/agent-chat.md",
+      "Next phase: plan",
+      "Next command: /supervibe-plan",
+      "Next skill: supervibe:writing-plans",
+      "Stop condition: ask-before-plan",
+      "Why: A brainstorm is not executable until it becomes a plan.",
+      "Question: Step 1/1: write the implementation plan from the approved spec?",
+      "END_NEXT_STEP_HANDOFF",
+    ].join("\n"),
+  });
+
+  for (const [label, route] of [
+    ["trigger:design", designRoute],
+    ["trigger:memory", memoryRoute],
+    ["workflow:plan-review", workflowRoute],
+    ["workflow:topic-drift", topicDriftRoute],
+  ]) {
+    pushAgenticIssues(routeQuestionAdapter(route), label, issues, { minChoices: label.includes("topic-drift") ? 4 : 3 });
+  }
+
+  const fingerprints = [designRoute, memoryRoute, workflowRoute, topicDriftRoute]
+    .map((route) => routeChoiceFingerprint(route));
+  if (new Set(fingerprints).size !== fingerprints.length) {
+    issues.push(issue("scripts/lib/supervibe-workflow-router.mjs", "static-runtime-route-choice-set", "runtime route questions must expose context-specific visible option lists across commands and workflow states"));
+  }
+  if ((topicDriftRoute.questionChoices || []).some((choice) => choice.label === choice.id)) {
+    issues.push(issue("scripts/lib/supervibe-workflow-router.mjs", "raw-topic-drift-choice-id", "topic drift resume choices must not expose raw ids as visible labels"));
+  }
+}
+
 function designWizardFingerprint(state = {}) {
   const queue = (state.questionQueue || []).slice(0, 6).map((question) => {
     const recommended = (question.choices || []).find((choice) => choice.recommended)?.id || "none";
@@ -254,6 +344,32 @@ function designWizardFingerprint(state = {}) {
     state.questionStrategy?.profile || "none",
     ...queue,
   ].join("|");
+}
+
+function routeQuestionAdapter(route = {}) {
+  return {
+    prompt: route.nextQuestion || route.nextPromptText,
+    choices: route.questionChoices || route.nextQuestionChoices || [],
+    locale: /[а-яё]/i.test(route.nextQuestion || route.nextPromptText || "") ? "ru" : "en",
+    specialist: route.questionSpecialist || route.agentProfile?.ownerAgentId || route.skill,
+    evidence: route.questionEvidence || route.routingEvidence || [],
+    artifactImpact: route.questionArtifactImpact,
+  };
+}
+
+function routeChoiceFingerprint(route = {}) {
+  return (route.questionChoices || route.nextQuestionChoices || [])
+    .map((choice) => `${choice.id}:${choice.label}:${choice.tradeoff}`)
+    .join("|");
+}
+
+function pushAgenticIssues(question, label, issues, options = {}) {
+  for (const item of validateAgenticQuestion(question, {
+    surface: label,
+    ...options,
+  })) {
+    issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", item.code, `${label}: ${item.message}`));
+  }
 }
 
 function questionFingerprint(question = {}) {

@@ -44,11 +44,11 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
     decisionUnlocked: ".supervibe/artifacts/brandbook/direction.md mood, risk, and product-fit rationale",
     defaultChoiceId: "operational-clarity",
     choices: [
-      choice("operational-clarity", "Operational clarity", "Quiet, dense, and fast to scan; may feel less expressive."),
-      choice("technical-command-center", "Technical command center", "Strong structure and expert cues; risks feeling heavy for casual users."),
-      choice("premium-editorial", "Premium editorial", "Distinctive and polished; gives up some utilitarian density."),
-      choice("warm-product-utility", "Warm product utility", "Approachable and humane; less sharp for high-risk admin tools."),
-      choice("bold-launch-energy", "Bold launch energy", "Memorable first impression; higher risk of visual fatigue in daily workflows."),
+      choice("operational-clarity", "Operations scan layer", "Prioritizes fast repeated scanning; can feel restrained if the product needs stronger memory."),
+      choice("technical-command-center", "Instrumented control surface", "Makes system state and expert controls explicit; can add weight for casual users."),
+      choice("premium-editorial", "Narrative polish layer", "Creates a more memorable product voice; gives up some utilitarian density."),
+      choice("warm-product-utility", "Guided utility layer", "Makes workflows feel approachable; can under-signal rigor for risky admin tasks."),
+      choice("bold-launch-energy", "High-signal launch layer", "Creates strong first-visit momentum; raises fatigue risk for daily operators."),
     ],
   }),
   axis({
@@ -428,11 +428,11 @@ const RU_AXIS_COPY = Object.freeze({
     label: "Видение",
     decisionUnlocked: "настроение, риск, продуктовый fit и причины выбора в direction.md",
     choices: {
-      "operational-clarity": ["Операционная ясность", "Тихо, плотно и быстро сканируется; может быть менее выразительно."],
-      "technical-command-center": ["Технический командный центр", "Сильная структура и экспертные сигналы; может быть тяжеловато новичкам."],
-      "premium-editorial": ["Премиальная редакторская подача", "Отличается и выглядит отполированно; уступает часть утилитарной плотности."],
-      "warm-product-utility": ["Теплая продуктовая утилитарность", "Дружелюбно и человечно; меньше жесткости для рискованных админок."],
-      "bold-launch-energy": ["Смелая энергия запуска", "Запоминается с первого экрана; выше риск усталости при ежедневной работе."],
+      "operational-clarity": ["Слой быстрого сканирования", "Ускоряет повторную работу; может быть сдержанным, если продукту нужна сильная память."],
+      "technical-command-center": ["Инструментальная поверхность контроля", "Явно показывает состояние системы и экспертные controls; может добавить веса новичкам."],
+      "premium-editorial": ["Слой продуктовой подачи", "Дает более запоминаемый голос; уступает часть утилитарной плотности."],
+      "warm-product-utility": ["Направляющая утилитарность", "Делает workflow понятнее и мягче; может слабее показывать строгость рискованных задач."],
+      "bold-launch-energy": ["Высокий launch-сигнал", "Создает сильный первый импульс; повышает риск усталости для ежедневных операторов."],
     },
   },
   audience_trust_posture: {

@@ -162,17 +162,29 @@ export function formatNextStepBlock(options = {}) {
   };
   const locale = options.locale === "ru" ? "ru" : "en";
   const question = locale === "ru" ? edge.questionRu : edge.questionEn;
+  const artifact = options.artifactPath ?? edge.artifactKind;
+  const choices = options.questionChoices ?? buildNextStepChoices({
+    locale,
+    artifact,
+    command: options.command ?? edge.command,
+    skill: options.skill ?? edge.skill,
+  });
 
   return [
     "NEXT_STEP_HANDOFF",
     `Current phase: ${edge.phase}`,
-    `Artifact: ${options.artifactPath ?? edge.artifactKind}`,
+    `Artifact: ${artifact}`,
     `Next phase: ${edge.nextPhase}`,
     `Next command: ${options.command ?? edge.command}`,
     `Next skill: ${options.skill ?? edge.skill}`,
     `Stop condition: ${edge.stopCondition}`,
     `Why: ${options.why ?? edge.why}`,
     `Question: ${options.question ?? question}`,
+    "Choices:",
+    ...choices.map((choice) => {
+      const suffix = choice.recommended ? (locale === "ru" ? " (рекомендуется)" : " (recommended)") : "";
+      return `- ${choice.label}${suffix} - ${choice.tradeoff}`;
+    }),
     "END_NEXT_STEP_HANDOFF",
   ].join("\n");
 }
@@ -377,6 +389,42 @@ function hasText(value) {
 
 function cloneEdge(edge) {
   return { ...edge };
+}
+
+function buildNextStepChoices({ locale = "en", artifact = "", command = "", skill = "" } = {}) {
+  const subject = artifact || (locale === "ru" ? "текущий артефакт" : "current artifact");
+  if (locale === "ru") {
+    return [
+      {
+        label: `Продолжить ${subject}`,
+        tradeoff: `Запускает ${command} через ${skill}; gates остаются активными.`,
+        recommended: true,
+      },
+      {
+        label: `Проверить readiness для ${subject}`,
+        tradeoff: "Покажет prerequisites и blockers без мутаций.",
+      },
+      {
+        label: `Сохранить ${subject} и остановиться`,
+        tradeoff: "Фиксирует handoff и не продолжает workflow скрыто.",
+      },
+    ];
+  }
+  return [
+    {
+      label: `Continue ${subject}`,
+      tradeoff: `Runs ${command} through ${skill}; gates remain active.`,
+      recommended: true,
+    },
+    {
+      label: `Inspect readiness for ${subject}`,
+      tradeoff: "Shows prerequisites and blockers without mutations.",
+    },
+    {
+      label: `Save ${subject} and stop`,
+      tradeoff: "Records the handoff and does not continue the workflow silently.",
+    },
+  ];
 }
 
 function toCamelCase(value) {

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.75] - 2026-05-04
+
+### Added
+
+- Added a shared agentic question validator for runtime prompts, visible choice
+  lists, specialist provenance, project evidence, artifact impact, locale, and
+  raw-id leakage.
+- Added contextual visible choice sets for trigger routing, workflow resume,
+  NEXT_STEP_HANDOFF blocks, command real-agent blockers, and autonomous loop
+  preflight questions.
+
+### Changed
+
+- Made post-delivery questions adapt prompt and option labels to the concrete
+  artifact subject instead of reusing a generic delivery menu.
+- Replaced the old creative-direction base copy with neutral internal
+  archetypes and kept specialist-authored runtime options as the visible path.
+
 ## [2.0.74] - 2026-05-04
 
 ### Added

@@ -4,6 +4,7 @@ import { readdirSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { validateAgenticQuestion } from "../scripts/lib/supervibe-dialogue-contract.mjs";
 import { routeTriggerRequest } from "../scripts/lib/supervibe-trigger-router.mjs";
 
 describe("supervibe trigger router", () => {
@@ -17,6 +18,7 @@ describe("supervibe trigger router", () => {
     assert.equal(route.skill, "supervibe:writing-plans");
     assert.equal(route.nextQuestion, "Шаг 1/1: написать план?");
     assert.deepEqual(route.missingArtifacts, []);
+    assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "brainstorm trigger" }), []);
   });
 
   it("routes plan completion to the review loop before atomization or execution", () => {
@@ -137,6 +139,8 @@ describe("supervibe trigger router", () => {
       assert.equal(route.agentContract.ownerAgentId, "supervibe-orchestrator", commandId);
       assert.ok(route.agentProfile.requiredAgentIds.includes("supervibe-orchestrator"), commandId);
       assert.match(route.nextQuestion, /slash command|slash-команду/i, commandId);
+      assert.ok(route.questionChoices.length >= 3, commandId);
+      assert.ok(route.questionChoices.every((choice) => choice.label && choice.label !== choice.id && choice.tradeoff), commandId);
     }
   });
 
@@ -204,6 +208,8 @@ describe("supervibe trigger router", () => {
     assert.match(route.nextQuestion, /brandbook before prototype/i);
     assert.equal(route.requiredSafety.includes("creative-direction-first"), true);
     assert.deepEqual(route.missingArtifacts, []);
+    assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "design trigger" }), []);
+    assert.ok(route.questionChoices.some((choice) => /design route|brief/i.test(choice.label)));
   });
 
   it("hard-stops unpublished explicit slash commands before static route matching", async () => {
@@ -255,3 +261,14 @@ describe("supervibe trigger router", () => {
     }
   });
 });
+
+function routeQuestion(route) {
+  return {
+    prompt: route.nextQuestion,
+    choices: route.questionChoices || [],
+    locale: /[а-яё]/i.test(route.nextQuestion || "") ? "ru" : "en",
+    specialist: route.questionSpecialist || route.agentProfile?.ownerAgentId || route.skill,
+    evidence: route.questionEvidence || route.routingEvidence || [],
+    artifactImpact: route.questionArtifactImpact,
+  };
+}

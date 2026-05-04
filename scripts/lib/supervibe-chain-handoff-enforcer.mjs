@@ -46,7 +46,17 @@ export function getRequiredHandoff(phase) {
   if (!handoff) {
     throw new Error(`Unknown handoff phase: ${phase}`);
   }
-  return { ...handoff };
+  return {
+    ...handoff,
+    questionChoices: buildHandoffChoices(handoff),
+    questionEvidence: [
+      `phase=${handoff.phase}`,
+      `artifact=${handoff.artifact}`,
+      `nextCommand=${handoff.command}`,
+    ],
+    questionSpecialist: handoff.skill,
+    questionArtifactImpact: `Ответ решает, запускать ли ${handoff.command} для ${handoff.artifact}, сначала показать readiness или остановить handoff.`,
+  };
 }
 
 export function formatHandoff(phaseOrHandoff) {
@@ -56,6 +66,11 @@ export function formatHandoff(phaseOrHandoff) {
     `Next command: ${handoff.command}`,
     `Next skill: ${handoff.skill}`,
     handoff.nextQuestion,
+    "Choices:",
+    ...((handoff.questionChoices || buildHandoffChoices(handoff)).map((choice) => {
+      const recommended = choice.recommended ? " recommended" : "";
+      return `- ${choice.label}${recommended} - ${choice.tradeoff}`;
+    })),
   ].join("\n");
 }
 
@@ -81,4 +96,25 @@ export function assertRequiredHandoff(phase, output, context = {}) {
 
 export function getHandoffChain() {
   return Object.keys(HANDOFFS).map((phase) => getRequiredHandoff(phase));
+}
+
+function buildHandoffChoices(handoff) {
+  return [
+    {
+      id: "continue",
+      label: `Продолжить ${handoff.artifact}`,
+      tradeoff: `Запускает ${handoff.command} через ${handoff.skill}; gates остаются активными.`,
+      recommended: true,
+    },
+    {
+      id: "inspect-readiness",
+      label: `Проверить готовность ${handoff.artifact}`,
+      tradeoff: "Покажет prerequisites и blockers без скрытого продолжения.",
+    },
+    {
+      id: "stop",
+      label: `Сохранить ${handoff.artifact} и остановиться`,
+      tradeoff: "Фиксирует handoff и не запускает следующий этап.",
+    },
+  ];
 }

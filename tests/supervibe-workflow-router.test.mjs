@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatNextStepBlock } from "../scripts/lib/supervibe-skill-chain.mjs";
+import { validateAgenticQuestion } from "../scripts/lib/supervibe-dialogue-contract.mjs";
 import { formatWorkflowRoute, routeWorkflowIntent } from "../scripts/lib/supervibe-workflow-router.mjs";
 
 test("vague feature requests route to brainstorm before implementation", () => {
@@ -10,6 +11,7 @@ test("vague feature requests route to brainstorm before implementation", () => {
   assert.equal(route.command, "/supervibe-brainstorm");
   assert.equal(route.skill, "supervibe:brainstorming");
   assert.match(formatWorkflowRoute(route), /WORKFLOW_ROUTE/);
+  assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "vague feature route" }), []);
 });
 
 test("russian vague feature requests route to brainstorm", () => {
@@ -117,6 +119,13 @@ test("topic drift with a saved handoff asks for resume choice instead of droppin
   assert.equal(route.source, "recent-handoff-topic-drift");
   assert.match(route.nextQuestion, /Continue it, skip\/delegate safe decisions/i);
   assert.ok(route.requiredSafety.includes("no-silent-workflow-drop"));
+  assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "topic drift route", minChoices: 4 }), []);
+  assert.deepEqual(route.questionChoices.map((item) => item.label), [
+    "Continue .supervibe/artifacts/specs/example.md",
+    "Delegate safe decisions for .supervibe/artifacts/specs/example.md",
+    "Pause current stage and switch topic",
+    "Stop and archive .supervibe/artifacts/specs/example.md",
+  ]);
   assert.deepEqual(route.alternatives.map((item) => item.id), [
     "continue-current",
     "delegate-safe-decisions",
@@ -174,6 +183,8 @@ test("russian topic drift resume question is localized", () => {
   assert.equal(route.intent, "workflow_resume_choice");
   assert.match(route.nextQuestion, /Шаг 1\/1/);
   assert.match(route.nextQuestion, /пропустить\/делегировать/i);
+  assert.ok(route.questionChoices.every((choice) => choice.label !== choice.id));
+  assert.ok(route.questionChoices.some((choice) => /текущий этап|этап|артефакт/i.test(choice.label)));
 });
 
 test("missing resolved commands do not crash workflow routing", () => {
@@ -183,4 +194,16 @@ test("missing resolved commands do not crash workflow routing", () => {
   assert.equal(route.command, null);
   assert.equal(route.stopCondition, "ask-before-command-resolution");
   assert.match(route.nextQuestion, /missing command/i);
+  assert.ok(route.questionChoices.some((choice) => /Report that/i.test(choice.label)));
 });
+
+function routeQuestion(route) {
+  return {
+    prompt: route.nextQuestion || route.nextPromptText,
+    choices: route.questionChoices || route.nextQuestionChoices || [],
+    locale: /[а-яё]/i.test(route.nextQuestion || route.nextPromptText || "") ? "ru" : "en",
+    specialist: route.questionSpecialist || route.skill,
+    evidence: route.questionEvidence || [],
+    artifactImpact: route.questionArtifactImpact,
+  };
+}

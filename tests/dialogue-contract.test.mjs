@@ -9,6 +9,7 @@ import {
   buildTransparentStepQuestion,
   formatPostDeliveryQuestion,
   formatTransparentStepQuestion,
+  validateAgenticQuestion,
   validateDialogueContract,
 } from '../scripts/lib/supervibe-dialogue-contract.mjs';
 import { validateDialogueUx } from '../scripts/validate-dialogue-ux.mjs';
@@ -53,7 +54,13 @@ test('post-delivery question uses beginner-friendly labels instead of raw ids', 
   });
   const labels = question.choices.map((choice) => choice.label);
 
-  assert.deepEqual(labels, ['Применить', 'Доработать', 'Другой вариант', 'Проверить глубже', 'Остановиться']);
+  assert.deepEqual(labels, [
+    'Применить текущий результат',
+    'Доработать текущий результат',
+    'Сравнить другой подход',
+    'Проверить текущий результат глубже',
+    'Сохранить текущий результат без продолжения',
+  ]);
   assert.equal(question.choices[0].recommended, true);
   assert.ok(question.choices.every((choice) => choice.label !== choice.id), 'visible labels must not equal internal ids');
   assert.match(formatPostDeliveryQuestion(question), /Рекомендуемый вариант:/);
@@ -98,6 +105,30 @@ test('prototype post-delivery question uses prototype-specific actions', () => {
     'Keep draft',
   ]);
   assert.match(formatPostDeliveryQuestion(question), /Recommended option:\n- \*\*Approve prototype\*\* \(recommended\)/);
+});
+
+test('scoped post-delivery questions adapt prompt and option labels to the concrete artifact', () => {
+  const agentWorkspace = buildPostDeliveryQuestion({ intent: 'prototype_delivery' }, {
+    subject: 'agent chat approval console prototype',
+    specialist: 'prototype-builder',
+    evidence: ['old prototype contains pending approvals drawer', 'new brief names subagents and tool calls'],
+    artifactImpact: 'Approves or reopens the handoff for the agent chat prototype.',
+  });
+  const billingFlow = buildPostDeliveryQuestion({ intent: 'prototype_delivery' }, {
+    subject: 'billing recovery settings prototype',
+    specialist: 'prototype-builder',
+    evidence: ['settings prototype contains retry states', 'brief names invoice recovery'],
+    artifactImpact: 'Approves or reopens the handoff for billing recovery.',
+  });
+
+  assert.match(agentWorkspace.prompt, /agent chat approval console prototype/);
+  assert.ok(agentWorkspace.choices.some((choice) => /agent chat approval console prototype/.test(choice.label)));
+  assert.notEqual(agentWorkspace.prompt, billingFlow.prompt);
+  assert.notDeepEqual(
+    agentWorkspace.choices.map((choice) => choice.label),
+    billingFlow.choices.map((choice) => choice.label)
+  );
+  assert.deepEqual(validateAgenticQuestion(agentWorkspace, { surface: 'agent workspace prototype', minChoices: 5 }), []);
 });
 
 test('requirements post-delivery question uses requirements-specific actions', () => {

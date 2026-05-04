@@ -150,23 +150,59 @@ export function routeWorkflowIntent(input, options = {}) {
     missingArtifacts: [],
     safetyBlockers: [],
     alternatives: [],
+    questionChoices: buildWorkflowQuestionChoices({
+      locale,
+      kind: "unknown",
+      phase: "diagnostics",
+      artifact: "trigger request",
+      command: "/supervibe --diagnose-trigger",
+      skill: "supervibe:trigger-diagnostics",
+    }),
+    questionEvidence: [
+      "No workflow, trigger corpus, or vague-feature match.",
+      `incomingRequest=${sanitizeRouteText(request, 90)}`,
+    ],
+    questionSpecialist: "supervibe:trigger-diagnostics",
+    questionArtifactImpact: workflowArtifactImpact({
+      locale,
+      command: "/supervibe --diagnose-trigger",
+      artifact: "trigger request",
+    }),
   };
 }
 
 export function formatWorkflowRoute(route) {
   const blockers = route.safetyBlockers?.length ? ` blockers=${route.safetyBlockers.join(",")}` : "";
   const artifacts = route.missingArtifacts?.length ? ` missing=${route.missingArtifacts.join(",")}` : "";
-  return [
+  const lines = [
     `WORKFLOW_ROUTE intent=${route.intent} command=${route.command} skill=${route.skill} confidence=${route.confidence}${blockers}${artifacts}`,
     `Reason: ${route.reason}`,
     `Next: ${route.nextPromptText}`,
-  ].join("\n");
+  ];
+  const choices = route.questionChoices || route.nextQuestionChoices || [];
+  if (choices.length > 0) {
+    lines.push("Choices:");
+    for (const choice of choices) {
+      const recommended = choice.recommended ? " recommended" : "";
+      lines.push(`- ${choice.label}${recommended} - ${choice.tradeoff || choice.description}`);
+    }
+  }
+  return lines.join("\n");
 }
 
 function routeFromRecentHandoff(request, recentAssistantOutput, locale) {
   if (!isAffirmative(request)) return null;
   const parsed = parseNextStepBlock(recentAssistantOutput);
   if (!parsed?.nextCommand) return null;
+  const question = parsed.question ?? (locale === "ru" ? "Шаг 1/1: продолжить с подтвержденной следующей командой?" : "Step 1/1: continue with the confirmed next command?");
+  const questionChoices = buildWorkflowQuestionChoices({
+    locale,
+    kind: "handoff-affirmed",
+    phase: parsed.nextPhase ?? "workflow-continuation",
+    artifact: parsed.artifact,
+    command: parsed.nextCommand,
+    skill: parsed.nextSkill ?? "supervibe:workflow-router",
+  });
 
   return {
     intent: intentForCommand(parsed.nextCommand),
@@ -177,13 +213,20 @@ function routeFromRecentHandoff(request, recentAssistantOutput, locale) {
     mutationRisk: mutationRiskForCommand(parsed.nextCommand),
     source: "recent-handoff",
     reason: "User affirmed the previous NEXT_STEP_HANDOFF block.",
-    nextPromptText: parsed.question ?? (locale === "ru" ? "Шаг 1/1: продолжить с подтвержденной следующей командой?" : "Step 1/1: continue with the confirmed next command?"),
-    nextQuestion: parsed.question ?? (locale === "ru" ? "Шаг 1/1: продолжить с подтвержденной следующей командой?" : "Step 1/1: continue with the confirmed next command?"),
+    nextPromptText: question,
+    nextQuestion: question,
     stopCondition: parsed.stopCondition ?? "ask-before-next-step",
     requiredSafety: safetyForCommand(parsed.nextCommand),
     missingArtifacts: [],
     safetyBlockers: [],
     alternatives: [],
+    questionChoices,
+    questionEvidence: [
+      `NEXT_STEP_HANDOFF phase=${parsed.currentPhase ?? parsed.nextPhase ?? "workflow"}`,
+      `artifact=${parsed.artifact ?? "workflow artifact"}`,
+    ],
+    questionSpecialist: parsed.nextSkill ?? "supervibe:workflow-router",
+    questionArtifactImpact: workflowArtifactImpact({ locale, command: parsed.nextCommand, artifact: parsed.artifact }),
     handoff: parsed,
   };
 }
@@ -214,6 +257,15 @@ function routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale
     requiredSafety: ["no-silent-workflow-drop", "record-skip-or-delegation", "final-gates-cannot-be-delegated"],
     missingArtifacts: [],
     safetyBlockers: [],
+    questionChoices: buildTopicDriftChoices({ locale, parsed }),
+    nextQuestionChoices: buildTopicDriftChoices({ locale, parsed }),
+    questionEvidence: [
+      `Saved handoff currentPhase=${parsed.currentPhase ?? "workflow"}`,
+      `incomingRequest=${sanitizeRouteText(request, 90)}`,
+      `artifact=${parsed.artifact ?? "workflow artifact"}`,
+    ],
+    questionSpecialist: parsed.nextSkill ?? "supervibe:workflow-router",
+    questionArtifactImpact: workflowArtifactImpact({ locale, command: parsed.nextCommand, artifact: parsed.artifact }),
     alternatives: [
       { id: "continue-current", command: parsed.nextCommand, skill: parsed.nextSkill ?? "supervibe:workflow-router" },
       { id: "delegate-safe-decisions", command: parsed.nextCommand, skill: parsed.nextSkill ?? "supervibe:workflow-router" },
@@ -341,6 +393,10 @@ function fromTriggerRoute(route, options = {}) {
     missingArtifacts: route.missingArtifacts ?? [],
     safetyBlockers: route.safetyBlockers ?? [],
     alternatives: route.alternatives ?? [],
+    questionChoices: route.questionChoices ?? [],
+    questionEvidence: route.questionEvidence ?? route.routingEvidence ?? [],
+    questionSpecialist: route.questionSpecialist ?? route.agentProfile?.ownerAgentId ?? route.skill ?? "supervibe-orchestrator",
+    questionArtifactImpact: route.questionArtifactImpact,
     agentContract: route.agentContract || (agentProfile ? copyCommandAgentContract() : null),
     agentProfile,
     hardStop: route.hardStop === true,
@@ -363,6 +419,15 @@ function fromWorkflowStep(phase, options = {}) {
   const nextPromptText = options.question ?? (locale === "ru" ? edge.questionRu : edge.questionEn);
   const command = options.command ?? edge.command;
   const agentProfile = commandAgentProfileFor(command);
+  const artifact = options.artifactOverride ?? edge.artifactKind;
+  const questionChoices = buildWorkflowQuestionChoices({
+    locale,
+    kind: "workflow-step",
+    phase,
+    artifact,
+    command,
+    skill: options.skill ?? edge.skill,
+  });
   return {
     intent: options.intent ?? `continue_${edge.nextPhase}`,
     phase: edge.phase,
@@ -379,6 +444,14 @@ function fromWorkflowStep(phase, options = {}) {
     missingArtifacts: [],
     safetyBlockers: [],
     alternatives: [],
+    questionChoices,
+    questionEvidence: [
+      `phase=${phase}`,
+      `artifact=${artifact}`,
+      options.reason ?? edge.why,
+    ],
+    questionSpecialist: options.skill ?? edge.skill,
+    questionArtifactImpact: workflowArtifactImpact({ locale, command, artifact }),
     agentContract: agentProfile ? copyCommandAgentContract() : null,
     agentProfile,
     handoffBlock: formatNextStepBlock({
@@ -391,6 +464,145 @@ function fromWorkflowStep(phase, options = {}) {
       why: options.reason ?? edge.why,
     }),
   };
+}
+
+function buildTopicDriftChoices({ locale = "en", parsed = {} } = {}) {
+  const artifact = parsed.artifact ?? (locale === "ru" ? "текущий артефакт" : "current artifact");
+  if (locale === "ru") {
+    return [
+      {
+        id: "continue-current",
+        label: `Продолжить ${artifact}`,
+        tradeoff: `Запускает ${parsed.nextCommand}; новая тема остается в очереди.`,
+        recommended: true,
+      },
+      {
+        id: "delegate-safe-decisions",
+        label: `Делегировать безопасные решения по ${artifact}`,
+        tradeoff: "Разрешает агенту закрыть обратимые шаги, но финальные gates останутся ручными.",
+      },
+      {
+        id: "pause-and-switch",
+        label: "Поставить текущий этап на паузу и сменить тему",
+        tradeoff: "Сохраняет handoff, затем маршрутизирует новый запрос без потери состояния.",
+      },
+      {
+        id: "stop-archive-current",
+        label: `Остановить и заархивировать ${artifact}`,
+        tradeoff: "Закрывает текущий этап без скрытого продолжения и фиксирует причину остановки.",
+      },
+    ];
+  }
+  return [
+    {
+      id: "continue-current",
+      label: `Continue ${artifact}`,
+      tradeoff: `Runs ${parsed.nextCommand}; the new topic stays queued.`,
+      recommended: true,
+    },
+    {
+      id: "delegate-safe-decisions",
+      label: `Delegate safe decisions for ${artifact}`,
+      tradeoff: "Lets the agent close reversible steps, while final gates stay manual.",
+    },
+    {
+      id: "pause-and-switch",
+      label: "Pause current stage and switch topic",
+      tradeoff: "Keeps the handoff, then routes the new request without losing state.",
+    },
+    {
+      id: "stop-archive-current",
+      label: `Stop and archive ${artifact}`,
+      tradeoff: "Closes the current stage without hidden continuation and records the stop reason.",
+    },
+  ];
+}
+
+function buildWorkflowQuestionChoices({ locale = "en", kind = "workflow-step", phase = "workflow", artifact = "", command = "", skill = "" } = {}) {
+  const subject = workflowSubject({ locale, kind, phase, artifact });
+  const commandText = command || "the next command";
+  const skillText = skill || "the selected skill";
+  if (kind === "unknown") {
+    return locale === "ru"
+      ? [
+        { id: "show-diagnostics", label: "Показать диагностику триггера", tradeoff: "Объяснит, почему запрос не сматчился, без поиска по проекту.", recommended: true },
+        { id: "list-nearest-routes", label: "Показать ближайшие маршруты", tradeoff: "Даст безопасные варианты команд без запуска." },
+        { id: "stop", label: "Остановиться без маршрутизации", tradeoff: "Не запускает команду и сохраняет текущий контекст." },
+      ]
+      : [
+        { id: "show-diagnostics", label: "Show trigger diagnostics", tradeoff: "Explains why the request did not match, without a repo-wide search.", recommended: true },
+        { id: "list-nearest-routes", label: "Show nearest routes", tradeoff: "Returns safe command options without running them." },
+        { id: "stop", label: "Stop without routing", tradeoff: "Runs no command and keeps the current context." },
+      ];
+  }
+  if (locale === "ru") {
+    return [
+      {
+        id: "continue",
+        label: `Продолжить ${subject}`,
+        tradeoff: `Запускает ${commandText} через ${skillText}; safety gates остаются активными.`,
+        recommended: true,
+      },
+      {
+        id: "inspect-readiness",
+        label: `Сначала проверить готовность ${subject}`,
+        tradeoff: "Покажет prerequisites, blockers и evidence без мутаций.",
+      },
+      {
+        id: "stop",
+        label: `Сохранить ${subject} и остановиться`,
+        tradeoff: "Фиксирует handoff и не продолжает workflow скрыто.",
+      },
+    ];
+  }
+  return [
+    {
+      id: "continue",
+      label: `Continue ${subject}`,
+      tradeoff: `Runs ${commandText} through ${skillText}; safety gates remain active.`,
+      recommended: true,
+    },
+    {
+      id: "inspect-readiness",
+      label: `Inspect readiness for ${subject} first`,
+      tradeoff: "Shows prerequisites, blockers, and evidence without mutations.",
+    },
+    {
+      id: "stop",
+      label: `Save ${subject} and stop`,
+      tradeoff: "Records the handoff and does not continue the workflow silently.",
+    },
+  ];
+}
+
+function workflowSubject({ locale = "en", kind = "workflow-step", phase = "workflow", artifact = "" } = {}) {
+  const artifactText = sanitizeRouteText(artifact || phase || "workflow", 72);
+  if (locale === "ru") {
+    if (kind === "handoff-affirmed") return `подтвержденный этап ${artifactText}`;
+    if (phase === "plan" || phase === "plan-review") return `плановый этап ${artifactText}`;
+    if (phase === "worktree-setup" || phase === "work-item-atomization") return `agent-loop этап ${artifactText}`;
+    return `этап ${artifactText}`;
+  }
+  if (kind === "handoff-affirmed") return `the confirmed ${artifactText} stage`;
+  if (phase === "plan" || phase === "plan-review") return `the planning ${artifactText} stage`;
+  if (phase === "worktree-setup" || phase === "work-item-atomization") return `the agent-loop ${artifactText} stage`;
+  return `the ${artifactText} stage`;
+}
+
+function workflowArtifactImpact({ locale = "en", command = "", artifact = "" } = {}) {
+  const artifactText = sanitizeRouteText(artifact || "workflow artifact", 80);
+  const commandText = command || "the next command";
+  if (locale === "ru") {
+    return `Ответ решает, запускать ли ${commandText} для ${artifactText}, сначала показать readiness или остановить handoff.`;
+  }
+  return `The answer decides whether ${commandText} runs for ${artifactText}, readiness is shown first, or the handoff stops.`;
+}
+
+function sanitizeRouteText(value, maxLength = 120) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
 function commandAgentProfileFor(command = "") {

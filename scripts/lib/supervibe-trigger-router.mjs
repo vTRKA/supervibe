@@ -963,6 +963,14 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
   const commandId = slashCommandId(route.command);
   const capability = getCapabilityRouteHint(route.intent) || getCapabilityRouteHint(commandId || route.command);
   const agentProfile = route.agentProfile || (commandId ? getCommandAgentProfile(commandId) : null);
+  const locale = detectLocale(`${route.nextQuestion || ""} ${route.reason || ""}`);
+  const routingEvidence = evidence.filter(Boolean);
+  const questionChoices = route.questionChoices || buildRouteQuestionChoices(route, {
+    locale,
+    commandId,
+    agentProfile,
+    rejectedAlternatives: rejectedAlternatives || [],
+  });
   return {
     ...route,
     agentContract: route.agentContract || (agentProfile ? copyCommandAgentContract() : null),
@@ -971,9 +979,115 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
     verificationHooks: capability?.verificationHooks || [],
     toolMetadata: { required: Boolean(capability?.toolMetadataRequired), deterministicOrder: true, intentScoped: true },
     retrievalPolicy: decideRetrievalPolicy({ taskText: `${route.intent} ${route.command} ${route.reason || ""}` }),
-    routingEvidence: evidence.filter(Boolean),
+    routingEvidence,
     rejectedAlternatives: rejectedAlternatives || [],
+    questionChoices,
+    questionEvidence: routingEvidence.map((item) => item.reason || item.matchedPhrase || item.source).filter(Boolean),
+    questionSpecialist: agentProfile?.ownerAgentId || route.skill || capability?.capabilityId || "supervibe-orchestrator",
+    questionArtifactImpact: route.questionArtifactImpact || routeArtifactImpact(route, locale),
   };
+}
+
+function buildRouteQuestionChoices(route, { locale = "en", commandId = null, agentProfile = null, rejectedAlternatives = [] } = {}) {
+  const subject = routeQuestionSubject(route, locale);
+  const command = visibleRouteCommand(route.command);
+  const specialist = agentProfile?.ownerAgentId || route.skill || "selected Supervibe specialist";
+  const hasCommand = Boolean(route.command);
+  if (!hasCommand || route.hardStop) {
+    return locale === "ru"
+      ? [
+        { id: "report-missing", label: `Сообщить, что ${subject} недоступна`, tradeoff: "Останавливает маршрут без поиска по проекту и без побочных действий.", recommended: true },
+        { id: "show-nearest", label: "Показать ближайшие маршруты", tradeoff: "Даст диагностический список без запуска команд." },
+        { id: "stop", label: "Остановиться без маршрутизации", tradeoff: "Сохраняет текущий контекст и не делает скрытых действий." },
+      ]
+      : [
+        { id: "report-missing", label: `Report that ${subject} is unavailable`, tradeoff: "Stops the route without a repo-wide search or side effects.", recommended: true },
+        { id: "show-nearest", label: "Show nearest routes", tradeoff: "Returns diagnostic options without running a command." },
+        { id: "stop", label: "Stop without routing", tradeoff: "Keeps the current context and performs no hidden action." },
+      ];
+  }
+
+  if (locale === "ru") {
+    return [
+      {
+        id: "run-routed-action",
+        label: `Запустить ${subject}`,
+        tradeoff: `Использует ${command} и ${specialist}; дальше действуют safety gates и receipts.`,
+        recommended: true,
+      },
+      {
+        id: "inspect-evidence-first",
+        label: `Сначала проверить evidence для ${subject}`,
+        tradeoff: "Покажет prerequisites, blockers, routing evidence и не запустит мутации.",
+      },
+      {
+        id: "compare-nearby-routes",
+        label: rejectedAlternatives.length ? "Сравнить соседние маршруты" : "Показать, почему выбран этот маршрут",
+        tradeoff: "Поможет сменить путь до запуска команды, если intent был понят неверно.",
+      },
+      {
+        id: "stop",
+        label: "Остановиться без запуска",
+        tradeoff: "Сохраняет текущий контекст и не выполняет команду скрыто.",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "run-routed-action",
+      label: `Run ${subject}`,
+      tradeoff: `Uses ${command} with ${specialist}; safety gates and receipts still apply.`,
+      recommended: true,
+    },
+    {
+      id: "inspect-evidence-first",
+      label: `Inspect evidence for ${subject} first`,
+      tradeoff: "Shows prerequisites, blockers, and routing evidence before any mutation.",
+    },
+    {
+      id: "compare-nearby-routes",
+      label: rejectedAlternatives.length ? "Compare nearby routes" : "Show why this route was selected",
+      tradeoff: "Lets you switch paths before the command runs if the intent was misunderstood.",
+    },
+    {
+      id: "stop",
+      label: "Stop without running",
+      tradeoff: "Keeps the current context and does not execute the command silently.",
+    },
+  ];
+}
+
+function routeQuestionSubject(route, locale = "en") {
+  if (route.intent === "unknown") return locale === "ru" ? "диагностика триггера" : "trigger diagnostics";
+  if (route.intent === "missing_slash_command" || route.intent === "missing_npm_script") {
+    return route.command || route.matchedPhrase || (locale === "ru" ? "команда" : "command");
+  }
+  const intent = String(route.intent || "workflow").replace(/_/g, " ");
+  const phase = String(route.phase || "").replace(/_/g, " ");
+  if (locale === "ru") {
+    if (route.command?.startsWith("/supervibe-design")) return "дизайн-маршрут по текущему брифу";
+    if (route.command?.includes("loop")) return "agent loop по текущему work item";
+    if (route.command?.includes("plan")) return "плановый маршрут по текущему артефакту";
+    return `${intent}${phase ? ` (${phase})` : ""}`;
+  }
+  if (route.command?.startsWith("/supervibe-design")) return "the design route for this brief";
+  if (route.command?.includes("loop")) return "the agent loop for this work item";
+  if (route.command?.includes("plan")) return "the planning route for this artifact";
+  return `${intent}${phase ? ` (${phase})` : ""}`;
+}
+
+function visibleRouteCommand(command = "") {
+  const value = String(command || "").trim();
+  return value || "the resolved command";
+}
+
+function routeArtifactImpact(route, locale = "en") {
+  const command = visibleRouteCommand(route.command);
+  if (locale === "ru") {
+    return `Ответ решает, запускать ли ${command}, сначала показать evidence или остановить маршрут без скрытого продолжения.`;
+  }
+  return `The answer decides whether ${command} runs, evidence is shown first, or the route stops without hidden continuation.`;
 }
 
 function slashCommandId(command = "") {

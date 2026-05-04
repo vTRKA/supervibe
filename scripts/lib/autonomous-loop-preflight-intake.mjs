@@ -199,13 +199,80 @@ export async function writePreflightArtifact(loopDir, preflight) {
 }
 
 export function createPreflightQuestions(preflight) {
+  return createPreflightQuestionCards(preflight).map((question) => question.prompt);
+}
+
+export function createPreflightQuestionCards(preflight, { locale = "en" } = {}) {
   const questions = [];
-  if (!preflight.objective) questions.push("What is the exact objective for this run?");
+  const target = preflight.environment_target || "local";
+  const runSubject = preflight.objective || preflight.request || `${target} autonomous run`;
+  if (!preflight.objective) {
+    questions.push({
+      id: "objective",
+      prompt: locale === "ru"
+        ? `Шаг 1/1: какой точный результат должен получить ${runSubject}?`
+        : `Step 1/1: what exact outcome should ${runSubject} produce?`,
+      specialist: "ai-agent-orchestrator",
+      evidence: [`environment=${target}`, `preflight=${preflight.preflightClass || "unknown"}`],
+      artifactImpact: "Sets the loop objective before any autonomous execution policy is approved.",
+      choices: locale === "ru"
+        ? [
+          { id: "single-objective", label: "Сузить до одного результата", tradeoff: "Меньше параллелизма, зато яснее stop condition.", recommended: true },
+          { id: "epic-objective", label: "Оставить как epic с несколькими задачами", tradeoff: "Шире покрытие, но нужен явный budget и review gates." },
+          { id: "stop", label: "Остановить preflight", tradeoff: "Не запускает loop без цели." },
+        ]
+        : [
+          { id: "single-objective", label: "Narrow to one outcome", tradeoff: "Less parallelism, clearer stop condition.", recommended: true },
+          { id: "epic-objective", label: "Keep as a multi-task epic", tradeoff: "Broader coverage, but needs explicit budget and review gates." },
+          { id: "stop", label: "Stop preflight", tradeoff: "Does not start a loop without an objective." },
+        ],
+    });
+  }
   if (preflight.missing_data.includes("server access reference")) {
-    questions.push("Which SSH host alias, cloud profile, or deployment target name should be used?");
+    questions.push({
+      id: "server-access-reference",
+      prompt: locale === "ru"
+        ? `Шаг 1/1: какой SSH alias, cloud profile или deployment target использовать для ${target} run?`
+        : `Step 1/1: which SSH host alias, cloud profile, or deployment target should ${target} run use?`,
+      specialist: "devops-incident-commander",
+      evidence: [`environment=${target}`, "missing=server access reference"],
+      artifactImpact: "Binds the approval lease to a named access reference without exposing raw secrets.",
+      choices: locale === "ru"
+        ? [
+          { id: "ssh-alias", label: "Передать SSH alias", tradeoff: "Быстро для known-host deploy; секреты остаются вне лога.", recommended: true },
+          { id: "cloud-profile", label: "Передать cloud profile", tradeoff: "Лучше для managed deploy, но требует понятный account/scope." },
+          { id: "deployment-target", label: "Передать deployment target", tradeoff: "Удобно для CI/CD, если target уже описан в проекте." },
+          { id: "stop", label: "Остановить deploy preflight", tradeoff: "Не продолжает remote loop без безопасной ссылки доступа." },
+        ]
+        : [
+          { id: "ssh-alias", label: "Use an SSH host alias", tradeoff: "Fast for known-host deploys; secrets stay out of logs.", recommended: true },
+          { id: "cloud-profile", label: "Use a cloud profile", tradeoff: "Better for managed deploys, but needs clear account and scope." },
+          { id: "deployment-target", label: "Use a deployment target name", tradeoff: "Works well for CI/CD when the target is already defined in the project." },
+          { id: "stop", label: "Stop deploy preflight", tradeoff: "Does not continue a remote loop without a safe access reference." },
+        ],
+    });
   }
   if (preflight.missing_data.includes("production approval policy")) {
-    questions.push("Should the loop stop at production-prep or ask for production approval before deploy?");
+    questions.push({
+      id: "production-approval-policy",
+      prompt: locale === "ru"
+        ? `Шаг 1/1: где должен остановиться ${target} loop перед production изменениями?`
+        : `Step 1/1: where should the ${target} loop stop before production changes?`,
+      specialist: "release-manager",
+      evidence: [`environment=${target}`, "missing=production approval policy"],
+      artifactImpact: "Defines whether production deploy remains blocked, asks for approval, or stops at prep artifacts.",
+      choices: locale === "ru"
+        ? [
+          { id: "stop-at-prod-prep", label: "Остановиться на production-prep", tradeoff: "Самый безопасный путь; deploy остается ручным.", recommended: true },
+          { id: "ask-before-deploy", label: "Спросить перед deploy", tradeoff: "Позволяет продолжить после явного approval lease." },
+          { id: "no-production", label: "Исключить production changes", tradeoff: "Loop может закончить staging/local работу без deploy риска." },
+        ]
+        : [
+          { id: "stop-at-prod-prep", label: "Stop at production prep", tradeoff: "Safest path; deployment remains manual.", recommended: true },
+          { id: "ask-before-deploy", label: "Ask before deploy", tradeoff: "Allows continuation only after an explicit approval lease." },
+          { id: "no-production", label: "Exclude production changes", tradeoff: "The loop can finish staging/local work without deploy risk." },
+        ],
+    });
   }
   return questions;
 }

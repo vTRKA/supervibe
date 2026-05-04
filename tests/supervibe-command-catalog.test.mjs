@@ -158,6 +158,10 @@ test("command agent plan blocks missing real agents and keeps inline diagnostic 
   assert.equal(blocked.executionMode, "agent-required-blocked");
   assert.equal(blocked.durableWritesAllowed, false);
   assert.ok(blocked.missingAgents.includes("creative-director"));
+  assert.match(blocked.blockedQuestion.prompt, /\/supervibe-design cannot claim real-agent output yet/);
+  assert.ok(blocked.blockedQuestion.choices.every((choice) => choice.id && choice.label && choice.tradeoff));
+  assert.ok(blocked.blockedQuestion.choices.some((choice) => /creative-director/.test(choice.tradeoff)));
+  assert.ok(blocked.blockedQuestion.choices.every((choice) => choice.label !== choice.id));
 
   const inline = buildCommandAgentPlan("/supervibe-design", {
     requestedExecutionMode: "inline",

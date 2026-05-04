@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPreflight, classifyPreflight, createPreflightQuestions } from "../scripts/lib/autonomous-loop-preflight-intake.mjs";
+import {
+  buildPreflight,
+  classifyPreflight,
+  createPreflightQuestionCards,
+  createPreflightQuestions,
+} from "../scripts/lib/autonomous-loop-preflight-intake.mjs";
+import { validateAgenticQuestion } from "../scripts/lib/supervibe-dialogue-contract.mjs";
 
 test("server deploy request requires full preflight and safe access references", () => {
   assert.equal(classifyPreflight({ request: "deploy to production server" }), "full");
@@ -16,6 +22,11 @@ test("server deploy request requires full preflight and safe access references",
   assert.equal(preflight.approval_lease.environment, "production");
   assert.ok(preflight.approval_lease.duration.includes("loops"));
   assert.ok(createPreflightQuestions(preflight).some((question) => question.includes("SSH host alias")));
+  const cards = createPreflightQuestionCards(preflight);
+  const serverAccess = cards.find((question) => question.id === "server-access-reference");
+  assert.ok(serverAccess);
+  assert.match(serverAccess.prompt, /production run/);
+  assert.deepEqual(validateAgenticQuestion(serverAccess, { surface: "server access preflight", minChoices: 4 }), []);
 });
 
 test("preflight degrades unsupported fresh-context providers before execution", () => {
