@@ -22,7 +22,7 @@ Every interactive step asks one question at a time using `Step N/M`. Each questi
 
 CLI output must show the stage ladder explicitly: `intake -> candidate DS -> review styleboard -> approval -> prototype unlock`. The wizard runtime owns the transition `questionQueue -> decision -> coverage -> gates`; agents should call `recordDesignWizardAnswer` or `transitionDesignWizardState` instead of manually patching `config.json` fields such as axes, coverage, timestamps, or blocked reasons.
 
-The first wizard step is a **mode question** with these choices: design system only, design system plus UX spec, full pipeline to prototype preview, or continue an existing approved design system. Save the answer to `config.json.mode`, `config.json.stageTriage`, and `config.json.executionMode`. Execution mode is a separate explicit choice: `inline`, `real-agents`, or `hybrid`. If the mode is ambiguous after design-system approval, ask the **Continuation question after approved design system**: continue to UX spec, build prototype, export tokens, or stop on approved DS.
+The first wizard step is a **mode question** owned by the orchestrator proposal, not by markdown text. Save the answer through `node scripts/design-wizard-answer.mjs --slug <slug> --axis mode --choice <choice> --source user` or the `recordDesignWizardAnswer` API. Execution mode is a separate explicit choice: `inline`, `real-agents`, or `hybrid`. If the mode is ambiguous after design-system approval, ask the continuation question through the same proposal/answer API instead of patching `config.json` by hand.
 
 The wizard state is persisted in `config.json.designWizard` and must include:
 
@@ -57,20 +57,15 @@ Dynamic question shape:
 }
 ```
 
-### Stage Question Catalog
+### Dynamic Specialist Questions
 
-Use the catalog choices from `DESIGN_WIZARD_AXES`; do not invent a thin recommended/alternative/stop menu for creative axes.
+`DESIGN_WIZARD_AXES` and route metadata are coverage schemas and fallback seeds only. They must not be rendered as the final user-facing question list when a specialist can produce a better `SpecialistQuestionContract`. Visible questions come from the owning specialist proposal, with current evidence, artifact impact, risk, unlocks, and a recommendation. The orchestrator may order, deduplicate, and validate proposals, but it must not rewrite a static catalog axis into a fake specialist question.
 
-- Vision: 3-5 mood directions with risk and tradeoff.
-- Typography: system-native, geometric, humanist, code-first.
-- Palette: graphite+amber, graphite+cyan, light-first, high-contrast.
-- Density: compact, balanced, comfortable.
-- Radius/elevation: flat, tactile, layered when detailed in the design-system section.
-- Motion: strict, subtle, expressive.
-- Components: Radix/headless, custom, shadcn-style adapter, platform-native.
-- Viewport: current 1:1, 1280x800, 1440x900, 1920x1080, or custom.
-- Creative alternatives: require 2-3 compared directions before tokens unless the user supplied an already-approved direction.
-- Anti-generic guardrail: document what avoids generic admin, safe blue/gray SaaS cards, old sidebar skeletons, and repainted old shells.
+Specialists may ask any number of steps needed for quality. `N/M` is adaptive: `M` is the current proposal queue length, not a hardcoded stage count. It is valid for a specialist to add, split, merge, or skip questions when evidence proves the answer, as long as the state records why and `validate-dynamic-question-systems` passes.
+
+Static fallback seeds are allowed only when no host specialist proposal is available. A fallback question must still pass `SpecialistQuestionContract` validation and must be labeled as fallback/scratch state, not claimed as real specialist authorship.
+
+The design question engine must cover these decision families without exposing them as a canned checklist: vision, typography, palette, density, radius/elevation, motion, components, viewport, creative alternatives, anti-generic guardrails, reference borrow/avoid, and any extra specialist-defined axis needed by the brief.
 
 If the brief already covers an axis, the wizard stores `source=user` with a short quote. If the user explicitly says "use defaults", the wizard stores `source=explicit-default` and shows the editable `guidedDefaultsChecklist`; defaults are not a silent collapse of the design interview. `source=inferred` remains forbidden for the Preference Coverage Matrix.
 
@@ -623,7 +618,7 @@ This command must load its executable profile from `scripts/lib/command-agent-or
 
 Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-design` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, `IMMEDIATE_AGENTS`, `DEFERRED_AGENTS`, `AGENT_STAGE_GATE`, and durable-write permission before any agent-owned artifact is produced.
 
-For `/supervibe-design`, invoke `supervibe-orchestrator` immediately when the command starts in real-agent mode, then run `node <resolved-supervibe-plugin-root>/scripts/design-agent-plan.mjs --status --plan-writes --slug <slug>` and keep specialist design agents deferred until the wizard gate unlocks their stages. Do not spawn `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer`, or `quality-gate-reviewer` just because they appear in `REQUIRED_AGENTS`; spawn them when their stage is ready and before writing their durable output.
+For `/supervibe-design`, invoke `supervibe-orchestrator` immediately when the command starts in real-agent mode, then run `node <resolved-supervibe-plugin-root>/scripts/design-agent-plan.mjs --status --plan-writes --slug <slug>`. While wizard gates are open, `creative-director` and `ux-ui-designer` may run only for scratch `SpecialistQuestionContract` proposals. Durable design artifacts remain blocked until the wizard/write gate unlocks their stages. Do not spawn `copywriter`, `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer`, or `quality-gate-reviewer` just because they appear in `REQUIRED_AGENTS`; spawn them when their stage is ready and before writing their durable output.
 
 Invoke the real host agents named by the active stage plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES`, full `CODEX_SPAWN_PAYLOADS` catalog, `CODEX_SPAWN_NOW_PAYLOADS`, and staged/deferred payload information printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. For supported design stages, pass the returned host invocation id to `node <resolved-supervibe-plugin-root>/scripts/supervibe-stage.mjs run --workflow design --stage <stage> --host <host> --host-invocation-id <id> --output <artifact> --handoff <handoffId>` so logging, receipt issue, receipt validation, and continuation output happen together. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts

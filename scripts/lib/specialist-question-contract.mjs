@@ -5,6 +5,7 @@ const CATALOG_COPY_PATTERN = /option a|option b|recommended\/alternative|templat
 export function buildSpecialistQuestionProposal({
   schemaVersion = 1,
   proposalId = null,
+  axis = null,
   locale = "en",
   stage,
   specialist,
@@ -37,6 +38,7 @@ export function buildSpecialistQuestionProposal({
   return {
     schemaVersion,
     proposalId: proposalId || `${stage || "stage"}:${resolvedOwnerAgent || "specialist"}:${questionSlug(question || "question")}`,
+    axis,
     stage,
     specialist,
     locale: normalizeLocale(locale),
@@ -167,7 +169,7 @@ function hasContextSignal(proposal = {}) {
     proposal.decisionUnlocked,
     ...(proposal.blocks || []),
   ].join(" ");
-  return /brief|domain|screen|prototype|dashboard|brand|tokens|copy|a11y|ux|repo|rules|memory|security|audit|privacy|rag|codegraph|code graph/i.test(text);
+  return /brief|domain|screen|prototype|dashboard|brand|tokens|copy|a11y|ux|repo|rules|memory|security|audit|privacy|rag|codegraph|code graph|route|command|workflow/i.test(text);
 }
 
 function hasRepeatedOptionSuffix(options = []) {

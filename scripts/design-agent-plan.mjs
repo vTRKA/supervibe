@@ -112,18 +112,20 @@ function nextDispatchTarget(plan = {}, producer = null) {
       subjectType: "agent",
       subjectId: "supervibe-orchestrator",
       stageId: "stage-0-orchestrator",
-    })) {
-      return null;
+    }) !== true) {
+      return {
+        producerType: "agent",
+        producerId: "supervibe-orchestrator",
+        stageId: "stage-0-orchestrator",
+        outputArtifact: "<run-state-or-scratch-artifact>",
+        receiptPresent: false,
+        receiptTrusted: false,
+        reason: "wizard-gate-open",
+      };
     }
-    return {
-      producerType: "agent",
-      producerId: "supervibe-orchestrator",
-      stageId: "stage-0-orchestrator",
-      outputArtifact: "<run-state-or-scratch-artifact>",
-      receiptPresent: false,
-      receiptTrusted: false,
-      reason: "wizard-gate-open",
-    };
+    const nextProposal = (plan.executionStatus.questionProposalProducers || [])
+      .find((item) => item.receiptTrusted !== true);
+    return nextProposal || null;
   }
   return producer;
 }
@@ -176,7 +178,9 @@ function dispatchGuidance(producer = null) {
     return [
       `NEXT_HOST_AGENT: ${producer.producerId}@${producer.stageId}`,
       producer.reason === "wizard-gate-open"
-        ? "SPECIALISTS_DEFERRED: true; run the owner/orchestrator agent now, then return to the wizard gate before creative-director or later specialists."
+        ? "SPECIALISTS_DEFERRED: true; run the owner/orchestrator agent now, then collect specialist scratch question proposals before durable writes."
+        : producer.reason === "specialist-question-proposal"
+          ? "SPECIALIST_QUESTION_PROPOSAL: true; run this specialist for scratch SpecialistQuestionContract output only. Durable artifacts remain locked by the wizard/write gate."
         : "SPECIALISTS_DEFERRED: false; run this stage producer before claiming or approving its durable output.",
       "SPAWN: use the host-native agent tool for this logical Supervibe agent; in Codex use spawn_agent with fork_context=true and encode the role in message.",
       `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent ${producer.producerId} --host <host> --host-invocation-id <returned-host-agent-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage ${producer.stageId} --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts ${producer.outputArtifact}`,

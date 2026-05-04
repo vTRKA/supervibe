@@ -99,7 +99,7 @@ test("design agent plan maps source types and stages to explicit agents and skil
 
   const prompt = formatDesignPlanPrompt(plan);
   assert.match(prompt, /NEXT_WIZARD_QUESTION/);
-  assert.match(prompt, /AGENT_GATE: invoke supervibe-orchestrator now; defer specialist design agents until wizard gates close/);
+  assert.match(prompt, /AGENT_GATE: collect specialist scratch question proposals before durable design writes/);
   assert.match(prompt, /Which design workflow mode should this run use/);
   assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
@@ -208,13 +208,33 @@ test("design agent plan does not redispatch orchestrator after trusted stage-0 r
       encoding: "utf8",
     });
 
-    assert.match(output, /NEXT_DISPATCH: none/);
-    assert.match(output, /NEXT_HOST_DISPATCH: none/);
+    assert.match(output, /NEXT_DISPATCH: agent:creative-director@stage-1-brand-direction/);
+    assert.match(output, /NEXT_HOST_DISPATCH: agent:creative-director@stage-1-brand-direction/);
+    assert.match(output, /SPECIALIST_QUESTION_PROPOSAL: true/);
     assert.match(output, /NEXT_WIZARD_QUESTION/);
     assert.doesNotMatch(output, /NEXT_DISPATCH: agent:supervibe-orchestrator@stage-0-orchestrator/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("design agent plan exposes pre-gate specialist question proposal queue", () => {
+  const plan = buildDesignAgentPlan({
+    brief: "Agent chat workspace with approvals, tool calls, traces, and compact desktop panels.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    pluginRoot: ROOT,
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+
+  assert.equal(plan.executionStatus.specialistDispatchDeferred, true);
+  assert.ok(plan.executionStatus.questionProposalDispatchAllowed);
+  assert.ok(plan.executionStatus.questionProposalProducers.some((item) => item.producerId === "creative-director"));
+  assert.ok(plan.executionStatus.questionProposalProducers.some((item) => item.producerId === "ux-ui-designer"));
+  assert.ok(plan.wizard.questionProposals.every((proposal) => proposal.ownerAgent && proposal.whyNow));
+  assert.ok(plan.wizard.questionQueue.every((question) => question.source === "specialist-question-proposal"));
 });
 
 test("design agent plan localizes runtime dispatch question for Russian briefs", () => {

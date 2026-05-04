@@ -5,6 +5,7 @@ import {
   formatDesignArtifactChoiceQuestion,
 } from "./design-artifact-intake.mjs";
 import {
+  buildDesignQuestionProposalDispatchQueue,
   buildDesignWizardState,
   formatDesignWizardQuestion,
   resolveDesignViewportPolicy,
@@ -430,6 +431,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
   const explicitMode = normalizeDesignExecutionMode(requestedExecutionMode);
   const requestedMode = explicitMode || (requiredAgentIds.length === 0 ? "inline" : "real-agents");
   const specialistDispatchDeferred = designWizardStillOpen(plan);
+  const questionProposalProducers = buildQuestionProposalProducerStatuses(plan, runtimeProof);
   const executionMode = deriveDesignExecutionMode({
     requestedMode,
     requiredAgentIds,
@@ -441,7 +443,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
   const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid", "agent-dispatch-required"].includes(executionMode);
   const nonRealMode = executionMode !== "real-agents" && executionMode !== "agent-dispatch-required";
   const receiptGate = specialistDispatchDeferred
-    ? "deferred-by-wizard-gate"
+    ? "question-proposals-before-durable-gate"
     : runtimeProof.producerReceiptsTrusted
       ? "satisfied"
       : "pending-runtime-agent-receipts";
@@ -461,6 +463,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
     producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
     completedStageSubjects: runtimeProof.completedStageSubjects,
     specialistDispatchDeferred,
+    questionProposalDispatchAllowed: specialistDispatchDeferred && questionProposalProducers.length > 0,
+    questionProposalProducers,
     runtimeProofRequirements: runtimeProof.requirements,
     missingRuntimeProofs: runtimeProof.missingRuntimeProofs,
     agentReceiptsAllowed,
@@ -472,10 +476,10 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
         ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
         : executionMode === "hybrid"
           ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
-          : executionMode === "agent-dispatch-required"
-            ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs)}.`
+            : executionMode === "agent-dispatch-required"
+              ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs)}.`
             : specialistDispatchDeferred
-              ? "Agents are installed; specialist dispatch is deferred until wizard gates close."
+              ? "Agents are installed; durable specialist outputs are deferred, but scratch SpecialistQuestionContract proposals may run before wizard gates close."
               : "Runtime agent receipts are trusted for the active durable-output stage.",
     receiptGate,
     degradedModeQuestion: executionMode === "agent-dispatch-required"
@@ -559,6 +563,30 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
   };
 }
 
+function buildQuestionProposalProducerStatuses(plan = {}, runtimeProof = {}) {
+  const completed = runtimeProof.completedStageSubjects || [];
+  return buildDesignQuestionProposalDispatchQueue(plan.wizard || {}).map((producer) => {
+    const completedForStage = completed.some((item) => {
+      return item.subjectType === producer.producerType
+        && item.subjectId === producer.producerId
+        && item.stageId === producer.stageId;
+    });
+    return {
+      ...producer,
+      outputArtifact: questionProposalOutputArtifact(plan, producer),
+      receiptPresent: completedForStage,
+      receiptTrusted: completedForStage,
+    };
+  });
+}
+
+function questionProposalOutputArtifact(plan = {}, producer = {}) {
+  const slug = sanitizePathPart(plan.slug || "design-run");
+  const stage = sanitizePathPart(producer.stageId || "stage");
+  const id = sanitizePathPart(producer.producerId || "producer");
+  return `.supervibe/artifacts/_agent-outputs/${slug}/question-proposals/${stage}-${id}.json`;
+}
+
 function designReceiptRequirementsForPlan(plan = {}) {
   const requirements = [];
   const add = (requirement) => requirements.push(requirement);
@@ -632,7 +660,7 @@ function formatMissingRuntimeProofs(items = []) {
 
 function agentGateLine(plan = {}) {
   if (plan.wizard?.questionQueue?.length) {
-    return "AGENT_GATE: invoke supervibe-orchestrator now; defer specialist design agents until wizard gates close";
+    return "AGENT_GATE: collect specialist scratch question proposals before durable design writes; wizard/writeGate still blocks durable artifacts";
   }
   return "AGENT_GATE: invoke each stage specialist before writing its durable output";
 }
@@ -1004,4 +1032,12 @@ function sameArtifact(left, right) {
 
 function normalizeRelPath(path) {
   return String(path ?? "").split(sep).join("/");
+}
+
+function sanitizePathPart(value = "") {
+  return String(value || "item")
+    .toLowerCase()
+    .replace(/[^a-z0-9:_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "item";
 }

@@ -5,6 +5,10 @@ import {
   getCommandAgentProfile,
   listCommandAgentProfiles,
 } from "./command-agent-orchestration-contract.mjs";
+import {
+  buildSpecialistQuestionProposal,
+  validateSpecialistQuestionProposal,
+} from "./specialist-question-contract.mjs";
 import { validateAgenticQuestion } from "./supervibe-dialogue-contract.mjs";
 
 export const QUESTION_SURFACE_SCHEMA_VERSION = 1;
@@ -23,6 +27,8 @@ const STATIC_BYPASS_ALLOWLIST = new Set([
   "scripts/lib/supervibe-dialogue-contract.mjs",
   "scripts/validate-dynamic-question-systems.mjs",
 ]);
+
+const MOJIBAKE_TEXT_PATTERN = /(?:[\u0420\u0421][\u0402-\u040F\u0450-\u045F\u00A0-\u00BF\u201A\u201C\u201D\u2020\u2021\u20AC\u2122]){2,}/;
 
 const COMMAND_SUBJECTS = Object.freeze({
   "/supervibe": { en: "Supervibe command router", ru: "маршрутизатор Supervibe" },
@@ -94,32 +100,70 @@ export function buildCommandQuestionSurface(commandId, route = {}, options = {})
   });
 
   if (missingCommand) {
+    const choices = diagnosticChoices({ locale, subject });
+    const questionProposal = buildCommandQuestionProposal({
+      surfaceKind: "command-diagnostic",
+      locale,
+      subject,
+      command,
+      specialist,
+      request,
+      choices,
+      evidence,
+      artifactImpact,
+    });
     return {
       schemaVersion: QUESTION_SURFACE_SCHEMA_VERSION,
       surfaceKind: "command-diagnostic",
       commandId: normalizedCommandId || null,
-      prompt: locale === "ru"
-        ? `Шаг 1/1: ${subject} недоступна. Сообщить диагностику, показать ближайшие маршруты или остановиться?`
-        : `Step 1/1: ${subject} is unavailable. Report diagnostics, show nearby routes, or stop?`,
+      prompt: questionProposal.question,
       subject,
       specialist,
+      ownerAgent: questionProposal.ownerAgent,
+      whyNow: questionProposal.whyNow,
       evidence,
       artifactImpact,
-      choices: diagnosticChoices({ locale, subject }),
+      choices: questionProposal.choices,
+      options: questionProposal.options,
+      recommendedOption: questionProposal.recommendedOption,
+      skipDefault: questionProposal.skipDefault,
+      canAnswerFromEvidence: questionProposal.canAnswerFromEvidence,
+      questionProposal,
+      questionSource: "specialist-question-contract",
       locale,
     };
   }
 
+  const choices = commandChoices({ locale, subject, command, specialist, hasAlternatives: asArray(route.rejectedAlternatives || route.alternatives).length > 0 });
+  const questionProposal = buildCommandQuestionProposal({
+    surfaceKind: "command-route",
+    locale,
+    subject,
+    command,
+    specialist,
+    request,
+    choices,
+    evidence,
+    artifactImpact,
+  });
   return {
     schemaVersion: QUESTION_SURFACE_SCHEMA_VERSION,
     surfaceKind: "command-route",
     commandId: normalizedCommandId || null,
-    prompt: commandPrompt({ locale, subject, request }),
+    prompt: questionProposal.question,
     subject,
     specialist,
+    ownerAgent: questionProposal.ownerAgent,
+    whyNow: questionProposal.whyNow,
     evidence,
     artifactImpact,
-    choices: commandChoices({ locale, subject, command, specialist, hasAlternatives: asArray(route.rejectedAlternatives || route.alternatives).length > 0 }),
+    choices: questionProposal.choices,
+    options: questionProposal.options,
+    recommendedOption: questionProposal.recommendedOption,
+    skipDefault: questionProposal.skipDefault,
+    canAnswerFromEvidence: questionProposal.canAnswerFromEvidence,
+    questionProposal,
+    questionSource: "specialist-question-contract",
     locale,
   };
 }
@@ -144,6 +188,17 @@ export function validateQuestionSurface(surface = {}, options = {}) {
     minChoices: options.minChoices || 3,
     minEvidence: options.minEvidence || 2,
   }));
+  if (surface.surfaceKind?.startsWith("command-")) {
+    if (!surface.questionProposal) {
+      issues.push(issue("missing-question-proposal", `${label} missing SpecialistQuestionContract proposal`));
+    } else {
+      for (const item of validateSpecialistQuestionProposal(surface.questionProposal, {
+        file: label,
+      })) {
+        issues.push(issue(item.code, item.message));
+      }
+    }
+  }
   if (surface.prompt && surface.subject && !surface.prompt.toLowerCase().includes(String(surface.subject).toLowerCase().slice(0, 14))) {
     issues.push(issue("subject-not-visible", `${label} prompt must include the resolved subject`));
   }
@@ -187,8 +242,15 @@ export function validateStaticQuestionSurfaceBypasses(root = process.cwd(), opti
   const issues = [];
   for (const file of files) {
     const rel = normalizePath(relative(root, file) || file);
-    if (STATIC_BYPASS_ALLOWLIST.has(rel)) continue;
     const content = readFileSync(file, "utf8");
+    if (MOJIBAKE_TEXT_PATTERN.test(content)) {
+      issues.push({
+        file: rel,
+        code: "mojibake-visible-text",
+        message: "Visible question text contains mojibake/incorrectly decoded Cyrillic; write UTF-8 text or ASCII fallbacks only.",
+      });
+    }
+    if (STATIC_BYPASS_ALLOWLIST.has(rel)) continue;
     for (const rule of STATIC_BYPASS_RULES) {
       if (rule.pattern.test(content)) {
         issues.push({ file: rel, code: rule.code, message: rule.message });
@@ -251,6 +313,88 @@ function commandPrompt({ locale, subject, request }) {
   return `Step 1/1: run ${subject} for "${request}", inspect evidence first, or stop?`;
 }
 
+function commandDiagnosticPrompt({ locale, subject }) {
+  if (locale === "ru") {
+    return `Шаг 1/1: ${subject} недоступна. Сообщить диагностику, показать ближайшие маршруты или остановиться?`;
+  }
+  return `Step 1/1: ${subject} is unavailable. Report diagnostics, show nearby routes, or stop?`;
+}
+
+function buildCommandQuestionProposal({
+  surfaceKind = "command-route",
+  locale = "en",
+  subject,
+  command,
+  specialist,
+  request,
+  choices = [],
+  evidence = [],
+  artifactImpact,
+} = {}) {
+  const prompt = surfaceKind === "command-diagnostic"
+    ? commandDiagnosticPrompt({ locale, subject })
+    : commandPrompt({ locale, subject, request });
+  const resolvedEvidence = evidence.length >= 2
+    ? evidence
+    : [
+      `subject=${subject || "unknown"}`,
+      `command=${command || "none"}`,
+      ...evidence,
+    ].filter(Boolean);
+  return buildSpecialistQuestionProposal({
+    proposalId: `${surfaceKind}:${specialist || "supervibe-orchestrator"}:${proposalSlug(command || subject || "route")}`,
+    stage: surfaceKind,
+    specialist,
+    ownerAgent: specialist,
+    question: prompt,
+    why: commandQuestionWhy({ locale, subject, command, surfaceKind }),
+    whyNow: commandWhyNow({ locale, subject, command }),
+    choices: questionSurfaceOptions({ choices, evidence: resolvedEvidence, artifactImpact, subject }),
+    blocks: commandQuestionBlocks({ command, surfaceKind }),
+    artifactImpact,
+    skipDefault: commandSkipDefault(locale),
+    canAnswerFromEvidence: false,
+    evidence: resolvedEvidence,
+    decisionUnlocked: surfaceKind === "command-diagnostic"
+      ? "route diagnostics and no hidden command execution"
+      : `route execution decision for ${command || subject}`,
+    currentContext: `${surfaceKind} ${command || subject || "command"} ${request || ""}`.trim(),
+    locale,
+    freeformAllowed: true,
+  });
+}
+
+function commandQuestionWhy({ locale, subject, command, surfaceKind }) {
+  if (surfaceKind === "command-diagnostic") {
+    return locale === "ru"
+      ? `${subject} не найден или заблокирован; ответ определяет, показать ли диагностику, соседние маршруты или остановиться без скрытого поиска.`
+      : `${subject} is missing or blocked; the answer decides whether to show diagnostics, nearby routes, or stop without hidden search.`;
+  }
+  return locale === "ru"
+    ? `Ответ определяет, запускать ли ${command || subject}, сначала показать evidence или остановить маршрут без скрытого продолжения.`
+    : `The answer decides whether to run ${command || subject}, inspect evidence first, or stop the route without hidden continuation.`;
+}
+
+function commandWhyNow({ locale, subject, command }) {
+  if (locale === "ru") {
+    return `${command || subject} может менять workflow state, receipts и durable artifacts; маршрут нужно подтвердить до запуска.`;
+  }
+  return `${command || subject} can change workflow state, receipts, or durable artifacts, so the route needs an explicit decision before execution.`;
+}
+
+function commandSkipDefault(locale) {
+  return locale === "ru"
+    ? "Остановиться и не запускать команду, если пользователь не выбрал маршрут."
+    : "Stop without running the command unless the user picks a route.";
+}
+
+function commandQuestionBlocks({ command, surfaceKind }) {
+  if (surfaceKind === "command-diagnostic") {
+    return ["repo-wide search", "workflow emulation", "hidden continuation"];
+  }
+  return [`execute ${command || "resolved command"}`, "workflow receipts", "durable artifact writes"];
+}
+
 function commandChoices({ locale, subject, command, specialist, hasAlternatives }) {
   if (locale === "ru") {
     return [
@@ -300,6 +444,44 @@ function commandChoices({ locale, subject, command, specialist, hasAlternatives 
       tradeoff: "Runs no command and keeps context without hidden continuation.",
     },
   ];
+}
+
+function questionSurfaceOptions({ choices = [], evidence = [], artifactImpact = "", subject = "" }) {
+  return choices.map((choice) => ({
+    id: choice.id,
+    label: choice.label,
+    tradeoff: choice.tradeoff || choice.description || "",
+    risk: optionRisk(choice.id, subject),
+    unlocks: optionUnlocks(choice.id, subject),
+    evidence: evidence.slice(0, 3),
+    artifactImpact,
+    recommended: choice.recommended === true,
+  }));
+}
+
+function optionRisk(choiceId = "", subject = "") {
+  if (choiceId === "run-routed-action") {
+    return `Runs ${subject || "the routed command"} and can create workflow mutations if the route is wrong.`;
+  }
+  if (choiceId === "inspect-evidence-first") {
+    return "Adds one review step before execution; useful when evidence is incomplete.";
+  }
+  if (choiceId === "compare-nearby-routes") {
+    return "Delays execution to avoid committing to the wrong command route.";
+  }
+  if (choiceId === "stop") {
+    return "Preserves state but leaves the requested workflow unstarted.";
+  }
+  return "Requires user review before the command route can continue.";
+}
+
+function optionUnlocks(choiceId = "", subject = "") {
+  const target = subject || "the command route";
+  if (choiceId === "run-routed-action") return [`execute ${target}`, "issue workflow receipts"];
+  if (choiceId === "inspect-evidence-first") return [`show route evidence for ${target}`];
+  if (choiceId === "compare-nearby-routes") return [`compare alternate routes for ${target}`];
+  if (choiceId === "stop") return ["stop without hidden continuation"];
+  return [`review ${target}`];
 }
 
 function diagnosticChoices({ locale, subject }) {
@@ -400,6 +582,14 @@ function sanitizeVisible(value, maxLength = 120) {
   if (!text) return "";
   if (text.length <= maxLength) return text;
   return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
+function proposalSlug(value = "") {
+  return String(value || "route")
+    .toLowerCase()
+    .replace(/[^a-z0-9/-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "route";
 }
 
 function normalizePath(path) {

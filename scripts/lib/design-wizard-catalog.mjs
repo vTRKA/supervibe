@@ -612,14 +612,17 @@ export function buildDesignWizardState({
   numberQuestionQueue(questionQueue, {
     completedCount: mode
       ? 1 + Number(!viewportNeeded) + (DESIGN_WIZARD_AXES.length - missingAxes.length)
-      : 0,
+        : 0,
   });
+  const proposalBackedQuestions = buildProposalBackedQuestionQueue(questionQueue);
 
   const guidedDefaultsChecklist = explicitDefaults
     ? DESIGN_WIZARD_AXES.map((axisDef) => guidedDefaultChecklistItem(axisDef, decisions[axisDef.id], resolvedLocale))
     : [];
   const styleboardReadiness = evaluateDesignStyleboardReadiness({ mode, target, decisions });
   const viewportPolicyRecorded = !needsViewportQuestion(decisions.viewport, viewportPolicy);
+  const delegatedAxes = delegatedDecisionAxes(decisions);
+  const delegatedReviewRequired = delegatedAxes.length > 0;
 
   const state = {
     schemaVersion: 1,
@@ -632,14 +635,15 @@ export function buildDesignWizardState({
       requiredAxes: DESIGN_WIZARD_AXES.map((axisDef) => axisDef.id),
       coveredAxes: DESIGN_WIZARD_AXES.filter((axisDef) => decisions[axisDef.id]).map((axisDef) => axisDef.id),
       missingAxes,
+      delegatedAxes,
       conflicts: parsed.conflicts,
       score: `${DESIGN_WIZARD_AXES.length - missingAxes.length}/${DESIGN_WIZARD_AXES.length}`,
     },
     explicitDefaults,
     guidedDefaultsChecklist,
     questionStrategy,
-    questionQueue,
-    questionProposals: questionQueue.map((question) => specialistQuestionProposal(question)),
+    questionQueue: proposalBackedQuestions.queue,
+    questionProposals: proposalBackedQuestions.proposals,
     reviewChecks: buildDesignReviewCheckPlan({ target, viewportDecision: decisions.viewport, viewportPolicy }),
     styleboard: {
       phase: styleboardReadiness.pass ? "review-styleboard" : "diagnostic-scratch",
@@ -650,19 +654,18 @@ export function buildDesignWizardState({
     },
     gates: {
       mandatoryQuestionsClosed: requiredAxes.length === 0 && viewportPolicyRecorded && Boolean(mode),
-      tokensUnlocked: requiredAxes.length === 0 && parsed.conflicts.length === 0 && Boolean(mode),
-      reviewStyleboardUnlocked: styleboardReadiness.pass,
+      tokensUnlocked: requiredAxes.length === 0 && parsed.conflicts.length === 0 && Boolean(mode) && !delegatedReviewRequired,
+      reviewStyleboardUnlocked: styleboardReadiness.pass && !delegatedReviewRequired,
       viewportPolicyRecorded,
+      delegatedReviewRequired,
       styleboardBlockedReason: styleboardReadiness.blockedReason,
-      blockedReason: !mode
-        ? "missing workflow mode"
-        : !viewportPolicyRecorded
-        ? "missing viewport policy"
-        : requiredAxes.length > 0
-        ? `missing wizard axes: ${requiredAxes.join(", ")}`
-        : parsed.conflicts.length > 0
-          ? `conflicting wizard axes: ${parsed.conflicts.map((item) => item.axis).join(", ")}`
-          : null,
+      blockedReason: designWizardBlockedReason({
+        mode,
+        viewportPolicyRecorded,
+        delegatedAxes,
+        missingAxes: requiredAxes,
+        conflicts: parsed.conflicts,
+      }),
     },
   };
   return attachDesignWizardRuntime(state);
@@ -674,6 +677,8 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   if (!axisDef && axisId !== "mode" && axisId !== "viewport") {
     throw new Error(`Unknown design wizard axis: ${axisId || "(missing)"}`);
   }
+  const source = normalizeAnswerSource(answer.source || "user");
+  const requiresReview = source === "delegated-to-agent";
 
   const next = JSON.parse(JSON.stringify(state || {}));
   next.decisions ||= {};
@@ -684,11 +689,12 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
       axis: axisId,
       answer: answer.value || answer.choiceId || "",
       choiceId: answer.choiceId || "custom",
-      source: answer.source || "user",
+      source,
       confidence: Number(answer.confidence ?? 1),
       quote: answer.quote || null,
       prompt: "Viewport policy",
       decisionUnlocked: "config.json.viewports, review screenshots, and platform resize policy",
+      requiresReview,
       timestamp: answer.timestamp || new Date().toISOString(),
     };
   } else {
@@ -697,21 +703,25 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
       axis: axisId,
       answer: answer.value || choiceDef?.label || answer.choiceId || "",
       choiceId: answer.choiceId || null,
-      source: answer.source || "user",
+      source,
       confidence: Number(answer.confidence ?? 1),
       quote: answer.quote || null,
       prompt: axisDef?.prompt || "Viewport target",
       decisionUnlocked: axisDef?.decisionUnlocked || "viewport capture policy",
+      requiresReview,
       timestamp: answer.timestamp || new Date().toISOString(),
     };
   }
 
   const covered = DESIGN_WIZARD_AXES.filter((axisDefItem) => next.decisions[axisDefItem.id]).map((axisDefItem) => axisDefItem.id);
   const missing = DESIGN_WIZARD_AXES.filter((axisDefItem) => !next.decisions[axisDefItem.id]).map((axisDefItem) => axisDefItem.id);
+  const delegatedAxes = delegatedDecisionAxes(next.decisions);
+  const delegatedReviewRequired = delegatedAxes.length > 0;
   next.coverage = {
     ...(next.coverage || {}),
     coveredAxes: covered,
     missingAxes: missing,
+    delegatedAxes,
     score: `${covered.length}/${DESIGN_WIZARD_AXES.length}`,
   };
   const styleboardReadiness = evaluateDesignStyleboardReadiness({
@@ -732,20 +742,42 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   next.gates = {
     ...(next.gates || {}),
     mandatoryQuestionsClosed: missing.length === 0 && viewportPolicyRecorded && Boolean(next.mode),
-    tokensUnlocked: missing.length === 0 && Boolean(next.mode),
-    reviewStyleboardUnlocked: styleboardReadiness.pass,
+    tokensUnlocked: missing.length === 0 && Boolean(next.mode) && !delegatedReviewRequired,
+    reviewStyleboardUnlocked: styleboardReadiness.pass && !delegatedReviewRequired,
     viewportPolicyRecorded,
+    delegatedReviewRequired,
     styleboardBlockedReason: styleboardReadiness.blockedReason,
-    blockedReason: !next.mode
-      ? "missing workflow mode"
-      : !viewportPolicyRecorded
-        ? "missing viewport policy"
-      : missing.length > 0
-        ? `missing wizard axes: ${missing.join(", ")}`
-        : null,
+    blockedReason: designWizardBlockedReason({
+      mode: next.mode,
+      viewportPolicyRecorded,
+      delegatedAxes,
+      missingAxes: missing,
+      conflicts: next.coverage?.conflicts || [],
+    }),
   };
   next.questionQueue = (next.questionQueue || []).filter((question) => question.axis !== axisId);
+  next.questionProposals = (next.questionProposals || []).filter((proposal) => proposal.axis !== axisId);
   return attachDesignWizardRuntime(next);
+}
+
+function designWizardBlockedReason({
+  mode = null,
+  viewportPolicyRecorded = false,
+  delegatedAxes = [],
+  missingAxes = [],
+  conflicts = [],
+} = {}) {
+  const reasons = [];
+  if (!mode) reasons.push("missing workflow mode");
+  if (!viewportPolicyRecorded) reasons.push("missing viewport policy");
+  if (delegatedAxes.length > 0) {
+    reasons.push(`delegated decisions require review packet: ${delegatedAxes.join(", ")}`);
+  }
+  if (missingAxes.length > 0) reasons.push(`missing wizard axes: ${missingAxes.join(", ")}`);
+  if (conflicts.length > 0) {
+    reasons.push(`conflicting wizard axes: ${conflicts.map((item) => item.axis).join(", ")}`);
+  }
+  return reasons.length > 0 ? reasons.join("; ") : null;
 }
 
 export function transitionDesignWizardState(state = {}, event = {}) {
@@ -772,6 +804,7 @@ function buildDesignWizardRuntimeStatus(state = {}) {
   const blockedReasons = [];
   if (!state.mode) blockedReasons.push("mode");
   if (state.gates?.viewportPolicyRecorded === false) blockedReasons.push("viewport");
+  if (state.gates?.delegatedReviewRequired === true) blockedReasons.push("delegated-review");
   blockedReasons.push(...missing);
   if (state.coverage?.conflicts?.length) {
     blockedReasons.push(...state.coverage.conflicts.map((item) => `conflict:${item.axis}`));
@@ -863,17 +896,18 @@ export function resolveDesignViewportPolicy({ target = "web", currentWindow = nu
 }
 
 export function formatDesignWizardQuestion(question = {}, options = {}) {
+  const safeQuestion = sanitizeQuestionMarkdownCopy(question);
   if (options.protocol === true || options.mode === "protocol") {
-    return formatDesignWizardProtocolQuestion(question);
+    return formatDesignWizardProtocolQuestion(safeQuestion);
   }
-  return formatDesignWizardConversationalQuestion(question, options);
+  return formatDesignWizardConversationalQuestion(safeQuestion, options);
 }
 
 export function formatDesignWizardProtocolQuestion(question = {}) {
   const locale = normalizeLocale(question.locale || detectDesignLocale(`${question.prompt || ""} ${question.why || ""}`));
   const labels = WIZARD_LABELS[locale];
   const lines = [
-    `**${labels.step} ${question.step || "N"}/${question.total || "M"}: ${question.prompt || question.question || "Choose design direction"}**`,
+    `**${labels.step} ${question.step || "N"}/${question.total || "M"}: ${safeVisibleMarkdown(question.prompt || question.question || "Choose design direction")}**`,
     "",
     `${labels.why}: ${question.why || (locale === "ru" ? "Этот ответ влияет на следующий дизайн-артефакт." : "This controls the next durable design artifact.")}`,
     `${labels.decision}: ${question.decisionUnlocked || question.decision || (locale === "ru" ? "Сохраненное состояние wizard." : "Saved wizard state")}`,
@@ -882,7 +916,7 @@ export function formatDesignWizardProtocolQuestion(question = {}) {
   ];
   for (const item of question.choices || []) {
     const suffix = item.recommended ? ` (${labels.recommended})` : "";
-    lines.push(`- ${item.label}${suffix} - ${item.tradeoff || labels.noTradeoff}`);
+    lines.push(`- ${safeVisibleMarkdown(item.label)}${suffix} - ${safeVisibleMarkdown(item.tradeoff || labels.noTradeoff)}`);
   }
   lines.push("", `${labels.freeForm}: ${question.freeFormPath || (locale === "ru" ? "Ответьте своими словами, если варианты не подходят." : "Answer in your own words if none of these fit.")}`);
   lines.push(`${labels.stop}: ${question.stopCondition || (locale === "ru" ? "Остановиться: сохранить состояние и не продолжать скрыто." : "Stop here - save state and make no hidden progress.")}`);
@@ -917,6 +951,31 @@ function formatDesignWizardConversationalQuestion(question = {}, options = {}) {
 function orderChoicesForConversation(choices = [], recommended = null) {
   if (!recommended) return choices;
   return [recommended, ...choices.filter((item) => item !== recommended)];
+}
+
+function sanitizeQuestionMarkdownCopy(question = {}) {
+  return {
+    ...question,
+    prompt: safeVisibleMarkdown(question.prompt),
+    question: safeVisibleMarkdown(question.question),
+    why: safeVisibleMarkdown(question.why),
+    whyNow: safeVisibleMarkdown(question.whyNow),
+    decisionUnlocked: safeVisibleMarkdown(question.decisionUnlocked),
+    decision: safeVisibleMarkdown(question.decision),
+    ifSkipped: safeVisibleMarkdown(question.ifSkipped),
+    freeFormPath: safeVisibleMarkdown(question.freeFormPath),
+    stopCondition: safeVisibleMarkdown(question.stopCondition),
+    choices: (question.choices || []).map((choiceItem) => ({
+      ...choiceItem,
+      label: safeVisibleMarkdown(choiceItem.label),
+      tradeoff: safeVisibleMarkdown(choiceItem.tradeoff),
+      description: safeVisibleMarkdown(choiceItem.description),
+    })),
+  };
+}
+
+function safeVisibleMarkdown(value = "") {
+  return String(value || "").replace(/\*\*/g, "\\*\\*");
 }
 
 function conversationalLeadForQuestion(question = {}, recommended = null, locale = "en", options = {}) {
@@ -2033,11 +2092,56 @@ function numberQuestionQueue(questionQueue, { completedCount = 0, totalCount = n
   return questionQueue;
 }
 
+function buildProposalBackedQuestionQueue(seedQuestions = []) {
+  const proposals = seedQuestions.map((question) => specialistQuestionProposal(question));
+  return {
+    proposals,
+    queue: seedQuestions.map((question, index) => questionFromSpecialistProposal(question, proposals[index])),
+  };
+}
+
+function questionFromSpecialistProposal(seed = {}, proposal = {}) {
+  const options = Array.isArray(proposal.options) ? proposal.options : [];
+  return {
+    ...seed,
+    source: "specialist-question-proposal",
+    proposalId: proposal.proposalId,
+    stage: proposal.stage,
+    specialist: proposal.specialist,
+    ownerAgent: proposal.ownerAgent,
+    prompt: proposal.question || seed.prompt,
+    why: proposal.why || seed.why,
+    whyNow: proposal.whyNow || seed.whyNow,
+    evidence: [...(proposal.evidence || seed.evidence || [])],
+    decisionUnlocked: proposal.decisionUnlocked || seed.decisionUnlocked,
+    blocks: [...(proposal.blocks || seed.blocks || [])],
+    artifactImpact: proposal.artifactImpact || seed.artifactImpact,
+    skipDefault: proposal.skipDefault || seed.ifSkipped,
+    canAnswerFromEvidence: proposal.canAnswerFromEvidence === true,
+    recommendedOption: proposal.recommendedOption || null,
+    options,
+    choices: options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      tradeoff: option.tradeoff,
+      unlocks: Array.isArray(option.unlocks) ? option.unlocks : [],
+      risk: option.risk || "",
+      evidence: Array.isArray(option.evidence) ? option.evidence : [],
+      artifactImpact: option.artifactImpact || proposal.artifactImpact || "",
+      recommended: option.id === proposal.recommendedOption || option.recommended === true,
+    })),
+  };
+}
+
 function attachDesignWizardRuntime(state = {}) {
   const runtimeStatus = buildDesignWizardRuntimeStatus(state);
+  const questionProposals = (state.questionProposals || []).length
+    ? state.questionProposals
+    : (state.questionQueue || []).map((question) => specialistQuestionProposal(question));
   return {
     ...state,
-    questionProposals: (state.questionQueue || []).map((question) => specialistQuestionProposal(question)),
+    questionProposals,
+    questionProposalDispatchQueue: buildDesignQuestionProposalDispatchQueue(questionProposals),
     runtimeStatus,
     resumeToken: runtimeStatus.resumeToken,
   };
@@ -2060,6 +2164,7 @@ function specialistQuestionProposal(question = {}) {
   const metadata = specialistQuestionMetadata(question);
   return buildSpecialistQuestionProposal({
     proposalId: `${metadata.stage}:${metadata.specialist}:${question.axis || "question"}`,
+    axis: question.axis || null,
     stage: metadata.stage,
     specialist: metadata.specialist,
     ownerAgent: question.ownerAgent || metadata.ownerAgent,
@@ -2088,6 +2193,39 @@ function specialistQuestionProposal(question = {}) {
   });
 }
 
+export function buildDesignQuestionProposalDispatchQueue(stateOrProposals = {}) {
+  const proposals = Array.isArray(stateOrProposals)
+    ? stateOrProposals
+    : stateOrProposals.questionProposals || [];
+  const byOwner = new Map();
+  for (const proposal of proposals) {
+    const ownerAgent = proposal.ownerAgent || proposal.specialist;
+    if (!isHostQuestionProposalOwner(ownerAgent)) continue;
+    const key = `${ownerAgent}@${proposal.stage || "stage"}`;
+    const current = byOwner.get(key) || {
+      producerType: "agent",
+      producerId: ownerAgent,
+      stageId: proposal.stage,
+      reason: "specialist-question-proposal",
+      scratchOnly: true,
+      durableWritesAllowed: false,
+      axes: [],
+      proposalIds: [],
+      artifactImpact: [],
+    };
+    if (proposal.axis) current.axes.push(proposal.axis);
+    if (proposal.proposalId) current.proposalIds.push(proposal.proposalId);
+    if (proposal.artifactImpact) current.artifactImpact.push(proposal.artifactImpact);
+    byOwner.set(key, current);
+  }
+  return [...byOwner.values()].map((item) => ({
+    ...item,
+    axes: [...new Set(item.axes)],
+    proposalIds: [...new Set(item.proposalIds)],
+    artifactImpact: [...new Set(item.artifactImpact)].slice(0, 4),
+  }));
+}
+
 function buildDesignWizardResumeToken(state = {}) {
   const payload = {
     mode: state.mode || null,
@@ -2105,6 +2243,25 @@ function detectDesignLocale(text) {
 
 function normalizeLocale(locale) {
   return String(locale || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
+}
+
+function normalizeAnswerSource(source = "user") {
+  const normalized = String(source || "user").trim().toLowerCase();
+  if (["user", "explicit-default", "delegated-to-agent"].includes(normalized)) return normalized;
+  throw new Error(`Unsupported design wizard answer source: ${source}`);
+}
+
+function delegatedDecisionAxes(decisions = {}) {
+  return Object.entries(decisions || {})
+    .filter(([, decision]) => decision?.source === "delegated-to-agent" || decision?.requiresReview === true)
+    .map(([axisId]) => axisId);
+}
+
+function isHostQuestionProposalOwner(ownerAgent = "") {
+  const owner = String(ownerAgent || "");
+  return Boolean(owner)
+    && owner !== "supervibe-orchestrator"
+    && !owner.startsWith("supervibe:");
 }
 
 function hasExplicitDefaultRequest(text) {

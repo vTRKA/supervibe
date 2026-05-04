@@ -52,6 +52,14 @@ test("command question surface adapts prompt and options to command subject", ()
   assert.notDeepEqual(design.choices.map((choice) => choice.label), audit.choices.map((choice) => choice.label));
   assert.match(design.prompt, /design workflow/);
   assert.ok(design.choices.some((choice) => /design workflow/i.test(choice.label)));
+  assert.equal(design.ownerAgent, design.specialist);
+  assert.ok(design.whyNow);
+  assert.equal(design.options.length, design.choices.length);
+  assert.ok(design.options.every((option) => option.risk && option.unlocks.length > 0));
+  assert.equal(design.recommendedOption, "run-routed-action");
+  assert.equal(design.questionSource, "specialist-question-contract");
+  assert.equal(design.questionProposal.ownerAgent, design.ownerAgent);
+  assert.equal(design.questionProposal.question, design.prompt);
 });
 
 test("trigger routes expose questionSurface as the visible question path", () => {
@@ -92,6 +100,23 @@ test("static bypass scanner catches raw choices and ignores valid runtime files"
     const fixture = validateStaticQuestionSurfaceBypasses(root);
     assert.equal(fixture.pass, false);
     assert.ok(fixture.issues.some((issue) => issue.code === "raw-string-choice-array"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("static bypass scanner rejects mojibake in visible question text", async () => {
+  const root = await mkdtemp(join(tmpdir(), "question-surface-mojibake-"));
+  try {
+    await mkdir(join(root, "commands"), { recursive: true });
+    const file = join(root, "commands", "bad.md");
+    const mojibake = "\u0420\u045B\u0421\u0403\u0421\u201A\u0420\u00B0\u0420\u0405\u0420\u0455\u0420\u0406\u0420\u0451\u0421\u201A\u0421\u040A\u0421\u0403\u0421\u040F";
+    await writeFile(file, `Prompt: ${mojibake}\n`, "utf8");
+
+    const fixture = validateStaticQuestionSurfaceBypasses(root);
+
+    assert.equal(fixture.pass, false);
+    assert.ok(fixture.issues.some((issue) => issue.code === "mojibake-visible-text"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

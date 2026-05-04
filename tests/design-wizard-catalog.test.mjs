@@ -99,6 +99,73 @@ test("wizard emits specialist question proposals with artifact impact", () => {
   assert.ok(proposal.choices.length >= 3);
 });
 
+test("wizard renders questions from SpecialistQuestionContract proposals", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace with approvals, tool calls, subagents, trace review, and desktop inspector panels.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+  const density = state.questionQueue.find((question) => question.axis === "information_density");
+  const proposal = state.questionProposals.find((item) => item.proposalId.endsWith(":information_density"));
+
+  assert.ok(density);
+  assert.ok(proposal);
+  assert.equal(density.source, "specialist-question-proposal");
+  assert.equal(density.proposalId, proposal.proposalId);
+  assert.equal(density.ownerAgent, proposal.ownerAgent);
+  assert.equal(density.prompt, proposal.question);
+  assert.deepEqual(
+    density.choices.map((choice) => choice.label),
+    proposal.options.map((option) => option.label),
+  );
+  assert.ok(density.choices.every((choice) => choice.risk && choice.unlocks.length > 0));
+  assert.ok(density.artifactImpact);
+  assert.equal(density.canAnswerFromEvidence, false);
+});
+
+test("wizard keeps delegated specialist defaults behind a review gate", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace with tool traces.",
+    target: "web",
+    mode: "design-system-only",
+  });
+  const next = recordDesignWizardAnswer(state, {
+    axis: "information_density",
+    choiceId: "compact",
+    source: "delegated-to-agent",
+    timestamp: "2026-05-04T00:00:00.000Z",
+  });
+
+  assert.equal(next.decisions.information_density.source, "delegated-to-agent");
+  assert.equal(next.decisions.information_density.requiresReview, true);
+  assert.ok(next.coverage.delegatedAxes.includes("information_density"));
+  assert.equal(next.gates.delegatedReviewRequired, true);
+  assert.equal(next.gates.tokensUnlocked, false);
+  assert.match(next.gates.blockedReason, /delegated decisions require review packet/);
+});
+
+test("wizard renderer escapes untrusted markdown markers in visible copy", () => {
+  const markdown = formatDesignWizardQuestion({
+    locale: "en",
+    ownerAgent: "ux-ui-designer",
+    prompt: "**Balance chat and trace panels",
+    whyNow: "The screen spec needs one density mode before layout.",
+    decisionUnlocked: "screen spec density",
+    choices: [
+      { id: "balanced", label: "**Balanced", tradeoff: "Good scan speed.", recommended: true },
+      { id: "compact", label: "Compact", tradeoff: "More state visible." },
+      { id: "comfortable", label: "Comfortable", tradeoff: "Calmer reading." },
+    ],
+  });
+
+  assert.doesNotMatch(markdown, /\*\*Balance chat and trace panels/);
+  assert.doesNotMatch(markdown, /- \*\*\*\*Balanced\*\*/);
+  assert.equal((markdown.match(/\*\*/g) || []).length % 2, 0);
+});
+
 test("wizard renders context-specific choice labels instead of reusable templates", () => {
   const state = buildDesignWizardState({
     brief: "Новая дизайн система для десктопного приложения под агентскую систему чатов. Нужен креативный UI, не generic SaaS admin, graphite cyan, code-first typography, subtle motion.",

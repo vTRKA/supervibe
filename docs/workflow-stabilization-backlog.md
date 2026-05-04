@@ -107,6 +107,29 @@ same failure modes affect every agent-heavy Supervibe command.
 - Agent role source visibility: command agent plans report each required role
   source as `project artifact`, `plugin-only`, or `logical role`.
 
+## Fixed In 2.0.77
+
+- Dynamic question architecture: visible command and design questions now route
+  through `SpecialistQuestionContract` proposals. Static route/catalog data is
+  treated as schema and fallback seed only, not as the final user-facing
+  question source.
+- Pre-gate specialist questions: `/supervibe-design` can dispatch
+  `creative-director` and `ux-ui-designer` for scratch question proposals while
+  durable design artifacts remain blocked by the wizard/write gate.
+- Wizard answer API: `node scripts/design-wizard-answer.mjs --slug <slug>
+  --axis <axis> --choice <choice> --source user` records answers without manual
+  `config.json` edits. `--accept-recommended-remaining --source
+  delegated-to-agent` records delegated specialist defaults and keeps tokens
+  locked behind a review gate.
+- Question quality guardrails: command surfaces now expose owner agent,
+  `whyNow`, evidence, artifact impact, structured options, recommendation, and
+  skip/default policy. Validators reject missing proposals, catalog-copy,
+  context-free questions, weak option risk/unlocks, and static template
+  rewrites.
+- Encoding guardrail: the static question scanner now rejects mojibake in
+  visible question text so broken Russian such as incorrectly decoded Cyrillic
+  cannot ship through runtime question surfaces.
+
 ## 10/10 Agent System Hardening
 
 Status: passed by `node scripts/supervibe-agent-maturity.mjs` on 2026-05-04.

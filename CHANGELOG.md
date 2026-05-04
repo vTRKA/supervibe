@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.77] - 2026-05-05
+
+### Added
+
+- Added proposal-backed `SpecialistQuestionContract` surfaces for command and
+  design prompts, with owner, evidence, impact, option tradeoffs, recommended
+  choices, and skip defaults.
+- Added `scripts/design-wizard-answer.mjs` and `npm run design:wizard-answer`
+  so wizard answers and delegated expert defaults are recorded through a stable
+  API instead of manual `config.json` edits.
+- Added validation for visible-text mojibake and replay coverage for delegated
+  defaults, proposal-backed wizard questions, and dynamic command question
+  surfaces.
+
+### Changed
+
+- Allows specialist agents to produce scratch question proposals before wizard
+  gates close while keeping durable design artifacts gated behind trusted
+  receipts and review.
+- Treats static design axes as fallback coverage seeds, not visible user-facing
+  prompts, so specialists drive the actual clarification flow from evidence.
+- Updated `/supervibe-design` documentation, backlog notes, and validators to
+  describe the dynamic question architecture.
+
+### Fixed
+
+- Fixed stale workflow receipts that blocked agent maturity validation after the
+  global-feedback runtime hardening flow.
+- Fixed the broken Russian skip-default text that previously surfaced mojibake.
+- Synced release security and install integrity version evidence for the
+  2.0.77 release surfaces.
+
 ## [2.0.76] - 2026-05-04
 
 ### Added
