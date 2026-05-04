@@ -152,6 +152,11 @@ export function buildDesignAgentPlan({
     agentId: "accessibility-reviewer",
     reason: "accessibility review is required before prototype approval",
   }));
+  stages.push(stage({
+    id: "stage-7-quality-gate",
+    agentId: "quality-gate-reviewer",
+    reason: "aggregate receipts, polish, accessibility, browser verification, and confidence caps before approval",
+  }));
 
   const plan = {
     schemaVersion: 1,
@@ -264,6 +269,7 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/index.html`, writeClass: "prototype" },
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/polish.md`, writeClass: "review-styleboard" },
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/a11y.md`, writeClass: "review-styleboard" },
+    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/quality-gate.json`, writeClass: "review-styleboard" },
   ];
   const allowed = new Set(gate.allowedWriteClasses || []);
   const producerProofs = producerProofsByArtifact(plan);
@@ -556,6 +562,7 @@ function designReceiptRequirementsForPlan(plan = {}) {
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate" });
   }
   return requirements;
 }

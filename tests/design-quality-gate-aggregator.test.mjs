@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import test from "node:test";
+
+import {
+  aggregateDesignConfidence,
+  evaluateDesignQualityGate,
+  validatePrototypeBuilderHighConfidenceEvidence,
+} from "../scripts/lib/design-quality-gate-aggregator.mjs";
+
+async function writeUtf8(root, relPath, content) {
+  const absPath = join(root, ...relPath.split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, content, "utf8");
+}
+
+test("design quality gate blocks approval on blocker or high review findings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-gate-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nBLOCKER: trace rows overflow the viewport.\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\n- Severity: high - palette dialog has no focus trap.\n");
+
+    const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: true });
+
+    assert.equal(gate.pass, false);
+    assert.equal(gate.approvalAllowed, false);
+    assert.equal(gate.blockerCount, 1);
+    assert.equal(gate.highCount, 1);
+    assert.equal(gate.confidence.cap, 6);
+    assert.ok(gate.nextAllowedActions.includes("revise-prototype"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design confidence aggregation caps high severity runs below approval confidence", () => {
+  const result = aggregateDesignConfidence({
+    builderConfidence: 9.6,
+    polishConfidence: 9.4,
+    a11yConfidence: 9.1,
+    browserVerification: { pass: true },
+    receiptValidation: { pass: true },
+    qualityIssues: [{ severity: "high", message: "focus trap missing" }],
+  });
+
+  assert.equal(result.rawScore > 9, true);
+  assert.equal(result.score, 7);
+  assert.equal(result.capped, true);
+});
+
+test("design quality gate ignores explicit none/zero severity review summaries", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-negated-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nBlockers: none\nCritical: none\nP0: none\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nNo high issues\nNo P1 issues\n");
+
+    const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: true });
+
+    assert.equal(gate.pass, true);
+    assert.equal(gate.blockerCount, 0);
+    assert.equal(gate.highCount, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype builder confidence >= 9 requires explicit interaction and a11y preflight evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-prototype-preflight-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_verification/prototype-builder.json", JSON.stringify({
+      checks: [
+        "dom-overflow",
+        "focus-trap",
+        "escape-behavior",
+        "aria-activedescendant",
+        "aria-selected",
+        "native-button-semantics",
+        "approval-composer-disabled",
+        "visible-focus",
+        "reduced-motion",
+      ],
+    }, null, 2));
+
+    const pass = validatePrototypeBuilderHighConfidenceEvidence(root, {
+      confidence: 9.2,
+      evidencePaths: [".supervibe/artifacts/prototypes/agent-chat/_verification/prototype-builder.json"],
+    });
+    const fail = validatePrototypeBuilderHighConfidenceEvidence(root, {
+      confidence: 9.2,
+      evidencePaths: [],
+    });
+
+    assert.equal(pass.pass, true);
+    assert.equal(fail.pass, false);
+    assert.ok(fail.missingChecks.includes("focus-trap"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

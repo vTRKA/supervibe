@@ -7,8 +7,10 @@ export function buildSpecialistQuestionProposal({
   proposalId = null,
   stage,
   specialist,
+  ownerAgent = null,
   question,
   why,
+  whyNow = null,
   choices = [],
   blocks = [],
   artifactImpact,
@@ -17,19 +19,38 @@ export function buildSpecialistQuestionProposal({
   evidence = [],
   decisionUnlocked = null,
   currentContext = "",
+  freeformAllowed = true,
 } = {}) {
+  const resolvedOwnerAgent = ownerAgent || specialist;
+  const normalizedChoices = choices.map((choice) => ({
+    id: choice.id,
+    label: choice.label,
+    tradeoff: choice.tradeoff || choice.description || "",
+    unlocks: Array.isArray(choice.unlocks) ? choice.unlocks : [],
+    risk: choice.risk || "",
+    recommended: choice.recommended === true,
+  }));
+  const recommended = normalizedChoices.find((choice) => choice.recommended) || normalizedChoices[0] || null;
   return {
     schemaVersion,
-    proposalId: proposalId || `${stage || "stage"}:${specialist || "specialist"}:${questionSlug(question || "question")}`,
+    proposalId: proposalId || `${stage || "stage"}:${resolvedOwnerAgent || "specialist"}:${questionSlug(question || "question")}`,
     stage,
     specialist,
+    ownerAgent: resolvedOwnerAgent,
     question,
     why,
-    choices: choices.map((choice) => ({
-      id: choice.id,
-      label: choice.label,
-      tradeoff: choice.tradeoff || choice.description || "",
+    whyNow: whyNow || why,
+    choices: normalizedChoices.map(({ recommended: _recommended, ...choice }) => choice),
+    options: normalizedChoices.map(({ id, label, tradeoff, unlocks, risk, recommended }) => ({
+      id,
+      label,
+      tradeoff,
+      unlocks,
+      risk,
+      recommended,
     })),
+    recommendedOption: recommended?.id || null,
+    freeformAllowed: freeformAllowed !== false,
     blocks: [...blocks],
     artifactImpact,
     skipDefault,
@@ -57,8 +78,14 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   if (!proposal.stage || !proposal.specialist || !proposal.question) {
     issues.push(issue(file, "invalid-specialist-question-proposal", `${label} missing stage, specialist, or question`));
   }
+  if (!proposal.ownerAgent) {
+    issues.push(issue(file, "missing-specialist-question-owner", `${label} must name ownerAgent for specialist voice and routing`));
+  }
   if (!proposal.why || !proposal.why.trim()) {
     issues.push(issue(file, "missing-specialist-question-why", `${label} must explain why the answer matters`));
+  }
+  if (!proposal.whyNow || !proposal.whyNow.trim()) {
+    issues.push(issue(file, "missing-specialist-question-why-now", `${label} must explain why this question is being asked now`));
   }
   if (!Array.isArray(proposal.choices) || proposal.choices.length < 3) {
     issues.push(issue(file, "thin-specialist-question-proposal", `${label} must include at least 3 choices`));
@@ -68,6 +95,20 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
       issues.push(issue(file, "weak-specialist-question-choice", `${label}:${choice.id || "unknown"} missing id, label, or tradeoff`));
     }
   }
+  if (!Array.isArray(proposal.options) || proposal.options.length !== (proposal.choices || []).length) {
+    issues.push(issue(file, "missing-specialist-question-options", `${label} must expose structured options matching choices`));
+  }
+  for (const option of proposal.options || []) {
+    if (!Array.isArray(option.unlocks) || option.unlocks.length === 0 || !option.risk) {
+      issues.push(issue(file, "weak-specialist-question-option-impact", `${label}:${option.id || "unknown"} must name unlocks and risk`));
+    }
+  }
+  if (!proposal.recommendedOption || !(proposal.options || []).some((option) => option.id === proposal.recommendedOption)) {
+    issues.push(issue(file, "missing-specialist-question-recommendation", `${label} must name a recommendedOption from options`));
+  }
+  if (proposal.freeformAllowed !== true) {
+    issues.push(issue(file, "missing-specialist-question-freeform", `${label} must allow free-form answers unless a hard policy forbids it`));
+  }
   if (!Array.isArray(proposal.blocks) || proposal.blocks.length === 0 || !proposal.artifactImpact) {
     issues.push(issue(file, "missing-specialist-question-impact", `${label} must name blocked artifacts and artifact impact`));
   }
@@ -76,6 +117,9 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   }
   if (CATALOG_COPY_PATTERN.test(text)) {
     issues.push(issue(file, "catalog-copy-specialist-question", `${label} looks like reusable catalog copy instead of a specialist proposal`));
+  }
+  if (!Array.isArray(proposal.evidence) || proposal.evidence.length < 2) {
+    issues.push(issue(file, "thin-specialist-question-evidence", `${label} must cite at least two current evidence signals`));
   }
   if (requireContext && !hasContextSignal(proposal)) {
     issues.push(issue(file, "context-free-specialist-question", `${label} must cite current brief/domain/stage context`));

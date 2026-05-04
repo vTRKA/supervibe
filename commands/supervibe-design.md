@@ -34,7 +34,28 @@ The wizard state is persisted in `config.json.designWizard` and must include:
 - `gates` - `tokensUnlocked` stays false until mandatory questions are closed or explicitly delegated/defaulted by the user.
 - `writeGate` - executable hard-stop for artifact writes. If `intake.needsQuestion=true`, `executionMode="agent-required-blocked"`, or `wizard.gates.tokensUnlocked=false`, ask exactly one blocking question and write only run-state or diagnostic scratch. Durable design artifacts, review styleboards, prototypes, tokens, and section markers are forbidden until the gate is ready.
 
-Each `SpecialistQuestionContract` proposal must include `stage`, `specialist`, `question`, `why`, `choices[]` with tradeoffs, `blocks[]`, `artifactImpact`, `skipDefault`, and `canAnswerFromEvidence=false`. `validate-dynamic-question-systems` rejects proposals that are reusable catalog copy, lack specialist provenance, fail to name the artifact changed by the answer, omit skip/default behavior, or ask something already answered by current evidence.
+Each `SpecialistQuestionContract` proposal must include `stage`, `specialist`, `ownerAgent`, `question`, `why`, `whyNow`, `evidence[]`, `choices[]` with tradeoffs, structured `options[]` with `unlocks[]` and `risk`, `recommendedOption`, `freeformAllowed=true`, `blocks[]`, `artifactImpact`, `skipDefault`, and `canAnswerFromEvidence=false`. `validate-dynamic-question-systems` rejects proposals that are reusable catalog copy, lack specialist provenance, fail to name the artifact changed by the answer, omit skip/default behavior, omit current evidence, omit why-now timing, or ask something already answered by current evidence. Questions must read like state-aware specialist dialogue, not static wizard axes.
+
+Dynamic question shape:
+
+```json
+{
+  "ownerAgent": "creative-director",
+  "whyNow": "Resolve evidence-first vs chat-first traces before density and token treatment lock.",
+  "evidence": ["old/reference artifact signal", "desktop/Tauri target", "developer workflow trace signal"],
+  "question": "...",
+  "options": [
+    {
+      "label": "Evidence-first trace workspace",
+      "tradeoff": "Faster audit and trace review, less conversational warmth.",
+      "unlocks": ["trace rail density", "code block treatment", "approval hierarchy"],
+      "risk": "May reduce chat warmth"
+    }
+  ],
+  "recommendedOption": "evidence-first-trace-workspace",
+  "freeformAllowed": true
+}
+```
 
 ### Stage Question Catalog
 
@@ -62,6 +83,12 @@ Execution visibility is mandatory. `config.json.executionMode` must be one of `i
 Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode!="real-agents"`, `plan.wizard.gates.viewportPolicyRecorded=false`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
 
 Approval promotion must be automated. After explicit approval, run `node scripts/promote-design-approval.mjs --slug <slug> --approved-by "<user>" --feedback-hash "<hash>"` so `manifest.json`, `design-flow-state.json`, `.approvals/*.json`, `config.json`, `.approval.json`, component docs, status comments, and `designer-package.json` move from candidate/draft to approved together. The designer package points to `direction.md`, `tokens.css`, `styleboard.html`, `spec.md`, screenshots, rejected alternatives, approval state, and known risks.
+
+Single Source of Truth state gate: after every stage writer, `supervibe-stage.mjs` must synchronize `config.json`, `_design-system/design-flow-state.json`, `_design-system/manifest.json`, receipt ledger links, and the status output. `node scripts/validate-design-workflow-state.mjs --slug <slug>` is a hard validator: if `config.json.prototypeExists=false` but `index.html` exists, if `mode=design-system-only` while a prototype exists, or if `stageTriage` marks prototype build skipped while an `index.html` exists, the command must fail before approval or handoff.
+
+Quality Gate Aggregator: receipt validation is provenance only. Prototype approval also requires `node scripts/design-quality-gate.mjs --slug <slug> --require-reviews` to read `_reviews/*.md`; any `BLOCKER`, `critical`, `P0`, `Severity: high`, `P1`, or equivalent high finding blocks approval even when workflow receipts pass. Final confidence is aggregated from prototype-builder confidence, ui-polish-reviewer confidence, accessibility-reviewer confidence, browser verification, receipt validation, and the quality gate. A `BLOCKER` caps confidence at 6; a `high` finding caps confidence at 7.
+
+Prototype-builder confidence discipline: before `prototype-builder` may record `confidence >= 9`, input or verification evidence must cover no overflow at target viewport, focus trap, Escape behavior, `aria-activedescendant`, `aria-selected`, native button semantics, disabled/blocked composer during approval, visible focus, and reduced motion. Missing evidence keeps the stage below 9 and blocks a 10/10 approval claim.
 
 Visual regression is part of the design gate, not a nice-to-have. For desktop/Tauri/Electron, capture and review screenshots at `1920x1080`, `1440x900`, and `1280x800`, then run DOM overflow, text overlap, contrast audit, focus-visible, reduced-motion, and Tauri webview smoke checks. Web flows include mobile `375x812`, `1440x900`, and `1920x1080`. Styleboard QA is first-class: before section approval, run the styleboard review plan emitted by the wizard (`screenshot-render`, `canvas-nonblank`, `dom-overflow`, `text-overlap`, `contrast-audit`, `focus-visible`, `reduced-motion`) and save evidence next to the design-system review packet.
 

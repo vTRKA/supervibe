@@ -5,11 +5,17 @@ import {
   evaluatePrototypeTransition,
 } from "./design-flow-state.mjs";
 import {
+  evaluateDesignQualityGate,
+} from "./design-quality-gate-aggregator.mjs";
+import {
   artifactRoot,
 } from "./supervibe-artifact-roots.mjs";
 import {
   buildPostStageContinuation,
 } from "./supervibe-stage-state.mjs";
+import {
+  validateWorkflowReceipts,
+} from "./supervibe-workflow-receipt-runtime.mjs";
 
 const READY_PROTOTYPE_STAGES = Object.freeze([
   "stage-3-screen-spec",
@@ -17,6 +23,7 @@ const READY_PROTOTYPE_STAGES = Object.freeze([
   "stage-5-prototype-build",
   "stage-6-polish-review",
   "stage-6-a11y-review",
+  "stage-7-quality-gate",
 ]);
 
 export function buildDesignPrototypeStageTriage(existing = {}, {
@@ -56,10 +63,18 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
   const prototypeExists = Boolean(prototypeArtifacts.index);
   const prototypeApproval = prototypeRoot ? readJson(join(prototypeRoot, ".approval.json")) : null;
   const prototypeApproved = normalizeStatus(prototypeApproval?.status) === "approved";
+  const receiptValidation = validateWorkflowReceipts(rootDir);
+  const qualityGate = prototypeRoot
+    ? evaluateDesignQualityGate(rootDir, { slug, requireReviews: prototypeApproved, receiptValidation })
+    : null;
+  const stateConsistency = validateDesignWorkflowStateConsistency(rootDir, { slug, config, flow, prototypeArtifacts, prototypeApproval });
   const designSystemStatus = normalizeStatus(flow?.design_system?.status || readJson(join(designSystemRoot, "manifest.json"))?.status);
   const mode = config?.mode || config?.executionMode || null;
   const prototypeUnlocked = transition.allowed === true;
-  const handoffBlocked = !prototypeApproved;
+  const handoffBlocked = !prototypeApproved || qualityGate?.approvalAllowed === false || stateConsistency.pass === false;
+  const blockedReason = handoffBlocked
+    ? handoffBlockedReason({ prototypeApproved, qualityGate, stateConsistency })
+    : null;
   const lifecycleStage = !designSystemStatus || designSystemStatus !== "approved"
     ? "candidate DS"
     : !prototypeExists
@@ -80,7 +95,7 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
     prototypeUnlocked,
     prototypeExists,
     prototypeApproved,
-    handoffReason: handoffBlocked ? "handoff requires approved prototype, not only approved design system" : null,
+    handoffReason: blockedReason,
   });
 
   return {
@@ -105,7 +120,15 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
     },
     handoff: {
       blocked: handoffBlocked,
-      reason: handoffBlocked ? "handoff requires approved prototype, not only approved design system" : null,
+      reason: blockedReason,
+    },
+    qualityGate,
+    stateConsistency,
+    receipts: {
+      pass: receiptValidation.pass === true,
+      checked: receiptValidation.checked,
+      receipts: receiptValidation.receipts,
+      issues: receiptValidation.issues,
     },
     nextAction,
     nextUserActions: continuation.nextUserActions,
@@ -114,6 +137,52 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
     recommendedStageTriage: prototypeUnlocked && !prototypeExists
       ? buildDesignPrototypeStageTriage(config?.stageTriage, { mode: mode || "full-prototype-pipeline" })
       : null,
+  };
+}
+
+function validateDesignWorkflowStateConsistency(rootDir = process.cwd(), {
+  slug = "",
+  config = null,
+  flow = null,
+  prototypeArtifacts = null,
+  prototypeApproval = null,
+} = {}) {
+  const issues = [];
+  const prototypesRoot = artifactRoot(rootDir, "prototypes");
+  const prototypeRoot = slug ? join(prototypesRoot, slug) : null;
+  const actualArtifacts = prototypeArtifacts || (prototypeRoot ? {
+    index: existsSync(join(prototypeRoot, "index.html")),
+    approval: existsSync(join(prototypeRoot, ".approval.json")),
+  } : {});
+  const actualPrototypeExists = Boolean(actualArtifacts.index);
+  const approval = prototypeApproval || (prototypeRoot ? readJson(join(prototypeRoot, ".approval.json")) : null);
+  const approved = normalizeStatus(approval?.status) === "approved";
+  const mode = config?.mode || config?.executionMode || null;
+
+  if (config && actualPrototypeExists && config.prototypeExists === false) {
+    issues.push(stateIssue("config-prototype-exists-drift", "blocker", "config.json prototypeExists=false but index.html exists"));
+  }
+  if (config && !actualPrototypeExists && config.prototypeExists === true) {
+    issues.push(stateIssue("config-prototype-missing-drift", "high", "config.json prototypeExists=true but index.html is missing"));
+  }
+  if (actualPrototypeExists && mode === "design-system-only") {
+    issues.push(stateIssue("config-mode-prototype-drift", "high", "config.json mode=design-system-only but prototype index.html exists"));
+  }
+  if (actualPrototypeExists && config?.stageTriage?.["stage-5-prototype-build"]?.status === "skipped") {
+    issues.push(stateIssue("config-stage-triage-prototype-drift", "high", "stage-5-prototype-build is skipped while index.html exists"));
+  }
+  if (approved && normalizeStatus(config?.status) !== "approved") {
+    issues.push(stateIssue("config-approval-status-drift", "high", ".approval.json is approved but config.json status is not approved"));
+  }
+  if (actualPrototypeExists && normalizeStatus(flow?.prototype?.requested) === "blocked") {
+    issues.push(stateIssue("flow-prototype-requested-drift", "high", "design-flow-state prototype.requested=BLOCKED while index.html exists"));
+  }
+
+  return {
+    schemaVersion: 1,
+    pass: !issues.some((issue) => issue.severity === "blocker" || issue.severity === "high"),
+    stale: issues.length > 0,
+    issues,
   };
 }
 
@@ -129,9 +198,23 @@ export function formatDesignWorkflowStatus(status = {}) {
     `PROTOTYPE_APPROVED: ${status.prototype?.approved === true}`,
     `HANDOFF_BLOCKED: ${status.handoff?.blocked === true}`,
     `HANDOFF_REASON: ${status.handoff?.reason || "none"}`,
+    `STATE_CONSISTENCY_PASS: ${status.stateConsistency?.pass !== false}`,
+    `STALE_STATE: ${status.stateConsistency?.stale === true}`,
+    `RECEIPTS_PASS: ${status.receipts?.pass === true}`,
+    `TRUSTED_RECEIPTS: ${status.receipts?.receipts ?? 0}`,
+    `QUALITY_GATE_PASS: ${status.qualityGate?.pass !== false}`,
+    `QUALITY_BLOCKERS: ${status.qualityGate?.blockerCount ?? 0}`,
+    `QUALITY_HIGH: ${status.qualityGate?.highCount ?? 0}`,
+    `QUALITY_CONFIDENCE: ${status.qualityGate?.confidence?.score ?? "unknown"}`,
     `NEXT_ACTION: ${status.nextAction || "none"}`,
     `NEXT_QUESTION: ${status.prototype?.nextQuestion?.id || "none"}`,
   ];
+  for (const issue of status.stateConsistency?.issues || []) {
+    lines.push(`STATE_ISSUE: ${issue.severity} ${issue.code} - ${issue.message}`);
+  }
+  for (const issue of status.qualityGate?.issues || []) {
+    lines.push(`QUALITY_ISSUE: ${issue.severity} ${issue.file}:${issue.line || 0} ${issue.message}`);
+  }
   if (status.nextUserActions?.length) {
     lines.push("NEXT_USER_ACTIONS:");
     for (const action of status.nextUserActions) {
@@ -204,6 +287,17 @@ function buildDesignContinuation({
     prototypeUnlocked,
     handoffBlockedReason: handoffReason,
   });
+}
+
+function handoffBlockedReason({ prototypeApproved, qualityGate, stateConsistency } = {}) {
+  if (stateConsistency?.pass === false) return "workflow state is stale; sync config.json/design-flow-state before approval or handoff";
+  if (qualityGate?.approvalAllowed === false) return "quality gate blocks prototype approval because reviews contain BLOCKER/high findings";
+  if (!prototypeApproved) return "handoff requires approved prototype, not only approved design system";
+  return null;
+}
+
+function stateIssue(code, severity, message) {
+  return { code, severity, message };
 }
 
 function prototypeInteractionDepthQuestion() {

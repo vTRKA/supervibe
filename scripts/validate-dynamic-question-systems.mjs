@@ -47,6 +47,12 @@ export function validateDynamicQuestionSystems() {
     if (!question.stage || !question.specialist || !Array.isArray(question.blocks) || question.blocks.length === 0) {
       issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "missing-specialist-question-provenance", `${question.axis || "unknown"} missing stage, specialist, or blocked artifact provenance`));
     }
+    if (!question.ownerAgent || !question.whyNow || !Array.isArray(question.evidence) || question.evidence.length < 2) {
+      issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "weak-specialist-question-engine", `${question.axis || "unknown"} missing ownerAgent, whyNow, or current evidence signals`));
+    }
+    if (!(question.choices || []).every((choice) => Array.isArray(choice.unlocks) && choice.unlocks.length > 0 && choice.risk)) {
+      issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "weak-specialist-question-options", `${question.axis || "unknown"} choices must expose unlocks and risk`));
+    }
     if (!question.artifactImpact || question.canAnswerFromEvidence !== false) {
       issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "weak-specialist-question-impact", `${question.axis || "unknown"} must state artifact impact and whether evidence already answers it`));
     }

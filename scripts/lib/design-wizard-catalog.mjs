@@ -921,8 +921,9 @@ function orderChoicesForConversation(choices = [], recommended = null) {
 
 function conversationalLeadForQuestion(question = {}, recommended = null, locale = "en", options = {}) {
   const decision = question.decisionUnlocked || question.decision || "";
-  const why = question.why || "";
+  const why = question.whyNow || question.why || "";
   const detail = [why, decision].filter(Boolean).join(locale === "ru" ? " " : " ");
+  const owner = ownerVoicePrefix(question.ownerAgent || question.specialist, locale);
   const recommendedCopy = recommended
     ? (locale === "ru"
       ? `Я бы начал с **${recommended.label}**, но это только стартовая гипотеза, а не закрытый дефолт.`
@@ -930,8 +931,22 @@ function conversationalLeadForQuestion(question = {}, recommended = null, locale
     : (locale === "ru"
       ? "Нужно зафиксировать один выбор, чтобы следующий producer работал с понятной рамкой."
       : "One choice needs to be locked so the next producer works from a clear boundary.");
-  if (options.compact === true || !detail) return recommendedCopy;
-  return `${recommendedCopy} ${detail}`;
+  const lead = owner ? `${owner} ${recommendedCopy}` : recommendedCopy;
+  if (options.compact === true || !detail) return lead;
+  return `${lead} ${detail}`;
+}
+
+function ownerVoicePrefix(ownerAgent = "", locale = "en") {
+  const owner = String(ownerAgent || "");
+  if (!owner) return "";
+  const label = {
+    "creative-director": locale === "ru" ? "Creative director:" : "Creative director:",
+    "ux-ui-designer": locale === "ru" ? "UX/UI designer:" : "UX/UI designer:",
+    "supervibe:brandbook": locale === "ru" ? "Brandbook producer:" : "Brandbook producer:",
+    "supervibe:design-intelligence": locale === "ru" ? "Design intelligence:" : "Design intelligence:",
+    "supervibe-orchestrator": locale === "ru" ? "Orchestrator:" : "Orchestrator:",
+  }[owner];
+  return label || `${owner}:`;
 }
 
 function axis(fields) {
@@ -1096,6 +1111,7 @@ function buildDesignQuestionStrategy({
     mode: inferDesignWorkflowModeChoice(text, profileId, mode),
     ...(isDesktopTarget(target) ? { component_feel: "platform-native" } : {}),
   };
+  const decisionChoiceIds = Object.fromEntries(Object.entries(decisions || {}).map(([axisId, decision]) => [axisId, decision?.choiceId || null]));
   return {
     schemaVersion: 1,
     profile: profile.id,
@@ -1105,6 +1121,8 @@ function buildDesignQuestionStrategy({
     viewportPlacement: viewportPolicy?.requiresActualWindowQuestion ? "early" : profile.viewportPlacement,
     recommendedChoices,
     decisionsCount: Object.keys(decisions || {}).length,
+    decisionChoiceIds,
+    evidence: designQuestionEvidence({ profileId: profile.id, signals, target, decisions }),
   };
 }
 
@@ -1129,6 +1147,20 @@ function designQuestionSignals(text = "", target = "web") {
     referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
     agentChat: hasAny(haystack, ["agent chat", "agentic chat", "chat system", "conversation workspace", "агентск", "агентская система чатов", "чат", "чаты", "диалог"]),
   };
+}
+
+function designQuestionEvidence({ profileId = "default", signals = {}, target = "web", decisions = {} } = {}) {
+  const evidence = [`question profile: ${profileId}`];
+  if (signals.desktopTarget || isDesktopTarget(target)) evidence.push("desktop/Tauri target requires real viewport and resize evidence");
+  if (signals.agentChat) evidence.push("agent chat workspace signal from brief");
+  if (signals.developerTool) evidence.push("developer workflow, traces, code, or terminal signal from brief");
+  if (signals.referenceRefresh) evidence.push("old/reference artifact signal requires explicit borrow/avoid scope");
+  if (signals.desktopOps) evidence.push("operator dashboard/table/queue density signal from brief");
+  if (signals.regulatedTrust) evidence.push("audit, privacy, risk, or compliance signal from brief");
+  if (signals.brandLaunch) evidence.push("launch, hero, conversion, or marketing signal from brief");
+  if (decisions?.typography_personality?.choiceId === "code-first") evidence.push("user or brief already points to code-first trace typography");
+  if (Object.keys(decisions || {}).length > 0) evidence.push(`saved wizard decisions: ${Object.keys(decisions).length}`);
+  return [...new Set(evidence)];
 }
 
 function inferDesignWorkflowModeChoice(text = "", profileId = "default", mode = null) {
@@ -1202,6 +1234,91 @@ function contextualChoicesFor(axisDef, locale = "en", strategy = {}) {
       recommended: item.id === recommendedChoice,
     };
   });
+}
+
+function withChoiceImpacts(choices = [], axisId = "design", strategy = {}) {
+  return choices.map((choiceItem) => ({
+    ...choiceItem,
+    unlocks: choiceUnlocksFor(axisId, choiceItem.id, strategy),
+    risk: choiceRiskFor(axisId, choiceItem),
+  }));
+}
+
+function choiceUnlocksFor(axisId = "design", choiceId = "", strategy = {}) {
+  const owner = DESIGN_QUESTION_OWNERS[axisId] || DESIGN_QUESTION_OWNERS.mode;
+  const base = [
+    ...(owner.blocks || []),
+    artifactUnlockForChoice(axisId, choiceId),
+  ].filter(Boolean);
+  if (strategy.signals?.agentChat) base.push("agent trace workspace hierarchy");
+  if (strategy.signals?.desktopTarget) base.push("desktop resize and viewport review plan");
+  return [...new Set(base)].slice(0, 5);
+}
+
+function artifactUnlockForChoice(axisId = "", choiceId = "") {
+  if (axisId === "mode") return "continuation boundary";
+  if (axisId === "viewport") return "screenshot viewport matrix";
+  if (axisId === "information_density") return "trace rail density and scan rhythm";
+  if (axisId === "typography_personality" && choiceId === "code-first") return "code block and trace typography";
+  if (axisId === "component_feel") return "component implementation ownership";
+  if (axisId === "reference_borrow_avoid") return "old artifact reuse boundary";
+  return "next specialist output shape";
+}
+
+function choiceRiskFor(axisId = "design", choice = {}) {
+  const tradeoff = String(choice.tradeoff || "");
+  const riskMatch = tradeoff.match(/(?:risk|risks?|may|может|риск|выше)\b[^.;]*/i);
+  if (riskMatch) return riskMatch[0].trim();
+  if (axisId === "mode" && choice.id === "design-system-only") return "May stop before prototype evidence if the user expects a draft build.";
+  if (axisId === "viewport") return "Wrong viewport can hide overflow, density, focus, and resize defects.";
+  if (axisId === "information_density") return "May reduce readability or hide critical workflow hierarchy.";
+  if (axisId === "motion_intensity") return "May create fatigue, reduced-motion gaps, or performance noise.";
+  return "May optimize this stage while weakening a downstream specialist constraint.";
+}
+
+function evidenceForQuestion(axisId = "design", strategy = {}) {
+  const owner = DESIGN_QUESTION_OWNERS[axisId] || DESIGN_QUESTION_OWNERS.mode;
+  return [
+    ...(strategy.evidence || []),
+    `owner stage: ${owner.stage}`,
+    `owner agent: ${owner.specialist}`,
+    ...(axisId === "viewport" ? ["viewport policy gates review screenshots"] : []),
+    ...(axisId === "mode" ? ["mode controls whether prototype stages unlock"] : []),
+  ].filter(Boolean).slice(0, 8);
+}
+
+function whyNowForQuestion(axisId = "design", locale = "en", strategy = {}) {
+  const normalized = normalizeLocale(locale);
+  const subject = subjectForLocale(strategy.subject, normalized, "genitive");
+  const profile = strategy.profile || "default";
+  if (axisId === "mode") {
+    return normalized === "ru"
+      ? `Сначала нужен boundary workflow для ${subject}, иначе state machine может преждевременно остановиться или перейти в prototype без явного выбора.`
+      : `Workflow boundary must be chosen first for ${subject}, or the state machine can stop too early or enter prototype work without an explicit decision.`;
+  }
+  if (axisId === "viewport") {
+    return normalized === "ru"
+      ? `Viewport фиксируется до review, чтобы overflow, focus и density проверялись на реальной поверхности ${subject}.`
+      : `Viewport is locked before review so overflow, focus, and density are tested on the real ${subject} surface.`;
+  }
+  if (axisId === "information_density" && strategy.signals?.agentChat) {
+    return normalized === "ru"
+      ? `Плотность нужно выбрать до UX/spec: она решает, будут ли traces evidence-first или chat-first.`
+      : "Density must be chosen before UX/spec because it decides whether traces are evidence-first or chat-first.";
+  }
+  if (axisId === "creative_alternatives") {
+    return normalized === "ru"
+      ? `Creative director должен сравнить направления до токенов, иначе ${subject} унаследует первый безопасный вариант.`
+      : `The creative director must compare directions before tokens, or ${subject} inherits the first safe option.`;
+  }
+  if (axisId === "reference_borrow_avoid") {
+    return normalized === "ru"
+      ? `Reference scope нужен до визуальных решений, чтобы старые прототипы дали evidence, а не случайный shell.`
+      : "Reference scope is needed before visual decisions so old prototypes provide evidence, not an accidental shell.";
+  }
+  return normalized === "ru"
+    ? `Этот вопрос сейчас первый риск профиля ${profile}: ответ меняет следующий артефакт, а не только анкету.`
+    : `This is the current ${profile} profile risk: the answer changes the next artifact, not just a questionnaire slot.`;
 }
 
 function contextualChoiceFor(axisId, choiceId, baseChoice, locale = "en", strategy = {}) {
@@ -1571,11 +1688,13 @@ function modeQuestion(locale = "en", strategy = {}) {
     why: normalized === "ru"
       ? "Так мы не остановимся слишком рано и не уйдем в прототип без вашего решения."
       : "This prevents design-system-only work from silently stopping or accidentally continuing into prototype work.",
+    whyNow: whyNowForQuestion("mode", normalized, strategy),
+    evidence: evidenceForQuestion("mode", strategy),
     decisionUnlocked: "config.json.executionMode, stageTriage, and continuation boundary",
     ifSkipped: normalized === "ru"
       ? "Полный pipeline выбирается только когда brief явно просит prototype delivery; иначе лучше остановиться и спросить."
       : "Use full pipeline only when the brief clearly asks for prototype delivery; otherwise stop and ask.",
-    choices: DESIGN_WIZARD_MODES.map((item) => ({ ...localizedChoice(item, normalized, "mode"), recommended: item.id === recommendedMode })),
+    choices: withChoiceImpacts(DESIGN_WIZARD_MODES.map((item) => ({ ...localizedChoice(item, normalized, "mode"), recommended: item.id === recommendedMode })), "mode", strategy),
     freeFormPath: normalized === "ru"
       ? "Можно ответить своими словами, например: дизайн-система сейчас, прототип после approval."
       : "Name a custom boundary, for example: design system now, prototype after approval.",
@@ -1596,11 +1715,13 @@ function axisQuestion(axisDef, locale = "en", strategy = {}) {
     locale: normalized,
     prompt: contextualPromptFor(axisDef.id, axisCopy.prompt, normalized, strategy),
     why: contextualWhyFor(axisDef.id, axisCopy.label, normalized, strategy),
+    whyNow: whyNowForQuestion(axisDef.id, normalized, strategy),
+    evidence: evidenceForQuestion(axisDef.id, strategy),
     decisionUnlocked: axisCopy.decisionUnlocked,
     ifSkipped: normalized === "ru"
       ? "Рекомендованный дефолт можно использовать только если пользователь явно делегировал этот выбор."
       : "Only use the recommended default when the user explicitly delegates this axis.",
-    choices: contextualChoicesFor(axisDef, normalized, strategy),
+    choices: withChoiceImpacts(contextualChoicesFor(axisDef, normalized, strategy), axisDef.id, strategy),
     freeFormPath: normalized === "ru"
       ? "Можно написать свой стиль, референс или ограничение, если варианты не подходят."
       : "Answer with a different style, reference, or constraint if none of these options fit.",
@@ -1625,11 +1746,13 @@ function viewportQuestion(policy, locale = "en", strategy = {}) {
     why: normalized === "ru"
       ? "Viewport policy решает, проверяем ли реальную поверхность или только общий browser size."
       : "Viewport policy controls whether the design proves the actual surface or only a generic browser size.",
+    whyNow: whyNowForQuestion("viewport", normalized, strategy),
+    evidence: evidenceForQuestion("viewport", strategy),
     decisionUnlocked: "config.json.viewports, review screenshots, and platform resize policy",
     ifSkipped: policy.requiresActualWindowQuestion
       ? (normalized === "ru" ? "Использовать 1920x1080, 1440x900, 1280x800 и 800x600, записав exactWindow=false." : "Use 1920x1080, 1440x900, 1280x800, and 800x600, then record exactWindow=false.")
       : (normalized === "ru" ? "Использовать web defaults 375px и 1440px." : "Use web defaults 375px and 1440px."),
-    choices: policy.choices.map((item, index) => ({ ...localizedChoice(item, normalized, "viewport"), recommended: index === 0 })),
+    choices: withChoiceImpacts(policy.choices.map((item, index) => ({ ...localizedChoice(item, normalized, "viewport"), recommended: index === 0 })), "viewport", strategy),
     strategyProfile: strategy.profile || "default",
     freeFormPath: normalized === "ru"
       ? "Укажите width, height, OS scale, min window, secondary window или target monitor."
@@ -1755,6 +1878,7 @@ function specialistQuestionMetadata(question = {}) {
   return {
     stage: owner.stage,
     specialist: owner.specialist,
+    ownerAgent: owner.specialist,
     blocks: [...owner.blocks],
     artifactImpact: question.decisionUnlocked || question.decision || owner.blocks.join(", "),
     skipDefault: question.ifSkipped || "Stop or use an explicitly delegated safe default; never assume silently.",
@@ -1768,19 +1892,26 @@ function specialistQuestionProposal(question = {}) {
     proposalId: `${metadata.stage}:${metadata.specialist}:${question.axis || "question"}`,
     stage: metadata.stage,
     specialist: metadata.specialist,
+    ownerAgent: question.ownerAgent || metadata.ownerAgent,
     question: question.prompt || question.question || "",
     why: question.why || `${metadata.artifactImpact} changes if this answer changes.`,
+    whyNow: question.whyNow || whyNowForQuestion(question.axis, question.locale, question),
     choices: (question.choices || []).map((choiceItem) => ({
       id: choiceItem.id,
       label: choiceItem.label,
       tradeoff: choiceItem.tradeoff || choiceItem.description || "",
+      unlocks: choiceItem.unlocks || metadata.blocks,
+      risk: choiceItem.risk || "Risk must be reviewed by the owner specialist.",
+      recommended: choiceItem.recommended === true,
     })),
     blocks: metadata.blocks,
     artifactImpact: metadata.artifactImpact,
     skipDefault: metadata.skipDefault,
     canAnswerFromEvidence: metadata.canAnswerFromEvidence,
+    evidence: question.evidence || evidenceForQuestion(question.axis, question),
     decisionUnlocked: question.decisionUnlocked || question.decision || metadata.artifactImpact,
     currentContext: `${question.axis || "design"} ${metadata.stage} ${metadata.specialist}`,
+    freeformAllowed: true,
   });
 }
 

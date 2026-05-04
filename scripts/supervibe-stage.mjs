@@ -11,6 +11,12 @@ import {
   runBrandbookProducer,
 } from "./lib/brandbook-producer-runtime.mjs";
 import {
+  validatePrototypeBuilderHighConfidenceEvidence,
+} from "./lib/design-quality-gate-aggregator.mjs";
+import {
+  syncDesignWorkflowStateAfterStage,
+} from "./lib/design-workflow-state-sync.mjs";
+import {
   issueWorkflowInvocationReceipt,
   validateWorkflowReceipts,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
@@ -32,6 +38,8 @@ const DESIGN_AGENT_STAGES = Object.freeze({
   "stage-6-polish-review": agentStage("ui-polish-reviewer", "stage-6-polish-review", ".supervibe/artifacts/prototypes/<slug>/_reviews/polish.md", "reviewer"),
   "a11y-review": agentStage("accessibility-reviewer", "stage-6-a11y-review", ".supervibe/artifacts/prototypes/<slug>/_reviews/a11y.md", "reviewer"),
   "stage-6-a11y-review": agentStage("accessibility-reviewer", "stage-6-a11y-review", ".supervibe/artifacts/prototypes/<slug>/_reviews/a11y.md", "reviewer"),
+  "quality-gate": agentStage("quality-gate-reviewer", "stage-7-quality-gate", ".supervibe/artifacts/prototypes/<slug>/_reviews/quality-gate.json", "reviewer"),
+  "stage-7-quality-gate": agentStage("quality-gate-reviewer", "stage-7-quality-gate", ".supervibe/artifacts/prototypes/<slug>/_reviews/quality-gate.json", "reviewer"),
 });
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
@@ -92,6 +100,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`PRODUCER: ${result.producer}`);
     console.log(`RECEIPT: ${result.receiptPath || "none"}`);
     console.log(`VALIDATION_PASS: ${result.validation?.pass === true}`);
+    if (result.stateSync) {
+      console.log(`STATE_SYNC_PASS: ${result.stateSync.pass === true}`);
+      console.log(`STATE_SYNC_UPDATED: ${(result.stateSync.updatedFiles || []).join(",") || "none"}`);
+    }
     if (result.agentOutputJson) console.log(`AGENT_OUTPUT_JSON: ${result.agentOutputJson}`);
     if (result.producerOutputPath) console.log(`PRODUCER_OUTPUT: ${result.producerOutputPath}`);
     console.log(formatPostStageContinuation(result.continuation));
@@ -163,6 +175,17 @@ async function runDesignAgentStage({ rootDir, workflow, stage, options }) {
   if (!Number.isFinite(confidence) || confidence < 0 || confidence > 10) {
     throw new Error("--confidence must be a number from 0 to 10");
   }
+  const inputEvidence = splitList(options.input || options["input-evidence"]);
+  const verificationEvidence = splitList(options.verification || options["verification-evidence"]);
+  if (config.stageId === "stage-5-prototype-build") {
+    const preflight = validatePrototypeBuilderHighConfidenceEvidence(rootDir, {
+      confidence,
+      evidencePaths: [...inputEvidence, ...verificationEvidence],
+    });
+    if (!preflight.pass) {
+      throw new Error(`prototype-builder confidence >= 9 blocked: missing preflight evidence for ${preflight.missingChecks.join(", ")}`);
+    }
+  }
 
   const logPath = join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl");
   mkdirSync(dirname(logPath), { recursive: true });
@@ -187,7 +210,7 @@ async function runDesignAgentStage({ rootDir, workflow, stage, options }) {
     agentId: config.agentId,
     stage: config.stageId,
     invocationReason: options.reason || record.task_summary,
-    inputEvidence: splitList(options.input || options["input-evidence"]),
+    inputEvidence,
     outputArtifacts: [outputArtifact],
     startedAt: record.ts,
     completedAt: record.ts,
@@ -200,14 +223,23 @@ async function runDesignAgentStage({ rootDir, workflow, stage, options }) {
     },
   });
   const validation = validateWorkflowReceipts(rootDir, { secret: options.secret || null });
+  const stateSync = await syncDesignWorkflowStateAfterStage(rootDir, {
+    slug,
+    stageId: config.stageId,
+    owner: config.agentId,
+    outputArtifact,
+    receiptPath: receipt.receiptPath,
+    confidence,
+  });
   return {
-    pass: validation.pass === true,
+    pass: validation.pass === true && stateSync.pass === true,
     workflow,
     stage: config.stageId,
     producer: `${config.subjectType}:${config.agentId}`,
     receiptPath: receipt.receiptPath,
     agentOutputJson: record.structured_output?.json || null,
     validation,
+    stateSync,
     continuation: buildPostStageContinuation({
       workflow,
       currentStage: config.stageId,

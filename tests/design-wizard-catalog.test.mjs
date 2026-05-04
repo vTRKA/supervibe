@@ -88,6 +88,11 @@ test("wizard emits specialist question proposals with artifact impact", () => {
   assert.equal(proposal.stage, "stage-1-brand-direction");
   assert.ok(proposal.blocks.includes("direction.md"));
   assert.ok(proposal.artifactImpact);
+  assert.equal(proposal.ownerAgent, "creative-director");
+  assert.ok(proposal.whyNow);
+  assert.ok(proposal.evidence.length >= 2);
+  assert.ok(proposal.options.every((option) => option.unlocks.length > 0 && option.risk));
+  assert.ok(proposal.recommendedOption);
   assert.equal(proposal.canAnswerFromEvidence, false);
   assert.ok(proposal.choices.length >= 3);
 });
@@ -128,7 +133,9 @@ test("wizard renders context-specific choice labels instead of reusable template
   const markdown = `${formatDesignWizardQuestion(creative)}\n${formatDesignWizardQuestion(density)}`;
   assert.doesNotMatch(markdown, /- 3 разных направления(?:\s|\()/);
   assert.doesNotMatch(markdown, /- Balanced(?:\s|\()/);
-  assert.match(markdown, /это не общий пункт анкеты/);
+  assert.match(markdown, /Creative director:/);
+  assert.match(markdown, /UX\/UI designer:/);
+  assert.match(markdown, /agent-chat|trace|cockpit/i);
 });
 
 test("wizard contextualizes palette and typography choices for runtime copy", () => {

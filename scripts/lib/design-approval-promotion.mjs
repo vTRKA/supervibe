@@ -5,6 +5,9 @@ import {
   REQUIRED_DESIGN_SYSTEM_SECTIONS,
 } from "./design-flow-state.mjs";
 import {
+  evaluateDesignQualityGate,
+} from "./design-quality-gate-aggregator.mjs";
+import {
   buildDesignPrototypeStageTriage,
 } from "./design-workflow-status.mjs";
 import {
@@ -40,11 +43,26 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
   if (slug) {
     const prototypeRoot = join(prototypesRoot, slug);
     if (existsSync(prototypeRoot)) {
-      await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
       if (prototypeArtifactExists(prototypeRoot) && approvalScope !== "design-system-only") {
+        const qualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
+        if (!qualityGate.approvalAllowed) {
+          issues.push(`prototype quality gate blocked approval: blockers=${qualityGate.blockerCount}, high=${qualityGate.highCount}`);
+          for (const issue of qualityGate.issues) {
+            issues.push(`${issue.file}:${issue.line || 0}: ${issue.severity} ${issue.message}`);
+          }
+          return {
+            pass: false,
+            updatedFiles: [...new Set(updatedFiles)],
+            createdFiles: [...new Set(createdFiles)],
+            issues,
+          };
+        }
+        await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await writePrototypeApproval(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await promoteMarkdownStatuses(rootDir, prototypeRoot, { updatedFiles });
         await writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, { approvedAt, updatedFiles, createdFiles });
+      } else {
+        await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
       }
     } else {
       issues.push(`prototype not found: ${normalizeRelPath(relative(rootDir, prototypeRoot))}`);

@@ -300,6 +300,7 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/seo.md`, subjectType: "reviewer", subjectId: "seo-specialist", stageId: "stage-6-seo-review" });
   }
 

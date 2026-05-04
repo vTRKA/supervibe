@@ -65,6 +65,43 @@ test("supervibe-stage runner logs host agent output and issues receipt in one co
   }
 });
 
+test("supervibe-stage runner blocks prototype-builder confidence >= 9 without preflight evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-stage-prototype-preflight-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+
+    assert.throws(
+      () => execFileSync(process.execPath, [
+        STAGE_SCRIPT,
+        "run",
+        "--root",
+        root,
+        "--workflow",
+        "design",
+        "--stage",
+        "prototype-build",
+        "--host",
+        "codex",
+        "--host-invocation-id",
+        "codex-stage-5",
+        "--handoff",
+        "agent-chat",
+        "--confidence",
+        "9.1",
+        "--secret",
+        "test-secret",
+      ], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }),
+      /prototype-builder confidence >= 9 blocked/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("shared stage-state helper exposes normalized lifecycle states", () => {
   assert.ok(WORKFLOW_STAGE_STATES.includes("review_required"));
   assert.equal(normalizeWorkflowStageState("failed-recoverable"), "failed_recoverable");

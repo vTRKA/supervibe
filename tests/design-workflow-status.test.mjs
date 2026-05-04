@@ -88,3 +88,44 @@ test("design workflow status exposes continuation actions for candidate design s
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("design workflow status flags config drift when prototype exists but state says missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-status-drift-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", `${JSON.stringify({
+      design_system: {
+        status: "approved",
+        approved_sections: [
+          "palette",
+          "typography",
+          "spacing-density",
+          "radius-elevation",
+          "motion",
+          "component-set",
+          "copy-language",
+          "accessibility-platform",
+        ],
+      },
+      prototype: { requested: "ALLOWED" },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      mode: "design-system-only",
+      prototypeExists: false,
+      stageTriage: {
+        "stage-5-prototype-build": { status: "skipped" },
+      },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+
+    const status = readDesignWorkflowStatus(root, { slug: "agent-chat" });
+    const report = formatDesignWorkflowStatus(status);
+
+    assert.equal(status.prototype.exists, true);
+    assert.equal(status.stateConsistency.pass, false);
+    assert.ok(status.stateConsistency.issues.some((issue) => issue.code === "config-prototype-exists-drift"));
+    assert.match(report, /STALE_STATE: true/);
+    assert.match(report, /STATE_ISSUE: blocker config-prototype-exists-drift/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

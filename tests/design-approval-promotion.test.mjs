@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -60,6 +61,8 @@ test("approval promotion moves design-system and prototype state from candidate 
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
 
     const result = await promoteDesignApprovalState(root, {
       slug: "agent-chat",
@@ -104,6 +107,50 @@ test("approval promotion moves design-system and prototype state from candidate 
     assert.equal(designerPackage.artifacts.tokens, ".supervibe/artifacts/prototypes/_design-system/tokens.css");
     assert.equal(designerPackage.artifacts.styleboard, ".supervibe/artifacts/prototypes/_design-system/styleboard.html");
     assert.equal(designerPackage.artifacts.spec, ".supervibe/artifacts/prototypes/agent-chat/spec.md");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("approval promotion blocks prototype approval when review gate has blocker or high findings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-approval-quality-gate-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", `${JSON.stringify({
+      status: "candidate",
+      tokensState: "candidate",
+      sections: Object.fromEntries(REQUIRED_SECTIONS.map((section) => [section, "candidate"])),
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", `${JSON.stringify({
+      creative_direction: { status: "selected" },
+      design_system: {
+        status: "candidate",
+        approved_sections: [],
+        sections: Object.fromEntries(REQUIRED_SECTIONS.map((section) => [section, { status: "candidate" }])),
+      },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      approval: "candidate",
+      status: "candidate",
+      mode: "full-prototype-pipeline",
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\n- Severity: high - trace rows overflow at 1280x800.\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nBlockers: none\n");
+
+    const result = await promoteDesignApprovalState(root, {
+      slug: "agent-chat",
+      approvedBy: "test-user",
+      approvedAt: "2026-05-03T12:00:00.000Z",
+      feedbackHash: "sha256:test",
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => /quality gate blocked approval/.test(issue)));
+
+    const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
+    assert.equal(config.approval, "candidate");
+    assert.equal(config.status, "candidate");
+    assert.equal(existsSync(join(root, ".supervibe/artifacts/prototypes/agent-chat/.approval.json")), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

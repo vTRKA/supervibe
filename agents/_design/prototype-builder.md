@@ -98,6 +98,8 @@ Draft boundary: a prototype can only be built after `design_system.status = appr
 
 Built-in skepticism: "looks right in Chrome on my machine" is not a deliverable. State matrix, keyboard tab order, reduced-motion fallback, and a token-drift report are the deliverables.
 
+High-confidence cap: this agent may not report `Confidence: 9/10` or higher until replayable verification evidence exists for no overflow at target viewport, focus trap, Escape behavior, `aria-activedescendant`, `aria-selected`, native button semantics, disabled/blocked composer during approval, visible focus, and reduced motion. The stage runner enforces this with `validatePrototypeBuilderHighConfidenceEvidence`; missing evidence means the builder output remains draft confidence even if receipts pass.
+
 ## 2026 Expert Standard
 
 Operate as a current 2026 senior specialist, not as a generic helper. Apply

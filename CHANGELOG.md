@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.72] - 2026-05-04
+
+### Added
+
+- Added design workflow state validation, prototype review quality gate
+  aggregation, and confidence caps for blocker/high review findings.
+- Added dynamic specialist question contract fields for owner voice, why-now
+  rationale, evidence, option unlocks, risks, recommendation, and free-form
+  answers.
+
+### Changed
+
+- Synchronized design stage state after runtime stage receipts and blocked
+  prototype-builder confidence 9+ unless overflow, focus, ARIA, composer, and
+  reduced-motion preflight evidence is present.
+- Blocked prototype approval before mutating prototype approval state when
+  required polish or accessibility reviews are missing or contain blocker/high
+  findings.
+
 ## [2.0.71] - 2026-05-04
 
 ### Added
