@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.80] - 2026-05-05
+
+### Added
+
+- Added `/supervibe-design` stage id registry enforcement for workflow
+  receipts, including fail-fast `agent-invocation.mjs --issue-receipt`
+  validation before a mistyped stage can enter the ledger.
+- Added pre-receipt `SpecialistQuestionContract` validation for design scratch
+  `question-proposals/*.json` artifacts and automatic
+  `.supervibe/memory/effectiveness.jsonl` entries for completed agent
+  invocations.
+- Added structured multi-select wizard decisions with `choiceIds[]` for valid
+  multi-choice axes and terminal support for `--choices` or answers like
+  `1 and 3`.
+
+### Changed
+
+- `supervibe-design --continue` now routes to the executable design planner and
+  emits one canonical `NEXT_ACTION`, one canonical `NEXT_QUESTION`, and a
+  machine JSON continuation object.
+- Design receipt validation now reports receipt-only runs and unknown legacy
+  stages as warnings instead of presenting `CHECKED: 0` as a fully green run.
+
+### Fixed
+
+- Detects incompatible duplicate `/supervibe-design` receipts for the same
+  artifact before stale or manually reissued receipts can mislead the planner.
+
 ## [2.0.79] - 2026-05-05
 
 ### Fixed

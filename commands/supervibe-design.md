@@ -29,12 +29,15 @@ The wizard state is persisted in `config.json.designWizard` and must include:
 - `questionQueue` - ordered one-question-at-a-time prompts for missing or conflicting decisions.
 - `questionProposals` - `SpecialistQuestionContract` records from the owning specialist/stage before durable work. The orchestrator may deduplicate and sort by impact, but it must not invent specialist questions itself.
 - `decisions` - axis, answer/default, source, confidence, quote/evidence, decisionUnlocked, and timestamp.
+- Multi-select axes must declare `multiChoice: true` and persist `choiceIds[]` alongside the backward-compatible `choiceId`. Do not collapse valid answers such as `1 and 3` into `custom` when both selected choice ids exist.
 - `guidedDefaultsChecklist` - shown when the user says to use defaults; every axis offers `Accept default / Compare alternatives / Customize`.
 - `coverage` - required axes, covered axes, missing axes, conflicts, and score.
 - `gates` - `tokensUnlocked` stays false until mandatory questions are closed or explicitly delegated/defaulted by the user.
 - `writeGate` - executable hard-stop for artifact writes. If `intake.needsQuestion=true`, `executionMode="agent-required-blocked"`, or `wizard.gates.tokensUnlocked=false`, ask exactly one blocking question and write only run-state or diagnostic scratch. Durable design artifacts, review styleboards, prototypes, tokens, and section markers are forbidden until the gate is ready.
 
 Each `SpecialistQuestionContract` proposal must include `stage`, `specialist`, `ownerAgent`, `question`, `why`, `whyNow`, `evidence[]`, `choices[]` with tradeoffs, structured `options[]` with `unlocks[]` and `risk`, `recommendedOption`, `freeformAllowed=true`, `blocks[]`, `artifactImpact`, `skipDefault`, and `canAnswerFromEvidence=false`. `validate-dynamic-question-systems` rejects proposals that are reusable catalog copy, lack specialist provenance, fail to name the artifact changed by the answer, omit skip/default behavior, omit current evidence, omit why-now timing, or ask something already answered by current evidence. Questions must read like state-aware specialist dialogue, not static wizard axes.
+
+Receipt issue is also a contract gate. `agent-invocation.mjs log --issue-receipt` and `workflow-receipt.mjs issue` must reject unknown `/supervibe-design` stage ids and must validate scratch `question-proposals/*.json` as `SpecialistQuestionContract` before issuing a receipt. A misspelled stage such as `stage-0-orchestration` is invalid; use the registry stage `stage-0-orchestrator`.
 
 Dynamic question shape:
 
@@ -106,6 +109,8 @@ node scripts/validate-design-agent-receipts.mjs
 ## Continuation Contract
 
 `/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the next mandatory approval gate, prototype feedback gate, or explicit blocker. Continue through all applicable non-blocking stages when the next stage can be completed from the current brief, approved artifacts, and documented safe defaults; stages may be marked `reuse`, `delegated`, `skipped`, or `N/A` only through documented triage. Delegated design decisions can fill safe defaults, but they cannot satisfy creative-direction selection, required design-system section approval, prototype approval, safety/policy gates, production approvals, or destructive-operation consent.
+
+Resume mode uses `supervibe-design --continue` or `node scripts/design-agent-plan.mjs --continue --status --plan-writes --slug <slug>`. The output must expose exactly one canonical `NEXT_ACTION` and one canonical `NEXT_QUESTION` for controllers, with any nested status/prewrite next fields namespaced so they cannot contradict the orchestration decision.
 
 Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Coverage Matrix Gate is incomplete for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
 

@@ -149,6 +149,45 @@ test("wizard keeps delegated specialist defaults behind a review gate", () => {
   assert.match(next.gates.blockedReason, /delegated decisions require review packet/);
 });
 
+test("wizard stores multi-select axis choices as structured choiceIds", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace with tool traces.",
+    target: "web",
+    mode: "design-system-only",
+  });
+  const question = state.questionQueue.find((item) => item.axis === "anti_generic_guardrail");
+  assert.equal(question.multiChoice, true);
+
+  const next = recordDesignWizardAnswer(state, {
+    axis: "anti_generic_guardrail",
+    choiceIds: ["avoid-generic-admin", "brand-distinct-but-usable"],
+    source: "user",
+    timestamp: "2026-05-04T00:00:00.000Z",
+  });
+
+  assert.deepEqual(next.decisions.anti_generic_guardrail.choiceIds, ["avoid-generic-admin", "brand-distinct-but-usable"]);
+  assert.equal(next.decisions.anti_generic_guardrail.choiceId, "avoid-generic-admin+brand-distinct-but-usable");
+  assert.equal(next.decisions.anti_generic_guardrail.multiChoice, true);
+  assert.ok(!next.questionQueue.some((item) => item.axis === "anti_generic_guardrail"));
+});
+
+test("wizard rejects multiple choices on single-select axes", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace with tool traces.",
+    target: "web",
+    mode: "design-system-only",
+  });
+
+  assert.throws(
+    () => recordDesignWizardAnswer(state, {
+      axis: "information_density",
+      choiceIds: ["balanced", "compact"],
+      source: "user",
+    }),
+    /accepts one choice/,
+  );
+});
+
 test("wizard renderer escapes untrusted markdown markers in visible copy", () => {
   const markdown = formatDesignWizardQuestion({
     locale: "en",

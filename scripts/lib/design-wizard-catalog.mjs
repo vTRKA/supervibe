@@ -33,6 +33,7 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
     prompt: "What must the design avoid so it does not become a generic admin interface?",
     decisionUnlocked: "anti-generic checklist, old-shell avoidance notes, and critique gate criteria",
     defaultChoiceId: "avoid-generic-admin",
+    multiChoice: true,
     choices: [
       choice("avoid-generic-admin", "Avoid generic SaaS admin", "Blocks safe blue/gray cards, default sidebars, and anonymous dashboards unless explicitly requested."),
       choice("avoid-old-shell-repaint", "Avoid repainting old shells", "Forces a new composition or interaction pattern instead of recoloring prior prototypes."),
@@ -136,6 +137,7 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
     prompt: "How should references influence this design?",
     decisionUnlocked: "reference scope, borrow/avoid list, and old-artifact reuse boundary",
     defaultChoiceId: "functional-only",
+    multiChoice: true,
     choices: [
       choice("functional-only", "Functional inventory only", "Preserves capabilities and flows while avoiding visual copying."),
       choice("ia-only", "Information architecture only", "Borrows navigation/grouping patterns; keeps visual system fresh."),
@@ -701,11 +703,20 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
       timestamp: answer.timestamp || new Date().toISOString(),
     };
   } else {
-    const choiceDef = axisDef?.choices.find((choiceItem) => choiceItem.id === answer.choiceId);
+    const choiceIds = normalizeWizardChoiceIds(answer, axisDef);
+    const selectedChoices = choiceIds
+      .map((choiceId) => axisDef?.choices.find((choiceItem) => choiceItem.id === choiceId))
+      .filter(Boolean);
+    const answerText = answer.value
+      || selectedChoices.map((choiceItem) => choiceItem.label).join(" + ")
+      || answer.choiceId
+      || "";
     next.decisions[axisId] = {
       axis: axisId,
-      answer: answer.value || choiceDef?.label || answer.choiceId || "",
-      choiceId: answer.choiceId || null,
+      answer: answerText,
+      choiceId: choiceIds.length === 1 ? choiceIds[0] : choiceIds.join("+") || null,
+      choiceIds,
+      multiChoice: axisDef?.multiChoice === true,
       source,
       confidence: Number(answer.confidence ?? 1),
       quote: answer.quote || null,
@@ -761,6 +772,31 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   next.questionQueue = (next.questionQueue || []).filter((question) => question.axis !== axisId);
   next.questionProposals = (next.questionProposals || []).filter((proposal) => proposal.axis !== axisId);
   return attachDesignWizardRuntime(next);
+}
+
+function normalizeWizardChoiceIds(answer = {}, axisDef = null) {
+  if (!axisDef) return [];
+  const rawIds = Array.isArray(answer.choiceIds)
+    ? answer.choiceIds
+    : splitChoiceIds(answer.choiceIds || answer.choiceId);
+  const uniqueIds = [...new Set(rawIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (uniqueIds.length > 1 && axisDef.multiChoice !== true) {
+    throw new Error(`Axis ${axisDef.id} accepts one choice; got ${uniqueIds.join(", ")}`);
+  }
+  const valid = new Set((axisDef.choices || []).map((choiceItem) => choiceItem.id));
+  const invalid = uniqueIds.filter((id) => !valid.has(id));
+  if (invalid.length > 0) {
+    throw new Error(`Axis ${axisDef.id} received unknown choice id(s): ${invalid.join(", ")}`);
+  }
+  return uniqueIds;
+}
+
+function splitChoiceIds(value = "") {
+  if (Array.isArray(value)) return value;
+  return String(value || "")
+    .split(/[,+;]|\s+(?:and|\u0438)\s+/i)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function designWizardBlockedReason({
@@ -922,6 +958,9 @@ export function formatDesignWizardProtocolQuestion(question = {}) {
     lines.push(`- ${safeVisibleMarkdown(item.label)}${suffix} - ${safeVisibleMarkdown(item.tradeoff || labels.noTradeoff)}`);
   }
   lines.push("", `${labels.freeForm}: ${question.freeFormPath || (locale === "ru" ? "Ответьте своими словами, если варианты не подходят." : "Answer in your own words if none of these fit.")}`);
+  if (question.multiChoice === true) {
+    lines.push(locale === "ru" ? "Можно выбрать несколько вариантов; они будут сохранены как choiceIds[]." : "Multiple choices are allowed; they will be stored as choiceIds[].");
+  }
   lines.push(`${labels.stop}: ${question.stopCondition || (locale === "ru" ? "Остановиться: сохранить состояние и не продолжать скрыто." : "Stop here - save state and make no hidden progress.")}`);
   return lines.join("\n");
 }
@@ -946,8 +985,12 @@ function formatDesignWizardConversationalQuestion(question = {}, options = {}) {
 
   lines.push("");
   lines.push(locale === "ru"
-    ? "Можно выбрать вариант выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения."
-    : "Pick one option above or answer in your own words; stop means I save the current state without hidden continuation.");
+    ? (question.multiChoice === true
+      ? "Можно выбрать один или несколько вариантов выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения."
+      : "Можно выбрать вариант выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения.")
+    : (question.multiChoice === true
+      ? "Pick one or more options above, or answer in your own words; stop means I save the current state without hidden continuation."
+      : "Pick one option above or answer in your own words; stop means I save the current state without hidden continuation."));
   return lines.join("\n");
 }
 
@@ -1950,6 +1993,7 @@ function axisQuestion(axisDef, locale = "en", strategy = {}) {
     whyNow: whyNowForQuestion(axisDef.id, normalized, strategy),
     evidence: evidenceForQuestion(axisDef.id, strategy),
     decisionUnlocked: axisCopy.decisionUnlocked,
+    multiChoice: axisDef.multiChoice === true,
     ifSkipped: normalized === "ru"
       ? "Рекомендованный дефолт можно использовать только если пользователь явно делегировал этот выбор."
       : "Only use the recommended default when the user explicitly delegates this axis.",
@@ -2126,6 +2170,7 @@ function questionFromSpecialistProposal(seed = {}, proposal = {}) {
     skipDefault: proposal.skipDefault || seed.ifSkipped,
     canAnswerFromEvidence: proposal.canAnswerFromEvidence === true,
     recommendedOption: proposal.recommendedOption || null,
+    multiChoice: proposal.multiChoice === true || seed.multiChoice === true,
     visibleOnlyWhenTrusted: trusted !== true,
     options,
     choices: options.map((option) => ({
@@ -2268,6 +2313,7 @@ function specialistQuestionProposal(question = {}) {
     locale: question.locale || "en",
     decisionUnlocked: question.decisionUnlocked || question.decision || metadata.artifactImpact,
     currentContext: `${question.axis || "design"} ${metadata.stage} ${metadata.specialist}`,
+    multiChoice: question.multiChoice === true,
     freeformAllowed: true,
     proposalSource: SPECIALIST_QUESTION_SOURCES.FALLBACK_SEED,
     visibility: "fallback-scratch",

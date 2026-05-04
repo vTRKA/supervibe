@@ -10,6 +10,9 @@ import {
 import {
   issueWorkflowInvocationReceipt,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  assertReceiptOutputContracts,
+} from "./lib/agent-output-contracts.mjs";
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
   claude: "claude-code-task-hook",
@@ -77,6 +80,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!taskSummary) throw new Error("--task required");
     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 10) {
       throw new Error("--confidence must be a number from 0 to 10");
+    }
+
+    if (truthyFlag(options["issue-receipt"] || options.issueReceipt)) {
+      preflightReceiptIssue({
+        options,
+        rootDir,
+        agentId,
+      });
     }
 
     const logPath = join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl");
@@ -163,6 +174,23 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
       traceId: options["trace-id"] || null,
       spanId: options["span-id"] || null,
     },
+  });
+}
+
+function preflightReceiptIssue({ options, rootDir, agentId }) {
+  const command = options.command || options.workflow;
+  const stage = options.stage || options["stage-id"];
+  const subjectId = options["subject-id"] || agentId;
+  const outputArtifacts = splitList(options["output-artifacts"] || options.outputArtifacts);
+  if (!command) throw new Error("--command required when --issue-receipt is set");
+  if (!stage) throw new Error("--stage required when --issue-receipt is set");
+  if (!outputArtifacts.length) throw new Error("--output-artifacts required when --issue-receipt is set");
+  assertReceiptOutputContracts({
+    rootDir,
+    command,
+    stage,
+    subjectId,
+    outputArtifacts,
   });
 }
 

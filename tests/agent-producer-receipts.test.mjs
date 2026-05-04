@@ -211,30 +211,27 @@ test("agent invocation CLI help exits cleanly before log validation", () => {
   assert.match(output, /--issue-receipt/);
 });
 
-test("agent producer validator requires canonical stage ids for skill-owned design artifacts", async () => {
+test("workflow receipt runtime rejects non-canonical design stage ids", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/tokens.css", ":root { --color-primary: #123456; }\n");
-    await issueWorkflowInvocationReceipt({
-      rootDir: root,
-      command: "/supervibe-design",
-      subjectType: "skill",
-      subjectId: "supervibe:brandbook",
-      skillId: "supervibe:brandbook",
-      stage: "candidate-design-system",
-      invocationReason: "brandbook skill produced candidate tokens",
-      outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
-      startedAt: "2026-05-03T00:00:00.000Z",
-      completedAt: "2026-05-03T00:01:00.000Z",
-      handoffId: "design-agent-chat",
-      secret: "test-secret",
-    });
-
-    const result = validateAgentProducerReceipts(root, { secret: "test-secret" });
-
-    assert.equal(result.pass, false);
-    assert.ok(result.issues.some((issue) => issue.code === "missing-agent-producer-receipt"));
-    assert.match(result.issues.find((issue) => issue.code === "missing-agent-producer-receipt")?.message || "", /supervibe:brandbook/);
+    await assert.rejects(
+      issueWorkflowInvocationReceipt({
+        rootDir: root,
+        command: "/supervibe-design",
+        subjectType: "skill",
+        subjectId: "supervibe:brandbook",
+        skillId: "supervibe:brandbook",
+        stage: "candidate-design-system",
+        invocationReason: "brandbook skill produced candidate tokens",
+        outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+        startedAt: "2026-05-03T00:00:00.000Z",
+        completedAt: "2026-05-03T00:01:00.000Z",
+        handoffId: "design-agent-chat",
+        secret: "test-secret",
+      }),
+      /unknown stage "candidate-design-system" for \/supervibe-design/,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

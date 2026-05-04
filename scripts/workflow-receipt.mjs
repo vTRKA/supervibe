@@ -12,6 +12,9 @@ import {
 import {
   formatWorkflowReceiptsReport,
 } from "./validate-workflow-receipts.mjs";
+import {
+  assertReceiptOutputContracts,
+} from "./lib/agent-output-contracts.mjs";
 
 process.on("uncaughtException", reportWorkflowReceiptError);
 process.on("unhandledRejection", reportWorkflowReceiptError);
@@ -92,6 +95,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const subjectType = inferSubjectType(options);
     const subjectId = inferSubjectId(options);
     const runTimestamp = options["run-timestamp"] || process.env.SUPERVIBE_RUN_TIMESTAMP || new Date().toISOString();
+    assertReceiptOutputContracts({
+      rootDir,
+      command,
+      stage: options.stage,
+      subjectId,
+      outputArtifacts: options.output,
+    });
     const result = await issueWorkflowInvocationReceipt({
       rootDir,
       command,

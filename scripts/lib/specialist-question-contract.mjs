@@ -28,6 +28,7 @@ export function buildSpecialistQuestionProposal({
   evidence = [],
   decisionUnlocked = null,
   currentContext = "",
+  multiChoice = false,
   freeformAllowed = true,
   proposalSource = SPECIALIST_QUESTION_SOURCES.CONTROLLER_RUNTIME,
   producer = null,
@@ -76,6 +77,7 @@ export function buildSpecialistQuestionProposal({
     evidence: [...evidence],
     decisionUnlocked,
     currentContext,
+    multiChoice: multiChoice === true,
     proposalSource,
     producer: normalizeQuestionProducer(producer, { ownerAgent: resolvedOwnerAgent, proposalSource }),
     visibility,
@@ -87,6 +89,7 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   requireContext = true,
   requireEvidenceDecision = true,
   requireRealSpecialistProposal = false,
+  requireDecisionUnlocked = false,
 } = {}) {
   const issues = [];
   const label = proposal.proposalId || "unknown-proposal";
@@ -161,6 +164,9 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   }
   if (requireEvidenceDecision && !proposal.decisionUnlocked && !proposal.artifactImpact) {
     issues.push(issue(file, "missing-specialist-question-decision", `${label} must name the artifact or decision unlocked by the answer`));
+  }
+  if (requireDecisionUnlocked && !proposal.decisionUnlocked) {
+    issues.push(issue(file, "missing-specialist-question-decision", `${label} must include decisionUnlocked for receipt-bound specialist question output`));
   }
   if (requireRealSpecialistProposal) {
     issues.push(...validateSpecialistQuestionProvenance(proposal, { file }));

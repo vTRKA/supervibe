@@ -681,6 +681,75 @@ test("design agent receipt validator rejects durable outputs without completed r
   }
 });
 
+test("design agent receipt validator labels receipt-only runs with warnings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-receipt-only-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/_agent-outputs/memory/summary.md", "# Memory lookup\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:project-memory",
+      skillId: "supervibe:project-memory",
+      stage: "stage-0-memory",
+      invocationReason: "project memory lookup",
+      outputArtifacts: [".supervibe/artifacts/_agent-outputs/memory/summary.md"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "agent-chat",
+    });
+
+    const result = validateDesignAgentInvocationReceipts(root);
+
+    assert.equal(result.pass, true);
+    assert.equal(result.checked, 0);
+    assert.equal(result.executionMode, "receipt-only");
+    assert.ok(result.warnings.some((warning) => warning.code === "design-receipts-without-durable-output-checks"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent receipt validator flags incompatible duplicate artifact receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-duplicate-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:project-memory",
+      skillId: "supervibe:project-memory",
+      stage: "stage-0-memory",
+      invocationReason: "bad duplicate direction proof",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "agent-chat",
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "second incompatible direction proof",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-04T00:02:00.000Z",
+      completedAt: "2026-05-04T00:03:00.000Z",
+      handoffId: "agent-chat",
+    });
+
+    const result = validateDesignAgentInvocationReceipts(root);
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "incompatible-design-receipts"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent plan consumes host-provided Tauri window metrics", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-window-metrics-"));
   try {

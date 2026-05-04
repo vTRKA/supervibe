@@ -21,6 +21,9 @@ import {
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
 import {
+  validateWorkflowStageId,
+} from "./workflow-stage-registry.mjs";
+import {
   expectedProducerReceiptsForDurableOutputs,
   validateHostInvocationProof,
 } from "./agent-producer-contract.mjs";
@@ -334,7 +337,7 @@ export function formatDesignPrewriteManifest(manifest = {}) {
     `NEXT_PRODUCER: ${formatProducerSummary(manifest.nextProducer)}`,
     `NEXT_QUESTION_SOURCE: ${manifest.nextQuestionSource || "none"}`,
     `NEXT_QUESTION_AXIS: ${manifest.nextQuestionAxis || "none"}`,
-    `NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
+    `PREWRITE_NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
     "FILES:",
   ];
   for (const file of manifest.files || []) {
@@ -360,6 +363,7 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
   const receipts = readAllReceipts(rootDir);
   const expected = expectedReceiptsForDurableOutputs(rootDir);
   const issues = [];
+  const warnings = [];
 
   for (const item of expected) {
     const matching = receipts.filter((receipt) => receiptMatches(receipt, item));
@@ -384,6 +388,9 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
     }
   }
 
+  issues.push(...detectIncompatibleDesignReceipts(receipts));
+  warnings.push(...detectDesignReceiptWarnings(receipts, expected));
+
   return {
     pass: issues.length === 0,
     checked: expected.length,
@@ -392,6 +399,7 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
     missingAgents: missingAgentsForIssues(issues),
     missingSubjects: missingSubjectsForIssues(issues),
     qualityImpact: qualityImpactForIssues(issues),
+    warnings,
     issues,
   };
 }
@@ -806,8 +814,8 @@ function formatProducerSummary(producer = null) {
 }
 
 function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues = [] } = {}) {
-  if (expected.length === 0) return "not-started";
   const designReceipts = receipts.filter((receipt) => receipt.command === "/supervibe-design" && !receipt.__invalidJson);
+  if (expected.length === 0) return designReceipts.length > 0 ? "receipt-only" : "not-started";
   const agentReceipts = designReceipts.filter((receipt) => receipt.agentId || receipt.subjectType === "agent");
   const skillReceipts = designReceipts.filter((receipt) => receipt.skillId || receipt.subjectType === "skill");
   const missingAgentIssues = issues.filter((issue) => issue.code === "missing-design-agent-receipt");
@@ -1046,7 +1054,7 @@ function formatQuestionProposalGate(plan = {}, question = {}) {
     `BLOCKED_AXIS: ${question.axis || "unknown"}`,
     `OWNER_AGENT: ${question.ownerAgent || question.specialist || "unknown"}`,
     `PRODUCER: ${target}`,
-    "NEXT_ACTION: dispatch the owner host agent for a scratch SpecialistQuestionContract proposal, issue a runtime receipt for that proposal artifact, then re-run the plan.",
+    "REQUIRED_ACTION: dispatch the owner host agent for a scratch SpecialistQuestionContract proposal, issue a runtime receipt for that proposal artifact, then re-run the plan.",
   ].join("\n");
 }
 
@@ -1080,6 +1088,65 @@ function qualityImpactForIssues(issues) {
   const missing = missingSubjectsForIssues(issues);
   if (missing.length === 0) return null;
   return `Durable design artifacts were found without completed specialist receipts for: ${missing.join(", ")}. Treat this run as degraded until real agent receipts are issued.`;
+}
+
+function detectDesignReceiptWarnings(receipts = [], expected = []) {
+  const warnings = [];
+  const validReceipts = receipts.filter((receipt) => !receipt.__invalidJson);
+  if (validReceipts.length > 0 && expected.length === 0) {
+    warnings.push({
+      code: "design-receipts-without-durable-output-checks",
+      file: ".supervibe/artifacts/_workflow-invocations/supervibe-design",
+      message: `found ${validReceipts.length} /supervibe-design receipt(s), but no durable design outputs were checked; treat this as receipt-only state, not a green completed run`,
+    });
+  }
+  for (const receipt of validReceipts) {
+    const stageCheck = validateWorkflowStageId({ command: receipt.command, stage: receipt.stage });
+    if (!stageCheck.pass) {
+      warnings.push({
+        code: "unknown-design-receipt-stage",
+        file: receipt.__file || "workflow receipt",
+        message: stageCheck.message,
+      });
+    }
+  }
+  return warnings;
+}
+
+function detectIncompatibleDesignReceipts(receipts = []) {
+  const groups = new Map();
+  for (const receipt of receipts || []) {
+    if (receipt.__invalidJson || receipt.command !== "/supervibe-design") continue;
+    const subjectType = receipt.subjectType || "unknown";
+    const subjectId = receipt.subjectId ?? receipt.agentId ?? receipt.skillId ?? "unknown";
+    for (const output of receipt.outputArtifacts || []) {
+      const artifact = normalizeRelPath(output);
+      const key = `${receipt.command}:${artifact}`;
+      const item = {
+        receipt,
+        artifact,
+        subjectType,
+        subjectId,
+        stage: receipt.stage || "unknown-stage",
+      };
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+  }
+
+  const issues = [];
+  for (const [key, items] of groups.entries()) {
+    const compatibleKeys = new Set(items.map((item) => `${item.subjectType}:${item.subjectId}@${item.stage}`));
+    if (compatibleKeys.size <= 1) continue;
+    const artifact = items[0]?.artifact || key;
+    issues.push({
+      code: "incompatible-design-receipts",
+      file: artifact,
+      expectedAgentId: null,
+      message: `${artifact}: multiple incompatible /supervibe-design receipts found for one artifact: ${[...compatibleKeys].join(", ")}`,
+    });
+  }
+  return issues;
 }
 
 function unique(values) {

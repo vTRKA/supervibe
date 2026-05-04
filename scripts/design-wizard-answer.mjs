@@ -14,6 +14,7 @@ const VALUE_ARGS = new Map([
   ["--axis", "axis"],
   ["--choice", "choiceId"],
   ["--choice-id", "choiceId"],
+  ["--choices", "choiceIds"],
   ["--value", "value"],
   ["--answer", "value"],
   ["--source", "source"],
@@ -96,18 +97,20 @@ async function main() {
       }
     } else {
       const targetQuestion = state.questionQueue.find((question) => question.axis === axis);
-      const selectedChoiceId = resolveChoiceId({
+      const selectedChoiceIds = resolveChoiceIds({
         question: targetQuestion,
         choiceId: options.choiceId || "",
+        choiceIds: options.choiceIds || "",
         value: options.value || "",
       });
       state = recordDesignWizardAnswer(state, {
         axis,
-        choiceId: selectedChoiceId,
+        choiceId: selectedChoiceIds[0] || "",
+        choiceIds: selectedChoiceIds,
         value: options.value || "",
         source,
         timestamp,
-        quote: options.quote || options.value || selectedChoiceId || "CLI-recorded design wizard answer",
+        quote: options.quote || options.value || selectedChoiceIds.join(",") || "CLI-recorded design wizard answer",
       });
       updatedAxes.push(axis);
     }
@@ -156,7 +159,12 @@ function parseArgs(argv) {
     if (!VALUE_ARGS.has(item)) throw new Error(`Unknown argument: ${item}`);
     const value = argv[index + 1];
     if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${item}`);
-    options[VALUE_ARGS.get(item)] = value;
+    const target = VALUE_ARGS.get(item);
+    if ((target === "choiceId" || target === "choiceIds") && options[target]) {
+      options[target] = `${options[target]},${value}`;
+    } else {
+      options[target] = value;
+    }
     index += 1;
   }
   return options;
@@ -264,28 +272,54 @@ function recommendedChoiceFor(question = {}) {
   return (question.choices || []).find((choice) => choice.id === recommendedId) || question.choices?.[0] || null;
 }
 
-function resolveChoiceId({ question = null, choiceId = "", value = "" } = {}) {
-  if (choiceId) return choiceId;
-  const inferred = inferChoiceIdFromAnswer(question, value);
-  if (inferred) return inferred;
-  return question?.recommendedOption || question?.choices?.find((choice) => choice.recommended)?.id || "";
+function resolveChoiceIds({ question = null, choiceId = "", choiceIds = "", value = "" } = {}) {
+  const explicit = splitChoiceIds(choiceIds || choiceId);
+  if (explicit.length > 0) return explicit;
+  const inferred = inferChoiceIdsFromAnswer(question, value);
+  if (inferred.length > 0) return inferred;
+  return [question?.recommendedOption || question?.choices?.find((choice) => choice.recommended)?.id || ""].filter(Boolean);
 }
 
-function inferChoiceIdFromAnswer(question = null, value = "") {
+function inferChoiceIdsFromAnswer(question = null, value = "") {
   const normalized = normalizeChoiceText(value);
-  if (!question || !normalized) return "";
+  if (!question || !normalized) return [];
   const choices = question.choices || [];
-  const exact = choices.find((choice) => normalizeChoiceText(choice.id) === normalized);
-  if (exact) return exact.id;
-  const labelMatch = choices.find((choice) => {
+  const numeric = numericChoiceIds(choices, value);
+  if (numeric.length > 0) return numeric;
+  const direct = splitChoiceIds(value);
+  const exactMatches = direct
+    .map((part) => choices.find((choice) => normalizeChoiceText(choice.id) === normalizeChoiceText(part)))
+    .filter(Boolean)
+    .map((choice) => choice.id);
+  if (exactMatches.length > 0) return [...new Set(exactMatches)];
+  const labelMatches = choices.filter((choice) => {
     const label = normalizeChoiceText(choice.label);
     return label === normalized || label.includes(normalized) || normalized.includes(label);
-  });
-  if (labelMatch) return labelMatch.id;
+  }).map((choice) => choice.id);
+  if (labelMatches.length > 0) return [...new Set(labelMatches)];
   if (question.axis === "viewport" && /\b\d{3,4}x\d{3,4}\b/.test(normalized)) {
-    return choices.some((choice) => choice.id === "custom") ? "custom" : "";
+    return choices.some((choice) => choice.id === "custom") ? ["custom"] : [];
   }
-  return "";
+  return [];
+}
+
+function splitChoiceIds(value = "") {
+  return String(value || "")
+    .split(/[,+;]|\s+(?:and|\u0438)\s+/i)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function numericChoiceIds(choices = [], value = "") {
+  const matches = String(value || "").match(/\b\d+\b/g) || [];
+  const ids = [];
+  for (const match of matches) {
+    const index = Number(match) - 1;
+    if (Number.isInteger(index) && index >= 0 && index < choices.length) {
+      ids.push(choices[index].id);
+    }
+  }
+  return [...new Set(ids)];
 }
 
 function normalizeChoiceText(value = "") {
@@ -301,10 +335,11 @@ function usage() {
     "SUPERVIBE_DESIGN_WIZARD_ANSWER_HELP",
     "USAGE:",
     "  node scripts/design-wizard-answer.mjs --slug <slug> --axis <axis> --choice <choice-id>",
+    "  node scripts/design-wizard-answer.mjs --slug <slug> --axis <axis> --choices <choice-id-1,choice-id-2>",
     "  node scripts/design-wizard-answer.mjs --config <path> --axis viewport --answer 1920x1080",
     "",
     "NOTES:",
-    "  --answer is an alias for --value.",
+    "  --answer is an alias for --value; multi-choice axes accept --choices or answers like \"1 and 3\".",
     "  Unknown arguments fail fast.",
     "  config.json writes use a lock, atomic rename, and configRevision increment.",
   ].join("\n");

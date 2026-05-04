@@ -63,9 +63,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   });
   const prewriteManifest = buildDesignPrewriteManifest(plan, { slug });
   const nextDispatch = nextDispatchTarget(plan, prewriteManifest.nextProducer, prewriteManifest);
+  const continuation = canonicalDesignContinuation({ plan, prewriteManifest, nextDispatch });
 
   if (json) {
-    console.log(JSON.stringify({ intake, plan, prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null }, null, 2));
+    console.log(JSON.stringify({
+      intake,
+      plan,
+      prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null,
+      continuation,
+    }, null, 2));
   } else {
     console.log("SUPERVIBE_DESIGN_AGENT_PLAN");
     console.log("STAGES: intake -> candidate DS -> review styleboard -> approval -> prototype unlock");
@@ -80,6 +86,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
+    console.log(`NEXT_ACTION: ${continuation.nextAction}`);
+    console.log(`NEXT_QUESTION: ${continuation.nextQuestion}`);
     console.log(`NEXT_DISPATCH: ${formatDispatchTarget(nextDispatch)}`);
     console.log(`NEXT_HOST_DISPATCH: ${formatHostDispatchTarget(nextDispatch)}`);
     console.log(`NEXT_SKILL_PRODUCER: ${formatSkillProducerTarget(prewriteManifest.nextProducer)}`);
@@ -98,13 +106,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (status) {
       console.log(formatDesignWizardStatus(plan.wizard));
       if (slug) {
-        console.log(formatDesignWorkflowStatus(readDesignWorkflowStatus(projectRoot, { slug })));
+        const workflowStatus = formatDesignWorkflowStatus(readDesignWorkflowStatus(projectRoot, { slug }));
+        console.log(dispatchHostAgents ? namespaceNestedNextLines(workflowStatus, "STATUS") : workflowStatus);
       }
     }
     if (planWrites) {
       console.log(formatDesignPrewriteManifest(prewriteManifest));
     }
     if (dispatchHostAgents) {
+      console.log("SUPERVIBE_DESIGN_CONTINUE");
+      console.log(`MACHINE_JSON: ${JSON.stringify(continuation.machine)}`);
       console.log("DISPATCH_HOST_AGENTS:");
       console.log(dispatchGuidance(nextDispatch));
     }
@@ -113,6 +124,54 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }
   }
+}
+
+function namespaceNestedNextLines(text = "", namespace = "STATUS") {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^NEXT_ACTION:/, `${namespace}_NEXT_ACTION:`).replace(/^NEXT_QUESTION:/, `${namespace}_NEXT_QUESTION:`))
+    .join("\n");
+}
+
+function canonicalDesignContinuation({ plan = {}, prewriteManifest = {}, nextDispatch = null } = {}) {
+  const question = plan.writeGate?.nextQuestion || null;
+  const nextAction = nextDispatch
+    ? `dispatch:${nextDispatch.producerType}:${nextDispatch.producerId}@${nextDispatch.stageId}`
+    : question
+      ? `answer:${question.source || "question"}:${question.question?.axis || prewriteManifest.nextQuestionAxis || "unknown"}`
+      : prewriteManifest.nextProducer
+        ? `produce:${prewriteManifest.nextProducer.producerType}:${prewriteManifest.nextProducer.producerId}@${prewriteManifest.nextProducer.stageId}`
+        : plan.writeGate?.durableWritesAllowed === true
+          ? "write:durable-design-artifacts"
+          : "none";
+  const nextQuestion = question
+    ? `${question.source || "question"}:${question.question?.axis || prewriteManifest.nextQuestionAxis || "unknown"}`
+    : "none";
+  return {
+    nextAction,
+    nextQuestion,
+    machine: {
+      schemaVersion: 1,
+      command: "/supervibe-design",
+      slug: plan.slug || null,
+      executionMode: plan.executionStatus?.executionMode || null,
+      writeGateAllowed: plan.writeGate?.durableWritesAllowed === true,
+      nextAction,
+      nextQuestion,
+      nextDispatch: nextDispatch
+        ? {
+            producerType: nextDispatch.producerType,
+            producerId: nextDispatch.producerId,
+            stageId: nextDispatch.stageId,
+            outputArtifact: nextDispatch.outputArtifact || null,
+            reason: nextDispatch.reason || null,
+          }
+        : null,
+      nextProducer: prewriteManifest.nextProducer || null,
+      nextQuestionSource: prewriteManifest.nextQuestionSource || question?.source || null,
+      nextQuestionAxis: prewriteManifest.nextQuestionAxis || question?.question?.axis || null,
+    },
+  };
 }
 
 function nextDispatchTarget(plan = {}, producer = null, manifest = {}) {

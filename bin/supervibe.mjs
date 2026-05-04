@@ -228,10 +228,13 @@ function formatUnknownCommand(commandName) {
 }
 
 function isDesignDiagnosticInvocation(args = []) {
-  return args[0] === "status" || args.includes("--status") || args.includes("--plan-writes");
+  return args[0] === "status" || args.includes("--status") || args.includes("--plan-writes") || args.includes("--continue");
 }
 
 function normalizeDesignDiagnosticArgs(args = []) {
   const rest = args[0] === "status" ? args.slice(1) : args;
-  return rest.includes("--status") ? rest : ["--status", ...rest];
+  const withStatus = rest.includes("--status") ? rest : ["--status", ...rest];
+  return withStatus.includes("--continue") && !withStatus.includes("--plan-writes")
+    ? ["--plan-writes", ...withStatus]
+    : withStatus;
 }

@@ -2,6 +2,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import {
+  assertWorkflowStageId,
+} from "./workflow-stage-registry.mjs";
 
 export const WORKFLOW_RECEIPT_ISSUER = "supervibe-workflow-receipt-runtime";
 
@@ -64,6 +67,7 @@ export async function issueWorkflowInvocationReceipt({
   if (!invocationReason) throw new Error("invocationReason required");
   if (!handoffId) throw new Error("handoffId required");
   if (!outputArtifacts?.length) throw new Error("outputArtifacts required");
+  assertWorkflowStageId({ command, stage });
   if (isHostAgentSubject(subjectType) && !hostInvocation && !allowMissingHostInvocationProof) {
     throw new Error("hostInvocation proof required for agent, worker, and reviewer receipts");
   }

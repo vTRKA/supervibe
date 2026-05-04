@@ -60,6 +60,7 @@ export async function logInvocation(entry) {
   await mkdir(dirname(_logPath), { recursive: true });
   await appendFile(_logPath, JSON.stringify(record) + '\n');
   await writeStructuredAgentOutput(record);
+  await appendEffectivenessRecord(record);
   return record;
 }
 
@@ -217,6 +218,36 @@ async function writeStructuredAgentOutput(record = {}) {
   };
   await writeFile(join(dir, 'agent-output.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   await writeFile(join(dir, 'summary.md'), formatAgentOutputSummary(payload), 'utf8');
+}
+
+async function appendEffectivenessRecord(record = {}) {
+  const rootDir = rootDirFromInvocationLogPath();
+  const path = join(rootDir, '.supervibe', 'memory', 'effectiveness.jsonl');
+  const confidence = typeof record.confidence_score === 'number' ? record.confidence_score : null;
+  const status = String(record.status || 'completed').toLowerCase();
+  const outcome = status === 'failed' || status === 'error'
+    ? 'failed'
+    : confidence !== null && confidence >= 9
+      ? 'success'
+      : 'partial';
+  const blockers = [];
+  if (record.evidence_gate?.pass === false) blockers.push('missing-context');
+  if (!record.evidence?.verificationCommands?.length) blockers.push('missing-verification');
+  const entry = {
+    ts: record.ts,
+    agent: record.agent_id,
+    task: record.task_summary,
+    outcome,
+    iterations: 1,
+    blockers: blockers.length ? blockers : ['none'],
+    confidence,
+    userCorrections: record.user_corrections || 0,
+    verification: record.evidence?.verificationCommands || [],
+    notes: outcome === 'success' ? 'auto-logged from completed agent invocation' : 'auto-logged from agent invocation; review recommended before final acceptance',
+    invocationId: record.invocation_id,
+  };
+  await mkdir(dirname(path), { recursive: true });
+  await appendFile(path, JSON.stringify(entry) + '\n', 'utf8');
 }
 
 function formatAgentOutputSummary(payload = {}) {
