@@ -342,6 +342,38 @@ test("design agent plan localizes runtime dispatch question for Russian briefs",
   assert.match(prompt, /runtime receipts|Запустить host agents|Только scratch|Остановиться/);
 });
 
+test("design agent plan CLI emits Russian output as UTF-8, not mojibake", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-ru-output-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      brief: "Использовать безопасные дефолты для новой дизайн-системы агентского чата.",
+      target: "web",
+      mode: "design-system-only",
+      designWizard: {
+        decisions: completedWizardDecisions(),
+      },
+    }, null, 2)}\n`);
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /Запустить host agents|Только scratch|Остановиться/);
+    assert.doesNotMatch(output, /(?:\u0420[\u0080-\u00bf]|\u0421[\u0080-\u00bf])/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent plan inserts functional reference inventory before creative direction for old prototypes", () => {
   const intake = {
     needsQuestion: false,
@@ -426,13 +458,86 @@ test("design write gate blocks durable writes after wizard completion until runt
     assert.equal(plan.executionStatus.agentsInstalled, true);
     assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
     assert.equal(plan.executionStatus.receiptGate, "pending-runtime-agent-receipts");
-    assert.equal(plan.executionStatus.hostDispatchAvailable, false);
+    assert.equal(plan.executionStatus.hostDispatchAvailable, true);
+    assert.equal(plan.executionStatus.hostInvocationsLogged, false);
     assert.equal(plan.executionStatus.agentInvocationsCompleted, false);
     assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
     assert.ok(plan.executionStatus.missingRuntimeProofs.some((proof) => proof.subjectId === "creative-director"));
     assert.equal(plan.writeGate.durableWritesAllowed, false);
     assert.ok(plan.writeGate.blockedReasons.some((reason) => reason.code === "pending-runtime-agent-receipts"));
     assert.match(formatDesignPlanPrompt(plan), /Runtime agent receipts are missing/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent plan uses the same Codex host dispatch capability as command agent plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-host-dispatch-"));
+  try {
+    await writeUtf8(root, "AGENTS.md", "# test host marker\n");
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+      "--host",
+      "codex",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /HOST_DISPATCH_AVAILABLE: true/);
+    assert.match(output, /HOST_DISPATCH: codex:supported/);
+    assert.match(output, /HOST_TOOL: spawn_agent/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent plan respects persisted reference scope before choosing next question", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-reference-scope-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      brief: "Create a new desktop agent chat workspace with approvals and traces; study docs/old prototypes.",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+      designWizard: {
+        decisions: {
+          viewport: { axis: "viewport", answer: "1440x900", choiceId: "custom", source: "user" },
+          reference_borrow_avoid: {
+            axis: "reference_borrow_avoid",
+            choiceId: "functional-only",
+            answer: "Functional inventory only",
+            source: "user",
+          },
+        },
+      },
+    }, null, 2)}\n`);
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+      "--status",
+      "--plan-writes",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /OLD_ARTIFACT_SCOPE_REQUIRED: false/);
+    assert.doesNotMatch(output, /NEXT_BLOCKING_QUESTION:|Old artifact reference scope|existing-artifacts-ambiguous-brief/);
+    assert.match(output, /SUPERVIBE_DESIGN_WIZARD_STATUS[\s\S]*NEXT: anti_generic_guardrail/);
+    assert.match(output, /NEXT_QUESTION_SOURCE: specialist-question-gate/);
+    assert.match(output, /NEXT_QUESTION_AXIS: anti_generic_guardrail/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

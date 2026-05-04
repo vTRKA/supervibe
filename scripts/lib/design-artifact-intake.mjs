@@ -247,15 +247,25 @@ export async function findExistingDesignArtifacts({ projectRoot = process.cwd(),
     .slice(0, limit);
 }
 
-export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = process.cwd(), limit = 8 } = {}) {
-  const artifacts = await findExistingDesignArtifacts({ projectRoot, limit });
+export async function evaluateDesignArtifactIntake({
+  brief = "",
+  projectRoot = process.cwd(),
+  limit = 8,
+  referenceScopeDecision: providedReferenceScopeDecision = null,
+  currentSlug = "",
+} = {}) {
+  const allArtifacts = await findExistingDesignArtifacts({ projectRoot, limit });
+  const artifacts = currentSlug
+    ? allArtifacts.filter((artifact) => artifact.slug !== currentSlug)
+    : allArtifacts;
   const text = String(brief ?? "");
   const explicitFresh = hasAnyPattern(text, FRESH_PATTERNS);
   const explicitReuse = hasAnyPattern(text, REUSE_PATTERNS);
   const hasExisting = artifacts.length > 0;
   const oldArtifactReferences = findOldArtifactReferences(text);
   const referenceSources = findDesignReferenceSources(text);
-  const referenceScopeDecision = detectExplicitReferenceScope(text);
+  const referenceScopeDecision = normalizeReferenceScopeDecision(providedReferenceScopeDecision)
+    || detectExplicitReferenceScope(text);
 
   if (oldArtifactReferences.length > 0 && !referenceScopeDecision) {
     return {
@@ -312,6 +322,23 @@ export async function evaluateDesignArtifactIntake({ brief = "", projectRoot = p
   }
 
   return { mode: "ask", needsQuestion: true, reason: "existing-artifacts-ambiguous-brief", artifacts, oldArtifactReferences, referenceSources, referenceScopeDecision };
+}
+
+function normalizeReferenceScopeDecision(decision = null) {
+  if (!decision || typeof decision !== "object") return null;
+  const choiceId = String(decision.choiceId || decision.id || "").trim();
+  if (!choiceId) return null;
+  return {
+    axis: "reference_borrow_avoid",
+    answer: decision.answer || decision.value || choiceId,
+    choiceId,
+    source: decision.source || "config.json",
+    confidence: Number(decision.confidence ?? 0.9),
+    quote: decision.quote || "Persisted reference scope decision",
+    prompt: decision.prompt || "How should references influence this design?",
+    decisionUnlocked: decision.decisionUnlocked || "reference scope, borrow/avoid list, and old-artifact reuse boundary",
+    timestamp: decision.timestamp || "1970-01-01T00:00:00.000Z",
+  };
 }
 
 export function buildReferenceInventoryPlan({ slug = "", intake = null } = {}) {

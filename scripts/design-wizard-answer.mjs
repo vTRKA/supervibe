@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,102 +8,229 @@ import {
   recordDesignWizardAnswer,
 } from "./lib/design-wizard-catalog.mjs";
 
-function arg(name, fallback = "") {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] : fallback;
-}
+const VALUE_ARGS = new Map([
+  ["--root", "root"],
+  ["--slug", "slug"],
+  ["--axis", "axis"],
+  ["--choice", "choiceId"],
+  ["--choice-id", "choiceId"],
+  ["--value", "value"],
+  ["--answer", "value"],
+  ["--source", "source"],
+  ["--timestamp", "timestamp"],
+  ["--config", "configPath"],
+  ["--quote", "quote"],
+  ["--expected-revision", "expectedRevision"],
+]);
 
-function hasFlag(name) {
-  return process.argv.includes(name);
-}
+const BOOLEAN_ARGS = new Map([
+  ["--accept-recommended-remaining", "acceptRecommendedRemaining"],
+  ["--help", "help"],
+]);
+
+const CONFIG_LOCK_TIMEOUT_MS = 10_000;
+const CONFIG_LOCK_RETRY_MS = 20;
+const CONFIG_LOCK_STALE_MS = 120_000;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const root = arg("--root", process.cwd());
-  const slug = arg("--slug", "");
-  const axis = arg("--axis", "");
-  const choiceId = arg("--choice", arg("--choice-id", ""));
-  const value = arg("--value", "");
-  const source = arg("--source", "user");
-  const timestamp = arg("--timestamp", new Date().toISOString());
-  const acceptRecommendedRemaining = hasFlag("--accept-recommended-remaining");
-  const configPath = arg("--config", slug
+  main().catch((error) => fail(error.message));
+}
+
+async function main() {
+  const options = parseArgs(process.argv);
+  if (options.help) {
+    console.log(usage());
+    return;
+  }
+
+  const root = options.root || process.cwd();
+  const slug = options.slug || "";
+  const axis = options.axis || "";
+  const source = options.source || "user";
+  const timestamp = options.timestamp || new Date().toISOString();
+  const acceptRecommendedRemaining = options.acceptRecommendedRemaining === true;
+  const configPath = options.configPath || (slug
     ? join(root, ".supervibe", "artifacts", "prototypes", slug, "config.json")
     : "");
 
-  if (!configPath) fail("Missing --slug or --config");
-  if (!axis && !acceptRecommendedRemaining) fail("Missing --axis or --accept-recommended-remaining");
+  if (!configPath) throw new Error("Missing --slug or --config");
+  if (!axis && !acceptRecommendedRemaining) throw new Error("Missing --axis or --accept-recommended-remaining");
 
-  const config = await readDesignConfig(configPath);
-  const initialDecisions = extractPersistedDesignDecisions(config);
-  let state = buildDesignWizardState({
-    brief: config.brief || config.userBrief || "",
-    target: config.target || "unknown",
-    designSystemStatus: config.designSystemStatus || config.designSystem?.status || "missing",
-    mode: config.mode || config.designWizard?.mode || null,
-    currentWindow: config.currentWindow || null,
-    deviceScaleFactor: config.deviceScaleFactor ?? null,
-    initialDecisions,
-    locale: config.locale || config.designWizard?.locale || null,
-    timestamp,
-  });
-
+  let finalState = null;
+  let finalRevision = 0;
   const updatedAxes = [];
-  if (acceptRecommendedRemaining) {
-    for (const question of [...state.questionQueue]) {
-      const selected = recommendedChoiceFor(question);
-      if (!selected) continue;
+
+  await withDesignConfigLock(configPath, async () => {
+    const config = await readDesignConfig(configPath);
+    const currentRevision = designConfigRevision(config);
+    if (options.expectedRevision !== undefined && String(options.expectedRevision) !== String(currentRevision)) {
+      throw new Error(`config revision mismatch: expected ${options.expectedRevision}, got ${currentRevision}`);
+    }
+
+    const initialDecisions = extractPersistedDesignDecisions(config);
+    let state = buildDesignWizardState({
+      brief: config.brief || config.userBrief || "",
+      target: config.target || "unknown",
+      designSystemStatus: config.designSystemStatus || config.designSystem?.status || "missing",
+      mode: config.mode || config.designWizard?.mode || null,
+      currentWindow: config.currentWindow || null,
+      deviceScaleFactor: config.deviceScaleFactor ?? null,
+      initialDecisions,
+      locale: config.locale || config.designWizard?.locale || null,
+      timestamp,
+    });
+
+    if (acceptRecommendedRemaining) {
+      for (const question of [...state.questionQueue]) {
+        const selected = recommendedChoiceFor(question);
+        if (!selected) continue;
+        state = recordDesignWizardAnswer(state, {
+          axis: question.axis,
+          choiceId: selected.id,
+          value: selected.label,
+          source,
+          timestamp,
+          quote: `Accepted specialist recommendation for ${question.axis}.`,
+        });
+        updatedAxes.push(question.axis);
+      }
+    } else {
+      const targetQuestion = state.questionQueue.find((question) => question.axis === axis);
+      const selectedChoiceId = resolveChoiceId({
+        question: targetQuestion,
+        choiceId: options.choiceId || "",
+        value: options.value || "",
+      });
       state = recordDesignWizardAnswer(state, {
-        axis: question.axis,
-        choiceId: selected.id,
-        value: selected.label,
+        axis,
+        choiceId: selectedChoiceId,
+        value: options.value || "",
         source,
         timestamp,
-        quote: `Accepted specialist recommendation for ${question.axis}.`,
+        quote: options.quote || options.value || selectedChoiceId || "CLI-recorded design wizard answer",
       });
-      updatedAxes.push(question.axis);
+      updatedAxes.push(axis);
     }
-  } else {
-    const targetQuestion = state.questionQueue.find((question) => question.axis === axis);
-    const selectedChoiceId = choiceId || targetQuestion?.recommendedOption || targetQuestion?.choices?.find((choice) => choice.recommended)?.id || "";
-    state = recordDesignWizardAnswer(state, {
-      axis,
-      choiceId: selectedChoiceId,
-      value,
-      source,
-      timestamp,
-      quote: arg("--quote", value || selectedChoiceId || "CLI-recorded design wizard answer"),
-    });
-    updatedAxes.push(axis);
-  }
 
-  const nextConfig = {
-    ...config,
-    mode: state.mode || config.mode || null,
-    target: state.target || config.target || "unknown",
-    designWizard: state,
-    updatedAt: timestamp,
-  };
-  await mkdir(dirname(configPath), { recursive: true });
-  await writeFile(configPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
+    finalRevision = currentRevision + 1;
+    const nextConfig = {
+      ...config,
+      mode: state.mode || config.mode || null,
+      target: state.target || config.target || "unknown",
+      configRevision: finalRevision,
+      designWizard: {
+        ...state,
+        configRevision: finalRevision,
+      },
+      updatedAt: timestamp,
+    };
+    await writeDesignConfigAtomic(configPath, nextConfig);
+    finalState = state;
+  });
 
   console.log([
     "SUPERVIBE_DESIGN_WIZARD_ANSWER",
     `CONFIG: ${normalizePath(configPath)}`,
+    `CONFIG_REVISION: ${finalRevision}`,
     `AXES_UPDATED: ${updatedAxes.join(",") || "none"}`,
     `SOURCE: ${source}`,
-    `TOKENS_UNLOCKED: ${state.gates?.tokensUnlocked === true}`,
-    `DELEGATED_REVIEW_REQUIRED: ${state.gates?.delegatedReviewRequired === true}`,
-    `NEXT: ${state.questionQueue?.[0]?.axis || "none"}`,
+    `TOKENS_UNLOCKED: ${finalState?.gates?.tokensUnlocked === true}`,
+    `DELEGATED_REVIEW_REQUIRED: ${finalState?.gates?.delegatedReviewRequired === true}`,
+    `NEXT: ${finalState?.questionQueue?.[0]?.axis || "none"}`,
   ].join("\n"));
 }
 
+function parseArgs(argv) {
+  const options = {
+    root: process.cwd(),
+    source: "user",
+    timestamp: new Date().toISOString(),
+  };
+  for (let index = 2; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (!item.startsWith("--")) throw new Error(`Unexpected positional argument: ${item}`);
+    if (BOOLEAN_ARGS.has(item)) {
+      options[BOOLEAN_ARGS.get(item)] = true;
+      continue;
+    }
+    if (!VALUE_ARGS.has(item)) throw new Error(`Unknown argument: ${item}`);
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${item}`);
+    options[VALUE_ARGS.get(item)] = value;
+    index += 1;
+  }
+  return options;
+}
+
 async function readDesignConfig(configPath) {
-  if (!existsSync(configPath)) return {};
+  let raw = "";
   try {
-    return JSON.parse(await readFile(configPath, "utf8"));
+    raw = await readFile(configPath, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") return {};
+    throw error;
+  }
+  try {
+    return JSON.parse(raw.replace(/^\uFEFF/, ""));
   } catch (error) {
     throw new Error(`Could not parse ${configPath}: ${error.message}`);
   }
+}
+
+async function writeDesignConfigAtomic(configPath, config) {
+  await mkdir(dirname(configPath), { recursive: true });
+  const tempPath = `${configPath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await writeFile(tempPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+    await rename(tempPath, configPath);
+  } catch (error) {
+    await rm(tempPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function withDesignConfigLock(configPath, callback) {
+  await mkdir(dirname(configPath), { recursive: true });
+  const lockPath = `${configPath}.lock`;
+  const started = Date.now();
+  let handle = null;
+  while (!handle) {
+    try {
+      handle = await open(lockPath, "wx");
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      await removeStaleLock(lockPath);
+      if (Date.now() - started > CONFIG_LOCK_TIMEOUT_MS) {
+        throw new Error(`Timed out waiting for config lock: ${normalizePath(lockPath)}`);
+      }
+      await sleep(CONFIG_LOCK_RETRY_MS);
+    }
+  }
+
+  try {
+    await handle.writeFile(`${process.pid}:${new Date().toISOString()}\n`, "utf8");
+    return await callback();
+  } finally {
+    await handle.close();
+    await unlink(lockPath).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
+}
+
+async function removeStaleLock(lockPath) {
+  try {
+    const info = await stat(lockPath);
+    if (Date.now() - info.mtimeMs > CONFIG_LOCK_STALE_MS) await unlink(lockPath);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
+function designConfigRevision(config = {}) {
+  const raw = config.configRevision ?? config.designWizard?.configRevision ?? config.revision ?? 0;
+  const number = Number(raw);
+  return Number.isInteger(number) && number >= 0 ? number : 0;
 }
 
 function extractPersistedDesignDecisions(config = {}) {
@@ -138,8 +264,54 @@ function recommendedChoiceFor(question = {}) {
   return (question.choices || []).find((choice) => choice.id === recommendedId) || question.choices?.[0] || null;
 }
 
+function resolveChoiceId({ question = null, choiceId = "", value = "" } = {}) {
+  if (choiceId) return choiceId;
+  const inferred = inferChoiceIdFromAnswer(question, value);
+  if (inferred) return inferred;
+  return question?.recommendedOption || question?.choices?.find((choice) => choice.recommended)?.id || "";
+}
+
+function inferChoiceIdFromAnswer(question = null, value = "") {
+  const normalized = normalizeChoiceText(value);
+  if (!question || !normalized) return "";
+  const choices = question.choices || [];
+  const exact = choices.find((choice) => normalizeChoiceText(choice.id) === normalized);
+  if (exact) return exact.id;
+  const labelMatch = choices.find((choice) => {
+    const label = normalizeChoiceText(choice.label);
+    return label === normalized || label.includes(normalized) || normalized.includes(label);
+  });
+  if (labelMatch) return labelMatch.id;
+  if (question.axis === "viewport" && /\b\d{3,4}x\d{3,4}\b/.test(normalized)) {
+    return choices.some((choice) => choice.id === "custom") ? "custom" : "";
+  }
+  return "";
+}
+
+function normalizeChoiceText(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/\s*[x×]\s*/g, "x").replace(/\s+/g, " ");
+}
+
 function normalizePath(path = "") {
   return String(path || "").replace(/\\/g, "/");
+}
+
+function usage() {
+  return [
+    "SUPERVIBE_DESIGN_WIZARD_ANSWER_HELP",
+    "USAGE:",
+    "  node scripts/design-wizard-answer.mjs --slug <slug> --axis <axis> --choice <choice-id>",
+    "  node scripts/design-wizard-answer.mjs --config <path> --axis viewport --answer 1920x1080",
+    "",
+    "NOTES:",
+    "  --answer is an alias for --value.",
+    "  Unknown arguments fail fast.",
+    "  config.json writes use a lock, atomic rename, and configRevision increment.",
+  ].join("\n");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function fail(message) {

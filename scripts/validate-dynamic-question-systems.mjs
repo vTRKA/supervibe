@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,7 +34,7 @@ const POST_DELIVERY_CONTEXTS = Object.freeze([
   "design_delivery",
 ]);
 
-export function validateDynamicQuestionSystems() {
+export function validateDynamicQuestionSystems(options = {}) {
   const issues = [];
   const wizard = buildDesignWizardState({
     brief: "Tauri desktop app with compact density, subtle motion, graphite cyan palette",
@@ -93,6 +93,7 @@ export function validateDynamicQuestionSystems() {
   validateAntiTemplateGoldenCorpus(issues);
   validateStaticBypassScan(issues);
   validateCommandQuestionTemplates(issues);
+  const runtimeChecked = validateRuntimeDesignRunQuestions(options, issues);
 
   const transparent = buildTransparentStepQuestion({
     question: "Which execution mode should this workflow use?",
@@ -126,7 +127,7 @@ export function validateDynamicQuestionSystems() {
 
   return {
     pass: issues.length === 0,
-    checked: 11 + POST_DELIVERY_CONTEXTS.length,
+    checked: 11 + POST_DELIVERY_CONTEXTS.length + runtimeChecked,
     issues,
   };
 }
@@ -471,6 +472,61 @@ function validateCommandQuestionTemplates(issues) {
   }
 }
 
+function validateRuntimeDesignRunQuestions({
+  rootDir = process.cwd(),
+  slug = "",
+  requireTrustedSpecialistProposal = false,
+} = {}, issues = []) {
+  if (!slug) return 0;
+  const configPath = join(rootDir, ".supervibe", "artifacts", "prototypes", slug, "config.json");
+  if (!existsSync(configPath)) {
+    issues.push(issue(normalizePath(configPath), "missing-design-run-config", `slug ${slug} has no prototype config.json`));
+    return 1;
+  }
+
+  let config = null;
+  try {
+    config = JSON.parse(readFileSync(configPath, "utf8").replace(/^\uFEFF/, ""));
+  } catch (error) {
+    issues.push(issue(normalizePath(configPath), "invalid-design-run-config", `could not parse config.json: ${error.message}`));
+    return 1;
+  }
+
+  const queue = Array.isArray(config.designWizard?.questionQueue)
+    ? config.designWizard.questionQueue
+    : [];
+  const trusted = queue.filter((question) => question.trustedSpecialistProposal === true && question.source === "real-specialist-proposal");
+  if (requireTrustedSpecialistProposal && queue.length > 0 && trusted.length === 0) {
+    issues.push(issue(
+      normalizePath(configPath),
+      "missing-trusted-runtime-specialist-question",
+      `slug ${slug} has ${queue.length} queued questions but 0 trusted real-specialist-proposal questions; show the specialist proposal gate instead of agent-authored wording`,
+    ));
+  }
+
+  for (const question of queue) {
+    const label = `${slug}:${question.axis || question.id || "unknown"}`;
+    if (!question.ownerAgent || !Array.isArray(question.evidence) || question.evidence.length < 2 || !question.artifactImpact || !question.whyNow) {
+      issues.push(issue(normalizePath(configPath), "weak-runtime-question-provenance", `${label} missing ownerAgent, evidence, artifactImpact, or whyNow`));
+    }
+    if (question.source === "real-specialist-proposal" || question.trustedSpecialistProposal === true) {
+      issues.push(...validateSpecialistQuestionContract(question, {
+        file: normalizePath(configPath),
+        requireRealSpecialistProposal: true,
+      }));
+      continue;
+    }
+    if (question.source !== "fallback-scratch-question") {
+      issues.push(issue(normalizePath(configPath), "ambiguous-runtime-question-source", `${label} must use real-specialist-proposal or explicit fallback-scratch-question source`));
+    }
+    if (question.visibleOnlyWhenTrusted !== true) {
+      issues.push(issue(normalizePath(configPath), "fallback-question-presented-as-specialist", `${label} is fallback but is not hidden behind visibleOnlyWhenTrusted=true`));
+    }
+  }
+
+  return Math.max(1, queue.length);
+}
+
 function validateQuestionShape(question, label, issues, { minChoices }) {
   if (!question?.prompt) {
     issues.push(issue("scripts/lib/supervibe-dialogue-contract.mjs", "missing-question-prompt", `${label} missing prompt`));
@@ -489,8 +545,21 @@ function issue(file, code, message) {
   return { file, code, message };
 }
 
+function cliArg(name, fallback = "") {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : fallback;
+}
+
+function normalizePath(path = "") {
+  return String(path || "").replace(/\\/g, "/");
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateDynamicQuestionSystems();
+  const result = validateDynamicQuestionSystems({
+    rootDir: cliArg("--root", process.cwd()),
+    slug: cliArg("--slug", ""),
+    requireTrustedSpecialistProposal: process.argv.includes("--require-trusted-specialist-proposal"),
+  });
   console.log(formatDynamicQuestionSystemsReport(result));
   process.exit(result.pass ? 0 : 1);
 }

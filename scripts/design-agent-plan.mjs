@@ -35,12 +35,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const flowType = arg("--flow", persistedConfig?.flowType || persistedConfig?.flow || "in-product");
   const requestedExecutionMode = arg("--execution-mode", persistedConfig?.executionMode || "");
   const mode = arg("--mode", persistedConfig?.mode || persistedConfig?.designWizard?.mode || "");
+  const host = arg("--host", "");
   const initialDecisions = extractPersistedDesignDecisions(persistedConfig);
   const json = process.argv.includes("--json");
   const status = process.argv.includes("--status");
   const planWrites = process.argv.includes("--plan-writes");
   const dispatchHostAgents = process.argv.includes("--dispatch-host-agents") || process.argv.includes("--continue");
-  const intake = await evaluateDesignArtifactIntake({ brief, projectRoot });
+  const intake = await evaluateDesignArtifactIntake({
+    brief,
+    projectRoot,
+    referenceScopeDecision: initialDecisions.reference_borrow_avoid,
+    currentSlug: slug,
+  });
   const plan = buildDesignAgentPlan({
     brief,
     target,
@@ -52,10 +58,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     referenceSources: intake.referenceSources ?? [],
     rootDir: projectRoot,
     pluginRoot,
+    hostAdapterId: host,
     intake,
   });
   const prewriteManifest = buildDesignPrewriteManifest(plan, { slug });
-  const nextDispatch = nextDispatchTarget(plan, prewriteManifest.nextProducer);
+  const nextDispatch = nextDispatchTarget(plan, prewriteManifest.nextProducer, prewriteManifest);
 
   if (json) {
     console.log(JSON.stringify({ intake, plan, prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null }, null, 2));
@@ -68,6 +75,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`RECEIPT_GATE: ${plan.executionStatus.receiptGate}`);
     console.log(`AGENTS_INSTALLED: ${plan.executionStatus.agentsInstalled === true}`);
     console.log(`HOST_DISPATCH_AVAILABLE: ${plan.executionStatus.hostDispatchAvailable === true}`);
+    console.log(`HOST_DISPATCH: ${plan.executionStatus.hostDispatch?.hostAdapterId || "unspecified"}:${plan.executionStatus.hostDispatch?.status || "not-checked"}`);
+    console.log(`HOST_TOOL: ${plan.executionStatus.hostDispatch?.nativeTool || "unspecified"}`);
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
@@ -106,7 +115,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
-function nextDispatchTarget(plan = {}, producer = null) {
+function nextDispatchTarget(plan = {}, producer = null, manifest = {}) {
+  if (manifest.nextQuestionSource === "intake" || plan.writeGate?.nextQuestion?.source === "intake") {
+    return null;
+  }
   if (plan.executionStatus?.specialistDispatchDeferred === true) {
     if (hasCompletedStageSubject(plan, {
       subjectType: "agent",

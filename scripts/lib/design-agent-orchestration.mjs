@@ -25,6 +25,8 @@ import {
   validateHostInvocationProof,
 } from "./agent-producer-contract.mjs";
 import { createAgentProvisioningPlan } from "./agent-provisioning.mjs";
+import { resolveHostAgentDispatcher } from "./command-agent-orchestration-contract.mjs";
+import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -54,6 +56,8 @@ export function buildDesignAgentPlan({
   deviceScaleFactor = null,
   initialDecisions = {},
   intake = null,
+  hostAdapterId = null,
+  env = process.env,
 } = {}) {
   const text = String(brief ?? "");
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
@@ -198,7 +202,13 @@ export function buildDesignAgentPlan({
     writeGate: null,
     stages: dedupeStages(stages),
   };
-  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, { pluginRoot, requestedExecutionMode: plan.requestedExecutionMode, locale: wizard.locale });
+  plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, {
+    pluginRoot,
+    requestedExecutionMode: plan.requestedExecutionMode,
+    locale: wizard.locale,
+    hostAdapterId,
+    env,
+  });
   plan.wizard = bindDesignWizardQuestionProposals(plan.wizard, readTrustedQuestionProposalOutputs(rootDir, plan.executionStatus.questionProposalProducers));
   plan.writeGate = buildDesignWriteGate({ intake, plan });
   return plan;
@@ -296,7 +306,9 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     gate,
     allowed,
   }));
-  const nextProducer = firstPendingProducer(files);
+  const pendingProducer = firstPendingProducer(files);
+  const nextQuestion = gate.nextQuestion || null;
+  const nextProducer = nextQuestionBlocksProducer(nextQuestion) ? null : pendingProducer;
   return {
     schemaVersion: 1,
     command: "/supervibe-design",
@@ -305,7 +317,9 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     reviewStyleboardAllowed: gate.reviewStyleboardAllowed === true,
     blockedReason: gate.blockedReason || null,
     nextProducer,
-    nextQuestion: gate.nextQuestion?.reason || null,
+    nextQuestion: nextQuestion?.reason || null,
+    nextQuestionSource: nextQuestion?.source || null,
+    nextQuestionAxis: nextQuestion?.question?.axis || null,
     files,
   };
 }
@@ -318,6 +332,8 @@ export function formatDesignPrewriteManifest(manifest = {}) {
     `REVIEW_STYLEBOARD_ALLOWED: ${manifest.reviewStyleboardAllowed === true}`,
     `BLOCKED_REASON: ${manifest.blockedReason || "none"}`,
     `NEXT_PRODUCER: ${formatProducerSummary(manifest.nextProducer)}`,
+    `NEXT_QUESTION_SOURCE: ${manifest.nextQuestionSource || "none"}`,
+    `NEXT_QUESTION_AXIS: ${manifest.nextQuestionAxis || "none"}`,
     `NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
     "FILES:",
   ];
@@ -425,7 +441,13 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   ].join("\n");
 }
 
-function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { pluginRoot = null, requestedExecutionMode = null, locale = "en" } = {}) {
+function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
+  pluginRoot = null,
+  requestedExecutionMode = null,
+  locale = "en",
+  hostAdapterId = null,
+  env = process.env,
+} = {}) {
   const stages = Array.isArray(plan.stages) ? plan.stages : [];
   const requiredAgentIds = unique(stages.map((item) => item.agentId).filter(Boolean));
   const requiredSkillIds = unique(stages.map((item) => item.skillId).filter(Boolean));
@@ -433,6 +455,12 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
   const available = new Set((roster.agents || []).map((agent) => agent.id));
   const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
   const runtimeProof = buildDesignRuntimeProofStatus(rootDir, plan);
+  const hostSelection = selectHostAdapter({
+    rootDir,
+    env: hostAdapterId ? { ...env, SUPERVIBE_HOST: hostAdapterId } : env,
+  });
+  const hostDispatch = resolveHostAgentDispatcher(hostSelection.adapter.id);
+  const hostDispatchAvailable = hostDispatch?.status === "supported";
   const provisioningPlan = missingAgents.length > 0
     ? createAgentProvisioningPlan({
       projectRoot: rootDir,
@@ -470,7 +498,11 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, { plugin
     missingAgents,
     provisioningPlan,
     agentsInstalled: realAgentCapable,
-    hostDispatchAvailable: runtimeProof.hostDispatchAvailable,
+    hostDispatchAvailable,
+    hostDispatch,
+    selectedHost: hostSelection.selectedHost,
+    hostConfidence: hostSelection.confidence,
+    hostInvocationsLogged: runtimeProof.hostInvocationsLogged,
     agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
     agentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
     producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
@@ -553,7 +585,7 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
       reason: item.receiptPresent ? "untrusted-runtime-receipt" : "missing-runtime-receipt",
       issues: item.issues,
     }));
-  const hostDispatchAvailable = receipts.some((receipt) => {
+  const hostInvocationsLogged = receipts.some((receipt) => {
     if (!isHostAgentSubject(receipt.subjectType)) return false;
     return Boolean(receipt.hostInvocation?.source && receipt.hostInvocation?.invocationId);
   });
@@ -569,7 +601,7 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
 
   return {
     requirements: statuses,
-    hostDispatchAvailable,
+    hostInvocationsLogged,
     agentInvocationsCompleted: agentStatuses.every((item) => item.trusted === true),
     agentReceiptsTrusted: agentStatuses.every((item) => item.trusted === true),
     producerReceiptsTrusted: statuses.length === 0 || statuses.every((item) => item.trusted === true),
@@ -757,6 +789,10 @@ function firstPendingProducer(files = []) {
     receiptPresent: pending.receiptPresent === true,
     receiptTrusted: pending.receiptTrusted === true,
   };
+}
+
+function nextQuestionBlocksProducer(nextQuestion = null) {
+  return ["intake", "wizard", "specialist-question-gate"].includes(String(nextQuestion?.source || ""));
 }
 
 function formatProducerSummary(producer = null) {

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.79] - 2026-05-05
+
+### Fixed
+
+- Hardened `/supervibe-design` runtime questions so specialist-authored
+  wording requires trusted real specialist proposals while fallback catalog
+  questions stay explicitly marked as fallback.
+- Unified design and command host dispatch detection through the same host
+  adapter capability source.
+- Added fail-fast wizard answer parsing, `--answer` support, revision checks,
+  atomic config writes, and stale-next-question prevention for design runs.
+- Extended dynamic question validation to inspect concrete prototype slugs and
+  fail runtime queues that lack trusted specialist provenance.
+
 ## [2.0.78] - 2026-05-05
 
 ### Fixed

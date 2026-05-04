@@ -102,3 +102,95 @@ test("design-wizard-answer can delegate remaining recommendations while keeping 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("design-wizard-answer accepts --answer alias for viewport values and closes the viewport gate", async () => {
+  const root = await mkdtemp(join(tmpdir(), "design-wizard-answer-viewport-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      brief: "Tauri desktop app",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+    }, null, 2)}\n`);
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-wizard-answer.mjs"),
+      "--root",
+      root,
+      "--slug",
+      "agent-chat",
+      "--axis",
+      "viewport",
+      "--answer",
+      "1920x1080",
+      "--timestamp",
+      "2026-05-04T00:00:00.000Z",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
+
+    assert.match(output, /CONFIG_REVISION: 1/);
+    assert.match(output, /AXES_UPDATED: viewport/);
+    assert.equal(config.configRevision, 1);
+    assert.equal(config.designWizard.decisions.viewport.answer, "1920x1080");
+    assert.equal(config.designWizard.decisions.viewport.choiceId, "wide-desktop");
+    assert.equal(config.designWizard.gates.viewportPolicyRecorded, true);
+    assert.ok(!config.designWizard.questionQueue.some((question) => question.axis === "viewport"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design-wizard-answer fails fast on unknown args and stale config revisions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "design-wizard-answer-revision-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      brief: "Agent chat workspace with approvals and trace review.",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+      configRevision: 3,
+      designWizard: {
+        decisions: {
+          viewport: { axis: "viewport", answer: "1440x900", choiceId: "custom", source: "user" },
+        },
+      },
+    }, null, 2)}\n`);
+
+    assert.throws(() => execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-wizard-answer.mjs"),
+      "--root",
+      root,
+      "--slug",
+      "agent-chat",
+      "--axis",
+      "information_density",
+      "--unknown",
+      "value",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: "pipe",
+    }), /Unknown argument: --unknown/);
+
+    assert.throws(() => execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-wizard-answer.mjs"),
+      "--root",
+      root,
+      "--slug",
+      "agent-chat",
+      "--axis",
+      "information_density",
+      "--choice",
+      "compact",
+      "--expected-revision",
+      "2",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: "pipe",
+    }), /config revision mismatch: expected 2, got 3/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
