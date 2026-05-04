@@ -209,7 +209,7 @@ describe("supervibe trigger router", () => {
     assert.equal(route.requiredSafety.includes("creative-direction-first"), true);
     assert.deepEqual(route.missingArtifacts, []);
     assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "design trigger" }), []);
-    assert.ok(route.questionChoices.some((choice) => /design route|brief/i.test(choice.label)));
+    assert.ok(route.questionChoices.some((choice) => /design workflow|brief/i.test(choice.label)));
   });
 
   it("hard-stops unpublished explicit slash commands before static route matching", async () => {

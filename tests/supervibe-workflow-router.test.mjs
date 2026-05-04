@@ -194,7 +194,7 @@ test("missing resolved commands do not crash workflow routing", () => {
   assert.equal(route.command, null);
   assert.equal(route.stopCondition, "ask-before-command-resolution");
   assert.match(route.nextQuestion, /missing command/i);
-  assert.ok(route.questionChoices.some((choice) => /Report that/i.test(choice.label)));
+  assert.ok(route.questionChoices.some((choice) => /Report diagnostics/i.test(choice.label)));
 });
 
 function routeQuestion(route) {

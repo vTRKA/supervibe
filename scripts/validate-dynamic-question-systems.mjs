@@ -16,6 +16,12 @@ import {
   formatTransparentStepQuestion,
   validateAgenticQuestion,
 } from "./lib/supervibe-dialogue-contract.mjs";
+import {
+  goldenAntiTemplateQuestions,
+  validateAllCommandQuestionSurfaces,
+  validateQuestionSurface,
+  validateStaticQuestionSurfaceBypasses,
+} from "./lib/question-surface-contract.mjs";
 import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
 import { routeWorkflowIntent } from "./lib/supervibe-workflow-router.mjs";
 
@@ -83,6 +89,9 @@ export function validateDynamicQuestionSystems() {
   }
   validatePostDeliveryRuntimeAdaptivity(issues);
   validateRuntimeRouteQuestions(issues);
+  validateUniversalQuestionSurfaces(issues);
+  validateAntiTemplateGoldenCorpus(issues);
+  validateStaticBypassScan(issues);
   validateCommandQuestionTemplates(issues);
 
   const transparent = buildTransparentStepQuestion({
@@ -117,7 +126,7 @@ export function validateDynamicQuestionSystems() {
 
   return {
     pass: issues.length === 0,
-    checked: 8 + POST_DELIVERY_CONTEXTS.length,
+    checked: 11 + POST_DELIVERY_CONTEXTS.length,
     issues,
   };
 }
@@ -332,6 +341,69 @@ function validateRuntimeRouteQuestions(issues) {
   }
   if ((topicDriftRoute.questionChoices || []).some((choice) => choice.label === choice.id)) {
     issues.push(issue("scripts/lib/supervibe-workflow-router.mjs", "raw-topic-drift-choice-id", "topic drift resume choices must not expose raw ids as visible labels"));
+  }
+}
+
+function validateUniversalQuestionSurfaces(issues) {
+  const commandSurfaces = validateAllCommandQuestionSurfaces();
+  for (const item of commandSurfaces.issues) {
+    issues.push(issue(item.file, item.code, item.message));
+  }
+
+  const commandsRoot = fileURLToPath(new URL("../commands/", import.meta.url));
+  let files = [];
+  try {
+    files = readdirSync(commandsRoot).filter((file) => file.endsWith(".md")).sort();
+  } catch {
+    issues.push(issue("commands", "missing-command-directory", "could not read commands directory for universal question surface validation"));
+    return;
+  }
+
+  for (const file of files) {
+    const commandId = `/${file.replace(/\.md$/, "")}`;
+    for (const locale of ["en", "ru"]) {
+      const route = routeTriggerRequest(`${commandId} ${locale === "ru" ? "пользовательский запрос" : "user request"}`, {
+        pluginRoot: fileURLToPath(new URL("../", import.meta.url)),
+        projectRoot: fileURLToPath(new URL("../", import.meta.url)),
+        artifacts: {
+          userRequest: true,
+          request: true,
+          confirmedMutation: true,
+        },
+      });
+      if (!route.questionSurface) {
+        issues.push(issue("scripts/lib/supervibe-trigger-router.mjs", "missing-route-question-surface", `${commandId}:${locale} route missing questionSurface`));
+        continue;
+      }
+      const surfaceIssues = validateQuestionSurface(route.questionSurface, {
+        surface: `${commandId}:${locale}:route`,
+      });
+      for (const item of surfaceIssues) {
+        issues.push(issue("scripts/lib/question-surface-contract.mjs", item.code, item.message));
+      }
+      if (!route.visibleQuestionPrompt || route.visibleQuestionPrompt !== route.questionSurface.prompt) {
+        issues.push(issue("scripts/lib/supervibe-trigger-router.mjs", "missing-visible-question-prompt", `${commandId}:${locale} must expose questionSurface.prompt as visibleQuestionPrompt`));
+      }
+    }
+  }
+}
+
+function validateAntiTemplateGoldenCorpus(issues) {
+  for (const bad of goldenAntiTemplateQuestions()) {
+    const result = validateAgenticQuestion(bad, {
+      surface: `golden:${bad.id}`,
+      minChoices: 3,
+    });
+    if (result.length === 0) {
+      issues.push(issue("scripts/lib/question-surface-contract.mjs", "anti-template-fixture-passed", `${bad.id} bad question fixture unexpectedly passed validation`));
+    }
+  }
+}
+
+function validateStaticBypassScan(issues) {
+  const result = validateStaticQuestionSurfaceBypasses(fileURLToPath(new URL("../", import.meta.url)));
+  for (const item of result.issues) {
+    issues.push(issue(item.file, item.code, item.message));
   }
 }
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.76] - 2026-05-04
+
+### Added
+
+- Added a universal command `QuestionSurface` contract so every published
+  command profile must generate validated visible prompts and option lists in
+  English and Russian.
+- Added golden anti-template fixtures and static bypass scanning for raw string
+  choices, legacy creative-direction labels, generic wizard prompts, and
+  blocked-mode raw ids.
+
+### Changed
+
+- Routed trigger diagnostics and command state through `questionSurface.prompt`
+  as the visible question path while preserving canonical route metadata.
+- Extended dynamic question validation to fail new command routes that do not
+  expose a validated `questionSurface`.
+
 ## [2.0.75] - 2026-05-04
 
 ### Added

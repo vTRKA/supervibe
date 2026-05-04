@@ -12,7 +12,7 @@ function createCommandState({ route, scenario = {} } = {}) {
     lifecycleState: expected.requiresDryRun ? "dry-run" : "routed",
     currentStep: deliveryMenu ? "post-delivery-question" : "ready",
     selectedOptions: {},
-    pendingQuestion: deliveryMenu ? buildPostDeliveryQuestion(route) : route.nextQuestion,
+    pendingQuestion: deliveryMenu ? buildPostDeliveryQuestion(route) : route.questionSurface ?? route.visibleQuestionPrompt ?? route.nextQuestion,
     locks: [],
     dryRunOutput: expected.requiresDryRun ? { present: true, summary: `${route.command} dry-run output` } : null,
     healthGate: expected.requiresHealthGate ? { present: true, command: route.command, ready: "evaluated" } : null,

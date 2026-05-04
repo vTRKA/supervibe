@@ -6,6 +6,10 @@ import {
   copyCommandAgentContract,
   getCommandAgentProfile,
 } from "./command-agent-orchestration-contract.mjs";
+import {
+  buildCommandQuestionSurface,
+  validateQuestionSurface,
+} from "./question-surface-contract.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
 const ROUTES = {
@@ -965,7 +969,15 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
   const agentProfile = route.agentProfile || (commandId ? getCommandAgentProfile(commandId) : null);
   const locale = detectLocale(`${route.nextQuestion || ""} ${route.reason || ""}`);
   const routingEvidence = evidence.filter(Boolean);
-  const questionChoices = route.questionChoices || buildRouteQuestionChoices(route, {
+  const questionSurface = route.questionSurface || buildCommandQuestionSurface(commandId || route.command || route.intent, route, {
+    locale,
+    request: route.matchedPhrase || route.reason || route.command || route.intent,
+    evidence: routingEvidence.map((item) => item.reason || item.matchedPhrase || item.source).filter(Boolean),
+  });
+  const questionSurfaceIssues = validateQuestionSurface(questionSurface, {
+    surface: `${route.intent || "route"}:${commandId || route.command || "diagnostic"}`,
+  });
+  const questionChoices = route.questionChoices || questionSurface.choices || buildRouteQuestionChoices(route, {
     locale,
     commandId,
     agentProfile,
@@ -981,10 +993,13 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
     retrievalPolicy: decideRetrievalPolicy({ taskText: `${route.intent} ${route.command} ${route.reason || ""}` }),
     routingEvidence,
     rejectedAlternatives: rejectedAlternatives || [],
+    questionSurface,
+    questionSurfaceIssues,
+    visibleQuestionPrompt: route.visibleQuestionPrompt || questionSurface.prompt,
     questionChoices,
-    questionEvidence: routingEvidence.map((item) => item.reason || item.matchedPhrase || item.source).filter(Boolean),
-    questionSpecialist: agentProfile?.ownerAgentId || route.skill || capability?.capabilityId || "supervibe-orchestrator",
-    questionArtifactImpact: route.questionArtifactImpact || routeArtifactImpact(route, locale),
+    questionEvidence: questionSurface.evidence || routingEvidence.map((item) => item.reason || item.matchedPhrase || item.source).filter(Boolean),
+    questionSpecialist: questionSurface.specialist || agentProfile?.ownerAgentId || route.skill || capability?.capabilityId || "supervibe-orchestrator",
+    questionArtifactImpact: questionSurface.artifactImpact || route.questionArtifactImpact || routeArtifactImpact(route, locale),
   };
 }
 

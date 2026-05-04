@@ -45,7 +45,7 @@ export function formatTriggerDiagnostic(report) {
   }
   lines.push(`Likely cause: ${report.likelyCause}`);
   lines.push(`Recommended action: ${report.recommendedAction}`);
-  lines.push(`Next: ${report.route.nextQuestion ?? report.route.nextPromptText}`);
+  lines.push(`Next: ${report.route.visibleQuestionPrompt ?? report.route.questionSurface?.prompt ?? report.route.nextQuestion ?? report.route.nextPromptText}`);
   return lines.join("\n");
 }
 

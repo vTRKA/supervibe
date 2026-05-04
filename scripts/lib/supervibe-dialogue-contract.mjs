@@ -775,7 +775,7 @@ export function validateAgenticQuestion(question = {}, options = {}) {
   if (!prompt) {
     issues.push(issue('missing-prompt', `${surface} missing visible prompt`));
   }
-  if (/choose the next step for this delivery|what should we choose\?|выберите следующий шаг для результата|что выбираем\?/i.test(prompt)) {
+  if (/choose the next step for this delivery|what should we choose\?|which option should we choose\?|выберите следующий шаг для результата|что выбираем\?/i.test(prompt)) {
     issues.push(issue('generic-prompt', `${surface} uses generic wizard prompt copy instead of task-specific wording`));
   }
   if (choices.length < minChoices) {
@@ -793,6 +793,9 @@ export function validateAgenticQuestion(question = {}, options = {}) {
     if (arrayEquals(normalizedLabels, genericEn) || arrayEquals(normalizedLabels, genericRu)) {
       issues.push(issue('generic-choice-set', `${surface} exposes the base action labels without task-specific option copy`));
     }
+  }
+  if (labels.length >= 3 && labels.every((label) => /^option\s+[a-z]$/i.test(label) || /^вариант\s+[а-яa-z]$/i.test(label))) {
+    issues.push(issue('generic-choice-labels', `${surface} exposes placeholder option labels instead of contextual choices`));
   }
 
   for (const choice of choices) {
