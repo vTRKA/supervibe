@@ -2,6 +2,13 @@ import { createHash } from "node:crypto";
 
 const CATALOG_COPY_PATTERN = /option a|option b|recommended\/alternative|template|generic choice|choice 1|choice 2/i;
 
+export const SPECIALIST_QUESTION_SOURCES = Object.freeze({
+  REAL_SPECIALIST_PROPOSAL: "real-specialist-proposal",
+  FALLBACK_SEED: "fallback-seed",
+  CONTROLLER_RUNTIME: "controller-runtime",
+  FALLBACK_SCRATCH: "fallback-scratch",
+});
+
 export function buildSpecialistQuestionProposal({
   schemaVersion = 1,
   proposalId = null,
@@ -22,6 +29,9 @@ export function buildSpecialistQuestionProposal({
   decisionUnlocked = null,
   currentContext = "",
   freeformAllowed = true,
+  proposalSource = SPECIALIST_QUESTION_SOURCES.CONTROLLER_RUNTIME,
+  producer = null,
+  visibility = "visible",
 } = {}) {
   const resolvedOwnerAgent = ownerAgent || specialist;
   const normalizedChoices = choices.map((choice) => ({
@@ -66,6 +76,9 @@ export function buildSpecialistQuestionProposal({
     evidence: [...evidence],
     decisionUnlocked,
     currentContext,
+    proposalSource,
+    producer: normalizeQuestionProducer(producer, { ownerAgent: resolvedOwnerAgent, proposalSource }),
+    visibility,
   };
 }
 
@@ -73,6 +86,7 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   file = "specialist-question",
   requireContext = true,
   requireEvidenceDecision = true,
+  requireRealSpecialistProposal = false,
 } = {}) {
   const issues = [];
   const label = proposal.proposalId || "unknown-proposal";
@@ -148,7 +162,42 @@ export function validateSpecialistQuestionProposal(proposal = {}, {
   if (requireEvidenceDecision && !proposal.decisionUnlocked && !proposal.artifactImpact) {
     issues.push(issue(file, "missing-specialist-question-decision", `${label} must name the artifact or decision unlocked by the answer`));
   }
+  if (requireRealSpecialistProposal) {
+    issues.push(...validateSpecialistQuestionProvenance(proposal, { file }));
+  }
   return issues;
+}
+
+export function validateSpecialistQuestionProvenance(proposal = {}, {
+  file = "specialist-question",
+} = {}) {
+  const issues = [];
+  const label = proposal.proposalId || "unknown-proposal";
+  const source = proposal.proposalSource || null;
+  const producer = proposal.producer || {};
+  const trusted = producer.receiptTrusted === true || producer.trusted === true;
+  const hostInvocation = producer.hostInvocation || {};
+
+  if (source !== SPECIALIST_QUESTION_SOURCES.REAL_SPECIALIST_PROPOSAL) {
+    issues.push(issue(file, "untrusted-specialist-question-source", `${label} must come from real-specialist-proposal before it is shown as specialist output; got ${source || "missing"}`));
+  }
+  if (!producer.type || !producer.id) {
+    issues.push(issue(file, "missing-specialist-question-producer", `${label} must bind the question to a producer type and id`));
+  }
+  if (producer.type && !["agent", "worker", "reviewer"].includes(String(producer.type))) {
+    issues.push(issue(file, "non-agent-specialist-question-producer", `${label} specialist questions require an agent/worker/reviewer producer, got ${producer.type}`));
+  }
+  if (!trusted) {
+    issues.push(issue(file, "untrusted-specialist-question-producer", `${label} producer receipt must be trusted before visible specialist output`));
+  }
+  if (!hostInvocation.source || !hostInvocation.invocationId) {
+    issues.push(issue(file, "missing-specialist-question-host-proof", `${label} producer must include hostInvocation.source and hostInvocation.invocationId`));
+  }
+  return issues;
+}
+
+export function isTrustedSpecialistQuestionProposal(proposal = {}) {
+  return validateSpecialistQuestionProvenance(proposal).length === 0;
 }
 
 export function scoreSpecialistQuestionProposal(proposal = {}, options = {}) {
@@ -200,6 +249,37 @@ function visibleRussianShare(proposal = {}) {
 
 function normalizeLocale(locale = "en") {
   return String(locale || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
+}
+
+function normalizeQuestionProducer(producer = null, { ownerAgent = null, proposalSource = null } = {}) {
+  if (producer && typeof producer === "object") {
+    const hostInvocation = producer.hostInvocation || {};
+    return {
+      type: producer.type || producer.producerType || null,
+      id: producer.id || producer.producerId || ownerAgent || null,
+      stageId: producer.stageId || producer.stage || null,
+      outputArtifact: producer.outputArtifact || null,
+      receiptTrusted: producer.receiptTrusted === true || producer.trusted === true,
+      receiptPresent: producer.receiptPresent === true,
+      hostInvocation: hostInvocation.source || hostInvocation.invocationId
+        ? {
+            source: hostInvocation.source || null,
+            invocationId: hostInvocation.invocationId || null,
+          }
+        : null,
+      source: producer.source || proposalSource || null,
+    };
+  }
+  return {
+    type: proposalSource === SPECIALIST_QUESTION_SOURCES.REAL_SPECIALIST_PROPOSAL ? "agent" : "runtime",
+    id: ownerAgent || null,
+    stageId: null,
+    outputArtifact: null,
+    receiptTrusted: false,
+    receiptPresent: false,
+    hostInvocation: null,
+    source: proposalSource || null,
+  };
 }
 
 function questionSlug(value = "") {

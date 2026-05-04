@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.78] - 2026-05-05
+
+### Fixed
+
+- Hardened specialist question provenance so seed catalog prompts cannot be
+  shown as agent-owned questions without a real host agent proposal and runtime
+  receipt.
+- Added global static question bypass checks for hardcoded axis-step prompts
+  and option lists in agentic question surfaces.
+
 ## [2.0.77] - 2026-05-05
 
 ### Added

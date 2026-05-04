@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   buildSpecialistQuestionProposal,
+  SPECIALIST_QUESTION_SOURCES,
   scoreSpecialistQuestionProposal,
   validateSpecialistQuestionProposal,
+  validateSpecialistQuestionProvenance,
 } from "../scripts/lib/specialist-question-contract.mjs";
 
 test("specialist question contract accepts contextual artifact-changing questions", () => {
@@ -107,6 +109,53 @@ test("specialist question contract rejects visible locale mismatch", () => {
 
   const issues = validateSpecialistQuestionProposal(proposal);
   assert.ok(issues.some((issue) => issue.code === "mixed-language-specialist-question"));
+});
+
+test("specialist question provenance gate rejects fallback seeds as visible agent output", () => {
+  const base = buildSpecialistQuestionProposal({
+    stage: "stage-2-design-system",
+    specialist: "ux-ui-designer",
+    ownerAgent: "ux-ui-designer",
+    question: "For the agent workflow dashboard, which density risk should the UX pass resolve now?",
+    why: "The answer changes the screen spec, token spacing, and prototype layout.",
+    whyNow: "The UX pass cannot start until density is bound to trace visibility versus reading comfort.",
+    choices: [
+      { id: "trace-first", label: "Trace-first density", tradeoff: "More evidence in one viewport.", unlocks: ["spec.md"], risk: "May overload reading.", evidence: ["agent traces", "density artifact"], artifactImpact: "trace rail density", recommended: true },
+      { id: "chat-first", label: "Chat-first density", tradeoff: "More readable conversation area.", unlocks: ["spec.md"], risk: "May hide status.", evidence: ["chat workspace", "density artifact"], artifactImpact: "chat reading rhythm" },
+      { id: "split", label: "Split evidence drawer", tradeoff: "Keeps chat calm with expandable trace detail.", unlocks: ["prototype/index.html"], risk: "May add interaction complexity.", evidence: ["drawer interaction", "prototype artifact"], artifactImpact: "trace disclosure model" },
+    ],
+    blocks: ["spec.md", "tokens.css"],
+    artifactImpact: "screen spec density, token spacing, and trace hierarchy",
+    skipDefault: "Stop and ask the owner specialist for a real proposal.",
+    canAnswerFromEvidence: false,
+    evidence: ["agent workflow dashboard brief", "trace review risk"],
+    currentContext: "agent workflow dashboard density",
+    proposalSource: SPECIALIST_QUESTION_SOURCES.FALLBACK_SEED,
+    producer: { type: "runtime", id: "DESIGN_WIZARD_AXES" },
+  });
+
+  const fallbackIssues = validateSpecialistQuestionProposal(base, { requireRealSpecialistProposal: true });
+  assert.ok(fallbackIssues.some((issue) => issue.code === "untrusted-specialist-question-source"));
+  assert.ok(fallbackIssues.some((issue) => issue.code === "non-agent-specialist-question-producer"));
+  assert.ok(validateSpecialistQuestionProvenance(base).some((issue) => issue.code === "untrusted-specialist-question-source"));
+
+  const trusted = {
+    ...base,
+    proposalSource: SPECIALIST_QUESTION_SOURCES.REAL_SPECIALIST_PROPOSAL,
+    producer: {
+      type: "agent",
+      id: "ux-ui-designer",
+      stageId: "stage-2-design-system",
+      receiptTrusted: true,
+      receiptPresent: true,
+      hostInvocation: {
+        source: "agent-invocations-jsonl",
+        invocationId: "ux-question-proposal-1",
+      },
+    },
+  };
+  assert.deepEqual(validateSpecialistQuestionProposal(trusted, { requireRealSpecialistProposal: true }), []);
+  assert.deepEqual(validateSpecialistQuestionProvenance(trusted), []);
 });
 
 test("specialist question contract keeps non-English proposal ids unique and context scoring strict", () => {

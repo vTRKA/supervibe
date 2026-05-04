@@ -1,5 +1,8 @@
 import {
   buildSpecialistQuestionProposal,
+  isTrustedSpecialistQuestionProposal,
+  scoreSpecialistQuestionProposal,
+  SPECIALIST_QUESTION_SOURCES,
 } from "./specialist-question-contract.mjs";
 
 const DEFAULT_TIMESTAMP = "1970-01-01T00:00:00.000Z";
@@ -2102,10 +2105,14 @@ function buildProposalBackedQuestionQueue(seedQuestions = []) {
 
 function questionFromSpecialistProposal(seed = {}, proposal = {}) {
   const options = Array.isArray(proposal.options) ? proposal.options : [];
+  const trusted = isTrustedSpecialistQuestionProposal(proposal);
   return {
     ...seed,
-    source: "specialist-question-proposal",
+    source: trusted ? "real-specialist-proposal" : "fallback-scratch-question",
     proposalId: proposal.proposalId,
+    proposalSource: proposal.proposalSource || SPECIALIST_QUESTION_SOURCES.FALLBACK_SEED,
+    trustedSpecialistProposal: trusted,
+    producer: proposal.producer || null,
     stage: proposal.stage,
     specialist: proposal.specialist,
     ownerAgent: proposal.ownerAgent,
@@ -2119,6 +2126,7 @@ function questionFromSpecialistProposal(seed = {}, proposal = {}) {
     skipDefault: proposal.skipDefault || seed.ifSkipped,
     canAnswerFromEvidence: proposal.canAnswerFromEvidence === true,
     recommendedOption: proposal.recommendedOption || null,
+    visibleOnlyWhenTrusted: trusted !== true,
     options,
     choices: options.map((option) => ({
       id: option.id,
@@ -2131,6 +2139,77 @@ function questionFromSpecialistProposal(seed = {}, proposal = {}) {
       recommended: option.id === proposal.recommendedOption || option.recommended === true,
     })),
   };
+}
+
+export function bindDesignWizardQuestionProposals(state = {}, proposals = []) {
+  const trustedByAxis = new Map();
+  for (const rawProposal of proposals || []) {
+    const proposal = normalizeTrustedQuestionProposal(rawProposal);
+    if (!proposal?.axis) continue;
+    const score = scoreSpecialistQuestionProposal(proposal, {
+      requireRealSpecialistProposal: true,
+      file: "design-question-proposal",
+    });
+    if (score.score < 9 || score.issues.length > 0) continue;
+    trustedByAxis.set(proposal.axis, proposal);
+  }
+  if (trustedByAxis.size === 0) return state;
+  const queue = (state.questionQueue || []).map((question) => {
+    const proposal = trustedByAxis.get(question.axis);
+    return proposal ? questionFromSpecialistProposal(question, proposal) : question;
+  });
+  const proposalById = new Map((state.questionProposals || []).map((proposal) => [proposal.proposalId, proposal]));
+  for (const proposal of trustedByAxis.values()) proposalById.set(proposal.proposalId, proposal);
+  const next = {
+    ...state,
+    questionQueue: queue,
+    questionProposals: [...proposalById.values()],
+  };
+  return attachDesignWizardRuntime(next);
+}
+
+export function isTrustedDesignWizardQuestion(question = {}) {
+  return question.source === "real-specialist-proposal"
+    && question.trustedSpecialistProposal === true
+    && isTrustedSpecialistQuestionProposal(question);
+}
+
+function normalizeTrustedQuestionProposal(rawProposal = {}) {
+  if (!rawProposal || typeof rawProposal !== "object") return null;
+  const proposal = {
+    ...rawProposal,
+    proposalSource: SPECIALIST_QUESTION_SOURCES.REAL_SPECIALIST_PROPOSAL,
+    visibility: "visible",
+    producer: {
+      ...(rawProposal.producer || {}),
+      type: rawProposal.producer?.type || rawProposal.producer?.producerType || "agent",
+      id: rawProposal.producer?.id || rawProposal.producer?.producerId || rawProposal.ownerAgent || rawProposal.specialist || null,
+      stageId: rawProposal.producer?.stageId || rawProposal.stage || null,
+      receiptTrusted: rawProposal.producer?.receiptTrusted === true || rawProposal.producer?.trusted === true,
+      receiptPresent: rawProposal.producer?.receiptPresent === true,
+      hostInvocation: rawProposal.producer?.hostInvocation || rawProposal.hostInvocation || null,
+    },
+  };
+  if (!Array.isArray(proposal.options) && Array.isArray(proposal.choices)) {
+    proposal.options = proposal.choices.map((choiceItem) => ({
+      id: choiceItem.id,
+      label: choiceItem.label,
+      tradeoff: choiceItem.tradeoff || choiceItem.description || "",
+      unlocks: Array.isArray(choiceItem.unlocks) ? choiceItem.unlocks : [],
+      risk: choiceItem.risk || "",
+      evidence: Array.isArray(choiceItem.evidence) ? choiceItem.evidence : [],
+      artifactImpact: choiceItem.artifactImpact || proposal.artifactImpact || "",
+      recommended: choiceItem.recommended === true || choiceItem.id === proposal.recommendedOption,
+    }));
+  }
+  if (!Array.isArray(proposal.choices) && Array.isArray(proposal.options)) {
+    proposal.choices = proposal.options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      tradeoff: option.tradeoff || option.description || "",
+    }));
+  }
+  return proposal;
 }
 
 function attachDesignWizardRuntime(state = {}) {
@@ -2190,6 +2269,16 @@ function specialistQuestionProposal(question = {}) {
     decisionUnlocked: question.decisionUnlocked || question.decision || metadata.artifactImpact,
     currentContext: `${question.axis || "design"} ${metadata.stage} ${metadata.specialist}`,
     freeformAllowed: true,
+    proposalSource: SPECIALIST_QUESTION_SOURCES.FALLBACK_SEED,
+    visibility: "fallback-scratch",
+    producer: {
+      type: "runtime",
+      id: "DESIGN_WIZARD_AXES",
+      stageId: metadata.stage,
+      receiptTrusted: false,
+      receiptPresent: false,
+      source: "design-wizard-seed-catalog",
+    },
   });
 }
 

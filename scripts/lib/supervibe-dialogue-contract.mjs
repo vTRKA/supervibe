@@ -775,6 +775,9 @@ export function validateAgenticQuestion(question = {}, options = {}) {
   if (!prompt) {
     issues.push(issue('missing-prompt', `${surface} missing visible prompt`));
   }
+  if (/^Step\s+\d+\/\d+:\s*(Typography|Palette|Density|Motion|Components)\.?\s*$/i.test(prompt)) {
+    issues.push(issue('hardcoded-axis-step', `${surface} exposes a hardcoded design-axis step instead of an evidence-bound specialist question`));
+  }
   if (/choose the next step for this delivery|what should we choose\?|which option should we choose\?|выберите следующий шаг для результата|что выбираем\?/i.test(prompt)) {
     issues.push(issue('generic-prompt', `${surface} uses generic wizard prompt copy instead of task-specific wording`));
   }
@@ -810,6 +813,9 @@ export function validateAgenticQuestion(question = {}, options = {}) {
     }
     if (/Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/i.test(label)) {
       issues.push(issue('catalog-choice-label', `${surface}:${id || label} leaks static design catalog labels`));
+    }
+    if (/^(Code first|System native|Humanist|Geometric|Graphite \+ cyan|Graphite \+ amber|Light first|High contrast)$/i.test(label)) {
+      issues.push(issue('catalog-choice-label', `${surface}:${id || label} leaks static typography/palette catalog labels`));
     }
   }
 

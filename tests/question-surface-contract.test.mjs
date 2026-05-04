@@ -80,6 +80,22 @@ test("golden anti-template questions stay rejected", () => {
     const issues = validateAgenticQuestion(bad, { surface: bad.id, minChoices: 3 });
     assert.notEqual(issues.length, 0, bad.id);
   }
+
+  const hardcodedAxis = {
+    prompt: "Step 6/9: Typography.",
+    choices: [
+      { id: "code-first", label: "Code first", tradeoff: "Strong mono support." },
+      { id: "system-native", label: "System native", tradeoff: "Stable WebView readability." },
+      { id: "humanist", label: "Humanist", tradeoff: "Softer long-form reading." },
+    ],
+    specialist: "ux-ui-designer",
+    evidence: ["static fixture"],
+    artifactImpact: "Bad fixture should fail.",
+    locale: "en",
+  };
+  const issues = validateAgenticQuestion(hardcodedAxis, { surface: "hardcoded-axis", minChoices: 3 });
+  assert.ok(issues.some((issue) => issue.code === "hardcoded-axis-step"));
+  assert.ok(issues.some((issue) => issue.code === "catalog-choice-label"));
 });
 
 test("static bypass scanner catches raw choices and ignores valid runtime files", async () => {
@@ -117,6 +133,29 @@ test("static bypass scanner rejects mojibake in visible question text", async ()
 
     assert.equal(fixture.pass, false);
     assert.ok(fixture.issues.some((issue) => issue.code === "mojibake-visible-text"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("static bypass scanner rejects hardcoded agent axis questionnaires", async () => {
+  const root = await mkdtemp(join(tmpdir(), "question-surface-hardcoded-axis-"));
+  try {
+    await mkdir(join(root, "agents"), { recursive: true });
+    const file = join(root, "agents", "bad-design-agent.md");
+    await writeFile(file, [
+      "Step 7/9: Palette.",
+      "",
+      "- Graphite + cyan (Recommended) - technical, fresh, but cold.",
+      "- High contrast - accessible, but tiring.",
+      "- Graphite + amber - warmer, but old-shell risk.",
+      "",
+    ].join("\n"), "utf8");
+
+    const fixture = validateStaticQuestionSurfaceBypasses(root);
+
+    assert.equal(fixture.pass, false);
+    assert.ok(fixture.issues.some((issue) => issue.code === "hardcoded-axis-step-question"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

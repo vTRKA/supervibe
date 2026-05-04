@@ -113,7 +113,9 @@ test("wizard renders questions from SpecialistQuestionContract proposals", () =>
 
   assert.ok(density);
   assert.ok(proposal);
-  assert.equal(density.source, "specialist-question-proposal");
+  assert.equal(density.source, "fallback-scratch-question");
+  assert.equal(density.proposalSource, "fallback-seed");
+  assert.equal(density.trustedSpecialistProposal, false);
   assert.equal(density.proposalId, proposal.proposalId);
   assert.equal(density.ownerAgent, proposal.ownerAgent);
   assert.equal(density.prompt, proposal.question);

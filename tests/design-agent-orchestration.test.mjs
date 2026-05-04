@@ -11,6 +11,9 @@ import {
   DESIGN_WIZARD_AXES,
 } from "../scripts/lib/design-wizard-catalog.mjs";
 import {
+  buildSpecialistQuestionProposal,
+} from "../scripts/lib/specialist-question-contract.mjs";
+import {
   assertDesignWriteAllowed,
   buildDesignAgentPlan,
   buildDesignPrewriteManifest,
@@ -98,9 +101,9 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:design-intelligence" && stage.reason.includes("pdf")));
 
   const prompt = formatDesignPlanPrompt(plan);
-  assert.match(prompt, /NEXT_WIZARD_QUESTION/);
+  assert.match(prompt, /SPECIALIST_QUESTION_GATE: blocked/);
   assert.match(prompt, /AGENT_GATE: collect specialist scratch question proposals before durable design writes/);
-  assert.match(prompt, /Which design workflow mode should this run use/);
+  assert.match(prompt, /REQUIRED_SOURCE: real-specialist-proposal/);
   assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
 
@@ -211,7 +214,8 @@ test("design agent plan does not redispatch orchestrator after trusted stage-0 r
     assert.match(output, /NEXT_DISPATCH: agent:creative-director@stage-1-brand-direction/);
     assert.match(output, /NEXT_HOST_DISPATCH: agent:creative-director@stage-1-brand-direction/);
     assert.match(output, /SPECIALIST_QUESTION_PROPOSAL: true/);
-    assert.match(output, /NEXT_WIZARD_QUESTION/);
+    assert.match(output, /SPECIALIST_QUESTION_GATE: blocked/);
+    assert.doesNotMatch(output, /NEXT_WIZARD_QUESTION:/);
     assert.doesNotMatch(output, /NEXT_DISPATCH: agent:supervibe-orchestrator@stage-0-orchestrator/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -234,7 +238,91 @@ test("design agent plan exposes pre-gate specialist question proposal queue", ()
   assert.ok(plan.executionStatus.questionProposalProducers.some((item) => item.producerId === "creative-director"));
   assert.ok(plan.executionStatus.questionProposalProducers.some((item) => item.producerId === "ux-ui-designer"));
   assert.ok(plan.wizard.questionProposals.every((proposal) => proposal.ownerAgent && proposal.whyNow));
-  assert.ok(plan.wizard.questionQueue.every((question) => question.source === "specialist-question-proposal"));
+  assert.ok(plan.wizard.questionQueue.every((question) => question.source === "fallback-scratch-question"));
+  assert.ok(plan.wizard.questionQueue.every((question) => question.trustedSpecialistProposal === false));
+});
+
+test("design agent plan shows wizard question only after trusted specialist proposal receipt", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-trusted-question-proposal-"));
+  try {
+    const initial = buildDesignAgentPlan({
+      brief: "Agent chat workspace with approvals, tool calls, traces, and compact desktop panels.",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+      slug: "agent-chat",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: {
+        viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+      },
+    });
+    const firstQuestion = initial.wizard.questionQueue[0];
+    const producer = initial.executionStatus.questionProposalProducers.find((item) => {
+      return item.producerId === firstQuestion.ownerAgent && item.stageId === firstQuestion.stage;
+    });
+    assert.ok(producer);
+    assert.match(formatDesignPlanPrompt(initial), /SPECIALIST_QUESTION_GATE: blocked/);
+
+    const proposal = buildSpecialistQuestionProposal({
+      proposalId: `${firstQuestion.stage}:${firstQuestion.ownerAgent}:${firstQuestion.axis}`,
+      axis: firstQuestion.axis,
+      stage: firstQuestion.stage,
+      specialist: firstQuestion.specialist,
+      ownerAgent: firstQuestion.ownerAgent,
+      question: `For the agent workflow workspace, which ${firstQuestion.axis} risk should ${firstQuestion.ownerAgent} resolve before the next artifact?`,
+      why: "The answer changes the next design artifact, agent trace hierarchy, and approval workflow ergonomics.",
+      whyNow: "The next producer cannot proceed until this workspace risk is explicit and bound to the current agent-chat brief.",
+      choices: [
+        { id: "trace-first", label: "Trace-first workspace signal", tradeoff: "Prioritizes tool calls and evidence scan speed.", unlocks: ["direction.md"], risk: "May feel dense.", evidence: ["agent-chat brief", "trace review risk"], artifactImpact: "trace hierarchy", recommended: true },
+        { id: "approval-first", label: "Approval-first workflow signal", tradeoff: "Makes human decision gates more visible.", unlocks: ["spec.md"], risk: "May slow repeated review.", evidence: ["approval workflow", "artifact impact"], artifactImpact: "approval gate hierarchy" },
+        { id: "conversation-first", label: "Conversation-first workspace signal", tradeoff: "Keeps assistant answers easier to read.", unlocks: ["styleboard.html"], risk: "May hide automation state.", evidence: ["agent chat reading", "artifact impact"], artifactImpact: "chat reading rhythm" },
+      ],
+      blocks: firstQuestion.blocks,
+      artifactImpact: firstQuestion.artifactImpact,
+      skipDefault: "Stop and regenerate a specialist proposal if the user does not choose.",
+      canAnswerFromEvidence: false,
+      evidence: ["agent chat workspace brief", "trusted specialist proposal receipt"],
+      currentContext: "agent workflow workspace with approvals, traces, and compact panels",
+    });
+    await writeUtf8(root, producer.outputArtifact, `${JSON.stringify({ questionProposals: [proposal] }, null, 2)}\n`);
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: producer.producerId,
+      agentId: producer.producerId,
+      stage: producer.stageId,
+      invocationReason: "scratch specialist question proposal produced",
+      outputArtifacts: [producer.outputArtifact],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "agent-chat",
+      hostInvocation: await writeAgentInvocation(root, {
+        invocationId: "trusted-question-proposal-1",
+        agentId: producer.producerId,
+        taskSummary: "scratch specialist question proposal produced",
+      }),
+    });
+
+    const trusted = buildDesignAgentPlan({
+      brief: "Agent chat workspace with approvals, tool calls, traces, and compact desktop panels.",
+      target: "tauri",
+      mode: "full-prototype-pipeline",
+      slug: "agent-chat",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: {
+        viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+      },
+    });
+
+    assert.equal(trusted.wizard.questionQueue[0].source, "real-specialist-proposal");
+    assert.equal(trusted.wizard.questionQueue[0].trustedSpecialistProposal, true);
+    assert.match(formatDesignPlanPrompt(trusted), /NEXT_WIZARD_QUESTION:/);
+    assert.doesNotMatch(formatDesignPlanPrompt(trusted), /SPECIALIST_QUESTION_GATE: blocked/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design agent plan localizes runtime dispatch question for Russian briefs", () => {

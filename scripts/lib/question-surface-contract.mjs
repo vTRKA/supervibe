@@ -64,6 +64,11 @@ const STATIC_BYPASS_RULES = Object.freeze([
     message: "Generic template question copy must go through the question surface builder.",
   },
   {
+    code: "hardcoded-axis-step-question",
+    pattern: /Step\s+\d+\/\d+:\s*(?:Typography|Palette|Density|Motion|Components)\.?\s*[\s\S]{0,800}\((?:Recommended|recommended)\)/i,
+    message: "Hardcoded design-axis step questions must not be embedded in agents, commands, skills, or runtime libraries; use validated specialist question surfaces.",
+  },
+  {
     code: "blocked-question-raw-ids",
     pattern: /blockedQuestion[\s\S]{0,240}choices\s*:\s*\[\s*["'](?:provision-agents|connect-host-agents|stop)["']/,
     message: "Blocked-mode choices must use visible labels and tradeoffs, not raw ids.",

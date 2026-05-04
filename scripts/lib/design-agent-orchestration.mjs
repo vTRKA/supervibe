@@ -1,13 +1,16 @@
-import { sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
   buildReferenceInventoryPlan,
   formatDesignArtifactChoiceQuestion,
 } from "./design-artifact-intake.mjs";
 import {
+  bindDesignWizardQuestionProposals,
   buildDesignQuestionProposalDispatchQueue,
   buildDesignWizardState,
   formatDesignWizardQuestion,
+  isTrustedDesignWizardQuestion,
   resolveDesignViewportPolicy,
 } from "./design-wizard-catalog.mjs";
 import {
@@ -196,6 +199,7 @@ export function buildDesignAgentPlan({
     stages: dedupeStages(stages),
   };
   plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, { pluginRoot, requestedExecutionMode: plan.requestedExecutionMode, locale: wizard.locale });
+  plan.wizard = bindDesignWizardQuestionProposals(plan.wizard, readTrustedQuestionProposalOutputs(rootDir, plan.executionStatus.questionProposalProducers));
   plan.writeGate = buildDesignWriteGate({ intake, plan });
   return plan;
 }
@@ -404,6 +408,15 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
       "NEXT_WIZARD_QUESTION: none",
     ].join("\n");
   }
+  if (!isTrustedDesignWizardQuestion(nextQuestion)) {
+    return [
+      gate.durableWritesAllowed ? "WRITE_GATE: ready" : "WRITE_GATE: blocked",
+      agentGateLine(plan),
+      "SPECIALIST_QUESTION_GATE: blocked",
+      "NEXT_SPECIALIST_QUESTION_PRODUCER:",
+      formatQuestionProposalGate(plan, nextQuestion),
+    ].join("\n");
+  }
   return [
     gate.durableWritesAllowed ? "WRITE_GATE: ready" : "WRITE_GATE: blocked",
     agentGateLine(plan),
@@ -550,6 +563,8 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
       subjectType: receipt.subjectType,
       subjectId: receipt.subjectId ?? receipt.agentId ?? receipt.skillId,
       stageId: receipt.stage,
+      hostInvocation: receipt.hostInvocation || null,
+      outputArtifacts: Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [],
     }));
 
   return {
@@ -566,16 +581,20 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
 function buildQuestionProposalProducerStatuses(plan = {}, runtimeProof = {}) {
   const completed = runtimeProof.completedStageSubjects || [];
   return buildDesignQuestionProposalDispatchQueue(plan.wizard || {}).map((producer) => {
-    const completedForStage = completed.some((item) => {
+    const outputArtifact = questionProposalOutputArtifact(plan, producer);
+    const completedReceipt = completed.find((item) => {
       return item.subjectType === producer.producerType
         && item.subjectId === producer.producerId
-        && item.stageId === producer.stageId;
+        && item.stageId === producer.stageId
+        && (item.outputArtifacts || []).includes(outputArtifact);
     });
+    const completedForStage = Boolean(completedReceipt);
     return {
       ...producer,
-      outputArtifact: questionProposalOutputArtifact(plan, producer),
+      outputArtifact,
       receiptPresent: completedForStage,
       receiptTrusted: completedForStage,
+      hostInvocation: completedReceipt?.hostInvocation || null,
     };
   });
 }
@@ -917,6 +936,14 @@ function nextDesignBlockingQuestion({ intake = null, plan = null } = {}) {
   }
   const question = plan?.wizard?.questionQueue?.[0] || null;
   if (question) {
+    if (!isTrustedDesignWizardQuestion(question)) {
+      return {
+        source: "specialist-question-gate",
+        reason: "trusted specialist question proposal required",
+        question,
+        markdown: formatQuestionProposalGate(plan, question),
+      };
+    }
     return {
       source: "wizard",
       reason: plan?.wizard?.gates?.blockedReason || "wizard question required",
@@ -925,6 +952,66 @@ function nextDesignBlockingQuestion({ intake = null, plan = null } = {}) {
     };
   }
   return null;
+}
+
+function readTrustedQuestionProposalOutputs(rootDir = process.cwd(), producers = []) {
+  const proposals = [];
+  for (const producer of producers || []) {
+    if (producer.receiptTrusted !== true || !producer.outputArtifact) continue;
+    const absPath = join(rootDir, ...String(producer.outputArtifact).split("/"));
+    let parsed = null;
+    try {
+      parsed = JSON.parse(readFileSync(absPath, "utf8"));
+    } catch {
+      continue;
+    }
+    const items = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed.questionProposals)
+        ? parsed.questionProposals
+        : Array.isArray(parsed.proposals)
+          ? parsed.proposals
+          : parsed.questionProposal
+            ? [parsed.questionProposal]
+            : parsed.proposal
+              ? [parsed.proposal]
+              : [parsed];
+    for (const item of items) {
+      if (!item || typeof item !== "object") continue;
+      proposals.push({
+        ...item,
+        producer: {
+          ...(item.producer || {}),
+          type: producer.producerType,
+          id: producer.producerId,
+          stageId: producer.stageId,
+          outputArtifact: producer.outputArtifact,
+          receiptTrusted: true,
+          receiptPresent: true,
+          hostInvocation: producer.hostInvocation || item.producer?.hostInvocation || item.hostInvocation || null,
+        },
+      });
+    }
+  }
+  return proposals;
+}
+
+function formatQuestionProposalGate(plan = {}, question = {}) {
+  const producer = (plan.executionStatus?.questionProposalProducers || [])
+    .find((item) => item.stageId === question.stage && item.producerId === question.ownerAgent)
+    || (plan.executionStatus?.questionProposalProducers || []).find((item) => item.producerId === question.ownerAgent)
+    || null;
+  const target = producer
+    ? `${producer.producerType}:${producer.producerId}@${producer.stageId} -> ${producer.outputArtifact}`
+    : `${question.ownerAgent || question.specialist || "specialist"}@${question.stage || "unknown-stage"}`;
+  return [
+    `REQUIRED_SOURCE: real-specialist-proposal`,
+    `CURRENT_SOURCE: ${question.source || question.proposalSource || "unknown"}`,
+    `BLOCKED_AXIS: ${question.axis || "unknown"}`,
+    `OWNER_AGENT: ${question.ownerAgent || question.specialist || "unknown"}`,
+    `PRODUCER: ${target}`,
+    "NEXT_ACTION: dispatch the owner host agent for a scratch SpecialistQuestionContract proposal, issue a runtime receipt for that proposal artifact, then re-run the plan.",
+  ].join("\n");
 }
 
 function expectedReceiptsForDurableOutputs(rootDir) {
