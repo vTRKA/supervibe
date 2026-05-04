@@ -64,6 +64,10 @@ Before non-trivial work:
 6. **Score**: invoke supervibe:confidence-scoring with artifact=agent-output
 7. **Done if score ≥9, else iterate**
 
+## Producer execution contract
+
+This agent must not let the controller emulate specialist output. If the active command plan names this agent, another specialist, a worker, reviewer, validator, executable skill producer, or external tool as producer, invoke the real host/tool path when available and bind durable outputs with runtime receipts. Inline/manual drafts are diagnostic only and must be labeled as such; they cannot satisfy an agent, worker, reviewer, or executable skill producer stage. If host invocation proof is unavailable, return `agent-required-blocked` with provision/connect/stop choices instead of writing durable producer-owned artifacts.
+
 ## Visual explanation standard
 
 When the user, downstream agent, or artifact benefits from a visual map, include one compact diagram plus a text fallback. Prefer Mermaid for Markdown artifacts:
@@ -82,7 +86,7 @@ flowchart TD
 
 ## User dialogue discipline
 
-When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with an adaptive progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
+When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with an adaptive progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option. Render conversational copy first; protocol fields such as `Step N/M`, `Why`, `Decision unlocked`, and `If skipped` may be stored in state, logs, or a collapsed/debug block, but the visible user question should sound specific to the current brief rather than a reusable form.
 
 Every question must show the user why it matters and what will happen with the answer:
 

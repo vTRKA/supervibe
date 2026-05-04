@@ -842,7 +842,14 @@ export function resolveDesignViewportPolicy({ target = "web", currentWindow = nu
   };
 }
 
-export function formatDesignWizardQuestion(question = {}) {
+export function formatDesignWizardQuestion(question = {}, options = {}) {
+  if (options.protocol === true || options.mode === "protocol") {
+    return formatDesignWizardProtocolQuestion(question);
+  }
+  return formatDesignWizardConversationalQuestion(question, options);
+}
+
+export function formatDesignWizardProtocolQuestion(question = {}) {
   const locale = normalizeLocale(question.locale || detectDesignLocale(`${question.prompt || ""} ${question.why || ""}`));
   const labels = WIZARD_LABELS[locale];
   const lines = [
@@ -860,6 +867,51 @@ export function formatDesignWizardQuestion(question = {}) {
   lines.push("", `${labels.freeForm}: ${question.freeFormPath || (locale === "ru" ? "Ответьте своими словами, если варианты не подходят." : "Answer in your own words if none of these fit.")}`);
   lines.push(`${labels.stop}: ${question.stopCondition || (locale === "ru" ? "Остановиться: сохранить состояние и не продолжать скрыто." : "Stop here - save state and make no hidden progress.")}`);
   return lines.join("\n");
+}
+
+function formatDesignWizardConversationalQuestion(question = {}, options = {}) {
+  const locale = normalizeLocale(question.locale || detectDesignLocale(`${question.prompt || ""} ${question.why || ""}`));
+  const choices = Array.isArray(question.choices) ? question.choices : [];
+  const recommended = choices.find((item) => item.recommended) || choices[0] || null;
+  const visibleChoices = orderChoicesForConversation(choices, recommended);
+  const prompt = question.prompt || question.question || (locale === "ru" ? "Какой дизайн-выбор фиксируем дальше?" : "Which design choice should we lock next?");
+  const lead = conversationalLeadForQuestion(question, recommended, locale, options);
+  const lines = [
+    `**${prompt}**`,
+    "",
+    lead,
+    "",
+  ];
+
+  for (const item of visibleChoices) {
+    lines.push(`- **${item.label}** - ${item.tradeoff || (locale === "ru" ? "Компромисс не указан." : "No tradeoff provided.")}`);
+  }
+
+  lines.push("");
+  lines.push(locale === "ru"
+    ? "Можно выбрать вариант выше или ответить своими словами; если стоп, я сохраню текущее состояние без скрытого продолжения."
+    : "Pick one option above or answer in your own words; stop means I save the current state without hidden continuation.");
+  return lines.join("\n");
+}
+
+function orderChoicesForConversation(choices = [], recommended = null) {
+  if (!recommended) return choices;
+  return [recommended, ...choices.filter((item) => item !== recommended)];
+}
+
+function conversationalLeadForQuestion(question = {}, recommended = null, locale = "en", options = {}) {
+  const decision = question.decisionUnlocked || question.decision || "";
+  const why = question.why || "";
+  const detail = [why, decision].filter(Boolean).join(locale === "ru" ? " " : " ");
+  const recommendedCopy = recommended
+    ? (locale === "ru"
+      ? `Я бы начал с **${recommended.label}**, но это только стартовая гипотеза, а не закрытый дефолт.`
+      : `I would start with **${recommended.label}**, but treat it as a starting hypothesis, not a locked default.`)
+    : (locale === "ru"
+      ? "Нужно зафиксировать один выбор, чтобы следующий producer работал с понятной рамкой."
+      : "One choice needs to be locked so the next producer works from a clear boundary.");
+  if (options.compact === true || !detail) return recommendedCopy;
+  return `${recommendedCopy} ${detail}`;
 }
 
 function axis(fields) {
@@ -1140,6 +1192,21 @@ function contextualChoiceFor(axisId, choiceId, baseChoice, locale = "en", strate
   if (axisId === "information_density") {
     return contextualDensityChoice(choiceId, baseChoice, normalized, strategy);
   }
+  if (axisId === "palette_mood") {
+    return contextualPaletteChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "typography_personality") {
+    return contextualTypographyChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "motion_intensity") {
+    return contextualMotionChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "component_feel") {
+    return contextualComponentChoice(choiceId, baseChoice, normalized, strategy);
+  }
+  if (axisId === "audience_trust_posture") {
+    return contextualTrustChoice(choiceId, baseChoice, normalized, strategy);
+  }
   return contextualFallbackChoice(baseChoice, normalized, strategy);
 }
 
@@ -1247,6 +1314,128 @@ function contextualDensityChoice(choiceId, baseChoice, locale = "en", strategy =
     comfortable: [`Give ${subject} more breathing room`, "Easier reading and controls; less is visible immediately."],
   };
   return contextualChoiceFromMap(choiceId, baseChoice, map);
+}
+
+function contextualPaletteChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  const profile = strategy.profile || "default";
+  const agentChat = strategy.signals?.agentChat || profile === "developerTool";
+  if (locale === "ru") {
+    if (agentChat) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "graphite-cyan": ["Graphite + cyan как technical signal", `Для ${subject}: точный agent/workflow акцент; нужно удержать поверхности от холодной консольности.`],
+        "graphite-amber": ["Graphite + amber как operational emphasis", `Для ${subject}: теплее и заметнее действия; важно не спутать акцент с warning.`],
+        "light-first": ["Light first для ежедневной работы", `Для ${subject}: лучше читаемость длинных сессий; меньше cinematic command feel.`],
+        "high-contrast": ["High contrast для control-room режима", `Для ${subject}: сильная доступность и статусность; нужно смягчить для постоянного чтения.`],
+      });
+    }
+    if (profile === "brandLaunch") {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "graphite-cyan": ["Graphite + cyan как precise launch", `Для ${subject}: технологичная память бренда; может быть холодно для широкой аудитории.`],
+        "graphite-amber": ["Graphite + amber как warm launch", `Для ${subject}: теплее и смелее CTA; следить, чтобы amber не выглядел как предупреждение.`],
+        "light-first": ["Light first с сильными акцентами", `Для ${subject}: конверсионно и читаемо; меньше драматичного первого кадра.`],
+        "high-contrast": ["High contrast как statement", `Для ${subject}: мощное первое впечатление; выше риск визуальной усталости.`],
+      });
+    }
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "graphite-cyan": [`Graphite + cyan для ${subject}`, "Точный технический сигнал; важно не сделать систему слишком холодной."],
+      "graphite-amber": [`Graphite + amber для ${subject}`, "Теплее и операционнее; нужно отделить акцент от warning-семантики."],
+      "light-first": [`Light first для ${subject}`, "Лучше для ежедневной читабельности; меньше кинематографичности."],
+      "high-contrast": [`High contrast для ${subject}`, "Сильная доступность и command feel; требуется контроль утомляемости."],
+    });
+  }
+  if (agentChat) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "graphite-cyan": ["Graphite + cyan as technical signal", `For ${subject}: precise agent/workflow accent; keep surfaces from becoming cold console chrome.`],
+      "graphite-amber": ["Graphite + amber as operational emphasis", `For ${subject}: warmer actions and attention; avoid confusing accent with warning state.`],
+      "light-first": ["Light first for daily work", `For ${subject}: stronger long-session readability; less cinematic command feel.`],
+      "high-contrast": ["High contrast for control-room mode", `For ${subject}: strong accessibility and status; soften for sustained reading.`],
+    });
+  }
+  return contextualFallbackChoice(baseChoice, locale, strategy);
+}
+
+function contextualTypographyChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  const profile = strategy.profile || "default";
+  const agentChat = strategy.signals?.agentChat || profile === "developerTool";
+  if (locale === "ru") {
+    if (agentChat) {
+      return contextualChoiceFromMap(choiceId, baseChoice, {
+        "system-native": ["System native для спокойного shell", `Для ${subject}: быстро и привычно платформе; меньше собственной агентской идентичности.`],
+        geometric: ["Geometric для точного продукта", `Для ${subject}: современно и структурно; может охладить длинное чтение.`],
+        humanist: ["Humanist для доверительного чтения", `Для ${subject}: легче читать диалог и пояснения; экспертность станет мягче.`],
+        "code-first": ["Code first для agent traces", `Для ${subject}: сильная mono-поддержка логов и кода; нишевее для нетехнических пользователей.`],
+      });
+    }
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "system-native": [`System native для ${subject}`, "Быстро и привычно; меньше брендовой выразительности."],
+      geometric: [`Geometric для ${subject}`, "Современно и точно; может быть холодно на длинном чтении."],
+      humanist: [`Humanist для ${subject}`, "Читабельнее и человечнее; чуть мягче экспертный характер."],
+      "code-first": [`Code first для ${subject}`, "Сильная mono-поддержка; подходит, если продукт действительно technical."],
+    });
+  }
+  if (agentChat) {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "system-native": ["System native for a calm shell", `For ${subject}: fast and platform-familiar; less agent-product identity.`],
+      geometric: ["Geometric for product precision", `For ${subject}: modern and structured; can cool down long reading.`],
+      humanist: ["Humanist for trustful reading", `For ${subject}: easier dialogue and explanation reading; softer expert posture.`],
+      "code-first": ["Code first for agent traces", `For ${subject}: strong mono support for logs and code; narrower for non-technical users.`],
+    });
+  }
+  return contextualFallbackChoice(baseChoice, locale, strategy);
+}
+
+function contextualMotionChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  if (locale === "ru") {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      subtle: [`Subtle motion для ${subject}`, "Дает понятную обратную связь без шоу; безопасно для продуктивной работы."],
+      strict: [`Strict motion для ${subject}`, "Быстрые состояния и минимум движения; может ощущаться сухо."],
+      expressive: [`Expressive motion для ${subject}`, "Лучше показывает состояние и характер; выше риск усталости и perf-бюджета."],
+    });
+  }
+  return contextualChoiceFromMap(choiceId, baseChoice, {
+    subtle: [`Subtle motion for ${subject}`, "Clear feedback without spectacle; safe for productivity work."],
+    strict: [`Strict motion for ${subject}`, "Fast state changes and minimal movement; can feel dry."],
+    expressive: [`Expressive motion for ${subject}`, "More state storytelling and character; higher fatigue and performance risk."],
+  });
+}
+
+function contextualComponentChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  if (locale === "ru") {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "radix-headless": [`Radix/headless для ${subject}`, "Поведение доступности есть, визуальная система полностью наша; больше композиционной работы."],
+      custom: [`Custom components для ${subject}`, "Максимальный контроль и host-neutral handoff; дольше до production-ready набора."],
+      "shadcn-adapter": [`shadcn-style adapter для ${subject}`, "Быстрый React handoff с исходниками; менее нейтрален к другим host."],
+      "platform-native": [`Platform native для ${subject}`, "Лучше совпадает с desktop/native shell; меньше переносимых web primitives."],
+    });
+  }
+  return contextualChoiceFromMap(choiceId, baseChoice, {
+    "radix-headless": [`Radix/headless for ${subject}`, "Accessible behavior with full visual ownership; more composition work."],
+    custom: [`Custom components for ${subject}`, "Maximum control and host-neutral handoff; longer path to production-ready coverage."],
+    "shadcn-adapter": [`shadcn-style adapter for ${subject}`, "Fast React handoff with source ownership; less neutral for other hosts."],
+    "platform-native": [`Platform native for ${subject}`, "Best match for desktop/native shells; fewer reusable web primitives."],
+  });
+}
+
+function contextualTrustChoice(choiceId, baseChoice, locale = "en", strategy = {}) {
+  const subject = subjectForLocale(strategy.subject, locale);
+  if (locale === "ru") {
+    return contextualChoiceFromMap(choiceId, baseChoice, {
+      "professional-calm": [`Спокойный профессиональный инструмент для ${subject}`, "Снижает тревожность и держит workflow рабочим; может быть сдержанно."],
+      "expert-power": [`Мощный operator cockpit для ${subject}`, "Сильнее сигнализирует контроль и экспертизу; выше когнитивная нагрузка."],
+      "consumer-friendly": [`Дружелюбная поверхность для ${subject}`, "Снижает порог входа; может недосигналить rigor."],
+      "regulated-assurance": [`Audit-grade уверенность для ${subject}`, "Много assurance cues; интерфейс станет формальнее и медленнее."],
+    });
+  }
+  return contextualChoiceFromMap(choiceId, baseChoice, {
+    "professional-calm": [`Calm professional tool for ${subject}`, "Lowers anxiety and keeps workflow practical; can feel restrained."],
+    "expert-power": [`Powerful operator cockpit for ${subject}`, "Signals control and expertise; increases cognitive load."],
+    "consumer-friendly": [`Friendly surface for ${subject}`, "Lowers intimidation; may under-signal rigor."],
+    "regulated-assurance": [`Audit-grade assurance for ${subject}`, "Adds assurance cues; makes the interface more formal and slower."],
+  });
 }
 
 function contextualFallbackChoice(baseChoice, locale = "en", strategy = {}) {

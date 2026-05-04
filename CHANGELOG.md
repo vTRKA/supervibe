@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.68] - 2026-05-04
+
+### Added
+
+- Added an executable `supervibe:brandbook` producer runtime with transactional
+  scratch promotion, template path resolution from the plugin root, structured
+  producer output, and runtime-issued skill receipts.
+- Added workflow receipt repair commands for `reissue`, `prune-stale`,
+  `rebuild-ledger`, and `recovery-status` so mutable state drift can be handled
+  without manual ledger reconstruction.
+- Added first-class styleboard QA validation for screenshot, nonblank render,
+  overflow, contrast, focus, and reduced-motion evidence.
+
+### Changed
+
+- Reworked design wizard user-facing questions to use conversational,
+  context-aware copy while keeping protocol details available through a separate
+  machine-readable formatter.
+- Strengthened provider and agent instruction surfaces so specialist producers
+  must run through real host/tool execution paths instead of controller-side
+  inline drafts.
+- Split design planner guidance between host-agent dispatch and skill producer
+  execution to avoid treating skill stages as missing host agents.
+
 ## [2.0.67] - 2026-05-04
 
 ### Added

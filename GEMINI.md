@@ -16,7 +16,7 @@ When Supervibe skills or agents reference these Claude Code tools, use the Gemin
 | `Bash` | `run_shell_command` |
 | `WebFetch` | `web_fetch` |
 | `WebSearch` | `google_web_search` |
-| `Task` (subagent dispatch) | direct invocation — Gemini CLI does not have first-class subagents yet; treat skill content as inline instructions |
+| `Task` (subagent dispatch) | host-native agent run when available; if Gemini cannot provide invocation proof, enter `agent-required-blocked` or save diagnostics only |
 | `TodoWrite` | inline task list in response |
 
 When Supervibe agents/skills reference Claude Code tools by name, mentally substitute via this table. Output contracts and confidence-scoring stay identical.
@@ -44,6 +44,8 @@ node ./scripts/supervibe-commands.mjs --match "<user request>"
 If the output says `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 
 For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node ./scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
+
+Inline/manual drafts are diagnostics only. Do not treat reading a skill or agent markdown file as an invocation. If a workflow names a specialist producer and Gemini cannot produce host invocation proof, report the blocked producer, offer provision/connect/stop choices, and do not claim the stage complete.
 
 Reference any agent by file path:
 ```
@@ -75,6 +77,8 @@ The same six core principles apply across host instruction files — these overr
 7. **UTF-8 file discipline** - follow `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md`: write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
 
 8. **Workflow receipts** - follow `rules/workflow-invocation-receipts.md`: runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
+
+9. **Producer execution over inline emulation** - executable skill producers such as `scripts/brandbook-producer.mjs` promote durable skill outputs; agent, worker, and reviewer outputs require host invocation proof. Use `workflow-receipt.mjs recovery-status`, `reissue`, `prune-stale --apply`, or `rebuild-ledger` for recovery.
 
 ## Reference
 

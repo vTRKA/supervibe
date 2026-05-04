@@ -113,7 +113,7 @@ Read the active prototype's `.supervibe/artifacts/prototypes/<slug>/config.json`
 > - `mobile-native` — iOS+Android
 > - `mixed` - frontend plus extension at the same time (use web baseline plus extension override)
 
-Read `templates/brandbook-target-baselines/<target>.md` as the starting baseline. Use its density/type-scale/motion budget/component-list as DEFAULTS that the user can override during Sections 3, 4, 5, 6.
+Read `<resolved-supervibe-plugin-root>/templates/brandbook-target-baselines/<target>.md` as the starting baseline. Do not resolve this path relative to `skills/brandbook/`; the templates live at the plugin root. Use its density/type-scale/motion budget/component-list as DEFAULTS that the user can override during Sections 3, 4, 5, 6.
 
 For `target: mixed`, load `web.md` as primary and surface-specific deltas from the secondary target's file when relevant.
 
@@ -280,6 +280,16 @@ Output: copy each chosen template to `.supervibe/artifacts/prototypes/_design-sy
 - F) **Angular Material / PrimeVue / Quasar / other** - name the target explicitly.
 
 After selection, run `supervibe:component-library-integration` to generate the bridge before Section 7. Do not skip the bridge: without it, the chosen library renders with its default visual language and our tokens become decoration.
+
+### Executable producer boundary
+
+This skill is not complete when the controller hand-writes files from markdown instructions. Durable design-system outputs must be promoted through the executable producer:
+
+```bash
+node <resolved-supervibe-plugin-root>/scripts/brandbook-producer.mjs run --source <prepared-design-system-dir> --handoff <handoff-id> --slug <prototype-slug> --target <target>
+```
+
+The producer owns `prepare -> write-temp -> validate -> promote -> receipt -> planner-refresh`. Prepare candidate files in scratch first, then let the producer promote `tokens.css`, `manifest.json`, `design-flow-state.json`, `styleboard.html`, `motion.css`, `voice.md`, `accessibility.md`, and component specs into `.supervibe/artifacts/prototypes/_design-system/`. It snapshots mutable prototype `config.json` as input evidence instead of hash-locking the live mutable file as a durable output. If the producer fails, leave files in scratch, report the failed phase, and do not claim `supervibe:brandbook` ran.
 
 For target=mobile-native, library options shift:
 - React Native: Tamagui / NativeBase / RN Paper

@@ -72,6 +72,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
     console.log(`NEXT_DISPATCH: ${formatDispatchTarget(nextDispatch)}`);
+    console.log(`NEXT_HOST_DISPATCH: ${formatHostDispatchTarget(nextDispatch)}`);
+    console.log(`NEXT_SKILL_PRODUCER: ${formatSkillProducerTarget(prewriteManifest.nextProducer)}`);
     console.log(`NEXT_PRODUCER: ${formatNextProducer(prewriteManifest.nextProducer)}`);
     console.log(`MISSING_RUNTIME_PROOFS: ${(plan.executionStatus.missingRuntimeProofs || []).map((proof) => `${proof.subjectId}@${proof.stageId}`).join(",") || "none"}`);
     console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
@@ -121,7 +123,26 @@ function nextDispatchTarget(plan = {}, producer = null) {
 
 function formatDispatchTarget(target = null) {
   if (!target) return "none";
+  if (String(target.producerType || "").toLowerCase() === "skill") {
+    return "none (skill producer pending; see NEXT_SKILL_PRODUCER)";
+  }
   return `${target.producerType}:${target.producerId}@${target.stageId} (${target.reason || "producer-proof"})`;
+}
+
+function formatHostDispatchTarget(target = null) {
+  if (!target) return "none";
+  if (!["agent", "worker", "reviewer"].includes(String(target.producerType || "").toLowerCase())) return "none";
+  return `${target.producerType}:${target.producerId}@${target.stageId} (${target.reason || "producer-proof"})`;
+}
+
+function formatSkillProducerTarget(producer = null) {
+  if (!producer || String(producer.producerType || "").toLowerCase() !== "skill") return "none";
+  const receipt = producer.receiptTrusted
+    ? "trusted"
+    : producer.receiptPresent
+      ? "present-untrusted"
+      : "missing";
+  return `${producer.producerId}@${producer.stageId} -> ${producer.outputArtifact} (${receipt})`;
 }
 
 function formatNextProducer(producer = null) {
@@ -144,6 +165,14 @@ function dispatchGuidance(producer = null) {
         : "SPECIALISTS_DEFERRED: false; run this stage producer before claiming or approving its durable output.",
       "SPAWN: use the host-native agent tool for this logical Supervibe agent; in Codex use spawn_agent with fork_context=true and encode the role in message.",
       `RECEIPT_BRIDGE: node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent ${producer.producerId} --host <host> --host-invocation-id <returned-host-agent-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage ${producer.stageId} --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts ${producer.outputArtifact}`,
+    ].join("\n");
+  }
+  if (producer.producerId === "supervibe:brandbook") {
+    return [
+      `NEXT_SKILL_PRODUCER: ${producer.producerId}@${producer.stageId}`,
+      "RUN: prepare brandbook outputs in scratch, then let the executable producer promote durable files and issue the skill receipt.",
+      "PRODUCER: node <resolved-supervibe-plugin-root>/scripts/brandbook-producer.mjs run --source <prepared-design-system-dir> --handoff <handoff-id> --slug <prototype-slug> --target <target>",
+      "RECEIPT_BRIDGE: included in brandbook-producer; do not hand-write or separately issue this skill receipt unless the producer reports failure.",
     ].join("\n");
   }
   return [

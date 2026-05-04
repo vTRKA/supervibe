@@ -9,6 +9,7 @@ import {
   evaluateDesignStyleboardReadiness,
   formatDesignWizardStatus,
   formatDesignWizardQuestion,
+  formatDesignWizardProtocolQuestion,
   parseDesignBriefPreferences,
   recordDesignWizardAnswer,
   resolveDesignViewportPolicy,
@@ -111,6 +112,28 @@ test("wizard renders context-specific choice labels instead of reusable template
   assert.match(markdown, /это не общий пункт анкеты/);
 });
 
+test("wizard contextualizes palette and typography choices for runtime copy", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace for operators with traces, logs, review queue, and command center behavior.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+    initialDecisions: {
+      viewport: { axis: "viewport", answer: "1440x900", source: "user" },
+    },
+  });
+  const palette = state.questionQueue.find((question) => question.axis === "palette_mood");
+  const typography = state.questionQueue.find((question) => question.axis === "typography_personality");
+
+  assert.ok(palette);
+  assert.ok(typography);
+  assert.match(palette.choices[0].label, /technical signal|daily work|control-room|operational emphasis/i);
+  assert.match(typography.choices[0].label, /agent traces|calm shell|trustful reading|product precision/i);
+
+  const markdown = `${formatDesignWizardQuestion(palette)}\n${formatDesignWizardQuestion(typography)}`;
+  assert.doesNotMatch(markdown, /Graphite \+ cyan \(recommended\)|System native \(recommended\)/);
+  assert.match(markdown, /starting hypothesis/);
+});
+
 test("multilingual functional-only reference scope closes only the borrow/avoid axis", () => {
   const parsed = parseDesignBriefPreferences("Сохранить только функционал, не скелет старых прототипов.");
 
@@ -204,7 +227,7 @@ test("wizard answers update state and formatted questions include decision conte
   assert.equal(updated.runtimeStatus.progress, `1/${DESIGN_WIZARD_AXES.length}`);
   assert.ok(updated.resumeToken);
 
-  const markdown = formatDesignWizardQuestion(state.questionQueue.find((question) => question.axis === "visual_direction_tone"));
+  const markdown = formatDesignWizardProtocolQuestion(state.questionQueue.find((question) => question.axis === "visual_direction_tone"));
   assert.match(markdown, /Why:/);
   assert.match(markdown, /Decision unlocked:/);
   assert.match(markdown, /Free-form answer:/);
@@ -241,11 +264,9 @@ test("wizard localizes Russian questions and adds anti-generic creative gates", 
   assert.ok(state.questionQueue.some((question) => question.axis === "anti_generic_guardrail"));
 
   const markdown = formatDesignWizardQuestion(state.questionQueue[0]);
-  assert.match(markdown, /Шаг 1\//);
-  assert.match(markdown, /Зачем:/);
-  assert.match(markdown, /Что изменится:/);
-  assert.match(markdown, /Если пропустить:/);
+  assert.doesNotMatch(markdown, /Шаг 1\/|Зачем:|Что изменится:|Если пропустить:/);
   assert.doesNotMatch(markdown, /Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)/);
+  assert.match(markdown, /Можно выбрать вариант выше/);
 });
 
 test("viewport decisions are captured before styleboard and drive visual checks", () => {

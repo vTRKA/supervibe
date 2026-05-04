@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { appendFile, mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 
@@ -265,6 +265,145 @@ export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) 
   };
 }
 
+export async function reissueWorkflowInvocationReceipt({
+  rootDir = process.cwd(),
+  receiptPath,
+  reason = null,
+  runTimestamp = null,
+  secret = null,
+  rebuildLedger = true,
+} = {}) {
+  if (!receiptPath) throw new Error("receiptPath required");
+  const normalizedReceiptPath = normalizeRelPath(receiptPath);
+  const existing = readJsonSync(join(rootDir, ...normalizedReceiptPath.split("/")));
+  if (!existing || existing.__invalidJson) throw new Error(`receipt not readable: ${normalizedReceiptPath}`);
+  if (!Array.isArray(existing.outputArtifacts) || existing.outputArtifacts.length === 0) {
+    throw new Error(`receipt has no outputArtifacts: ${normalizedReceiptPath}`);
+  }
+  const timestamp = runTimestamp || new Date().toISOString();
+  const result = await issueWorkflowInvocationReceipt({
+    rootDir,
+    command: existing.command,
+    subjectType: existing.subjectType,
+    subjectId: existing.subjectId,
+    agentId: existing.agentId || null,
+    skillId: existing.skillId || null,
+    stage: existing.stage,
+    invocationReason: reason || existing.invocationReason || "workflow receipt reissued for current artifact hashes",
+    inputEvidence: existing.inputEvidence || [],
+    outputArtifacts: existing.outputArtifacts,
+    startedAt: timestamp,
+    completedAt: timestamp,
+    runTimestamp: timestamp,
+    handoffId: existing.handoffId,
+    receiptDir: dirname(normalizedReceiptPath),
+    receiptPrefix: receiptPrefixFromReceiptId(existing.receiptId),
+    secret,
+    hostInvocation: existing.hostInvocation || null,
+    allowMissingHostInvocationProof: false,
+  });
+  const ledger = rebuildLedger
+    ? await rebuildWorkflowReceiptLedger({ rootDir, secret, pruneStale: false })
+    : null;
+  return { ...result, ledgerRepair: ledger };
+}
+
+export async function pruneStaleWorkflowReceipts({
+  rootDir = process.cwd(),
+  apply = false,
+  runTimestamp = null,
+  secret = null,
+} = {}) {
+  const timestamp = runTimestamp || new Date().toISOString();
+  const receipts = readAllWorkflowReceipts(rootDir).filter((receipt) => !receipt.__invalidJson);
+  const stale = receipts
+    .map((receipt) => ({ receipt, driftIssues: receiptArtifactDriftIssues(rootDir, receipt) }))
+    .filter((item) => item.driftIssues.length > 0);
+  const archived = [];
+  if (apply) {
+    const archiveRoot = join(rootDir, ".supervibe", "memory", "workflow-receipts-stale", sanitizeId(timestamp));
+    for (const item of stale) {
+      const source = join(rootDir, ...item.receipt.__file.split("/"));
+      const target = join(archiveRoot, ...item.receipt.__file.split("/"));
+      await mkdir(dirname(target), { recursive: true });
+      await rename(source, target);
+      archived.push(normalizeRelPath(relative(rootDir, target)));
+    }
+  }
+  const ledger = await rebuildWorkflowReceiptLedger({ rootDir, secret, pruneStale: true });
+  return {
+    pass: stale.length === 0 || apply,
+    checked: receipts.length,
+    stale: stale.length,
+    archived,
+    driftIssues: stale.flatMap((item) => item.driftIssues.map((message) => `${item.receipt.__file}: ${message}`)),
+    ledger,
+  };
+}
+
+export async function rebuildWorkflowReceiptLedger({
+  rootDir = process.cwd(),
+  secret = null,
+  pruneStale = false,
+} = {}) {
+  const receipts = readAllWorkflowReceipts(rootDir)
+    .filter((receipt) => !receipt.__invalidJson)
+    .map((receipt) => ({
+      receipt,
+      driftIssues: receiptArtifactDriftIssues(rootDir, receipt),
+      signatureIssues: receiptSignatureIssues(rootDir, receipt, { secret }),
+    }));
+  const retained = receipts
+    .filter((item) => item.signatureIssues.length === 0)
+    .filter((item) => !pruneStale || item.driftIssues.length === 0)
+    .sort((left, right) => {
+      const leftTime = left.receipt.runtime?.issuedAt || left.receipt.completedAt || left.receipt.startedAt || "";
+      const rightTime = right.receipt.runtime?.issuedAt || right.receipt.completedAt || right.receipt.startedAt || "";
+      return leftTime.localeCompare(rightTime)
+        || String(left.receipt.__file || "").localeCompare(String(right.receipt.__file || ""))
+        || String(left.receipt.receiptId || "").localeCompare(String(right.receipt.receiptId || ""));
+    });
+  const ledgerPath = defaultWorkflowReceiptLedgerPath(rootDir);
+  await withWorkflowReceiptLedgerLock(rootDir, async () => {
+    let previousEntryHash = null;
+    const lines = [];
+    for (const item of retained) {
+      const receipt = item.receipt;
+      const artifactLinksPath = normalizeRelPath(`${dirname(receipt.__file)}/${ARTIFACT_LINKS_FILE}`);
+      const withChain = {
+        schemaVersion: 1,
+        receiptId: receipt.receiptId,
+        command: receipt.command,
+        subjectType: receipt.subjectType,
+        subjectId: receipt.subjectId,
+        receiptPath: receipt.__file,
+        artifactLinksPath,
+        canonicalHash: receipt.runtime?.canonicalHash,
+        signature: receipt.runtime?.signature,
+        issuedAt: receipt.runtime?.issuedAt || receipt.completedAt || receipt.startedAt,
+        previousEntryHash,
+      };
+      const entry = {
+        ...withChain,
+        entryHash: ledgerEntryHash(withChain),
+      };
+      previousEntryHash = entry.entryHash;
+      lines.push(JSON.stringify(entry));
+    }
+    await mkdir(dirname(ledgerPath), { recursive: true });
+    await writeFile(ledgerPath, `${lines.join("\n")}${lines.length ? "\n" : ""}`, "utf8");
+  });
+  return {
+    pass: receipts.every((item) => item.signatureIssues.length === 0) && (!pruneStale || receipts.every((item) => item.driftIssues.length === 0 || !retained.includes(item))),
+    checked: receipts.length,
+    retained: retained.length,
+    pruned: receipts.length - retained.length,
+    stale: receipts.filter((item) => item.driftIssues.length > 0).length,
+    signatureIssues: receipts.flatMap((item) => item.signatureIssues.map((message) => `${item.receipt.__file}: ${message}`)),
+    driftIssues: receipts.flatMap((item) => item.driftIssues.map((message) => `${item.receipt.__file}: ${message}`)),
+  };
+}
+
 function validateReceiptLedgerEntry(rootDir, receipt, options = {}) {
   const entries = readReceiptLedgerSync(rootDir);
   const chain = validateWorkflowReceiptLedgerChain(rootDir, options);
@@ -281,6 +420,52 @@ function validateReceiptLedgerEntry(rootDir, receipt, options = {}) {
     }
   }
   return { pass: issues.length === 0, issues };
+}
+
+function receiptArtifactDriftIssues(rootDir, receipt = {}) {
+  const issues = [];
+  for (const output of receipt.outputHashes || []) {
+    const current = hashEvidencePath(rootDir, output.path, { required: false });
+    if (!current.exists) {
+      issues.push(`output artifact missing: ${output.path}`);
+      continue;
+    }
+    if (current.sha256 !== output.sha256) {
+      issues.push(`output artifact hash mismatch: ${output.path}`);
+    }
+  }
+  return issues;
+}
+
+function receiptSignatureIssues(rootDir, receipt = {}, options = {}) {
+  const issues = [];
+  const secret = options.secret ?? readReceiptSecretSync(rootDir);
+  if (receipt.runtime?.issuer !== WORKFLOW_RECEIPT_ISSUER) {
+    issues.push("runtime issuer missing or invalid");
+  }
+  if (receipt.runtime?.algorithm !== ALGORITHM) {
+    issues.push("runtime signature algorithm missing or invalid");
+  }
+  if (!receipt.runtime?.canonicalHash || !receipt.runtime?.signature) {
+    issues.push("runtime canonicalHash/signature missing");
+  }
+  if (!secret) {
+    issues.push("receipt runtime secret missing");
+    return issues;
+  }
+  const canonical = canonicalReceiptForVerification(receipt);
+  const expectedHash = sha256(stableStringify(canonical));
+  const expectedSignature = signCanonical(canonical, secret);
+  if (receipt.runtime.canonicalHash !== expectedHash) {
+    issues.push("receipt canonical hash mismatch");
+  }
+  if (receipt.runtime.signature !== expectedSignature) {
+    issues.push("receipt signature mismatch");
+  }
+  if (receipt.runtime.keyId !== keyIdForSecret(secret)) {
+    issues.push("receipt keyId mismatch");
+  }
+  return issues;
 }
 
 function validateArtifactLinks(rootDir, receipt) {
@@ -595,6 +780,11 @@ function resolveReceiptDir(rootDir, path) {
 
 function sanitizeId(value) {
   return String(value ?? "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown";
+}
+
+function receiptPrefixFromReceiptId(receiptId = "") {
+  const match = String(receiptId || "").match(/^(.+)-[a-f0-9]{12}$/i);
+  return match ? match[1] : "workflow";
 }
 
 function keyIdForSecret(secret) {

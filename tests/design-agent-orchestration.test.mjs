@@ -100,7 +100,8 @@ test("design agent plan maps source types and stages to explicit agents and skil
   const prompt = formatDesignPlanPrompt(plan);
   assert.match(prompt, /NEXT_WIZARD_QUESTION/);
   assert.match(prompt, /AGENT_GATE: invoke supervibe-orchestrator now; defer specialist design agents until wizard gates close/);
-  assert.match(prompt, /Step 1\//);
+  assert.match(prompt, /Which design workflow mode should this run use/);
+  assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
 
 test("design agent plan CLI resumes mode and decisions from saved prototype config", async () => {

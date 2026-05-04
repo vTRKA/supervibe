@@ -194,6 +194,123 @@ test("workflow receipt runtime rejects ledger tampering and artifact drift", asy
   }
 });
 
+test("workflow receipt CLI reissue repairs artifact drift and rebuilds ledger", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-reissue-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Run\n");
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop-runner",
+      stage: "wave-1",
+      invocationReason: "loop wave completed",
+      outputArtifacts: [".supervibe/artifacts/loops/checkout/run.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "loop-checkout",
+      secret: "test-secret",
+    });
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, false);
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/workflow-receipt.mjs",
+      "reissue",
+      "--root",
+      root,
+      "--receipt",
+      issued.receiptPath,
+      "--reason",
+      "artifact intentionally updated",
+      "--secret",
+      "test-secret",
+    ], { cwd: REPO_ROOT });
+
+    assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT_REISSUED/);
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+    assert.equal(validateWorkflowReceiptLedgerChain(root, { secret: "test-secret" }).entries, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt CLI prune-stale archives drifted receipts and rebuilds ledger", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-prune-stale-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Run\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop-runner",
+      stage: "wave-1",
+      invocationReason: "loop wave completed",
+      outputArtifacts: [".supervibe/artifacts/loops/checkout/run.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "loop-checkout",
+      secret: "test-secret",
+    });
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/workflow-receipt.mjs",
+      "prune-stale",
+      "--root",
+      root,
+      "--apply",
+      "--secret",
+      "test-secret",
+    ], { cwd: REPO_ROOT });
+
+    assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT_PRUNE_STALE/);
+    assert.match(stdout, /ARCHIVED: 1/);
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(result.pass, true);
+    assert.equal(result.receipts, 0);
+    assert.equal(result.ledgerEntries, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt CLI recovery-status reports trusted stage and dirty receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-recovery-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Run\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop-runner",
+      stage: "wave-1",
+      invocationReason: "loop wave completed",
+      outputArtifacts: [".supervibe/artifacts/loops/checkout/run.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "loop-checkout",
+      secret: "test-secret",
+    });
+    await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/workflow-receipt.mjs",
+      "recovery-status",
+      "--root",
+      root,
+      "--secret",
+      "test-secret",
+    ], { cwd: REPO_ROOT });
+
+    assert.match(stdout, /SUPERVIBE_WORKFLOW_RECOVERY_STATUS/);
+    assert.match(stdout, /UNTRUSTED_RECEIPTS: 1/);
+    assert.match(stdout, /NEXT_SAFE_ACTION: run workflow-receipt reissue\/prune-stale\/rebuild-ledger/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt CLI supports command-wide agent aliases", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {

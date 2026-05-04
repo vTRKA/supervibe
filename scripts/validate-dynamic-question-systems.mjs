@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildDesignWizardState,
+  formatDesignWizardQuestion,
 } from "./lib/design-wizard-catalog.mjs";
 import {
   buildPostDeliveryQuestion,
@@ -182,6 +183,10 @@ function validateDesignWizardRuntimeCopy(issues) {
   }
   if (/(^|\n|\| )3 distinct directions\b|(^|\n|\| )3 разных направления\b|(^|\n|\| )Balanced\b/.test(rendered)) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "static-design-choice-copy", "design wizard must not render reusable catalog labels as runtime choices for contextual briefs"));
+  }
+  const userFacingMarkdown = [creative, density].filter(Boolean).map((question) => formatDesignWizardQuestion(question)).join("\n");
+  if (/Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)|\bStep\s+\d+\/\d+:|Шаг\s+\d+\/\d+:|Зачем:|Что изменится:|Если пропустить:/i.test(userFacingMarkdown)) {
+    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "protocol-design-question-copy", "user-facing design questions must hide protocol scaffolding behind planner state instead of rendering it inline"));
   }
 }
 

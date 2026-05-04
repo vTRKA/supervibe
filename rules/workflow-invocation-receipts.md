@@ -25,6 +25,7 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 ## What to do
 
 - Issue receipts only through `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`.
+- Use executable skill producers when a workflow provides one. For example, `/supervibe-design` Stage 2 brandbook outputs are promoted by `node <resolved-supervibe-plugin-root>/scripts/brandbook-producer.mjs run ...`, which writes durable files and issues the `supervibe:brandbook` skill receipt. The controller may prepare scratch input, but it must not hand-promote durable skill output and then launder it with a receipt.
 - Store receipts in the shared workflow location `.supervibe/artifacts/_workflow-invocations/<command>/<handoff-id>/`.
 - Keep one shared hash-chain ledger at `.supervibe/memory/workflow-invocation-ledger.jsonl`; the runtime serializes receipt issue with `.supervibe/memory/workflow-invocation-ledger.lock`, so do not bypass it with parallel hand-written appends.
 - Link produced artifacts through the colocated `artifact-links.json` file.
@@ -37,6 +38,7 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Run `npm run validate:agent-producer-receipts` before claiming any agent, worker, or reviewer output. This validator maps durable outputs to exact producers and verifies that agent-like receipts point to real host invocation evidence.
 - Run any domain-specific receipt validator required by the workflow, such as `node scripts/validate-design-agent-receipts.mjs` for `/supervibe-design`, before claiming a delegated workflow is complete.
 - For multi-validator workflows, prefer `node <resolved-supervibe-plugin-root>/scripts/supervibe-workflow-validate.mjs --workflow <command> --slug <slug>` so receipt, producer, encoding, source-resolver, and domain checks are reported together.
+- If a receipt becomes stale after legitimate mutable state changes, use `workflow-receipt.mjs recovery-status` to summarize last trusted stage, dirty/untrusted receipts, and next safe action. Use `workflow-receipt.mjs reissue`, `workflow-receipt.mjs prune-stale --apply`, or `workflow-receipt.mjs rebuild-ledger` to repair runtime state. Manual ledger reconstruction is forbidden.
 
 ## What not to do
 

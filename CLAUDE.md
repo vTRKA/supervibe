@@ -35,6 +35,7 @@ These six principles override defaults whenever they conflict with general pract
 5. **Graph before refactor.** Public-surface changes (rename / move / extract / delete) require `--callers` evidence FIRST. The semantic RAG won't catch cross-file callers — only the graph does.
 6. **Anti-half-finished discipline.** No commented-out code, no TODOs without owners, no half-applied refactors. Either complete a change or revert it cleanly.
 7. **Managed host context only.** Host instruction files and host rule surfaces are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
+8. **Real producers over controller emulation.** Inline/manual drafts are diagnostics only. If a command plan names specialist agents, workers, reviewers, validators, executable skill producers, or external tools, invoke the real host/tool path when available and bind the output with runtime receipts. Do not claim a specialist ran from a controller-written markdown draft.
 
 ---
 
@@ -106,6 +107,7 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 - **Imports**: ESM only; `node:sqlite`, `node:crypto`, etc.
 - **Terminal/file I/O**: `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md` are authoritative. Write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
 - **Workflow receipts**: `rules/workflow-invocation-receipts.md` is authoritative. Runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
+- **Receipt repair/recovery**: use `node scripts/workflow-receipt.mjs reissue`, `prune-stale --apply`, `rebuild-ledger`, or `recovery-status`; never repair receipt trust by manually editing JSON or the ledger.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)
 - **Agents**: ≥250 lines + cache-friendly section order (Persona before Project Context, validated by `npm run validate:agent-section-order`)
