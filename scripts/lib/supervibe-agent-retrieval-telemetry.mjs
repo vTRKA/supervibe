@@ -86,7 +86,9 @@ export function buildAgentRetrievalTelemetryReport({
   thresholds = {},
 } = {}) {
   const policy = { ...DEFAULT_THRESHOLDS, ...thresholds };
-  const byAgent = groupByAgent(invocations);
+  const scoredInvocations = invocations.filter(isRetrievalTelemetryScoredInvocation);
+  const legacySkipped = invocations.length - scoredInvocations.length;
+  const byAgent = groupByAgent(scoredInvocations);
   const agents = [];
   for (const [agentId, entries] of Object.entries(byAgent)) {
     const recent = entries
@@ -118,14 +120,14 @@ export function buildAgentRetrievalTelemetryReport({
       recommendedActions: buildRecommendedActions(agentId, violations),
     });
   }
-  const underperformers = detectUnderperformers(invocations, {
+  const underperformers = detectUnderperformers(scoredInvocations, {
     minInvocations: policy.minSample,
     confidenceThreshold: policy.confidence,
   });
   const evidenceFailed = evidenceEntries.filter((entry) => entry.gate && !entry.gate.pass);
   const failingAgents = agents.filter((agent) => agent.violations.length > 0);
   const globalViolations = detectGlobalRetrievalTelemetryViolations({
-    invocations,
+    invocations: scoredInvocations,
     agents,
     evidenceEntries,
     thresholds: policy,
@@ -140,7 +142,9 @@ export function buildAgentRetrievalTelemetryReport({
     thresholds: policy,
     summary: {
       agents: agents.length,
-      invocations: invocations.length,
+      invocations: scoredInvocations.length,
+      rawInvocations: invocations.length,
+      legacySkipped,
       evidenceEntries: evidenceEntries.length,
       globalViolations: globalViolations.length,
       failingAgents: failingAgents.length,
@@ -148,6 +152,11 @@ export function buildAgentRetrievalTelemetryReport({
       strengtheningTasks: strengtheningTasks.length,
     },
     globalViolations,
+    sampleStatus: scoredInvocations.length
+      ? "scored-samples"
+      : legacySkipped
+        ? "ready-no-post-enforcement-samples"
+        : "ready-no-samples",
     agents: agents.sort((a, b) => a.agentId.localeCompare(b.agentId)),
     underperformers,
     evidenceFailed,
@@ -209,6 +218,9 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     `MATURITY_SCORE: ${report.maturityScore ?? 0}/10`,
     `AGENTS: ${report.summary?.agents || 0}`,
     `INVOCATIONS: ${report.summary?.invocations || 0}`,
+    `RAW_INVOCATIONS: ${report.summary?.rawInvocations ?? report.summary?.invocations ?? 0}`,
+    `LEGACY_SKIPPED: ${report.summary?.legacySkipped || 0}`,
+    `SAMPLE_STATUS: ${report.sampleStatus || "unknown"}`,
     `GLOBAL_VIOLATIONS: ${report.summary?.globalViolations || 0}`,
     `FAILING_AGENTS: ${report.summary?.failingAgents || 0}`,
     `EVIDENCE_FAILED: ${report.summary?.evidenceFailed || 0}`,
@@ -236,6 +248,7 @@ function detectGlobalRetrievalTelemetryViolations({
 } = {}) {
   const violations = [];
   if (invocations.length < thresholds.minSample) {
+    if (invocations.length === 0) return violations;
     violations.push(`insufficient invocation sample ${invocations.length} < ${thresholds.minSample}`);
   }
   if (invocations.length > 0 && agents.length > 0 && agents.every((agent) => agent.sample < thresholds.minSample)) {
@@ -245,6 +258,14 @@ function detectGlobalRetrievalTelemetryViolations({
     violations.push("missing evidence ledger entries for retrieval quality scoring");
   }
   return violations;
+}
+
+function isRetrievalTelemetryScoredInvocation(entry = {}) {
+  if (entry.retrieval_enforcement?.schemaVersion || entry.retrieval_enforcement?.version) return true;
+  if (entry.evidence_gate || entry.evidence_contract) return true;
+  if (entry.retrievalPolicy || entry.retrieval_policy) return true;
+  const usage = normalizeSubtoolUsage(entry.subtool_usage);
+  return usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0;
 }
 
 function detectRetrievalViolations(agentId, metrics, thresholds) {

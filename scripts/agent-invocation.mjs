@@ -42,10 +42,12 @@ function usage() {
     "USAGE:",
     "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> [--changed-files a,b] [--risks text] [--recommendations text]",
     "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage <stage-id> --handoff-id <id> --input-evidence a,b --output-artifacts a,b",
+    "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> --retrieval-policy memory=mandatory,rag=mandatory,codegraph=optional --memory-ids id --rag-chunk-ids file:line --graph-symbols symbol --verification-commands \"npm test\" --redaction-status not-needed",
     "",
     "NOTES:",
     "  This records a real host agent invocation id in .supervibe/memory/agent-invocations.jsonl and writes typed agent-output artifacts.",
     "  Add --issue-receipt to atomically issue the matching workflow receipt after the invocation record and typed output are written.",
+    "  Add retrieval evidence flags to write .supervibe/memory/evidence-ledger.jsonl and bind RAG/CodeGraph enforcement to the invocation.",
   ].join("\n");
 }
 
@@ -94,6 +96,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       changedFiles: splitList(options["changed-files"] || options.changedFiles),
       risks: splitList(options.risks),
       recommendations: splitList(options.recommendations),
+      subtool_usage: parseKeyValueNumbers(options["subtool-usage"] || options.subtoolUsage),
+      retrievalPolicy: parseRetrievalPolicy(options["retrieval-policy"] || options.retrievalPolicy),
+      evidence: buildEvidenceFromOptions(options),
     });
     const receiptResult = await maybeIssueWorkflowReceipt({
       options,
@@ -164,6 +169,62 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
 function splitList(value) {
   if (!value) return [];
   return String(value).split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function buildEvidenceFromOptions(options = {}) {
+  const evidence = {
+    memoryIds: splitList(options["memory-ids"] || options.memoryIds),
+    ragChunkIds: splitList(options["rag-chunk-ids"] || options.ragChunkIds),
+    graphSymbols: splitList(options["graph-symbols"] || options.graphSymbols),
+    citations: parseCitations(options.citations),
+    verificationCommands: splitList(options["verification-commands"] || options.verificationCommands),
+    redactionStatus: options["redaction-status"] || options.redactionStatus,
+    bypassReasons: splitList(options["bypass-reasons"] || options.bypassReasons),
+  };
+  const hasEvidence = evidence.memoryIds.length
+    || evidence.ragChunkIds.length
+    || evidence.graphSymbols.length
+    || evidence.citations.length
+    || evidence.verificationCommands.length
+    || evidence.redactionStatus
+    || evidence.bypassReasons.length;
+  return hasEvidence ? evidence : null;
+}
+
+function parseRetrievalPolicy(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (raw.startsWith("{")) return JSON.parse(raw);
+  const policy = {};
+  for (const item of raw.split(",")) {
+    const [key, ...rest] = item.split("=");
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey) continue;
+    policy[normalizedKey] = rest.join("=").trim() || "mandatory";
+  }
+  return Object.keys(policy).length ? policy : null;
+}
+
+function parseKeyValueNumbers(value) {
+  if (!value) return {};
+  const out = {};
+  for (const item of String(value).split(",")) {
+    const [key, rawValue] = item.split("=");
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey) continue;
+    const number = Number(rawValue ?? 1);
+    out[normalizedKey] = Number.isFinite(number) ? number : 1;
+  }
+  return out;
+}
+
+function parseCitations(value) {
+  return splitList(value).map((item) => {
+    const parts = item.split("|").map((part) => part.trim());
+    if (parts.length >= 3) return { id: parts[0], source: parts[1], path: parts.slice(2).join("|") };
+    return { id: parts[0], source: "local", path: parts[0] };
+  });
 }
 
 function truthyFlag(value) {

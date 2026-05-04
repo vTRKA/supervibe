@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.71] - 2026-05-04
+
+### Added
+
+- Added retrieval evidence flags to `agent-invocation` so real host-agent
+  invocations can bind memory, Code RAG, CodeGraph, citations, verification
+  commands, and redaction status into the evidence ledger.
+
+### Changed
+
+- Made agent retrieval telemetry score only post-enforcement evidence samples
+  while reporting skipped legacy invocations explicitly.
+- Extended the agent-system maturity gate to require the runtime retrieval
+  enforcement hook alongside CodeGraph index readiness.
+
 ## [2.0.70] - 2026-05-04
 
 ### Added

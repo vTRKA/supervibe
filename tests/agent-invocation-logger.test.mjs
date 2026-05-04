@@ -49,6 +49,35 @@ test('logInvocation: redacts durable task, risk, and recommendation text', async
   assert.doesNotMatch(JSON.stringify(output), /sk-testsecret123|admin@example\.com|AKIA1234567890ABCDEF/);
 });
 
+test('logInvocation: writes retrieval evidence ledger when evidence is provided', async () => {
+  const record = await logInvocation({
+    agent_id: 'repo-researcher',
+    task_summary: 'Refactor checkout callers',
+    confidence_score: 9,
+    retrievalPolicy: { memory: 'mandatory', rag: 'mandatory', codegraph: 'mandatory', reason: 'structural change' },
+    evidence: {
+      memoryIds: ['checkout-adr'],
+      ragChunkIds: ['scripts/checkout.mjs:12'],
+      graphSymbols: ['checkoutService'],
+      citations: [{ id: 'checkout', source: 'code-rag', path: 'scripts/checkout.mjs:12' }],
+      verificationCommands: ['node --test tests/checkout.test.mjs'],
+      redactionStatus: 'not-needed',
+    },
+  });
+
+  assert.strictEqual(record.evidence_gate.pass, true);
+  assert.strictEqual(record.retrieval_enforcement.evidenceLedger, 'written');
+  const ledger = (await readFile(join(sandbox, '.supervibe', 'memory', 'evidence-ledger.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const latest = ledger[ledger.length - 1];
+  assert.strictEqual(latest.agentId, 'repo-researcher');
+  assert.strictEqual(latest.gate.pass, true);
+  const output = JSON.parse(await readFile(join(sandbox, record.structured_output.json), 'utf8'));
+  assert.strictEqual(output.retrievalEnforcement.evidenceLedger, 'written');
+});
+
 test('readInvocations: filters by agent_id', async () => {
   await logInvocation({ agent_id: 'a', task_summary: 't1', confidence_score: 8 });
   await logInvocation({ agent_id: 'b', task_summary: 't2', confidence_score: 9 });

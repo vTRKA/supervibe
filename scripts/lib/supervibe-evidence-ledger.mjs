@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 const DEFAULT_LEDGER = ".supervibe/memory/evidence-ledger.jsonl";
 const REQUIRED_FIELDS = Object.freeze(["taskId", "agentId", "retrievalPolicy", "verificationCommands", "redactionStatus"]);
 
-function defaultEvidenceLedgerPath(rootDir = process.cwd()) {
+export function defaultEvidenceLedgerPath(rootDir = process.cwd()) {
   return join(rootDir, DEFAULT_LEDGER);
 }
 

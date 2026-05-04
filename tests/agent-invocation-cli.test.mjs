@@ -133,3 +133,55 @@ test("receipt validators label zero-receipt runs as not started", () => {
     rmSync(projectRoot, { recursive: true, force: true });
   }
 });
+
+test("agent invocation CLI writes evidence ledger from retrieval flags", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-evidence-"));
+  try {
+    const logged = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "agent-invocation.mjs"),
+      "log",
+      "--root",
+      projectRoot,
+      "--agent",
+      "repo-researcher",
+      "--host",
+      "codex",
+      "--host-invocation-id",
+      "codex-agent-evidence-1",
+      "--task",
+      "Refactor checkout callers",
+      "--confidence",
+      "9",
+      "--retrieval-policy",
+      "memory=mandatory,rag=mandatory,codegraph=mandatory,reason=structural",
+      "--memory-ids",
+      "checkout-adr",
+      "--rag-chunk-ids",
+      "scripts/checkout.mjs:12",
+      "--graph-symbols",
+      "checkoutService",
+      "--citations",
+      "checkout|code-rag|scripts/checkout.mjs:12",
+      "--verification-commands",
+      "node --test tests/checkout.test.mjs",
+      "--redaction-status",
+      "not-needed",
+      "--subtool-usage",
+      "memory=1,rag=1,codegraph=1",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(logged, /SUPERVIBE_AGENT_INVOCATION_LOGGED/);
+    const record = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), "utf8").trim());
+    assert.equal(record.retrieval_enforcement.evidenceLedger, "written");
+    assert.equal(record.evidence_gate.pass, true);
+    const ledger = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "evidence-ledger.jsonl"), "utf8").trim());
+    assert.equal(ledger.agentId, "repo-researcher");
+    assert.equal(ledger.gate.pass, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});

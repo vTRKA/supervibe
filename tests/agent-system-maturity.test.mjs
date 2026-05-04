@@ -35,6 +35,7 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
       ready: true,
       sourceReady: true,
       warnings: "",
+      retrievalEnforcementPass: true,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -70,6 +71,7 @@ test("agent-system maturity score blocks 10/10 when host telemetry is missing", 
       ready: true,
       sourceReady: true,
       warnings: "",
+      retrievalEnforcementPass: true,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -106,6 +108,7 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
       ready: true,
       sourceReady: true,
       warnings: "",
+      retrievalEnforcementPass: true,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -119,4 +122,32 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
   assert.ok(report.score < 10);
   assert.ok(report.blockers.some((blocker) => blocker.id === "host-agent-telemetry"));
   assert.match(formatAgentSystemMaturityReport(report), /strictPass=false/);
+});
+
+test("agent-system maturity blocks 10/10 when retrieval enforcement hook is missing", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 89,
+      skills: 55,
+      commands: 19,
+      rules: 30,
+      testFiles: 287,
+    },
+    validators: PASSING_VALIDATORS,
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: false,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=false",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"));
 });

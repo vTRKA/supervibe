@@ -144,7 +144,9 @@ export function scoreAgentSystemMaturity({
     "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
   );
 
-  const graphReady = indexGate.ready === true && !String(indexGate.warnings || "").includes("symbol-coverage");
+  const graphReady = indexGate.ready === true
+    && indexGate.retrievalEnforcementPass === true
+    && !String(indexGate.warnings || "").includes("symbol-coverage");
   add(
     "code-graph-readiness",
     1.0,
@@ -213,6 +215,7 @@ function countArtifacts(rootDir) {
 }
 
 async function collectCodeGraphGate(rootDir) {
+  const enforcement = inspectRetrievalEnforcement(rootDir);
   if (!existsSync(join(rootDir, ".supervibe", "memory", "code.db"))) {
     return {
       ready: false,
@@ -230,7 +233,8 @@ async function collectCodeGraphGate(rootDir) {
       ready: gate.ready,
       sourceReady: (gate.failedGates || []).every((item) => item.code !== "source-coverage"),
       warnings: (gate.warnings || []).map((item) => item.code).join(","),
-      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}`,
+      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}, retrievalEnforcement=${enforcement.pass}`,
+      retrievalEnforcementPass: enforcement.pass,
     };
   } catch (error) {
     return {
@@ -242,6 +246,21 @@ async function collectCodeGraphGate(rootDir) {
   } finally {
     store.close();
   }
+}
+
+function inspectRetrievalEnforcement(rootDir) {
+  const loggerPath = join(rootDir, "scripts", "lib", "agent-invocation-logger.mjs");
+  const cliPath = join(rootDir, "scripts", "agent-invocation.mjs");
+  const telemetryPath = join(rootDir, "scripts", "lib", "supervibe-agent-retrieval-telemetry.mjs");
+  const logger = existsSync(loggerPath) ? readFileSync(loggerPath, "utf8") : "";
+  const cli = existsSync(cliPath) ? readFileSync(cliPath, "utf8") : "";
+  const telemetry = existsSync(telemetryPath) ? readFileSync(telemetryPath, "utf8") : "";
+  return {
+    pass: /appendEvidenceRecord/.test(logger)
+      && /retrieval-policy/.test(cli)
+      && /evidence-ledger\.jsonl/.test(cli)
+      && /isRetrievalTelemetryScoredInvocation/.test(telemetry),
+  };
 }
 
 function inspectBacklogAndDocs(rootDir) {

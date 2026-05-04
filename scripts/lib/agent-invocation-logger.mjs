@@ -3,7 +3,11 @@
 import { appendFile, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { createEvidenceRecord } from './supervibe-evidence-ledger.mjs';
+import {
+  appendEvidenceRecord,
+  createEvidenceRecord,
+  defaultEvidenceLedgerPath,
+} from './supervibe-evidence-ledger.mjs';
 import {
   createAgentInvocationId,
   AGENT_INVOCATION_LOG_RELATIVE_PATH,
@@ -38,19 +42,20 @@ export async function logInvocation(entry) {
     ...redactedEntry,
   };
   record.structured_output = structuredOutputPathsForRecord(record);
-  if (entry.evidence || entry.retrievalPolicy) {
-    record.evidence_gate = createEvidenceRecord({
-      taskId: entry.task_id || entry.taskId || entry.task_summary,
-      agentId: entry.agent_id,
-      retrievalPolicy: entry.retrievalPolicy || entry.evidence?.retrievalPolicy,
-      memoryIds: entry.evidence?.memoryIds || [],
-      ragChunkIds: entry.evidence?.ragChunkIds || [],
-      graphSymbols: entry.evidence?.graphSymbols || [],
-      citations: entry.evidence?.citations || [],
-      verificationCommands: entry.evidence?.verificationCommands || [],
-      redactionStatus: entry.evidence?.redactionStatus || 'unknown',
-      bypassReasons: entry.evidence?.bypassReasons || [],
-    }).gate;
+  record.retrieval_enforcement = {
+    schemaVersion: 1,
+    evidenceLedger: hasRetrievalEvidenceInput(entry) ? 'pending' : 'not-provided',
+  };
+  if (hasRetrievalEvidenceInput(entry)) {
+    const evidenceRecord = buildEvidenceLedgerRecord(entry);
+    const preview = createEvidenceRecord(evidenceRecord);
+    record.evidence_gate = preview.gate;
+    const rootDir = rootDirFromInvocationLogPath();
+    const ledgerPath = defaultEvidenceLedgerPath(rootDir);
+    const appended = await appendEvidenceRecord(evidenceRecord, { rootDir, ledgerPath });
+    record.retrieval_enforcement.evidenceLedger = 'written';
+    record.retrieval_enforcement.ledgerPath = '.supervibe/memory/evidence-ledger.jsonl';
+    record.retrieval_enforcement.evidencePass = appended.gate.pass;
   }
   await mkdir(dirname(_logPath), { recursive: true });
   await appendFile(_logPath, JSON.stringify(record) + '\n');
@@ -207,6 +212,7 @@ async function writeStructuredAgentOutput(record = {}) {
     risks: normalizeList(record.risks),
     recommendations: normalizeList(record.recommendations),
     evidenceGate: record.evidence_gate?.summary || record.evidence_gate || null,
+    retrievalEnforcement: record.retrieval_enforcement || null,
     loggedAt: record.ts,
   };
   await writeFile(join(dir, 'agent-output.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
@@ -253,6 +259,28 @@ function normalizeList(value) {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
   if (!value) return [];
   return String(value).split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function hasRetrievalEvidenceInput(entry = {}) {
+  return Boolean(entry.evidence || entry.retrievalPolicy || entry.retrieval_policy);
+}
+
+function buildEvidenceLedgerRecord(entry = {}) {
+  const evidence = entry.evidence || {};
+  return {
+    taskId: entry.task_id || entry.taskId || entry.task_summary,
+    agentId: entry.agent_id,
+    retrievalPolicy: entry.retrievalPolicy || entry.retrieval_policy || evidence.retrievalPolicy,
+    memoryIds: evidence.memoryIds || evidence.memory_ids || [],
+    ragChunkIds: evidence.ragChunkIds || evidence.rag_chunk_ids || [],
+    graphSymbols: evidence.graphSymbols || evidence.graph_symbols || [],
+    citations: evidence.citations || [],
+    verificationCommands: evidence.verificationCommands || evidence.verification_commands || [],
+    redactionStatus: evidence.redactionStatus || evidence.redaction_status || 'unknown',
+    bypassReasons: evidence.bypassReasons || evidence.bypass_reasons || [],
+    diagnosticEvents: evidence.diagnosticEvents || evidence.diagnostic_events || [],
+    workspaceId: evidence.workspaceId || evidence.workspace_id || null,
+  };
 }
 
 function sanitizePathSegment(value) {
