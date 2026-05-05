@@ -246,6 +246,90 @@ test("agent invocation CLI validates specialist question contracts before receip
   }
 });
 
+test("agent invocation CLI rejects placeholder receipt outputs before telemetry writes", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-placeholder-output-"));
+  try {
+    assert.throws(
+      () => execFileSync(process.execPath, [
+        join(ROOT, "scripts", "agent-invocation.mjs"),
+        "log",
+        "--root",
+        projectRoot,
+        "--agent",
+        "creative-director",
+        "--host",
+        "codex",
+        "--host-invocation-id",
+        "codex-agent-placeholder-output",
+        "--task",
+        "Produce brand direction",
+        "--confidence",
+        "9",
+        "--issue-receipt",
+        "--command",
+        "/supervibe-design",
+        "--stage",
+        "stage-1-brand-direction",
+        "--handoff-id",
+        "agent-chat",
+        "--output-artifacts",
+        "none",
+      ], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }),
+      /--output-artifacts must name stable output files/,
+    );
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl")), false);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "effectiveness.jsonl")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("agent invocation CLI rolls back telemetry if receipt issue fails after logging", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-receipt-rollback-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/codex-agent-rollback-output/agent-output.json";
+    assert.throws(
+      () => execFileSync(process.execPath, [
+        join(ROOT, "scripts", "agent-invocation.mjs"),
+        "log",
+        "--root",
+        projectRoot,
+        "--agent",
+        "creative-director",
+        "--host",
+        "codex",
+        "--host-invocation-id",
+        "codex-agent-rollback-output",
+        "--task",
+        "Produce brand direction",
+        "--confidence",
+        "9",
+        "--issue-receipt",
+        "--command",
+        "/supervibe-design",
+        "--stage",
+        "stage-1-brand-direction",
+        "--output-artifacts",
+        outputRel,
+      ], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }),
+      /--handoff-id required when --issue-receipt is set/,
+    );
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl")), false);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "effectiveness.jsonl")), false);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "artifacts", "_agent-outputs", "codex-agent-rollback-output")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("agent invocation CLI writes evidence ledger from retrieval flags", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-evidence-"));
   try {

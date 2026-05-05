@@ -11,6 +11,7 @@
 # must stay LF/UTF-8 across Windows and Unix hosts.
 *.md text eol=lf
 *.json text eol=lf
+*.jsonl text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
 *.js text eol=lf

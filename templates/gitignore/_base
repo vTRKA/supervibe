@@ -15,6 +15,7 @@ Thumbs.db
 .supervibe/memory/code-index.lock
 .supervibe/memory/agent-invocations.jsonl
 .supervibe/memory/workflow-invocation-ledger.jsonl
+.supervibe/memory/workflow-receipt-runtime.key
 .supervibe/memory/genesis/state.json
 .supervibe/memory/genesis/normalized-generated-host-files/
 .supervibe/memory/adapt/state.json

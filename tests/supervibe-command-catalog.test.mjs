@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -311,6 +311,22 @@ test("adapt dry-run command plan is read-only and agentless while verify-agents 
   });
   assert.equal(verifyAgents.executionMode, "agent-dispatch-required");
   assert.equal(verifyAgents.receiptGate, "pending-runtime-agent-receipts");
+
+  const baselineOnlyApply = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { apply: true, adds: 0, updates: 0, projectOnly: 0, conflicts: 0, memoryWrites: false },
+  });
+  const baselineReport = formatCommandAgentPlan(baselineOnlyApply);
+  assert.equal(baselineOnlyApply.executionMode, "baseline-only-fast-path");
+  assert.equal(baselineOnlyApply.agentDispatchRequired, false);
+  assert.equal(baselineOnlyApply.agentOwnedOutputRequiresReceipts, false);
+  assert.equal(baselineOnlyApply.receiptGate, "quality-gate-only-baseline-refresh");
+  assert.deepEqual(baselineOnlyApply.requiredAgentIds, ["quality-gate-reviewer"]);
+  assert.doesNotMatch(baselineReport, /REQUIRED_AGENTS: supervibe-orchestrator/);
+  assert.match(baselineReport, /BASELINE_ONLY_FAST_PATH_ALLOWED: true/);
+  assert.match(baselineReport, /real-agent dispatch is not required/);
 });
 
 test("adapt command agent plan uses low-risk fast path and reports role sources", () => {
@@ -342,6 +358,43 @@ test("adapt command agent plan uses low-risk fast path and reports role sources"
   assert.equal(plan.requiredAgentSources.find((item) => item.agentId === "quality-gate-reviewer").source, "plugin-only");
   assert.match(report, /AGENT_SELECTION_MODE: low-risk-fast-path/);
   assert.match(report, /REQUIRED_AGENT_SOURCES: .*supervibe-orchestrator=project artifact.*quality-gate-reviewer=plugin-only/);
+});
+
+test("command agent plan reflects trusted runtime receipt validator state", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  const plan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    receiptTrust: {
+      pass: true,
+      trustedHostAgentReceipts: 2,
+      agentInvocations: 2,
+      loggedAgentInvocations: 2,
+      minHostAgentReceipts: 1,
+      minAgentInvocations: 1,
+      issues: [],
+    },
+    workflowContext: {
+      verifyAgents: true,
+      adds: 0,
+      updates: 0,
+      projectOnly: 0,
+      conflicts: 0,
+      memoryWrites: false,
+    },
+  });
+  const report = formatCommandAgentPlan(plan);
+
+  assert.equal(plan.agentInvocationsCompleted, true);
+  assert.equal(plan.agentReceiptsTrusted, true);
+  assert.equal(plan.receiptGate, "trusted-runtime-agent-receipts");
+  assert.equal(plan.agentDispatchRequired, false);
+  assert.match(report, /AGENT_RECEIPTS_TRUSTED: true/);
+  assert.match(report, /RECEIPT_GATE: trusted-runtime-agent-receipts/);
 });
 
 test("adapt command agent plan does not use fast path when dry-run wrote memory", () => {
@@ -444,6 +497,8 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(creativeDirector.payload.message, /typed output contract/);
   assert.match(creativeDirector.receipt.logCommand, /--changed-files <paths> --risks <items> --recommendations <items>/);
   assert.match(creativeDirector.receipt.logCommand, /--issue-receipt --command <command-id> --stage <stage-id>/);
+  assert.match(creativeDirector.receipt.logCommand, /--output-artifacts \.supervibe\/artifacts\/_agent-outputs\/<returned-codex-agent-id>\/agent-output\.json/);
+  assert.doesNotMatch(creativeDirector.receipt.logCommand, /--output-artifacts (?:none|<paths>)/);
   assert.equal(creativeDirector.receipt.structuredOutput, ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json");
 
   const prototypeBuilder = plan.codexSpawnPayloads.find((payload) => payload.agentId === "prototype-builder");
@@ -465,6 +520,8 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(report, /CODEX_RECEIPT_LOG_COMMANDS:/);
   assert.match(report, /--changed-files <paths>/);
   assert.match(report, /--issue-receipt --command <command-id>/);
+  assert.match(report, /--output-artifacts \.supervibe\/artifacts\/_agent-outputs\/<returned-codex-agent-id>\/agent-output\.json/);
+  assert.doesNotMatch(report, /--output-artifacts (?:none|<paths>)/);
   assert.match(report, /IMMEDIATE_AGENTS: supervibe-orchestrator/);
   assert.match(report, /DEFERRED_AGENTS: .*creative-director.*prototype-builder/);
   assert.match(report, /AGENT_STAGE_GATE: design-wizard/);
@@ -501,7 +558,8 @@ test("every slash command has codex-safe payloads for every required agent", () 
       assert.match(spawnPayload.receipt.logCommand, /--command <command-id>/, `${commandId}:${spawnPayload.agentId}`);
       assert.match(spawnPayload.receipt.logCommand, /--stage <stage-id>/, `${commandId}:${spawnPayload.agentId}`);
       assert.match(spawnPayload.receipt.logCommand, /--handoff-id <handoff-id>/, `${commandId}:${spawnPayload.agentId}`);
-      assert.match(spawnPayload.receipt.logCommand, /--output-artifacts <paths>/, `${commandId}:${spawnPayload.agentId}`);
+      assert.match(spawnPayload.receipt.logCommand, /--output-artifacts \.supervibe\/artifacts\/_agent-outputs\/<returned-codex-agent-id>\/agent-output\.json/, `${commandId}:${spawnPayload.agentId}`);
+      assert.doesNotMatch(spawnPayload.receipt.logCommand, /--output-artifacts (?:none|<paths>)/, `${commandId}:${spawnPayload.agentId}`);
       assert.equal(spawnPayload.receipt.structuredOutput, ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json", `${commandId}:${spawnPayload.agentId}`);
     }
   }
@@ -568,54 +626,129 @@ test("every command stays agent-first across host providers and blocks inline cl
 });
 
 test("command-agent-plan CLI prints runtime host plan", () => {
-  const claude = execFileSync(process.execPath, [
-    AGENT_PLAN_SCRIPT,
-    "--command",
-    "/supervibe-design",
-    "--host",
-    "claude",
-  ], {
-    cwd: ROOT,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  assert.match(claude, /SUPERVIBE_COMMAND_AGENT_PLAN/);
-  assert.match(claude, /EXECUTION_MODE: agent-dispatch-required/);
-  assert.match(claude, /DEFAULT_MODE: real-agents/);
-  assert.match(claude, /RECEIPT_GATE: pending-runtime-agent-receipts/);
-  assert.match(claude, /HOST_TOOL: Task/);
-  assert.match(claude, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-cli-"));
+  try {
+    const baseArgs = ["--root", projectRoot];
+    const claude = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "claude",
+      ...baseArgs,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.match(claude, /SUPERVIBE_COMMAND_AGENT_PLAN/);
+    assert.match(claude, /EXECUTION_MODE: agent-dispatch-required/);
+    assert.match(claude, /DEFAULT_MODE: real-agents/);
+    assert.match(claude, /RECEIPT_GATE: pending-runtime-agent-receipts/);
+    assert.match(claude, /HOST_TOOL: Task/);
+    assert.match(claude, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
 
-  const codex = execFileSync(process.execPath, [
-    AGENT_PLAN_SCRIPT,
-    "--command",
-    "/supervibe-design",
-    "--host",
-    "codex",
-  ], {
-    cwd: ROOT,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  assert.match(codex, /HOST_TOOL: spawn_agent/);
-  assert.match(codex, /CODEX_SPAWN_PAYLOAD_RULES:/);
-  assert.match(codex, /fork_context=true: omit agent_type, model, reasoning_effort/);
-  assert.doesNotMatch(codex, /"agent_type"/);
-  assert.doesNotMatch(codex, /"reasoning_effort"/);
+    const codex = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "codex",
+      ...baseArgs,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.match(codex, /HOST_TOOL: spawn_agent/);
+    assert.match(codex, /CODEX_SPAWN_PAYLOAD_RULES:/);
+    assert.match(codex, /fork_context=true: omit agent_type, model, reasoning_effort/);
+    assert.doesNotMatch(codex, /"agent_type"/);
+    assert.doesNotMatch(codex, /"reasoning_effort"/);
 
-  const blocked = execFileSync(process.execPath, [
-    AGENT_PLAN_SCRIPT,
-    "--command",
-    "/supervibe-design",
-    "--host",
-    "cursor",
-  ], {
-    cwd: ROOT,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  assert.match(blocked, /EXECUTION_MODE: agent-required-blocked/);
-  assert.match(blocked, /HOST_DISPATCH: cursor:requires-runtime-proof/);
+    const blocked = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "cursor",
+      ...baseArgs,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.match(blocked, /EXECUTION_MODE: agent-required-blocked/);
+    assert.match(blocked, /HOST_DISPATCH: cursor:requires-runtime-proof/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("command-agent-plan CLI trusts runtime agent receipts when validators pass", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-trusted-"));
+  try {
+    const outputRel = ".supervibe/artifacts/brandbook/direction.md";
+    mkdirSync(join(projectRoot, ".supervibe", "artifacts", "brandbook"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory"), { recursive: true });
+    writeFileSync(join(projectRoot, ...outputRel.split("/")), "# Direction\n", "utf8");
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), `${JSON.stringify({
+      schemaVersion: 1,
+      invocation_id: "codex-agent-trusted-1",
+      ts: "2026-05-05T00:00:00.000Z",
+      agent_id: "creative-director",
+      task_summary: "Brand direction specialist output",
+      confidence_score: 9.4,
+    })}\n`, "utf8");
+    execFileSync(process.execPath, [
+      join(ROOT, "scripts", "workflow-receipt.mjs"),
+      "issue",
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-design",
+      "--agent",
+      "creative-director",
+      "--host-invocation-source",
+      "codex-spawn-agent",
+      "--host-invocation-id",
+      "codex-agent-trusted-1",
+      "--stage",
+      "stage-1-brand-direction",
+      "--reason",
+      "Brand direction specialist output",
+      "--output",
+      outputRel,
+      "--handoff",
+      "trusted-command-plan",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    const out = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-adapt",
+      "--host",
+      "codex",
+      "--verify-agents",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(out, /AGENT_INVOCATIONS_COMPLETED: true/);
+    assert.match(out, /AGENT_RECEIPTS_TRUSTED: true/);
+    assert.match(out, /RECEIPT_GATE: trusted-runtime-agent-receipts/);
+    assert.doesNotMatch(out, /RECEIPT_GATE: pending-runtime-agent-receipts/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test("command resolver resolves plugin npm scripts from projects that do not define them", () => {

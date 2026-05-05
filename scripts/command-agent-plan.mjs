@@ -7,6 +7,9 @@ import {
   buildCommandAgentPlan,
   formatCommandAgentPlan,
 } from "./lib/command-agent-orchestration-contract.mjs";
+import {
+  validateAgentProducerReceipts,
+} from "./lib/agent-producer-contract.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
@@ -100,6 +103,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       availableAgentSources,
       hostAdapterId: hostSelection.adapter.id,
       enforceHostProof: options.enforceHostProof,
+      receiptTrust: inspectReceiptTrust(projectRoot),
       workflowContext: {
         lowRisk: options["low-risk"] === true,
         bootstrapPreAgent: options.bootstrapPreAgent === true,
@@ -177,6 +181,32 @@ function addAgentSources(sources, dir, source) {
       const id = entry.replace(/\.md$/, "");
       if (source === "project artifact" || !sources.has(id)) sources.set(id, source);
     }
+  }
+}
+
+function inspectReceiptTrust(projectRoot) {
+  const minHostAgentReceipts = 1;
+  const minAgentInvocations = 1;
+  try {
+    return {
+      ...validateAgentProducerReceipts(projectRoot, {
+        requireHostAgentReceipts: true,
+        minHostAgentReceipts,
+        minAgentInvocations,
+      }),
+      minHostAgentReceipts,
+      minAgentInvocations,
+    };
+  } catch (error) {
+    return {
+      pass: false,
+      trustedHostAgentReceipts: 0,
+      agentInvocations: 0,
+      loggedAgentInvocations: 0,
+      minHostAgentReceipts,
+      minAgentInvocations,
+      issues: [{ code: "receipt-trust-inspection-failed", message: error.message }],
+    };
   }
 }
 

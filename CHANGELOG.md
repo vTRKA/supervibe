@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.90] - 2026-05-06
+
+### Changed
+
+- Hardened Adapt runtime receipt trust so command-agent-plan reflects trusted
+  host-agent receipt validators after successful agent runs.
+- Added a baseline-only Adapt fast path for zero-change metadata refreshes,
+  keeping the flow on deterministic validators instead of full agent dispatch.
+- Improved generated receipt commands with stable agent output artifact paths.
+
+### Fixed
+
+- Made agent invocation receipt logging rollback telemetry when receipt issue
+  fails, avoiding duplicate successful-looking invocation rows from retries.
+- Added runtime receipt key ignore coverage and enforced LF line endings for
+  tracked JSONL files.
+
 ## [2.0.89] - 2026-05-06
 
 ### Added

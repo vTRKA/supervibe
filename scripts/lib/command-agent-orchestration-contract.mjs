@@ -119,6 +119,7 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
   ], {
     dynamicAgentSelectors: ["changed-artifact-specialists", "low-risk-fast-path"],
     lowRiskRequiredAgentIds: ["supervibe-orchestrator", "quality-gate-reviewer"],
+    baselineOnlyRequiredAgentIds: ["quality-gate-reviewer"],
   }),
   profile("/supervibe-audit", [
     "supervibe-orchestrator",
@@ -260,6 +261,7 @@ export function buildCommandAgentPlan(commandId, {
   extraRequiredAgentIds = [],
   hostAdapterId = null,
   enforceHostProof = false,
+  receiptTrust = null,
   workflowContext = {},
 } = {}) {
   const profile = getCommandAgentProfile(commandId);
@@ -287,11 +289,22 @@ export function buildCommandAgentPlan(commandId, {
     && workflowContext.dryRun === true
     && workflowContext.apply !== true
     && workflowContext.verifyAgents !== true;
+  const adaptBaselineOnlyApplyPhase = profile.commandId === "/supervibe-adapt"
+    && workflowContext.apply === true
+    && workflowContext.verifyAgents !== true
+    && isBaselineOnlyFastPath(workflowContext);
   const bootstrapPreAgent = genesisBootstrapPhase;
   const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
+  const receiptStatus = normalizeReceiptTrust(receiptTrust);
+  const runtimeReceiptsTrusted = receiptStatus.trusted === true;
+  const baseRequiredAgentIds = adaptBaselineOnlyApplyPhase
+    ? (profile.baselineOnlyRequiredAgentIds || profile.lowRiskRequiredAgentIds || [])
+    : [
+        profile.ownerAgentId,
+        ...(lowRiskFastPath ? profile.lowRiskRequiredAgentIds : profile.requiredAgentIds),
+      ];
   const requiredAgentIds = unique([
-    profile.ownerAgentId,
-    ...(lowRiskFastPath ? profile.lowRiskRequiredAgentIds : profile.requiredAgentIds),
+    ...baseRequiredAgentIds,
     ...extraRequiredAgentIds,
   ]);
   const immediateAgentIds = normalizeImmediateAgentIds(profile, requiredAgentIds);
@@ -307,11 +320,17 @@ export function buildCommandAgentPlan(commandId, {
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
-  const blocked = !bootstrapPreAgent && !adaptDryRunPhase && requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
+  const blocked = !bootstrapPreAgent
+    && !adaptDryRunPhase
+    && !adaptBaselineOnlyApplyPhase
+    && requestedMode !== "inline"
+    && (missingAgents.length > 0 || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
     : adaptDryRunPhase
       ? "dry-run-no-agent"
+    : adaptBaselineOnlyApplyPhase
+      ? "baseline-only-fast-path"
     : bootstrapPreAgent
       ? "bootstrap-pre-agent"
     : requestedMode === "inline"
@@ -321,14 +340,21 @@ export function buildCommandAgentPlan(commandId, {
   const realAgentCapable = executionMode === "agent-dispatch-required";
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
   const dryRunAgentless = executionMode === "dry-run-no-agent";
-  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline" && !bootstrapPreAgent && !dryRunAgentless
+  const baselineOnly = executionMode === "baseline-only-fast-path";
+  const receiptTrustApplies = runtimeReceiptsTrusted && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
+  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex"
+    && requestedMode !== "inline"
+    && !bootstrapPreAgent
+    && !dryRunAgentless
+    && !baselineOnly
+    && !receiptTrustApplies
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
     : [];
 
   return {
     commandId: profile.commandId,
     ownerAgentId: profile.ownerAgentId,
-    agentSelectionMode: lowRiskFastPath ? "low-risk-fast-path" : "standard",
+    agentSelectionMode: baselineOnly ? "baseline-only-fast-path" : lowRiskFastPath ? "low-risk-fast-path" : "standard",
     executionMode,
     requestedExecutionMode: requestedMode,
     defaultExecutionMode: profile.defaultExecutionMode,
@@ -346,22 +372,38 @@ export function buildCommandAgentPlan(commandId, {
     hostProofBlocked,
     agentsInstalled: missingAgents.length === 0,
     hostDispatchAvailable: hostDispatch?.status === "supported",
-    agentInvocationsCompleted: false,
-    agentReceiptsTrusted: false,
-    receiptGate: dryRunAgentless ? "not-required-for-dry-run" : bootstrapOnly ? "bootstrap-pre-agent-basic-scaffold" : realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
+    agentInvocationsCompleted: receiptTrustApplies,
+    agentReceiptsTrusted: receiptTrustApplies,
+    receiptGate: dryRunAgentless
+        ? "not-required-for-dry-run"
+      : baselineOnly
+        ? "quality-gate-only-baseline-refresh"
+      : bootstrapOnly
+        ? "bootstrap-pre-agent-basic-scaffold"
+      : receiptTrustApplies
+        ? "trusted-runtime-agent-receipts"
+      : realAgentCapable
+        ? "pending-runtime-agent-receipts"
+        : "not-applicable",
+    receiptTrust: receiptStatus,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: bootstrapOnly && workflowContext.dryRun !== true,
-    agentOwnedOutputAllowed: false,
-    agentOwnedOutputRequiresReceipts: realAgentCapable,
-    agentDispatchRequired: realAgentCapable,
+    durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || receiptTrustApplies,
+    agentOwnedOutputAllowed: receiptTrustApplies,
+    agentOwnedOutputRequiresReceipts: realAgentCapable && !receiptTrustApplies,
+    agentDispatchRequired: realAgentCapable && !receiptTrustApplies,
     inlineDraftAllowed: inlineOnly,
     bootstrapPreAgentAllowed: bootstrapOnly,
     dryRunAgentlessAllowed: dryRunAgentless,
+    baselineOnlyFastPathAllowed: baselineOnly,
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
+      : receiptTrustApplies
+        ? `Runtime agent receipt gate is trusted (${receiptStatus.trustedHostAgentReceipts}/${receiptStatus.minHostAgentReceipts} host receipts, ${receiptStatus.agentInvocations}/${receiptStatus.minAgentInvocations} receipt-bound invocations).`
       : dryRunAgentless
         ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
+      : baselineOnly
+        ? "Baseline-only adapt apply has no managed artifact changes and uses deterministic adapt validators plus the quality gate; real-agent dispatch is not required."
       : bootstrapOnly
         ? "Bootstrap-pre-agent mode may install base host scaffold and state only; specialist-owned output and completion claims still require runtime agent receipts after agents are installed."
       : hostProofBlocked
@@ -466,7 +508,7 @@ function buildCodexSpawnPayload(agentId, { commandId = "unknown" } = {}) {
     },
     receipt: {
       hostInvocationSource: "codex-spawn-agent",
-      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10> --changed-files <paths> --risks <items> --recommendations <items> --issue-receipt --command <command-id> --stage <stage-id> --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts <paths>",
+      logCommand: "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <returned-codex-agent-id> --task <summary> --confidence <0-10> --changed-files <paths> --risks <items> --recommendations <items> --issue-receipt --command <command-id> --stage <stage-id> --handoff-id <handoff-id> --input-evidence <paths> --output-artifacts .supervibe/artifacts/_agent-outputs/<returned-codex-agent-id>/agent-output.json",
       structuredOutput: ".supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json",
     },
   };
@@ -512,6 +554,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
+    `BASELINE_ONLY_FAST_PATH_ALLOWED: ${plan.baselineOnlyFastPathAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
@@ -614,6 +657,15 @@ export function validateCommandAgentProfiles({
         }
       }
     }
+    for (const payload of buildCodexSpawnPayloads(profile.requiredAgentIds, { commandId: profile.commandId })) {
+      const logCommand = payload.receipt?.logCommand || "";
+      if (/--output-artifacts\s+(?:none|<paths>)(?:\s|$)/i.test(logCommand)) {
+        issues.push(issue(commandId, "invalid-codex-receipt-output-template", `Codex receipt log command for ${payload.agentId} must not use placeholder output artifacts.`));
+      }
+      if (!/\.supervibe\/artifacts\/_agent-outputs\/<returned-codex-agent-id>\/agent-output\.json/.test(logCommand)) {
+        issues.push(issue(commandId, "missing-stable-codex-output-artifact", `Codex receipt log command for ${payload.agentId} must bind the stable structured agent output artifact.`));
+      }
+    }
   }
 
   for (const commandId of Object.keys(COMMAND_AGENT_PROFILES)) {
@@ -645,6 +697,7 @@ function profile(commandId, requiredAgentIds, options = {}) {
     defaultExecutionMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode,
     requiredAgentIds: Object.freeze(unique(requiredAgentIds)),
     lowRiskRequiredAgentIds: Object.freeze(unique(options.lowRiskRequiredAgentIds || requiredAgentIds)),
+    baselineOnlyRequiredAgentIds: Object.freeze(unique(options.baselineOnlyRequiredAgentIds || [])),
     dynamicAgentSelectors: Object.freeze(options.dynamicAgentSelectors || []),
     immediateAgentIds: Object.freeze(options.immediateAgentIds || []),
     stageGate: options.stageGate || null,
@@ -674,6 +727,7 @@ function copyCommandAgentProfile(profile) {
     ...profile,
     requiredAgentIds: [...profile.requiredAgentIds],
     lowRiskRequiredAgentIds: [...(profile.lowRiskRequiredAgentIds || profile.requiredAgentIds)],
+    baselineOnlyRequiredAgentIds: [...(profile.baselineOnlyRequiredAgentIds || [])],
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     immediateAgentIds: [...(profile.immediateAgentIds || [])],
     executionModes: [...profile.executionModes],
@@ -692,6 +746,34 @@ function isLowRiskFastPath(profile = {}, workflowContext = {}) {
   const memoryWrites = normalizeBoolean(workflowContext.memoryWrites ?? workflowContext["memory-writes"], false);
   if ([adds, updates, projectOnly, conflicts].some((value) => !Number.isFinite(value))) return false;
   return adds === 0 && updates <= 1 && projectOnly === 0 && conflicts === 0 && memoryWrites === false;
+}
+
+function isBaselineOnlyFastPath(workflowContext = {}) {
+  const adds = Number(workflowContext.adds ?? workflowContext.add ?? NaN);
+  const updates = Number(workflowContext.updates ?? workflowContext.update ?? NaN);
+  const projectOnly = Number(workflowContext.projectOnly ?? workflowContext["project-only"] ?? NaN);
+  const conflicts = Number(workflowContext.conflicts ?? workflowContext.conflict ?? NaN);
+  const memoryWrites = normalizeBoolean(workflowContext.memoryWrites ?? workflowContext["memory-writes"], false);
+  if ([adds, updates, projectOnly, conflicts].some((value) => !Number.isFinite(value))) return false;
+  return adds === 0 && updates === 0 && projectOnly === 0 && conflicts === 0 && memoryWrites === false;
+}
+
+function normalizeReceiptTrust(receiptTrust = null) {
+  const minHostAgentReceipts = Number(receiptTrust?.minHostAgentReceipts || 1);
+  const minAgentInvocations = Number(receiptTrust?.minAgentInvocations || 1);
+  const trustedHostAgentReceipts = Number(receiptTrust?.trustedHostAgentReceipts || 0);
+  const agentInvocations = Number(receiptTrust?.agentInvocations || receiptTrust?.receiptBoundAgentInvocations || 0);
+  return {
+    trusted: receiptTrust?.pass === true
+      && trustedHostAgentReceipts >= minHostAgentReceipts
+      && agentInvocations >= minAgentInvocations,
+    trustedHostAgentReceipts,
+    agentInvocations,
+    loggedAgentInvocations: Number(receiptTrust?.loggedAgentInvocations || 0),
+    minHostAgentReceipts,
+    minAgentInvocations,
+    issues: [...(receiptTrust?.issues || [])],
+  };
 }
 
 function normalizeBoolean(value, fallback = false) {
@@ -730,7 +812,11 @@ function nextActionForPlan(plan = {}) {
   if (plan.executionMode === "dry-run-no-agent") {
     return "Run the read-only dry-run and review the plan; use apply for approved writes and verify-agents for runtime receipt proof.";
   }
+  if (plan.executionMode === "baseline-only-fast-path") {
+    return "Run baseline-only adapt apply and deterministic validators; real-agent dispatch is not required for zero-change metadata refresh.";
+  }
   if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
+  if (plan.agentReceiptsTrusted) return "Runtime agent receipt gate is already trusted; proceed with the command-specific verified next action.";
   if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {
     return `Invoke immediate owner agent(s) now: ${plan.immediateAgentIds.join(", ")}. Then run ${plan.stageGateCommand || "the workflow gate"}; defer staged specialist agents (${plan.deferredAgentIds.join(", ")}) until the gate unlocks their stages.`;
   }

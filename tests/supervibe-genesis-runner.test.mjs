@@ -231,6 +231,7 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(gitignore.includes("custom.local"), true, "user-owned .gitignore entries must be preserved");
     assert.equal(gitignore.includes("SUPERVIBE:BEGIN managed-gitignore"), true, "Supervibe .gitignore block must be managed");
     assert.equal(gitignore.includes(".supervibe/memory/agent-invocations.jsonl"), true);
+    assert.equal(gitignore.includes(".supervibe/memory/workflow-receipt-runtime.key"), true);
     assert.equal(gitignore.includes("*.supervibe.bak"), true);
     assert.equal(readFileSync(join(projectRoot, ".codex", "agents", "supervibe-orchestrator.md"), "utf8"), "# Local orchestrator\n");
     assert.equal(existsSync(join(projectRoot, ".codex", "agents", "nextjs-developer.md")), true);

@@ -301,6 +301,7 @@ function buildEvidenceLedgerRecord(entry = {}) {
   return {
     taskId: entry.task_id || entry.taskId || entry.task_summary,
     agentId: entry.agent_id,
+    invocationId: entry.invocation_id || entry.invocationId || null,
     retrievalPolicy: entry.retrievalPolicy || entry.retrieval_policy || evidence.retrievalPolicy,
     memoryIds: evidence.memoryIds || evidence.memory_ids || [],
     ragChunkIds: evidence.ragChunkIds || evidence.rag_chunk_ids || [],

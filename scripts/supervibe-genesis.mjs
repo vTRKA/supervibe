@@ -350,8 +350,10 @@ async function applyManagedGitignore({ targetRoot, pluginRoot, artifact }) {
   const template = source && existsSync(source)
     ? await renderTemplateFile({ source, targetRoot })
     : defaultManagedGitignoreBlock();
-  const block = extractManagedBlock(template, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore")
-    || defaultManagedGitignoreBlock();
+  const block = mergeManagedGitignoreBlock(
+    extractManagedBlock(template, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore")
+      || defaultManagedGitignoreBlock(),
+  );
   if (!existsSync(target)) {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, ensureTrailingLf(template), "utf8");
@@ -1374,6 +1376,22 @@ function extractManagedBlock(content, beginMarker, endMarker) {
   return ensureTrailingLf(content.slice(start, finish + end.length));
 }
 
+function mergeManagedGitignoreBlock(block) {
+  const required = defaultManagedGitignoreBlock()
+    .split(/\r?\n/)
+    .filter((line) => line && !/^# SUPERVIBE:(BEGIN|END) managed-gitignore$/.test(line));
+  const lines = ensureTrailingLf(block)
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const endIndex = lines.findIndex((line) => /^# SUPERVIBE:END managed-gitignore$/.test(line));
+  const insertAt = endIndex >= 0 ? endIndex : lines.length;
+  for (const line of required) {
+    if (lines.includes(line)) continue;
+    lines.splice(insertAt, 0, line);
+  }
+  return ensureTrailingLf(lines.join("\n"));
+}
+
 function upsertManagedBlock(current, block, beginMarker, endMarker) {
   const begin = `# ${beginMarker}`;
   const end = `# ${endMarker}`;
@@ -1397,6 +1415,7 @@ function defaultManagedGitignoreBlock() {
     ".supervibe/memory/agent-invocations.jsonl",
     ".supervibe/memory/effectiveness.jsonl",
     ".supervibe/memory/workflow-invocation-ledger.jsonl",
+    ".supervibe/memory/workflow-receipt-runtime.key",
     ".supervibe/confidence-log.jsonl",
     ".supervibe/memory/genesis/state.json",
     ".supervibe/memory/genesis/normalized-generated-host-files/",

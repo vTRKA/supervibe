@@ -318,6 +318,8 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     assert.match(dryRun, /UPDATES: 0/);
     assert.match(dryRun, /VERSION_DRIFT: true/);
     assert.match(dryRun, /METADATA_UPDATE_REQUIRED: true/);
+    assert.match(dryRun, /FAST_PATH_EXECUTION: baseline-only-cli-apply-plus-quality-gate/);
+    assert.match(dryRun, /AGENT_PLAN_COMMAND: .*command-agent-plan\.mjs --command \/supervibe-adapt --apply --adds 0 --updates 0 --project-only 0 --conflicts 0 --memory-writes false/);
     assert.match(dryRun, /APPROVAL_REQUIRED: false/);
     assert.match(dryRun, /NEXT_APPLY_METADATA:/);
 
@@ -326,6 +328,10 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     assert.match(out, /SUPERVIBE_ADAPT_APPLY/);
     assert.match(out, /APPLIED: 0/);
     assert.match(out, /METADATA_UPDATED: true/);
+    assert.match(out, /ADAPT_BASELINE_COMPLETE: true/);
+    assert.match(out, /AGENT_RECEIPTS_REQUIRED: false/);
+    assert.match(out, /APP_VERIFICATION_STATUS: not-run-by-adapt/);
+    assert.match(out, /DEPLOY_VERIFICATION_STATUS: not-run-by-adapt/);
     assert.match(out, /VERSION_MARKER: updated/);
     assert.equal(
       readFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "utf8").trim(),
@@ -334,6 +340,11 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json")), true);
     const baseline = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), "utf8"));
     assert.equal(baseline.pluginVersion, CURRENT_VERSION);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+    assert.equal(state.lifecycle, "baseline_verified");
+    assert.equal(state.verification.adaptBaselineComplete, true);
+    assert.equal(state.verification.agentReceiptsRequired, false);
+    assert.equal(state.verification.completionClaimAllowed, true);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

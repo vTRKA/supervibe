@@ -507,9 +507,13 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
+    `ADAPT_BASELINE_COMPLETE: ${result.lifecycleState?.verification?.adaptBaselineComplete === true}`,
+    `AGENT_RECEIPTS_REQUIRED: ${result.lifecycleState?.verification?.agentReceiptsRequired !== false}`,
     `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
+    `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
+    `DEPLOY_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.deployVerificationStatus || "not-run-by-adapt"}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
@@ -818,6 +822,11 @@ function formatAdaptDiffSummary(plan) {
 
 function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = {}) {
   const changed = items.filter((item) => item.action === "add" || item.action === "update");
+  const baselineOnly = Number(counts.add || 0) === 0
+    && Number(counts.update || 0) === 0
+    && Number(counts.projectOnly || 0) === 0
+    && Number(counts.conflicts || 0) === 0
+    && memoryWrites === false;
   const eligible = Number(counts.add || 0) === 0
     && Number(counts.update || 0) <= 1
     && Number(counts.projectOnly || 0) === 0
@@ -825,8 +834,11 @@ function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = 
     && memoryWrites === false;
   return {
     eligible,
+    baselineOnly,
     reason: eligible
-      ? "low-risk upstream-only adapt can use CLI apply plus quality gate"
+      ? baselineOnly
+        ? "baseline-only adapt can use CLI apply plus deterministic validators and quality gate"
+        : "low-risk upstream-only adapt can use CLI apply plus quality gate"
       : "standard adapt workflow required by adds, conflicts, project-only files, memory writes, or multiple updates",
     criteria: {
       adds: Number(counts.add || 0),
@@ -836,18 +848,29 @@ function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = 
       memoryWrites: memoryWrites === true,
     },
     requiredRoles: eligible
-      ? ["supervibe-orchestrator", "quality-gate-reviewer"]
+      ? baselineOnly
+        ? ["quality-gate-reviewer"]
+        : ["supervibe-orchestrator", "quality-gate-reviewer"]
       : ["supervibe-orchestrator", "repo-researcher", "rules-curator", "memory-curator", "quality-gate-reviewer"],
-    allowedExecution: eligible ? "cli-apply-plus-validators" : "standard-agent-plan",
+    allowedExecution: eligible
+      ? baselineOnly
+        ? "baseline-only-cli-apply-plus-quality-gate"
+        : "cli-apply-plus-validators"
+      : "standard-agent-plan",
     changedArtifacts: changed.map((item) => item.projectRel),
   };
 }
 
 function buildAdaptAgentPlanCommand({ counts = {}, memoryWrites = false } = {}) {
+  const baselineOnly = Number(counts.add || 0) === 0
+    && Number(counts.update || 0) === 0
+    && Number(counts.projectOnly || 0) === 0
+    && Number(counts.conflicts || 0) === 0
+    && memoryWrites === false;
   return [
     "node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs",
     "--command /supervibe-adapt",
-    "--dry-run",
+    baselineOnly ? "--apply" : "--dry-run",
     `--adds ${Number(counts.add || 0)}`,
     `--updates ${Number(counts.update || 0)}`,
     `--project-only ${Number(counts.projectOnly || 0)}`,
@@ -1295,10 +1318,15 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
   const artifactVerified = blockedArtifacts.length === 0 && result.postApply?.clean === true;
   const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
   const agentReceiptsVerified = agentRuntime.verified;
+  const baselineOnlyFastPath = plan.fastPath?.baselineOnly === true;
+  const agentReceiptsRequired = !baselineOnlyFastPath;
+  const adaptBaselineComplete = artifactVerified && (result.metadataUpdated === true || result.baselineRefreshed === true || updatedArtifacts.length === 0);
   const appVerified = false;
   const deployVerified = false;
   const lifecycle = blockedArtifacts.length > 0
     ? "failed_recoverable"
+    : adaptBaselineComplete && baselineOnlyFastPath
+      ? "baseline_verified"
     : artifactVerified
       ? "artifact_verified"
       : "applied_unverified";
@@ -1318,13 +1346,19 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     blockedArtifacts,
     verification: {
       artifactVerified,
+      adaptBaselineComplete,
+      agentReceiptsRequired,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
+      appVerificationStatus: "not-run-by-adapt",
       deployVerified,
-      completionClaimAllowed: artifactVerified && agentReceiptsVerified,
+      deployVerificationStatus: "not-run-by-adapt",
+      completionClaimAllowed: artifactVerified && (agentReceiptsVerified || !agentReceiptsRequired),
       completionClaim: agentReceiptsVerified
         ? "artifact adaptation verified with runtime agent receipt evidence"
+        : !agentReceiptsRequired
+          ? "baseline-only adapt verified by deterministic adapt validators and quality gate; real-agent dispatch was not required"
         : "artifact adaptation verified only; real agent completion is not claimed without agent invocation receipts",
     },
     recovery: buildAdaptRecoveryState(plan, result, { approvedArtifacts, updatedArtifacts, skippedArtifacts, blockedArtifacts }),
@@ -1341,6 +1375,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     validators: {
       artifactAdaptClean: result.postApply?.clean === true,
       artifactVerified,
+      adaptBaselineComplete,
+      agentReceiptsRequired,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
@@ -1357,6 +1393,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
         validators: {
           artifactAdaptClean: result.postApply?.clean === true,
           artifactVerified,
+          adaptBaselineComplete,
+          agentReceiptsRequired,
           agentReceiptsVerified,
           agentRuntimeVerified: agentReceiptsVerified,
           appVerified,

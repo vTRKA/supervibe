@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -87,39 +88,49 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         options,
         rootDir,
         agentId,
+        invocationId,
       });
     }
 
     const logPath = join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl");
     mkdirSync(dirname(logPath), { recursive: true });
     setInvocationLogPath(logPath);
-    const record = await logInvocation({
-      agent_id: agentId,
-      task_summary: taskSummary,
-      confidence_score: confidence,
-      invocation_id: invocationId,
-      host,
-      host_invocation_source: source,
-      session_id: options.session || options["session-id"] || null,
-      status: options.status || "completed",
-      trace_id: options["trace-id"] || null,
-      span_id: options["span-id"] || null,
-      changedFiles: splitList(options["changed-files"] || options.changedFiles),
-      risks: splitList(options.risks),
-      recommendations: splitList(options.recommendations),
-      subtool_usage: parseKeyValueNumbers(options["subtool-usage"] || options.subtoolUsage),
-      retrievalPolicy: parseRetrievalPolicy(options["retrieval-policy"] || options.retrievalPolicy),
-      evidence: buildEvidenceFromOptions(options),
-    });
-    const receiptResult = await maybeIssueWorkflowReceipt({
-      options,
-      rootDir,
-      agentId,
-      source,
-      invocationId,
-      taskSummary,
-      record,
-    });
+    let record = null;
+    let receiptResult = null;
+    try {
+      record = await logInvocation({
+        agent_id: agentId,
+        task_summary: taskSummary,
+        confidence_score: confidence,
+        invocation_id: invocationId,
+        host,
+        host_invocation_source: source,
+        session_id: options.session || options["session-id"] || null,
+        status: options.status || "completed",
+        trace_id: options["trace-id"] || null,
+        span_id: options["span-id"] || null,
+        changedFiles: splitList(options["changed-files"] || options.changedFiles),
+        risks: splitList(options.risks),
+        recommendations: splitList(options.recommendations),
+        subtool_usage: parseKeyValueNumbers(options["subtool-usage"] || options.subtoolUsage),
+        retrievalPolicy: parseRetrievalPolicy(options["retrieval-policy"] || options.retrievalPolicy),
+        evidence: buildEvidenceFromOptions(options),
+      });
+      receiptResult = await maybeIssueWorkflowReceipt({
+        options,
+        rootDir,
+        agentId,
+        source,
+        invocationId,
+        taskSummary,
+        record,
+      });
+    } catch (error) {
+      if (record && truthyFlag(options["issue-receipt"] || options.issueReceipt)) {
+        await rollbackInvocationSideEffects({ rootDir, record });
+      }
+      throw error;
+    }
 
     console.log("SUPERVIBE_AGENT_INVOCATION_LOGGED");
     console.log(`AGENT: ${record.agent_id}`);
@@ -177,7 +188,7 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
   });
 }
 
-function preflightReceiptIssue({ options, rootDir, agentId }) {
+function preflightReceiptIssue({ options, rootDir, agentId, invocationId }) {
   const command = options.command || options.workflow;
   const stage = options.stage || options["stage-id"];
   const subjectId = options["subject-id"] || agentId;
@@ -185,6 +196,12 @@ function preflightReceiptIssue({ options, rootDir, agentId }) {
   if (!command) throw new Error("--command required when --issue-receipt is set");
   if (!stage) throw new Error("--stage required when --issue-receipt is set");
   if (!outputArtifacts.length) throw new Error("--output-artifacts required when --issue-receipt is set");
+  for (const artifact of outputArtifacts) {
+    const relPath = normalizeRelPath(isAbsolute(artifact) ? relative(rootDir, artifact) : artifact);
+    if (isPlaceholderOutputArtifact(relPath)) {
+      throw new Error("--output-artifacts must name stable output files; use .supervibe/artifacts/_agent-outputs/<host-invocation-id>/agent-output.json instead of none or placeholders");
+    }
+  }
   assertReceiptOutputContracts({
     rootDir,
     command,
@@ -192,6 +209,64 @@ function preflightReceiptIssue({ options, rootDir, agentId }) {
     subjectId,
     outputArtifacts,
   });
+  const generated = expectedGeneratedOutputArtifacts(invocationId);
+  const missing = outputArtifacts
+    .map((artifact) => normalizeRelPath(isAbsolute(artifact) ? relative(rootDir, artifact) : artifact))
+    .filter((artifact) => !generated.has(artifact))
+    .filter((artifact) => !existsSync(join(rootDir, ...artifact.split("/"))));
+  if (missing.length) {
+    throw new Error(`--output-artifacts must exist before receipt issue or be the generated agent output artifact: ${missing.join(", ")}`);
+  }
+}
+
+async function rollbackInvocationSideEffects({ rootDir, record }) {
+  const invocationId = record?.invocation_id || record?.invocationId;
+  if (!invocationId) return;
+  await removeJsonlRecords(join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl"), (entry) => {
+    return (entry.invocation_id || entry.invocationId) === invocationId;
+  });
+  await removeJsonlRecords(join(rootDir, ".supervibe", "memory", "effectiveness.jsonl"), (entry) => {
+    return entry.invocationId === invocationId || entry.invocation_id === invocationId;
+  });
+  await removeJsonlRecords(join(rootDir, ".supervibe", "memory", "evidence-ledger.jsonl"), (entry) => {
+    return entry.invocationId === invocationId || entry.invocation_id === invocationId;
+  });
+  if (record.structured_output?.directory) {
+    await rm(join(rootDir, ...normalizeRelPath(record.structured_output.directory).split("/")), { recursive: true, force: true });
+  }
+}
+
+async function removeJsonlRecords(path, predicate) {
+  if (!existsSync(path)) return;
+  const lines = (await readFile(path, "utf8")).split(/\r?\n/).filter(Boolean);
+  const kept = [];
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line);
+      if (predicate(parsed)) continue;
+      kept.push(line);
+    } catch {
+      kept.push(line);
+    }
+  }
+  if (kept.length === 0) {
+    await rm(path, { force: true });
+    return;
+  }
+  await writeFile(path, `${kept.join("\n")}\n`, "utf8");
+}
+
+function expectedGeneratedOutputArtifacts(invocationId) {
+  const segment = sanitizePathSegment(invocationId || "unknown");
+  return new Set([
+    `.supervibe/artifacts/_agent-outputs/${segment}/agent-output.json`,
+    `.supervibe/artifacts/_agent-outputs/${segment}/summary.md`,
+  ]);
+}
+
+function isPlaceholderOutputArtifact(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "none" || normalized === "<paths>" || normalized === "<path>" || normalized === "null";
 }
 
 function splitList(value) {
@@ -258,4 +333,12 @@ function parseCitations(value) {
 function truthyFlag(value) {
   if (value === true) return true;
   return /^(1|true|yes|on)$/i.test(String(value || ""));
+}
+
+function normalizeRelPath(path) {
+  return String(path ?? "").split(sep).join("/").replace(/^\.\//, "");
+}
+
+function sanitizePathSegment(value) {
+  return String(value ?? "unknown").toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-|-$/g, "") || "unknown";
 }
