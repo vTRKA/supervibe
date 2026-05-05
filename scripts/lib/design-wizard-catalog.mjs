@@ -4,6 +4,9 @@ import {
   scoreSpecialistQuestionProposal,
   SPECIALIST_QUESTION_SOURCES,
 } from "./specialist-question-contract.mjs";
+import {
+  classifyDesignIntent,
+} from "./design-intent-classifier.mjs";
 
 const DEFAULT_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
@@ -578,14 +581,16 @@ export function buildDesignWizardState({
   initialDecisions = {},
   locale = null,
 } = {}) {
+  const intent = classifyDesignIntent({ brief, target });
+  const resolvedTarget = intent.target || target || "unknown";
   const resolvedLocale = normalizeLocale(locale || detectDesignLocale(brief));
   const parsed = parseDesignBriefPreferences(brief);
   const decisions = { ...parsed.decisions, ...initialDecisions };
   const explicitDefaults = parsed.explicitDefaults === true;
-  const viewportPolicy = resolveDesignViewportPolicy({ target, currentWindow, deviceScaleFactor });
+  const viewportPolicy = resolveDesignViewportPolicy({ target: resolvedTarget, currentWindow, deviceScaleFactor });
   const questionStrategy = buildDesignQuestionStrategy({
     brief,
-    target,
+    target: resolvedTarget,
     mode,
     decisions,
     viewportPolicy,
@@ -624,7 +629,7 @@ export function buildDesignWizardState({
   const guidedDefaultsChecklist = explicitDefaults
     ? DESIGN_WIZARD_AXES.map((axisDef) => guidedDefaultChecklistItem(axisDef, decisions[axisDef.id], resolvedLocale))
     : [];
-  const styleboardReadiness = evaluateDesignStyleboardReadiness({ mode, target, decisions });
+  const styleboardReadiness = evaluateDesignStyleboardReadiness({ mode, target: resolvedTarget, decisions });
   const viewportPolicyRecorded = !needsViewportQuestion(decisions.viewport, viewportPolicy);
   const delegatedAxes = delegatedDecisionAxes(decisions);
   const delegatedReviewRequired = delegatedAxes.length > 0;
@@ -633,7 +638,7 @@ export function buildDesignWizardState({
     schemaVersion: 1,
     locale: resolvedLocale,
     mode: mode || null,
-    target,
+    target: resolvedTarget,
     designSystemStatus,
     decisions,
     coverage: {
@@ -649,7 +654,7 @@ export function buildDesignWizardState({
     questionStrategy,
     questionQueue: proposalBackedQuestions.queue,
     questionProposals: proposalBackedQuestions.proposals,
-    reviewChecks: buildDesignReviewCheckPlan({ target, viewportDecision: decisions.viewport, viewportPolicy }),
+    reviewChecks: buildDesignReviewCheckPlan({ target: resolvedTarget, viewportDecision: decisions.viewport, viewportPolicy }),
     styleboard: {
       phase: styleboardReadiness.pass ? "review-styleboard" : "diagnostic-scratch",
       requiredAxes: DESIGN_STYLEBOARD_REQUIRED_AXES,
@@ -686,6 +691,7 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   const requiresReview = source === "delegated-to-agent";
 
   const next = JSON.parse(JSON.stringify(state || {}));
+  const queuedQuestion = (next.questionQueue || []).find((question) => question.axis === axisId) || null;
   next.decisions ||= {};
   if (axisId === "mode") {
     next.mode = answer.choiceId || answer.value || null;
@@ -703,9 +709,12 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
       timestamp: answer.timestamp || new Date().toISOString(),
     };
   } else {
-    const choiceIds = normalizeWizardChoiceIds(answer, axisDef);
+    const choiceIds = normalizeWizardChoiceIds(answer, axisDef, queuedQuestion);
+    const choiceCatalog = Array.isArray(queuedQuestion?.choices) && queuedQuestion.choices.length > 0
+      ? queuedQuestion.choices
+      : axisDef?.choices || [];
     const selectedChoices = choiceIds
-      .map((choiceId) => axisDef?.choices.find((choiceItem) => choiceItem.id === choiceId))
+      .map((choiceId) => choiceCatalog.find((choiceItem) => choiceItem.id === choiceId))
       .filter(Boolean);
     const answerText = answer.value
       || selectedChoices.map((choiceItem) => choiceItem.label).join(" + ")
@@ -716,12 +725,12 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
       answer: answerText,
       choiceId: choiceIds.length === 1 ? choiceIds[0] : choiceIds.join("+") || null,
       choiceIds,
-      multiChoice: axisDef?.multiChoice === true,
+      multiChoice: queuedQuestion?.multiChoice === true || axisDef?.multiChoice === true,
       source,
       confidence: Number(answer.confidence ?? 1),
       quote: answer.quote || null,
-      prompt: axisDef?.prompt || "Viewport target",
-      decisionUnlocked: axisDef?.decisionUnlocked || "viewport capture policy",
+      prompt: queuedQuestion?.prompt || queuedQuestion?.question || axisDef?.prompt || "Viewport target",
+      decisionUnlocked: queuedQuestion?.decisionUnlocked || axisDef?.decisionUnlocked || "viewport capture policy",
       requiresReview,
       timestamp: answer.timestamp || new Date().toISOString(),
     };
@@ -774,16 +783,20 @@ export function recordDesignWizardAnswer(state = {}, answer = {}) {
   return attachDesignWizardRuntime(next);
 }
 
-function normalizeWizardChoiceIds(answer = {}, axisDef = null) {
+function normalizeWizardChoiceIds(answer = {}, axisDef = null, question = null) {
   if (!axisDef) return [];
   const rawIds = Array.isArray(answer.choiceIds)
     ? answer.choiceIds
     : splitChoiceIds(answer.choiceIds || answer.choiceId);
   const uniqueIds = [...new Set(rawIds.map((id) => String(id || "").trim()).filter(Boolean))];
-  if (uniqueIds.length > 1 && axisDef.multiChoice !== true) {
+  const multiChoice = question?.multiChoice === true || axisDef.multiChoice === true;
+  if (uniqueIds.length > 1 && multiChoice !== true) {
     throw new Error(`Axis ${axisDef.id} accepts one choice; got ${uniqueIds.join(", ")}`);
   }
-  const valid = new Set((axisDef.choices || []).map((choiceItem) => choiceItem.id));
+  const choices = Array.isArray(question?.choices) && question.choices.length > 0
+    ? question.choices
+    : axisDef.choices || [];
+  const valid = new Set(choices.map((choiceItem) => choiceItem.id));
   const invalid = uniqueIds.filter((id) => !valid.has(id));
   if (invalid.length > 0) {
     throw new Error(`Axis ${axisDef.id} received unknown choice id(s): ${invalid.join(", ")}`);
@@ -1234,8 +1247,8 @@ function buildDesignQuestionStrategy({
 function inferDesignQuestionProfile(text = "", target = "web") {
   const signals = designQuestionSignals(text, target);
   if (signals.referenceRefresh) return "referenceRefresh";
-  if (signals.brandLaunch) return "brandLaunch";
   if (signals.regulatedTrust) return "regulatedTrust";
+  if (signals.brandLaunch) return "brandLaunch";
   if (signals.developerTool) return "developerTool";
   if (signals.desktopOps || signals.desktopTarget) return "desktopOps";
   return "default";
@@ -1246,8 +1259,8 @@ function designQuestionSignals(text = "", target = "web") {
   return {
     desktopTarget: isDesktopTarget(target) || hasAny(haystack, ["tauri", "electron", "desktop", "desktop app", "native app", "app shell", "windows app", "десктоп", "десктопн", "настольн", "таури"]),
     desktopOps: hasAny(haystack, ["dashboard", "admin", "operator", "support", "backoffice", "ops", "table", "grid", "queue", "monitoring", "control plane", "админ", "оператор", "таблиц", "очеред", "мониторинг"]),
-    brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page", "лендинг", "маркетинг", "запуск", "главная", "конверси"]),
-    regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated", "комплаенс", "аудит", "банк", "финанс", "медицин", "безопасн", "приват", "риск"]),
+    brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page", "лендинг", "маркетинг", "запуск", "главная", "конверси", "посадоч"]),
+    regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated", "legal", "law firm", "lawyer", "attorney", "комплаенс", "аудит", "банк", "финанс", "медицин", "безопасн", "приват", "риск", "юрид", "адвокат", "закон", "правов"]),
     developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "prompt", "devtool", "debug", "разработ", "код", "агент", "api", "cli", "терминал", "промпт", "дебаг"]),
     referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
     agentChat: hasAny(haystack, ["agent chat", "agentic chat", "chat system", "conversation workspace", "агентск", "агентская система чатов", "чат", "чаты", "диалог"]),
@@ -2373,7 +2386,7 @@ function buildDesignWizardResumeToken(state = {}) {
 }
 
 function detectDesignLocale(text) {
-  return /[а-яё]/i.test(String(text || "")) ? "ru" : "en";
+  return /\p{Script=Cyrillic}/u.test(String(text || "")) ? "ru" : "en";
 }
 
 function normalizeLocale(locale) {

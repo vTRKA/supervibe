@@ -30,6 +30,9 @@ import {
 import { createAgentProvisioningPlan } from "./agent-provisioning.mjs";
 import { resolveHostAgentDispatcher } from "./command-agent-orchestration-contract.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
+import {
+  classifyDesignIntent,
+} from "./design-intent-classifier.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -48,7 +51,7 @@ export function buildDesignAgentPlan({
   brief = "",
   target = "unknown",
   referenceSources = [],
-  flowType = "in-product",
+  flowType = "",
   designSystemStatus = "missing",
   rootDir = process.cwd(),
   pluginRoot = null,
@@ -63,6 +66,9 @@ export function buildDesignAgentPlan({
   env = process.env,
 } = {}) {
   const text = String(brief ?? "");
+  const intent = classifyDesignIntent({ brief: text, target, flowType });
+  target = intent.target;
+  flowType = intent.flowType;
   const sources = Array.isArray(referenceSources) ? referenceSources : [];
   const stages = [];
   const referenceInventory = buildReferenceInventoryPlan({ slug, intake });
@@ -194,6 +200,7 @@ export function buildDesignAgentPlan({
     executionStatus: null,
     referenceInventory,
     wizard,
+    intent,
     viewportPolicy: {
       ...resolveDesignViewportPolicy({
         target,
@@ -516,6 +523,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   const explicitMode = normalizeDesignExecutionMode(requestedExecutionMode);
   const requestedMode = explicitMode || (requiredAgentIds.length === 0 ? "inline" : "real-agents");
   const specialistDispatchDeferred = designWizardStillOpen(plan);
+  const durableMissingRuntimeProofs = runtimeProof.missingRuntimeProofs || [];
+  const activeMissingRuntimeProofs = specialistDispatchDeferred ? [] : durableMissingRuntimeProofs;
   const questionProposalProducers = buildQuestionProposalProducerStatuses(plan, runtimeProof);
   const executionMode = deriveDesignExecutionMode({
     requestedMode,
@@ -548,14 +557,17 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     hostConfidence: hostSelection.confidence,
     hostInvocationsLogged: runtimeProof.hostInvocationsLogged,
     agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
-    agentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
-    producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
+    agentReceiptsTrusted: specialistDispatchDeferred ? true : runtimeProof.agentReceiptsTrusted,
+    producerReceiptsTrusted: specialistDispatchDeferred ? true : runtimeProof.producerReceiptsTrusted,
+    durableAgentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
+    durableProducerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
     completedStageSubjects: runtimeProof.completedStageSubjects,
     specialistDispatchDeferred,
     questionProposalDispatchAllowed: specialistDispatchDeferred && questionProposalProducers.length > 0,
     questionProposalProducers,
     runtimeProofRequirements: runtimeProof.requirements,
-    missingRuntimeProofs: runtimeProof.missingRuntimeProofs,
+    missingRuntimeProofs: activeMissingRuntimeProofs,
+    durableMissingRuntimeProofs,
     agentReceiptsAllowed,
     inlineDraftAllowed: executionMode === "inline" || executionMode === "hybrid",
     manualEmulationAllowed: false,
@@ -563,13 +575,13 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
       ? `Specialist stages cannot run or be claimed without real project agents: ${missingAgents.join(", ")}`
       : executionMode === "inline"
         ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
-        : executionMode === "hybrid"
-          ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
-            : executionMode === "agent-dispatch-required"
-              ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(runtimeProof.missingRuntimeProofs)}.`
-            : specialistDispatchDeferred
-              ? "Agents are installed; durable specialist outputs are deferred, but scratch SpecialistQuestionContract proposals may run before wizard gates close."
-              : "Runtime agent receipts are trusted for the active durable-output stage.",
+      : executionMode === "hybrid"
+        ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
+        : executionMode === "agent-dispatch-required"
+          ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(activeMissingRuntimeProofs)}.`
+          : specialistDispatchDeferred
+            ? "Agents are installed; durable specialist outputs are deferred, but scratch SpecialistQuestionContract proposals may run before wizard gates close."
+            : "Runtime agent receipts are trusted for the active durable-output stage.",
     receiptGate,
     degradedModeQuestion: executionMode === "agent-dispatch-required"
       ? buildAgentDispatchQuestion(runtimeProof, { locale })

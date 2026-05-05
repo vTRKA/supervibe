@@ -4,9 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  bindDesignWizardQuestionProposals,
   buildDesignWizardState,
   recordDesignWizardAnswer,
 } from "./lib/design-wizard-catalog.mjs";
+import {
+  classifyDesignIntent,
+} from "./lib/design-intent-classifier.mjs";
 import {
   designWizardRuntimeStatePath,
   designWizardStateLockPath,
@@ -34,6 +38,7 @@ const VALUE_ARGS = new Map([
 
 const BOOLEAN_ARGS = new Map([
   ["--accept-recommended-remaining", "acceptRecommendedRemaining"],
+  ["--delegate-safe-defaults", "delegateSafeDefaults"],
   ["--wait-for-lock", "waitForLock"],
   ["--help", "help"],
 ]);
@@ -56,9 +61,9 @@ async function main() {
   const root = options.root || process.cwd();
   const slug = options.slug || "";
   const axis = options.axis || "";
-  const source = options.source || "user";
+  const source = options.source || (options.delegateSafeDefaults === true ? "delegated-to-agent" : "user");
   const timestamp = options.timestamp || new Date().toISOString();
-  const acceptRecommendedRemaining = options.acceptRecommendedRemaining === true;
+  const acceptRecommendedRemaining = options.acceptRecommendedRemaining === true || options.delegateSafeDefaults === true;
   const configPath = options.configPath || (slug
     ? join(root, ".supervibe", "artifacts", "prototypes", slug, "config.json")
     : "");
@@ -80,6 +85,11 @@ async function main() {
     waitForLock: options.waitForLock === true,
   }, async () => {
     const config = await readDesignConfig(configPath);
+    const intent = classifyDesignIntent({
+      brief: config.brief || config.userBrief || "",
+      target: config.target || "unknown",
+      flowType: config.flowType || config.flow || "",
+    });
     const currentRevision = designConfigRevision(config);
     if (options.expectedRevision !== undefined && String(options.expectedRevision) !== String(currentRevision)) {
       throw new Error(`config revision mismatch: expected ${options.expectedRevision}, got ${currentRevision}`);
@@ -89,7 +99,7 @@ async function main() {
     const initialDecisions = extractPersistedDesignDecisions(config, runtimeState);
     let state = buildDesignWizardState({
       brief: config.brief || config.userBrief || "",
-      target: config.target || "unknown",
+      target: intent.target || config.target || "unknown",
       designSystemStatus: config.designSystemStatus || config.designSystem?.status || "missing",
       mode: config.mode || config.designWizard?.mode || null,
       currentWindow: config.currentWindow || null,
@@ -98,6 +108,9 @@ async function main() {
       locale: config.locale || config.designWizard?.locale || null,
       timestamp,
     });
+    if (Array.isArray(runtimeState?.questionProposals) && runtimeState.questionProposals.length > 0) {
+      state = bindDesignWizardQuestionProposals(state, runtimeState.questionProposals);
+    }
 
     if (acceptRecommendedRemaining) {
       for (const question of [...state.questionQueue]) {
@@ -143,7 +156,8 @@ async function main() {
     const nextConfig = {
       ...config,
       mode: state.mode || config.mode || null,
-      target: state.target || config.target || "unknown",
+      target: state.target || intent.target || config.target || "unknown",
+      flowType: intent.flowType || config.flowType || config.flow || "in-product",
       configRevision: finalRevision,
       designWizardRuntimeStatePath: runtimeStatePath,
       designWizard: summarizeDesignWizardState(state, {
@@ -175,7 +189,6 @@ async function main() {
 function parseArgs(argv) {
   const options = {
     root: process.cwd(),
-    source: "user",
     timestamp: new Date().toISOString(),
   };
   for (let index = 2; index < argv.length; index += 1) {
@@ -400,6 +413,7 @@ function usage() {
     "",
     "NOTES:",
     "  --answer is an alias for --value; multi-choice axes accept --choices or answers like \"1 and 3\".",
+    "  --delegate-safe-defaults accepts remaining specialist recommendations as delegated decisions and keeps the review gate closed.",
     "  Unknown arguments fail fast.",
     "  Wizard runtime state is stored outside config.json; config.json keeps a compact pointer and decisions summary.",
     "  Writes use a slug-level command lock, atomic rename, and configRevision increment.",

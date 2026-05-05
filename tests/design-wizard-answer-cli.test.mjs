@@ -7,6 +7,9 @@ import test from "node:test";
 import {
   readDesignWizardRuntimeState,
 } from "../scripts/lib/design-wizard-runtime-state.mjs";
+import {
+  buildSpecialistQuestionProposal,
+} from "../scripts/lib/specialist-question-contract.mjs";
 
 const ROOT = process.cwd();
 
@@ -69,6 +72,87 @@ test("design-wizard-answer records a single user answer without manual config pa
   }
 });
 
+test("design-wizard-answer accepts trusted specialist proposal choice ids from runtime state", async () => {
+  const root = await mkdtemp(join(tmpdir(), "design-wizard-answer-trusted-proposal-"));
+  try {
+    const brief = "\u043b\u0435\u043d\u0434\u0438\u043d\u0433 \u044e\u0440\u0438\u0434\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0441\u0430\u0439\u0442\u0430";
+    const runtimeStatePath = ".supervibe/memory/design-wizard/legal.runtime.json";
+    const proposal = buildSpecialistQuestionProposal({
+      proposalId: "stage-1-brand-direction:creative-director:audience_trust_posture",
+      axis: "audience_trust_posture",
+      stage: "stage-1-brand-direction",
+      specialist: "creative-director",
+      ownerAgent: "creative-director",
+      question: "Which legal trust posture should lead the first viewport before visual direction locks?",
+      why: "The answer changes direction.md, legal assurance cues, and claim-risk copy before tokens are written.",
+      whyNow: "The legal landing brief needs authority and restraint before palette, type, and proof sections are generated.",
+      choices: [
+        { id: "boutique-strategic-precision", label: "Boutique strategic precision", tradeoff: "Signals senior legal judgment without fear-based claims.", unlocks: ["direction.md"], risk: "May feel too reserved for broad lead-gen.", evidence: ["legal landing brief", "regulated trust signal"], artifactImpact: "legal trust posture", recommended: true },
+        { id: "institutional-assurance", label: "Institutional assurance", tradeoff: "Maximizes formal authority for high-stakes matters.", unlocks: ["direction.md"], risk: "Can feel generic if proof is thin.", evidence: ["legal services domain", "trust requirement"], artifactImpact: "assurance hierarchy" },
+        { id: "client-advocacy-clarity", label: "Client advocacy clarity", tradeoff: "Makes the page approachable while preserving professional restraint.", unlocks: ["copy tone"], risk: "Can under-signal expertise for complex cases.", evidence: ["landing flow", "legal copy risk"], artifactImpact: "copy tone and CTA proof" },
+      ],
+      blocks: ["direction.md", "copy tone", "assurance cues"],
+      artifactImpact: "direction.md trust posture, assurance cues, and copy tone",
+      skipDefault: "Stop and regenerate a legal-specific specialist proposal if none fit.",
+      canAnswerFromEvidence: false,
+      evidence: ["legal landing brief", "regulated trust signal"],
+      decisionUnlocked: "direction.md trust posture and legal assurance cue strategy",
+      currentContext: "legal services landing page with regulated trust and brand launch signals",
+      producer: {
+        type: "agent",
+        id: "creative-director",
+        stageId: "stage-1-brand-direction",
+        receiptTrusted: true,
+        receiptPresent: true,
+        hostInvocation: {
+          source: "agent-invocations-jsonl",
+          invocationId: "creative-director-legal-1",
+        },
+      },
+      proposalSource: "real-specialist-proposal",
+    });
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/legal/config.json", `${JSON.stringify({
+      brief,
+      target: "unknown",
+      mode: "full-prototype-pipeline",
+      designWizardRuntimeStatePath: runtimeStatePath,
+    }, null, 2)}\n`);
+    await writeUtf8(root, runtimeStatePath, `${JSON.stringify({
+      schemaVersion: 1,
+      questionProposals: [proposal],
+    }, null, 2)}\n`);
+
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-wizard-answer.mjs"),
+      "--root",
+      root,
+      "--slug",
+      "legal",
+      "--axis",
+      "audience_trust_posture",
+      "--choice",
+      "boutique-strategic-precision",
+      "--timestamp",
+      "2026-05-04T00:00:00.000Z",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    const config = await readJson(root, ".supervibe/artifacts/prototypes/legal/config.json");
+    const runtime = readDesignWizardRuntimeState(root, config);
+
+    assert.match(output, /AXES_UPDATED: audience_trust_posture/);
+    assert.equal(config.target, "web");
+    assert.equal(config.flowType, "landing");
+    assert.equal(config.designWizard.locale, "ru");
+    assert.equal(config.designWizard.decisions.audience_trust_posture.choiceId, "boutique-strategic-precision");
+    assert.equal(config.designWizard.decisions.audience_trust_posture.answer, "Boutique strategic precision");
+    assert.ok(!runtime.questionQueue.some((question) => question.axis === "audience_trust_posture"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design-wizard-answer can delegate remaining recommendations while keeping review gate closed", async () => {
   const root = await mkdtemp(join(tmpdir(), "design-wizard-answer-delegate-"));
   try {
@@ -89,9 +173,7 @@ test("design-wizard-answer can delegate remaining recommendations while keeping 
       root,
       "--slug",
       "agent-chat",
-      "--accept-recommended-remaining",
-      "--source",
-      "delegated-to-agent",
+      "--delegate-safe-defaults",
       "--timestamp",
       "2026-05-04T00:00:00.000Z",
     ], {

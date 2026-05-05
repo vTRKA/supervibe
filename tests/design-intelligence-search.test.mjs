@@ -95,6 +95,20 @@ test("search returns cited design rows for product, stack, and slide queries", a
   assert.equal(slideRows.every((row) => row.kind === "slides"), true);
 });
 
+test("design intelligence resolves plugin data when project root has no data pack", async () => {
+  const query = "legal services landing trust typography color";
+  const externalProjectRoot = "fixtures/external-project-without-data-pack";
+  const productRows = await searchDesignIntelligence({ query, domain: "product", projectRoot: externalProjectRoot, maxResults: 3 });
+  const colorRows = await searchDesignIntelligence({ query, domain: "color", projectRoot: externalProjectRoot, maxResults: 3 });
+  const typeRows = await searchDesignIntelligence({ query, domain: "typography", projectRoot: externalProjectRoot, maxResults: 3 });
+  const landingRows = await searchDesignIntelligence({ query, domain: "landing", projectRoot: externalProjectRoot, maxResults: 3 });
+
+  assert.ok(productRows.some((row) => row.id.includes("legal-services")));
+  assert.ok(colorRows.some((row) => row.id.includes("legal-services")));
+  assert.ok(typeRows.length > 0);
+  assert.ok(landingRows.length > 0);
+});
+
 test("composed recommendation validates against schema and preserves precedence", async () => {
   const resultSchema = JSON.parse(await readFile("schemas/design-intelligence-result.schema.json", "utf8"));
   const recommendationSchema = JSON.parse(await readFile("schemas/design-recommendation.schema.json", "utf8"));

@@ -249,7 +249,7 @@ function visibleRussianShare(proposal = {}) {
   ].join(" ");
   const letters = visible.match(/\p{L}/gu) || [];
   if (!letters.length) return 0;
-  const cyrillic = visible.match(/[а-яё]/giu) || [];
+  const cyrillic = visible.match(/\p{Script=Cyrillic}/gu) || [];
   return cyrillic.length / letters.length;
 }
 

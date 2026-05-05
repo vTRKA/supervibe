@@ -35,3 +35,29 @@ test("design workflow state validator fails when config says no prototype but in
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("design workflow state validator fails on wizard next-question drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-next-validator-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      mode: "full-prototype-pipeline",
+      designWizardRuntimeStatePath: ".supervibe/memory/design-wizard/agent-chat.runtime.json",
+      designWizard: {
+        nextQuestionAxis: "creative_alternatives",
+        runtimeStatePath: ".supervibe/memory/design-wizard/agent-chat.runtime.json",
+      },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/memory/design-wizard/agent-chat.runtime.json", `${JSON.stringify({
+      schemaVersion: 1,
+      runtimeStatus: { nextQuestionAxis: "viewport" },
+      questionQueue: [{ axis: "viewport" }],
+    }, null, 2)}\n`);
+
+    const result = validateDesignWorkflowState(root);
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "design-wizard-next-question-drift"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

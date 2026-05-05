@@ -107,6 +107,25 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
 
+test("design agent plan classifies multilingual legal landing as web landing with regulated trust", () => {
+  const brief = "\u043b\u0435\u043d\u0434\u0438\u043d\u0433 \u044e\u0440\u0438\u0434\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0441\u0430\u0439\u0442\u0430";
+  const plan = buildDesignAgentPlan({
+    brief,
+    target: "unknown",
+    mode: "full-prototype-pipeline",
+    pluginRoot: ROOT,
+  });
+
+  assert.equal(plan.target, "web");
+  assert.equal(plan.flowType, "landing");
+  assert.equal(plan.intent.signals.landing, true);
+  assert.equal(plan.intent.signals.regulatedTrust, true);
+  assert.equal(plan.wizard.locale, "ru");
+  assert.equal(plan.wizard.questionStrategy.profile, "regulatedTrust");
+  assert.ok(plan.stages.some((stage) => stage.id === "stage-5-landing-skill" && stage.skillId === "supervibe:landing-page"));
+  assert.deepEqual(plan.viewportPolicy.defaultViewports.map((viewport) => viewport.width), [375, 1440]);
+});
+
 test("design agent plan CLI resumes mode and decisions from saved prototype config", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-resume-config-"));
   try {
@@ -319,6 +338,8 @@ test("design agent plan shows wizard question only after trusted specialist prop
 
     assert.equal(trusted.wizard.questionQueue[0].source, "real-specialist-proposal");
     assert.equal(trusted.wizard.questionQueue[0].trustedSpecialistProposal, true);
+    assert.deepEqual(trusted.executionStatus.missingRuntimeProofs, []);
+    assert.ok(trusted.executionStatus.durableMissingRuntimeProofs.some((proof) => proof.subjectId === "creative-director"));
     assert.match(formatDesignPlanPrompt(trusted), /NEXT_WIZARD_QUESTION:/);
     assert.doesNotMatch(formatDesignPlanPrompt(trusted), /SPECIALIST_QUESTION_GATE: blocked/);
   } finally {

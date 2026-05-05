@@ -73,6 +73,24 @@ test("wizard prioritizes questions and recommendations by brief profile", () => 
   );
 });
 
+test("wizard resolves multilingual legal landing intent before design artifacts", () => {
+  const brief = "\u043b\u0435\u043d\u0434\u0438\u043d\u0433 \u044e\u0440\u0438\u0434\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0441\u0430\u0439\u0442\u0430";
+  const state = buildDesignWizardState({
+    brief,
+    target: "unknown",
+    mode: "full-prototype-pipeline",
+  });
+
+  assert.equal(state.locale, "ru");
+  assert.equal(state.target, "web");
+  assert.equal(state.questionStrategy.profile, "regulatedTrust");
+  assert.equal(state.questionStrategy.signals.brandLaunch, true);
+  assert.equal(state.questionStrategy.signals.regulatedTrust, true);
+  assert.equal(state.questionQueue[0].axis, "audience_trust_posture");
+  assert.deepEqual(state.reviewChecks.screenshotViewports.map((viewport) => viewport.width), [375, 1440, 1920]);
+  assert.equal(state.gates.viewportPolicyRecorded, false);
+});
+
 test("wizard emits specialist question proposals with artifact impact", () => {
   const state = buildDesignWizardState({
     brief: "Developer console for agent workflow with compact data and command center behavior.",

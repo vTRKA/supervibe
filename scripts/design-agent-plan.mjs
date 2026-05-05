@@ -22,6 +22,9 @@ import {
 import {
   mergeRuntimeDesignWizardConfig,
 } from "./lib/design-wizard-runtime-state.mjs";
+import {
+  classifyDesignIntent,
+} from "./lib/design-intent-classifier.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(name);
@@ -35,8 +38,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const pluginRoot = arg("--plugin-root", scriptPluginRoot);
   const persistedConfig = slug ? readPersistedDesignConfig(projectRoot, slug) : null;
   const brief = arg("--brief", persistedConfig?.brief || persistedConfig?.userBrief || "");
-  const target = arg("--target", persistedConfig?.target || "unknown");
-  const flowType = arg("--flow", persistedConfig?.flowType || persistedConfig?.flow || "in-product");
+  const rawTarget = arg("--target", persistedConfig?.target || "unknown");
+  const rawFlowType = arg("--flow", persistedConfig?.flowType || persistedConfig?.flow || "");
   const requestedExecutionMode = arg("--execution-mode", persistedConfig?.executionMode || "");
   const mode = arg("--mode", persistedConfig?.mode || persistedConfig?.designWizard?.mode || "");
   const host = arg("--host", "");
@@ -46,6 +49,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const planWrites = process.argv.includes("--plan-writes");
   const dispatchHostAgents = process.argv.includes("--dispatch-host-agents") || process.argv.includes("--dispatch") || process.argv.includes("--continue");
   const protocolPrompt = process.argv.includes("--protocol");
+  const intent = classifyDesignIntent({ brief, target: rawTarget, flowType: rawFlowType });
+  const target = intent.target;
+  const flowType = intent.flowType;
   const intake = await evaluateDesignArtifactIntake({
     brief,
     projectRoot,

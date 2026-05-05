@@ -69,6 +69,10 @@ Dynamic question shape:
 
 ### Dynamic Specialist Questions
 
+Do not show option IDs that `node scripts/design-wizard-answer.mjs` cannot accept. If a real specialist proposal exists but the runtime queue is still using fallback axis choices, stop and import/repair the proposal binding first; manual mapping from real proposal IDs to fallback IDs is a workflow bug.
+
+Question-proposal receipts are typed scratch progress only. They may replace the visible wizard question with trusted specialist choices, but they do not satisfy durable producer receipts for `direction.md`, tokens, styleboard, prototype files, reviews, or approvals.
+
 `DESIGN_WIZARD_AXES` and route metadata are coverage schemas and fallback seeds only. They must not be rendered as the final user-facing question list when a specialist can produce a better `SpecialistQuestionContract`. Visible questions come from the owning specialist proposal, with current evidence, artifact impact, risk, unlocks, and a recommendation. The orchestrator may order, deduplicate, and validate proposals, but it must not rewrite a static catalog axis into a fake specialist question.
 
 Specialists may ask any number of steps needed for quality. `N/M` is adaptive: `M` is the current proposal queue length, not a hardcoded stage count. It is valid for a specialist to add, split, merge, or skip questions when evidence proves the answer, as long as the state records why and `validate-dynamic-question-systems` passes.
@@ -90,6 +94,8 @@ instead of being silently replayed in an arbitrary order.
 Before approving Stage 2, build a visible `styleboard.html` under `.supervibe/artifacts/prototypes/_design-system/` or `.scratch/<run-id>/` containing palette swatches, typography samples, controls, table, dialog, shell, motion notes, density sample, and component feel. A full review styleboard is allowed only after mode, target, viewport policy, reference scope, creative alternatives, anti-generic guardrail, visual direction, density, palette mood, typography personality, component feel, and motion intensity are recorded. Before that point, only diagnostic scratch is allowed and it must not present itself as a visual direction. Section approval is valid only after the user sees this review packet/styleboard. Bulk approval is an escape hatch after all section summaries and the styleboard have been shown, not the default UX.
 
 For desktop/Tauri/Electron targets, do not inherit web-only `375 + 1440` as the complete viewport model. Ask for actual window size, target monitor, OS scale, `deviceScaleFactor`, min-resize, `mainWindow`, `secondaryWindow`, and `largeWindow`; if unavailable, record `exactWindow=false` and use `1920x1080`, `1440x900`, `1280x800`, plus `800x600` as the desktop baseline.
+
+Target resolution is mandatory before durable artifacts. A multilingual legal/finance/health/government landing brief must resolve to `target=web`, `flowType=landing`, regulated-trust guardrails, and web review viewports before styleboard, tokens, or prototype work starts.
 
 Execution visibility is mandatory. `config.json.executionMode` must be one of `inline`, `real-agents`, or `hybrid`; `agent-required-blocked` is a hard-stop status when requested real/hybrid agents are unavailable. `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality is blocked. If a required specialist is missing, ask one blocked-mode question before any approval: install missing agents with `scripts/provision-agents.mjs`, connect host-native agents, choose `hybrid` with real receipts for agent-owned outputs, save an `inline` draft without agent claims, or stop here. Manual emulation is not an allowed design workflow path and is never a completed agent stage.
 
@@ -126,6 +132,8 @@ node scripts/validate-design-agent-receipts.mjs
 `/supervibe-design <brief>` is a request to run the full applicable design pipeline, not to stop after the first useful subsection. Continue through all applicable stages until the next mandatory approval gate, prototype feedback gate, or explicit blocker. Continue through all applicable non-blocking stages when the next stage can be completed from the current brief, approved artifacts, and documented safe defaults; stages may be marked `reuse`, `delegated`, `skipped`, or `N/A` only through documented triage. Delegated design decisions can fill safe defaults, but they cannot satisfy creative-direction selection, required design-system section approval, prototype approval, safety/policy gates, production approvals, or destructive-operation consent.
 
 Resume mode uses `supervibe-design --continue` or `node scripts/design-agent-plan.mjs --continue --status --plan-writes --slug <slug>`. The output must expose exactly one canonical `NEXT_ACTION` and one canonical `NEXT_QUESTION` for controllers, with any nested status/prewrite next fields namespaced so they cannot contradict the orchestration decision.
+
+If runtime state, `design-agent-plan`, prewrite manifest, and status output disagree on the next question or action, stop and repair the state. Controllers must not pick one of several contradictory next actions.
 
 After the user explicitly picks a recommended direction or any other concrete
 wizard option, continue with `node scripts/design-agent-plan.mjs --continue

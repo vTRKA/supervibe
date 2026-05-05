@@ -14,6 +14,9 @@ import {
   buildPostStageContinuation,
 } from "./supervibe-stage-state.mjs";
 import {
+  readDesignWizardRuntimeState,
+} from "./design-wizard-runtime-state.mjs";
+import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
   validateWorkflowReceipts,
@@ -196,6 +199,12 @@ function validateDesignWorkflowStateConsistency(rootDir = process.cwd(), {
   }
   if (actualPrototypeExists && normalizeStatus(flow?.prototype?.requested) === "blocked") {
     issues.push(stateIssue("flow-prototype-requested-drift", "high", "design-flow-state prototype.requested=BLOCKED while index.html exists"));
+  }
+  const runtime = config ? readDesignWizardRuntimeState(rootDir, config) : null;
+  const configNextQuestion = config?.designWizard?.nextQuestionAxis || config?.designWizard?.runtimeStatus?.nextQuestionAxis || null;
+  const runtimeNextQuestion = runtime?.runtimeStatus?.nextQuestionAxis || runtime?.questionQueue?.[0]?.axis || null;
+  if (configNextQuestion && runtimeNextQuestion && configNextQuestion !== runtimeNextQuestion) {
+    issues.push(stateIssue("design-wizard-next-question-drift", "high", `config designWizard next=${configNextQuestion} but runtime next=${runtimeNextQuestion}`));
   }
 
   return {

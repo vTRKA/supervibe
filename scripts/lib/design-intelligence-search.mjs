@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,7 +55,8 @@ const STACK_ALIASES = new Map([
 let cachedData = null;
 
 export async function loadDesignIntelligenceData({ projectRoot = ROOT, dataDir = DEFAULT_DATA_DIR } = {}) {
-  if (cachedData?.dataDir === dataDir) return cachedData;
+  const cacheKey = `${projectRoot}::${dataDir}`;
+  if (cachedData?.cacheKey === cacheKey) return cachedData;
 
   const manifestPath = join(dataDir, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -62,7 +64,7 @@ export async function loadDesignIntelligenceData({ projectRoot = ROOT, dataDir =
 
   for (const domain of manifest.domains ?? []) {
     if (domain.status !== "adapted" || !domain.importedPath) continue;
-    const csvPath = join(projectRoot, domain.importedPath);
+    const csvPath = resolveDesignDataCsvPath({ projectRoot, dataDir, importedPath: domain.importedPath });
     let csv;
     try {
       csv = await readFile(csvPath, "utf8");
@@ -76,13 +78,24 @@ export async function loadDesignIntelligenceData({ projectRoot = ROOT, dataDir =
   }
 
   cachedData = {
+    cacheKey,
     dataDir,
+    projectRoot,
     manifest,
     documents,
     domains: [...new Set(documents.map((doc) => doc.domain))].sort(),
     stacks: [...new Set(documents.filter((doc) => doc.kind === "stack").map((doc) => doc.stack))].sort(),
   };
   return cachedData;
+}
+
+function resolveDesignDataCsvPath({ projectRoot = ROOT, dataDir = DEFAULT_DATA_DIR, importedPath = "" } = {}) {
+  const candidates = [
+    join(projectRoot, importedPath),
+    join(ROOT, importedPath),
+    join(dirname(dataDir), importedPath),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) || candidates[0];
 }
 
 export async function searchDesignIntelligence({
@@ -437,7 +450,7 @@ function safeId(value) {
   return String(value)
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[^a-z0-9а-яё]+/giu, "-")
+    .replace(/[^\p{L}0-9]+/gu, "-")
     .replace(/^-+|-+$/g, "") || "row";
 }
 
@@ -445,7 +458,7 @@ function tokenize(value) {
   return [...new Set(String(value)
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[^a-zа-яё0-9\s-]/giu, " ")
+    .replace(/[^\p{L}0-9\s-]/gu, " ")
     .split(/[\s-]+/)
     .filter((token) => token.length >= 2))];
 }

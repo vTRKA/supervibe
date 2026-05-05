@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.82] - 2026-05-05
+
+### Added
+
+- Added multilingual `/supervibe-design` intent classification for legal,
+  landing, web, desktop, mobile-native, and browser-extension requests.
+- Added regression coverage for legal landing, trusted specialist proposal
+  ingestion, design-intelligence external roots, and wizard next-action drift.
+
+### Changed
+
+- `/supervibe-design` now resolves target and flow type before design artifact
+  gates and keeps question-proposal receipts separate from durable output
+  progress.
+- Added a delegate-safe defaults mode that accepts specialist recommendations
+  while preserving the review packet before approval.
+
+### Fixed
+
+- Trusted specialist proposal choice IDs are now imported into the wizard
+  runtime before answer validation, so legal-specific options can replace
+  fallback catalog IDs.
+- Design-intelligence lookup now resolves plugin data packs even when the
+  project root points at a consuming project.
+- Wizard state validation now fails on contradictory next-question sources.
+
 ## [2.0.81] - 2026-05-05
 
 ### Changed
