@@ -26,4 +26,5 @@ web-ext-artifacts/
 
 # Supervibe local state
 .supervibe/
+*.supervibe.bak
 .claude-plugin/.upgrade-check.json

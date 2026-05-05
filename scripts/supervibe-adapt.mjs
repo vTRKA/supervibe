@@ -47,7 +47,11 @@ try {
   }
 
   if (args["verify-agents"]) {
-    const result = await verifyAdaptAgentRuntime(projectRoot);
+    const result = await verifyAdaptAgentRuntime(projectRoot, {
+      pluginRoot,
+      host: args.host || process.env.SUPERVIBE_HOST || "codex",
+      options: args,
+    });
     if (args.json || args["summary-json"]) console.log(JSON.stringify(result, null, 2));
     else console.log(formatAdaptAgentRuntimeVerification(result));
     process.exit(result.agentRuntime.verified ? 0 : 2);
@@ -242,6 +246,7 @@ Options:
   --dry-run                 Inspect artifact and metadata drift (default)
   --apply                   Apply approved artifact updates or metadata-only drift
   --verify-agents           Verify receipt-bound real host-agent telemetry and update Adapt state
+  --record-smoke            With --verify-agents, record a real host-agent smoke receipt using --host-invocation-id
   --resolve <paths>         Mark manually merged files resolved when they match upstream, ignoring CRLF/LF
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update
@@ -304,6 +309,7 @@ function parseArgs(argv) {
     "refresh-memory-index",
     "no-refresh-memory-index",
     "verify-agents",
+    "record-smoke",
     "help",
     "h",
   ]);

@@ -19,6 +19,7 @@ Thumbs.db
 .supervibe/memory/genesis/normalized-generated-host-files/
 .supervibe/memory/adapt/state.json
 .supervibe/research-cache/
+*.supervibe.bak
 docker-compose.override.yml
 postgres-data/
 .docker/volumes/

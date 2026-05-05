@@ -76,14 +76,15 @@ test("dependency health classifies nested vulnerable transitive dependency and b
   assert.deepEqual(finding.okChains, ["@tailwindcss/postcss@4.2.4 -> postcss@8.5.14"]);
   assert.deepEqual(finding.remediation.override, {
     overrides: {
-      next: {
-        postcss: "8.5.14",
-      },
+      postcss: "8.5.14",
     },
   });
+  assert.equal(finding.remediation.overrideScope, "package-level");
+  assert.equal(finding.remediation.validationStatus, "requires-local-install-validation");
   assert.equal(finding.remediation.reason, "npm audit fix --force is unsafe because it would downgrade a framework major/minor line.");
   assert.deepEqual(finding.remediation.verificationCommands, [
     "npm install",
+    "npm ls postcss --all",
     "npm audit --json",
     "npm run lint",
     "npm run build",
@@ -95,9 +96,12 @@ test("dependency health classifies nested vulnerable transitive dependency and b
   assert.match(formatted, /VULNERABLE_CHAIN: next@16\.2\.4 -> postcss@8\.4\.31/);
   assert.match(formatted, /OCCURRENCE_OK: @tailwindcss\/postcss@4\.2\.4 -> postcss@8\.5\.14/);
   assert.match(formatted, /NPM_AUDIT_FORCE: blocked_downgrade next 16\.2\.4 -> 9\.3\.3/);
-  assert.match(formatted, /OVERRIDE_OPTION: \{"overrides":\{"next":\{"postcss":"8\.5\.14"\}\}\}/);
+  assert.match(formatted, /OVERRIDE_OPTION: \{"overrides":\{"postcss":"8\.5\.14"\}\}/);
+  assert.match(formatted, /OVERRIDE_SCOPE: package-level/);
+  assert.match(formatted, /REMEDIATION_VALIDATION: requires-local-install-validation/);
   assert.match(formatted, /REMEDIATION_REASON: npm audit fix --force is unsafe/);
   assert.match(formatted, /REMEDIATION_VERIFY: npm install/);
+  assert.match(formatted, /REMEDIATION_VERIFY: npm ls postcss --all/);
   assert.match(formatted, /REMEDIATION_VERIFY: node <resolved-supervibe-plugin-root>\/scripts\/dependency-health\.mjs --root \./);
 });
 

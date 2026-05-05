@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.89] - 2026-05-06
+
+### Added
+
+- Added Adapt deploy compose syntax verification with
+  `docker compose -f <compose-file> config` when the Docker CLI and Compose
+  plugin are available; this does not require the Docker daemon.
+- Added shared deploy verification fields:
+  `deployArtifactsVerified`, `composeConfigVerified`, `deployRuntimeVerified`,
+  and `deployVerified`, plus Genesis state reconciliation after Adapt deploy.
+- Added Genesis `--summary-json` for compact operator output and Node runtime
+  preflight warnings when the active Node version differs from the generated
+  Node 22 policy.
+- Added receipt-bound `--verify-agents --record-smoke` support for Genesis and
+  Adapt when the active host provides a real host-agent invocation id.
+
+### Changed
+
+- Dokploy compose generation no longer requires `env_file: .env`; generated
+  environment keys have safe defaults so fresh projects can run compose config
+  checks before local `.env` exists.
+- Dependency-health now recommends package-level npm `overrides` for nested
+  vulnerable packages and includes `npm ls <package> --all` in the validation
+  sequence before considering the repair verified.
+- Supervibe backup files such as `AGENTS.md.supervibe.bak` are ignored by the
+  base and stack-pack gitignore scaffolds.
+
+### Fixed
+
+- Fixed stale Genesis `deploy-addon-pending` state after Adapt deploy artifacts
+  are generated and verified.
+- Fixed Dokploy deploy docs and recovery notes so they no longer imply a local
+  `.env` file is required for Dokploy UI-provided environment values.
+
 ## [2.0.88] - 2026-05-06
 
 ### Added

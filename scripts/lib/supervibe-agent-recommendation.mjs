@@ -340,6 +340,7 @@ export function buildGenesisDryRunReport({
   const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
   const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack, addOns, fingerprint });
   const deployAddOnPolicy = buildDeployAddOnPolicy(fingerprint);
+  const nodeRuntimePreflight = buildNodeRuntimePreflight();
   const groupSelectedAgents = unique(agentProfile.agentGroups.flatMap((groupEntry) => (
     groupEntry.agents || []
   ).filter((agent) => agent.available).map((agent) => agent.id)));
@@ -407,6 +408,7 @@ export function buildGenesisDryRunReport({
     scaffoldArtifacts: scaffoldPlan.files,
     generateAppsStep: buildGenerateAppsStep(fingerprint),
     deployAddOnPolicy,
+    nodeRuntimePreflight,
     postApplyCommands: [
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress",
@@ -567,6 +569,24 @@ function buildDeployAddOnPolicy(fingerprint = {}) {
   };
 }
 
+function buildNodeRuntimePreflight() {
+  const actual = process.versions?.node || "";
+  const actualMajor = Number(String(actual).split(".")[0]);
+  const expectedMajor = 22;
+  const expected = "22.x";
+  const ok = Number.isInteger(actualMajor) && actualMajor === expectedMajor;
+  return {
+    expected,
+    expectedMajor,
+    actual,
+    actualMajor: Number.isInteger(actualMajor) ? actualMajor : null,
+    status: ok ? "pass" : "warn-runtime-drift",
+    warning: ok
+      ? null
+      : `Active Node.js ${actual || "unknown"} differs from generated runtime policy ${expected}. Use Node 22 for reproducible Genesis/app/Docker behavior.`,
+  };
+}
+
 function buildStackAmbiguities(tags, frontendTarget = null) {
   const warnings = frontendTarget?.driftWarnings || [];
   if (warnings.length > 0) {
@@ -616,6 +636,7 @@ export function formatGenesisDryRunReport(report) {
     `APP_CHOICE: ${report.generateAppsStep?.appChoice?.id || "none"}`,
     `FRONTEND_BUNDLER: ${report.generateAppsStep?.appChoice?.bundler || report.generateAppsStep?.frontendTarget?.bundler || "none"}`,
     `DEPLOY_ADDON_POLICY: ${report.deployAddOnPolicy?.status || "not-requested"}`,
+    `NODE_RUNTIME_PREFLIGHT: ${report.nodeRuntimePreflight?.status || "unknown"} actual=${report.nodeRuntimePreflight?.actual || "unknown"} expected=${report.nodeRuntimePreflight?.expected || "unknown"}`,
     `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
     "AGENT_ROLES:",
     formatAgentRoleSummaries(report.agentProfile.selectedAgents, { agents: report.agentProfile.agentResponsibilities }, { max: 80 }) || "- none",

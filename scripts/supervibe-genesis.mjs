@@ -10,6 +10,10 @@ import {
   buildGenesisDryRunReport,
   formatGenesisDryRunReport,
 } from "./lib/supervibe-agent-recommendation.mjs";
+import {
+  buildAgentSmokeTestState,
+  recordAgentRuntimeSmoke,
+} from "./lib/agent-runtime-smoke.mjs";
 import { collectDependencyHealth, hasDependencyManifests } from "./lib/dependency-health.mjs";
 import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs";
 import { writeAdaptFileManifestSnapshot } from "./lib/supervibe-adapt.mjs";
@@ -42,6 +46,8 @@ async function main() {
   if (options["verify-agents"]) {
     const verification = await verifyGenesisAgents({
       targetRoot,
+      pluginRoot,
+      options,
       previousState,
       host: options.host || previousState?.host?.adapterId || env.SUPERVIBE_HOST || "codex",
     });
@@ -891,6 +897,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     stackPack: report.stackPack,
     fingerprint: report.fingerprint,
     deployAddOnPolicy: report.deployAddOnPolicy || null,
+    nodeRuntimePreflight: report.nodeRuntimePreflight || null,
     confidence,
     appChoice,
     frontendTarget: report.fingerprint?.frontendTarget || null,
@@ -922,7 +929,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
         status: existsSync(join(targetRoot, ".supervibe", "confidence-log.jsonl")) ? "present" : "missing",
       },
       agentRuntime,
-      agentSmokeTest: buildAgentSmokeTestState(report.host?.adapterId || "codex"),
+      agentSmokeTest: buildAgentSmokeTestState({ host: report.host?.adapterId || "codex", command: "/supervibe-genesis" }),
     },
     history,
   };
@@ -964,6 +971,15 @@ function buildGenesisConfidenceScore({
       code: "deploy-addon-pending",
       message: "Docker/Dokploy intent was recorded; deploy artifacts require Adapt deploy scope after real service evidence exists.",
       targets: report.deployAddOnPolicy.targets || [],
+    });
+    score = Math.min(score, 8);
+  }
+  if (report.nodeRuntimePreflight?.status === "warn-runtime-drift") {
+    gaps.push({
+      code: "node-runtime-drift",
+      message: report.nodeRuntimePreflight.warning || "Active Node.js version differs from generated runtime policy.",
+      actual: report.nodeRuntimePreflight.actual || null,
+      expected: report.nodeRuntimePreflight.expected || null,
     });
     score = Math.min(score, 8);
   }
@@ -1068,6 +1084,10 @@ function mergeGenerateAppsState({
 }
 
 function outputResult(result, options) {
+  if (options["summary-json"]) {
+    console.log(JSON.stringify(toGenesisSummaryResult(result), null, 2));
+    return;
+  }
   if (options.json) {
     console.log(JSON.stringify(toGenesisJsonResult(result), null, 2));
     return;
@@ -1130,6 +1150,39 @@ function toGenesisJsonResult(result) {
   };
 }
 
+function toGenesisSummaryResult(result) {
+  const report = reportForExecutionMode(result.report, result.mode);
+  const generatedApps = result.generatedApps || {};
+  return {
+    kind: "genesis-summary",
+    mode: result.mode,
+    lifecycle: report?.lifecycle || (result.mode === "apply" ? "applied" : "dry-run"),
+    dryRun: report?.dryRun ?? result.mode !== "apply",
+    statePath: result.statePath || null,
+    host: report?.host || null,
+    stackPack: report?.stackPack || null,
+    stackTags: report?.fingerprint?.tags || [],
+    confidence: result.confidence || null,
+    nodeRuntimePreflight: report?.nodeRuntimePreflight || null,
+    deployAddOnPolicy: report?.deployAddOnPolicy || null,
+    files: {
+      created: result.created?.length || 0,
+      updated: result.updated?.length || 0,
+      skipped: result.skipped?.length || 0,
+      missing: result.missing?.length || 0,
+    },
+    app: {
+      status: generatedApps.status || report?.generateAppsStep?.status || "not-requested",
+      appGenerated: generatedApps.appGenerated === true || report?.generateAppsStep?.appGenerated === true,
+      appVerified: generatedApps.appVerified === true || report?.generateAppsStep?.appVerified === true,
+      buildVerified: generatedApps.buildVerified === true,
+      dependencyHealthVerified: generatedApps.dependencyHealthVerified === true,
+      appChoice: report?.generateAppsStep?.appChoice || null,
+    },
+    nextAgentGate: result.nextAgentGate || buildVerifyAgentsCommand(report?.host?.adapterId || "codex"),
+  };
+}
+
 function reportForExecutionMode(report, mode) {
   const dryRun = mode !== "apply";
   const lifecycle = dryRun ? "dry-run" : "applied";
@@ -1154,7 +1207,7 @@ function appendDependencyHealthLines(lines, dependencyHealth) {
 
 function parseArgs(argv) {
   const parsed = {};
-  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps", "verify-apps", "verify-agents"]);
+  const booleans = new Set(["apply", "dry-run", "json", "summary-json", "help", "no-color", "generate-apps", "verify-apps", "verify-agents", "record-smoke"]);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "-h") {
@@ -1182,11 +1235,22 @@ async function readGenesisState(targetRoot) {
   }
 }
 
-async function verifyGenesisAgents({ targetRoot, previousState = null, host = "codex" } = {}) {
+async function verifyGenesisAgents({ targetRoot, pluginRoot, options = {}, previousState = null, host = "codex" } = {}) {
+  const smokeRecord = options["record-smoke"]
+    ? recordAgentRuntimeSmoke({
+        projectRoot: targetRoot,
+        pluginRoot,
+        host,
+        command: "/supervibe-genesis",
+        agentId: options["smoke-agent"] || "repo-researcher",
+        hostInvocationId: options["host-invocation-id"] || options["invocation-id"],
+      })
+    : null;
   const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
   const agentSmokeTest = {
-    ...buildAgentSmokeTestState(host),
+    ...buildAgentSmokeTestState({ host, command: "/supervibe-genesis", agentId: options["smoke-agent"] || "repo-researcher" }),
     status: agentRuntime.verified ? "verified-real-host-agent" : "pending-real-host-agent",
+    smokeRecord,
   };
   const now = new Date().toISOString();
   let statePath = null;
@@ -1231,12 +1295,26 @@ async function verifyGenesisAgents({ targetRoot, previousState = null, host = "c
     command: "/supervibe-genesis",
     agentRuntime,
     agentSmokeTest,
+    smokeRecord,
     statePath: statePath ? toRel(targetRoot, statePath) : null,
     stateUpdated,
   };
 }
 
 function outputGenesisAgentVerification(result, options = {}) {
+  if (options["summary-json"]) {
+    console.log(JSON.stringify({
+      kind: "genesis-agent-runtime-summary",
+      command: result.command,
+      verified: result.agentRuntime.verified === true,
+      agentRuntime: result.agentRuntime,
+      smokeRecord: result.smokeRecord,
+      stateUpdated: result.stateUpdated,
+      statePath: result.statePath,
+      nextAction: result.agentRuntime.verified ? null : result.agentSmokeTest.commandTemplate,
+    }, null, 2));
+    return;
+  }
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
     return;
@@ -1250,6 +1328,7 @@ function outputGenesisAgentVerification(result, options = {}) {
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-genesis-state"}`,
   ];
+  if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
   for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
   if (!result.agentRuntime.verified) lines.push(`NEXT_ACTION: ${result.agentSmokeTest.commandTemplate}`);
   console.log(lines.join("\n"));
@@ -1269,31 +1348,6 @@ function inspectAgentRuntimeEvidence(targetRoot) {
     loggedAgentInvocations: result.loggedAgentInvocations || 0,
     issues: (result.issues || []).map((issue) => issue.code),
     evidencePath: ".supervibe/memory/agent-invocations.jsonl",
-  };
-}
-
-function buildAgentSmokeTestState(host = "codex") {
-  return {
-    required: true,
-    status: "pending-real-host-agent",
-    purpose: "Prove at least one installed Supervibe specialist can run through the active host and bind telemetry to a receipt.",
-    suggestedAgent: "repo-researcher",
-    commandTemplate: [
-      "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log",
-      "--agent repo-researcher",
-      `--host ${host}`,
-      "--host-invocation-id <real-host-agent-id>",
-      "--task \"Genesis smoke test: inspect installed Supervibe context\"",
-      "--confidence 9",
-      "--retrieval-policy memory=mandatory,rag=mandatory,codegraph=optional",
-      "--verification-commands \"node scripts/supervibe-status.mjs\"",
-      "--redaction-status not-needed",
-      "--issue-receipt",
-      "--command /supervibe-genesis",
-      "--stage agent-smoke-test",
-      "--handoff-id genesis-agent-smoke",
-      "--output-artifacts .supervibe/artifacts/_agent-outputs/<real-host-agent-id>/agent-output.json",
-    ].join(" "),
   };
 }
 
@@ -1348,6 +1402,7 @@ function defaultManagedGitignoreBlock() {
     ".supervibe/memory/genesis/normalized-generated-host-files/",
     ".supervibe/memory/adapt/state.json",
     ".supervibe/research-cache/",
+    "*.supervibe.bak",
     "docker-compose.override.yml",
     "postgres-data/",
     ".docker/volumes/",
@@ -1399,10 +1454,12 @@ function formatHelp() {
     "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
     "  --verify-apps    Run declared app lint/build/dependency-health checks; works after --generate-apps or as verify-only for existing apps.",
     "  --verify-agents  Verify receipt-bound real host-agent telemetry and update Genesis state.",
+    "  --record-smoke   With --verify-agents, record a real host-agent smoke receipt using --host-invocation-id.",
     "  --app-choice     Persist frontend choice: next-app, vite-spa, or monorepo-two-frontends.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",
     "  --request        Free-form user stack/context text used as stack evidence.",
-    "  --json           Machine-readable UTF-8 output.",
+    "  --summary-json   Compact machine-readable summary for operator feedback and automation.",
+    "  --json           Full machine-readable UTF-8 output.",
   ].join("\n");
 }

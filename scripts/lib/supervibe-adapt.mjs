@@ -15,6 +15,10 @@ import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from 
 import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 import { validateAgentProducerReceipts } from "./agent-producer-contract.mjs";
 import {
+  buildAgentSmokeTestState,
+  recordAgentRuntimeSmoke,
+} from "./agent-runtime-smoke.mjs";
+import {
   collectFrontendPackageEvidence,
   readGenesisFrontendDecision,
   resolveFrontendTarget,
@@ -322,6 +326,13 @@ export async function applyDokployDeployPlan(plan, {
     if (item.action === "create") created.push(item);
     else updated.push(item);
   }
+  const dockerVerification = inspectDockerRuntime();
+  const composeFile = composeFileForDeployResult(plan, { created, updated, skipped });
+  const composeConfigVerification = verifyComposeConfig({
+    projectRoot: plan.projectRoot,
+    composeFile,
+    dockerVerification,
+  });
   const result = {
     kind: "adapt-deploy-apply",
     scope: plan.scope,
@@ -332,11 +343,15 @@ export async function applyDokployDeployPlan(plan, {
     updated,
     skipped,
     migrationCommand: plan.migrationCommand,
-    dockerVerification: plan.dockerVerification,
+    dockerVerification,
+    composeConfigVerification,
     mutatedPaths: [...created, ...updated].map((item) => item.projectRel),
   };
   result.lifecycleState = await writeDeployLifecycleState(plan, result);
   result.mutatedPaths.push(result.lifecycleState.path);
+  if (result.lifecycleState.genesisReconciliation?.path) {
+    result.mutatedPaths.push(result.lifecycleState.genesisReconciliation.path);
+  }
   result.mutatedPaths = [...new Set(result.mutatedPaths)];
   return result;
 }
@@ -462,6 +477,7 @@ export function formatDokployDeployPlan(plan) {
     `APPROVAL_REQUIRED: ${plan.approvalRequired === true}`,
     `MIGRATION_COMMAND: ${plan.migrationCommand || "none"}`,
     `DOCKER_INSTALLED: ${plan.dockerVerification?.dockerInstalled === true}`,
+    `DOCKER_COMPOSE_AVAILABLE: ${plan.dockerVerification?.composeAvailable === true}`,
     `DOCKER_DAEMON_RUNNING: ${plan.dockerVerification?.daemonRunning === true}`,
   ];
   if (plan.deployProfile?.blockedReason) lines.push(`BLOCKED: ${plan.deployProfile.blockedReason}`);
@@ -471,7 +487,7 @@ export function formatDokployDeployPlan(plan) {
     else lines.push(`IDENTICAL: ${item.projectRel}`);
   }
   if (plan.approvalRequired) {
-    lines.push("NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --scope deploy --target dokploy --apply");
+    lines.push(`NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --scope deploy --target ${plan.target || "dokploy"} --apply`);
   }
   return lines.join("\n");
 }
@@ -534,10 +550,17 @@ export function formatDokployDeployApply(result) {
     `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
+    `DEPLOY_ARTIFACTS_VERIFIED: ${result.lifecycleState?.verification?.deployArtifactsVerified === true}`,
+    `COMPOSE_CONFIG_VERIFIED: ${result.lifecycleState?.verification?.composeConfigVerified === true}`,
+    `DEPLOY_RUNTIME_VERIFIED: ${result.lifecycleState?.verification?.deployRuntimeVerified === true}`,
     `MIGRATION_COMMAND: ${result.migrationCommand || "none"}`,
     `DOCKER_INSTALLED: ${result.dockerVerification?.dockerInstalled === true}`,
+    `DOCKER_COMPOSE_AVAILABLE: ${result.dockerVerification?.composeAvailable === true}`,
     `DOCKER_DAEMON_RUNNING: ${result.dockerVerification?.daemonRunning === true}`,
+    `COMPOSE_CONFIG_STATUS: ${result.composeConfigVerification?.status || "not-run"}`,
   ];
+  if (result.composeConfigVerification?.command) lines.push(`COMPOSE_CONFIG_COMMAND: ${result.composeConfigVerification.command}`);
+  if (result.lifecycleState?.genesisReconciliation?.path) lines.push(`GENESIS_STATE_RECONCILED: ${result.lifecycleState.genesisReconciliation.path}`);
   for (const item of result.created || []) lines.push(`CREATED_FILE: ${item.projectRel}`);
   for (const item of result.updated || []) lines.push(`UPDATED_FILE: ${item.projectRel}`);
   for (const item of result.skipped || []) lines.push(`SKIPPED_FILE: ${item.projectRel} - ${item.reason || "skipped"}`);
@@ -652,8 +675,23 @@ export function summarizeAdaptApply(result) {
   };
 }
 
-export async function verifyAdaptAgentRuntime(projectRoot = process.cwd()) {
+export async function verifyAdaptAgentRuntime(projectRoot = process.cwd(), { pluginRoot = process.cwd(), host = "codex", options = {} } = {}) {
+  const smokeRecord = options["record-smoke"]
+    ? recordAgentRuntimeSmoke({
+        projectRoot,
+        pluginRoot,
+        host,
+        command: "/supervibe-adapt",
+        agentId: options["smoke-agent"] || "repo-researcher",
+        hostInvocationId: options["host-invocation-id"] || options["invocation-id"],
+      })
+    : null;
   const agentRuntime = inspectAgentRuntimeEvidence(projectRoot);
+  const agentSmokeTest = {
+    ...buildAgentSmokeTestState({ host, command: "/supervibe-adapt", agentId: options["smoke-agent"] || "repo-researcher" }),
+    status: agentRuntime.verified ? "verified-real-host-agent" : "pending-real-host-agent",
+    smokeRecord,
+  };
   const statePath = join(projectRoot, ...STATE_PATH);
   const previous = readJsonOptional(statePath);
   const now = new Date().toISOString();
@@ -676,6 +714,7 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd()) {
       evidence: {
         ...(previous.evidence || {}),
         agentRuntime,
+        agentSmokeTest,
       },
       validators: {
         ...(previous.validators || {}),
@@ -699,11 +738,13 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd()) {
     kind: "adapt-agent-runtime-verification",
     command: "/supervibe-adapt",
     agentRuntime,
+    agentSmokeTest,
+    smokeRecord,
     stateUpdated,
     statePath: previous ? normalizeRel(relative(projectRoot, statePath)) : null,
     nextAction: agentRuntime.verified
       ? "Adapt agent runtime receipt gate is verified."
-      : "Run real host-agent stages, then log each with `node scripts/agent-invocation.mjs log ... --issue-receipt --command /supervibe-adapt --stage agent-smoke-test`.",
+      : agentSmokeTest.commandTemplate,
   };
 }
 
@@ -717,6 +758,7 @@ export function formatAdaptAgentRuntimeVerification(result) {
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-adapt-state"}`,
   ];
+  if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
   for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
   if (result.nextAction) lines.push(`NEXT_ACTION: ${result.nextAction}`);
   return lines.join("\n");
@@ -734,6 +776,7 @@ export function summarizeDokployDeployApply(result) {
     mutatedPaths: result.mutatedPaths || [],
     migrationCommand: result.migrationCommand,
     dockerVerification: result.dockerVerification,
+    composeConfigVerification: result.composeConfigVerification || null,
     lifecycleState: result.lifecycleState,
   };
 }
@@ -1343,31 +1386,47 @@ async function writeDeployLifecycleState(plan, result) {
   const createdArtifacts = (result.created || []).map((item) => item.projectRel);
   const updatedArtifacts = (result.updated || []).map((item) => item.projectRel);
   const skippedArtifacts = (result.skipped || []).map((item) => item.projectRel);
-  const artifactVerified = (result.created || []).length + (result.updated || []).length > 0
-    && (result.created || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)))
-    && (result.updated || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)));
+  const currentArtifacts = (result.skipped || []).filter((item) => item.reason === "already current");
+  const materializedArtifacts = [...(result.created || []), ...(result.updated || []), ...currentArtifacts];
+  const artifactVerified = materializedArtifacts.length > 0
+    && materializedArtifacts.every((item) => existsSync(join(plan.projectRoot, item.projectRel)));
   const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
   const agentReceiptsVerified = agentRuntime.verified;
+  const composeConfigVerification = result.composeConfigVerification || null;
+  const composeConfigVerified = composeConfigVerification?.pass === true;
+  const deployArtifactsVerified = artifactVerified;
+  const deployRuntimeVerified = false;
+  const deployVerified = false;
+  const lifecycle = composeConfigVerified
+    ? "compose_config_verified"
+    : artifactVerified
+      ? "artifact_verified"
+      : "applied_unverified";
   const state = {
     schemaVersion: 2,
     command: "/supervibe-adapt",
     scope: "deploy",
     target: plan.target,
     deployProfile: plan.deployProfile || null,
-    lifecycle: artifactVerified ? "artifact_verified" : "applied_unverified",
-    currentStage: artifactVerified ? "artifact_verified" : "applied_unverified",
+    lifecycle,
+    currentStage: lifecycle,
     approvedArtifacts: [...createdArtifacts, ...updatedArtifacts],
     updatedArtifacts: [...createdArtifacts, ...updatedArtifacts],
     skippedArtifacts,
     blockedArtifacts: [],
     verification: {
       artifactVerified,
+      deployArtifactsVerified,
+      composeConfigVerified,
+      deployRuntimeVerified,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified: false,
-      deployVerified: false,
+      deployVerified,
       completionClaimAllowed: false,
-      completionClaim: "Dokploy deploy artifacts were generated; deployment is not verified until Dokploy health checks pass.",
+      completionClaim: composeConfigVerified
+        ? "Deploy artifacts and compose syntax are verified; runtime deployment is not verified until image build, container boot, HTTP health, and external health checks pass."
+        : "Deploy artifacts were generated; deployment is not verified until compose syntax and runtime health checks pass.",
     },
     recovery: {
       beforeSnapshotHash: hashContent(JSON.stringify((plan.items || []).map((item) => ({
@@ -1380,39 +1439,145 @@ async function writeDeployLifecycleState(plan, result) {
       skippedFiles: skippedArtifacts,
       failedFile: null,
       rollbackCommand: "Restore generated deploy files from VCS or remove the listed applied files, then rerun supervibe-adapt --scope deploy --target dokploy --dry-run.",
-      manualRestoreNotes: "Dokploy environment variables must be configured explicitly via .env.example/.env or Dokploy UI values rendered into env_file/environment.",
+      manualRestoreNotes: "Dokploy environment variables can be provided by Dokploy UI values or an explicit .env file; generated Dokploy compose files do not require env_file to exist.",
     },
     evidence: {
       migrationCommand: plan.migrationCommand,
       envPolicy: plan.target === "dokploy"
-        ? "Compose uses env_file and explicit environment keys; Dokploy UI env is not assumed to appear magically in containers."
-        : "Compose uses env_file and explicit environment keys for portable Docker runs.",
+        ? "Compose uses explicit environment keys with safe defaults; Dokploy UI values may override them without requiring a local .env file."
+        : "Compose uses explicit environment keys with safe defaults so docker compose config can run in fresh projects.",
       dockerVerification: result.dockerVerification || plan.dockerVerification || null,
+      composeConfigVerification,
       agentRuntime,
     },
     validators: {
       artifactVerified,
+      deployArtifactsVerified,
+      composeConfigVerified,
+      deployRuntimeVerified,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified: false,
-      deployVerified: false,
+      deployVerified,
       blockedCount: 0,
     },
     history: [
       { state: "approved", at: now, artifacts: [...createdArtifacts, ...updatedArtifacts] },
       { state: "applied", at: now, artifacts: [...createdArtifacts, ...updatedArtifacts] },
-      { state: artifactVerified ? "artifact_verified" : "applied_unverified", at: now, validators: { artifactVerified, deployVerified: false } },
+      { state: lifecycle, at: now, validators: { artifactVerified, deployArtifactsVerified, composeConfigVerified, deployVerified } },
     ],
     updatedAt: now,
   };
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  const stateRel = normalizeRel(relative(plan.projectRoot, path));
+  const genesisReconciliation = await reconcileGenesisDeployState(plan, state, stateRel);
   return {
-    path: normalizeRel(relative(plan.projectRoot, path)),
+    path: stateRel,
     lifecycle: state.lifecycle,
     updatedArtifacts: state.updatedArtifacts,
     verification: state.verification,
     validators: state.validators,
+    genesisReconciliation,
+  };
+}
+
+async function reconcileGenesisDeployState(plan, adaptState, adaptStatePath) {
+  const genesisPath = join(plan.projectRoot, ".supervibe", "memory", "genesis", "state.json");
+  if (!existsSync(genesisPath)) return null;
+  const previous = readJsonOptional(genesisPath);
+  if (!previous) return null;
+  const now = new Date().toISOString();
+  const verificationPatch = {
+    deployArtifactsVerified: adaptState.verification?.deployArtifactsVerified === true,
+    composeConfigVerified: adaptState.verification?.composeConfigVerified === true,
+    deployRuntimeVerified: adaptState.verification?.deployRuntimeVerified === true,
+    deployVerified: adaptState.verification?.deployVerified === true,
+  };
+  const state = {
+    ...previous,
+    updatedAt: now,
+    verification: {
+      ...(previous.verification || {}),
+      ...verificationPatch,
+    },
+    deployAddOnPolicy: reconcileDeployAddOnPolicy(previous.deployAddOnPolicy, {
+      target: plan.target,
+      adaptStatePath,
+      verification: verificationPatch,
+    }),
+    confidence: reconcileGenesisConfidenceAfterDeploy(previous.confidence, verificationPatch),
+    evidence: {
+      ...(previous.evidence || {}),
+      adaptDeployState: {
+        path: adaptStatePath,
+        target: plan.target,
+        deployProfile: plan.deployProfile?.id || null,
+        verification: verificationPatch,
+      },
+    },
+    validators: {
+      ...(previous.validators || {}),
+      deployArtifactsVerified: verificationPatch.deployArtifactsVerified,
+      composeConfigVerified: verificationPatch.composeConfigVerified,
+      deployRuntimeVerified: verificationPatch.deployRuntimeVerified,
+      deployVerified: verificationPatch.deployVerified,
+    },
+    history: [
+      ...(Array.isArray(previous.history) ? previous.history : []),
+      {
+        at: now,
+        lifecycle: "adapt-deploy-reconciled",
+        adaptStatePath,
+        target: plan.target,
+        validators: verificationPatch,
+      },
+    ],
+  };
+  await writeFile(genesisPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return {
+    path: normalizeRel(relative(plan.projectRoot, genesisPath)),
+    verification: verificationPatch,
+  };
+}
+
+function reconcileDeployAddOnPolicy(policy = null, { target, adaptStatePath, verification } = {}) {
+  if (!policy) return policy;
+  const targets = new Set(policy.targets || []);
+  if (target) targets.add(target);
+  return {
+    ...policy,
+    status: verification?.composeConfigVerified
+      ? "adapt-compose-config-verified"
+      : verification?.deployArtifactsVerified
+        ? "adapt-deploy-artifacts-verified"
+        : policy.status,
+    targets: [...targets],
+    adaptStatePath,
+    deployArtifactsVerified: verification?.deployArtifactsVerified === true,
+    composeConfigVerified: verification?.composeConfigVerified === true,
+    deployRuntimeVerified: verification?.deployRuntimeVerified === true,
+  };
+}
+
+function reconcileGenesisConfidenceAfterDeploy(confidence = null, verification = {}) {
+  if (!confidence || typeof confidence !== "object") return confidence;
+  const gaps = (confidence.gaps || []).filter((gap) => gap?.code !== "deploy-addon-pending");
+  if (verification.deployRuntimeVerified !== true && verification.deployArtifactsVerified === true) {
+    gaps.push({
+      code: "deploy-runtime-pending",
+      message: "Deploy artifacts are verified; runtime deploy health is still pending.",
+    });
+  }
+  const score = verification.composeConfigVerified
+    ? Math.max(Number(confidence.score || 0), 8)
+    : Number(confidence.score || 0);
+  return {
+    ...confidence,
+    score,
+    label: `${score}/10`,
+    status: gaps.length > 0 ? "WARN" : confidence.status,
+    gaps,
   };
 }
 
@@ -2129,13 +2294,11 @@ services:
       context: ${context}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL}
+      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL:-}
     expose:
       - "3000"
     networks:
@@ -2168,13 +2331,11 @@ services:
       context: ${context}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL}
+      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL:-}
     ports:
       - "\${FRONTEND_PORT:-3000}:3000"
     healthcheck:
@@ -2206,18 +2367,16 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: \${POSTGRES_DB}
-      POSTGRES_USER: \${POSTGRES_USER}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+      POSTGRES_DB: \${POSTGRES_DB:-app}
+      POSTGRES_USER: \${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - dokploy-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER:-app} -d \${POSTGRES_DB:-app}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -2227,18 +2386,16 @@ services:
       context: ${context}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       APP_DEBUG: \${APP_DEBUG:-false}
-      APP_URL: \${APP_URL}
+      APP_URL: \${APP_URL:-http://localhost:8000}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     expose:
       - "8000"
     networks:
@@ -2279,18 +2436,16 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: \${POSTGRES_DB}
-      POSTGRES_USER: \${POSTGRES_USER}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+      POSTGRES_DB: \${POSTGRES_DB:-app}
+      POSTGRES_USER: \${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     ports:
       - "\${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER:-app} -d \${POSTGRES_DB:-app}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -2300,18 +2455,16 @@ services:
       context: ${context}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       APP_DEBUG: \${APP_DEBUG:-false}
-      APP_URL: \${APP_URL}
+      APP_URL: \${APP_URL:-http://localhost:8000}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     ports:
       - "\${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -2348,18 +2501,16 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: \${POSTGRES_DB}
-      POSTGRES_USER: \${POSTGRES_USER}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+      POSTGRES_DB: \${POSTGRES_DB:-app}
+      POSTGRES_USER: \${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     ports:
       - "\${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER:-app} -d \${POSTGRES_DB:-app}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -2369,18 +2520,16 @@ services:
       context: ${backendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       APP_DEBUG: \${APP_DEBUG:-false}
-      APP_URL: \${APP_URL}
+      APP_URL: \${APP_URL:-http://localhost:8000}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     ports:
       - "\${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -2397,13 +2546,11 @@ services:
       context: ${frontendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL:-}
     ports:
       - "\${FRONTEND_PORT:-3000}:3000"
     depends_on:
@@ -2428,18 +2575,16 @@ function postgresComposeServiceBlock({ dokploy = false } = {}) {
     "  postgres:",
     "    image: postgres:16-alpine",
     "    restart: unless-stopped",
-    "    env_file:",
-    "      - .env",
     "    environment:",
-    "      POSTGRES_DB: ${POSTGRES_DB}",
-    "      POSTGRES_USER: ${POSTGRES_USER}",
-    "      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}",
+    "      POSTGRES_DB: ${POSTGRES_DB:-app}",
+    "      POSTGRES_USER: ${POSTGRES_USER:-app}",
+    "      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}",
     ...ports,
     "    volumes:",
     "      - postgres-data:/var/lib/postgresql/data",
     ...networks,
     "    healthcheck:",
-    '      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]',
+    '      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]',
     "      interval: 10s",
     "      timeout: 5s",
     "      retries: 5",
@@ -2461,18 +2606,16 @@ function laravelComposeServiceBlock(service = {}, { dokploy = false } = {}) {
     `      context: ${context}`,
     "      dockerfile: Dockerfile",
     "    restart: unless-stopped",
-    "    env_file:",
-    "      - .env",
     "    environment:",
     "      APP_ENV: ${APP_ENV:-production}",
     "      APP_DEBUG: ${APP_DEBUG:-false}",
-    "      APP_URL: ${APP_URL}",
+    "      APP_URL: ${APP_URL:-http://localhost:8000}",
     "      DB_CONNECTION: pgsql",
     "      DB_HOST: postgres",
     "      DB_PORT: 5432",
-    "      DB_DATABASE: ${POSTGRES_DB}",
-    "      DB_USERNAME: ${POSTGRES_USER}",
-    "      DB_PASSWORD: ${POSTGRES_PASSWORD}",
+    "      DB_DATABASE: ${POSTGRES_DB:-app}",
+    "      DB_USERNAME: ${POSTGRES_USER:-app}",
+    "      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}",
     ...exposureLines,
     ...networkLines,
     "    depends_on:",
@@ -2497,14 +2640,12 @@ function laravelQueueSchedulerBlocks(service = {}) {
     `      context: ${context}`,
     "      dockerfile: Dockerfile",
     "    restart: unless-stopped",
-    "    env_file:",
-    "      - .env",
     "    environment:",
     "      APP_ENV: ${APP_ENV:-production}",
     "      DB_HOST: postgres",
-    "      DB_DATABASE: ${POSTGRES_DB}",
-    "      DB_USERNAME: ${POSTGRES_USER}",
-    "      DB_PASSWORD: ${POSTGRES_PASSWORD}",
+    "      DB_DATABASE: ${POSTGRES_DB:-app}",
+    "      DB_USERNAME: ${POSTGRES_USER:-app}",
+    "      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}",
     "    networks:",
     "      - dokploy-network",
     "    depends_on:",
@@ -2535,7 +2676,7 @@ function nextComposeServiceBlock(service = {}, { dokploy = false, apiService = "
   const exposureLines = dokploy
     ? ["    expose:", '      - "3000"']
     : ["    ports:", `      - "\${${portKey}:-3000}:3000"`];
-  const apiLines = apiService ? ["      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"] : ["      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}"];
+  const apiLines = apiService ? ["      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}"] : ["      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}"];
   const dependencyLines = apiService
     ? ["    depends_on:", `      ${apiService}:`, "        condition: service_healthy"]
     : [];
@@ -2545,8 +2686,6 @@ function nextComposeServiceBlock(service = {}, { dokploy = false, apiService = "
     `      context: ${context}`,
     "      dockerfile: Dockerfile",
     "    restart: unless-stopped",
-    "    env_file:",
-    "      - .env",
     "    environment:",
     "      NODE_ENV: production",
     "      PORT: 3000",
@@ -2878,16 +3017,14 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: \${POSTGRES_DB}
-      POSTGRES_USER: \${POSTGRES_USER}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+      POSTGRES_DB: \${POSTGRES_DB:-app}
+      POSTGRES_USER: \${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER:-app} -d \${POSTGRES_DB:-app}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -2897,18 +3034,16 @@ services:
       context: ${backendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       APP_DEBUG: \${APP_DEBUG:-false}
-      APP_URL: \${APP_URL}
+      APP_URL: \${APP_URL:-http://localhost:8000}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
       QUEUE_CONNECTION: \${QUEUE_CONNECTION:-database}
     depends_on:
       postgres:
@@ -2925,14 +3060,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       DB_HOST: postgres
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
       QUEUE_CONNECTION: \${QUEUE_CONNECTION:-database}
     depends_on:
       backend:
@@ -2944,14 +3077,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["sh", "-lc", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
-    env_file:
-      - .env
     environment:
       APP_ENV: \${APP_ENV:-production}
       DB_HOST: postgres
-      DB_DATABASE: \${POSTGRES_DB}
-      DB_USERNAME: \${POSTGRES_USER}
-      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      DB_DATABASE: \${POSTGRES_DB:-app}
+      DB_USERNAME: \${POSTGRES_USER:-app}
+      DB_PASSWORD: \${POSTGRES_PASSWORD:-change-me}
     depends_on:
       backend:
         condition: service_healthy
@@ -2961,11 +3092,9 @@ services:
       context: ${frontendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL:-}
     depends_on:
       backend:
         condition: service_healthy
@@ -3054,7 +3183,7 @@ function dokployReadmeTemplate({ nextServices = null, laravelServices = null, ap
       "",
       "## Environment",
       "",
-      "Use .env.example as the contract. In Dokploy, either mount an .env file through the compose project or map the same keys explicitly.",
+      "Use .env.example as the contract. In Dokploy, set the same keys in the UI or provide an optional .env file; docker-compose.dokploy.yml does not require env_file to exist.",
       "",
       "## Migrations",
       "",
@@ -3075,7 +3204,7 @@ function dokployReadmeTemplate({ nextServices = null, laravelServices = null, ap
     "",
     "## Environment",
     "",
-    "Use .env.example as the contract. In Dokploy, either mount an .env file through the compose project or map the same keys explicitly. docker-compose.dokploy.yml uses both env_file and explicit environment keys so required Laravel, Next.js, and Postgres values are visible to containers.",
+    "Use .env.example as the contract. In Dokploy, set the same keys in the UI or provide an optional .env file. docker-compose.dokploy.yml uses explicit environment keys with safe defaults so compose syntax checks work in a fresh project.",
     "",
     "## Domains",
     "",
@@ -3168,6 +3297,83 @@ function inspectDockerRuntime() {
         : "docker-daemon-not-running",
     version: dockerInstalled ? tailLines(version.stdout || "", 1).trim() : "",
     daemonError: dockerInstalled && info?.status !== 0 ? tailLines(info?.stderr || info?.stdout || "", 3) : "",
+  };
+}
+
+function composeFileForTarget(target = "dokploy") {
+  return target === "docker" ? "docker-compose.yml" : "docker-compose.dokploy.yml";
+}
+
+function composeFileForDeployResult(plan, { created = [], updated = [], skipped = [] } = {}) {
+  const composeArtifact = [...created, ...updated, ...skipped, ...(plan.items || [])].find((item) => {
+    const rel = normalizeRel(item?.projectRel || item?.path || "");
+    const canonical = normalizeRel(item?.canonicalRel || item?.canonicalPath || item?.path || "");
+    return rel === "docker-compose.yml"
+      || rel === "docker-compose.dokploy.yml"
+      || canonical === "docker-compose.yml"
+      || canonical === "docker-compose.dokploy.yml";
+  });
+  return normalizeRel(composeArtifact?.projectRel || composeArtifact?.path || composeFileForTarget(plan.target));
+}
+
+function verifyComposeConfig({ projectRoot, composeFile, dockerVerification = null } = {}) {
+  const normalizedComposeFile = normalizeRel(composeFile || composeFileForTarget());
+  const command = `docker compose -f ${normalizedComposeFile} config`;
+  if (process.env.SUPERVIBE_SKIP_DOCKER_PROBE === "1") {
+    return {
+      pass: false,
+      status: "compose-config-skipped",
+      command,
+      composeFile: normalizedComposeFile,
+      reason: "docker probe skipped",
+    };
+  }
+  if (!existsSync(join(projectRoot, normalizedComposeFile))) {
+    return {
+      pass: false,
+      status: "compose-file-missing",
+      command,
+      composeFile: normalizedComposeFile,
+      reason: "compose file was not generated",
+    };
+  }
+  if (dockerVerification?.dockerInstalled !== true) {
+    return {
+      pass: false,
+      status: "docker-not-installed",
+      command,
+      composeFile: normalizedComposeFile,
+      reason: "docker CLI is not available",
+    };
+  }
+  if (dockerVerification?.composeAvailable !== true) {
+    return {
+      pass: false,
+      status: "docker-compose-unavailable",
+      command,
+      composeFile: normalizedComposeFile,
+      reason: "docker compose plugin is not available",
+    };
+  }
+  const result = spawnSync("docker", ["compose", "-f", normalizedComposeFile, "config"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 10_000,
+    windowsHide: true,
+    env: {
+      ...process.env,
+      COMPOSE_PROJECT_NAME: process.env.COMPOSE_PROJECT_NAME || "supervibe-config-check",
+    },
+  });
+  return {
+    pass: result.status === 0,
+    status: result.status === 0 ? "compose-config-pass" : "compose-config-fail",
+    command,
+    composeFile: normalizedComposeFile,
+    exitCode: result.status,
+    stdoutTail: tailLines(result.stdout || "", 5),
+    stderrTail: tailLines(result.stderr || "", 5),
   };
 }
 

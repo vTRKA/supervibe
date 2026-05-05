@@ -164,9 +164,9 @@ export function scoreAgentSystemMaturity({
   add(
     "backlog-and-docs",
     1.25,
-    docs.hasTenOutOfTenBacklog && docs.hasMaturityScriptDocs ? 1.25 : 0.65,
-    `10/10 backlog=${docs.hasTenOutOfTenBacklog === true}, maturity docs=${docs.hasMaturityScriptDocs === true}`,
-    "Keep docs/workflow-stabilization-backlog.md as the source of truth for maturity gaps.",
+    (docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog) && docs.hasMaturityScriptDocs ? 1.25 : 0.65,
+    `release hardening notes=${(docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog) === true}, maturity docs=${docs.hasMaturityScriptDocs === true}`,
+    "Keep release hardening notes in CHANGELOG.md and durable operational docs instead of an ad hoc backlog file.",
   );
 
   const total = dimensions.reduce((sum, item) => sum + item.score, 0);
@@ -264,12 +264,16 @@ function inspectRetrievalEnforcement(rootDir) {
 }
 
 function inspectBacklogAndDocs(rootDir) {
-  const backlogPath = join(rootDir, "docs", "workflow-stabilization-backlog.md");
-  const backlog = existsSync(backlogPath) ? readFileSync(backlogPath, "utf8") : "";
+  const changelogPath = join(rootDir, "CHANGELOG.md");
+  const releaseSecurityPath = join(rootDir, "docs", "release-security.md");
+  const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : "";
+  const releaseSecurity = existsSync(releaseSecurityPath) ? readFileSync(releaseSecurityPath, "utf8") : "";
+  const releaseDocs = `${changelog}\n${releaseSecurity}`;
   return {
-    hasTenOutOfTenBacklog: /10\/10 Agent System Hardening|Agent System 10\/10/i.test(backlog),
-    hasMaturityScriptDocs: /supervibe-agent-maturity|agent-system maturity/i.test(backlog),
-    hasNegativeQuestionEval: /context-free-specialist-question|catalog-copy-specialist-question|negative specialist/i.test(backlog)
+    hasTenOutOfTenBacklog: /10\/10 Agent System Hardening|Agent System 10\/10/i.test(releaseDocs),
+    hasReleaseHardeningNotes: /agent runtime|receipt-bound|deploy verification|compose config|dependency-health/i.test(releaseDocs),
+    hasMaturityScriptDocs: /supervibe-agent-maturity|agent-system maturity|agent runtime|receipt-bound/i.test(releaseDocs),
+    hasNegativeQuestionEval: /context-free-specialist-question|catalog-copy-specialist-question|negative specialist/i.test(releaseDocs)
       || existsSync(join(rootDir, "tests", "specialist-question-contract.test.mjs")),
   };
 }

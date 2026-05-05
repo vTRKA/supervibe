@@ -382,13 +382,14 @@ test("supervibe-adapt verify-agents updates runtime proof gate without blocking 
     assert.match(result.stdout, /SUPERVIBE_ADAPT_VERIFY_AGENTS/);
     assert.match(result.stdout, /AGENT_RUNTIME_VERIFIED: false/);
     assert.match(result.stdout, /STATE_UPDATED: \.supervibe\/memory\/adapt\/state\.json/);
-    assert.match(result.stdout, /NEXT_ACTION: Run real host-agent stages/);
+    assert.match(result.stdout, /NEXT_ACTION: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --verify-agents --record-smoke/);
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
     assert.equal(state.verification.artifactVerified, true);
     assert.equal(state.verification.agentRuntimeVerified, false);
     assert.equal(state.validators.agentRuntimeVerified, false);
     assert.equal(state.evidence.agentRuntime.status, "awaiting-real-host-agent");
+    assert.equal(state.evidence.agentSmokeTest.status, "pending-real-host-agent");
     assert.ok(state.history.some((entry) => entry.state === "agent-runtime-verification"));
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -587,9 +588,13 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
     assert.match(apply, /SUPERVIBE_ADAPT_DEPLOY_APPLY/);
     assert.match(apply, /CREATED: 8/);
     assert.match(apply, /DEPLOY_VERIFIED: false/);
+    assert.match(apply, /DEPLOY_ARTIFACTS_VERIFIED: true/);
+    assert.match(apply, /COMPOSE_CONFIG_VERIFIED: false/);
+    assert.match(apply, /COMPOSE_CONFIG_STATUS: compose-config-skipped/);
 
     const compose = readFileSync(join(projectRoot, "docker-compose.dokploy.yml"), "utf8");
-    assert.match(compose, /env_file:/);
+    assert.doesNotMatch(compose, /env_file:/);
+    assert.match(compose, /\$\{POSTGRES_DB:-app\}/);
     assert.match(compose, /queue:/);
     assert.match(compose, /scheduler:/);
     assert.match(compose, /postgres-data:/);
@@ -607,6 +612,9 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
     assert.equal(state.scope, "deploy");
     assert.equal(state.verification.artifactVerified, true);
+    assert.equal(state.verification.deployArtifactsVerified, true);
+    assert.equal(state.verification.composeConfigVerified, false);
+    assert.equal(state.verification.deployRuntimeVerified, false);
     assert.equal(state.verification.deployVerified, false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -622,6 +630,14 @@ test("supervibe-adapt dokploy deploy add-on uses Next-only pack without Laravel 
     writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
       frontendTarget: { id: "next-app", bundler: "turbopack" },
       appChoice: { id: "next-app" },
+      deployAddOnPolicy: { requested: true, status: "requires-adapt-deploy-scope", targets: ["dokploy"] },
+      confidence: {
+        score: 8,
+        maxScore: 10,
+        label: "8/10",
+        status: "WARN",
+        gaps: [{ code: "deploy-addon-pending", message: "Deploy pending." }],
+      },
     }, null, 2) + "\n");
     writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
       dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
@@ -654,9 +670,15 @@ test("supervibe-adapt dokploy deploy add-on uses Next-only pack without Laravel 
     const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
     assert.match(apply, /DEPLOY_PROFILE: next-only/);
     assert.match(apply, /MIGRATION_COMMAND: none/);
+    assert.match(apply, /GENESIS_STATE_RECONCILED: \.supervibe\/memory\/genesis\/state\.json/);
     assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), false);
     assert.equal(existsSync(join(projectRoot, "docker-compose.dokploy.yml")), false);
     assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
+    const genesisState = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(genesisState.verification.deployArtifactsVerified, true);
+    assert.equal(genesisState.deployAddOnPolicy.status, "adapt-deploy-artifacts-verified");
+    assert.equal(genesisState.evidence.adaptDeployState.path, ".supervibe/memory/adapt/state.json");
+    assert.equal(genesisState.confidence.gaps.some((gap) => gap.code === "deploy-addon-pending"), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

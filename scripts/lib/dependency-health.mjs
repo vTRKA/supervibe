@@ -218,6 +218,12 @@ export function formatDependencyHealthReport(report = {}) {
     if (finding.remediation?.override) {
       lines.push(`OVERRIDE_OPTION: ${JSON.stringify(finding.remediation.override)}`);
     }
+    if (finding.remediation?.overrideScope) {
+      lines.push(`OVERRIDE_SCOPE: ${finding.remediation.overrideScope}`);
+    }
+    if (finding.remediation?.validationStatus) {
+      lines.push(`REMEDIATION_VALIDATION: ${finding.remediation.validationStatus}`);
+    }
     if (finding.remediation?.reason) {
       lines.push(`REMEDIATION_REASON: ${finding.remediation.reason}`);
     }
@@ -742,38 +748,27 @@ function classifyNpmAuditRemediation({ vulnerability, vulnerableOccurrences = []
   const direct = vulnerableOccurrences.some((entry) => entry.direct);
   const parent = firstParentPackage(vulnerableOccurrences);
   if (forcePolicy?.status === "blocked_downgrade") {
-    const override = !direct && parent && latestVersion
-      ? {
-          overrides: {
-            [parent.name]: {
-              [packageName]: latestVersion,
-            },
-          },
-        }
-      : null;
+    const override = !direct && latestVersion ? packageLevelOverride(packageName, latestVersion) : null;
     return {
       policy: "breaking-fix-blocked",
       reason: "npm audit fix --force is unsafe because it would downgrade a framework major/minor line.",
       nextAction: override
-        ? `Do not use npm audit fix --force because it downgrades a framework major/minor line; wait for ${parent.name} to update ${packageName}, or test the controlled override with npm install, lint, build, and npm audit.`
+        ? `Do not use npm audit fix --force because it downgrades a framework major/minor line; wait for ${parent?.name || "the parent package"} to update ${packageName}, or test the package-level override with npm install, npm ls ${packageName} --all, npm audit, lint, and build.`
         : "Do not use npm audit fix --force because it downgrades a framework major/minor line.",
-      verificationCommands: npmRemediationVerificationCommands(),
-      ...(override ? { override } : {}),
+      verificationCommands: npmRemediationVerificationCommands(packageName),
+      validationStatus: override ? "requires-local-install-validation" : "not-applicable",
+      ...(override ? { override, overrideScope: "package-level" } : {}),
     };
   }
   if (!direct && parent && latestVersion) {
     return {
       policy: "wait-upstream-or-controlled-override",
       reason: "Nested vulnerable dependency can be remediated only after compatibility review of the parent package chain.",
-      nextAction: `Wait for ${parent.name} to update ${packageName}, or test a controlled override followed by npm install, lint, build, and npm audit.`,
-      verificationCommands: npmRemediationVerificationCommands(),
-      override: {
-        overrides: {
-          [parent.name]: {
-            [packageName]: latestVersion,
-          },
-        },
-      },
+      nextAction: `Wait for ${parent.name} to update ${packageName}, or test a package-level override followed by npm install, npm ls ${packageName} --all, npm audit, lint, and build.`,
+      verificationCommands: npmRemediationVerificationCommands(packageName),
+      validationStatus: "requires-local-install-validation",
+      override: packageLevelOverride(packageName, latestVersion),
+      overrideScope: "package-level",
     };
   }
   if (!direct) {
@@ -781,7 +776,7 @@ function classifyNpmAuditRemediation({ vulnerability, vulnerableOccurrences = []
       policy: "wait-upstream-or-manual-action",
       reason: "Transitive vulnerable dependency has no safe compatible override target in current evidence.",
       nextAction: `Wait for the parent package to update ${packageName}, or document an explicit exception with owner and expiry.`,
-      verificationCommands: npmRemediationVerificationCommands(),
+      verificationCommands: npmRemediationVerificationCommands(packageName),
     };
   }
   return {
@@ -790,13 +785,22 @@ function classifyNpmAuditRemediation({ vulnerability, vulnerableOccurrences = []
     nextAction: latestVersion
       ? `Update ${packageName} to ${latestVersion}, then run npm install, lint, build, and npm audit.`
       : `Update ${packageName} to a fixed version, then run npm install, lint, build, and npm audit.`,
-    verificationCommands: npmRemediationVerificationCommands(),
+    verificationCommands: npmRemediationVerificationCommands(packageName),
   };
 }
 
-function npmRemediationVerificationCommands() {
+function packageLevelOverride(packageName, version) {
+  return {
+    overrides: {
+      [packageName]: version,
+    },
+  };
+}
+
+function npmRemediationVerificationCommands(packageName = "") {
   return [
     "npm install",
+    packageName ? `npm ls ${packageName} --all` : "npm ls --all",
     "npm audit --json",
     "npm run lint",
     "npm run build",
