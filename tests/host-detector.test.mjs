@@ -101,6 +101,24 @@ test("forced host still overrides active runtime hints", async () => {
   });
 });
 
+test("canonical project root wins over generated host files in nested app directory", async () => {
+  await withTempProject({
+    ".supervibe/memory/.gitkeep": "",
+    "AGENTS.md": "# Root Codex instructions\n",
+    ".codex/config.json": "{}\n",
+    "frontend/AGENTS.md": "# Generated nested Codex instructions\n",
+    "frontend/CLAUDE.md": "# Generated nested Claude instructions\n",
+  }, async (rootDir) => {
+    const frontendDir = join(rootDir, "frontend");
+    const selection = selectHostAdapter({ rootDir: frontendDir, env: {} });
+
+    assert.equal(selection.rootDir, rootDir);
+    assert.equal(selection.requestedRootDir, frontendDir);
+    assert.equal(selection.adapter.id, "codex");
+    assert.ok(selection.evidence.some((entry) => entry.marker === "AGENTS.md"));
+  });
+});
+
 test("adapter matrix declares host-specific folders and managed markers", () => {
   const matrix = getHostAdapterMatrix();
   const ids = matrix.map((adapter) => adapter.id);

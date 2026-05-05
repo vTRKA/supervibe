@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 
 const POLICY_SURFACES = Object.freeze([
   {
@@ -22,12 +23,14 @@ const POLICY_SURFACES = Object.freeze([
   },
   {
     file: "scripts/lib/supervibe-agent-recommendation.mjs",
-    required: [/rules\/terminal-file-io\.md/i, /\.editorconfig/i, /fs\.writeFile\(\.\.\., \\"utf8\\"\)/i, /PowerShell redirection/i],
+    required: [/terminal-file-io\.md/i, /\.editorconfig/i, /fs\.writeFile\(\.\.\., .*utf8.*\)/i, /PowerShell redirection/i],
   },
 ]);
 
 export function validateTerminalFilePolicy(rootDir = process.cwd()) {
   const issues = [];
+  const pluginCheckout = isPluginCheckout(rootDir);
+  const policySurfaces = policySurfacesForRoot(rootDir, { pluginCheckout });
   const editorconfigPath = join(rootDir, ".editorconfig");
   if (!existsSync(editorconfigPath)) {
     issues.push({
@@ -68,7 +71,7 @@ export function validateTerminalFilePolicy(rootDir = process.cwd()) {
     }
   }
 
-  for (const surface of POLICY_SURFACES) {
+  for (const surface of policySurfaces) {
     const absPath = join(rootDir, ...surface.file.split("/"));
     if (!existsSync(absPath)) {
       issues.push({
@@ -92,9 +95,42 @@ export function validateTerminalFilePolicy(rootDir = process.cwd()) {
 
   return {
     pass: issues.length === 0,
-    checked: POLICY_SURFACES.length + 2,
+    checked: policySurfaces.length + 2,
     issues,
   };
+}
+
+function policySurfacesForRoot(rootDir, { pluginCheckout = false } = {}) {
+  if (pluginCheckout) return POLICY_SURFACES;
+  const host = selectHostAdapter({ rootDir, env: process.env });
+  const adapter = host.adapter;
+  const instructionFile = adapter.instructionFiles.find((file) => existsSync(join(rootDir, ...file.split("/")))) || adapter.instructionFiles[0];
+  const rulePath = [adapter.rulesFolder, "terminal-file-io.md"].join("/");
+  return [
+    {
+      file: instructionFile,
+      required: [
+        new RegExp(escapeRegExp(rulePath), "i"),
+        /\.editorconfig/i,
+        /\.gitattributes/i,
+        /fs\.writeFile\(\.\.\., "utf8"\)/i,
+        /PowerShell redirection/i,
+      ],
+    },
+    {
+      file: rulePath,
+      required: [/fs\.writeFile\(path, data, "utf8"\)/i, /Set-Content -Encoding utf8/i, /legacy PowerShell redirection/i, /TextDecoder\("utf-8"/i],
+    },
+  ];
+}
+
+function isPluginCheckout(rootDir) {
+  return existsSync(join(rootDir, "scripts", "lib", "supervibe-agent-recommendation.mjs"))
+    && existsSync(join(rootDir, "rules", "terminal-file-io.md"));
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function formatTerminalFilePolicyReport(result) {

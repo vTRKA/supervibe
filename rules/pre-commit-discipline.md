@@ -50,6 +50,7 @@ This rule does NOT apply when: project explicitly opts out via `selected host se
 - Test suite (fast subset, e.g., unit tests)
 - Lint full project
 - Dep audit (`npm audit` / equivalent)
+- `npm audit fix --force` is not an automatic repair path. Block it when it downgrades a framework major/minor line or leaves the latest supported stable line; use upstream patch, reviewed override, or risk acceptance instead.
 - Time budget: <60 seconds typical
 
 **Tier 4: CI workflow (backstop)**

@@ -1,6 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 .gitattributes text eol=lf
+.gitignore text eol=lf
 
 # Shell installers are parsed by bash during Windows install checks. Keep them
 # LF even when users clone with core.autocrlf=true.
@@ -20,6 +21,10 @@
 *.tpl text eol=lf
 *.template text eol=lf
 .editorconfig text eol=lf
+.nvmrc text eol=lf
+**/.nvmrc text eol=lf
+**/.gitignore text eol=lf
+templates/gitignore/* text eol=lf
 
 # Large ONNX models are downloaded from HuggingFace by the installer and are
 # intentionally not stored in git.

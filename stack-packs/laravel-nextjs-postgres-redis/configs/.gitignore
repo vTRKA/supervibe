@@ -36,6 +36,7 @@ Thumbs.db
 .supervibe/memory/agent-invocations.jsonl
 .supervibe/memory/workflow-invocation-ledger.jsonl
 .supervibe/memory/genesis/state.json
+.supervibe/memory/genesis/normalized-generated-host-files/
 .supervibe/memory/adapt/state.json
 .supervibe/research-cache/
 docker-compose.override.yml

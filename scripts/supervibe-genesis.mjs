@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -128,7 +128,7 @@ async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
   await writeHostSettings({ targetRoot, report, created, skipped });
   await applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, updated, skipped, missing });
   const generatedApps = options["generate-apps"]
-    ? await runGenerateAppsStep({ targetRoot, report })
+    ? await runGenerateAppsStep({ targetRoot, report, verifyApps: Boolean(options["verify-apps"]), env: process.env })
     : {
         status: "not-requested",
         commands: report.generateAppsStep?.commands || [],
@@ -293,18 +293,24 @@ async function applyManagedGitignore({ targetRoot, pluginRoot, artifact }) {
   return { status: "updated" };
 }
 
-async function runGenerateAppsStep({ targetRoot, report }) {
+async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env = process.env }) {
   const results = [];
   for (const entry of report.generateAppsStep?.commands || []) {
     const command = String(entry.command || "").trim();
-    if (!command) continue;
-    const result = spawnSync(command, {
-      cwd: targetRoot,
-      encoding: "utf8",
-      shell: true,
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 1024 * 1024 * 10,
-    });
+    const spawnPlan = commandSpawnPlan(entry);
+    if (!command || !spawnPlan.executable) continue;
+    const before = await inspectGeneratedAppDir(targetRoot, entry);
+    const result = await runScaffolderCommand({ targetRoot, entry, spawnPlan, env });
+    const normalization = result.status === 0
+      ? await normalizeGeneratedAppMetadata({ targetRoot, entry, before })
+      : { status: "not-run", actions: [] };
+    const verification = result.status === 0 && verifyApps
+      ? runAppVerificationCommands({ targetRoot, entry })
+      : {
+          status: "not-run",
+          note: verifyApps ? "No app verification commands were declared for this scaffolder." : "Run with --verify-apps to execute app lint/build checks after generation.",
+          results: [],
+        };
     results.push({
       command,
       when: entry.when,
@@ -313,19 +319,200 @@ async function runGenerateAppsStep({ targetRoot, report }) {
       error: result.error?.message || null,
       stdoutTail: tailLines(result.stdout || "", 20),
       stderrTail: tailLines(result.stderr || "", 20),
+      normalization,
+      verification,
     });
     if (result.status !== 0) break;
   }
+  const completed = results.length > 0 && results.every((item) => item.status === "completed");
+  const verificationResults = results.flatMap((item) => item.verification?.results || []);
+  const verificationStatus = !verifyApps
+    ? "not-run"
+    : verificationResults.length > 0 && verificationResults.every((item) => item.status === "completed")
+      ? "completed"
+      : "failed_recoverable";
   return {
     status: results.length === 0
       ? "not-needed"
-      : results.every((item) => item.status === "completed")
+      : completed
         ? "completed"
         : "failed_recoverable",
+    appGenerated: completed,
+    appVerified: verificationStatus === "completed",
+    appVerification: {
+      status: verificationStatus,
+      results: verificationResults,
+      note: verifyApps
+        ? "App verification ran after generation; appVerified is true only when every declared command passes."
+        : "App generation is tracked separately from app verification. Run --verify-apps to execute declared lint/build checks.",
+    },
     commands: report.generateAppsStep?.commands || [],
     results,
     note: "This step runs real framework scaffolders only when --generate-apps is explicitly provided. Failed commands are recoverable; install missing dependencies or rerun the command manually.",
   };
+}
+
+function commandSpawnPlan(entry = {}) {
+  if (entry.executable) {
+    return {
+      executable: executableForPlatform(entry.executable),
+      args: Array.isArray(entry.args) ? entry.args.map(String) : [],
+    };
+  }
+  const command = String(entry.command || "").trim();
+  if (command.startsWith("npx create-next-app@latest ")) {
+    return {
+      executable: executableForPlatform("npx"),
+      args: commandToArgs(command).slice(1),
+    };
+  }
+  if (command.startsWith("npm create vite@latest ")) {
+    return {
+      executable: executableForPlatform("npm"),
+      args: commandToArgs(command).slice(1),
+    };
+  }
+  if (command.startsWith("composer create-project ")) {
+    return {
+      executable: executableForPlatform("composer"),
+      args: commandToArgs(command).slice(1),
+    };
+  }
+  return { executable: "", args: [] };
+}
+
+async function runScaffolderCommand({ targetRoot, entry, spawnPlan, env }) {
+  if (env.SUPERVIBE_GENESIS_FAKE_SCAFFOLDER === "1") {
+    await fakeScaffolderOutput({ targetRoot, entry });
+    return { status: 0, stdout: "fake scaffolder completed\n", stderr: "", error: null };
+  }
+  return spawnSync(spawnPlan.executable, spawnPlan.args, {
+    cwd: targetRoot,
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 1024 * 1024 * 10,
+  });
+}
+
+async function fakeScaffolderOutput({ targetRoot, entry }) {
+  const appDir = generatedAppDir(targetRoot, entry);
+  if (!appDir) return;
+  await mkdir(appDir, { recursive: true });
+  await mkdir(join(appDir, ".git"), { recursive: true });
+  await writeFile(join(appDir, "AGENTS.md"), "# Generated app-local instructions\n", "utf8");
+  await writeFile(join(appDir, "CLAUDE.md"), "# Generated Claude app instructions\n", "utf8");
+  await writeFile(join(appDir, "package.json"), `${JSON.stringify({
+    private: true,
+    scripts: {
+      lint: "node -e \"process.exit(0)\"",
+      build: "node -e \"process.exit(0)\"",
+    },
+  }, null, 2)}\n`, "utf8");
+}
+
+async function inspectGeneratedAppDir(targetRoot, entry) {
+  const appDir = generatedAppDir(targetRoot, entry);
+  if (!appDir) return { appDir: "", existed: false, entries: [], emptyPlaceholder: false };
+  try {
+    const entries = await readdir(appDir);
+    return {
+      appDir,
+      existed: true,
+      entries,
+      emptyPlaceholder: entries.length === 0,
+    };
+  } catch {
+    return { appDir, existed: false, entries: [], emptyPlaceholder: true };
+  }
+}
+
+async function normalizeGeneratedAppMetadata({ targetRoot, entry, before }) {
+  const appDir = generatedAppDir(targetRoot, entry);
+  const appRel = entry.appDir || "";
+  if (!appDir || !before?.emptyPlaceholder) {
+    return {
+      status: "skipped",
+      actions: [],
+      note: "Generated app metadata normalization only runs for app dirs that were empty placeholders before the scaffolder.",
+    };
+  }
+
+  const actions = [];
+  const nestedGit = join(appDir, ".git");
+  if (existsSync(nestedGit)) {
+    await rm(nestedGit, { recursive: true, force: true });
+    actions.push({ action: "removed-nested-git", path: toRel(targetRoot, nestedGit) });
+  }
+
+  const hostSurfaces = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", "opencode.json"];
+  for (const fileName of hostSurfaces) {
+    const source = join(appDir, fileName);
+    if (!existsSync(source)) continue;
+    const archiveRel = [".supervibe", "memory", "genesis", "normalized-generated-host-files", appRel, fileName].filter(Boolean);
+    const archive = join(targetRoot, ...archiveRel);
+    await mkdir(dirname(archive), { recursive: true });
+    await rm(archive, { recursive: true, force: true });
+    await rename(source, archive);
+    actions.push({
+      action: "archived-generated-host-file",
+      path: toRel(targetRoot, source),
+      archivePath: toRel(targetRoot, archive),
+    });
+  }
+
+  return {
+    status: actions.length > 0 ? "completed" : "not-needed",
+    actions,
+  };
+}
+
+function runAppVerificationCommands({ targetRoot, entry }) {
+  const results = [];
+  for (const commandEntry of entry.verifyCommands || []) {
+    const cwd = join(targetRoot, commandEntry.cwd || entry.appDir || ".");
+    const executable = executableForPlatform(commandEntry.executable || "");
+    if (!executable) continue;
+    const result = spawnSync(executable, (commandEntry.args || []).map(String), {
+      cwd,
+      encoding: "utf8",
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 10,
+    });
+    results.push({
+      command: commandEntry.command,
+      cwd: commandEntry.cwd || entry.appDir || ".",
+      status: result.status === 0 ? "completed" : "failed_recoverable",
+      exitCode: result.status,
+      stdoutTail: tailLines(result.stdout || "", 20),
+      stderrTail: tailLines(result.stderr || "", 20),
+      error: result.error?.message || null,
+    });
+    if (result.status !== 0) break;
+  }
+  return {
+    status: results.length > 0 && results.every((item) => item.status === "completed") ? "completed" : "failed_recoverable",
+    results,
+  };
+}
+
+function generatedAppDir(targetRoot, entry = {}) {
+  const appDir = String(entry.appDir || "").trim();
+  if (!appDir || appDir.includes("..")) return "";
+  return join(targetRoot, ...appDir.split(/[\\/]+/).filter(Boolean));
+}
+
+function executableForPlatform(name) {
+  if (!name) return "";
+  if (process.platform === "win32" && /^(npm|npx)$/.test(name)) return `${name}.cmd`;
+  if (process.platform === "win32" && name === "composer") return "composer.bat";
+  return name;
+}
+
+function commandToArgs(command) {
+  const matches = String(command || "").match(/"[^"]*"|'[^']*'|\S+/g) || [];
+  return matches.map((item) => item.replace(/^["']|["']$/g, ""));
 }
 
 async function renderTemplateFile({ source, targetRoot }) {
@@ -356,6 +543,9 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   await mkdir(stateDir, { recursive: true });
   const previous = existsSync(statePath) ? safeJson(await readFile(statePath, "utf8")) : null;
   const now = new Date().toISOString();
+  const generateAppsState = operations?.generatedApps || report.generateAppsStep;
+  const appGenerated = generateAppsState?.appGenerated === true || generateAppsState?.status === "completed";
+  const appVerified = generateAppsState?.appVerified === true;
   const history = [
     ...(Array.isArray(previous?.history) ? previous.history : []),
     { at: now, lifecycle: mode, pack: report.stackPack.id, host: report.host.adapterId },
@@ -373,7 +563,8 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     verification: {
       artifactVerified: mode === "applied" && !(operations?.missing || []).length,
       agentReceiptsVerified: hasAgentInvocationEvidence(targetRoot),
-      appVerified: false,
+      appGenerated,
+      appVerified,
       deployVerified: false,
       completionClaimAllowed: false,
       completionClaim: mode === "applied"
@@ -391,7 +582,11 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     filesToCreate: report.filesToCreate,
     filesToModify: report.filesToModify,
     missingArtifacts: report.missingArtifacts,
-    generateAppsStep: report.generateAppsStep,
+    generateAppsStep: {
+      ...(report.generateAppsStep || {}),
+      ...(generateAppsState || {}),
+      status: generateAppsState?.status || report.generateAppsStep?.status || "not-run",
+    },
     operations,
     history,
   };
@@ -415,6 +610,9 @@ function outputResult(result, options) {
     `UPDATED: ${(result.updated || []).length}`,
     `SKIPPED: ${result.skipped.length}`,
     `MISSING: ${result.missing.length}`,
+    `GENERATED_APPS: ${result.generatedApps?.status || "not-requested"}`,
+    `APP_GENERATED: ${result.generatedApps?.appGenerated === true}`,
+    `APP_VERIFIED: ${result.generatedApps?.appVerified === true}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
     "",
     formatGenesisDryRunReport(result.report),
@@ -423,12 +621,17 @@ function outputResult(result, options) {
   for (const entry of (result.updated || []).slice(0, 20)) lines.push(`UPDATED_PATH: ${entry}`);
   for (const entry of result.skipped.slice(0, 20)) lines.push(`SKIPPED_PATH: ${entry}`);
   for (const entry of result.missing) lines.push(`MISSING_PATH: ${entry}`);
+  for (const appResult of result.generatedApps?.results || []) {
+    for (const action of appResult.normalization?.actions || []) {
+      lines.push(`GENERATED_APP_NORMALIZED: ${action.action} ${action.path}${action.archivePath ? ` -> ${action.archivePath}` : ""}`);
+    }
+  }
   console.log(lines.join("\n"));
 }
 
 function parseArgs(argv) {
   const parsed = {};
-  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps"]);
+  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps", "verify-apps"]);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "-h") {
@@ -488,6 +691,7 @@ function defaultManagedGitignoreBlock() {
     ".supervibe/memory/agent-invocations.jsonl",
     ".supervibe/memory/workflow-invocation-ledger.jsonl",
     ".supervibe/memory/genesis/state.json",
+    ".supervibe/memory/genesis/normalized-generated-host-files/",
     ".supervibe/memory/adapt/state.json",
     ".supervibe/research-cache/",
     "docker-compose.override.yml",
@@ -539,6 +743,7 @@ function formatHelp() {
     "  --profile        minimal, product-design, full-stack, research-heavy, or custom.",
     "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation, github-actions, gitlab-ci, ci-ready.",
     "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
+    "  --verify-apps    After --generate-apps, run declared app lint/build checks and set appVerified only if they pass.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",
     "  --request        Free-form user stack/context text used as stack evidence.",

@@ -61,7 +61,7 @@ Russian visible labels:
 2. Run `git diff <verified-against>..HEAD --stat` to find changes
 3. Read changed manifest files for new deps
 4. Run or consult `node scripts/supervibe-status.mjs --capabilities` so proposed agent, rule and skill updates are grounded in the capability registry.
-5. Resolve the active host adapter before reading or planning writes; use the same precedence as genesis: explicit override -> active runtime/current chat -> filesystem markers.
+5. Resolve the canonical project root before host selection: nearest parent `.supervibe/` wins over nested app host files, then workspace manifest/root `.git`. Resolve the active host adapter before reading or planning writes; use the same precedence as genesis: explicit override -> active runtime/current chat -> filesystem markers.
 6. For `/supervibe-adapt`, run `node scripts/supervibe-adapt.mjs --dry-run --summary-json --changed-only` before `command-agent-plan.mjs`, then pass the actual counts with `--adds`, `--updates`, `--project-only`, `--conflicts`, and `--memory-writes`.
 
 ## Procedure

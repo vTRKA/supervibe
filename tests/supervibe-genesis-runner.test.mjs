@@ -55,6 +55,32 @@ test("supervibe-genesis dry-run writes resume state but no scaffold files in an 
   }
 });
 
+test("supervibe-genesis Next generate-apps command disables nested git by default", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-next-command-"));
+  try {
+    const out = runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--json",
+    ], projectRoot);
+    const parsed = JSON.parse(out);
+    const nextCommand = parsed.report.generateAppsStep.commands.find((entry) => entry.framework === "nextjs");
+
+    assert.ok(nextCommand);
+    assert.match(nextCommand.command, /--disable-git/);
+    assert.deepEqual(nextCommand.args.slice(-1), ["--disable-git"]);
+    assert.equal(nextCommand.executable, "npx");
+    assert.equal(nextCommand.appDir, "frontend");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, and package.json", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-apply-"));
   try {
@@ -102,6 +128,39 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(state.verification.deployVerified, false);
     assert.ok(state.history.some((entry) => entry.lifecycle === "dry-run"));
     assert.ok(state.history.some((entry) => entry.lifecycle === "applied"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis generate-apps normalizes nested git and generated host files", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-generate-apps-"));
+  try {
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--generate-apps",
+    ], projectRoot, { SUPERVIBE_GENESIS_FAKE_SCAFFOLDER: "1" });
+
+    assert.match(out, /GENERATED_APPS: completed/);
+    assert.match(out, /APP_GENERATED: true/);
+    assert.match(out, /APP_VERIFIED: false/);
+    assert.equal(existsSync(join(projectRoot, "frontend", ".git")), false, "nested app .git must be removed");
+    assert.equal(existsSync(join(projectRoot, "frontend", "AGENTS.md")), false, "generated app-local AGENTS must be normalized out");
+    assert.equal(existsSync(join(projectRoot, "frontend", "CLAUDE.md")), false, "generated app-local CLAUDE must be normalized out");
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "genesis", "normalized-generated-host-files", "frontend", "AGENTS.md")), true);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "genesis", "normalized-generated-host-files", "frontend", "CLAUDE.md")), true);
+
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(state.generateAppsStep.status, "completed");
+    assert.equal(state.generateAppsStep.appGenerated, true);
+    assert.equal(state.verification.appGenerated, true);
+    assert.equal(state.verification.appVerified, false);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

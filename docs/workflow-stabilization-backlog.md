@@ -191,6 +191,41 @@ Genesis + Adapt lifecycle hardening from combined command feedback.
 - [ ] Add full apply rollback commands for project-only keep/archive/skip/abort
   beyond the current recoverable state notes.
 
+## Fixed In 2.0.85
+
+Genesis + Adapt feedback on generated apps, root policy, state accuracy, and
+dependency repair guardrails.
+
+- [x] Add `--disable-git` to the Next.js generate-apps command and execute
+  known scaffolders through structured executable/args instead of a raw shell
+  command string.
+- [x] Normalize generated app metadata after approved scaffolders: remove a
+  nested app `.git` created from an empty placeholder and archive generated
+  app-local host files under `.supervibe/memory/genesis/`.
+- [x] Persist accurate Genesis generation state:
+  `generateAppsStep.status=completed`, `appGenerated=true`, and
+  `appVerified=false` unless explicit `--verify-apps` lint/build commands pass.
+- [x] Resolve canonical project root from nested app directories by walking up
+  to `.supervibe/`, workspace manifest, or root `.git` before host detection.
+- [x] Make base Genesis scaffold produce `.editorconfig`, `.gitattributes`,
+  `.gitignore`, `.nvmrc`, docs/prototype placeholders, and stack app
+  placeholders even when no exact stack-pack exists.
+- [x] Make terminal/file policy validation host-adapter-aware for installed
+  projects, while keeping plugin checkout validation strict for root
+  `rules/terminal-file-io.md` and source generator contracts.
+- [x] Block `npm audit fix --force` as a normal repair path when it proposes a
+  framework major/minor downgrade; report `blocked_downgrade` with
+  current/proposed/latest versions and safe alternatives.
+- [x] Treat config-only zero-symbol JS/TS graph extraction as healthy in normal
+  status output so config-only projects do not look broken.
+- [x] Add regression coverage for Next command generation, generated app
+  normalization, nested-root host detection, host-aware terminal policy,
+  config-only graph health, and audit-force downgrade blocking.
+- [ ] Add network-enabled CI e2e for real `create-next-app`, Composer Laravel,
+  app lint/build, source+graph index, status, and idempotent Genesis/Adapt
+  reruns across Codex-only, Claude-only, mixed-host, no-git, dirty, and monorepo
+  roots.
+
 ## Fixed In 2.0.83
 
 Genesis empty-project hardening from `/supervibe-genesis` feedback.

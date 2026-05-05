@@ -36,7 +36,7 @@ BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch.
 
 ```
 What stack determines which checks?
-├─ Node.js → tsc --noEmit + npm test + npm run lint + npm audit + bundle-size (if applicable)
+├─ Node.js → tsc --noEmit + npm test + npm run lint + npm audit + bundle-size (if applicable); never auto-apply `npm audit fix --force` when it downgrades a framework major/minor line
 ├─ Python → mypy + pytest + ruff + pip-audit + safety check
 ├─ PHP → phpstan + pest/phpunit + pint + composer audit
 ├─ Go → go vet + go test + golangci-lint + govulncheck

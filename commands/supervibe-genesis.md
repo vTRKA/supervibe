@@ -120,9 +120,13 @@ Scenario evals assert this post-delivery menu and persisted command state via
    Laravel, Next.js, or Vite skeletons until real framework scaffolders run. The
    separate approved `generate-apps` step records commands such as
    `composer create-project laravel/laravel backend`,
-   `npx create-next-app@latest frontend ...`, or
+   `npx create-next-app@latest frontend ... --disable-git`, or
    `npm create vite@latest frontend ...`. Do not run these commands without
-   explicit approval and dependency availability.
+   explicit approval and dependency availability. After a successful app
+   scaffolder, normalize unintended nested `.git` and generated app-local host
+   files back under the canonical Supervibe root. Record app generation and app
+   verification separately; `appVerified=true` requires explicit lint/build
+   verification such as `--verify-apps`.
 
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 

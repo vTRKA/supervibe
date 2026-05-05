@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { getHostAdapterMatrix, resolveHostAdapter } from "./supervibe-host-adapters.mjs";
+import { resolveSupervibeProjectRoot } from "./supervibe-plugin-root.mjs";
 
 const DETECTION_RULES = Object.freeze({
   claude: [
@@ -42,11 +43,13 @@ const ACTIVE_RUNTIME_HINTS = Object.freeze({
 export { getHostAdapterMatrix, resolveHostAdapter };
 
 export function detectHostCandidates({ rootDir = process.cwd(), env = process.env } = {}) {
+  const requestedRootDir = rootDir;
+  const canonicalRootDir = resolveSupervibeProjectRoot({ env, cwd: rootDir });
   const forced = normalizeHostId(env.SUPERVIBE_HOST || env.SUPERVIBE_TARGET_HOST || "");
   const runtimeHint = forced ? null : detectActiveRuntimeHost(env);
   const adapters = getHostAdapterMatrix();
   const candidates = adapters
-    .map((adapter) => scoreAdapter(adapter, { rootDir, env, forced, runtimeHint }))
+    .map((adapter) => scoreAdapter(adapter, { rootDir: canonicalRootDir, env, forced, runtimeHint }))
     .filter((candidate) => candidate.confidence > 0)
     .sort((a, b) => b.confidence - a.confidence || a.id.localeCompare(b.id));
   const top = candidates[0] || scoreAdapter(resolveHostAdapter("claude"), { rootDir, env, forced, runtimeHint });
@@ -56,13 +59,14 @@ export function detectHostCandidates({ rootDir = process.cwd(), env = process.en
   const requiresSelection = !forced && !runtimeHint && (runnerUps.length > 0 || top.confidence < 0.75);
 
   return {
-    rootDir,
+    rootDir: canonicalRootDir,
+    requestedRootDir,
     forcedHost: forced || null,
     activeRuntimeHost: runtimeHint?.id || null,
     selectedHost,
     requiresSelection,
     confidence: Number((forced ? 1 : selectedCandidate.confidence).toFixed(2)),
-    candidates: forced ? candidatesWithForcedTop(candidates, forced, rootDir) : candidates,
+    candidates: forced ? candidatesWithForcedTop(candidates, forced, canonicalRootDir) : candidates,
     evidence: forced ? [{ source: "env", marker: "SUPERVIBE_HOST", detail: forced, weight: 1 }] : selectedCandidate.evidence,
   };
 }
@@ -83,6 +87,7 @@ export function formatHostDiagnostics(result = detectHostCandidates()) {
     `activeRuntimeHost: ${result.activeRuntimeHost || "none"}`,
     `confidence: ${result.confidence}`,
     `requiresSelection: ${result.requiresSelection}`,
+    `projectRoot: ${result.rootDir || "unknown"}`,
     `candidates: ${result.candidates.length}`,
   ];
   for (const candidate of result.candidates) {

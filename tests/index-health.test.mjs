@@ -85,6 +85,50 @@ test('graph-only symbol degradation warns by default but fails strict graph gate
   assert.ok(strictGate.failedGates.some((item) => item.code === 'symbol-coverage'));
 });
 
+test('config-only zero-symbol language is graph-ready in normal health gate', () => {
+  const health = buildIndexHealthSnapshot({
+    manifest: {
+      eligibleSourceFiles: 6,
+      indexedSourceFiles: 6,
+      languageCoverage: {
+        javascript: { eligible: 6, indexed: 6, filesWithSymbols: 0, configOnly: true },
+      },
+      generatedIndexedFiles: [],
+      staleRows: [],
+      crossResolvedEdges: { resolved: 0, total: 0 },
+    },
+  });
+
+  const gate = evaluateIndexHealthGate(health);
+
+  assert.equal(gate.ready, true);
+  assert.equal(gate.languageReadiness.javascript.graphReady, true);
+  assert.equal(gate.warnings.some((item) => item.code === 'symbol-coverage'), false);
+});
+
+test('grammar health treats config-only zero-symbol JavaScript as healthy', async () => {
+  const root = join(tmpdir(), `supervibe-index-config-only-${Date.now()}`);
+  await mkdir(root, { recursive: true });
+  const store = new CodeStore(root, { useEmbeddings: false });
+  await store.init();
+  try {
+    store.db.prepare(`
+      INSERT INTO code_files (path, language, content_hash, line_count, indexed_at, graph_version, index_status, chunking_strategy, chunk_count, indexed_bytes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('eslint.config.js', 'javascript', 'hash', 1, new Date().toISOString(), 1, 'full', 'standard', 0, 0);
+
+    const health = store.getGrammarHealth();
+    const js = health.find((entry) => entry.language === 'javascript');
+
+    assert.equal(js.configOnly, true);
+    assert.equal(js.healthy, true);
+    assert.match(js.reason, /config-only javascript/);
+  } finally {
+    store.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('mtime repair discovers new source files when code.db already exists', async () => {
   const root = join(tmpdir(), `supervibe-index-health-${Date.now()}`);
   await mkdir(join(root, 'src'), { recursive: true });

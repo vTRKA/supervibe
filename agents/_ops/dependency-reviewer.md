@@ -167,6 +167,7 @@ Per ecosystem detected in the project, run all applicable steps. Skip steps for 
    - Python: `pip-audit -f json`
    - Go: `govulncheck ./...`
    - Ruby: `bundle-audit check --update`
+   - Do not recommend or apply `npm audit fix --force` as an automatic repair. If force output proposes a framework major/minor downgrade, classify it as `blocked_downgrade`, print current/proposed/latest versions, and offer only safe options: wait for upstream patch, supported override with proof, or documented risk acceptance.
 4. **License scan** — walk the full transitive tree:
    - npm: `npx license-checker --production --json` or `npx license-compliance`
    - PHP: `composer licenses --format=json`

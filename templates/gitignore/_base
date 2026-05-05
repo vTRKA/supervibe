@@ -1,9 +1,5 @@
 # Universal ignores (all stacks compose on top of this)
 node_modules/
-.env
-.env.local
-.env.*.local
-!.env.example
 *.log
 .DS_Store
 Thumbs.db
@@ -13,5 +9,22 @@ Thumbs.db
 !.vscode/launch.json
 *.swp
 
-# Supervibe local state
-.supervibe/
+# SUPERVIBE:BEGIN managed-gitignore
+.supervibe/memory/code.db*
+.supervibe/memory/code-index-checkpoint.json
+.supervibe/memory/code-index.lock
+.supervibe/memory/agent-invocations.jsonl
+.supervibe/memory/workflow-invocation-ledger.jsonl
+.supervibe/memory/genesis/state.json
+.supervibe/memory/genesis/normalized-generated-host-files/
+.supervibe/memory/adapt/state.json
+.supervibe/research-cache/
+docker-compose.override.yml
+postgres-data/
+.docker/volumes/
+*.sql
+*.dump
+.env
+.env.*
+!.env.example
+# SUPERVIBE:END managed-gitignore

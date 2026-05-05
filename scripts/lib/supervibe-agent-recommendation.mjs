@@ -314,7 +314,7 @@ export function buildGenesisDryRunReport({
   const stackPack = resolveGenesisStackPack({ pluginRoot, fingerprint });
   const rulesPlan = resolveGenesisRules({ pluginRoot, fingerprint, stackPack, addOns });
   const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
-  const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack, addOns });
+  const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack, addOns, fingerprint });
   const optionalAgents = unique(addOnAgents(addOns));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
   const supervibeStateArtifacts = [
@@ -422,27 +422,65 @@ function buildGenerateAppsStep(fingerprint = {}) {
   if (tags.has("laravel")) {
     commands.push({
       command: "composer create-project laravel/laravel backend",
+      executable: "composer",
+      args: ["create-project", "laravel/laravel", "backend"],
+      appDir: "backend",
+      framework: "laravel",
       when: "backend/ is still an empty placeholder and Composer is installed",
     });
   }
   if (tags.has("nextjs")) {
     commands.push({
-      command: "npx create-next-app@latest frontend --ts --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm",
+      command: "npx create-next-app@latest frontend --ts --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm --disable-git",
+      executable: "npx",
+      args: ["create-next-app@latest", "frontend", "--ts", "--eslint", "--tailwind", "--app", "--src-dir", "--import-alias", "@/*", "--use-npm", "--disable-git"],
+      appDir: "frontend",
+      framework: "nextjs",
+      verifyCommands: [
+        { command: "npm run lint", executable: "npm", args: ["run", "lint"], cwd: "frontend" },
+        { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: "frontend" },
+      ],
       when: "frontend/ is still an empty placeholder and Node/npm are installed",
     });
   } else if (tags.has("vite")) {
     commands.push({
       command: "npm create vite@latest frontend -- --template react-ts",
+      executable: "npm",
+      args: ["create", "vite@latest", "frontend", "--", "--template", "react-ts"],
+      appDir: "frontend",
+      framework: "vite",
+      verifyCommands: [
+        { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: "frontend" },
+      ],
       when: "frontend/ is still an empty placeholder and Node/npm are installed",
     });
   }
+  const stackAmbiguities = buildStackAmbiguities(tags);
   return {
     id: "generate-apps",
     approvalRequired: commands.length > 0,
     status: "not-run",
     commands,
-    note: "Base scaffold creates placeholders only; run this approved step to create real framework apps.",
+    stackAmbiguities,
+    clarificationRequired: stackAmbiguities.length > 0,
+    note: stackAmbiguities.length > 0
+      ? "Base scaffold creates placeholders only; Next.js and Vite evidence together require choosing Next app, Vite SPA, or intentional monorepo before adding another frontend."
+      : "Base scaffold creates placeholders only; run this approved step to create real framework apps.",
   };
+}
+
+function buildStackAmbiguities(tags) {
+  if (!(tags.has("nextjs") && tags.has("vite"))) return [];
+  if (tags.has("tauri") || tags.has("chrome-extension")) return [];
+  return [{
+    code: "nextjs-vite-frontend",
+    choices: [
+      { id: "next-app", label: "Next app", tradeoff: "Use this when the web frontend is a single Next.js app; Vite evidence is ignored for app generation.", provenance: "genesis-stack-ambiguity" },
+      { id: "vite-spa", label: "Vite SPA", tradeoff: "Use this when the frontend is a standalone Vite SPA instead of Next.js; Next agents should be deferred.", provenance: "genesis-stack-ambiguity" },
+      { id: "monorepo-two-frontends", label: "Two frontends", tradeoff: "Use this only when Next.js and Vite are intentional separate apps; requires explicit app-dir choices.", provenance: "genesis-stack-ambiguity" },
+    ],
+    message: "Next.js uses its own build pipeline; Vite evidence should be a separate SPA/frontend only when the project is an intentional monorepo.",
+  }];
 }
 
 export function formatGenesisDryRunReport(report) {
@@ -463,6 +501,7 @@ export function formatGenesisDryRunReport(report) {
     `PRESERVED_SECTIONS: ${report.preservedSections.join(", ") || "none"}`,
     `SKIPPED_GENERATED_FOLDERS: ${report.skippedGeneratedFolders.map((entry) => entry.path).join(", ")}`,
     `GENERATE_APPS_STEP: ${report.generateAppsStep?.approvalRequired ? "approval-required" : "not-needed"}`,
+    `STACK_CLARIFICATION_REQUIRED: ${report.generateAppsStep?.clarificationRequired ? "true" : "false"}`,
     `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
     "AGENT_ROLES:",
     formatAgentRoleSummaries(report.agentProfile.selectedAgents, { agents: report.agentProfile.agentResponsibilities }, { max: 80 }) || "- none",
@@ -470,6 +509,10 @@ export function formatGenesisDryRunReport(report) {
   ];
   for (const entry of report.filesToModify) lines.push(`MODIFY: ${entry.path} - ${entry.reason}`);
   for (const entry of report.filesToCreate.slice(0, 10)) lines.push(`CREATE: ${entry.path} - ${entry.reason}`);
+  for (const ambiguity of report.generateAppsStep?.stackAmbiguities || []) {
+    lines.push(`STACK_AMBIGUITY: ${ambiguity.code} - ${ambiguity.message}`);
+    lines.push(`STACK_CHOICES: ${(ambiguity.choices || []).map((choice) => choice.id).join(", ")}`);
+  }
   for (const entry of report.generateAppsStep?.commands || []) lines.push(`GENERATE_APPS_COMMAND: ${entry.command} (${entry.when})`);
   return lines.join("\n");
 }
@@ -895,15 +938,54 @@ function addOnAgents(addOns = []) {
   return normalizeAddOns(addOns).flatMap((id) => ADD_ON_AGENTS[id] || []);
 }
 
-function resolveStackPackScaffoldArtifacts({ stackPack, addOns = [] }) {
+function resolveStackPackScaffoldArtifacts({ stackPack, addOns = [], fingerprint = {} }) {
   const scaffold = stackPack?.data?.scaffold || {};
-  const rootFiles = asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, source: entry.source || null, type: "file", reason: "stack-pack root file" }));
-  const directories = asArray(scaffold.directories).map((entry) => ({ path: entry.path, source: null, type: "directory", reason: entry.purpose || "stack-pack directory" }));
+  const rootFiles = uniqueScaffoldEntries([
+    ...baseRootScaffoldFiles(),
+    ...asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, source: entry.source || null, type: "file", reason: "stack-pack root file" })),
+  ]);
+  const directories = uniqueScaffoldEntries([
+    ...basePlaceholderDirectories(fingerprint),
+    ...asArray(scaffold.directories).map((entry) => ({ path: entry.path, source: null, type: "directory", reason: entry.purpose || "stack-pack directory" })),
+  ]);
   const husky = Object.entries(scaffold.husky || {}).map(([name, source]) => ({ path: `.husky/${name}`, source, type: "file", reason: "stack-pack git hook" }));
   const ci = resolveCiAddOnScaffold(addOns);
   return {
-    files: [...rootFiles, ...directories, ...husky, ...ci].filter((entry) => entry.path),
+    files: uniqueScaffoldEntries([...rootFiles, ...directories, ...husky, ...ci]).filter((entry) => entry.path),
   };
+}
+
+function baseRootScaffoldFiles() {
+  return [
+    { path: ".editorconfig", source: "templates/configs/.editorconfig", type: "file", reason: "base UTF-8/LF editor policy" },
+    { path: ".gitattributes", source: "templates/configs/.gitattributes", type: "file", reason: "base LF normalization policy" },
+    { path: ".gitignore", source: "templates/gitignore/_base", type: "file", reason: "base generated/runtime ignore policy" },
+    { path: ".nvmrc", source: "templates/configs/.nvmrc", type: "file", reason: "base Node runtime version marker" },
+  ];
+}
+
+function basePlaceholderDirectories(fingerprint = {}) {
+  const tags = new Set(fingerprint.tags || []);
+  const dirs = [
+    { path: "docs/", source: null, type: "directory", reason: "project documentation placeholder" },
+    { path: ".supervibe/artifacts/prototypes/", source: null, type: "directory", reason: "HTML prototypes placeholder" },
+  ];
+  if (tags.has("nextjs") || tags.has("vite") || tags.has("react")) {
+    dirs.push({ path: "frontend/", source: null, type: "directory", reason: "frontend placeholder; run approved generate-apps step for real app scaffold" });
+  }
+  if (tags.has("laravel") || tags.has("fastapi") || tags.has("django") || tags.has("rails") || tags.has("express") || tags.has("nestjs")) {
+    dirs.push({ path: "backend/", source: null, type: "directory", reason: "backend placeholder; run approved generate-apps step for real app scaffold" });
+  }
+  return dirs;
+}
+
+function uniqueScaffoldEntries(entries = []) {
+  const byPath = new Map();
+  for (const entry of entries) {
+    if (!entry?.path || byPath.has(entry.path)) continue;
+    byPath.set(entry.path, entry);
+  }
+  return [...byPath.values()];
 }
 
 function resolveCiAddOnScaffold(addOns = []) {
@@ -939,6 +1021,7 @@ function resolveCiAddOnScaffold(addOns = []) {
 function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, recommendedAgents, optionalAgents }) {
   const agentRoles = formatAgentRoleSummaries(agentProfile.selectedAgents, { agents: agentProfile.agentResponsibilities }, { max: 30 });
   const adapter = hostSelection.adapter;
+  const terminalRulePath = `${adapter.rulesFolder}/terminal-file-io.md`;
   return [
     `# Supervibe Managed Context (${hostSelection.adapter.displayName})`,
     "",
@@ -955,7 +1038,7 @@ function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, re
     "- Explain the current step, what evidence was gathered, and what decision is being made before writing files.",
     "- Ask concise questions only when the answer changes implementation, safety or scope.",
     "- Preserve user-owned instructions outside this managed block and keep host-specific files in the selected adapter folders.",
-    "- Follow `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md`: write text files as UTF-8 with LF, prefer Node `fs.writeFile(..., \"utf8\")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.",
+    `- Follow \`.editorconfig\`, \`.gitattributes\`, and \`${terminalRulePath}\`: write text files as UTF-8 with LF, prefer Node \`fs.writeFile(..., "utf8")\`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.`,
     "",
     "## Agent Orchestration Contract",
     "- Treat `scripts/lib/command-agent-orchestration-contract.mjs` and `rules/command-agent-orchestration.md` as the source of truth for slash-command agent requirements.",

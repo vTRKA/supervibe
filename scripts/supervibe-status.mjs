@@ -477,7 +477,7 @@ async function main() {
     if (!graphNotBuilt) {
       console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
     }
-    const lowCoverage = health.filter(h => h.coverage < 0.5 && h.files > 5);
+    const lowCoverage = health.filter(h => !h.configOnly && h.coverage < 0.5 && h.files > 5);
     for (const lc of lowCoverage) {
       console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
     }

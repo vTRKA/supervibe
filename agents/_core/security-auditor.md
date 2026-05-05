@@ -165,7 +165,7 @@ only scanner. Coordinate with:
 
 1. **Search project memory** for prior security incidents in this area
 2. **Map attack surface**: public routes, auth boundaries, data stores, admin tools, background jobs, CI/CD, AI/agent tools, and external network egress.
-3. **Run dependency audit**: `npm audit` / `composer audit` / `cargo audit` / `pip-audit`; dependency findings are candidates until version range and reachability are checked.
+3. **Run dependency audit**: `npm audit` / `composer audit` / `cargo audit` / `pip-audit`; dependency findings are candidates until version range and reachability are checked. Never present `npm audit fix --force` as a normal repair path; if it downgrades a framework major/minor line, report `blocked_downgrade` with current/proposed/latest versions and safe alternatives.
 4. **Grep for hardcoded secrets**:
    - `password\s*=\s*['"]` (assignment patterns)
    - `api[_-]?key\s*=\s*['"]`

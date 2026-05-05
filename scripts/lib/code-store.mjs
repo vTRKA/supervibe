@@ -4,7 +4,7 @@
 
 import { readFile, mkdir, writeFile, stat } from 'node:fs/promises';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Worker } from 'node:worker_threads';
 import { hashFile } from './file-hash.mjs';
@@ -309,6 +309,15 @@ function ensureColumn(db, table, column, definition) {
   if (!columns.some((row) => row.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
+}
+
+function isConfigOnlyGraphPath(relPath = '') {
+  const name = basename(String(relPath).replace(/\\/g, '/')).toLowerCase();
+  return (
+    /\.config\.[cm]?[jt]sx?$/.test(name) ||
+    /^(next|vite|vitest|jest|playwright|eslint|prettier|postcss|tailwind|commitlint|lint-staged|knip|astro|svelte|nuxt)\.config\./.test(name) ||
+    /^(babel|renovate)\.config\./.test(name)
+  );
 }
 
 function deadlineExceededError(phase, relPath) {
@@ -1391,22 +1400,30 @@ export class CodeStore {
     const rows = this.db.prepare(`
       SELECT cf.language AS lang,
              COUNT(DISTINCT cf.path) AS files,
-             COUNT(DISTINCT s.path) AS files_with_symbols
+             COUNT(DISTINCT s.path) AS files_with_symbols,
+             GROUP_CONCAT(DISTINCT cf.path) AS paths
       FROM code_files cf
       LEFT JOIN code_symbols s ON s.path = cf.path
       GROUP BY cf.language
       ORDER BY files DESC
     `).all();
-    return rows.map(r => ({
-      language: r.lang,
-      files: r.files,
-      filesWithSymbols: r.files_with_symbols,
-      healthy: r.files === 0 || r.files_with_symbols > 0,
-      coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files,
-      reason: r.files > 0 && r.files_with_symbols === 0
-        ? `zero symbols extracted for ${r.files} indexed ${r.lang} file(s)`
-        : 'symbols extracted',
-    }));
+    return rows.map(r => {
+      const paths = String(r.paths || '').split(',').filter(Boolean);
+      const configOnly = paths.length > 0 && paths.every(isConfigOnlyGraphPath);
+      return {
+        language: r.lang,
+        files: r.files,
+        filesWithSymbols: r.files_with_symbols,
+        configOnly,
+        healthy: r.files === 0 || r.files_with_symbols > 0 || configOnly,
+        coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files,
+        reason: r.files > 0 && r.files_with_symbols === 0
+          ? configOnly
+            ? `zero symbols extracted for ${r.files} indexed config-only ${r.lang} file(s)`
+            : `zero symbols extracted for ${r.files} indexed ${r.lang} file(s)`
+          : 'symbols extracted',
+      };
+    });
   }
 
   getGraphHealthMetrics({ topSymbolLimit = 30 } = {}) {

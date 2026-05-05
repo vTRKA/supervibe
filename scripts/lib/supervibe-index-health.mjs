@@ -138,11 +138,12 @@ export async function collectIndexHealthFromStore(store, {
       eligible,
       indexed: health.files,
       filesWithSymbols: health.filesWithSymbols,
+      configOnly: Boolean(health.configOnly),
     };
   }
   for (const [language, eligible] of eligibleByLanguage) {
     if (!languageCoverage[language]) {
-      languageCoverage[language] = { eligible, indexed: 0, filesWithSymbols: 0 };
+      languageCoverage[language] = { eligible, indexed: 0, filesWithSymbols: 0, configOnly: false };
     }
   }
 
@@ -250,6 +251,7 @@ export function evaluateIndexHealthGate(health = {}, {
     const indexed = numberOrZero(value.indexed);
     const symbolCoverage = numberOrZero(value.symbolCoverage);
     if (indexed >= 5 && symbolCoverage < minSymbolCoverage) {
+      if (value.configOnly) continue;
       const item = {
         code: 'symbol-coverage',
         language,
@@ -286,7 +288,7 @@ export function evaluateIndexHealthGate(health = {}, {
     const sourceCoverageForLanguage = numberOrZero(value.coverage);
     const symbolCoverageForLanguage = numberOrZero(value.symbolCoverage);
     const sourceReady = eligibleForLanguage === 0 || sourceCoverageForLanguage >= coverageThreshold;
-    const graphReady = indexedForLanguage === 0 ? sourceReady : symbolCoverageForLanguage >= minSymbolCoverage;
+    const graphReady = value.configOnly || (indexedForLanguage === 0 ? sourceReady : symbolCoverageForLanguage >= minSymbolCoverage);
     languageReadiness[language] = {
       sourceReady,
       graphReady,
@@ -294,6 +296,7 @@ export function evaluateIndexHealthGate(health = {}, {
       indexed: indexedForLanguage,
       sourceCoverage: sourceCoverageForLanguage,
       symbolCoverage: symbolCoverageForLanguage,
+      configOnly: Boolean(value.configOnly),
       repairCommand: `${SOURCE_RAG_INDEX_COMMAND} --language ${language}`,
       graphRepairCommand: `${CODEGRAPH_INDEX_COMMAND} --language ${language}`,
     };
@@ -355,6 +358,7 @@ function normalizeLanguageCoverage(input) {
       eligible,
       indexed,
       filesWithSymbols,
+      configOnly: Boolean(value.configOnly),
       coverage: eligible === 0 ? 1 : indexed / eligible,
       symbolCoverage: indexed === 0 ? 0 : filesWithSymbols / indexed,
     };

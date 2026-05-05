@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.85] - 2026-05-05
+
+### Added
+
+- Added Genesis regression coverage for Next `--disable-git`, generated app
+  metadata normalization, app generation state, host-aware terminal policy,
+  nested-root host detection, config-only graph health, and audit-force
+  downgrade blocking.
+- Added a reusable `npm audit fix --force` policy helper that reports
+  `blocked_downgrade` when a framework package would move to an older
+  major/minor line.
+
+### Changed
+
+- Genesis now creates base root policy files even without an exact stack-pack,
+  runs known app scaffolders through structured executable/args, and records
+  app generation separately from app verification.
+- Host detection now canonicalizes nested app directories to the nearest
+  Supervibe/workspace root before scoring host files.
+- Terminal/file policy validation is host-adapter-aware for installed projects
+  while staying strict for the plugin checkout.
+- Code Graph health no longer marks config-only zero-symbol JS/TS projects as
+  degraded in normal status output.
+
 ## [2.0.84] - 2026-05-05
 
 ### Added
