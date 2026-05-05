@@ -19,6 +19,7 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("security-audit", "Explicit add-on for vulnerability review and prioritized remediation."),
   choice("ai-prompting", "Explicit add-on for prompts, agent instructions, intent routing and evals."),
   choice("project-adaptation", "Explicit add-on for adapting project rules and agents when the user requests gap-closing."),
+  choice("redis", "Explicit add-on for Redis cache or queue architecture."),
   choice("product-design-extended", "Legacy-compatible add-on for creative direction, copy, accessibility, presentation and target-specific UI designers."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
@@ -60,6 +61,7 @@ const ADD_ON_AGENTS = Object.freeze({
   "security-audit": ["security-auditor"],
   "ai-prompting": ["prompt-ai-engineer"],
   "project-adaptation": ["rules-curator", "memory-curator", "repo-researcher"],
+  redis: ["redis-architect", "job-scheduler-architect"],
   "product-design-extended": [
     "creative-director",
     "copywriter",
@@ -97,7 +99,11 @@ const ADAPTATION_RULES = Object.freeze([
   "rule-maintenance",
 ]);
 
-export function discoverGenesisStackFingerprint({ rootDir = process.cwd() } = {}) {
+export function discoverGenesisStackFingerprint({
+  rootDir = process.cwd(),
+  explicitStackTags = [],
+  stackText = "",
+} = {}) {
   const facts = [];
   const tags = new Set();
 
@@ -184,6 +190,10 @@ export function discoverGenesisStackFingerprint({ rootDir = process.cwd() } = {}
     ...findManifestFiles(rootDir, "compose.yaml"),
   ]) {
     detectComposeStack(readFileSync(composePath, "utf8"), composePath, addTag);
+  }
+
+  for (const tag of normalizeExplicitStackTags([...asArray(explicitStackTags), ...extractStackTagsFromText(stackText)])) {
+    addTag(tag, "user-request", tag);
   }
 
   return {
@@ -283,9 +293,15 @@ export function buildGenesisDryRunReport({
   env = process.env,
   selectedProfile = "minimal",
   addOns = [],
+  explicitStackTags = [],
+  stackText = "",
 } = {}) {
   const hostSelection = selectHostAdapter({ rootDir: targetRoot, env });
-  const fingerprint = discoverGenesisStackFingerprint({ rootDir: targetRoot });
+  const fingerprint = discoverGenesisStackFingerprint({
+    rootDir: targetRoot,
+    explicitStackTags,
+    stackText,
+  });
   const agentProfile = buildGenesisAgentRecommendation({
     rootDir: pluginRoot,
     fingerprint,
@@ -328,6 +344,9 @@ export function buildGenesisDryRunReport({
 
   return {
     dryRun: true,
+    lifecycle: "dry-run",
+    stateWriteAllowed: true,
+    scaffoldWriteRequiresApproval: true,
     targetRoot,
     host: {
       adapterId: adapter.id,
@@ -623,6 +642,7 @@ function detectPackageStack(deps, source, addTag) {
   if (hasDep(deps, ["electron"])) addTag("electron", source, "electron");
   if (hasDep(deps, ["tailwindcss", "@tailwindcss/vite"])) addTag("tailwind", source, "tailwindcss");
   if (hasDep(deps, ["vite", /vite-plugin/])) addTag("vite", source, "vite");
+  if (hasDep(deps, ["typescript", "tsx", "ts-node"])) addTag("typescript", source, "typescript");
   if (hasDep(deps, [/@tanstack\/react-router/])) addTag("tanstack-router", source, "@tanstack/react-router");
   if (hasDep(deps, ["pg", "postgres", "postgresql", "@prisma/client", "drizzle-orm"])) addTag("postgres", source, "postgres dependency");
   if (hasDep(deps, ["mysql2", "mysql"])) addTag("mysql", source, "mysql dependency");
@@ -676,8 +696,60 @@ function detectComposeStack(text, source, addTag) {
   if (/elastic/.test(value)) addTag("elasticsearch", source, "compose elasticsearch service");
 }
 
+function extractStackTagsFromText(text = "") {
+  const value = String(text || "").toLowerCase();
+  const matches = [];
+  const aliases = [
+    ["nextjs", /\bnext(?:\.js|js)?\b/],
+    ["react", /\breact\b/],
+    ["vite", /\bvite\b/],
+    ["typescript", /\btypescript\b|\bts\b/],
+    ["tailwind", /\btailwind(?:css)?\b/],
+    ["laravel", /\blaravel\b/],
+    ["postgres", /\bpostgres(?:ql)?\b/],
+    ["redis", /\bredis\b/],
+    ["mysql", /\bmysql\b|\bmariadb\b/],
+    ["mongodb", /\bmongo(?:db)?\b/],
+    ["graphql", /\bgraphql\b|\bapollo\b/],
+    ["tauri", /\btauri\b/],
+    ["rust", /\brust\b/],
+    ["vue", /\bvue\b/],
+    ["nuxt", /\bnuxt\b/],
+    ["sveltekit", /\bsvelte(?:kit)?\b/],
+    ["django", /\bdjango\b/],
+    ["fastapi", /\bfastapi\b/],
+    ["rails", /\brails\b/],
+    ["go", /\bgolang\b|\bgo\b/],
+    ["chrome-extension", /\bchrome extension\b|\bmv3\b|\bextension\b/],
+  ];
+  for (const [tag, pattern] of aliases) {
+    if (pattern.test(value)) matches.push(tag);
+  }
+  return matches;
+}
+
+function normalizeExplicitStackTags(values = []) {
+  return unique(values.flatMap((value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return [];
+    return raw.split(/[,\s/|+]+/).map((part) => normalizeStackTag(part) || normalizeStackAlias(part)).filter(Boolean);
+  }));
+}
+
+function normalizeStackAlias(value) {
+  const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9.+-]/g, "");
+  if (!normalized) return null;
+  if (["next", "next.js", "nextjs"].includes(normalized)) return "nextjs";
+  if (["postgresql", "postgres"].includes(normalized)) return "postgres";
+  if (["tailwindcss", "tailwind"].includes(normalized)) return "tailwind";
+  if (["ts", "typescript"].includes(normalized)) return "typescript";
+  if (["golang"].includes(normalized)) return "go";
+  return normalizeStackTag(normalized) || normalized;
+}
+
 function normalizeStackTag(name) {
   const value = String(name).toLowerCase();
+  if (value === "typescript") return "typescript";
   if (value === "react") return "react";
   if (value === "next") return "nextjs";
   if (value === "vue") return "vue";
@@ -702,7 +774,8 @@ function resolveGenesisStackPack({ pluginRoot, fingerprint }) {
   const tags = new Set(fingerprint.tags || []);
   const candidates = [
     { id: "tauri-react-rust-postgres", path: "stack-packs/tauri-react-rust-postgres/pack.yaml", requiredTags: ["tauri"], exactTags: ["tauri", "react", "rust", "postgres"] },
-    { id: "laravel-nextjs-postgres-redis", path: "stack-packs/laravel-nextjs-postgres-redis/manifest.yaml", requiredTags: ["laravel", "nextjs", "postgres"], exactTags: ["laravel", "nextjs", "postgres"] },
+    { id: "laravel-nextjs-postgres-redis", path: "stack-packs/laravel-nextjs-postgres-redis/manifest.yaml", requiredTags: ["laravel", "nextjs", "postgres", "redis"], exactTags: ["laravel", "nextjs", "postgres", "redis"] },
+    { id: "laravel-nextjs-postgres", path: "stack-packs/laravel-nextjs-postgres/manifest.yaml", requiredTags: ["laravel", "nextjs", "postgres"], exactTags: ["laravel", "nextjs", "postgres"] },
     { id: "chrome-extension-mv3", path: "stack-packs/chrome-extension-mv3/manifest.yaml", requiredTags: ["chrome-extension"], exactTags: ["chrome-extension"] },
   ];
   const match = candidates.find((candidate) => candidate.requiredTags.every((tag) => tags.has(tag)));
@@ -789,9 +862,9 @@ function addOnAgents(addOns = []) {
 
 function resolveStackPackScaffoldArtifacts({ stackPack }) {
   const scaffold = stackPack?.data?.scaffold || {};
-  const rootFiles = asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, reason: "stack-pack root file" }));
-  const directories = asArray(scaffold.directories).map((entry) => ({ path: entry.path, reason: entry.purpose || "stack-pack directory" }));
-  const husky = Object.keys(scaffold.husky || {}).map((name) => ({ path: `.husky/${name}`, reason: "stack-pack git hook" }));
+  const rootFiles = asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, source: entry.source || null, type: "file", reason: "stack-pack root file" }));
+  const directories = asArray(scaffold.directories).map((entry) => ({ path: entry.path, source: null, type: "directory", reason: entry.purpose || "stack-pack directory" }));
+  const husky = Object.entries(scaffold.husky || {}).map(([name, source]) => ({ path: `.husky/${name}`, source, type: "file", reason: "stack-pack git hook" }));
   return {
     files: [...rootFiles, ...directories, ...husky].filter((entry) => entry.path),
   };

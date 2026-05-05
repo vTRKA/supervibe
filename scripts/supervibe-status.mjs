@@ -124,6 +124,8 @@ async function main() {
       env: process.env,
       selectedProfile: args.profile || 'minimal',
       addOns: args.addons ? String(args.addons).split(',').filter(Boolean) : [],
+      explicitStackTags: args['stack-tags'] ? String(args['stack-tags']).split(/[,\s]+/).filter(Boolean) : [],
+      stackText: args.request || '',
     });
     if (args.json) console.log(renderTerminalOutput({ data: report, json: true }, { json: true }));
     else console.log(formatGenesisDryRunReport(report));
@@ -434,14 +436,15 @@ async function main() {
     const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
     const sourceCoveragePct = (Number(indexHealth.sourceCoverage || 0) * 100).toFixed(1);
     const coverageSummary = `${indexHealth.indexedSourceFiles}/${indexHealth.eligibleSourceFiles} source files indexed, ${sourceCoveragePct}% coverage`;
-    const codeRagReady = indexGate.ready && s.totalChunks > 0;
+    const readyEmpty = Number(indexHealth.eligibleSourceFiles || 0) === 0;
+    const codeRagReady = readyEmpty || (indexGate.ready && s.totalChunks > 0);
     const graphNotBuilt = Number(graphBuildState.total || 0) > 0
       && Number(graphBuildState.current || 0) === 0
       && s.totalSymbols === 0;
     const graphWarnings = new Set((indexGate.warnings || []).map((item) => item.code));
     const graphTone = graphNotBuilt || graphWarnings.has('cross-resolution') || graphWarnings.has('symbol-coverage') ? 'yellow' : 'green';
     const graphPrefix = graphTone === 'yellow' ? '!' : '✓';
-    console.log(color(`${codeRagReady ? '✓' : '!'} Code RAG: ${codeRagReady ? '' : 'PARTIAL - '}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagReady ? 'green' : 'yellow'));
+    console.log(color(`${codeRagReady ? '✓' : '!'} Code RAG: ${readyEmpty ? 'READY_EMPTY - ' : codeRagReady ? '' : 'PARTIAL - '}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagReady ? 'green' : 'yellow'));
     console.log(color(`  Source coverage: ${coverageSummary}`, codeRagReady ? 'dim' : 'yellow'));
     console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
     if (graphNotBuilt) {

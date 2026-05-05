@@ -739,13 +739,15 @@ function routeResolvedKnownCommand(resolvedCommand, artifacts, locale) {
 
 function routeGenericResolvedCommand(resolvedCommand, artifacts, locale) {
   const alternatives = alternativesFromRoutes(resolvedCommand.intent);
+  const commandRoute = routeForResolvedSlashCommand(resolvedCommand);
   return withArtifactStatus(
     withRoutingEvidence({
       intent: resolvedCommand.intent,
-      phase: "command",
+      phase: commandRoute?.phase || "command",
       command: resolvedCommand.command,
       followUpCommands: resolvedCommand.followUpCommands || [],
-      skill: null,
+      skill: commandRoute?.skill || null,
+      commandContext: resolvedCommand.commandContext || null,
       confidence: resolvedCommand.confidence,
       confidenceFloor: 0.9,
       mutationRisk: mutationRiskForResolvedCommand(resolvedCommand),
@@ -768,10 +770,17 @@ function routeGenericResolvedCommand(resolvedCommand, artifacts, locale) {
   );
 }
 
+function routeForResolvedSlashCommand(resolvedCommand = {}) {
+  const commandId = resolvedCommand.commandId || slashCommandId(resolvedCommand.command || "");
+  if (!commandId) return null;
+  return Object.values(ROUTES).find((route) => slashCommandId(route.command) === commandId) || null;
+}
+
 function shouldPreemptTriggerRouting(resolvedCommand) {
   if (resolvedCommand.semanticScriptMatch) return false;
   if (resolvedCommand.requestedCommand) return true;
   if (resolvedCommand.intent === "code_index_build") return true;
+  if (resolvedCommand.command === "/supervibe-genesis") return true;
   return ["slash_command", "missing_slash_command", "project_npm_script", "plugin_npm_script", "missing_npm_script"].includes(resolvedCommand.intent);
 }
 

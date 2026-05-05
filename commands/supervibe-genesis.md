@@ -13,7 +13,17 @@ Set up Supervibe for a fresh project or an existing project that needs host-awar
 /supervibe-genesis --dry-run
 /supervibe-genesis --profile minimal
 /supervibe-genesis --profile product-design --host codex
+supervibe-genesis --dry-run --target .
+supervibe-genesis --apply --host codex --stack-tags nextjs,laravel,postgres
 ```
+
+Terminal runner: `supervibe-genesis` is executable for deterministic dry-run,
+state persistence, and approved scaffold apply. The runner writes
+`.supervibe/memory/genesis/state.json` during dry-run, but project scaffold
+files are written only with explicit `--apply`. It accepts `--profile`,
+`--addons`, `--host`, `--stack-tags`, `--request`, and `--json` so empty
+projects can use the stack named by the user instead of relying only on
+manifests.
 
 ## Shared Dialogue Contract
 
@@ -137,7 +147,7 @@ Next:              open the project, restart your AI CLI, watch for [supervibe] 
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, and durable-write permission before any agent-owned artifact is produced.
+Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, and durable-write permission before any agent-owned artifact is produced. For a first install into an empty project, the executable runner may use `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis --bootstrap-pre-agent --installed-only` to allow base scaffold/state writes before project agents exist. This exception does not allow specialist-owned output or completion claims; rebuild the real-agent plan after the scaffold installs agents.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts

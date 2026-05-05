@@ -157,6 +157,31 @@ same failure modes affect every agent-heavy Supervibe command.
   alternatives, and stop paths visible in addition to the ordered alternatives
   and recommendation rationale.
 
+## Fixed In 2.0.83
+
+Genesis empty-project hardening from `/supervibe-genesis` feedback.
+
+- [x] Added an executable `supervibe-genesis` runner with `--dry-run`,
+  `--apply`, `--profile`, `--addons`, `--host`, `--stack-tags`, `--request`,
+  and `--json`.
+- [x] Made dry-run state resume-safe: `.supervibe/memory/genesis/state.json` is
+  allowed during dry-run; scaffold writes still require explicit `--apply`.
+- [x] Added bootstrap-pre-agent command-agent planning so Genesis can install
+  base agents/rules/context before project agents exist, without claiming
+  specialist-owned output.
+- [x] Fixed slash command parsing so command id is the first token and free-form
+  context is retained separately.
+- [x] Routed natural-language English/Russian Genesis setup phrases. Trigger phrases: "сделай genesis scaffold под next laravel postgres".
+- [x] Passed explicit stack tags/request text into the fingerprint so empty
+  folders do not report `STACK: unknown` when the user already named the stack.
+- [x] Split `laravel-nextjs-postgres` from the Redis pack; Redis is an explicit
+  add-on unless the stack evidence names Redis.
+- [x] Treated empty source projects as `READY_EMPTY` for Code RAG status instead
+  of implying an initialization failure after a valid empty bootstrap.
+- [x] Covered empty folder, no-git, existing `AGENTS.md`, existing `.codex`,
+  existing `package.json`, partial apply, interrupted dry-run state, and UTF-8
+  CLI output scenarios in tests.
+
 ## Feedback TODO Closed In 2.0.81
 
 - [x] Prevent parallel wizard/config writes per slug.

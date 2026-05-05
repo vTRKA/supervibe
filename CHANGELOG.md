@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.83] - 2026-05-05
+
+### Added
+
+- Added an executable `/supervibe-genesis` runner with dry-run/apply/json modes,
+  explicit stack tags, host/profile/add-on inputs, and resume-safe genesis state.
+- Added empty-project regression coverage for explicit user stack detection,
+  non-destructive apply, Windows UTF-8 JSON output, and Redis as an explicit add-on.
+
+### Changed
+
+- `/supervibe-genesis` now treats state writes as allowed during dry-run while
+  keeping scaffold writes behind apply approval and a bootstrap-pre-agent gate.
+- Split the Laravel/Next/Postgres pack from the Redis-enabled pack so Redis is
+  not selected without explicit evidence or an add-on.
+
+### Fixed
+
+- Slash command parsing now separates the command id from free-form context, so
+  inline briefs and stack descriptions no longer become part of the command id.
+- Natural-language genesis routing now recognizes scaffold/init requests such
+  as Laravel, Next.js, and Postgres stack prompts.
+- Empty-project status now reports Code RAG as ready-empty instead of treating
+  an intentionally source-free project as uninitialized.
+- Synced release security and install integrity version evidence for the
+  2.0.83 release surfaces.
+
 ## [2.0.82] - 2026-05-05
 
 ### Added

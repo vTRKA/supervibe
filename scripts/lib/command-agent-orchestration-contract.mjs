@@ -275,6 +275,7 @@ export function buildCommandAgentPlan(commandId, {
   }
 
   const requestedMode = normalizeExecutionMode(requestedExecutionMode || profile.defaultExecutionMode);
+  const bootstrapPreAgent = profile.commandId === "/supervibe-genesis" && workflowContext.bootstrapPreAgent === true;
   const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
   const requiredAgentIds = unique([
     profile.ownerAgentId,
@@ -294,15 +295,18 @@ export function buildCommandAgentPlan(commandId, {
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
-  const blocked = requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
+  const blocked = !bootstrapPreAgent && requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
+    : bootstrapPreAgent
+      ? "bootstrap-pre-agent"
     : requestedMode === "inline"
       ? "inline"
       : "agent-dispatch-required";
   const inlineOnly = executionMode === "inline";
   const realAgentCapable = executionMode === "agent-dispatch-required";
-  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline"
+  const bootstrapOnly = executionMode === "bootstrap-pre-agent";
+  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline" && !bootstrapPreAgent
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
     : [];
 
@@ -329,16 +333,19 @@ export function buildCommandAgentPlan(commandId, {
     hostDispatchAvailable: hostDispatch?.status === "supported",
     agentInvocationsCompleted: false,
     agentReceiptsTrusted: false,
-    receiptGate: realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
+    receiptGate: bootstrapOnly ? "bootstrap-pre-agent-basic-scaffold" : realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: false,
+    durableWritesAllowed: bootstrapOnly,
     agentOwnedOutputAllowed: false,
     agentOwnedOutputRequiresReceipts: realAgentCapable,
     agentDispatchRequired: realAgentCapable,
     inlineDraftAllowed: inlineOnly,
+    bootstrapPreAgentAllowed: bootstrapOnly,
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
+      : bootstrapOnly
+        ? "Bootstrap-pre-agent mode may install base host scaffold and state only; specialist-owned output and completion claims still require runtime agent receipts after agents are installed."
       : hostProofBlocked
         ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
       : blocked
@@ -485,6 +492,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `HOST_DISPATCH_AVAILABLE: ${plan.hostDispatchAvailable === true}`,
     `AGENT_INVOCATIONS_COMPLETED: ${plan.agentInvocationsCompleted === true}`,
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
+    `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
@@ -686,6 +694,9 @@ function nextActionForPlan(plan = {}) {
     if (plan.hostProofBlocked) return "Connect a host runtime that records invocation ids, or stop; do not emulate specialists.";
     if (plan.missingAgents?.length) return "Provision/connect the missing agents, then rebuild this plan; do not emulate specialists.";
     return "Resolve the blocked agent plan before durable work.";
+  }
+  if (plan.executionMode === "bootstrap-pre-agent") {
+    return "Write only bootstrap scaffold/state, then rebuild the real-agent plan after installed agents are available.";
   }
   if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
   if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {

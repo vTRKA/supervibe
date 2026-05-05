@@ -81,6 +81,15 @@ describe("supervibe trigger router", () => {
     assert.deepEqual(route.safetyBlockers, []);
   });
 
+  it("routes natural-language genesis scaffold requests with stack context", () => {
+    const route = routeTriggerRequest("сделай genesis scaffold под next laravel postgres");
+
+    assert.equal(route.intent, "genesis_setup");
+    assert.equal(route.command, "/supervibe-genesis");
+    assert.equal(route.skill, "supervibe:genesis");
+    assert.equal(route.doNotSearchProject, true);
+  });
+
   it("routes explicit slash and package commands through command catalog without repo search", () => {
     const slash = routeTriggerRequest("supervibe-status --capabilities");
     const packageScript = routeTriggerRequest("pnpm run supervibe:status -- --json");
@@ -113,8 +122,9 @@ describe("supervibe trigger router", () => {
     const route = routeTriggerRequest("запусти команду /supervibe-design на создание новой дизайн системы десктопного приложения");
 
     assert.equal(route.intent, "slash_command");
-    assert.equal(route.command, "/supervibe-design на создание новой дизайн системы десктопного приложения");
-    assert.equal(route.skill, null);
+    assert.equal(route.command, "/supervibe-design");
+    assert.match(route.commandContext, /на создание/);
+    assert.equal(route.skill, "supervibe:brandbook");
     assert.equal(route.source, "command-catalog");
     assert.equal(route.doNotSearchProject, true);
     assert.equal(route.requiredSafety.includes("slash-command-owns-safety"), true);
@@ -134,7 +144,7 @@ describe("supervibe trigger router", () => {
       });
 
       assert.equal(route.intent, "slash_command", commandId);
-      assert.equal(route.skill, null, commandId);
+      if (commandId === "/supervibe-genesis") assert.equal(route.skill, "supervibe:genesis", commandId);
       assert.equal(route.doNotSearchProject, true, commandId);
       assert.equal(route.agentContract.ownerAgentId, "supervibe-orchestrator", commandId);
       assert.ok(route.agentProfile.requiredAgentIds.includes("supervibe-orchestrator"), commandId);

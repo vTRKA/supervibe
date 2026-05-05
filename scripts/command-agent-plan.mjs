@@ -29,6 +29,7 @@ function parseArgs(argv) {
       if (key === "json") options.json = true;
       else if (key === "no-host-proof") options.enforceHostProof = false;
       else if (key === "installed-only") options.installedOnly = true;
+      else if (key === "bootstrap-pre-agent") options.bootstrapPreAgent = true;
       else if (key === "strict" || key === "strict-exit") options.strictExit = true;
       else options[key] = true;
       continue;
@@ -52,6 +53,7 @@ function usage() {
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host claude",
     "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --json",
     "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --low-risk",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-genesis --bootstrap-pre-agent --installed-only",
     "",
     "NOTES:",
     "  Default execution mode is real-agents.",
@@ -59,6 +61,7 @@ function usage() {
     "  Unsupported or unverifiable host dispatch enters agent-required-blocked.",
     "  Workflow counts can select dynamic required roles, including low-risk fast paths.",
     "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
+    "  /supervibe-genesis may use --bootstrap-pre-agent to install only base scaffold/state before project agents exist.",
   ].join("\n");
 }
 
@@ -90,6 +93,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       enforceHostProof: options.enforceHostProof,
       workflowContext: {
         lowRisk: options["low-risk"] === true,
+        bootstrapPreAgent: options.bootstrapPreAgent === true,
         adds: options.adds,
         updates: options.updates,
         projectOnly: options["project-only"],

@@ -46,7 +46,7 @@
     "phrase": "запусти команду /supervibe-design на создание новой дизайн системы десктопного приложения",
     "expected": {
       "intent": "slash_command",
-      "command": "/supervibe-design на создание новой дизайн системы десктопного приложения",
+      "command": "/supervibe-design",
       "minConfidence": 0.99
     }
   }

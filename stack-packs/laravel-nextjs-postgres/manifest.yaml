@@ -1,0 +1,151 @@
+id: laravel-nextjs-postgres
+name: "Laravel + Next.js + Postgres"
+version: 1.0.0
+description: "Full-stack reference pack for a Laravel API, Next.js frontend, and Postgres database. Redis is available only as an explicit add-on."
+
+matches:
+  required:
+    backend: laravel
+    frontend: nextjs
+    db: [postgres]
+  optional:
+    architecture: [modular-monolith]
+  addons:
+    cache: [redis]
+
+agents-attach:
+  - supervibe:_core:code-reviewer
+  - supervibe:_core:repo-researcher
+  - supervibe:_core:refactoring-specialist
+  - supervibe:_core:architect-reviewer
+  - supervibe:_core:quality-gate-reviewer
+  - supervibe:_core:root-cause-debugger
+  - supervibe:_meta:rules-curator
+  - supervibe:_meta:supervibe-orchestrator
+  - supervibe:_product:product-manager
+  - supervibe:_product:systems-analyst
+  - supervibe:_product:qa-test-engineer
+  - supervibe:_ops:performance-reviewer
+  - supervibe:_ops:dependency-reviewer
+  - supervibe:_ops:db-reviewer
+  - supervibe:_ops:api-contract-reviewer
+  - supervibe:_design:creative-director
+  - supervibe:_design:ux-ui-designer
+  - supervibe:_design:ui-polish-reviewer
+  - supervibe:_design:accessibility-reviewer
+  - supervibe:_design:copywriter
+  - supervibe:_design:prototype-builder
+  - supervibe:stacks/laravel:laravel-architect
+  - supervibe:stacks/laravel:laravel-developer
+  - supervibe:stacks/laravel:eloquent-modeler
+  - supervibe:stacks/nextjs:nextjs-architect
+  - supervibe:stacks/nextjs:nextjs-developer
+  - supervibe:stacks/nextjs:server-actions-specialist
+  - supervibe:stacks/postgres:postgres-architect
+
+agent-profiles:
+  minimal:
+    description: "Small default install: routing, research, review, quality gate, and selected Laravel/Next/Postgres agents."
+    agents:
+      - supervibe:_meta:supervibe-orchestrator
+      - supervibe:_core:repo-researcher
+      - supervibe:_core:code-reviewer
+      - supervibe:_core:quality-gate-reviewer
+      - supervibe:_core:root-cause-debugger
+      - supervibe:_core:refactoring-specialist
+      - supervibe:stacks/laravel:laravel-architect
+      - supervibe:stacks/laravel:laravel-developer
+      - supervibe:stacks/nextjs:nextjs-architect
+      - supervibe:stacks/nextjs:nextjs-developer
+      - supervibe:stacks/postgres:postgres-architect
+  product-design:
+    description: "Minimal plus product and design pipeline agents."
+    extends: minimal
+    agents:
+      - supervibe:_product:product-manager
+      - supervibe:_product:systems-analyst
+      - supervibe:_product:qa-test-engineer
+      - supervibe:_design:creative-director
+      - supervibe:_design:ux-ui-designer
+      - supervibe:_design:prototype-builder
+      - supervibe:_design:copywriter
+      - supervibe:_design:ui-polish-reviewer
+      - supervibe:_design:accessibility-reviewer
+  full-stack:
+    description: "All agents listed in agents-attach, without Redis unless the redis add-on is requested."
+    agents: all
+
+agent-addons:
+  redis:
+    description: "Opt-in Redis cache or queue layer. Adds redis-architect and infrastructure-patterns."
+    atomic-pack: stack-packs/_atomic/redis/manifest.yaml
+  security-audit:
+    description: "Opt-in multi-agent security audit chain for /supervibe-security-audit."
+    agents:
+      - supervibe:_core:security-auditor
+      - supervibe:_ops:dependency-reviewer
+      - supervibe:_ops:security-researcher
+      - supervibe:_ops:devops-sre
+  ai-prompting:
+    description: "Opt-in prompt AI engineer for prompts, agent instructions, intent routing, evals, and prompt-injection hardening."
+    agents:
+      - supervibe:_ops:prompt-ai-engineer
+  network-ops:
+    description: "Opt-in network/router engineer. Never installed by default because it may touch real infrastructure."
+    agents:
+      - supervibe:_ops:network-router-engineer
+
+rules-attach:
+  - best-practices-2026
+  - agent-excellence-baseline
+  - git-discipline
+  - operational-safety
+  - commit-discipline
+  - no-dead-code
+  - confidence-discipline
+  - design-system-governance
+  - agent-install-profiles
+  - anti-hallucination
+  - rule-maintenance
+  - pre-commit-discipline
+  - prototype-to-production
+  - fsd
+  - modular-backend
+  - routing
+  - i18n
+  - observability
+  - privacy-pii
+  - infrastructure-patterns
+
+scaffold:
+  root-files:
+    - { path: ".editorconfig", source: "templates/configs/.editorconfig" }
+    - { path: ".gitignore", source: "stack-packs/laravel-nextjs-postgres-redis/configs/.gitignore" }
+    - { path: ".gitattributes", source: "templates/configs/.gitattributes" }
+    - { path: "commitlint.config.js", source: "templates/configs/commitlint.config.js" }
+    - { path: "lint-staged.config.js", source: "stack-packs/laravel-nextjs-postgres-redis/configs/lint-staged.config.js" }
+    - { path: "package.json", source: "stack-packs/laravel-nextjs-postgres-redis/configs/package.json.tpl" }
+
+  husky:
+    pre-commit: "stack-packs/laravel-nextjs-postgres-redis/husky/pre-commit"
+    commit-msg: "templates/husky/commit-msg"
+    pre-push: "stack-packs/laravel-nextjs-postgres-redis/husky/pre-push"
+
+  directories:
+    - { path: "backend/", purpose: "Laravel skeleton (composer create-project laravel/laravel backend)" }
+    - { path: "frontend/", purpose: "Next.js skeleton (npx create-next-app@latest frontend)" }
+    - { path: ".supervibe/artifacts/prototypes/", purpose: "HTML prototypes; design system in _design-system/" }
+    - { path: ".supervibe/artifacts/brandbook/", purpose: "Brand direction, preferences, mood boards, and alternatives" }
+    - { path: ".supervibe/artifacts/prototypes/_design-system/", purpose: "Source-of-truth candidate/final tokens + components" }
+    - { path: "docs/", purpose: "PRDs, ADRs, specs, plans" }
+    - { path: ".supervibe/artifacts/adr/", purpose: "Architecture Decision Records" }
+    - { path: ".supervibe/artifacts/prd/", purpose: "Product Requirements Documents" }
+    - { path: ".supervibe/artifacts/specs/", purpose: "Technical specs (output of brainstorming)" }
+    - { path: ".supervibe/artifacts/plans/", purpose: "Implementation plans (output of writing-plans)" }
+    - { path: ".github/workflows/", purpose: "GitHub Actions CI" }
+
+post-genesis-actions:
+  - { run: "composer install --working-dir=backend", when: "backend/composer.json exists" }
+  - { run: "npm install --prefix frontend", when: "frontend/package.json exists" }
+  - { run: "npm install", when: "package.json exists at root" }
+  - { run: "npm run prepare", when: "package.json has prepare script (husky)" }

@@ -36,6 +36,15 @@ Every interactive step asks one question at a time using `Step N/M` or `Step N/M
 
 Default behavior: choose the safest minimal profile, no add-ons, dry-run only until the user approves. Free-form path: the user can name exact agents, rules, host files, or stack constraints instead of choosing a listed profile.
 
+Executable path: `node scripts/supervibe-genesis.mjs --dry-run --target <project>`
+is the deterministic runner for dry-run/state output; `--apply` is the only
+mode that writes project scaffold files. It accepts `--profile`, `--addons`,
+`--host`, `--stack-tags`, `--request`, and `--json`. State writes to
+`.supervibe/memory/genesis/state.json` are allowed during dry-run so
+interrupt/resume has a durable checkpoint; host adapter agents/rules/skills,
+settings, instructions, and stack scaffold files remain blocked until explicit
+approval or `--apply`.
+
 User-facing transparency is required. The dry-run must show selected agent groups and a one-line responsibility for each selected agent using `scripts/lib/supervibe-agent-roster.mjs` / `docs/agent-roster.md`; never show only opaque agent ids.
 
 After every material delivery, ask one explicit next-step question about the scaffold decision. Use `buildPostDeliveryQuestion({ intent: "genesis_setup" }, { locale })` when tooling is available. Visible labels must be language-matched and domain-specific; keep internal action ids only in saved state. Never show both English and Russian in the same visible option. Never use a generic next-step prompt for Genesis.
@@ -57,6 +66,8 @@ Russian visible labels:
 ## Step 0 — Read source of truth (required)
 
 1. Read stack-fingerprint from `supervibe:stack-discovery`
+   - On empty projects, merge explicit stack tags or request text from the user
+     before falling back to manifest-only detection.
 2. Read `stack-packs/` to find matching pack
 3. Read `templates/` for host instruction and settings templates
 4. Run `node scripts/supervibe-status.mjs --host-diagnostics` or call `scripts/lib/supervibe-host-detector.mjs` logic before selecting an output layout. Host precedence is explicit override (`SUPERVIBE_HOST`) -> active runtime/current chat -> filesystem markers.
@@ -68,7 +79,8 @@ Russian visible labels:
 Match exact pack?
 ├─ YES (e.g., laravel-nextjs-postgres-redis) → use directly
 └─ NO → composition algorithm:
-    1. Find base pack with max overlap
+    1. Find base pack with max overlap; do not select Redis unless stack
+       evidence or an explicit add-on names Redis.
     2. Pull atomic packs from stack-packs/_atomic/ for missing slots
     3. Merge: union(agents-attach), union(rules-attach), merge(scaffold)
     4. Confidence-score the composed bundle

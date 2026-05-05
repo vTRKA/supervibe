@@ -58,8 +58,9 @@ describe("supervibe trigger diagnostics", () => {
     });
 
     assert.equal(report.route.intent, "slash_command");
-    assert.equal(report.route.command, "/supervibe-design create desktop design system for an agent chat app");
-    assert.equal(report.route.skill, null);
+    assert.equal(report.route.command, "/supervibe-design");
+    assert.equal(report.route.commandContext, "create desktop design system for an agent chat app");
+    assert.equal(report.route.skill, "supervibe:brandbook");
     assert.equal(report.route.agentContract.ownerAgentId, "supervibe-orchestrator");
     assert.ok(report.route.agentProfile.requiredAgentIds.includes("creative-director"));
     assert.equal(report.evidence.missingArtifacts.includes("design-brief"), false);

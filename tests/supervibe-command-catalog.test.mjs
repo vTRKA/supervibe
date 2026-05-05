@@ -97,6 +97,40 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
 });
 
+test("slash command parser keeps command id separate from free-form context", () => {
+  const match = resolveCommandRequest("/supervibe-genesis т.к мы будем использовать React Next Vite TypeScript Tailwind Laravel PostgreSQL", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.command, "/supervibe-genesis");
+  assert.equal(match.commandId, "/supervibe-genesis");
+  assert.match(match.commandContext, /React Next Vite TypeScript Tailwind Laravel PostgreSQL/);
+  assert.equal(match.requestedCommand, "/supervibe-genesis т.к мы будем использовать React Next Vite TypeScript Tailwind Laravel PostgreSQL");
+  assert.match(formatCommandMatch(match), /COMMAND_CONTEXT: .*React Next Vite TypeScript Tailwind Laravel PostgreSQL/);
+
+  const flagged = resolveCommandRequest("/supervibe-genesis --profile minimal --host codex под next laravel postgres", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(flagged.command, "/supervibe-genesis --profile minimal --host codex");
+  assert.equal(flagged.commandArgs, "--profile minimal --host codex");
+  assert.equal(flagged.commandContext, "под next laravel postgres");
+});
+
+test("command catalog routes natural-language genesis setup with stack names", () => {
+  const match = resolveCommandRequest("сделай genesis scaffold под next laravel postgres", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.command, "/supervibe-genesis");
+  assert.equal(match.intent, "genesis_setup");
+  assert.equal(match.doNotSearchProject, true);
+  assert.match(formatCommandMatch(match), /REQUIRED_AGENTS: .*supervibe-orchestrator/);
+});
+
 test("audit command defers domain specialists behind the global maturity gate", () => {
   const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
     .filter((entry) => String(entry).endsWith(".md"))
@@ -171,6 +205,28 @@ test("command agent plan blocks missing real agents and keeps inline diagnostic 
   assert.equal(inline.durableWritesAllowed, false);
   assert.equal(inline.agentOwnedOutputAllowed, false);
   assert.match(inline.qualityImpact, /diagnostic\/dry-run only/);
+});
+
+test("genesis bootstrap-pre-agent mode allows only base scaffold before project agents exist", () => {
+  const plan = buildCommandAgentPlan("/supervibe-genesis", {
+    availableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { bootstrapPreAgent: true },
+  });
+  const report = formatCommandAgentPlan(plan);
+
+  assert.equal(plan.executionMode, "bootstrap-pre-agent");
+  assert.equal(plan.durableWritesAllowed, true);
+  assert.equal(plan.bootstrapPreAgentAllowed, true);
+  assert.equal(plan.agentOwnedOutputAllowed, false);
+  assert.equal(plan.agentOwnedOutputRequiresReceipts, false);
+  assert.equal(plan.agentDispatchRequired, false);
+  assert.equal(plan.receiptGate, "bootstrap-pre-agent-basic-scaffold");
+  assert.ok(plan.missingAgents.includes("supervibe-orchestrator"));
+  assert.match(report, /BOOTSTRAP_PRE_AGENT_ALLOWED: true/);
+  assert.match(report, /RECEIPT_GATE: bootstrap-pre-agent-basic-scaffold/);
+  assert.match(report, /Write only bootstrap scaffold\/state/);
 });
 
 test("adapt command agent plan uses low-risk fast path and reports role sources", () => {

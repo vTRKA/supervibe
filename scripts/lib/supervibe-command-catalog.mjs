@@ -120,8 +120,20 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-genesis",
     title: "Scaffold Supervibe into a project",
-    aliases: ["инициализируй supervibe", "setup supervibe project", "подключи supervibe к проекту", "bootstrap supervibe"],
-    keywordGroups: [["genesis", "setup", "bootstrap", "scaffold", "init", "инициализируй", "подключи", "разверни"], ["supervibe", "project", "проект"]],
+    intent: "genesis_setup",
+    aliases: [
+      "инициализируй supervibe",
+      "setup supervibe project",
+      "подключи supervibe к проекту",
+      "bootstrap supervibe",
+      "создай scaffold supervibe",
+      "сделай genesis scaffold под next laravel postgres",
+      "genesis под laravel next postgres",
+    ],
+    keywordGroups: [
+      ["genesis", "setup", "bootstrap", "scaffold", "init", "initialize", "install", "создай", "сделай", "инициализируй", "подключи", "разверни"],
+      ["supervibe", "project", "stack", "next", "nextjs", "laravel", "postgres", "postgresql", "react", "vite", "tailwind", "проект", "стек", "под"],
+    ],
   },
   {
     command: "/supervibe-loop",
@@ -389,11 +401,14 @@ export function resolveCommandRequest(request, {
       intent: slashCommand ? "slash_command" : "missing_slash_command",
       title: slashCommand?.description || `Slash command ${explicitSlash.name}`,
       command: slashCommand ? explicitSlash.command : null,
+      commandId: explicitSlash.name,
+      commandArgs: explicitSlash.args,
+      commandContext: explicitSlash.context,
       confidence: 1,
       reason: slashCommand
         ? `explicit Supervibe slash command exists: ${explicitSlash.name}`
         : `explicit Supervibe slash command is not published: ${explicitSlash.name}`,
-      requestedCommand: explicitSlash.command,
+      requestedCommand: explicitSlash.requestedCommand,
       slashCommandStatus: slashCommand ? "present" : "missing",
       doNotSearchProject: true,
       hardStop: !slashCommand,
@@ -552,6 +567,9 @@ export function formatCommandMatch(match) {
     `INTENT: ${match.intent}`,
     `CONFIDENCE: ${match.confidence}`,
     match.requestedCommand ? `REQUESTED: ${match.requestedCommand}` : null,
+    match.commandId ? `COMMAND_ID: ${match.commandId}` : null,
+    match.commandArgs ? `COMMAND_ARGS: ${match.commandArgs}` : null,
+    match.commandContext ? `COMMAND_CONTEXT: ${match.commandContext}` : null,
     match.requestedPackageManager ? `PACKAGE_MANAGER: ${match.requestedPackageManager}` : null,
     match.slashCommandStatus ? `SLASH_COMMAND: ${match.slashCommandStatus}` : null,
     match.projectScriptStatus ? `PROJECT_SCRIPT: ${match.projectScriptStatus}` : null,
@@ -752,12 +770,51 @@ function parseExplicitSupervibeCommand(request) {
   if (!match?.groups?.raw) return null;
   const raw = match.groups.raw;
   const name = raw.startsWith("/") ? raw : `/${raw}`;
-  const args = String(match.groups.args || "").trim();
-  if (!raw.startsWith("/") && raw.toLowerCase() === "supervibe" && args && !args.startsWith("--")) return null;
+  const rest = String(match.groups.args || "").trim();
+  if (!raw.startsWith("/") && raw.toLowerCase() === "supervibe" && rest && !rest.startsWith("--")) return null;
+  const { args, context } = splitSlashCommandRest(rest);
   const commandArgs = raw.startsWith("/") || args.startsWith("--") ? args : "";
+  const command = commandArgs ? `${name} ${commandArgs}` : name;
   return {
     name,
-    command: commandArgs ? `${name} ${commandArgs}` : name,
+    command,
+    args: commandArgs,
+    context,
+    requestedCommand: context ? `${command} ${context}` : command,
+  };
+}
+
+const VALUE_SLASH_FLAGS = new Set([
+  "--addons",
+  "--host",
+  "--plugin-root",
+  "--profile",
+  "--project",
+  "--request",
+  "--root",
+  "--stack-tags",
+  "--target",
+]);
+
+function splitSlashCommandRest(rest = "") {
+  const tokens = String(rest || "").trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { args: "", context: "" };
+  const args = [];
+  let index = 0;
+  while (index < tokens.length) {
+    const token = tokens[index];
+    if (!token.startsWith("-")) break;
+    args.push(token);
+    index += 1;
+    const flagName = token.includes("=") ? token.slice(0, token.indexOf("=")) : token;
+    if (!token.includes("=") && VALUE_SLASH_FLAGS.has(flagName) && index < tokens.length) {
+      args.push(tokens[index]);
+      index += 1;
+    }
+  }
+  return {
+    args: args.join(" "),
+    context: tokens.slice(index).join(" "),
   };
 }
 

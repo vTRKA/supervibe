@@ -381,6 +381,8 @@ function fromTriggerRoute(route, options = {}) {
     intent: route.intent,
     phase: route.phase,
     command: route.command,
+    commandContext: route.commandContext ?? null,
+    commandArgs: route.commandArgs ?? null,
     skill: route.skill,
     confidence: route.confidence,
     mutationRisk: route.mutationRisk,

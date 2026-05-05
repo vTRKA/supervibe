@@ -224,3 +224,68 @@ test("genesis dry run includes related-rule closure for selected profile rules",
     await rm(pluginRoot, { recursive: true, force: true });
   }
 });
+
+test("empty-project genesis dry run uses explicit user stack tags", async () => {
+  const targetRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-empty-stack-"));
+  try {
+    await writeFile(join(targetRoot, "AGENTS.md"), "# Project instructions\n", "utf8");
+
+    const report = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot: process.cwd(),
+      env: { SUPERVIBE_HOST: "codex" },
+      selectedProfile: "minimal",
+      addOns: [],
+      stackText: "React Next.js Vite TypeScript Tailwind Laravel PostgreSQL",
+    });
+
+    for (const tag of ["react", "nextjs", "vite", "typescript", "tailwind", "laravel", "postgres"]) {
+      assert.ok(report.fingerprint.tags.includes(tag), `missing explicit stack tag: ${tag}`);
+    }
+    assert.equal(report.stackPack.id, "laravel-nextjs-postgres");
+    assert.equal(report.stackPack.exact, true);
+    assert.ok(!report.agentProfile.selectedAgents.includes("redis-architect"), "Redis must not be selected without Redis evidence or add-on");
+    assert.equal(report.stateWriteAllowed, true);
+    assert.equal(report.scaffoldWriteRequiresApproval, true);
+    assert.match(formatGenesisDryRunReport(report), /STACK: .*nextjs.*postgres/);
+  } finally {
+    await rm(targetRoot, { recursive: true, force: true });
+  }
+});
+
+test("Redis remains explicit for Laravel Next Postgres unless evidence names it", async () => {
+  const targetRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-redis-addon-"));
+  try {
+    await writeFile(join(targetRoot, "AGENTS.md"), "# Project instructions\n", "utf8");
+
+    const noRedis = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot: process.cwd(),
+      env: { SUPERVIBE_HOST: "codex" },
+      stackText: "Laravel Next Postgres",
+    });
+    assert.equal(noRedis.stackPack.id, "laravel-nextjs-postgres");
+    assert.ok(!noRedis.agentProfile.selectedAgents.includes("redis-architect"));
+
+    const withRedis = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot: process.cwd(),
+      env: { SUPERVIBE_HOST: "codex" },
+      stackText: "Laravel Next Postgres Redis",
+    });
+    assert.equal(withRedis.stackPack.id, "laravel-nextjs-postgres-redis");
+    assert.ok(withRedis.agentProfile.selectedAgents.includes("redis-architect"));
+
+    const redisAddOn = buildGenesisDryRunReport({
+      targetRoot,
+      pluginRoot: process.cwd(),
+      env: { SUPERVIBE_HOST: "codex" },
+      stackText: "Laravel Next Postgres",
+      addOns: ["redis"],
+    });
+    assert.equal(redisAddOn.stackPack.id, "laravel-nextjs-postgres");
+    assert.ok(redisAddOn.optionalAgents.includes("redis-architect"));
+  } finally {
+    await rm(targetRoot, { recursive: true, force: true });
+  }
+});
