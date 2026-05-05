@@ -226,6 +226,48 @@ dependency repair guardrails.
   reruns across Codex-only, Claude-only, mixed-host, no-git, dirty, and monorepo
   roots.
 
+## Feedback TODO Closed After 2.0.85
+
+Genesis + Adapt workflow feedback from Windows app generation, repeated apply,
+receipt drift, unsafe dependency remediation, and agent runtime proof gaps.
+
+- [x] P0: Add shell-safe scaffolder fallback for Windows `npx.cmd`/`npm.cmd`
+  `spawnSync` failures. The fallback retries through the shell, adds `npx
+  --yes` for npx scaffolders, records fallback evidence in Genesis output, and
+  keeps generated-app normalization after success.
+- [x] P0: Preserve previous `appGenerated` and `appVerified` lifecycle state
+  when `genesis --apply` reruns without `--generate-apps`; a later artifact
+  refresh must not regress already generated and verified apps to false.
+- [x] P0: Treat `.supervibe/memory/**/state.json` as mutable receipt output.
+  Runtime receipt issuance now rejects state files and points producers to
+  stable per-stage outputs or timestamped state snapshots under
+  `.supervibe/artifacts/_workflow-transactions/`.
+- [x] P0: Add lockfile-level `npm audit fix --force` policy classification so
+  framework downgrades such as `next@16 -> next@9` are `blocked_downgrade`
+  instead of a successful remediation path.
+- [x] P1: Make agent/profile/add-on installation first-class in
+  `supervibe-adapt` with `--add-agents`, `--profile`, `--addons`, `--skills`,
+  dry-run text output, JSON mode, and apply mode.
+- [x] P1: Split design add-ons into `creative-brand`, `web-design`,
+  `prototype`, `presentation`, `mobile`, and `desktop`; `product-design` now
+  includes `creative-director`, while the legacy extended add-on no longer
+  pulls mobile, desktop, extension, or presentation designers into normal web
+  projects.
+- [x] P1: `supervibe-status` warns explicitly when agents are installed but
+  zero real invocations are logged, instead of letting a green status imply
+  runtime proof.
+- [x] P1: Generated app-local host files are archived under
+  `.supervibe/memory/genesis/normalized-generated-host-files/` after approved
+  app generation; this remains a regression expectation for Genesis.
+- [x] P2: Keep human-readable Adapt/Genesis summaries as the default and route
+  machine payloads through `--json`/`--summary-json`; new Adapt agent
+  provisioning follows the same output split.
+- [x] P2: `supervibe-status` now detects common unmanaged framework dev server
+  ports and reports them alongside registered Supervibe preview servers.
+- [ ] Add network-enabled e2e coverage that exercises the real external
+  scaffolders, unmanaged dev server detection, lockfile downgrade guard, and
+  idempotent Genesis/Adapt reruns on Windows and POSIX.
+
 ## Fixed In 2.0.83
 
 Genesis empty-project hardening from `/supervibe-genesis` feedback.

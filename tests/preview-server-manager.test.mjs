@@ -1,10 +1,11 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdir, rm } from 'node:fs/promises';
+import { createServer } from 'node:net';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  findFreePort, registerServer, unregisterServer, listServers,
+  detectFrameworkDevServers, findFreePort, registerServer, unregisterServer, listServers,
   isPidAlive, killServer, REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/preview-server-manager.mjs';
 
@@ -64,5 +65,28 @@ test('listServers handles many entries without performance issues', async () => 
   assert.equal(new Set(list.map((server) => server.port)).size, list.length, 'registry should not duplicate ports');
   for (let i = 0; i < 50; i++) {
     await unregisterServer(4000 + i);
+  }
+});
+
+test('detectFrameworkDevServers finds unmanaged framework dev ports', async () => {
+  await writeFile(join(sandbox, 'package.json'), JSON.stringify({
+    dependencies: { next: '16.2.4', react: '19.0.0' },
+  }, null, 2));
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  try {
+    const detected = await detectFrameworkDevServers({
+      rootDir: sandbox,
+      candidatePorts: [port],
+      connectTimeoutMs: 250,
+    });
+
+    assert.equal(detected.length, 1);
+    assert.equal(detected[0].kind, 'framework-dev');
+    assert.equal(detected[0].managed, false);
+    assert.equal(detected[0].label, 'Next.js dev server');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
   }
 });

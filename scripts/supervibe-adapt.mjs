@@ -20,6 +20,16 @@ import {
   summarizeAdaptPlan,
   summarizeAdaptResolve,
 } from "./lib/supervibe-adapt.mjs";
+import {
+  applyAgentProvisioningPlan,
+  createAgentProvisioningPlan,
+  formatAgentProvisioningApply,
+  formatAgentProvisioningPlan,
+} from "./lib/agent-provisioning.mjs";
+import {
+  buildGenesisAgentRecommendation,
+  discoverGenesisStackFingerprint,
+} from "./lib/supervibe-agent-recommendation.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
 
 const rawArgs = process.argv.slice(2);
@@ -56,6 +66,30 @@ try {
         summary: summarizeDokployDeployPlan,
         formatter: formatDokployDeployPlan,
       });
+    }
+    process.exit(0);
+  }
+
+  if (isAgentProvisioningMode(args)) {
+    const selection = resolveAgentProvisioningSelection({
+      args,
+      projectRoot,
+      pluginRoot,
+    });
+    const provisioningPlan = createAgentProvisioningPlan({
+      projectRoot,
+      pluginRoot,
+      env: process.env,
+      adapterId: args.host,
+      agentIds: selection.agentIds,
+      skillIds: selection.skillIds,
+    });
+    provisioningPlan.applyCommand = buildAdaptAgentProvisioningApplyCommand(selection, args);
+    if (args.apply) {
+      const result = await applyAgentProvisioningPlan(provisioningPlan, { refreshContext: args["no-context"] !== true });
+      printAgentProvisioningValue({ selection, plan: provisioningPlan, result });
+    } else {
+      printAgentProvisioningValue({ selection, plan: provisioningPlan });
     }
     process.exit(0);
   }
@@ -107,6 +141,87 @@ function printAdaptValue(value, { summary, formatter }) {
   else console.log(formatter(value));
 }
 
+function printAgentProvisioningValue({ selection, plan, result = null }) {
+  if (args.json) {
+    console.log(JSON.stringify({ mode: "adapt-agent-provisioning", selection, plan, result }, null, 2));
+    return;
+  }
+  if (result) {
+    const lines = [
+      "SUPERVIBE_ADAPT_AGENT_PROVISIONING_APPLY",
+      `PROFILE: ${selection.profile || "none"}`,
+      `ADDONS: ${selection.addOns.join(",") || "none"}`,
+      formatAgentProvisioningApply(result),
+    ];
+    console.log(lines.join("\n"));
+    return;
+  }
+  const lines = [
+    "SUPERVIBE_ADAPT_AGENT_PROVISIONING_PLAN",
+    `PROFILE: ${selection.profile || "none"}`,
+    `ADDONS: ${selection.addOns.join(",") || "none"}`,
+    `SELECTED_AGENTS: ${selection.agentIds.join(",") || "none"}`,
+    `SELECTED_SKILLS: ${selection.skillIds.join(",") || "none"}`,
+    formatAgentProvisioningPlan(plan),
+  ];
+  console.log(lines.join("\n"));
+}
+
+function isAgentProvisioningMode(values = {}) {
+  return Boolean(
+    values["add-agents"]
+    || values.agents
+    || values.skills
+    || values.profile
+    || values["agent-profile"]
+    || values.addons
+    || values["agent-addons"]
+  );
+}
+
+function resolveAgentProvisioningSelection({ args: values, projectRoot, pluginRoot }) {
+  const explicitAgents = splitList(values["add-agents"] || values.agents);
+  const skillIds = splitList(values.skills);
+  const profile = values["agent-profile"] || values.profile || "";
+  const addOns = splitList(values["agent-addons"] || values.addons);
+  if (!profile && addOns.length === 0) {
+    return {
+      profile: "",
+      addOns,
+      agentIds: unique(explicitAgents),
+      skillIds: unique(skillIds),
+    };
+  }
+  const fingerprint = discoverGenesisStackFingerprint({
+    rootDir: projectRoot,
+    explicitStackTags: values["stack-tags"] ? String(values["stack-tags"]).split(/[,\s]+/).filter(Boolean) : [],
+    stackText: values.request || "",
+  });
+  const recommendation = buildGenesisAgentRecommendation({
+    rootDir: pluginRoot,
+    fingerprint,
+    selectedProfile: profile || "minimal",
+    addOns,
+  });
+  return {
+    profile: profile || "minimal",
+    addOns,
+    agentIds: unique([...explicitAgents, ...recommendation.selectedAgents]),
+    skillIds: unique(skillIds),
+    stackTags: recommendation.stackTags,
+  };
+}
+
+function buildAdaptAgentProvisioningApplyCommand(selection, values = {}) {
+  return [
+    "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs",
+    values.host ? `--host ${values.host}` : null,
+    selection.agentIds.length ? `--add-agents ${selection.agentIds.join(",")}` : null,
+    selection.skillIds.length ? `--skills ${selection.skillIds.join(",")}` : null,
+    "--apply",
+  ].filter(Boolean).join(" ");
+}
+
 function formatUsage() {
   return `
 Supervibe adapt
@@ -129,6 +244,13 @@ Options:
   --no-refresh-memory-index Do not refresh memory index (dry-run default)
   --scope deploy            Plan or apply a deploy add-on instead of host artifact sync
   --target dokploy          Select the Dokploy deploy add-on
+  --add-agents <ids>        Provision comma-separated agents through Adapt
+  --agents <ids>            Alias for --add-agents
+  --skills <ids>            Provision comma-separated supporting skills
+  --profile <id>            Provision agents from a Genesis install profile
+  --addons <ids>            Provision split agent add-ons such as creative-brand, web-design, prototype, presentation, mobile, desktop
+  --agent-profile <id>      Alias for --profile in agent provisioning mode
+  --agent-addons <ids>      Alias for --addons in agent provisioning mode
   --project <path>          Project root to adapt
   --plugin-root <path>      Supervibe plugin root to compare against
   --host <id>               Force host adapter, e.g. codex, claude, cursor
@@ -140,6 +262,8 @@ Examples:
   node scripts/supervibe-adapt.mjs --dry-run
   node scripts/supervibe-adapt.mjs --apply --include ".codex/agents/repo-researcher.md"
   node scripts/supervibe-adapt.mjs --resolve ".codex/agents/repo-researcher.md"
+  node scripts/supervibe-adapt.mjs --add-agents creative-director,prototype-builder
+  node scripts/supervibe-adapt.mjs --profile product-design --addons creative-brand,web-design --apply
   node scripts/supervibe-adapt.mjs --scope deploy --target dokploy --dry-run
   node scripts/supervibe-adapt.mjs --apply
 `.trim();
@@ -164,6 +288,7 @@ function parseArgs(argv) {
     "quiet-identical",
     "no-color",
     "diff-summary",
+    "no-context",
     "refresh-memory-index",
     "no-refresh-memory-index",
     "help",
@@ -187,4 +312,15 @@ function parseArgs(argv) {
     }
   }
   return parsed;
+}
+
+function splitList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean))];
 }

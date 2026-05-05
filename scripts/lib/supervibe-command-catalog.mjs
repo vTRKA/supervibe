@@ -311,8 +311,8 @@ const COMMAND_SHORTCUTS = Object.freeze([
     id: "agent-provisioning",
     intent: "agent_provisioning",
     title: "Provision Supervibe agents and skills into the active host",
-    command: "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs",
-    description: "Dry-run or apply missing agent/skill installation into the selected host adapter and refresh managed instructions.",
+    command: "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents <ids> --skills <ids>",
+    description: "Dry-run or apply missing agent/skill installation through Adapt, using split profiles/add-ons when the user wants agent coverage changes.",
     aliases: [
       "add missing agents",
       "install missing agents",
@@ -336,7 +336,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     ],
     mutationRisk: "unknown",
     directRoute: true,
-    nextAction: "Run the provisioning dry-run first. Apply only after confirming the host, agents, skills, and managed instruction refresh.",
+      nextAction: "Run the Adapt agent-provisioning dry-run first. Apply only after confirming the host, agents, skills, and managed instruction refresh.",
   },
   {
     id: "design-pipeline-synonyms",

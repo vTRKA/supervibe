@@ -306,6 +306,39 @@ test("supervibe-adapt applies only explicitly approved files and updates version
   }
 });
 
+test("supervibe-adapt provisions agents through first-class add-agents mode", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const plan = runAdapt(projectRoot, ["--add-agents", "creative-director", "--no-color"]);
+    assert.match(plan, /SUPERVIBE_ADAPT_AGENT_PROVISIONING_PLAN/);
+    assert.match(plan, /ADD: agent:creative-director/);
+    assert.doesNotMatch(plan, /SUPERVIBE_ADAPT_DRY_RUN/);
+
+    const out = runAdapt(projectRoot, ["--add-agents", "creative-director", "--apply", "--no-color"]);
+    assert.match(out, /SUPERVIBE_ADAPT_AGENT_PROVISIONING_APPLY/);
+    assert.match(out, /APPLIED_FILE: \.codex\/agents\/_design\/creative-director\.md/);
+    assert.equal(existsSync(join(projectRoot, ".codex", "agents", "_design", "creative-director.md")), true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt profile add-ons keep web design separate from desktop and presentation", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--profile", "product-design", "--addons", "creative-brand,web-design", "--no-color"]);
+
+    assert.match(out, /SUPERVIBE_ADAPT_AGENT_PROVISIONING_PLAN/);
+    assert.match(out, /SELECTED_AGENTS: .*creative-director/);
+    assert.match(out, /SELECTED_AGENTS: .*competitive-design-researcher/);
+    assert.doesNotMatch(out, /SELECTED_AGENTS: .*electron-ui-designer/);
+    assert.doesNotMatch(out, /SELECTED_AGENTS: .*mobile-ui-designer/);
+    assert.doesNotMatch(out, /SELECTED_AGENTS: .*presentation-director/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-adapt summary-json changed-only omits identical artifact payload noise", () => {
   const projectRoot = createCodexProject();
   try {

@@ -22,6 +22,7 @@ const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
   /^\.supervibe\/memory\/workflow-receipt-runtime\.key$/i,
   /^\.supervibe\/memory\/workflow-invocation-ledger\.lock$/i,
   /^\.supervibe\/memory\/index\.json$/i,
+  /^\.supervibe\/memory\/(?:.+\/)?state\.json$/i,
   /\.jsonl$/i,
   /\.log$/i,
   /\.lock$/i,
@@ -462,7 +463,7 @@ export function classifyWorkflowReceiptOutputArtifact(path, rootDir = process.cw
     receiptable: !mutable,
     reason: mutable ? "mutable-log-like-output-artifact" : null,
     recommendation: mutable
-      ? "Use a stable per-agent or per-stage output artifact such as .supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json or summary.md."
+      ? "Use a stable per-agent or per-stage output artifact such as .supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json, summary.md, or a timestamped state snapshot under .supervibe/artifacts/_workflow-transactions/."
       : null,
   };
 }

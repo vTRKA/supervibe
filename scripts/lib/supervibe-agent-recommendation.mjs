@@ -19,11 +19,17 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("security-audit", "Explicit add-on for vulnerability review and prioritized remediation."),
   choice("ai-prompting", "Explicit add-on for prompts, agent instructions, intent routing and evals."),
   choice("project-adaptation", "Explicit add-on for adapting project rules and agents when the user requests gap-closing."),
+  choice("creative-brand", "Add brand direction, copy and competitive design research."),
+  choice("web-design", "Add web UI, accessibility and polish specialists without mobile or desktop designers."),
+  choice("prototype", "Add prototype build and polish specialists."),
+  choice("presentation", "Add deck direction and presentation build specialists."),
+  choice("mobile", "Add mobile UI design specialists only when a mobile target is intended."),
+  choice("desktop", "Add Electron/Tauri desktop UI specialists only when a desktop target is intended."),
   choice("github-actions", "Opt-in GitHub Actions CI scaffold. Base scaffold creates no CI workflow."),
   choice("gitlab-ci", "Opt-in GitLab CI scaffold. Base scaffold creates no CI workflow."),
   choice("ci-ready", "Opt-in CI readiness notes without choosing a CI provider."),
   choice("redis", "Explicit add-on for Redis cache or queue architecture."),
-  choice("product-design-extended", "Legacy-compatible add-on for creative direction, copy, accessibility, presentation and target-specific UI designers."),
+  choice("product-design-extended", "Legacy-compatible web product design add-on; target-specific mobile, desktop and presentation designers are separate add-ons."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
 
@@ -55,7 +61,7 @@ const GROUPS = Object.freeze([
   group("cache-redis", "Redis cache and queues", ["redis-architect", "job-scheduler-architect"], ["minimal", "full-stack"], ["redis"]),
   group("search-elasticsearch", "Elasticsearch search", ["elasticsearch-architect"], ["minimal", "full-stack"], ["elasticsearch"]),
   group("graphql-api", "GraphQL API", ["graphql-schema-designer", "api-contract-reviewer"], ["minimal", "full-stack"], ["graphql"]),
-  group("product-design", "Product and design", ["product-manager", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer"], ["product-design", "full-stack"]),
+  group("product-design", "Product and design", ["product-manager", "creative-director", "ux-ui-designer", "copywriter", "prototype-builder", "ui-polish-reviewer"], ["product-design", "full-stack"]),
   group("ops-security", "Operations and security", ["security-auditor", "performance-reviewer", "dependency-reviewer"], ["full-stack"]),
   group("research", "Research-heavy support", ["repo-researcher", "security-researcher", "dependency-reviewer"], ["research-heavy"]),
 ]);
@@ -65,16 +71,19 @@ const ADD_ON_AGENTS = Object.freeze({
   "ai-prompting": ["prompt-ai-engineer"],
   "project-adaptation": ["rules-curator", "memory-curator", "repo-researcher"],
   redis: ["redis-architect", "job-scheduler-architect"],
+  "creative-brand": ["creative-director", "copywriter", "competitive-design-researcher"],
+  "web-design": ["ux-ui-designer", "accessibility-reviewer", "ui-polish-reviewer"],
+  prototype: ["prototype-builder", "ui-polish-reviewer"],
+  presentation: ["presentation-director", "presentation-deck-builder"],
+  mobile: ["mobile-ui-designer"],
+  desktop: ["electron-ui-designer", "tauri-ui-designer"],
   "product-design-extended": [
     "creative-director",
     "copywriter",
     "accessibility-reviewer",
-    "extension-ui-designer",
-    "electron-ui-designer",
-    "tauri-ui-designer",
-    "mobile-ui-designer",
-    "presentation-director",
-    "presentation-deck-builder",
+    "ux-ui-designer",
+    "prototype-builder",
+    "ui-polish-reviewer",
     "competitive-design-researcher",
   ],
   "network-ops": ["network-router-engineer"],
@@ -315,7 +324,10 @@ export function buildGenesisDryRunReport({
   const rulesPlan = resolveGenesisRules({ pluginRoot, fingerprint, stackPack, addOns });
   const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
   const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack, addOns, fingerprint });
-  const optionalAgents = unique(addOnAgents(addOns));
+  const groupSelectedAgents = unique(agentProfile.agentGroups.flatMap((groupEntry) => (
+    groupEntry.agents || []
+  ).filter((agent) => agent.available).map((agent) => agent.id)));
+  const optionalAgents = unique(addOnAgents(addOns)).filter((agent) => !groupSelectedAgents.includes(agent));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
   const supervibeStateArtifacts = [
     { path: ".supervibe/memory/", reason: "Supervibe-owned project state root" },

@@ -89,6 +89,36 @@ test('supervibe-status: reports agent telemetry state', () => {
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');
 });
 
+test('supervibe-status warns when agents are installed but no invocations are logged', () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-zero-invocations-'));
+  try {
+    mkdirSync(join(projectRoot, '.supervibe', 'memory'), { recursive: true });
+    mkdirSync(join(projectRoot, '.codex', 'agents'), { recursive: true });
+    writeFileSync(join(projectRoot, '.codex', 'agents', 'creative-director.md'), [
+      '---',
+      'name: creative-director',
+      '---',
+      '# Creative Director',
+      '',
+    ].join('\n'));
+
+    const out = execFileSync(process.execPath, [STATUS_SCRIPT, '--no-color', '--no-gc-hints'], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_HOST: 'codex',
+        SUPERVIBE_PLUGIN_ROOT: ROOT,
+      },
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    assert.match(out, /Agent telemetry: agents installed, but zero real invocations logged/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test('supervibe-status: reports GC hints', () => {
   const out = runStatus();
   assert.ok(/SUPERVIBE_GC_HINTS/.test(out), 'should mention GC hints');
@@ -163,7 +193,10 @@ test('supervibe-status --genesis-dry-run uses plugin artifacts, not project cwd,
     assert.match(out, /PROFILE: custom-minimal-product-design/);
     assert.match(out, /RECOMMENDED_AGENTS: .*react-implementer/);
     assert.match(out, /RECOMMENDED_AGENTS: .*product-manager/);
-    assert.match(out, /OPTIONAL_AGENTS: .*creative-director/);
+    assert.match(out, /RECOMMENDED_AGENTS: .*creative-director/);
+    assert.match(out, /OPTIONAL_AGENTS: .*competitive-design-researcher/);
+    assert.doesNotMatch(out, /OPTIONAL_AGENTS: .*mobile-ui-designer/);
+    assert.doesNotMatch(out, /OPTIONAL_AGENTS: .*electron-ui-designer/);
     assert.doesNotMatch(out, /RECOMMENDED_AGENTS: none/);
     assert.doesNotMatch(out, /SELECTED_SKILLS: none/);
     assert.doesNotMatch(out, /CREATE: AGENTS\.md - host instruction file/);

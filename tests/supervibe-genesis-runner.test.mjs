@@ -166,6 +166,71 @@ test("supervibe-genesis generate-apps normalizes nested git and generated host f
   }
 });
 
+test("supervibe-genesis generate-apps retries Windows npx spawn failures with shell-safe fallback", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-generate-apps-fallback-"));
+  try {
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--generate-apps",
+    ], projectRoot, {
+      SUPERVIBE_GENESIS_SIMULATE_SCAFFOLDER_EINVAL: "1",
+      SUPERVIBE_GENESIS_FAKE_SHELL_FALLBACK: "1",
+    });
+
+    assert.match(out, /GENERATED_APPS: completed/);
+    assert.match(out, /GENERATE_APPS_FALLBACK: shell-safe EINVAL/);
+    assert.equal(existsSync(join(projectRoot, "frontend", ".git")), false);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(state.generateAppsStep.appGenerated, true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis apply preserves prior generated and verified app state", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-preserve-app-state-"));
+  try {
+    runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--generate-apps",
+      "--verify-apps",
+    ], projectRoot, { SUPERVIBE_GENESIS_FAKE_SCAFFOLDER: "1" });
+
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+    ], projectRoot);
+
+    assert.match(out, /APP_GENERATED: true/);
+    assert.match(out, /APP_VERIFIED: true/);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(state.generateAppsStep.appGenerated, true);
+    assert.equal(state.generateAppsStep.appVerified, true);
+    assert.equal(state.generateAppsStep.statePreservedFromPrevious, true);
+    assert.equal(state.verification.appGenerated, true);
+    assert.equal(state.verification.appVerified, true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-genesis CI add-on creates provider workflow only when requested", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-ci-"));
   try {

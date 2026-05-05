@@ -68,11 +68,15 @@ async function main() {
     options,
     operations: applyResult,
   });
+  const generatedAppsForOutput = applyResult.generatedApps?.status === "not-requested"
+    ? appliedState.state.generateAppsStep
+    : applyResult.generatedApps;
   outputResult({
     mode,
     report,
     statePath: appliedState.path,
     ...applyResult,
+    generatedApps: generatedAppsForOutput,
   }, options);
 }
 
@@ -317,6 +321,7 @@ async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env
       status: result.status === 0 ? "completed" : "failed_recoverable",
       exitCode: result.status,
       error: result.error?.message || null,
+      fallback: result.fallback || null,
       stdoutTail: tailLines(result.stdout || "", 20),
       stderrTail: tailLines(result.stderr || "", 20),
       normalization,
@@ -386,6 +391,27 @@ async function runScaffolderCommand({ targetRoot, entry, spawnPlan, env }) {
     await fakeScaffolderOutput({ targetRoot, entry });
     return { status: 0, stdout: "fake scaffolder completed\n", stderr: "", error: null };
   }
+  const primary = runScaffolderSpawn({ targetRoot, spawnPlan, env });
+  if (!shouldRetryScaffolderWithShell(primary, spawnPlan, env)) return primary;
+
+  const fallback = await runScaffolderShellFallback({ targetRoot, entry, spawnPlan, env, primary });
+  return {
+    ...fallback,
+    fallback: {
+      used: true,
+      strategy: "shell-safe",
+      reason: primary.error?.code || primary.error?.message || "primary spawn failed",
+      executable: spawnPlan.executable,
+    },
+  };
+}
+
+function runScaffolderSpawn({ targetRoot, spawnPlan, env }) {
+  if (env.SUPERVIBE_GENESIS_SIMULATE_SCAFFOLDER_EINVAL === "1") {
+    const error = new Error(`spawnSync ${spawnPlan.executable} EINVAL`);
+    error.code = "EINVAL";
+    return { status: null, stdout: "", stderr: "", error };
+  }
   return spawnSync(spawnPlan.executable, spawnPlan.args, {
     cwd: targetRoot,
     encoding: "utf8",
@@ -393,6 +419,57 @@ async function runScaffolderCommand({ targetRoot, entry, spawnPlan, env }) {
     stdio: ["ignore", "pipe", "pipe"],
     maxBuffer: 1024 * 1024 * 10,
   });
+}
+
+function shouldRetryScaffolderWithShell(result = {}, spawnPlan = {}, env = {}) {
+  if (!result?.error) return false;
+  const code = String(result.error.code || "");
+  const executable = String(spawnPlan.executable || "");
+  const windowsCommand = /\.(cmd|bat)$/i.test(executable) || process.platform === "win32";
+  const simulated = env.SUPERVIBE_GENESIS_SIMULATE_SCAFFOLDER_EINVAL === "1";
+  return (windowsCommand || simulated) && ["EINVAL", "ENOENT"].includes(code);
+}
+
+async function runScaffolderShellFallback({ targetRoot, entry, spawnPlan, env, primary }) {
+  if (env.SUPERVIBE_GENESIS_FAKE_SHELL_FALLBACK === "1") {
+    await fakeScaffolderOutput({ targetRoot, entry });
+    return {
+      status: 0,
+      stdout: "fake scaffolder completed through shell-safe fallback\n",
+      stderr: "",
+      error: null,
+    };
+  }
+  const executable = executableForShellFallback(spawnPlan.executable);
+  const args = shellFallbackArgs(executable, spawnPlan.args || []);
+  const result = spawnSync(executable, args, {
+    cwd: targetRoot,
+    encoding: "utf8",
+    shell: true,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 1024 * 1024 * 10,
+  });
+  if (result.error && primary?.error) {
+    result.stderr = `${result.stderr || ""}\nprimary spawn failed: ${primary.error.message}`.trim();
+  }
+  return result;
+}
+
+function executableForShellFallback(executable = "") {
+  const value = String(executable || "");
+  if (/npx(?:\.cmd)?$/i.test(value)) return "npx";
+  if (/npm(?:\.cmd)?$/i.test(value)) return "npm";
+  if (/composer(?:\.bat)?$/i.test(value)) return "composer";
+  return value;
+}
+
+function shellFallbackArgs(executable = "", args = []) {
+  const normalizedArgs = args.map(String);
+  if (/^npx$/i.test(executable) && !normalizedArgs.includes("--yes") && !normalizedArgs.includes("-y")) {
+    return ["--yes", ...normalizedArgs];
+  }
+  return normalizedArgs;
 }
 
 async function fakeScaffolderOutput({ targetRoot, entry }) {
@@ -473,12 +550,11 @@ function runAppVerificationCommands({ targetRoot, entry }) {
     const cwd = join(targetRoot, commandEntry.cwd || entry.appDir || ".");
     const executable = executableForPlatform(commandEntry.executable || "");
     if (!executable) continue;
-    const result = spawnSync(executable, (commandEntry.args || []).map(String), {
+    const result = runChildCommandWithShellFallback({
       cwd,
-      encoding: "utf8",
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 1024 * 1024 * 10,
+      executable,
+      args: (commandEntry.args || []).map(String),
+      env: process.env,
     });
     results.push({
       command: commandEntry.command,
@@ -488,12 +564,42 @@ function runAppVerificationCommands({ targetRoot, entry }) {
       stdoutTail: tailLines(result.stdout || "", 20),
       stderrTail: tailLines(result.stderr || "", 20),
       error: result.error?.message || null,
+      fallback: result.fallback || null,
     });
     if (result.status !== 0) break;
   }
   return {
     status: results.length > 0 && results.every((item) => item.status === "completed") ? "completed" : "failed_recoverable",
     results,
+  };
+}
+
+function runChildCommandWithShellFallback({ cwd, executable, args = [], env = process.env }) {
+  const primary = spawnSync(executable, args, {
+    cwd,
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 1024 * 1024 * 10,
+  });
+  if (!shouldRetryScaffolderWithShell(primary, { executable }, env)) return primary;
+  const fallbackExecutable = executableForShellFallback(executable);
+  const fallbackArgs = shellFallbackArgs(fallbackExecutable, args);
+  return {
+    ...spawnSync(fallbackExecutable, fallbackArgs, {
+      cwd,
+      encoding: "utf8",
+      shell: true,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 10,
+    }),
+    fallback: {
+      used: true,
+      strategy: "shell-safe",
+      reason: primary.error?.code || primary.error?.message || "primary spawn failed",
+      executable,
+    },
   };
 }
 
@@ -543,7 +649,11 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   await mkdir(stateDir, { recursive: true });
   const previous = existsSync(statePath) ? safeJson(await readFile(statePath, "utf8")) : null;
   const now = new Date().toISOString();
-  const generateAppsState = operations?.generatedApps || report.generateAppsStep;
+  const generateAppsState = mergeGenerateAppsState({
+    previous,
+    reportGenerateAppsStep: report.generateAppsStep,
+    operationGenerateAppsStep: operations?.generatedApps || null,
+  });
   const appGenerated = generateAppsState?.appGenerated === true || generateAppsState?.status === "completed";
   const appVerified = generateAppsState?.appVerified === true;
   const history = [
@@ -594,6 +704,39 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   return { path: toRel(targetRoot, statePath), state };
 }
 
+function mergeGenerateAppsState({
+  previous = null,
+  reportGenerateAppsStep = null,
+  operationGenerateAppsStep = null,
+} = {}) {
+  if (operationGenerateAppsStep && operationGenerateAppsStep.status !== "not-requested") {
+    return {
+      ...(reportGenerateAppsStep || {}),
+      ...operationGenerateAppsStep,
+      statePreservedFromPrevious: false,
+    };
+  }
+
+  const previousStep = previous?.generateAppsStep || null;
+  const previousVerification = previous?.verification || {};
+  const previousAppGenerated = previousVerification.appGenerated === true
+    || previousStep?.appGenerated === true
+    || previousStep?.status === "completed";
+  const previousAppVerified = previousVerification.appVerified === true
+    || previousStep?.appVerified === true;
+  if (!previousAppGenerated && !previousAppVerified) return reportGenerateAppsStep;
+
+  return {
+    ...(reportGenerateAppsStep || {}),
+    ...(previousStep || {}),
+    status: previousStep?.status || (previousAppGenerated ? "completed" : reportGenerateAppsStep?.status || "not-run"),
+    appGenerated: previousAppGenerated,
+    appVerified: previousAppVerified,
+    statePreservedFromPrevious: true,
+    preservationNote: "Existing generated-app lifecycle state was preserved because this Genesis run did not execute --generate-apps.",
+  };
+}
+
 function outputResult(result, options) {
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
@@ -622,6 +765,9 @@ function outputResult(result, options) {
   for (const entry of result.skipped.slice(0, 20)) lines.push(`SKIPPED_PATH: ${entry}`);
   for (const entry of result.missing) lines.push(`MISSING_PATH: ${entry}`);
   for (const appResult of result.generatedApps?.results || []) {
+    if (appResult.fallback?.used) {
+      lines.push(`GENERATE_APPS_FALLBACK: ${appResult.fallback.strategy} ${appResult.fallback.reason}`);
+    }
     for (const action of appResult.normalization?.actions || []) {
       lines.push(`GENERATED_APP_NORMALIZED: ${action.action} ${action.path}${action.archivePath ? ` -> ${action.archivePath}` : ""}`);
     }

@@ -9,7 +9,7 @@ import { getBrokenLanguages } from './lib/grammar-loader.mjs';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
+import { detectFrameworkDevServers, listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
 import { getRegistry as getMcpRegistry } from './lib/mcp-registry.mjs';
 import { defaultWorkItemDaemonPath, formatWorkItemWatchStatus, readWorkItemDaemonState } from './lib/supervibe-work-item-daemon.mjs';
 import { defaultDelegatedInboxPath, formatDelegatedInbox, readDelegatedInbox } from './lib/supervibe-work-item-message-delegation.mjs';
@@ -543,8 +543,17 @@ async function main() {
 
   // Preview servers
   const previews = await listPreviewServers();
+  const detectedDevServers = (await detectFrameworkDevServers({ rootDir: PROJECT_ROOT }))
+    .filter((server) => !previews.some((preview) => Number(preview.port) === Number(server.port)));
+  const visibleServers = [...previews, ...detectedDevServers];
+  previews.push(...detectedDevServers.map((server) => ({
+    ...server,
+    pid: "unmanaged",
+    startedAt: new Date().toISOString(),
+    label: `${server.label} (detected framework dev server; unmanaged)`,
+  })));
   console.log();
-  if (previews.length === 0) {
+  if (visibleServers.length === 0) {
     console.log(color('○ Preview servers: none running', 'dim'));
   } else {
     console.log(color(`✓ Preview servers: ${previews.length} running`, 'green'));
@@ -596,10 +605,13 @@ async function main() {
   const { detectUnderperformers } = await import('./lib/underperformer-detector.mjs');
   const { listKnownAgentIds } = await import('./lib/agent-id-registry.mjs');
   const allInv = await readInvocations({ limit: 10000 });
-  if (allInv.length < 10) {
+  const knownAgentIds = await listKnownAgentIds({ rootDir: PROJECT_ROOT });
+  if (allInv.length === 0 && knownAgentIds.size > 0) {
+    console.log(color(`Agent telemetry: agents installed, but zero real invocations logged`, 'yellow'));
+    console.log(color(`  Log real runs with node scripts/agent-invocation.mjs log --agent <agent-id> --host <host> --host-invocation-id <runtime-id> --task <summary> --confidence <0-10>`, 'dim'));
+  } else if (allInv.length < 10) {
     console.log(color(`○ Agent telemetry: ${allInv.length} invocations logged (need ≥10 for analysis)`, 'dim'));
   } else {
-    const knownAgentIds = await listKnownAgentIds({ rootDir: PROJECT_ROOT });
     const flagged = detectUnderperformers(allInv, { knownAgentIds });
     if (flagged.length === 0) {
       console.log(color(`✓ Agent telemetry: ${allInv.length} invocations, no underperformers`, 'green'));

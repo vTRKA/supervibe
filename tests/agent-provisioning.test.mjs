@@ -91,11 +91,11 @@ test("agent provisioning command is discoverable from natural language", () => {
     });
 
     assert.equal(match.id, "agent-provisioning", phrase);
-    assert.equal(match.command, "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs", phrase);
+    assert.equal(match.command, "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents <ids> --skills <ids>", phrase);
     assert.equal(match.doNotSearchProject, true, phrase);
 
     const route = routeTriggerRequest(phrase);
-    assert.equal(route.command, "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs", phrase);
+    assert.equal(route.command, "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents <ids> --skills <ids>", phrase);
     assert.ok(route.requiredSafety.includes("dry-run-before-host-file-write"), phrase);
   }
 });

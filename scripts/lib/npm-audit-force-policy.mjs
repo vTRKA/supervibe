@@ -58,6 +58,39 @@ export function analyzeNpmAuditForcePlan({
   };
 }
 
+export function analyzeNpmAuditForceLockfilePlan({
+  beforeLock = {},
+  afterLock = {},
+  latestVersions = {},
+  frameworkPackages = DEFAULT_FRAMEWORK_PACKAGES,
+} = {}) {
+  const frameworkSet = frameworkPackages instanceof Set ? frameworkPackages : new Set(frameworkPackages || []);
+  const packageNames = new Set([
+    ...Object.keys(lockfilePackageVersions(beforeLock)),
+    ...Object.keys(lockfilePackageVersions(afterLock)),
+  ].filter((name) => frameworkSet.has(name)));
+  const packageResults = [...packageNames].sort().map((packageName) => {
+    const beforeVersions = lockfilePackageVersions(beforeLock);
+    const afterVersions = lockfilePackageVersions(afterLock);
+    return analyzeNpmAuditForcePlan({
+      packageName,
+      currentVersion: beforeVersions[packageName] || "",
+      proposedVersion: afterVersions[packageName] || "",
+      latestVersion: latestVersions[packageName] || beforeVersions[packageName] || "",
+      frameworkPackages,
+    });
+  });
+  const blocked = packageResults.filter((entry) => entry.status === "blocked_downgrade");
+  return {
+    status: blocked.length > 0 ? "blocked_downgrade" : "allowed_with_review",
+    packageResults,
+    blocked,
+    reason: blocked.length > 0
+      ? "npm audit fix --force changed one or more framework packages to an older major/minor line."
+      : "No framework major/minor downgrade was detected in the lockfile diff; still require normal dependency review and tests.",
+  };
+}
+
 export function formatNpmAuditForcePolicy(result = {}) {
   return [
     "SUPERVIBE_NPM_AUDIT_FORCE_POLICY",
@@ -69,6 +102,19 @@ export function formatNpmAuditForcePolicy(result = {}) {
     `REASON: ${result.reason || "not evaluated"}`,
     `SAFE_OPTIONS: ${(result.safeOptions || []).join(" | ") || "none"}`,
   ].join("\n");
+}
+
+export function formatNpmAuditForceLockfilePolicy(result = {}) {
+  const lines = [
+    "SUPERVIBE_NPM_AUDIT_FORCE_LOCKFILE_POLICY",
+    `STATUS: ${result.status || "unknown"}`,
+    `BLOCKED: ${(result.blocked || []).length}`,
+    `REASON: ${result.reason || "not evaluated"}`,
+  ];
+  for (const entry of result.packageResults || []) {
+    lines.push(`PACKAGE_RESULT: ${entry.packageName} ${entry.status} ${entry.currentVersion || "unknown"} -> ${entry.proposedVersion || "unknown"} latest=${entry.latestVersion || "unknown"}`);
+  }
+  return lines.join("\n");
 }
 
 function parseSemver(value) {
@@ -84,4 +130,20 @@ function parseSemver(value) {
 function normalizeVersion(value) {
   const parsed = parseSemver(value);
   return parsed ? `${parsed.major}.${parsed.minor}.${parsed.patch}` : String(value || "");
+}
+
+function lockfilePackageVersions(lock = {}) {
+  const out = {};
+  const packages = lock?.packages || {};
+  for (const [path, value] of Object.entries(packages)) {
+    if (!path.startsWith("node_modules/") || !value?.version) continue;
+    const name = path.slice("node_modules/".length);
+    if (!name || name.includes("node_modules/")) continue;
+    out[name] = value.version;
+  }
+  const deps = lock?.dependencies || {};
+  for (const [name, value] of Object.entries(deps)) {
+    if (value?.version && !out[name]) out[name] = value.version;
+  }
+  return out;
 }

@@ -62,10 +62,13 @@ test("workflow receipt runtime accepts command receipts for brainstorm outputs",
 
 test("workflow receipt output classifier blocks mutable log-like artifacts", () => {
   const blocked = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/agent-invocations.jsonl");
+  const mutableState = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/genesis/state.json");
   const stable = classifyWorkflowReceiptOutputArtifact(".supervibe/artifacts/_agent-outputs/run-1/agent-output.json");
 
   assert.equal(blocked.receiptable, false);
   assert.equal(blocked.reason, "mutable-log-like-output-artifact");
+  assert.equal(mutableState.receiptable, false);
+  assert.match(mutableState.recommendation, /state snapshot/);
   assert.match(blocked.recommendation, /stable per-agent/i);
   assert.equal(stable.receiptable, true);
 });

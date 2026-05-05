@@ -3,8 +3,8 @@
 // supervibe sessions and the status command can see/manage each other's servers.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { createServer } from 'node:net';
+import { existsSync, readFileSync } from 'node:fs';
+import { createConnection, createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 
 const PROJECT_ROOT = process.cwd();
@@ -17,6 +17,7 @@ export function REGISTRY_PATH_FOR_TEST(path) {
 
 const PORT_PREFERRED_START = 3047;
 const PORT_PREFERRED_END = 3099;
+const FRAMEWORK_DEV_PORTS = Object.freeze([3000, 3001, 3002, 4173, 4321, 5173, 5174, 8080]);
 
 /**
  * Find a free port. Try preferred range first (3047-3099),
@@ -100,6 +101,31 @@ export async function listServers() {
   return alive;
 }
 
+export async function detectFrameworkDevServers({
+  rootDir = PROJECT_ROOT,
+  candidatePorts = FRAMEWORK_DEV_PORTS,
+  connectTimeoutMs = 75,
+} = {}) {
+  const label = detectFrameworkDevLabel(rootDir);
+  const detected = [];
+  for (const port of candidatePorts.map(Number).filter(Boolean)) {
+    if (!await isPortAcceptingConnections(port, connectTimeoutMs)) continue;
+    detected.push({
+      kind: 'framework-dev',
+      managed: false,
+      port,
+      pid: null,
+      root: rootDir,
+      label,
+      watching: [],
+      mode: 'detected-framework-dev',
+      logs: null,
+      startedAt: null,
+    });
+  }
+  return detected;
+}
+
 /** Send SIGTERM to the server with the given port. */
 export async function killServer(port) {
   const entries = await readRegistry();
@@ -126,4 +152,42 @@ export async function killAllServers() {
     results.push(await killServer(e.port));
   }
   return results;
+}
+
+function isPortAcceptingConnections(port, timeoutMs = 75) {
+  return new Promise(resolve => {
+    const socket = createConnection({ host: '127.0.0.1', port });
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+    socket.once('timeout', () => finish(false));
+  });
+}
+
+function detectFrameworkDevLabel(rootDir) {
+  const manifests = [
+    join(rootDir, 'package.json'),
+    join(rootDir, 'frontend', 'package.json'),
+    join(rootDir, 'apps', 'web', 'package.json'),
+  ];
+  for (const manifest of manifests) {
+    if (!existsSync(manifest)) continue;
+    try {
+      const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
+      const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+      if (deps.next) return 'Next.js dev server';
+      if (deps.vite || deps['@vitejs/plugin-react']) return 'Vite dev server';
+      if (deps.astro) return 'Astro dev server';
+      if (deps.nuxt) return 'Nuxt dev server';
+      if (deps.react || deps['react-dom']) return 'React dev server';
+    } catch {}
+  }
+  return 'framework dev server';
 }

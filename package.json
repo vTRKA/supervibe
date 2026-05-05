@@ -76,6 +76,7 @@
     "supervibe:knowledge-graph": "node scripts/search-memory.mjs --query \"feedback websocket\" --graph --include-history",
     "supervibe:performance-slo": "node scripts/supervibe-status.mjs --performance-slo",
     "supervibe:runtime-doctor": "node scripts/supervibe-runtime-doctor.mjs --dry-run",
+    "supervibe:npm-audit-force-policy": "node scripts/npm-audit-force-policy.mjs",
     "supervibe:context-mcp": "node scripts/supervibe-context-mcp.mjs --self-test",
     "supervibe:workspace-isolation": "node scripts/supervibe-status.mjs --workspace-isolation",
     "supervibe:feedback-learning": "node scripts/regression-suite.mjs --feedback-learning-smoke",
