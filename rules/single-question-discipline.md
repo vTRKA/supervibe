@@ -10,8 +10,8 @@ applies-to:
   - agents/_ops/**
   - agents/stacks/**
 severity: high
-version: 1.0
-last-verified: 2026-04-28
+version: 1.1
+last-verified: 2026-05-06
 mandatory: true
 related-rules:
   - confidence-discipline
@@ -22,6 +22,8 @@ related-rules:
 Any agent, command, or skill that engages the user in clarification, requirements gathering, design dialogue, or branching decisions MUST present **one question at a time**, formatted as markdown with a `Step N/M:` (or `Step N/M:`) progress indicator. `M` is adaptive: compute it from current triage, required gates, saved workflow state, and user-requested skips/delegations. Do not hard-code a fixed total such as 8 unless the current triage proves exactly eight user-visible questions are required. Choices must be a list. The agent must wait for an explicit user reply before asking the next question.
 
 Questions must be easy to answer. Prefer 2-4 choices for ordinary clarifications; delivery gates use the standard 5-action menu. Put the recommended/default choice first and include a one-line tradeoff for each option. If the user can answer freely, say that explicitly after the choices. Avoid mixing configuration, strategy, and approval in one question.
+
+Visible questions and option lists must be authored by the active agent from current context. Static questionnaire rows, seed catalogs, fallback scratch questions, and generated defaults are reference material only. If the runtime only has fallback material, show the specialist/agent dispatch gate instead of rendering the fallback as a user-facing question.
 
 A `Step N/M:` line without explicit choices is not a valid question. Do not ask bare binary prompts such as `Step 3/6: main screen or shell?`; render the choices as bullets with the recommended one first, include what each choice unlocks, and include the stop option.
 
@@ -77,6 +79,7 @@ The agent's `## Anti-patterns` section MUST list:
 - `bare-step-question` - showing a `Step N/M:` prompt without bullet choices and tradeoffs.
 - `too-many-options` — presenting a menu so large the user must design the system themselves; split into follow-up questions.
 - `hidden-default` — asking a question without naming the recommended/default path.
+- `visible-fallback-question` — rendering fallback seeds, static questionnaire rows, or catalog choices as if they were agent-authored.
 
 ## When NOT to apply
 - Pure-output agents that don't ask the user anything (e.g., `code-reviewer` produces a verdict and exits — no questions).

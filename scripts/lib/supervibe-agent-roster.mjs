@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { getHostAdapterMatrix } from "./supervibe-host-adapters.mjs";
@@ -104,16 +104,6 @@ export function formatAgentRosterMarkdown(roster = { agents: [], count: 0, categ
   }
 
   return `${lines.join("\n").trim()}\n`;
-}
-
-export async function writeAgentRosterMarkdown({
-  rootDir = process.cwd(),
-  outPath = join(rootDir, "docs", "agent-roster.md"),
-} = {}) {
-  const roster = await loadAgentRoster({ rootDir });
-  const markdown = formatAgentRosterMarkdown(roster);
-  await writeFile(outPath, markdown, "utf8");
-  return { outPath, roster, markdown };
 }
 
 async function* walk(dirPath) {

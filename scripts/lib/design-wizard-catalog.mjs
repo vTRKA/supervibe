@@ -948,6 +948,7 @@ export function resolveDesignViewportPolicy({ target = "web", currentWindow = nu
 }
 
 export function formatDesignWizardQuestion(question = {}, options = {}) {
+  assertRenderableDesignWizardQuestion(question);
   const safeQuestion = sanitizeQuestionMarkdownCopy(question);
   if (options.protocol === true || options.mode === "protocol") {
     return formatDesignWizardProtocolQuestion(safeQuestion);
@@ -956,6 +957,7 @@ export function formatDesignWizardQuestion(question = {}, options = {}) {
 }
 
 export function formatDesignWizardProtocolQuestion(question = {}) {
+  assertRenderableDesignWizardQuestion(question);
   const locale = normalizeLocale(question.locale || detectDesignLocale(`${question.prompt || ""} ${question.why || ""}`));
   const labels = WIZARD_LABELS[locale];
   const lines = [
@@ -976,6 +978,20 @@ export function formatDesignWizardProtocolQuestion(question = {}) {
   }
   lines.push(`${labels.stop}: ${question.stopCondition || (locale === "ru" ? "Остановиться: сохранить состояние и не продолжать скрыто." : "Stop here - save state and make no hidden progress.")}`);
   return lines.join("\n");
+}
+
+function assertRenderableDesignWizardQuestion(question = {}) {
+  if (!isFallbackScratchDesignWizardQuestion(question)) return;
+  const owner = question.ownerAgent || question.specialist || "owner specialist";
+  const axis = question.axis || question.id || "unknown-axis";
+  throw new Error(`fallback-scratch-question cannot be rendered as a visible design wizard question; dispatch ${owner} for a trusted real-specialist-proposal before showing ${axis}`);
+}
+
+function isFallbackScratchDesignWizardQuestion(question = {}) {
+  return question.source === "fallback-scratch-question"
+    || question.proposalSource === SPECIALIST_QUESTION_SOURCES.FALLBACK_SEED
+    || question.visibleOnlyWhenTrusted === true
+    || question.trustedSpecialistProposal === false;
 }
 
 function formatDesignWizardConversationalQuestion(question = {}, options = {}) {

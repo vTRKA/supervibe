@@ -259,9 +259,15 @@ function validateDesignWizardRuntimeCopy(issues) {
   if (/Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/i.test(rendered)) {
     issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "catalog-visual-direction-runtime-copy", "agent-chat creative-direction question must not render the base catalog option list"));
   }
-  const userFacingMarkdown = [creative, visualDirection, density].filter(Boolean).map((question) => formatDesignWizardQuestion(question)).join("\n");
-  if (/Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)|\bStep\s+\d+\/\d+:|Шаг\s+\d+\/\d+:|Зачем:|Что изменится:|Если пропустить:/i.test(userFacingMarkdown)) {
-    issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "protocol-design-question-copy", "user-facing design questions must hide protocol scaffolding behind planner state instead of rendering it inline"));
+  for (const question of [creative, visualDirection, density].filter(Boolean)) {
+    try {
+      formatDesignWizardQuestion(question);
+      issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "fallback-design-question-renderable", `${question.axis || "design"} scratch question rendered as user-facing copy without trusted agent provenance`));
+    } catch (error) {
+      if (!/fallback-scratch-question cannot be rendered/.test(String(error?.message || ""))) {
+        issues.push(issue("scripts/lib/design-wizard-catalog.mjs", "unexpected-design-question-renderer-error", `${question.axis || "design"} renderer failed with an unexpected error: ${error.message}`));
+      }
+    }
   }
 }
 
@@ -514,13 +520,24 @@ function validateRuntimeDesignRunQuestions({
     if (!question.ownerAgent || !Array.isArray(question.evidence) || question.evidence.length < 2 || !question.artifactImpact || !question.whyNow) {
       issues.push(issue(normalizePath(configPath), "weak-runtime-question-provenance", `${label} missing ownerAgent, evidence, artifactImpact, or whyNow`));
     }
-    if (question.source === "real-specialist-proposal" || question.trustedSpecialistProposal === true) {
+    if (question.source === "real-specialist-proposal" && question.trustedSpecialistProposal === true) {
       issues.push(...validateSpecialistQuestionContract(question, {
         file: normalizePath(configPath),
         requireRealSpecialistProposal: true,
       }));
       continue;
     }
+    if (question.source === "real-specialist-proposal" || question.trustedSpecialistProposal === true) {
+      issues.push(...validateSpecialistQuestionContract(question, {
+        file: normalizePath(configPath),
+        requireRealSpecialistProposal: true,
+      }));
+    }
+    issues.push(issue(
+      normalizePath(configPath),
+      "untrusted-runtime-question-queue",
+      `${label} is ${question.source || question.proposalSource || "unknown"}; persisted runtime questionQueue entries must be trusted real-specialist-proposal output, and scratch fallback belongs only in the specialist proposal dispatch gate`,
+    ));
     if (question.source !== "fallback-scratch-question") {
       issues.push(issue(normalizePath(configPath), "ambiguous-runtime-question-source", `${label} must use real-specialist-proposal or explicit fallback-scratch-question source`));
     }

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.92] - 2026-05-06
+
+### Changed
+
+- Hardened design wizard rendering so fallback scratch questions cannot be
+  shown as visible wizard questions without trusted real-specialist proposal
+  provenance.
+- Reclassified questionnaire YAML usage as internal evidence only for
+  brainstorming, requirements intake, stack discovery, and single-question
+  discipline.
+
+### Removed
+
+- Removed the unused agent-roster documentation CLI wrapper and the now-unused
+  roster markdown writer export.
+
+### Fixed
+
+- Added regression coverage that every top-level `scripts/*.mjs` entrypoint is
+  referenced by package scripts, hooks, docs, tests, or commands.
+
 ## [2.0.91] - 2026-05-06
 
 ### Changed

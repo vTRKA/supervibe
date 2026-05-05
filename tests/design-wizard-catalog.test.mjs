@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DESIGN_STYLEBOARD_REQUIRED_AXES,
   DESIGN_WIZARD_AXES,
+  bindDesignWizardQuestionProposals,
   buildDesignReviewCheckPlan,
   buildDesignWizardState,
   evaluateDesignStyleboardReadiness,
@@ -15,6 +16,55 @@ import {
   resolveDesignViewportPolicy,
   transitionDesignWizardState,
 } from "../scripts/lib/design-wizard-catalog.mjs";
+import {
+  buildSpecialistQuestionProposal,
+  SPECIALIST_QUESTION_SOURCES,
+} from "../scripts/lib/specialist-question-contract.mjs";
+
+function trustedQuestionForAxis(state, axis) {
+  const scratch = state.questionQueue.find((question) => question.axis === axis);
+  assert.ok(scratch, `${axis} scratch question should exist`);
+  const proposal = buildSpecialistQuestionProposal({
+    proposalId: `${scratch.stage}:${scratch.ownerAgent}:${scratch.axis}:trusted-test`,
+    axis: scratch.axis,
+    stage: scratch.stage,
+    specialist: scratch.specialist,
+    ownerAgent: scratch.ownerAgent,
+    question: scratch.prompt,
+    why: scratch.why || "The answer changes the next design artifact.",
+    whyNow: scratch.whyNow || "The owner specialist must resolve this before visible user dialogue.",
+    choices: scratch.choices.map((choice) => ({
+      id: choice.id,
+      label: choice.label,
+      tradeoff: choice.tradeoff || "Tradeoff recorded by the owner specialist.",
+      unlocks: choice.unlocks?.length ? choice.unlocks : scratch.blocks,
+      risk: choice.risk || "Risk reviewed by the owner specialist.",
+      evidence: choice.evidence?.length ? choice.evidence : scratch.evidence,
+      artifactImpact: choice.artifactImpact || scratch.artifactImpact,
+      recommended: choice.recommended === true,
+    })),
+    blocks: scratch.blocks,
+    artifactImpact: scratch.artifactImpact,
+    skipDefault: "Stop and ask the owner specialist for another proposal if the user skips.",
+    canAnswerFromEvidence: false,
+    evidence: scratch.evidence?.length >= 2 ? scratch.evidence : ["current design brief", "trusted specialist receipt"],
+    currentContext: `${scratch.axis} ${scratch.stage} ${scratch.ownerAgent}`,
+    proposalSource: SPECIALIST_QUESTION_SOURCES.REAL_SPECIALIST_PROPOSAL,
+    producer: {
+      type: "agent",
+      id: scratch.ownerAgent,
+      stageId: scratch.stage,
+      receiptTrusted: true,
+      receiptPresent: true,
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId: `${scratch.ownerAgent}-${scratch.axis}-test`,
+      },
+    },
+  });
+  const bound = bindDesignWizardQuestionProposals(state, [proposal]);
+  return bound.questionQueue.find((question) => question.axis === axis);
+}
 
 test("design wizard parses brief coverage and keeps missing axes in the queue", () => {
   const parsed = parseDesignBriefPreferences("Use graphite cyan, compact density, Radix, subtle motion, and 1440x900.");
@@ -225,6 +275,23 @@ test("wizard renderer escapes untrusted markdown markers in visible copy", () =>
   assert.equal((markdown.match(/\*\*/g) || []).length % 2, 0);
 });
 
+test("wizard renderer refuses fallback scratch questions as visible copy", () => {
+  const state = buildDesignWizardState({
+    brief: "Agent chat workspace with approvals and trace panels.",
+    target: "tauri",
+    mode: "full-prototype-pipeline",
+  });
+
+  assert.throws(
+    () => formatDesignWizardQuestion(state.questionQueue[0]),
+    /fallback-scratch-question cannot be rendered/,
+  );
+  assert.throws(
+    () => formatDesignWizardProtocolQuestion(state.questionQueue[0]),
+    /fallback-scratch-question cannot be rendered/,
+  );
+});
+
 test("wizard renders context-specific choice labels instead of reusable templates", () => {
   const state = buildDesignWizardState({
     brief: "Новая дизайн система для десктопного приложения под агентскую систему чатов. Нужен креативный UI, не generic SaaS admin, graphite cyan, code-first typography, subtle motion.",
@@ -258,7 +325,7 @@ test("wizard renders context-specific choice labels instead of reusable template
     ],
   );
 
-  const markdown = `${formatDesignWizardQuestion(creative)}\n${formatDesignWizardQuestion(density)}`;
+  const markdown = `${formatDesignWizardQuestion(trustedQuestionForAxis(state, "creative_alternatives"))}\n${formatDesignWizardQuestion(trustedQuestionForAxis(state, "information_density"))}`;
   assert.doesNotMatch(markdown, /- 3 разных направления(?:\s|\()/);
   assert.doesNotMatch(markdown, /- Balanced(?:\s|\()/);
   assert.match(markdown, /Креативный директор:/);
@@ -349,7 +416,7 @@ test("creative direction options are specialist-specific instead of the catalog 
   });
   const ruVisual = ruState.questionQueue.find((entry) => entry.axis === "visual_direction_tone");
   assert.ok(ruVisual);
-  const ruMarkdown = formatDesignWizardQuestion(ruVisual);
+  const ruMarkdown = formatDesignWizardQuestion(trustedQuestionForAxis(ruState, "visual_direction_tone"));
   assert.doesNotMatch(ruMarkdown, /Operational clarity|Technical command center|Premium editorial|Warm product utility|Bold launch energy/);
   assert.match(ruMarkdown, /Командный центр с первым слоем trace|Операционный cockpit с закрепленным evidence/);
   assert.ok(ruVisual.choices.every((choiceItem) => /[А-Яа-яЁё]/u.test(choiceItem.label)));
@@ -372,7 +439,7 @@ test("wizard contextualizes palette and typography choices for runtime copy", ()
   assert.match(palette.choices[0].label, /technical signal|daily work|control-room|operational emphasis/i);
   assert.match(typography.choices[0].label, /agent traces|calm shell|trustful reading|product precision/i);
 
-  const markdown = `${formatDesignWizardQuestion(palette)}\n${formatDesignWizardQuestion(typography)}`;
+  const markdown = `${formatDesignWizardQuestion(trustedQuestionForAxis(state, "palette_mood"))}\n${formatDesignWizardQuestion(trustedQuestionForAxis(state, "typography_personality"))}`;
   assert.doesNotMatch(markdown, /Graphite \+ cyan \(recommended\)|System native \(recommended\)/);
   assert.match(markdown, /starting hypothesis/);
   assert.doesNotMatch(markdown, /This is the current .*profile risk/);
@@ -471,7 +538,7 @@ test("wizard answers update state and formatted questions include decision conte
   assert.equal(updated.runtimeStatus.progress, `1/${DESIGN_WIZARD_AXES.length}`);
   assert.ok(updated.resumeToken);
 
-  const markdown = formatDesignWizardProtocolQuestion(state.questionQueue.find((question) => question.axis === "visual_direction_tone"));
+  const markdown = formatDesignWizardProtocolQuestion(trustedQuestionForAxis(state, "visual_direction_tone"));
   assert.match(markdown, /Why:/);
   assert.match(markdown, /Decision unlocked:/);
   assert.match(markdown, /Free-form answer:/);
@@ -507,7 +574,7 @@ test("wizard localizes Russian questions and adds anti-generic creative gates", 
   assert.ok(state.questionQueue.some((question) => question.axis === "creative_alternatives"));
   assert.ok(state.questionQueue.some((question) => question.axis === "anti_generic_guardrail"));
 
-  const markdown = formatDesignWizardQuestion(state.questionQueue[0]);
+  const markdown = formatDesignWizardQuestion(trustedQuestionForAxis(state, state.questionQueue[0].axis));
   assert.doesNotMatch(markdown, /Шаг 1\/|Зачем:|Что изменится:|Если пропустить:/);
   assert.doesNotMatch(markdown, /Why:|Decision unlocked:|If skipped:|Free-form answer:|Stop condition:|\(recommended\)/);
   assert.match(markdown, /Креативный директор:|UX\/UI дизайнер:|Оркестратор:/);

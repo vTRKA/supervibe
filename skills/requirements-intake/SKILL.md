@@ -18,8 +18,8 @@ prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06T00:00:00.000Z
 ---
 
 # Requirements Intake
@@ -35,7 +35,7 @@ Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 1. Read project state (Glob package.json/composer.json/Cargo.toml — detect stack)
 2. Read the active host instruction file for project conventions
 3. Read `MEMORY.md` for prior preferences/feedback
-4. Identify which `questionnaires/*.yaml` apply to detected stack
+4. Identify which `questionnaires/*.yaml` apply to detected stack as internal evidence; do not surface their raw prompts or option lists.
 5. Read `docs/references/scope-safety-standard.md` and apply the Scope Safety Gate before any route decision
 
 ## Decision tree (output: which skill to invoke next)
@@ -61,7 +61,7 @@ Complexity signals:
 
 1. **Stack discovery** (Step 0)
 2. **Initial scope reading** — what is the user actually asking?
-3. **Load questionnaires** — pull questions matching detected stack and request type
+3. **Consult questionnaire references** — use matching `questionnaires/*.yaml` only to identify missing evidence, then compose one contextual question owned by the active agent.
 4. **Scope Safety Gate** - separate requested/core scope from optional extras; classify additions as include/defer/reject/spike and explain harmful additions before they enter the backlog.
 5. **Ask one question at a time** — multiple-choice when possible
 6. **Build requirements-spec** with: objective, scope (in/out), Scope Safety Gate, acceptance criteria, edge cases, stakeholders, complexity score
@@ -88,7 +88,7 @@ Returns:
 - DO NOT: invent acceptance criteria the user didn't agree to
 - DO NOT: route to executing-plans without verifying triviality (re-read change scope)
 - DO NOT: silently accept optional features, protocol parity, or polish work without outcome evidence and a tradeoff
-- ALWAYS: stack-aware (load relevant questionnaires)
+- ALWAYS: stack-aware (consult relevant questionnaire references without exposing raw rows)
 - ALWAYS: gate ≥9 before handoff
 - ALWAYS: explain when "not adding this now" protects the user's project
 
@@ -105,7 +105,7 @@ Returns:
 - `supervibe:brainstorming` — invoked when complexity ≥7
 - `supervibe:writing-plans` — invoked when complexity 3-6
 - `supervibe:executing-plans` — invoked when complexity ≤2
-- `questionnaires/` (Phase 5) — source of stack-aware questions
+- `questionnaires/` (Phase 5) — internal reference for stack-aware evidence gaps; not a user-facing question source
 
 ## User persona elicitation (required)
 

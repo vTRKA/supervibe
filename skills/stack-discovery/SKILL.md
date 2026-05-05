@@ -15,8 +15,8 @@ prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06T00:00:00.000Z
 ---
 
 # Stack Discovery
@@ -115,4 +115,4 @@ Returns YAML stack-fingerprint with all fields populated, confidence ≥9.
 
 - `supervibe:genesis` — primary consumer
 - `supervibe:requirements-intake` — alternative consumer
-- `questionnaires/01-stack-foundation.yaml` — question source
+- `questionnaires/01-stack-foundation.yaml` — internal stack evidence reference; never expose raw rows as visible questions

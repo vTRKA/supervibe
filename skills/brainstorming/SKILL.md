@@ -19,8 +19,8 @@ prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.1
-last-verified: 2026-05-02T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-06T00:00:00.000Z
 ---
 
 # Brainstorming
@@ -75,7 +75,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 1. **Context scan** (Step 0)
 2. **Scope check** — multi-subsystem? Decompose first.
 3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases. State why the question matters, what decision it unlocks, and what assumption you will use if the user skips it.
-4. **Stack-aware question loading** — if `questionnaires/*.yaml` matches detected stack, pull relevant questions.
+4. **Stack-aware evidence loading** — if `questionnaires/*.yaml` matches detected stack, treat it as internal reference only; synthesize one contextual agent-owned question from current project evidence instead of showing raw questionnaire rows or option lists.
 5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
 6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
@@ -129,6 +129,7 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: offer direct implementation after brainstorm unless the user explicitly cancels planning
 - DO NOT: finish without `NEXT_STEP_HANDOFF`
 - DO NOT: ask multi-part questions (one at a time)
+- DO NOT: surface raw `questionnaires/*.yaml` prompts, fallback seeds, or catalog option lists as visible questions; the active agent must compose the question from current context.
 - DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
 - DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension
 - DO NOT: add broad optional functionality just because it is related, modern, or possible
