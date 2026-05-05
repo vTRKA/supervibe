@@ -10,6 +10,8 @@ import {
   buildGenesisDryRunReport,
   formatGenesisDryRunReport,
 } from "./lib/supervibe-agent-recommendation.mjs";
+import { collectDependencyHealth, hasDependencyManifests } from "./lib/dependency-health.mjs";
+import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs";
 import { writeContextMigrationPlan } from "./lib/supervibe-context-migrator.mjs";
 import { resolveSupervibePluginRoot } from "./lib/supervibe-plugin-root.mjs";
 
@@ -34,6 +36,11 @@ async function main() {
   const pluginRoot = resolve(options["plugin-root"] || resolveSupervibePluginRoot({ env: process.env, cwd: SCRIPT_PLUGIN_ROOT }));
   const env = { ...process.env };
   if (options.host) env.SUPERVIBE_HOST = options.host;
+  const previousState = await readGenesisState(targetRoot);
+  const appChoice = options["app-choice"]
+    || previousState?.appChoice?.id
+    || previousState?.generateAppsStep?.appChoice?.id
+    || "";
 
   const report = buildGenesisDryRunReport({
     targetRoot,
@@ -43,6 +50,7 @@ async function main() {
     addOns: splitList(options.addons),
     explicitStackTags: splitList(options["stack-tags"]),
     stackText: options.request || "",
+    appChoice,
   });
   const mode = options.apply ? "apply" : "dry-run";
   const dryRunState = await writeGenesisState({ targetRoot, report, mode: "dry-run", options });
@@ -133,6 +141,8 @@ async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
   await applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, updated, skipped, missing });
   const generatedApps = options["generate-apps"]
     ? await runGenerateAppsStep({ targetRoot, report, verifyApps: Boolean(options["verify-apps"]), env: process.env })
+    : options["verify-apps"]
+      ? await runVerifyExistingAppsStep({ targetRoot, report, env: process.env })
     : {
         status: "not-requested",
         commands: report.generateAppsStep?.commands || [],
@@ -217,6 +227,37 @@ async function writeSupervibeStateArtifacts({ targetRoot, pluginRoot, report, cr
     created.push(".supervibe/memory/index-config.json");
   } else {
     skipped.push(".supervibe/memory/index-config.json");
+  }
+
+  const memoryIndexPath = join(memoryDir, "index.json");
+  if (!existsSync(memoryIndexPath)) {
+    await writeFile(memoryIndexPath, `${JSON.stringify({
+      schemaVersion: 2,
+      generatedAt: new Date().toISOString(),
+      entries: [],
+      bootstrap: {
+        createdBy: "supervibe-genesis",
+        status: "empty-index-ready-for-memory-curation",
+      },
+    }, null, 2)}\n`, "utf8");
+    created.push(".supervibe/memory/index.json");
+  } else {
+    skipped.push(".supervibe/memory/index.json");
+  }
+
+  for (const relPath of [
+    ".supervibe/memory/agent-invocations.jsonl",
+    ".supervibe/memory/effectiveness.jsonl",
+    ".supervibe/confidence-log.jsonl",
+  ]) {
+    const target = join(targetRoot, ...relPath.split("/"));
+    if (!existsSync(target)) {
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, "", "utf8");
+      created.push(relPath);
+    } else {
+      skipped.push(relPath);
+    }
   }
 }
 
@@ -309,7 +350,7 @@ async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env
       ? await normalizeGeneratedAppMetadata({ targetRoot, entry, before })
       : { status: "not-run", actions: [] };
     const verification = result.status === 0 && verifyApps
-      ? runAppVerificationCommands({ targetRoot, entry })
+      ? await runAppVerificationCommands({ targetRoot, entry, env })
       : {
           status: "not-run",
           note: verifyApps ? "No app verification commands were declared for this scaffolder." : "Run with --verify-apps to execute app lint/build checks after generation.",
@@ -354,6 +395,53 @@ async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env
     commands: report.generateAppsStep?.commands || [],
     results,
     note: "This step runs real framework scaffolders only when --generate-apps is explicitly provided. Failed commands are recoverable; install missing dependencies or rerun the command manually.",
+  };
+}
+
+async function runVerifyExistingAppsStep({ targetRoot, report, env = process.env }) {
+  const results = [];
+  for (const entry of report.generateAppsStep?.commands || []) {
+    const appDir = generatedAppDir(targetRoot, entry);
+    if (!appDir || !existsSync(appDir)) {
+      results.push({
+        command: `verify existing ${entry.framework || "app"}`,
+        when: entry.when,
+        status: "failed_recoverable",
+        appDir: entry.appDir || "",
+        verification: {
+          status: "failed_recoverable",
+          note: "App directory is missing; run --generate-apps before --verify-apps.",
+          results: [],
+        },
+      });
+      continue;
+    }
+    const verification = await runAppVerificationCommands({ targetRoot, entry, env });
+    results.push({
+      command: `verify existing ${entry.framework || "app"} app in ${entry.appDir || "."}`,
+      when: entry.when,
+      status: verification.status === "completed" ? "completed" : "failed_recoverable",
+      appDir: entry.appDir || "",
+      verification,
+    });
+  }
+  const verificationResults = results.flatMap((item) => item.verification?.results || []);
+  const completed = results.length > 0 && results.every((item) => item.status === "completed");
+  const appGenerated = results.length > 0 && results.every((item) => existsSync(generatedAppDir(targetRoot, item)));
+  return {
+    ...(report.generateAppsStep || {}),
+    status: results.length === 0 ? "not-needed" : completed ? "completed" : "failed_recoverable",
+    appGenerated,
+    appVerified: completed,
+    appVerification: {
+      status: completed ? "completed" : "failed_recoverable",
+      results: verificationResults,
+      note: "App verification ran against existing generated app directories without rerunning scaffolders.",
+    },
+    commands: report.generateAppsStep?.commands || [],
+    results,
+    verifyOnly: true,
+    note: "This verify-only step runs declared lint/build/dependency-health checks against already generated apps.",
   };
 }
 
@@ -480,12 +568,43 @@ async function fakeScaffolderOutput({ targetRoot, entry }) {
   await writeFile(join(appDir, "AGENTS.md"), "# Generated app-local instructions\n", "utf8");
   await writeFile(join(appDir, "CLAUDE.md"), "# Generated Claude app instructions\n", "utf8");
   await writeFile(join(appDir, "package.json"), `${JSON.stringify({
+    name: "supervibe-generated-app",
+    version: "0.0.0",
     private: true,
     scripts: {
       lint: "node -e \"process.exit(0)\"",
       build: "node -e \"process.exit(0)\"",
     },
   }, null, 2)}\n`, "utf8");
+  await writeFile(join(appDir, "package-lock.json"), `${JSON.stringify({
+    name: "supervibe-generated-app",
+    version: "0.0.0",
+    lockfileVersion: 3,
+    requires: true,
+    packages: {
+      "": {
+        name: "supervibe-generated-app",
+        version: "0.0.0",
+      },
+    },
+  }, null, 2)}\n`, "utf8");
+  if (entry.framework === "laravel") {
+    await writeFile(join(appDir, "composer.json"), `${JSON.stringify({
+      name: "supervibe/generated-backend",
+      type: "project",
+      require: {
+        php: "^8.3",
+        "laravel/framework": "^12.0",
+      },
+    }, null, 2)}\n`, "utf8");
+    await writeFile(join(appDir, "composer.lock"), `${JSON.stringify({
+      packages: [],
+      "packages-dev": [],
+      platform: {
+        php: "^8.3",
+      },
+    }, null, 2)}\n`, "utf8");
+  }
 }
 
 async function inspectGeneratedAppDir(targetRoot, entry) {
@@ -544,7 +663,7 @@ async function normalizeGeneratedAppMetadata({ targetRoot, entry, before }) {
   };
 }
 
-function runAppVerificationCommands({ targetRoot, entry }) {
+async function runAppVerificationCommands({ targetRoot, entry, env = process.env }) {
   const results = [];
   for (const commandEntry of entry.verifyCommands || []) {
     const cwd = join(targetRoot, commandEntry.cwd || entry.appDir || ".");
@@ -567,6 +686,23 @@ function runAppVerificationCommands({ targetRoot, entry }) {
       fallback: result.fallback || null,
     });
     if (result.status !== 0) break;
+  }
+  const dependencyRoot = join(targetRoot, entry.appDir || ".");
+  if (entry.dependencyHealth !== false && hasDependencyManifests(dependencyRoot)) {
+    const dependencyHealth = await collectDependencyHealth({
+      rootDir: dependencyRoot,
+      env,
+    });
+    results.push({
+      command: "node scripts/dependency-health.mjs --root .",
+      cwd: entry.appDir || ".",
+      status: dependencyHealth.pass ? "completed" : "failed_recoverable",
+      exitCode: dependencyHealth.pass ? 0 : 2,
+      stdoutTail: "",
+      stderrTail: "",
+      error: null,
+      dependencyHealth,
+    });
   }
   return {
     status: results.length > 0 && results.every((item) => item.status === "completed") ? "completed" : "failed_recoverable",
@@ -656,6 +792,13 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   });
   const appGenerated = generateAppsState?.appGenerated === true || generateAppsState?.status === "completed";
   const appVerified = generateAppsState?.appVerified === true;
+  const appChoice = normalizeAppChoiceState(
+    generateAppsState?.appChoice
+      || report.fingerprint?.appChoice
+      || previous?.appChoice
+      || null,
+  );
+  const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
   const history = [
     ...(Array.isArray(previous?.history) ? previous.history : []),
     { at: now, lifecycle: mode, pack: report.stackPack.id, host: report.host.adapterId },
@@ -672,7 +815,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     currentStage: mode,
     verification: {
       artifactVerified: mode === "applied" && !(operations?.missing || []).length,
-      agentReceiptsVerified: hasAgentInvocationEvidence(targetRoot),
+      agentReceiptsVerified: agentRuntime.verified,
       appGenerated,
       appVerified,
       deployVerified: false,
@@ -685,6 +828,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     host: report.host,
     stackPack: report.stackPack,
     fingerprint: report.fingerprint,
+    appChoice,
     selectedProfile: report.agentProfile.selectedProfile,
     addOns: splitList(options.addons),
     explicitStackTags: splitList(options["stack-tags"]),
@@ -698,6 +842,22 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
       status: generateAppsState?.status || report.generateAppsStep?.status || "not-run",
     },
     operations,
+    bootstrap: {
+      memoryIndex: {
+        path: ".supervibe/memory/index.json",
+        status: existsSync(join(targetRoot, ".supervibe", "memory", "index.json")) ? "present" : "missing",
+      },
+      effectivenessLog: {
+        path: ".supervibe/memory/effectiveness.jsonl",
+        status: existsSync(join(targetRoot, ".supervibe", "memory", "effectiveness.jsonl")) ? "present" : "missing",
+      },
+      confidenceLog: {
+        path: ".supervibe/confidence-log.jsonl",
+        status: existsSync(join(targetRoot, ".supervibe", "confidence-log.jsonl")) ? "present" : "missing",
+      },
+      agentRuntime,
+      agentSmokeTest: buildAgentSmokeTestState(report.host?.adapterId || "codex"),
+    },
     history,
   };
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
@@ -771,6 +931,20 @@ function outputResult(result, options) {
     for (const action of appResult.normalization?.actions || []) {
       lines.push(`GENERATED_APP_NORMALIZED: ${action.action} ${action.path}${action.archivePath ? ` -> ${action.archivePath}` : ""}`);
     }
+    for (const verifyResult of appResult.verification?.results || []) {
+      lines.push(`APP_VERIFY_RESULT: ${verifyResult.status} ${verifyResult.command} cwd=${verifyResult.cwd || "."}`);
+      if (verifyResult.dependencyHealth) {
+        lines.push(`APP_DEPENDENCY_HEALTH: ${verifyResult.dependencyHealth.status} pass=${verifyResult.dependencyHealth.pass === true}`);
+        lines.push(`APP_DEPENDENCY_ECOSYSTEMS: ${(verifyResult.dependencyHealth.ecosystems || []).map((entry) => entry.id).join(", ") || "none"}`);
+        for (const finding of verifyResult.dependencyHealth.auditFindings || []) {
+          for (const chain of finding.vulnerableChains || []) lines.push(`APP_DEPENDENCY_VULNERABLE_CHAIN: ${chain}`);
+          lines.push(`APP_DEPENDENCY_REMEDIATION: ${finding.packageName} ${finding.remediation?.policy || "review"} ${finding.latestVersion || "latest-unknown"}`);
+        }
+        for (const issue of verifyResult.dependencyHealth.issues || []) {
+          lines.push(`APP_DEPENDENCY_ISSUE: ${issue.ecosystem || "unknown"} ${issue.code}`);
+        }
+      }
+    }
   }
   console.log(lines.join("\n"));
 }
@@ -796,13 +970,67 @@ function parseArgs(argv) {
   return parsed;
 }
 
-function hasAgentInvocationEvidence(targetRoot) {
-  const path = join(targetRoot, ".supervibe", "memory", "agent-invocations.jsonl");
+async function readGenesisState(targetRoot) {
+  const path = join(targetRoot, ".supervibe", "memory", "genesis", "state.json");
   try {
-    return existsSync(path) && readFileSync(path, "utf8").trim().length > 0;
+    return existsSync(path) ? safeJson(await readFile(path, "utf8")) : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function inspectAgentRuntimeEvidence(targetRoot) {
+  const result = validateAgentProducerReceipts(targetRoot, {
+    requireHostAgentReceipts: true,
+    minHostAgentReceipts: 1,
+    minAgentInvocations: 1,
+  });
+  return {
+    verified: result.pass === true,
+    status: result.pass ? "verified-real-host-agent" : "awaiting-real-host-agent",
+    trustedHostAgentReceipts: result.trustedHostAgentReceipts || 0,
+    receiptBoundAgentInvocations: result.agentInvocations || 0,
+    loggedAgentInvocations: result.loggedAgentInvocations || 0,
+    issues: (result.issues || []).map((issue) => issue.code),
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+  };
+}
+
+function buildAgentSmokeTestState(host = "codex") {
+  return {
+    required: true,
+    status: "pending-real-host-agent",
+    purpose: "Prove at least one installed Supervibe specialist can run through the active host and bind telemetry to a receipt.",
+    suggestedAgent: "repo-researcher",
+    commandTemplate: [
+      "node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log",
+      "--agent repo-researcher",
+      `--host ${host}`,
+      "--host-invocation-id <real-host-agent-id>",
+      "--task \"Genesis smoke test: inspect installed Supervibe context\"",
+      "--confidence 9",
+      "--retrieval-policy memory=mandatory,rag=mandatory,codegraph=optional",
+      "--verification-commands \"node scripts/supervibe-status.mjs\"",
+      "--redaction-status not-needed",
+      "--issue-receipt",
+      "--command /supervibe-genesis",
+      "--stage agent-smoke-test",
+      "--handoff-id genesis-agent-smoke",
+      "--output-artifacts .supervibe/artifacts/_agent-outputs/<real-host-agent-id>/agent-output.json",
+    ].join(" "),
+  };
+}
+
+function normalizeAppChoiceState(value) {
+  const record = value && typeof value === "object" ? value : null;
+  const id = record ? record.id : value;
+  const normalized = String(id || "").trim();
+  if (!normalized) return null;
+  return {
+    id: normalized,
+    source: record ? record.source || "resolved" : "resolved",
+    ignoredStackTags: Array.isArray(record?.ignoredStackTags) ? record.ignoredStackTags : [],
+  };
 }
 
 function extractManagedBlock(content, beginMarker, endMarker) {
@@ -835,7 +1063,9 @@ function defaultManagedGitignoreBlock() {
     ".supervibe/memory/code-index-checkpoint.json",
     ".supervibe/memory/code-index.lock",
     ".supervibe/memory/agent-invocations.jsonl",
+    ".supervibe/memory/effectiveness.jsonl",
     ".supervibe/memory/workflow-invocation-ledger.jsonl",
+    ".supervibe/confidence-log.jsonl",
     ".supervibe/memory/genesis/state.json",
     ".supervibe/memory/genesis/normalized-generated-host-files/",
     ".supervibe/memory/adapt/state.json",
@@ -889,7 +1119,8 @@ function formatHelp() {
     "  --profile        minimal, product-design, full-stack, research-heavy, or custom.",
     "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation, github-actions, gitlab-ci, ci-ready.",
     "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
-    "  --verify-apps    After --generate-apps, run declared app lint/build checks and set appVerified only if they pass.",
+    "  --verify-apps    Run declared app lint/build/dependency-health checks; works after --generate-apps or as verify-only for existing apps.",
+    "  --app-choice     Persist frontend choice: next-app, vite-spa, or monorepo-two-frontends.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",
     "  --request        Free-form user stack/context text used as stack evidence.",

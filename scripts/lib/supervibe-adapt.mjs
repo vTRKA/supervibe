@@ -12,6 +12,7 @@ import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
 import { validateArtifactLinks } from "../validate-artifact-links.mjs";
+import { validateAgentProducerReceipts } from "./agent-producer-contract.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
@@ -923,7 +924,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
   const skippedArtifacts = (result.skipped || []).map((item) => item.projectRel);
   const blockedArtifacts = (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason }));
   const artifactVerified = blockedArtifacts.length === 0 && result.postApply?.clean === true;
-  const agentReceiptsVerified = hasAgentInvocationEvidence(plan.projectRoot);
+  const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
+  const agentReceiptsVerified = agentRuntime.verified;
   const appVerified = false;
   const deployVerified = false;
   const lifecycle = blockedArtifacts.length > 0
@@ -961,6 +963,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       memoryIndex: result.memoryIndex,
       postApply: result.postApply,
       indexGate: result.indexGate,
+      agentRuntime,
     },
     validators: {
       artifactAdaptClean: result.postApply?.clean === true,
@@ -1010,7 +1013,8 @@ async function writeDeployLifecycleState(plan, result) {
   const artifactVerified = (result.created || []).length + (result.updated || []).length > 0
     && (result.created || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)))
     && (result.updated || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)));
-  const agentReceiptsVerified = hasAgentInvocationEvidence(plan.projectRoot);
+  const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
+  const agentReceiptsVerified = agentRuntime.verified;
   const state = {
     schemaVersion: 2,
     command: "/supervibe-adapt",
@@ -1046,6 +1050,7 @@ async function writeDeployLifecycleState(plan, result) {
     evidence: {
       migrationCommand: plan.migrationCommand,
       envPolicy: "Compose uses env_file and explicit environment keys; Dokploy UI env is not assumed to appear magically in containers.",
+      agentRuntime,
     },
     validators: {
       artifactVerified,
@@ -1072,13 +1077,21 @@ async function writeDeployLifecycleState(plan, result) {
   };
 }
 
-function hasAgentInvocationEvidence(projectRoot) {
-  const path = join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl");
-  try {
-    return existsSync(path) && statSync(path).size > 0;
-  } catch {
-    return false;
-  }
+function inspectAgentRuntimeEvidence(projectRoot) {
+  const result = validateAgentProducerReceipts(projectRoot, {
+    requireHostAgentReceipts: true,
+    minHostAgentReceipts: 1,
+    minAgentInvocations: 1,
+  });
+  return {
+    verified: result.pass === true,
+    status: result.pass ? "verified-real-host-agent" : "awaiting-real-host-agent",
+    trustedHostAgentReceipts: result.trustedHostAgentReceipts || 0,
+    receiptBoundAgentInvocations: result.agentInvocations || 0,
+    loggedAgentInvocations: result.loggedAgentInvocations || 0,
+    issues: (result.issues || []).map((issue) => issue.code),
+    evidencePath: ".supervibe/memory/agent-invocations.jsonl",
+  };
 }
 
 function buildAdaptRecoveryState(plan, result, {

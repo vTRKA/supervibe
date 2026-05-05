@@ -115,6 +115,7 @@ export function discoverGenesisStackFingerprint({
   rootDir = process.cwd(),
   explicitStackTags = [],
   stackText = "",
+  appChoice = "",
 } = {}) {
   const facts = [];
   const tags = new Set();
@@ -208,11 +209,11 @@ export function discoverGenesisStackFingerprint({
     addTag(tag, "user-request", tag);
   }
 
-  return {
+  return applyFrontendAppChoice({
     rootDir,
     tags: [...tags].sort(),
     facts,
-  };
+  }, normalizeAppChoice(appChoice) || inferAppChoiceFromText(stackText));
 }
 
 export function buildGenesisAgentRecommendation({
@@ -307,12 +308,14 @@ export function buildGenesisDryRunReport({
   addOns = [],
   explicitStackTags = [],
   stackText = "",
+  appChoice = "",
 } = {}) {
   const hostSelection = selectHostAdapter({ rootDir: targetRoot, env });
   const fingerprint = discoverGenesisStackFingerprint({
     rootDir: targetRoot,
     explicitStackTags,
     stackText,
+    appChoice,
   });
   const agentProfile = buildGenesisAgentRecommendation({
     rootDir: pluginRoot,
@@ -407,6 +410,10 @@ export function buildGenesisDryRunReport({
         command: "node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs",
         reason: "verify Code RAG + Graph and memory status after genesis",
       },
+      {
+        command: "node <resolved-supervibe-plugin-root>/scripts/dependency-health.mjs --root <generated-app-dir>",
+        reason: "classify multi-ecosystem dependency health, including lockfiles, audit/SCA evidence, nested vulnerable dependencies, freshness drift, and unsafe automated fixes after app dependencies exist",
+      },
     ],
     missingArtifacts: [
       ...agentProfile.missingSpecialists.map((entry) => ({ type: "agent", id: entry.agentId, reason: entry.reason })),
@@ -430,6 +437,7 @@ export function buildGenesisDryRunReport({
 
 function buildGenerateAppsStep(fingerprint = {}) {
   const tags = new Set(fingerprint.tags || []);
+  const appChoice = normalizeAppChoice(fingerprint.appChoice?.id || fingerprint.appChoice);
   const commands = [];
   if (tags.has("laravel")) {
     commands.push({
@@ -438,34 +446,17 @@ function buildGenerateAppsStep(fingerprint = {}) {
       args: ["create-project", "laravel/laravel", "backend"],
       appDir: "backend",
       framework: "laravel",
+      dependencyHealth: true,
       when: "backend/ is still an empty placeholder and Composer is installed",
     });
   }
-  if (tags.has("nextjs")) {
-    commands.push({
-      command: "npx create-next-app@latest frontend --ts --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm --disable-git",
-      executable: "npx",
-      args: ["create-next-app@latest", "frontend", "--ts", "--eslint", "--tailwind", "--app", "--src-dir", "--import-alias", "@/*", "--use-npm", "--disable-git"],
-      appDir: "frontend",
-      framework: "nextjs",
-      verifyCommands: [
-        { command: "npm run lint", executable: "npm", args: ["run", "lint"], cwd: "frontend" },
-        { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: "frontend" },
-      ],
-      when: "frontend/ is still an empty placeholder and Node/npm are installed",
-    });
+  if (tags.has("nextjs") && appChoice === "monorepo-two-frontends") {
+    commands.push(nextAppCommand({ appDir: "frontend-next" }));
+    commands.push(viteAppCommand({ appDir: "frontend-vite" }));
+  } else if (tags.has("nextjs")) {
+    commands.push(nextAppCommand({ appDir: "frontend" }));
   } else if (tags.has("vite")) {
-    commands.push({
-      command: "npm create vite@latest frontend -- --template react-ts",
-      executable: "npm",
-      args: ["create", "vite@latest", "frontend", "--", "--template", "react-ts"],
-      appDir: "frontend",
-      framework: "vite",
-      verifyCommands: [
-        { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: "frontend" },
-      ],
-      when: "frontend/ is still an empty placeholder and Node/npm are installed",
-    });
+    commands.push(viteAppCommand({ appDir: "frontend" }));
   }
   const stackAmbiguities = buildStackAmbiguities(tags);
   return {
@@ -473,11 +464,47 @@ function buildGenerateAppsStep(fingerprint = {}) {
     approvalRequired: commands.length > 0,
     status: "not-run",
     commands,
+    appChoice: appChoice
+      ? { id: appChoice, source: fingerprint.appChoice?.source || "resolved" }
+      : null,
     stackAmbiguities,
-    clarificationRequired: stackAmbiguities.length > 0,
+    clarificationRequired: !appChoice && stackAmbiguities.length > 0,
     note: stackAmbiguities.length > 0
-      ? "Base scaffold creates placeholders only; Next.js and Vite evidence together require choosing Next app, Vite SPA, or intentional monorepo before adding another frontend."
+      ? (appChoice
+          ? `Base scaffold creates placeholders only; frontend app choice ${appChoice} is persisted for app generation.`
+          : "Base scaffold creates placeholders only; Next.js and Vite evidence together require choosing Next app, Vite SPA, or intentional monorepo before adding another frontend.")
       : "Base scaffold creates placeholders only; run this approved step to create real framework apps.",
+  };
+}
+
+function nextAppCommand({ appDir }) {
+  return {
+    command: `npx create-next-app@latest ${appDir} --ts --eslint --tailwind --app --src-dir --import-alias "@/*" --use-npm --disable-git`,
+    executable: "npx",
+    args: ["create-next-app@latest", appDir, "--ts", "--eslint", "--tailwind", "--app", "--src-dir", "--import-alias", "@/*", "--use-npm", "--disable-git"],
+    appDir,
+    framework: "nextjs",
+    verifyCommands: [
+      { command: "npm run lint", executable: "npm", args: ["run", "lint"], cwd: appDir },
+      { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: appDir },
+    ],
+    dependencyHealth: true,
+    when: `${appDir}/ is still an empty placeholder and Node/npm are installed`,
+  };
+}
+
+function viteAppCommand({ appDir }) {
+  return {
+    command: `npm create vite@latest ${appDir} -- --template react-ts`,
+    executable: "npm",
+    args: ["create", "vite@latest", appDir, "--", "--template", "react-ts"],
+    appDir,
+    framework: "vite",
+    verifyCommands: [
+      { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: appDir },
+    ],
+    dependencyHealth: true,
+    when: `${appDir}/ is still an empty placeholder and Node/npm are installed`,
   };
 }
 
@@ -514,6 +541,7 @@ export function formatGenesisDryRunReport(report) {
     `SKIPPED_GENERATED_FOLDERS: ${report.skippedGeneratedFolders.map((entry) => entry.path).join(", ")}`,
     `GENERATE_APPS_STEP: ${report.generateAppsStep?.approvalRequired ? "approval-required" : "not-needed"}`,
     `STACK_CLARIFICATION_REQUIRED: ${report.generateAppsStep?.clarificationRequired ? "true" : "false"}`,
+    `APP_CHOICE: ${report.generateAppsStep?.appChoice?.id || "none"}`,
     `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
     "AGENT_ROLES:",
     formatAgentRoleSummaries(report.agentProfile.selectedAgents, { agents: report.agentProfile.agentResponsibilities }, { max: 80 }) || "- none",
@@ -790,32 +818,96 @@ function extractStackTagsFromText(text = "") {
   const value = String(text || "").toLowerCase();
   const matches = [];
   const aliases = [
-    ["nextjs", /\bnext(?:\.js|js)?\b/],
-    ["react", /\breact\b/],
-    ["vite", /\bvite\b/],
-    ["typescript", /\btypescript\b|\bts\b/],
-    ["tailwind", /\btailwind(?:css)?\b/],
-    ["laravel", /\blaravel\b/],
-    ["postgres", /\bpostgres(?:ql)?\b/],
-    ["redis", /\bredis\b/],
-    ["mysql", /\bmysql\b|\bmariadb\b/],
-    ["mongodb", /\bmongo(?:db)?\b/],
-    ["graphql", /\bgraphql\b|\bapollo\b/],
-    ["tauri", /\btauri\b/],
-    ["rust", /\brust\b/],
-    ["vue", /\bvue\b/],
-    ["nuxt", /\bnuxt\b/],
-    ["sveltekit", /\bsvelte(?:kit)?\b/],
-    ["django", /\bdjango\b/],
-    ["fastapi", /\bfastapi\b/],
-    ["rails", /\brails\b/],
-    ["go", /\bgolang\b|\bgo\b/],
-    ["chrome-extension", /\bchrome extension\b|\bmv3\b|\bextension\b/],
+    ["nextjs", /\bnext(?:\.js|js)?\b/, ["next", "next.js", "nextjs"]],
+    ["react", /\breact\b/, ["react"]],
+    ["vite", /\bvite\b/, ["vite"]],
+    ["typescript", /\btypescript\b|\bts\b/, ["typescript", "ts"]],
+    ["tailwind", /\btailwind(?:css)?\b/, ["tailwind", "tailwindcss"]],
+    ["laravel", /\blaravel\b/, ["laravel"]],
+    ["postgres", /\bpostgres(?:ql)?\b/, ["postgres", "postgresql"]],
+    ["redis", /\bredis\b/, ["redis"]],
+    ["mysql", /\bmysql\b|\bmariadb\b/, ["mysql", "mariadb"]],
+    ["mongodb", /\bmongo(?:db)?\b/, ["mongo", "mongodb"]],
+    ["graphql", /\bgraphql\b|\bapollo\b/, ["graphql", "apollo"]],
+    ["tauri", /\btauri\b/, ["tauri"]],
+    ["rust", /\brust\b/, ["rust"]],
+    ["vue", /\bvue\b/, ["vue"]],
+    ["nuxt", /\bnuxt\b/, ["nuxt"]],
+    ["sveltekit", /\bsvelte(?:kit)?\b/, ["svelte", "sveltekit"]],
+    ["django", /\bdjango\b/, ["django"]],
+    ["fastapi", /\bfastapi\b/, ["fastapi"]],
+    ["rails", /\brails\b/, ["rails"]],
+    ["go", /\bgolang\b|\bgo\b/, ["golang", "go"]],
+    ["chrome-extension", /\bchrome extension\b|\bmv3\b|\bextension\b/, ["chrome extension", "mv3", "extension"]],
   ];
-  for (const [tag, pattern] of aliases) {
-    if (pattern.test(value)) matches.push(tag);
+  for (const [tag, pattern, terms] of aliases) {
+    if (pattern.test(value) && hasAffirmedStackMention(value, terms)) matches.push(tag);
   }
   return matches;
+}
+
+function hasAffirmedStackMention(value, terms = []) {
+  for (const term of terms) {
+    const escaped = escapeRegExp(term);
+    const pattern = new RegExp(`\\b${escaped}\\b`, "gi");
+    for (const match of value.matchAll(pattern)) {
+      const before = value.slice(Math.max(0, match.index - 48), match.index);
+      const after = value.slice(match.index + match[0].length, match.index + match[0].length + 56);
+      if (!isNegatedMention(before, after)) return true;
+    }
+  }
+  return false;
+}
+
+function isNegatedMention(before = "", after = "") {
+  return /(?:\bno\b|\bnot\b|\bwithout\b|\bdo\s+not\s+use\b|\bdon't\s+use\b|\bnot\s+using\b|\bне\b|\bбез\b)\s*$/i.test(before)
+    || /^\s*(?:is\s+not\s+used|isn't\s+used|not\s+used|not\s+in\s+use|not\s+part|unused|не\s+используется)\b/i.test(after);
+}
+
+function applyFrontendAppChoice(fingerprint, appChoice = "") {
+  const normalized = normalizeAppChoice(appChoice);
+  if (!normalized) return fingerprint;
+  const tags = new Set(fingerprint.tags || []);
+  const ignoredStackTags = [];
+  if (normalized === "next-app" && tags.delete("vite")) ignoredStackTags.push("vite");
+  if (normalized === "vite-spa" && tags.delete("nextjs")) ignoredStackTags.push("nextjs");
+  const decision = {
+    id: normalized,
+    source: typeof appChoice === "object" ? appChoice.source || "resolved" : "resolved",
+    ignoredStackTags,
+  };
+  return {
+    ...fingerprint,
+    tags: [...tags].sort(),
+    appChoice: decision,
+    decisions: {
+      ...(fingerprint.decisions || {}),
+      frontendAppChoice: decision,
+    },
+  };
+}
+
+function normalizeAppChoice(value = "") {
+  const id = typeof value === "object" ? value.id : value;
+  const normalized = String(id || "").trim().toLowerCase();
+  if (["next-app", "next", "nextjs", "next.js"].includes(normalized)) return "next-app";
+  if (["vite-spa", "vite", "spa"].includes(normalized)) return "vite-spa";
+  if (["monorepo-two-frontends", "two-frontends", "monorepo", "both"].includes(normalized)) return "monorepo-two-frontends";
+  return "";
+}
+
+function inferAppChoiceFromText(text = "") {
+  const value = String(text || "").toLowerCase();
+  if (/\bnext(?:\.js|js)?\s+app\b|\bchoose\s+next\b|\bselected\s+next\b/.test(value)) {
+    return { id: "next-app", source: "request-text" };
+  }
+  if (/\bvite\s+spa\b|\bchoose\s+vite\b|\bselected\s+vite\b/.test(value)) {
+    return { id: "vite-spa", source: "request-text" };
+  }
+  if (/\b(two|2)\s+frontends\b|\bmonorepo\b.*\b(next|vite)\b|\b(next|vite)\b.*\bmonorepo\b/.test(value)) {
+    return { id: "monorepo-two-frontends", source: "request-text" };
+  }
+  return "";
 }
 
 function normalizeExplicitStackTags(values = []) {
@@ -835,6 +927,10 @@ function normalizeStackAlias(value) {
   if (["ts", "typescript"].includes(normalized)) return "typescript";
   if (["golang"].includes(normalized)) return "go";
   return normalizeStackTag(normalized) || normalized;
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizeStackTag(name) {

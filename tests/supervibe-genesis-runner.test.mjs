@@ -116,6 +116,9 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(existsSync(join(projectRoot, ".codex", "agents", "nextjs-developer.md")), true);
     assert.equal(existsSync(join(projectRoot, ".codex", "skills", "genesis", "SKILL.md")), true);
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index-config.json")), true);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), true);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "effectiveness.jsonl")), true);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "confidence-log.jsonl")), true);
     assert.equal(existsSync(join(projectRoot, ".github", "workflows")), false, "base scaffold must not create empty GitHub Actions directory");
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
@@ -126,6 +129,12 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(state.verification.agentReceiptsVerified, false);
     assert.equal(state.verification.appVerified, false);
     assert.equal(state.verification.deployVerified, false);
+    assert.equal(state.bootstrap.memoryIndex.status, "present");
+    assert.equal(state.bootstrap.effectivenessLog.status, "present");
+    assert.equal(state.bootstrap.confidenceLog.status, "present");
+    assert.equal(state.bootstrap.agentRuntime.status, "awaiting-real-host-agent");
+    assert.equal(state.bootstrap.agentRuntime.loggedAgentInvocations, 0);
+    assert.equal(state.bootstrap.agentSmokeTest.status, "pending-real-host-agent");
     assert.ok(state.history.some((entry) => entry.lifecycle === "dry-run"));
     assert.ok(state.history.some((entry) => entry.lifecycle === "applied"));
   } finally {
@@ -166,6 +175,45 @@ test("supervibe-genesis generate-apps normalizes nested git and generated host f
   }
 });
 
+test("supervibe-genesis verify-apps runs against existing generated app without rerunning scaffolder", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-verify-only-"));
+  try {
+    runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--generate-apps",
+    ], projectRoot, { SUPERVIBE_GENESIS_FAKE_SCAFFOLDER: "1" });
+
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+      "--verify-apps",
+    ], projectRoot);
+
+    assert.match(out, /GENERATED_APPS: completed/);
+    assert.match(out, /APP_VERIFIED: true/);
+    assert.match(out, /APP_VERIFY_RESULT: completed npm run lint cwd=frontend/);
+    assert.match(out, /APP_VERIFY_RESULT: completed node scripts\/dependency-health\.mjs --root \. cwd=frontend/);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(state.generateAppsStep.verifyOnly, true);
+    assert.equal(state.generateAppsStep.appGenerated, true);
+    assert.equal(state.generateAppsStep.appVerified, true);
+    assert.equal(state.verification.appVerified, true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-genesis generate-apps retries Windows npx spawn failures with shell-safe fallback", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-generate-apps-fallback-"));
   try {
@@ -188,6 +236,57 @@ test("supervibe-genesis generate-apps retries Windows npx spawn failures with sh
     assert.equal(existsSync(join(projectRoot, "frontend", ".git")), false);
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.generateAppsStep.appGenerated, true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis parser handles negated Vite and persists explicit app choice", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-app-choice-"));
+  try {
+    const negatedOut = runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "Use a Next app with Laravel and Postgres. Vite is not used.",
+      "--json",
+    ], projectRoot);
+    const negated = JSON.parse(negatedOut);
+    assert.equal(negated.report.generateAppsStep.appChoice.id, "next-app");
+    assert.equal(negated.report.generateAppsStep.clarificationRequired, false);
+    assert.equal(negated.report.fingerprint.tags.includes("nextjs"), true);
+    assert.equal(negated.report.fingerprint.tags.includes("vite"), false);
+
+    runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "Next and Vite are both mentioned in old notes",
+      "--app-choice",
+      "next-app",
+      "--json",
+    ], projectRoot);
+
+    const persistedOut = runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "Next and Vite are both mentioned in old notes",
+      "--json",
+    ], projectRoot);
+    const persisted = JSON.parse(persistedOut);
+    assert.equal(persisted.report.generateAppsStep.appChoice.id, "next-app");
+    assert.equal(persisted.report.generateAppsStep.clarificationRequired, false);
+    assert.equal(persisted.report.fingerprint.tags.includes("vite"), false);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
