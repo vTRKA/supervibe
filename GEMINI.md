@@ -26,9 +26,10 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 Same Supervibe project context, adapted for Gemini CLI:
 - 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - 55 process skills in `./skills/`
-- 29 project rules in `./rules/`
+- 30 project rules in `./rules/`
 - 17 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
+- Idea-to-production routing starts with `/supervibe-brainstorm`, then `/supervibe-plan --from-brainstorm`, `/supervibe-plan --review`, `/supervibe-loop --atomize-plan`, and only then provider-safe execution.
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
 - Security audit, prompt AI engineering, network/router diagnostics, and Kanban work-control routing
 - Code graph + semantic RAG via `./scripts/search-code.mjs`

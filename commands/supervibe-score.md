@@ -125,7 +125,7 @@ If user invokes with unknown type → list valid types from disk + suggest the c
 7. **Offer follow-up actions** based on verdict:
    - If `block` (score < gate): offer `/supervibe-strengthen <agent>` (for agent-quality) or "fix gaps inline" (returns the remediation list as actionable items).
    - If `warn`: print warning + suggest single targeted improvement.
-   - If `pass`: print confirmation + suggest `/schedule` if natural follow-up exists.
+   - If `pass`: print confirmation + suggest a native work-item follow-up (`/supervibe-loop --defer <task-id> --until <ISO-time> --file <graph.json>`) only when a real work item exists.
    - If user wants to override the gate → collect an explicit reason and append the override record internally with score context.
 
 ## Error recovery

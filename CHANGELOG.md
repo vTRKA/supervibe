@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.94] - 2026-05-06
+
+### Changed
+
+- Hardened the brainstorm-to-production command chain so README, command docs,
+  workflow routing, and next-step handoffs use the canonical
+  `/supervibe-plan --from-brainstorm` and `/supervibe-loop --atomize-plan`
+  flow.
+- Expanded host startup context for the idea-to-production path, scope-safety
+  discipline, real producer receipts, and OpenCode command matching.
+
+### Fixed
+
+- Synchronized host instruction rule counts with the current 30-rule surface.
+- Removed stale `/schedule` follow-up references from public command docs.
+- Added regression coverage for host artifact counts and unpublished slash
+  command references in public docs.
+
 ## [2.0.93] - 2026-05-06
 
 ### Added

@@ -44,7 +44,7 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 - Agents: 89 files under `agents/`; human-readable role map in `docs/agent-roster.md`.
 - Skills: 55 folders under `skills/`.
-- Rules: 29 files under `rules/`.
+- Rules: 30 files under `rules/`.
 - Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.
 - Core libraries: `scripts/lib/`.

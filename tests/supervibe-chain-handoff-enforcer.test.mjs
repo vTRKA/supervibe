@@ -10,7 +10,7 @@ import {
 describe("supervibe chain handoff enforcer", () => {
   it("requires brainstorm output to hand off to planning", () => {
     const handoff = getRequiredHandoff("brainstorm");
-    assert.equal(handoff.command, "/supervibe-plan");
+    assert.equal(handoff.command, "/supervibe-plan --from-brainstorm");
     assert.equal(handoff.nextQuestion, "Шаг 1/1: написать план реализации по утвержденной спецификации?");
     assert.ok(handoff.questionChoices.every((choice) => choice.label && choice.label !== choice.id && choice.tradeoff));
     assert.ok(handoff.questionChoices.some((choice) => /approved-spec-or-brainstorm-summary/.test(choice.label)));

@@ -55,7 +55,7 @@ const ROUTES = {
   },
   brainstorm_to_plan: {
     phase: "brainstorm",
-    command: "/supervibe-plan",
+    command: "/supervibe-plan --from-brainstorm",
     skill: "supervibe:writing-plans",
     nextQuestionRu: "Шаг 1/1: написать план?",
     nextQuestionEn: "Step 1/1: write the plan?",
@@ -71,7 +71,7 @@ const ROUTES = {
   },
   atomize_plan: {
     phase: "plan_reviewed",
-    command: "/supervibe-loop --from-plan --atomize",
+    command: "/supervibe-loop --atomize-plan",
     skill: "supervibe:writing-plans",
     nextQuestionRu: "Шаг 1/1: разбить план на атомарные work items и epic?",
     nextQuestionEn: "Step 1/1: split the plan into atomic work items and an epic?",

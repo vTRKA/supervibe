@@ -26,7 +26,7 @@ test("affirming after brainstorm routes to plan", () => {
     lastCompletedPhase: "brainstorm",
     artifacts: { brainstorm: true },
   });
-  assert.equal(route.command, "/supervibe-plan");
+  assert.equal(route.command, "/supervibe-plan --from-brainstorm");
   assert.equal(route.skill, "supervibe:writing-plans");
   assert.match(route.nextPromptText, /\u043f\u043b\u0430\u043d/i);
 });
@@ -48,7 +48,7 @@ test("reviewed plan can be atomized into work items", () => {
     artifacts: { plan: true, planReviewPassed: true },
   });
   assert.equal(route.intent, "atomize_plan");
-  assert.equal(route.command, "/supervibe-loop --from-plan --atomize");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan");
 });
 
 test("worktree request routes to isolated session preflight and adds dirty-state blocker", () => {
@@ -115,7 +115,7 @@ test("topic drift with a saved handoff asks for resume choice instead of droppin
   });
 
   assert.equal(route.intent, "workflow_resume_choice");
-  assert.equal(route.command, "/supervibe-plan");
+  assert.equal(route.command, "/supervibe-plan --from-brainstorm");
   assert.equal(route.source, "recent-handoff-topic-drift");
   assert.match(route.nextQuestion, /Continue it, skip\/delegate safe decisions/i);
   assert.ok(route.requiredSafety.includes("no-silent-workflow-drop"));

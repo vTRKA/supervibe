@@ -102,6 +102,32 @@ test("documented npm scripts exist in package.json", async () => {
   assert.deepStrictEqual(missing, []);
 });
 
+test("host instruction surfaces keep artifact counts in sync", async () => {
+  const ruleCount = (await readdir(join(ROOT, "rules"))).filter((file) => file.endsWith(".md")).length;
+  const ag = await readFile(join(ROOT, "AGENTS.md"), "utf8");
+  const claude = await readFile(join(ROOT, "CLAUDE.md"), "utf8");
+  const gemini = await readFile(join(ROOT, "GEMINI.md"), "utf8");
+
+  assert.match(ag, new RegExp(`Rules: ${ruleCount} files under`));
+  assert.match(claude, new RegExp(`rules/\\s+${ruleCount} project rules`));
+  assert.match(gemini, new RegExp(`${ruleCount} project rules in`));
+});
+
+test("public command docs do not advertise unpublished slash commands", async () => {
+  const docs = [
+    join(ROOT, "README.md"),
+    ...await listFiles(join(ROOT, "commands"), (file) => file.endsWith(".md")),
+  ];
+  const stale = [];
+
+  for (const file of docs) {
+    const content = await readFile(file, "utf8");
+    if (/\/schedule\b/.test(content)) stale.push(relative(ROOT, file));
+  }
+
+  assert.deepStrictEqual(stale, []);
+});
+
 test("package npm scripts point at existing local scripts", async () => {
   const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   const scriptNames = new Set(Object.keys(pkg.scripts));

@@ -117,7 +117,7 @@ Before any execution audit, confirm the plan has:
 - Stop, status, resume, and cleanup controls for long or worktree-backed runs
 - Worktree session selected or created when `--worktree`, `--worktree-existing`, or `--resume-session` is used
 
-If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --from-plan --atomize <plan-path>` after review passes.
+If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` after review passes.
 
 For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree --max-duration 3h` so the run has an active session registry, heartbeat, and cleanup-safe worktree path.
 For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.
@@ -217,7 +217,7 @@ After all phases done, score against 10 completion dimensions:
 Completion score: 10/10 ✓
 ```
 
-If 10/10 → done. Print summary + offer to `/schedule` follow-up if natural cleanup task is implied by the active host instruction file.
+If 10/10 → done. Print summary + offer a concrete follow-up through the native work-item scheduler when a real work item exists, for example `/supervibe-loop --defer <task-id> --until <ISO-time> --file <graph.json>`. Do not mention unpublished slash commands.
 
 If <10 → present options A/B/C.
 
@@ -296,7 +296,7 @@ Sum = 10. Gate at ≥9 for non-blocking; override allowed once-per-plan.
 
 - Plan doesn't exist → run `/supervibe-plan` first
 - Plan readiness < 5/10 → fix the plan, don't execute a broken plan
-- Plan executes irreversible side-effects (prod migrations, mass external API calls) → use a wrapper that adds confirmation per side-effect, this command doesn't add per-action confirmations
+- Plan executes irreversible side-effects (prod migrations, mass external API calls) → use a wrapper that adds confirmation per side-effect, or route the work through `/supervibe-loop` with explicit approval, side-effect ledger, rollback, and stop/resume/status controls. This command does not add per-action confirmations by itself.
 - One-line trivial change → just implement, no plan needed
 
 ---

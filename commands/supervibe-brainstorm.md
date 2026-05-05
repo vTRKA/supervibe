@@ -14,7 +14,7 @@ Direct trigger for the `supervibe:brainstorming` skill. Use this when you want t
 
 Do not stop after individual brainstorm sections such as first-principles, options, risks, matrix, or scope safety. A `/supervibe-brainstorm` invocation should complete the requirements package before handoff, unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user asks to review one section manually.
 
-Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan <spec-path>` handoff.
+Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan --from-brainstorm <spec-path>` handoff.
 
 ## Topic Drift / Resume Contract
 
@@ -57,7 +57,7 @@ Treat the most recent user message as the topic.
 
 4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
-5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
+5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
 5a. **Machine-readable handoff.** Include:
 
@@ -66,7 +66,7 @@ Treat the most recent user message as the topic.
    Current phase: brainstorm
    Artifact: <spec-path>
    Next phase: plan
-   Next command: /supervibe-plan <spec-path>
+   Next command: /supervibe-plan --from-brainstorm <spec-path>
    Next skill: supervibe:writing-plans
    Stop condition: ask-before-plan
    Why: Brainstorm output must become a reviewed implementation plan before execution.
@@ -78,7 +78,7 @@ Treat the most recent user message as the topic.
 
 6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.supervibe/confidence-log.jsonl`.
 
-7. **Hand off.** Print the spec path + `/supervibe-plan <spec-path>` for every completed brainstorm unless the user explicitly cancels planning. Small changes may get a compact plan, but brainstorm must not silently jump to implementation.
+7. **Hand off.** Print the spec path + `/supervibe-plan --from-brainstorm <spec-path>` for every completed brainstorm unless the user explicitly cancels planning. Small changes may get a compact plan, but brainstorm must not silently jump to implementation.
 
 ## Output contract
 
@@ -96,8 +96,8 @@ Evidence plan: memory/RAG/CodeGraph commands and citations present
 Visual explanation: diagram/table choice with accessible fallback present
 10/10 scorecard: present
 
-Next:      /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
-Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan <spec-path>`
+Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
 ```
 
 ## When NOT to invoke

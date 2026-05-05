@@ -2,7 +2,7 @@ const HANDOFFS = {
   brainstorm: {
     phase: "brainstorm",
     nextPhase: "plan",
-    command: "/supervibe-plan",
+    command: "/supervibe-plan --from-brainstorm",
     skill: "supervibe:writing-plans",
     artifact: "approved-spec-or-brainstorm-summary",
     nextQuestion: "Шаг 1/1: написать план реализации по утвержденной спецификации?",
@@ -18,7 +18,7 @@ const HANDOFFS = {
   plan_review_passed: {
     phase: "plan_review_passed",
     nextPhase: "atomize",
-    command: "/supervibe-loop --from-plan --atomize",
+    command: "/supervibe-loop --atomize-plan",
     skill: "supervibe:writing-plans",
     artifact: "reviewed-plan",
     nextQuestion: "Шаг 1/1: разбить reviewed plan на атомарные work items и epic?",

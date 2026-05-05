@@ -17,9 +17,9 @@ test("workflow phase graph forces brainstorm to plan to review to atomization", 
   assert.ok(WORKFLOW_PHASES.includes("brainstorm"));
   assert.equal(PHASE_ALIASES.plan_review_passed, "plan-review");
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("provider-policy"));
-  assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan");
+  assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan --from-brainstorm");
   assert.equal(getNextWorkflowStep("plan").command, "/supervibe-plan --review");
-  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --from-plan --atomize");
+  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --atomize-plan");
   assert.equal(getNextWorkflowStep("work-item-atomization").command, "/supervibe-loop --guided --max-duration 3h");
   assert.equal(getNextWorkflowStep("worktree-setup").command, "/supervibe-loop --epic --worktree --max-duration 3h");
 });

@@ -55,6 +55,8 @@ test("README and command docs share autonomous-loop flags and artifact paths", a
     assert.match(readme, new RegExp(escapeText(flag)));
     assert.match(loopCommand, new RegExp(escapeText(flag)));
   }
+  assert.match(readme, /\/supervibe-plan --from-brainstorm <spec-path>/);
+  assert.match(planCommand, /\/supervibe-plan --from-brainstorm <spec-path>/);
   for (const path of [".supervibe/memory/loops/", ".supervibe/memory/work-items/", "task-tracker-map.json", ".supervibe/memory/bundles/"]) {
     assert.match(readme, new RegExp(escapeText(path)));
   }

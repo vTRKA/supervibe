@@ -24,6 +24,13 @@ Skipped or delegated decisions must be recorded in the plan assumptions, scope s
 
 ## Invocation forms
 
+### `/supervibe-plan --from-brainstorm <spec-path>`
+
+Canonical handoff after `/supervibe-brainstorm`. Treat `<spec-path>` as the approved brainstorm output and require the same spec validation as the plain path form.
+
+Example:
+- `/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md`
+
 ### `/supervibe-plan <spec-path>`
 
 Examples:
@@ -38,7 +45,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 ## Procedure
 
-1. **Resolve the spec.** Either explicit path, the freshest file in `.supervibe/artifacts/specs/`, or stop with a redirect to `/supervibe-brainstorm`.
+1. **Resolve the spec.** Use `--from-brainstorm <spec-path>`, an explicit path, the freshest file in `.supervibe/artifacts/specs/`, or stop with a redirect to `/supervibe-brainstorm`.
 
 2. **Validate the spec.** Read it. Check for:
    - Approved status (frontmatter or first H2 indicating user signed off)
@@ -116,6 +123,7 @@ Validator:   validate-plan-artifacts PASS
 
 Next:        review loop -> atomic work items -> epic -> provider-safe execution preflight
 Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>`
+Source mode: `--from-brainstorm` when the plan came from a brainstorm spec
 ```
 
 ## When NOT to invoke

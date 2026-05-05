@@ -14,7 +14,7 @@ describe("supervibe trigger router", () => {
     });
 
     assert.equal(route.intent, "brainstorm_to_plan");
-    assert.equal(route.command, "/supervibe-plan");
+    assert.equal(route.command, "/supervibe-plan --from-brainstorm");
     assert.equal(route.skill, "supervibe:writing-plans");
     assert.equal(route.nextQuestion, "Шаг 1/1: написать план?");
     assert.deepEqual(route.missingArtifacts, []);

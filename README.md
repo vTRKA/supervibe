@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.93 initialized for this project
+[supervibe] welcome  plugin v2.0.94 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -202,9 +202,9 @@ Do not delete installed project agents/rules/skills to "refresh" them. Adapt per
 The trigger-safe path is explicit and chainable:
 
 1. `/supervibe-brainstorm <topic>` writes the approved spec, then asks whether to proceed to planning.
-2. `/supervibe-plan <spec-path>` writes the plan, then asks for the review loop before execution.
+2. `/supervibe-plan --from-brainstorm <spec-path>` writes the plan from that brainstorm spec, then asks for the review loop before execution.
 3. `/supervibe-plan --review <plan-path>` reviews plan quality, safety, missing checks, and README impact.
-4. `/supervibe-loop --from-plan --atomize <plan-path>` splits the reviewed plan into atomic work items and an epic.
+4. `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` splits the reviewed plan into atomic work items and an epic.
 5. `/supervibe-loop --guided --max-duration 3h` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.

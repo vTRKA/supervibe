@@ -18,7 +18,7 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
     id: "brainstorm-continue-ru",
     phrase: "переходим?",
     context: { lastCompletedPhase: "brainstorm", artifacts: { brainstorm: true } },
-    expected: { intent: "continue_plan", command: "/supervibe-plan", minConfidence: 0.9 },
+    expected: { intent: "continue_plan", command: "/supervibe-plan --from-brainstorm", minConfidence: 0.9 },
   },
   {
     id: "plan-execution-forces-review",
@@ -30,7 +30,7 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
     id: "reviewed-plan-atomize-ru",
     phrase: "разбей план на атомарные задачи",
     context: { artifacts: { plan: true, planReviewPassed: true } },
-    expected: { intent: "atomize_plan", command: "/supervibe-loop --from-plan --atomize", minConfidence: 0.88 },
+    expected: { intent: "atomize_plan", command: "/supervibe-loop --atomize-plan", minConfidence: 0.88 },
   },
   {
     id: "worktree-run-en",

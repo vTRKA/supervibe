@@ -25,7 +25,7 @@ export const WORKFLOW_EDGES = Object.freeze({
   brainstorm: {
     phase: "brainstorm",
     nextPhase: "plan",
-    command: "/supervibe-plan",
+    command: "/supervibe-plan --from-brainstorm",
     skill: "supervibe:writing-plans",
     artifactKind: "approved-spec-or-brainstorm-summary",
     stopCondition: "ask-before-plan",
@@ -47,7 +47,7 @@ export const WORKFLOW_EDGES = Object.freeze({
   "plan-review": {
     phase: "plan-review",
     nextPhase: "work-item-atomization",
-    command: "/supervibe-loop --from-plan --atomize",
+    command: "/supervibe-loop --atomize-plan",
     skill: "supervibe:writing-plans",
     artifactKind: "reviewed-plan",
     stopCondition: "ask-before-work-item-atomization",
