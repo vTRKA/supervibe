@@ -73,6 +73,7 @@ async function main() {
       mode,
       report,
       statePath: dryRunState.path,
+      confidence: dryRunState.state.confidence,
       created: [],
       skipped: [],
       missing: [],
@@ -99,6 +100,8 @@ async function main() {
     mode,
     report,
     statePath: appliedState.path,
+    confidence: appliedState.state.confidence,
+    nextAgentGate: buildVerifyAgentsCommand(report.host?.adapterId || "codex"),
     adaptFileManifest,
     ...applyResult,
     generatedApps: generatedAppsForOutput,
@@ -843,6 +846,15 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   );
   const artifactVerification = inspectGenesisArtifactVerification({ targetRoot, report, mode, operations });
   const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
+  const confidence = buildGenesisConfidenceScore({
+    mode,
+    report,
+    artifactVerification,
+    agentRuntime,
+    generateAppsState,
+    appGenerated,
+    appVerified,
+  });
   const history = [
     ...(Array.isArray(previous?.history) ? previous.history : []),
     { at: now, lifecycle: mode, pack: report.stackPack.id, host: report.host.adapterId },
@@ -858,6 +870,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     applied: mode === "applied",
     currentStage: mode,
     verification: {
+      confidenceScore: confidence,
       artifactVerified: artifactVerification.verified,
       artifactStatus: artifactVerification.status,
       missingArtifactPaths: artifactVerification.missingPaths,
@@ -877,6 +890,8 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     host: report.host,
     stackPack: report.stackPack,
     fingerprint: report.fingerprint,
+    deployAddOnPolicy: report.deployAddOnPolicy || null,
+    confidence,
     appChoice,
     frontendTarget: report.fingerprint?.frontendTarget || null,
     selectedProfile: report.agentProfile.selectedProfile,
@@ -913,6 +928,63 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   };
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   return { path: toRel(targetRoot, statePath), state };
+}
+
+function buildGenesisConfidenceScore({
+  mode,
+  report = {},
+  artifactVerification = {},
+  agentRuntime = {},
+  generateAppsState = null,
+  appGenerated = false,
+  appVerified = false,
+} = {}) {
+  const gaps = [];
+  let score = mode === "applied" ? 8 : 6;
+  if (mode !== "applied") {
+    gaps.push({ code: "dry-run-only", message: "Scaffold has not been applied yet." });
+  }
+  if (mode === "applied" && artifactVerification.verified !== true) {
+    gaps.push({
+      code: "missing-required-artifacts",
+      message: "Required scaffold artifacts are missing.",
+      paths: artifactVerification.missingPaths || [],
+    });
+    score = Math.min(score, 6);
+  }
+  if (report.generateAppsStep?.approvalRequired && appGenerated !== true) {
+    gaps.push({ code: "app-generation-pending", message: "Real app scaffolding has not completed yet." });
+    score = Math.min(score, mode === "applied" ? 7 : 6);
+  } else if (appGenerated === true && appVerified !== true) {
+    gaps.push({ code: "app-verification-pending", message: "App lint/build verification has not passed yet." });
+    score = Math.min(score, 8);
+  }
+  if (report.deployAddOnPolicy?.requested === true) {
+    gaps.push({
+      code: "deploy-addon-pending",
+      message: "Docker/Dokploy intent was recorded; deploy artifacts require Adapt deploy scope after real service evidence exists.",
+      targets: report.deployAddOnPolicy.targets || [],
+    });
+    score = Math.min(score, 8);
+  }
+  if (agentRuntime.verified !== true) {
+    gaps.push({ code: "agent-runtime-pending", message: "No receipt-bound real host-agent invocation has been verified yet." });
+    score = Math.min(score, 8);
+  }
+  const status = mode === "applied" && artifactVerification.verified !== true
+    ? "BLOCK"
+    : gaps.length > 0
+      ? "WARN"
+      : "PASS";
+  if (status === "PASS") score = 10;
+  return {
+    rubric: "supervibe-genesis-scaffold",
+    score,
+    maxScore: 10,
+    label: `${score}/10`,
+    status,
+    gaps,
+  };
 }
 
 function inspectGenesisArtifactVerification({ targetRoot, report, mode, operations = null } = {}) {
@@ -1000,12 +1072,13 @@ function outputResult(result, options) {
     console.log(JSON.stringify(toGenesisJsonResult(result), null, 2));
     return;
   }
+  const displayReport = reportForExecutionMode(result.report, result.mode);
   const lines = [
     "SUPERVIBE_GENESIS_RUNNER",
     `MODE: ${result.mode}`,
-    `HOST: ${result.report.host.adapterId}`,
-    `PACK: ${result.report.stackPack.id}`,
-    `STACK: ${result.report.fingerprint.tags.join(", ") || "unknown"}`,
+    `HOST: ${displayReport.host.adapterId}`,
+    `PACK: ${displayReport.stackPack.id}`,
+    `STACK: ${displayReport.fingerprint.tags.join(", ") || "unknown"}`,
     `STATE_WRITTEN: ${result.statePath}`,
     `CREATED: ${result.created.length}`,
     `UPDATED: ${(result.updated || []).length}`,
@@ -1017,9 +1090,11 @@ function outputResult(result, options) {
     `BUILD_VERIFIED: ${result.generatedApps?.buildVerified === true}`,
     `DEPENDENCY_HEALTH_VERIFIED: ${result.generatedApps?.dependencyHealthVerified === true}`,
     `ADAPT_FILE_MANIFEST: ${result.adaptFileManifest?.path || "not-written"}`,
+    `CONFIDENCE: ${result.confidence?.label || "unknown"} ${result.confidence?.status || "unknown"}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
+    `NEXT_AGENT_GATE: ${result.nextAgentGate || buildVerifyAgentsCommand(displayReport.host.adapterId)}`,
     "",
-    formatGenesisDryRunReport(result.report),
+    formatGenesisDryRunReport(displayReport),
   ];
   for (const entry of result.created.slice(0, 20)) lines.push(`CREATED_PATH: ${entry}`);
   for (const entry of (result.updated || []).slice(0, 20)) lines.push(`UPDATED_PATH: ${entry}`);
@@ -1042,12 +1117,27 @@ function outputResult(result, options) {
 }
 
 function toGenesisJsonResult(result) {
-  const dryRun = result.mode !== "apply";
+  const report = reportForExecutionMode(result.report, result.mode);
+  if (!report) {
+    const dryRun = result.mode !== "apply";
+    return { ...result, dryRun, lifecycle: dryRun ? "dry-run" : "applied" };
+  }
   return {
     ...result,
-    dryRun,
-    report: result.report ? { ...result.report, dryRun } : result.report,
+    dryRun: report.dryRun,
+    lifecycle: report.lifecycle,
+    report,
   };
+}
+
+function reportForExecutionMode(report, mode) {
+  const dryRun = mode !== "apply";
+  const lifecycle = dryRun ? "dry-run" : "applied";
+  return report ? { ...report, dryRun, lifecycle, applied: !dryRun } : report;
+}
+
+function buildVerifyAgentsCommand(host = "codex") {
+  return `node <resolved-supervibe-plugin-root>/scripts/supervibe-genesis.mjs --verify-agents --host ${host}`;
 }
 
 function appendDependencyHealthLines(lines, dependencyHealth) {

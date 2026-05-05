@@ -7,6 +7,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { SOURCE_RAG_INDEX_COMMAND } from "../scripts/lib/supervibe-command-catalog.mjs";
+import { writeAdaptFileManifestSnapshot } from "../scripts/lib/supervibe-adapt.mjs";
 
 const ROOT = process.cwd();
 const ADAPT_SCRIPT = join(ROOT, "scripts", "supervibe-adapt.mjs");
@@ -246,6 +247,28 @@ test("supervibe-adapt dry-run plans host-aware project artifact updates without 
     assert.match(out, /APPROVAL_REQUIRED: true/);
     assert.doesNotMatch(out, /SUPERVIBE_GENESIS_DRY_RUN/);
     assert.doesNotMatch(out, /RECOMMENDED_AGENTS: none/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt no-git snapshot ignores internal index checkpoint noise", async () => {
+  const projectRoot = createCodexProject();
+  try {
+    runAdapt(projectRoot, ["--apply", "--include", ".codex/agents/repo-researcher.md", "--no-refresh-memory-index", "--no-color"]);
+    await writeAdaptFileManifestSnapshot(projectRoot);
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "code-index-checkpoint.json"), JSON.stringify({
+      phase: "indexing",
+      current: 1,
+      total: 2,
+    }, null, 2) + "\n");
+
+    const out = runAdapt(projectRoot, ["--dry-run", "--changed-only", "--summary-json", "--no-refresh-memory-index", "--no-color"]);
+    const summary = JSON.parse(out);
+
+    assert.equal(summary.changeDetection.mode, "snapshot");
+    assert.equal(summary.changeDetection.counts.added, 0);
+    assert.equal(summary.changeDetection.changedFiles.some((entry) => entry.path === ".supervibe/memory/code-index-checkpoint.json"), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -701,6 +724,38 @@ test("supervibe-adapt docker deploy add-on uses Next-only Docker pack without Do
     const compose = readFileSync(join(projectRoot, "docker-compose.yml"), "utf8");
     assert.match(compose, /ports:/);
     assert.doesNotMatch(compose, /dokploy-network/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt deploy add-on blocks Genesis Next placeholder before app generation", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-docker-placeholder-"));
+  try {
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "genesis"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
+      frontendTarget: { id: "next-app", bundler: "turbopack" },
+      appChoice: { id: "next-app" },
+      verification: { appGenerated: false, appVerified: false },
+      generateAppsStep: { appGenerated: false, appChoice: { id: "next-app" } },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.deployProfile.id, "needs-app-generation");
+    assert.equal(summary.deployProfile.target, "docker");
+    assert.equal(summary.counts.create, 0);
+    assert.equal(summary.approvalRequired, false);
+    assert.match(summary.deployProfile.blockedReason, /no Next\.js package\.json evidence exists/);
+    assert.equal(summary.changedItems.some((item) => /Dockerfile|docker-compose/.test(item.path)), false);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--apply", "--no-color"]);
+    assert.match(apply, /DEPLOY_PROFILE: needs-app-generation/);
+    assert.match(apply, /ARTIFACT_VERIFIED: false/);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), false);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.yml")), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

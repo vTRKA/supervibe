@@ -955,6 +955,12 @@ function snapshotFileExcluded(rel) {
   return /^\.supervibe\/memory\/code\.db/.test(rel)
     || /^\.supervibe\/memory\/.*\.jsonl$/.test(rel)
     || /^\.supervibe\/memory\/.*\.(lock|key)$/.test(rel)
+    || rel === ".supervibe/memory/code-index-checkpoint.json"
+    || rel === ".supervibe/memory/code-index-status.json"
+    || rel === ".supervibe/memory/source-rag-status.json"
+    || rel === ".supervibe/memory/codegraph-status.json"
+    || /^\.supervibe\/memory\/.*checkpoint.*\.json$/.test(rel)
+    || /^\.supervibe\/memory\/.*status.*\.json$/.test(rel)
     || rel === ".supervibe/memory/adapt/file-manifest.json";
 }
 
@@ -1651,13 +1657,34 @@ async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}
 }
 
 function resolveDeployProfile(projectRoot, target = "dokploy") {
+  const genesisState = readGenesisDeployState(projectRoot);
   const genesisChoice = readGenesisFrontendDecision(projectRoot);
   const frontendEvidence = collectFrontendPackageEvidence({ rootDir: projectRoot });
-  const nextServices = assignServiceNames(discoverNextServices(projectRoot, frontendEvidence, genesisChoice), "frontend");
+  const nextServices = assignServiceNames(discoverNextServices(projectRoot, frontendEvidence), "frontend");
   const laravel = detectLaravelEvidence(projectRoot);
   const laravelServices = assignServiceNames(laravel.services, "backend");
   const services = [...laravelServices, ...nextServices];
   const migrationCommands = buildLaravelMigrationCommands({ target, services: laravelServices });
+  const unsupportedServices = discoverUnsupportedDeployServices(projectRoot, frontendEvidence, services);
+  if (nextServices.length === 0 && isGenesisNextAppWithoutPackageEvidence({ genesisState, genesisChoice, frontendEvidence })) {
+    return {
+      id: "needs-app-generation",
+      target,
+      appDir: null,
+      backendDir: laravelServices[0]?.dir || null,
+      services: laravelServices,
+      nextServices: [],
+      laravelServices,
+      unsupportedServices,
+      migrationCommand: laravelServices.length > 0 ? migrationCommands.join(" && ") || null : null,
+      migrationCommands: laravelServices.length > 0 ? migrationCommands : [],
+      evidence: [
+        "genesis:next-app",
+        ...laravelServices.flatMap((service) => service.evidence || []),
+      ],
+      blockedReason: `Genesis resolved next-app, but no Next.js package.json evidence exists. Run /supervibe-genesis --generate-apps or add a real Next service before generating ${target} Docker artifacts.`,
+    };
+  }
   if (laravelServices.length > 0) {
     const id = nextServices.length > 0 ? "laravel-next-postgres" : "laravel-postgres";
     return {
@@ -1668,7 +1695,7 @@ function resolveDeployProfile(projectRoot, target = "dokploy") {
       services,
       nextServices,
       laravelServices,
-      unsupportedServices: discoverUnsupportedDeployServices(projectRoot, frontendEvidence, services),
+      unsupportedServices,
       migrationCommand: migrationCommands.join(" && ") || null,
       migrationCommands,
       evidence: services.flatMap((service) => service.evidence || []),
@@ -1683,13 +1710,13 @@ function resolveDeployProfile(projectRoot, target = "dokploy") {
       services,
       nextServices,
       laravelServices: [],
-      unsupportedServices: discoverUnsupportedDeployServices(projectRoot, frontendEvidence, services),
+      unsupportedServices,
       migrationCommand: null,
       migrationCommands: [],
       evidence: services.flatMap((service) => service.evidence || []),
     };
   }
-  const unsupportedServices = discoverUnsupportedDeployServices(projectRoot, frontendEvidence, []);
+  const unsupportedOnlyServices = discoverUnsupportedDeployServices(projectRoot, frontendEvidence, []);
   return {
     id: "needs-stack-evidence",
     target,
@@ -1698,14 +1725,29 @@ function resolveDeployProfile(projectRoot, target = "dokploy") {
     services: [],
     nextServices: [],
     laravelServices: [],
-    unsupportedServices,
+    unsupportedServices: unsupportedOnlyServices,
     migrationCommand: null,
     migrationCommands: [],
     evidence: [],
-    blockedReason: unsupportedServices.length > 0
-      ? `Only unsupported deploy services were found (${unsupportedServices.map((service) => service.kind).join(",")}); refusing to generate a ${target} plan without an explicit supported stack pack.`
+    blockedReason: unsupportedOnlyServices.length > 0
+      ? `Only unsupported deploy services were found (${unsupportedOnlyServices.map((service) => service.kind).join(",")}); refusing to generate a ${target} plan without an explicit supported stack pack.`
       : `No Laravel or Next.js evidence was found; refusing to generate a ${target} backend, frontend, or migration plan from directory names alone.`,
   };
+}
+
+function readGenesisDeployState(projectRoot) {
+  return readJsonOptional(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"));
+}
+
+function isGenesisNextAppWithoutPackageEvidence({ genesisState = null, genesisChoice = null, frontendEvidence = [] } = {}) {
+  const choice = typeof genesisChoice === "object" ? genesisChoice?.id : genesisChoice;
+  const stateChoice = genesisState?.frontendTarget?.id
+    || genesisState?.appChoice?.id
+    || genesisState?.generateAppsStep?.appChoice?.id
+    || null;
+  const resolvedNext = choice === "next-app" || stateChoice === "next-app";
+  if (!resolvedNext) return false;
+  return !(frontendEvidence || []).some((entry) => (entry.tags || []).includes("nextjs"));
 }
 
 function detectLaravelEvidence(projectRoot) {
@@ -1740,7 +1782,7 @@ function detectLaravelEvidence(projectRoot) {
   };
 }
 
-function discoverNextServices(projectRoot, frontendEvidence = [], genesisChoice = null) {
+function discoverNextServices(projectRoot, frontendEvidence = []) {
   const services = [];
   for (const entry of frontendEvidence || []) {
     if (!(entry.tags || []).includes("nextjs")) continue;
@@ -1752,17 +1794,6 @@ function discoverNextServices(projectRoot, frontendEvidence = [], genesisChoice 
       packageName: entry.packageName || "",
       port: 3000,
       evidence: [`next:${normalizeRel(dir)}`],
-    });
-  }
-  if (services.length === 0 && genesisChoice === "next-app") {
-    const dir = existsSync(join(projectRoot, "frontend", "package.json")) ? "frontend" : "frontend";
-    services.push({
-      kind: "next",
-      dir,
-      packagePath: `${dir}/package.json`,
-      packageName: "",
-      port: 3000,
-      evidence: [`next:${dir}`, "genesis:next-app"],
     });
   }
   return services;
@@ -1889,7 +1920,7 @@ function dedupeUnsupportedServices(services = []) {
 }
 
 function deployArtifacts(profile = {}) {
-  if (profile.id === "needs-stack-evidence") return [];
+  if (profile.id === "needs-stack-evidence" || profile.id === "needs-app-generation") return [];
   if (profile.target === "docker") return dockerDeployArtifacts(profile);
   return dokployDeployArtifacts(profile);
 }

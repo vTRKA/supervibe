@@ -263,6 +263,27 @@ test("genesis dry-run/app generation phases are bootstrap-pre-agent without comp
   assert.equal(smokeGate.receiptGate, "pending-runtime-agent-receipts");
 });
 
+test("command-agent-plan CLI treats bare Genesis as default dry-run bootstrap phase", () => {
+  const out = execFileSync(process.execPath, [
+    AGENT_PLAN_SCRIPT,
+    "--command",
+    "/supervibe-genesis",
+    "--host",
+    "codex",
+    "--installed-only",
+  ], {
+    cwd: ROOT,
+    env: { ...process.env, SUPERVIBE_PLUGIN_ROOT: ROOT },
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  assert.match(out, /EXECUTION_MODE: bootstrap-pre-agent/);
+  assert.match(out, /DURABLE_WRITES_ALLOWED: false/);
+  assert.match(out, /BOOTSTRAP_PRE_AGENT_ALLOWED: true/);
+  assert.match(out, /RECEIPT_GATE: bootstrap-pre-agent-basic-scaffold/);
+});
+
 test("adapt dry-run command plan is read-only and agentless while verify-agents keeps the receipt gate", () => {
   const dryRun = buildCommandAgentPlan("/supervibe-adapt", {
     availableAgentIds: [],

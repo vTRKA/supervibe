@@ -258,6 +258,43 @@ proof gates, dependency remediation UX, and UTF-8 command surfaces.
   launch paths, managed preview/dev-server registry, and successful real
   host-agent smoke telemetry.
 
+## Fixed In 2.0.88
+
+Genesis + Adapt feedback on scaffold truthfulness, deploy evidence gating, and
+internal drift noise.
+
+- [x] Genesis now creates every scaffold-rubric artifact that it verifies:
+  `commitlint.config.js`, `lint-staged.config.js`, `.husky/pre-commit`, and
+  `.husky/commit-msg`.
+- [x] Genesis apply JSON now keeps the top-level and nested report lifecycle
+  consistent: `mode=apply`, `dryRun=false`, and `report.lifecycle=applied`.
+- [x] Genesis writes machine-readable confidence data:
+  `score`, `maxScore`, `label`, `status`, and structured `gaps`.
+- [x] Genesis records Docker/Dokploy intent as an explicit Adapt deploy add-on
+  policy and next command instead of silently treating `docker` as a harmless
+  stack tag or guessing deploy artifacts from placeholders.
+- [x] `command-agent-plan --command /supervibe-genesis` now defaults to the
+  dry-run bootstrap phase; `--apply`/`--generate-apps` remain
+  bootstrap-pre-agent, and `--verify-agents` remains the runtime receipt gate.
+- [x] Adapt deploy scope blocks `genesis:next-app` placeholder projects until a
+  real Next.js `package.json` exists, preventing Docker/Dokploy files over an
+  empty `frontend/` directory.
+- [x] Adapt no-git drift ignores Code RAG checkpoint/status JSON self-noise
+  such as `.supervibe/memory/code-index-checkpoint.json`.
+- [x] Regression tests now cover base pre-commit scaffold, apply lifecycle
+  JSON, Docker deploy policy, bare Genesis command-agent-plan CLI behavior,
+  placeholder deploy blocking, and no-git checkpoint noise.
+- [ ] Add first-class deploy packs for more service technologies: Vite SPA,
+  Node API, Python, Go, Rust, workers, databases, queues, and mixed monorepos
+  beyond Next.js/Laravel.
+- [ ] Make `--verify-agents` run a Codex receipt-bound smoke dispatch through
+  the real host path when host permissions allow it; current gates still avoid
+  pretending agents ran when telemetry is empty.
+- [ ] Make compact CLI output the default for very large dry-runs and reserve
+  full JSON payloads for `--json --verbose`.
+- [ ] Add real Docker/Dokploy e2e with daemon-running and daemon-stopped cases,
+  plus Windows PowerShell ANSI/UTF-8 process-output coverage.
+
 ## Fixed In 2.0.87
 
 Genesis + Adapt feedback on truthful app verification, deploy plan safety, and

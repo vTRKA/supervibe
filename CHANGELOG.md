@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.88] - 2026-05-06
+
+### Added
+
+- Added base Genesis scaffold artifacts for `commitlint.config.js`,
+  `lint-staged.config.js`, `.husky/pre-commit`, and `.husky/commit-msg` so
+  `artifactVerification` no longer requires files that Genesis did not create.
+- Added machine-readable Genesis confidence scoring with `score`, `status`, and
+  `gaps` in state and JSON output.
+- Added explicit Genesis Docker/Dokploy deploy add-on policy output that points
+  to Adapt deploy scope after real service evidence exists.
+
+### Changed
+
+- `command-agent-plan` now treats a bare `/supervibe-genesis` CLI plan as the
+  default dry-run bootstrap phase instead of implying runtime agent dispatch is
+  required before scaffold planning.
+- Genesis app scaffolder commands now record the empty-placeholder directory
+  policy for Next.js and Vite app generation.
+
+### Fixed
+
+- Fixed Genesis `--apply --json` lifecycle consistency so nested `report`
+  fields report `lifecycle=applied`, not `dry-run`.
+- Fixed Adapt deploy planning so `genesis:next-app` state without a real
+  Next.js `package.json` blocks Docker/Dokploy generation instead of creating a
+  Dockerfile over an empty `frontend/` placeholder.
+- Fixed Adapt no-git snapshot drift to ignore internal Code RAG checkpoint and
+  transient status JSON files.
+
 ## [2.0.87] - 2026-05-06
 
 ### Added

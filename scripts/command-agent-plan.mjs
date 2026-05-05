@@ -86,6 +86,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const env = { ...process.env };
     if (options.host) env.SUPERVIBE_HOST = options.host;
     const hostSelection = selectHostAdapter({ rootDir: projectRoot, env });
+    const genesisDefaultDryRun = isBareGenesisBootstrapPlan(options);
     const availableAgentSources = listAvailableAgentSources({
       pluginRoot,
       projectRoot,
@@ -102,7 +103,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       workflowContext: {
         lowRisk: options["low-risk"] === true,
         bootstrapPreAgent: options.bootstrapPreAgent === true,
-        dryRun: options.dryRun === true || options["dry-run"] === true,
+        dryRun: options.dryRun === true || options["dry-run"] === true || genesisDefaultDryRun,
         apply: options.apply === true,
         generateApps: options.generateApps === true || options["generate-apps"] === true,
         verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
@@ -138,6 +139,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`ERROR: ${error.message}`);
     process.exit(2);
   }
+}
+
+function isBareGenesisBootstrapPlan(options = {}) {
+  const command = String(options.command || "").trim();
+  if (command !== "/supervibe-genesis") return false;
+  return options.bootstrapPreAgent !== true
+    && options.dryRun !== true
+    && options["dry-run"] !== true
+    && options.apply !== true
+    && options.generateApps !== true
+    && options["generate-apps"] !== true
+    && options.verifyAgents !== true
+    && options["verify-agents"] !== true;
 }
 
 function listAvailableAgentSources({

@@ -171,7 +171,12 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), true);
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "effectiveness.jsonl")), true);
     assert.equal(existsSync(join(projectRoot, ".supervibe", "confidence-log.jsonl")), true);
+    assert.equal(existsSync(join(projectRoot, "commitlint.config.js")), true);
+    assert.equal(existsSync(join(projectRoot, "lint-staged.config.js")), true);
+    assert.equal(existsSync(join(projectRoot, ".husky", "pre-commit")), true);
+    assert.equal(existsSync(join(projectRoot, ".husky", "commit-msg")), true);
     assert.equal(existsSync(join(projectRoot, ".github", "workflows")), false, "base scaffold must not create empty GitHub Actions directory");
+    assert.match(out, /NEXT_AGENT_GATE: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-genesis\.mjs --verify-agents --host codex/);
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.lifecycle, "applied");
@@ -181,6 +186,10 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(state.verification.agentReceiptsVerified, false);
     assert.equal(state.verification.appVerified, false);
     assert.equal(state.verification.deployVerified, false);
+    assert.equal(state.confidence.status, "WARN");
+    assert.equal(state.confidence.label, "7/10");
+    assert.ok(state.confidence.gaps.some((gap) => gap.code === "app-generation-pending"));
+    assert.ok(state.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"));
     assert.equal(state.bootstrap.memoryIndex.status, "present");
     assert.equal(state.bootstrap.effectivenessLog.status, "present");
     assert.equal(state.bootstrap.confidenceLog.status, "present");
@@ -222,8 +231,8 @@ test("supervibe-genesis generate-apps normalizes nested git and generated host f
     assert.equal(state.generateAppsStep.appGenerated, true);
     assert.equal(state.verification.appGenerated, true);
     assert.equal(state.verification.appVerified, false);
-    assert.equal(state.verification.artifactVerified, false);
-    assert.ok(state.verification.missingArtifactPaths.includes("commitlint.config.js"));
+    assert.equal(state.verification.artifactVerified, true);
+    assert.deepEqual(state.verification.missingArtifactPaths, []);
     assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json")), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -380,6 +389,32 @@ test("supervibe-genesis resolves Next plus Vite to a Turbopack Next app by polic
   }
 });
 
+test("supervibe-genesis records Docker tag as explicit Adapt deploy policy", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-docker-policy-"));
+  try {
+    const out = runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "Next.js TypeScript Tailwind Docker",
+      "--json",
+    ], projectRoot);
+    const parsed = JSON.parse(out);
+
+    assert.equal(parsed.report.deployAddOnPolicy.requested, true);
+    assert.equal(parsed.report.deployAddOnPolicy.status, "requires-adapt-deploy-scope");
+    assert.deepEqual(parsed.report.deployAddOnPolicy.targets, ["docker"]);
+    assert.match(parsed.report.deployAddOnPolicy.policy, /does not guess Dockerfiles from placeholder folders/);
+    assert.equal(parsed.report.postApplyCommands.some((entry) => /--scope deploy --target docker --dry-run/.test(entry.command)), true);
+    assert.equal(parsed.report.filesToCreate.some((entry) => entry.path === "frontend/Dockerfile"), false);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-genesis apply preserves prior generated and verified app state", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-preserve-app-state-"));
   try {
@@ -479,8 +514,12 @@ test("supervibe-genesis apply json does not mark execution as dry-run", async ()
     const parsed = JSON.parse(out);
 
     assert.equal(parsed.mode, "apply");
+    assert.equal(parsed.lifecycle, "applied");
     assert.equal(parsed.dryRun, false);
     assert.equal(parsed.report.dryRun, false);
+    assert.equal(parsed.report.lifecycle, "applied");
+    assert.equal(parsed.report.applied, true);
+    assert.equal(parsed.confidence.status, "WARN");
     assert.equal(parsed.adaptFileManifest.path, ".supervibe/memory/adapt/file-manifest.json");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
