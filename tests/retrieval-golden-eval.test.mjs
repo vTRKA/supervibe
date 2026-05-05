@@ -55,6 +55,15 @@ test("retrieval golden eval scores memory, RAG, CodeGraph, stages, and token bud
   }
 });
 
+test("retrieval golden eval CLI uses the tracked default agent-system cases", async () => {
+  const cli = await execFileAsync(process.execPath, [
+    join(process.cwd(), "scripts", "supervibe-retrieval-eval.mjs"),
+  ], { cwd: process.cwd() });
+
+  assert.match(cli.stdout, /PASS: true/);
+  assert.match(cli.stdout, /CASES: 3/);
+});
+
 test("retrieval golden eval fails missing required evidence", () => {
   const result = evaluateRetrievalGoldenCase({
     id: "missing-graph",

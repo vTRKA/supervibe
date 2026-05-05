@@ -3,14 +3,17 @@
 import { formatRetrievalGoldenEvalReport, runRetrievalGoldenEval } from "./lib/supervibe-retrieval-golden-eval.mjs";
 
 const args = parseArgs(process.argv.slice(2));
+const DEFAULT_CASE_FILE = "tests/fixtures/retrieval-golden/agent-system-current.json";
 
 if (args.help) {
   console.log([
     "SUPERVIBE_RETRIEVAL_EVAL_HELP",
     "Usage:",
+    "  npm run supervibe:retrieval-eval",
     "  npm run supervibe:retrieval-eval -- --case-file tests/fixtures/retrieval-golden/cases.json",
     "  npm run supervibe:retrieval-eval -- --case-file cases.json --json",
     "",
+    `Default case file: ${DEFAULT_CASE_FILE}`,
     "Cases assert expected memory IDs, RAG paths, CodeGraph symbols, retrieval stages, and token budget.",
   ].join("\n"));
   process.exit(0);
@@ -19,7 +22,7 @@ if (args.help) {
 try {
   const report = await runRetrievalGoldenEval({
     rootDir: args.root || process.cwd(),
-    caseFile: args["case-file"] || args.file,
+    caseFile: args["case-file"] || args.file || (args["no-default-case-file"] ? null : DEFAULT_CASE_FILE),
     out: args.out,
     now: args.now || new Date().toISOString(),
   });

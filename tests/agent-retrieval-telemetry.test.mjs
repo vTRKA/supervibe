@@ -28,6 +28,19 @@ test("agent output evidence contract requires citations for non-trivial retrieva
   assert.equal(passing.score, 10);
 });
 
+test("agent output evidence contract warns when aliased retrieval tools are uncited", () => {
+  const result = evaluateAgentOutputEvidenceContract({
+    taskText: "audit current command flow",
+    outputText: "I checked it.",
+    subtoolUsage: { memory: 1, "code-search": 1, "code-graph": 1 },
+  });
+
+  assert.equal(result.pass, true);
+  assert.ok(result.warnings.some((item) => item.includes("memory was used")));
+  assert.ok(result.warnings.some((item) => item.includes("rag was used")));
+  assert.ok(result.warnings.some((item) => item.includes("codegraph was used")));
+});
+
 test("agent retrieval telemetry creates strengthening tasks for weak retrieval behavior", () => {
   const invocations = Array.from({ length: 6 }, (_, index) => ({
     ts: `2026-05-02T00:00:0${index}.000Z`,

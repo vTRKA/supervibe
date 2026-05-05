@@ -42,12 +42,13 @@ export function evaluateAgentOutputEvidenceContract({
     rag: evidenceFlags.rag || hasRagCitation(text),
     codegraph: evidenceFlags.codegraph || hasCodeGraphCitation(text),
   };
+  const usage = normalizeSubtoolUsage(subtoolUsage);
   for (const source of required) {
     if (citations[source] || hasNoEvidenceBypass(text, source)) continue;
     failures.push(`required ${source} evidence citation missing`);
   }
   for (const source of ["memory", "rag", "codegraph"]) {
-    if ((subtoolUsage[source] || 0) > 0 && !citations[source]) {
+    if ((usage[source] || 0) > 0 && !citations[source]) {
       warnings.push(`${source} was used but not cited in output`);
     }
   }

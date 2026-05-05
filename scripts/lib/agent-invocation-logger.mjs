@@ -61,6 +61,7 @@ export async function logInvocation(entry) {
   await appendFile(_logPath, JSON.stringify(record) + '\n');
   await writeStructuredAgentOutput(record);
   await appendEffectivenessRecord(record);
+  await appendConfidenceRecord(record);
   return record;
 }
 
@@ -245,6 +246,27 @@ async function appendEffectivenessRecord(record = {}) {
     verification: record.evidence?.verificationCommands || [],
     notes: outcome === 'success' ? 'auto-logged from completed agent invocation' : 'auto-logged from agent invocation; review recommended before final acceptance',
     invocationId: record.invocation_id,
+  };
+  await mkdir(dirname(path), { recursive: true });
+  await appendFile(path, JSON.stringify(entry) + '\n', 'utf8');
+}
+
+async function appendConfidenceRecord(record = {}) {
+  const rootDir = rootDirFromInvocationLogPath();
+  const path = join(rootDir, '.supervibe', 'confidence-log.jsonl');
+  const confidence = typeof record.confidence_score === 'number' ? record.confidence_score : null;
+  const entry = {
+    schemaVersion: 1,
+    ts: record.ts,
+    source: 'agent-invocation-logger',
+    artifact: 'agent-output',
+    agent: record.agent_id,
+    invocationId: record.invocation_id,
+    confidence,
+    score: confidence,
+    gate: confidence !== null && confidence >= 9 ? 'pass' : 'review',
+    evidenceGatePass: record.evidence_gate?.pass ?? null,
+    output: record.structured_output?.json || null,
   };
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, JSON.stringify(entry) + '\n', 'utf8');

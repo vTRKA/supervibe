@@ -73,6 +73,36 @@ test("memory health queues missing memory references for review", async () => {
   }
 });
 
+test("memory health ignores placeholder artifact reference examples", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-health-placeholder-ref-"));
+  try {
+    const decisionsDir = join(rootDir, ".supervibe", "memory", "decisions");
+    await mkdir(decisionsDir, { recursive: true });
+    await writeFile(join(decisionsDir, "placeholder.md"), [
+      "---",
+      "id: placeholder-memory-reference",
+      "type: decision",
+      "date: 2026-05-01",
+      "tags: [commands, validation]",
+      "agent: test-agent",
+      "confidence: 10",
+      "---",
+      "Example output path: `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json`.",
+    ].join("\n"), "utf8");
+
+    const report = await buildMemoryHealthReport({
+      rootDir,
+      now: "2026-05-02T00:00:00.000Z",
+      changedFiles: [],
+    });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.curation.referenceIssues, 0, formatMemoryHealthReport(report));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("memory health includes git-diff invalidation and hierarchy metrics", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-health-invalidation-"));
   try {

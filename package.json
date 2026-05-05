@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.92",
+  "version": "2.0.93",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -67,6 +67,7 @@
     "supervibe:memory-gc": "node scripts/supervibe-memory-gc.mjs",
     "supervibe:memory-health": "node scripts/supervibe-memory-health.mjs",
     "supervibe:agent-retrieval-health": "node scripts/supervibe-agent-retrieval-health.mjs",
+    "supervibe:agent-trend-logs": "node scripts/rebuild-agent-trend-logs.mjs",
     "supervibe:context-pack": "node scripts/supervibe-context-pack.mjs",
     "supervibe:context-eval": "node scripts/supervibe-context-eval.mjs",
     "supervibe:retrieval-eval": "node scripts/supervibe-retrieval-eval.mjs",

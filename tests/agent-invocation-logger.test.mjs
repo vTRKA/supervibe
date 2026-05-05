@@ -31,6 +31,12 @@ test('logInvocation: appends entry to JSONL', async () => {
   assert.strictEqual(output.agentId, 'laravel-developer');
   assert.strictEqual(output.taskSummary, 'Add login endpoint');
   assert.ok((await readFile(join(sandbox, entries[0].structured_output.summary), 'utf8')).includes('# Agent Output: laravel-developer'));
+  const confidenceLog = (await readFile(join(sandbox, '.supervibe', 'confidence-log.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  assert.strictEqual(confidenceLog[0].agent, 'laravel-developer');
+  assert.strictEqual(confidenceLog[0].gate, 'pass');
 });
 
 test('logInvocation: redacts durable task, risk, and recommendation text', async () => {

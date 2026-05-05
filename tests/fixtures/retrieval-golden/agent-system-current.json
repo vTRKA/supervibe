@@ -1,0 +1,136 @@
+{
+  "cases": [
+    {
+      "id": "agent-system-maturity-audit-retrieval",
+      "expected": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-agent-retrieval-telemetry.mjs",
+          "scripts/lib/agent-system-maturity.mjs"
+        ],
+        "graphSymbols": [
+          "buildAgentRetrievalTelemetryReport",
+          "scoreAgentSystemMaturity"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "graph-neighbor",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 3000
+      },
+      "actual": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-agent-retrieval-telemetry.mjs",
+          "scripts/lib/agent-system-maturity.mjs"
+        ],
+        "graphSymbols": [
+          "buildAgentRetrievalTelemetryReport",
+          "scoreAgentSystemMaturity"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "exact-symbol",
+          "fts",
+          "embedding",
+          "repo-map",
+          "graph-neighbor",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 1180
+      }
+    },
+    {
+      "id": "memory-health-token-slo-retrieval",
+      "expected": {
+        "memoryIds": [
+          "memory-governance-health-gates"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-memory-health.mjs",
+          "scripts/lib/supervibe-memory-curator.mjs"
+        ],
+        "graphSymbols": [
+          "buildMemoryHealthReport",
+          "curateProjectMemory"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2500
+      },
+      "actual": {
+        "memoryIds": [
+          "memory-governance-health-gates"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-memory-health.mjs",
+          "scripts/lib/supervibe-memory-curator.mjs"
+        ],
+        "graphSymbols": [
+          "buildMemoryHealthReport",
+          "curateProjectMemory"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 960
+      }
+    },
+    {
+      "id": "command-routing-runtime-parity-retrieval",
+      "expected": {
+        "memoryIds": [
+          "agent-command-runtime-parity"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-command-catalog.mjs",
+          "tests/supervibe-command-catalog.test.mjs"
+        ],
+        "graphSymbols": [
+          "matchSupervibeCommand"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2200
+      },
+      "actual": {
+        "memoryIds": [
+          "agent-command-runtime-parity"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-command-catalog.mjs",
+          "tests/supervibe-command-catalog.test.mjs"
+        ],
+        "graphSymbols": [
+          "matchSupervibeCommand"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "fts",
+          "repo-map",
+          "rerank"
+        ],
+        "estimatedTokens": 1050
+      }
+    }
+  ]
+}

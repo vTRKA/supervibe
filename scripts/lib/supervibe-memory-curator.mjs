@@ -371,6 +371,7 @@ function normalizeReferencePath(reference = "") {
   normalized = normalized.replace(/^(?:node|npx)\s+/, "");
   normalized = normalized.replace(/:\d+$/, "");
   normalized = normalized.replace(/^\.\//, "");
+  if (/[<>]/.test(normalized)) return "";
   if (normalized.includes("*")) return "";
   if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return "";
   if (normalized.includes("..")) return "";

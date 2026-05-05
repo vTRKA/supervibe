@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.93] - 2026-05-06
+
+### Added
+
+- Added default retrieval golden eval coverage for agent-system maturity,
+  memory-health token SLOs, and command-routing parity so
+  `supervibe:retrieval-eval` reports a non-empty 10/10 suite by default.
+- Added `supervibe:agent-trend-logs` to rebuild effectiveness and confidence
+  trend logs from existing agent invocation telemetry.
+
+### Changed
+
+- Agent invocation logging now writes both effectiveness trend entries and
+  confidence-log entries for future host-agent runs.
+- Retrieval evidence checks now normalize `code-search` and `code-graph`
+  subtool aliases before warning about uncited memory/RAG/CodeGraph usage.
+- Memory reference curation ignores placeholder artifact examples such as
+  `<invocation-id>` while preserving real missing-reference detection.
+
 ## [2.0.92] - 2026-05-06
 
 ### Changed
