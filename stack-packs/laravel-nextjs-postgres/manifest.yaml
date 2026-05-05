@@ -90,6 +90,12 @@ agent-addons:
     description: "Opt-in prompt AI engineer for prompts, agent instructions, intent routing, evals, and prompt-injection hardening."
     agents:
       - supervibe:_ops:prompt-ai-engineer
+  github-actions:
+    description: "Opt-in GitHub Actions workflow. Base scaffold intentionally creates no CI workflow."
+  gitlab-ci:
+    description: "Opt-in GitLab CI file. Base scaffold intentionally creates no CI file."
+  ci-ready:
+    description: "Opt-in provider-neutral CI readiness notes."
   network-ops:
     description: "Opt-in network/router engineer. Never installed by default because it may touch real infrastructure."
     agents:
@@ -132,8 +138,8 @@ scaffold:
     pre-push: "stack-packs/laravel-nextjs-postgres-redis/husky/pre-push"
 
   directories:
-    - { path: "backend/", purpose: "Laravel skeleton (composer create-project laravel/laravel backend)" }
-    - { path: "frontend/", purpose: "Next.js skeleton (npx create-next-app@latest frontend)" }
+    - { path: "backend/", purpose: "backend placeholder; run approved generate-apps step for Laravel" }
+    - { path: "frontend/", purpose: "frontend placeholder; run approved generate-apps step for Next.js" }
     - { path: ".supervibe/artifacts/prototypes/", purpose: "HTML prototypes; design system in _design-system/" }
     - { path: ".supervibe/artifacts/brandbook/", purpose: "Brand direction, preferences, mood boards, and alternatives" }
     - { path: ".supervibe/artifacts/prototypes/_design-system/", purpose: "Source-of-truth candidate/final tokens + components" }
@@ -142,7 +148,6 @@ scaffold:
     - { path: ".supervibe/artifacts/prd/", purpose: "Product Requirements Documents" }
     - { path: ".supervibe/artifacts/specs/", purpose: "Technical specs (output of brainstorming)" }
     - { path: ".supervibe/artifacts/plans/", purpose: "Implementation plans (output of writing-plans)" }
-    - { path: ".github/workflows/", purpose: "GitHub Actions CI" }
 
 post-genesis-actions:
   - { run: "composer install --working-dir=backend", when: "backend/composer.json exists" }

@@ -1,0 +1,15 @@
+stages:
+  - check
+
+check:
+  image: node:22
+  stage: check
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm test --if-present

@@ -19,13 +19,16 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("security-audit", "Explicit add-on for vulnerability review and prioritized remediation."),
   choice("ai-prompting", "Explicit add-on for prompts, agent instructions, intent routing and evals."),
   choice("project-adaptation", "Explicit add-on for adapting project rules and agents when the user requests gap-closing."),
+  choice("github-actions", "Opt-in GitHub Actions CI scaffold. Base scaffold creates no CI workflow."),
+  choice("gitlab-ci", "Opt-in GitLab CI scaffold. Base scaffold creates no CI workflow."),
+  choice("ci-ready", "Opt-in CI readiness notes without choosing a CI provider."),
   choice("redis", "Explicit add-on for Redis cache or queue architecture."),
   choice("product-design-extended", "Legacy-compatible add-on for creative direction, copy, accessibility, presentation and target-specific UI designers."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
 
 const GROUPS = Object.freeze([
-  group("core", "Core orchestration", ["supervibe-orchestrator", "repo-researcher", "code-reviewer", "quality-gate-reviewer", "root-cause-debugger"], ["minimal", "product-design", "full-stack", "research-heavy"]),
+  group("core", "Core orchestration", ["supervibe-orchestrator", "repo-researcher", "rules-curator", "memory-curator", "code-reviewer", "quality-gate-reviewer", "root-cause-debugger"], ["minimal", "product-design", "full-stack", "research-heavy"]),
   group("react-frontend", "React frontend", ["react-implementer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["react", "vite", "tanstack-router", "tailwind"]),
   group("nextjs-web", "Next.js web app", ["nextjs-architect", "nextjs-developer", "server-actions-specialist"], ["minimal", "product-design", "full-stack"], ["nextjs"]),
   group("vue-web", "Vue frontend", ["vue-implementer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["vue"]),
@@ -311,7 +314,7 @@ export function buildGenesisDryRunReport({
   const stackPack = resolveGenesisStackPack({ pluginRoot, fingerprint });
   const rulesPlan = resolveGenesisRules({ pluginRoot, fingerprint, stackPack, addOns });
   const skillsPlan = resolveGenesisSkills({ pluginRoot, selectedAgents: agentProfile.selectedAgents });
-  const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack });
+  const scaffoldPlan = resolveStackPackScaffoldArtifacts({ stackPack, addOns });
   const optionalAgents = unique(addOnAgents(addOns));
   const recommendedAgents = agentProfile.selectedAgents.filter((agent) => !optionalAgents.includes(agent));
   const supervibeStateArtifacts = [
@@ -374,6 +377,7 @@ export function buildGenesisDryRunReport({
     selectedSkills: skillsPlan.selectedSkills,
     supervibeStateArtifacts,
     scaffoldArtifacts: scaffoldPlan.files,
+    generateAppsStep: buildGenerateAppsStep(fingerprint),
     postApplyCommands: [
       {
         command: "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress",
@@ -412,6 +416,35 @@ export function buildGenesisDryRunReport({
   };
 }
 
+function buildGenerateAppsStep(fingerprint = {}) {
+  const tags = new Set(fingerprint.tags || []);
+  const commands = [];
+  if (tags.has("laravel")) {
+    commands.push({
+      command: "composer create-project laravel/laravel backend",
+      when: "backend/ is still an empty placeholder and Composer is installed",
+    });
+  }
+  if (tags.has("nextjs")) {
+    commands.push({
+      command: "npx create-next-app@latest frontend --ts --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm",
+      when: "frontend/ is still an empty placeholder and Node/npm are installed",
+    });
+  } else if (tags.has("vite")) {
+    commands.push({
+      command: "npm create vite@latest frontend -- --template react-ts",
+      when: "frontend/ is still an empty placeholder and Node/npm are installed",
+    });
+  }
+  return {
+    id: "generate-apps",
+    approvalRequired: commands.length > 0,
+    status: "not-run",
+    commands,
+    note: "Base scaffold creates placeholders only; run this approved step to create real framework apps.",
+  };
+}
+
 export function formatGenesisDryRunReport(report) {
   const lines = [
     "SUPERVIBE_GENESIS_DRY_RUN",
@@ -429,6 +462,7 @@ export function formatGenesisDryRunReport(report) {
     `MISSING_ARTIFACTS: ${report.missingArtifacts.length}`,
     `PRESERVED_SECTIONS: ${report.preservedSections.join(", ") || "none"}`,
     `SKIPPED_GENERATED_FOLDERS: ${report.skippedGeneratedFolders.map((entry) => entry.path).join(", ")}`,
+    `GENERATE_APPS_STEP: ${report.generateAppsStep?.approvalRequired ? "approval-required" : "not-needed"}`,
     `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
     "AGENT_ROLES:",
     formatAgentRoleSummaries(report.agentProfile.selectedAgents, { agents: report.agentProfile.agentResponsibilities }, { max: 80 }) || "- none",
@@ -436,6 +470,7 @@ export function formatGenesisDryRunReport(report) {
   ];
   for (const entry of report.filesToModify) lines.push(`MODIFY: ${entry.path} - ${entry.reason}`);
   for (const entry of report.filesToCreate.slice(0, 10)) lines.push(`CREATE: ${entry.path} - ${entry.reason}`);
+  for (const entry of report.generateAppsStep?.commands || []) lines.push(`GENERATE_APPS_COMMAND: ${entry.command} (${entry.when})`);
   return lines.join("\n");
 }
 
@@ -860,14 +895,45 @@ function addOnAgents(addOns = []) {
   return normalizeAddOns(addOns).flatMap((id) => ADD_ON_AGENTS[id] || []);
 }
 
-function resolveStackPackScaffoldArtifacts({ stackPack }) {
+function resolveStackPackScaffoldArtifacts({ stackPack, addOns = [] }) {
   const scaffold = stackPack?.data?.scaffold || {};
   const rootFiles = asArray(scaffold["root-files"]).map((entry) => ({ path: entry.path, source: entry.source || null, type: "file", reason: "stack-pack root file" }));
   const directories = asArray(scaffold.directories).map((entry) => ({ path: entry.path, source: null, type: "directory", reason: entry.purpose || "stack-pack directory" }));
   const husky = Object.entries(scaffold.husky || {}).map(([name, source]) => ({ path: `.husky/${name}`, source, type: "file", reason: "stack-pack git hook" }));
+  const ci = resolveCiAddOnScaffold(addOns);
   return {
-    files: [...rootFiles, ...directories, ...husky].filter((entry) => entry.path),
+    files: [...rootFiles, ...directories, ...husky, ...ci].filter((entry) => entry.path),
   };
+}
+
+function resolveCiAddOnScaffold(addOns = []) {
+  const normalized = new Set(normalizeAddOns(addOns));
+  const files = [];
+  if (normalized.has("github-actions")) {
+    files.push({
+      path: ".github/workflows/supervibe-ci.yml",
+      source: "templates/ci/github-actions-supervibe-ci.yml",
+      type: "file",
+      reason: "github-actions CI add-on",
+    });
+  }
+  if (normalized.has("gitlab-ci")) {
+    files.push({
+      path: ".gitlab-ci.yml",
+      source: "templates/ci/gitlab-ci.yml",
+      type: "file",
+      reason: "gitlab-ci add-on",
+    });
+  }
+  if (normalized.has("ci-ready")) {
+    files.push({
+      path: "docs/ci-ready.md",
+      source: "templates/ci/ci-ready.md",
+      type: "file",
+      reason: "CI readiness add-on",
+    });
+  }
+  return files;
 }
 
 function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, recommendedAgents, optionalAgents }) {

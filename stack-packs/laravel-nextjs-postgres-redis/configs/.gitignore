@@ -2,12 +2,6 @@
 node_modules/
 vendor/
 
-# Env
-.env
-.env.local
-.env.*.local
-!.env.example
-
 # Build artifacts
 backend/public/build/
 backend/bootstrap/cache/*.php
@@ -16,30 +10,40 @@ frontend/out/
 frontend/build/
 frontend/dist/
 
-# Logs
+# Logs and testing
 *.log
 npm-debug.log*
 backend/storage/logs/*.log
-
-# Testing
 coverage/
 .nyc_output/
 backend/.phpunit.cache/
 backend/coverage/
 frontend/coverage/
 
-# OS
+# OS and IDE
 .DS_Store
 Thumbs.db
-
-# IDE
 .idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/launch.json
 *.swp
 
-# Supervibe runtime
+# SUPERVIBE:BEGIN managed-gitignore
+.supervibe/memory/code.db*
+.supervibe/memory/code-index-checkpoint.json
+.supervibe/memory/code-index.lock
+.supervibe/memory/agent-invocations.jsonl
+.supervibe/memory/workflow-invocation-ledger.jsonl
+.supervibe/memory/genesis/state.json
+.supervibe/memory/adapt/state.json
 .supervibe/research-cache/
-.supervibe/memory/effectiveness.jsonl
-# .supervibe/confidence-log.jsonl   # Track this — audit trail
+docker-compose.override.yml
+postgres-data/
+.docker/volumes/
+*.sql
+*.dump
+.env
+.env.*
+!.env.example
+# SUPERVIBE:END managed-gitignore

@@ -16,6 +16,7 @@ import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
+const DOKPLOY_MIGRATION_COMMAND = "docker compose -f docker-compose.dokploy.yml run --rm backend php artisan migrate --force";
 
 export async function createAdaptPlan({
   projectRoot = process.cwd(),
@@ -51,6 +52,7 @@ export async function createAdaptPlan({
   });
   const items = dedupePlanItems([...projectItems, ...closureItems]);
   const counts = countPlanItems(items);
+  const memoryWrites = memoryIndex?.refreshed === true;
   const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
   const baselineVersionDrift = Boolean(currentVersion && baseline.pluginVersion !== currentVersion);
   const baselineRefreshRequired = counts.baselineRefresh > 0;
@@ -72,10 +74,12 @@ export async function createAdaptPlan({
     baselineVersionDrift,
     baselineRefreshRequired,
     metadataUpdateRequired,
+    memoryWrites,
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
     counts,
-    fastPath: buildAdaptFastPath({ counts, items }),
+    fastPath: buildAdaptFastPath({ counts, items, memoryWrites }),
+    agentPlanCommand: buildAdaptAgentPlanCommand({ counts, memoryWrites }),
     items,
   };
 }
@@ -178,6 +182,98 @@ export async function applyAdaptPlan(plan, {
   return result;
 }
 
+export function createDokployDeployPlan({
+  projectRoot = process.cwd(),
+  target = "dokploy",
+} = {}) {
+  const artifacts = dokployDeployArtifacts();
+  const items = artifacts.map((artifact) => {
+    const projectAbs = join(projectRoot, artifact.path);
+    if (!existsSync(projectAbs)) {
+      return {
+        ...artifact,
+        projectAbs,
+        projectRel: artifact.path,
+        action: "create",
+        classification: "deploy-addon-missing",
+        projectHash: null,
+        templateHash: hashContent(artifact.content),
+        diff: summarizeLineDiff("", artifact.content),
+      };
+    }
+    const current = readFileSync(projectAbs, "utf8");
+    const projectHash = hashContent(current);
+    const templateHash = hashContent(artifact.content);
+    const identical = projectHash === templateHash;
+    return {
+      ...artifact,
+      projectAbs,
+      projectRel: artifact.path,
+      action: identical ? "identical" : "update",
+      classification: identical ? "deploy-addon-identical" : "deploy-addon-review-update",
+      projectHash,
+      templateHash,
+      diff: identical ? { additions: 0, deletions: 0 } : summarizeLineDiff(current, artifact.content),
+    };
+  });
+  const counts = {
+    create: items.filter((item) => item.action === "create").length,
+    update: items.filter((item) => item.action === "update").length,
+    identical: items.filter((item) => item.action === "identical").length,
+  };
+  return {
+    kind: "adapt-deploy-plan",
+    scope: "deploy",
+    target,
+    projectRoot,
+    approvalRequired: counts.create > 0 || counts.update > 0,
+    counts,
+    items,
+    migrationCommand: DOKPLOY_MIGRATION_COMMAND,
+  };
+}
+
+export async function applyDokployDeployPlan(plan, {
+  include = [],
+  applyAll = false,
+} = {}) {
+  const approved = new Set(include.map(normalizeRel));
+  const created = [];
+  const updated = [];
+  const skipped = [];
+  for (const item of plan.items || []) {
+    if (item.action === "identical") {
+      skipped.push({ ...item, reason: "already current" });
+      continue;
+    }
+    const approvedUpdate = applyAll || approved.has(item.projectRel);
+    const approvedCreate = item.action === "create" && (include.length === 0 || approvedUpdate);
+    if (!approvedCreate && !approvedUpdate) {
+      skipped.push({ ...item, reason: "not approved" });
+      continue;
+    }
+    await mkdir(dirname(item.projectAbs), { recursive: true });
+    await writeFile(item.projectAbs, item.content, "utf8");
+    if (item.action === "create") created.push(item);
+    else updated.push(item);
+  }
+  const result = {
+    kind: "adapt-deploy-apply",
+    scope: plan.scope,
+    target: plan.target,
+    projectRoot: plan.projectRoot,
+    created,
+    updated,
+    skipped,
+    migrationCommand: plan.migrationCommand,
+    mutatedPaths: [...created, ...updated].map((item) => item.projectRel),
+  };
+  result.lifecycleState = await writeDeployLifecycleState(plan, result);
+  result.mutatedPaths.push(result.lifecycleState.path);
+  result.mutatedPaths = [...new Set(result.mutatedPaths)];
+  return result;
+}
+
 export async function resolveAdaptPlanItems(plan, paths = []) {
   const requested = new Set((Array.isArray(paths) ? paths : [paths]).map(normalizeRel).filter(Boolean));
   const resolved = [];
@@ -245,9 +341,11 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `LINE_ENDING_ONLY_DRIFT: ${plan.counts.lineEndingOnly}`,
     `IDENTICAL: ${plan.counts.identical}`,
     `PROJECT_ONLY: ${plan.counts.projectOnly}`,
+    `MEMORY_WRITES: ${plan.memoryWrites === true}`,
     `FAST_PATH_ELIGIBLE: ${plan.fastPath?.eligible === true}`,
     `FAST_PATH_ROLES: ${(plan.fastPath?.requiredRoles || []).join(",") || "none"}`,
     `FAST_PATH_EXECUTION: ${plan.fastPath?.allowedExecution || "unknown"}`,
+    `AGENT_PLAN_COMMAND: ${plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites })}`,
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
@@ -274,6 +372,29 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   return lines.join("\n");
 }
 
+export function formatDokployDeployPlan(plan) {
+  const lines = [
+    "SUPERVIBE_ADAPT_DEPLOY_DRY_RUN",
+    `SCOPE: ${plan.scope}`,
+    `TARGET: ${plan.target}`,
+    `ARTIFACTS: ${(plan.items || []).length}`,
+    `CREATES: ${plan.counts?.create ?? 0}`,
+    `UPDATES: ${plan.counts?.update ?? 0}`,
+    `IDENTICAL: ${plan.counts?.identical ?? 0}`,
+    `APPROVAL_REQUIRED: ${plan.approvalRequired === true}`,
+    `MIGRATION_COMMAND: ${plan.migrationCommand}`,
+  ];
+  for (const item of plan.items || []) {
+    if (item.action === "create") lines.push(`CREATE: ${item.projectRel} (${item.reason})`);
+    else if (item.action === "update") lines.push(`UPDATE: ${item.projectRel} (${item.classification})`);
+    else lines.push(`IDENTICAL: ${item.projectRel}`);
+  }
+  if (plan.approvalRequired) {
+    lines.push("NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --scope deploy --target dokploy --apply");
+  }
+  return lines.join("\n");
+}
+
 export function formatAdaptApply(result, { diffSummary = false } = {}) {
   const lines = [
     "SUPERVIBE_ADAPT_APPLY",
@@ -286,6 +407,10 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `BASELINE_REFRESHED: ${result.baselineRefreshed ? "true" : "false"}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
+    `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
+    `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
+    `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
+    `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
@@ -309,6 +434,28 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     lines.push(`INDEX_REASON: ${result.indexGate.reason || result.indexGate.failed || "unknown"}`);
     lines.push(`NEXT_INDEX_REPAIR: ${result.indexGate.repairCommand || DEFAULT_INDEX_REPAIR_COMMAND}`);
   }
+  return lines.join("\n");
+}
+
+export function formatDokployDeployApply(result) {
+  const lines = [
+    "SUPERVIBE_ADAPT_DEPLOY_APPLY",
+    `SCOPE: ${result.scope}`,
+    `TARGET: ${result.target}`,
+    `CREATED: ${(result.created || []).length}`,
+    `UPDATED: ${(result.updated || []).length}`,
+    `SKIPPED: ${(result.skipped || []).length}`,
+    `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
+    `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
+    `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
+    `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
+    `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
+    `MIGRATION_COMMAND: ${result.migrationCommand}`,
+  ];
+  for (const item of result.created || []) lines.push(`CREATED_FILE: ${item.projectRel}`);
+  for (const item of result.updated || []) lines.push(`UPDATED_FILE: ${item.projectRel}`);
+  for (const item of result.skipped || []) lines.push(`SKIPPED_FILE: ${item.projectRel} - ${item.reason || "skipped"}`);
+  for (const path of result.mutatedPaths || []) lines.push(`MUTATED: ${path}`);
   return lines.join("\n");
 }
 
@@ -353,7 +500,9 @@ export function summarizeAdaptPlan(plan) {
       drift: plan.versionDrift === true,
     },
     counts: plan.counts,
+    memoryWrites: plan.memoryWrites === true,
     fastPath: plan.fastPath,
+    agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
     baselineRefreshRequired: plan.baselineRefreshRequired === true,
     approvalRequired: plan.approvalRequired === true,
     memoryIndex: plan.memoryIndex,
@@ -369,6 +518,25 @@ export function summarizeAdaptPlan(plan) {
       : plan.metadataUpdateRequired
         ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
         : null,
+  };
+}
+
+export function summarizeDokployDeployPlan(plan) {
+  return {
+    kind: "adapt-deploy-summary",
+    scope: plan.scope,
+    target: plan.target,
+    counts: plan.counts,
+    approvalRequired: plan.approvalRequired === true,
+    migrationCommand: plan.migrationCommand,
+    changedItems: (plan.items || [])
+      .filter((item) => item.action === "create" || item.action === "update")
+      .map((item) => ({
+        path: item.projectRel,
+        action: item.action,
+        classification: item.classification,
+        diff: item.diff || null,
+      })),
   };
 }
 
@@ -390,6 +558,20 @@ export function summarizeAdaptApply(result) {
     postApply: result.postApply,
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
+  };
+}
+
+export function summarizeDokployDeployApply(result) {
+  return {
+    kind: "adapt-deploy-apply-summary",
+    scope: result.scope,
+    target: result.target,
+    created: (result.created || []).map((item) => item.projectRel),
+    updated: (result.updated || []).map((item) => item.projectRel),
+    skipped: (result.skipped || []).map((item) => ({ path: item.projectRel, reason: item.reason || "skipped" })),
+    mutatedPaths: result.mutatedPaths || [],
+    migrationCommand: result.migrationCommand,
+    lifecycleState: result.lifecycleState,
   };
 }
 
@@ -428,23 +610,43 @@ function formatAdaptDiffSummary(plan) {
   return lines.join("\n");
 }
 
-function buildAdaptFastPath({ counts = {}, items = [] } = {}) {
+function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = {}) {
   const changed = items.filter((item) => item.action === "add" || item.action === "update");
   const eligible = Number(counts.add || 0) === 0
     && Number(counts.update || 0) <= 1
     && Number(counts.projectOnly || 0) === 0
-    && Number(counts.conflicts || 0) === 0;
+    && Number(counts.conflicts || 0) === 0
+    && memoryWrites === false;
   return {
     eligible,
     reason: eligible
       ? "low-risk upstream-only adapt can use CLI apply plus quality gate"
-      : "standard adapt workflow required by adds, conflicts, project-only files, or multiple updates",
+      : "standard adapt workflow required by adds, conflicts, project-only files, memory writes, or multiple updates",
+    criteria: {
+      adds: Number(counts.add || 0),
+      updates: Number(counts.update || 0),
+      projectOnly: Number(counts.projectOnly || 0),
+      conflicts: Number(counts.conflicts || 0),
+      memoryWrites: memoryWrites === true,
+    },
     requiredRoles: eligible
       ? ["supervibe-orchestrator", "quality-gate-reviewer"]
       : ["supervibe-orchestrator", "repo-researcher", "rules-curator", "memory-curator", "quality-gate-reviewer"],
     allowedExecution: eligible ? "cli-apply-plus-validators" : "standard-agent-plan",
     changedArtifacts: changed.map((item) => item.projectRel),
   };
+}
+
+function buildAdaptAgentPlanCommand({ counts = {}, memoryWrites = false } = {}) {
+  return [
+    "node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs",
+    "--command /supervibe-adapt",
+    `--adds ${Number(counts.add || 0)}`,
+    `--updates ${Number(counts.update || 0)}`,
+    `--project-only ${Number(counts.projectOnly || 0)}`,
+    `--conflicts ${Number(counts.conflicts || 0)}`,
+    `--memory-writes ${memoryWrites === true ? "true" : "false"}`,
+  ].join(" ");
 }
 
 function classifyArtifact({ artifact, upstream, baselineHash }) {
@@ -718,10 +920,19 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     ? (plan.items || []).filter((item) => item.action === "add" || item.action === "update").map((item) => item.projectRel)
     : include.map(normalizeRel);
   const updatedArtifacts = (result.applied || []).map((item) => item.projectRel);
+  const skippedArtifacts = (result.skipped || []).map((item) => item.projectRel);
   const blockedArtifacts = (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason }));
-  const lifecycle = blockedArtifacts.length > 0 ? "failed_recoverable" : "verified";
+  const artifactVerified = blockedArtifacts.length === 0 && result.postApply?.clean === true;
+  const agentReceiptsVerified = hasAgentInvocationEvidence(plan.projectRoot);
+  const appVerified = false;
+  const deployVerified = false;
+  const lifecycle = blockedArtifacts.length > 0
+    ? "failed_recoverable"
+    : artifactVerified
+      ? "artifact_verified"
+      : "applied_unverified";
   const state = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     command: "/supervibe-adapt",
     lifecycle,
     currentStage: lifecycle,
@@ -730,9 +941,22 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     previousVersion: result.lastSeenVersion || null,
     approvedArtifacts,
     updatedArtifacts,
+    skippedArtifacts,
     blockedArtifacts,
+    verification: {
+      artifactVerified,
+      agentReceiptsVerified,
+      appVerified,
+      deployVerified,
+      completionClaimAllowed: artifactVerified && agentReceiptsVerified,
+      completionClaim: agentReceiptsVerified
+        ? "artifact adaptation verified with runtime agent receipt evidence"
+        : "artifact adaptation verified only; real agent completion is not claimed without agent invocation receipts",
+    },
+    recovery: buildAdaptRecoveryState(plan, result, { approvedArtifacts, updatedArtifacts, skippedArtifacts, blockedArtifacts }),
     evidence: {
       fastPath: plan.fastPath || null,
+      agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
       metadataUpdated: result.metadataUpdated === true,
       memoryIndex: result.memoryIndex,
       postApply: result.postApply,
@@ -740,6 +964,10 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     },
     validators: {
       artifactAdaptClean: result.postApply?.clean === true,
+      artifactVerified,
+      agentReceiptsVerified,
+      appVerified,
+      deployVerified,
       codeIndexReady: result.indexGate?.ready === true,
       blockedCount: blockedArtifacts.length,
     },
@@ -751,6 +979,10 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
         at: now,
         validators: {
           artifactAdaptClean: result.postApply?.clean === true,
+          artifactVerified,
+          agentReceiptsVerified,
+          appVerified,
+          deployVerified,
           codeIndexReady: result.indexGate?.ready === true,
           blockedCount: blockedArtifacts.length,
         },
@@ -764,7 +996,117 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     path: normalizeRel(relative(plan.projectRoot, path)),
     lifecycle,
     updatedArtifacts,
+    verification: state.verification,
     validators: state.validators,
+  };
+}
+
+async function writeDeployLifecycleState(plan, result) {
+  const path = join(plan.projectRoot, ...STATE_PATH);
+  const now = new Date().toISOString();
+  const createdArtifacts = (result.created || []).map((item) => item.projectRel);
+  const updatedArtifacts = (result.updated || []).map((item) => item.projectRel);
+  const skippedArtifacts = (result.skipped || []).map((item) => item.projectRel);
+  const artifactVerified = (result.created || []).length + (result.updated || []).length > 0
+    && (result.created || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)))
+    && (result.updated || []).every((item) => existsSync(join(plan.projectRoot, item.projectRel)));
+  const agentReceiptsVerified = hasAgentInvocationEvidence(plan.projectRoot);
+  const state = {
+    schemaVersion: 2,
+    command: "/supervibe-adapt",
+    scope: "deploy",
+    target: plan.target,
+    lifecycle: artifactVerified ? "artifact_verified" : "applied_unverified",
+    currentStage: artifactVerified ? "artifact_verified" : "applied_unverified",
+    approvedArtifacts: [...createdArtifacts, ...updatedArtifacts],
+    updatedArtifacts: [...createdArtifacts, ...updatedArtifacts],
+    skippedArtifacts,
+    blockedArtifacts: [],
+    verification: {
+      artifactVerified,
+      agentReceiptsVerified,
+      appVerified: false,
+      deployVerified: false,
+      completionClaimAllowed: false,
+      completionClaim: "Dokploy deploy artifacts were generated; deployment is not verified until Dokploy health checks pass.",
+    },
+    recovery: {
+      beforeSnapshotHash: hashContent(JSON.stringify((plan.items || []).map((item) => ({
+        path: item.projectRel,
+        action: item.action,
+        beforeHash: item.projectHash || null,
+        templateHash: item.templateHash || null,
+      })))),
+      appliedFiles: [...createdArtifacts, ...updatedArtifacts],
+      skippedFiles: skippedArtifacts,
+      failedFile: null,
+      rollbackCommand: "Restore generated deploy files from VCS or remove the listed applied files, then rerun supervibe-adapt --scope deploy --target dokploy --dry-run.",
+      manualRestoreNotes: "Dokploy environment variables must be configured explicitly via .env.example/.env or Dokploy UI values rendered into env_file/environment.",
+    },
+    evidence: {
+      migrationCommand: plan.migrationCommand,
+      envPolicy: "Compose uses env_file and explicit environment keys; Dokploy UI env is not assumed to appear magically in containers.",
+    },
+    validators: {
+      artifactVerified,
+      agentReceiptsVerified,
+      appVerified: false,
+      deployVerified: false,
+      blockedCount: 0,
+    },
+    history: [
+      { state: "approved", at: now, artifacts: [...createdArtifacts, ...updatedArtifacts] },
+      { state: "applied", at: now, artifacts: [...createdArtifacts, ...updatedArtifacts] },
+      { state: artifactVerified ? "artifact_verified" : "applied_unverified", at: now, validators: { artifactVerified, deployVerified: false } },
+    ],
+    updatedAt: now,
+  };
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return {
+    path: normalizeRel(relative(plan.projectRoot, path)),
+    lifecycle: state.lifecycle,
+    updatedArtifacts: state.updatedArtifacts,
+    verification: state.verification,
+    validators: state.validators,
+  };
+}
+
+function hasAgentInvocationEvidence(projectRoot) {
+  const path = join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl");
+  try {
+    return existsSync(path) && statSync(path).size > 0;
+  } catch {
+    return false;
+  }
+}
+
+function buildAdaptRecoveryState(plan, result, {
+  approvedArtifacts = [],
+  updatedArtifacts = [],
+  skippedArtifacts = [],
+  blockedArtifacts = [],
+} = {}) {
+  const beforeArtifacts = (plan.items || [])
+    .filter((item) => approvedArtifacts.includes(item.projectRel) || updatedArtifacts.includes(item.projectRel) || skippedArtifacts.includes(item.projectRel))
+    .map((item) => ({
+      path: item.projectRel,
+      action: item.action,
+      classification: item.classification,
+      beforeHash: item.projectHash || null,
+      upstreamHash: item.upstreamHash || null,
+    }));
+  const failedFile = blockedArtifacts[0]?.path || null;
+  return {
+    beforeSnapshotHash: hashContent(JSON.stringify(beforeArtifacts)),
+    beforeArtifacts,
+    appliedFiles: updatedArtifacts,
+    skippedFiles: skippedArtifacts,
+    failedFile,
+    rollbackCommand: updatedArtifacts.length
+      ? "Restore the listed files from VCS or backups, then rerun supervibe-adapt --dry-run --summary-json --changed-only."
+      : "No files were applied; rerun dry-run after resolving the blocked artifact.",
+    manualRestoreNotes: "State stores relative paths and hashes only. It does not include absolute local filesystem paths.",
   };
 }
 
@@ -960,6 +1302,253 @@ async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}
       },
     },
   };
+}
+
+function dokployDeployArtifacts() {
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.dokploy.yml", "Dokploy compose stack with explicit env propagation, healthchecks, queue, scheduler, and named Postgres volume", dokployComposeTemplate()),
+    fileArtifact("backend/Dockerfile", "Laravel backend runtime image", backendDockerfileTemplate()),
+    fileArtifact("frontend/Dockerfile", "Next.js frontend runtime image", frontendDockerfileTemplate()),
+    fileArtifact(".env.example", "Dokploy environment example; copy to .env or map keys explicitly in Dokploy", envExampleTemplate()),
+    fileArtifact("docs/deploy/dokploy.md", "Dokploy deployment notes and migration policy", dokployReadmeTemplate()),
+  ];
+}
+
+function fileArtifact(path, reason, content) {
+  return { path, reason, content: ensureLf(content), type: "file" };
+}
+
+function dockerignoreTemplate() {
+  return `
+.git
+.github
+.supervibe/memory/code.db*
+.supervibe/memory/code-index-checkpoint.json
+.supervibe/memory/code-index.lock
+.supervibe/research-cache/
+node_modules
+vendor
+backend/vendor
+frontend/node_modules
+frontend/.next
+frontend/out
+coverage
+.env
+.env.*
+!.env.example
+postgres-data
+.docker/volumes
+*.sql
+*.dump
+`;
+}
+
+function dokployComposeTemplate() {
+  return `
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: \${POSTGRES_DB}
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      APP_DEBUG: \${APP_DEBUG:-false}
+      APP_URL: \${APP_URL}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      QUEUE_CONNECTION: \${QUEUE_CONNECTION:-database}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan about --only=environment >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      DB_HOST: postgres
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+      QUEUE_CONNECTION: \${QUEUE_CONNECTION:-database}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["sh", "-lc", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      DB_HOST: postgres
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres-data:
+    name: \${COMPOSE_PROJECT_NAME:-supervibe}-postgres-data
+`;
+}
+
+function backendDockerfileTemplate() {
+  return `
+FROM php:8.3-cli-alpine
+
+RUN apk add --no-cache bash curl git icu-dev libzip-dev oniguruma-dev postgresql-dev zip \\
+  && docker-php-ext-install intl mbstring pdo_pgsql zip
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+COPY . .
+
+RUN if [ -f composer.json ]; then composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction; fi
+
+EXPOSE 8000
+CMD ["sh", "-lc", "php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=8000"]
+`;
+}
+
+function frontendDockerfileTemplate() {
+  return `
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app ./
+EXPOSE 3000
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]
+`;
+}
+
+function envExampleTemplate() {
+  return `
+COMPOSE_PROJECT_NAME=supervibe
+
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.example.com
+APP_KEY=
+
+POSTGRES_DB=app
+POSTGRES_USER=app
+POSTGRES_PASSWORD=change-me
+
+QUEUE_CONNECTION=database
+NEXT_PUBLIC_API_URL=https://api.example.com
+`;
+}
+
+function dokployReadmeTemplate() {
+  return [
+    "# Dokploy Deploy Notes",
+    "",
+    "This add-on creates deploy artifacts only. It does not run a deployment, migrate the database, or assume Dokploy UI variables appear inside containers automatically.",
+    "",
+    "## Environment",
+    "",
+    "Use .env.example as the contract. In Dokploy, either mount an .env file through the compose project or map the same keys explicitly. docker-compose.dokploy.yml uses both env_file and explicit environment keys so required Laravel, Next.js, and Postgres values are visible to containers.",
+    "",
+    "## Domains",
+    "",
+    "Point the frontend domain at the frontend service on port 3000. Point the API domain at the backend service on port 8000. Set APP_URL and NEXT_PUBLIC_API_URL to the public URLs that Dokploy routes.",
+    "",
+    "## Volumes",
+    "",
+    "Postgres uses the named volume postgres-data. Do not replace it with an anonymous bind mount unless you also define backup and restore ownership.",
+    "",
+    "## Migrations",
+    "",
+    "Run migrations explicitly after reviewing the release:",
+    "",
+    "```bash",
+    DOKPLOY_MIGRATION_COMMAND,
+    "```",
+    "",
+    "Do not auto-migrate on container start without an approved rollout and rollback policy.",
+    "",
+    "## Healthchecks",
+    "",
+    "Postgres uses pg_isready. Laravel uses php artisan about --only=environment. Next.js uses an HTTP check against port 3000.",
+    "",
+  ].join("\n");
+}
+
+function ensureLf(value) {
+  return String(value || "").replace(/\r\n/g, "\n").replace(/^\n+/, "").replace(/\s+$/g, "") + "\n";
 }
 
 function normalizeRel(value) {

@@ -157,6 +157,40 @@ same failure modes affect every agent-heavy Supervibe command.
   alternatives, and stop paths visible in addition to the ordered alternatives
   and recommendation rationale.
 
+## Fixed In 2.0.84
+
+Genesis + Adapt lifecycle hardening from combined command feedback.
+
+- [x] Made Adapt dry-run-first explicit: `--summary-json --changed-only`
+  returns counts and the exact `command-agent-plan` command with `adds`,
+  `updates`, `projectOnly`, `conflicts`, and `memoryWrites`.
+- [x] Extended low-risk Adapt fast path to require `memoryWrites=false`; memory
+  writes, adds, conflicts, project-only drift, or multiple updates use the
+  standard curator path.
+- [x] Added layered verification state for Genesis/Adapt:
+  `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and
+  `deployVerified`.
+- [x] Stopped using framework skeleton wording for empty app directories;
+  backend/frontend are placeholders until the approved `generate-apps` step runs
+  real Laravel/Next/Vite scaffolders.
+- [x] Made CI optional through `github-actions`, `gitlab-ci`, and `ci-ready`
+  add-ons; base scaffold no longer creates empty `.github/workflows/`.
+- [x] Added a managed `.gitignore` block that preserves user entries, ignores
+  runtime state, and keeps source-of-truth artifacts trackable.
+- [x] Sanitized Genesis state so tracked artifacts do not persist absolute
+  local target paths.
+- [x] Added Dokploy deploy add-on through
+  `supervibe-adapt --scope deploy --target dokploy`, with compose, Dockerfiles,
+  env example, healthchecks, Postgres volume, queue/scheduler services, and
+  explicit migration notes.
+- [x] Added targeted regression coverage for fast path counts, memory-write
+  blocking, CI add-on, managed `.gitignore`, truthful placeholders, layered
+  state, and Dokploy artifacts.
+- [ ] Add the broader 10/10 e2e matrix across dirty/no-git/multi-host/monorepo
+  and missing dependency scenarios.
+- [ ] Add full apply rollback commands for project-only keep/archive/skip/abort
+  beyond the current recoverable state notes.
+
 ## Fixed In 2.0.83
 
 Genesis empty-project hardening from `/supervibe-genesis` feedback.

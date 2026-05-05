@@ -293,9 +293,14 @@ test("supervibe-adapt applies only explicitly approved files and updates version
       CURRENT_VERSION,
     );
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
-    assert.equal(state.lifecycle, "verified");
+    assert.equal(state.lifecycle, "artifact_verified");
     assert.deepEqual(state.updatedArtifacts, [approvedPath]);
     assert.equal(state.validators.artifactAdaptClean, true);
+    assert.equal(state.verification.artifactVerified, true);
+    assert.equal(state.verification.agentReceiptsVerified, false);
+    assert.equal(state.verification.appVerified, false);
+    assert.equal(state.verification.deployVerified, false);
+    assert.equal(state.recovery.appliedFiles.includes(approvedPath), true);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -310,9 +315,24 @@ test("supervibe-adapt summary-json changed-only omits identical artifact payload
     assert.equal(summary.kind, "adapt-summary");
     assert.equal(summary.counts.update, 1);
     assert.equal(summary.fastPath.eligible, true);
+    assert.match(summary.agentPlanCommand, /--adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false/);
     assert.equal(summary.changedItems.length, 1);
     assert.equal(summary.changedItems[0].path, ".codex/agents/repo-researcher.md");
     assert.equal(Object.hasOwn(summary, "items"), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt dry-run memory writes disable the low-risk fast path", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const out = runAdapt(projectRoot, ["--dry-run", "--refresh-memory-index", "--summary-json", "--changed-only", "--no-color"]);
+    const summary = JSON.parse(out);
+
+    assert.equal(summary.memoryWrites, true);
+    assert.equal(summary.fastPath.eligible, false);
+    assert.match(summary.agentPlanCommand, /--memory-writes true/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -418,6 +438,47 @@ test("supervibe-adapt adds upstream related-rule closure candidates", () => {
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts without claiming deploy verification", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-dokploy-"));
+  try {
+    mkdirSync(join(projectRoot, "backend"), { recursive: true });
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+    assert.equal(summary.kind, "adapt-deploy-summary");
+    assert.equal(summary.counts.create, 6);
+    assert.equal(summary.approvalRequired, true);
+    assert.match(summary.migrationCommand, /php artisan migrate --force/);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
+    assert.match(apply, /SUPERVIBE_ADAPT_DEPLOY_APPLY/);
+    assert.match(apply, /CREATED: 6/);
+    assert.match(apply, /DEPLOY_VERIFIED: false/);
+
+    const compose = readFileSync(join(projectRoot, "docker-compose.dokploy.yml"), "utf8");
+    assert.match(compose, /env_file:/);
+    assert.match(compose, /queue:/);
+    assert.match(compose, /scheduler:/);
+    assert.match(compose, /postgres-data:/);
+    assert.match(compose, /healthcheck:/);
+    assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, ".env.example")), true);
+
+    const notes = readFileSync(join(projectRoot, "docs", "deploy", "dokploy.md"), "utf8");
+    assert.match(notes, /Run migrations explicitly/);
+    assert.match(notes, /Do not auto-migrate on container start/);
+
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+    assert.equal(state.scope, "deploy");
+    assert.equal(state.verification.artifactVerified, true);
+    assert.equal(state.verification.deployVerified, false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 

@@ -670,8 +670,18 @@ function isLowRiskFastPath(profile = {}, workflowContext = {}) {
   const updates = Number(workflowContext.updates ?? workflowContext.update ?? NaN);
   const projectOnly = Number(workflowContext.projectOnly ?? workflowContext["project-only"] ?? NaN);
   const conflicts = Number(workflowContext.conflicts ?? workflowContext.conflict ?? NaN);
+  const memoryWrites = normalizeBoolean(workflowContext.memoryWrites ?? workflowContext["memory-writes"], false);
   if ([adds, updates, projectOnly, conflicts].some((value) => !Number.isFinite(value))) return false;
-  return adds === 0 && updates <= 1 && projectOnly === 0 && conflicts === 0;
+  return adds === 0 && updates <= 1 && projectOnly === 0 && conflicts === 0 && memoryWrites === false;
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return fallback;
 }
 
 function agentSourcesFor(agentIds = [], availableAgentSources = null) {

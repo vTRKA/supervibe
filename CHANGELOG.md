@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.84] - 2026-05-05
+
+### Added
+
+- Added a Dokploy deploy add-on for `/supervibe-adapt --scope deploy --target dokploy`
+  with compose, Dockerfiles, `.env.example`, healthchecks, queue/scheduler
+  services, named Postgres volume, and explicit migration notes.
+- Added CI add-ons for Genesis (`github-actions`, `gitlab-ci`, `ci-ready`) so
+  the base scaffold no longer creates an empty `.github/workflows/` directory.
+
+### Changed
+
+- `/supervibe-adapt` now exposes dry-run counts and `memoryWrites` in the
+  generated `command-agent-plan` command, and memory-writing dry-runs disable
+  the low-risk fast path.
+- Genesis now writes truthful backend/frontend placeholders and records a
+  separate approved `generate-apps` step for real Laravel/Next/Vite scaffolding.
+- Genesis and Adapt state now use layered verification fields instead of a
+  single ambiguous `verified` flag.
+- Generated `.gitignore` content is managed through a Supervibe block that
+  preserves user entries while ignoring runtime state and keeping source-of-truth
+  artifacts trackable.
+
+### Fixed
+
+- Minimal Genesis installs now include curators required by command flows.
+- Genesis state sanitizes the local target root path before persistence.
+
 ## [2.0.83] - 2026-05-05
 
 ### Added

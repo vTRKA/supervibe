@@ -18,6 +18,8 @@ supervibe-adapt --dry-run --diff-summary
 supervibe-adapt --dry-run --summary-json --changed-only
 supervibe-adapt --dry-run --evidence-summary --quiet-identical
 supervibe-adapt --apply --include "<project-relative-path>"
+supervibe-adapt --scope deploy --target dokploy --dry-run
+supervibe-adapt --scope deploy --target dokploy --apply
 ```
 
 ## When to invoke
@@ -30,11 +32,15 @@ supervibe-adapt --apply --include "<project-relative-path>"
 
 ## Procedure
 
-0. **Run the real dry-run implementation.** Use:
+0. **Run the real dry-run implementation first.** Use the compact machine form before any agent plan:
    ```bash
-   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --diff-summary --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
+   node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --dry-run --summary-json --changed-only --project "<project-root>" --plugin-root "<resolved-supervibe-plugin-root>"
    ```
    The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, computes `related-rules` closure candidates, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute. Dry-run is read-only by default; use `--refresh-memory-index` only when you intentionally want to rewrite `.supervibe/memory/index.json` during planning.
+   Feed the returned counts into:
+   ```bash
+   node "<resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs" --command /supervibe-adapt --adds <adds> --updates <updates> --project-only <projectOnly> --conflicts <conflicts> --memory-writes <true|false>
+   ```
 
 1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in the resolved Supervibe plugin root under `agents/`, `rules/`, or `skills/`.
 
@@ -45,7 +51,7 @@ supervibe-adapt --apply --include "<project-relative-path>"
    - **Project-only change** (no upstream equivalent any more — deleted/renamed) → flag, ask user whether to keep, archive to `.supervibe/archive/`, or delete.
    - **Related-rule closure add** (installed rule references upstream rule missing from selected profile) → propose an `ADD` candidate, showing `mandatory: true/false` and the exact include path.
 
-3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred. If the plan prints `FAST_PATH_ELIGIBLE: true` (`ADDS: 0`, `UPDATES <= 1`, `PROJECT_ONLY: 0`, `CONFLICTS: 0`), use the low-risk fast path: owner/orchestrator plus quality gate, CLI apply, and validators. Do not dispatch repo/rules/memory curators for a single upstream-only artifact unless the plan reports conflicts, project-only files, rule closure adds, or memory writes.
+3. **Use the `supervibe:adapt` skill plus the CLI plan** for the actual diff/merge logic. If the request is project-fit adaptation, include capability registry evidence for why each agent/rule/skill is added, kept, changed, or deferred. If the plan prints `FAST_PATH_ELIGIBLE: true` (`ADDS: 0`, `UPDATES <= 1`, `PROJECT_ONLY: 0`, `CONFLICTS: 0`, `MEMORY_WRITES: false`), use the low-risk fast path: owner/orchestrator plus quality gate, CLI apply, and validators. Do not dispatch repo/rules/memory curators for a single upstream-only artifact unless the plan reports conflicts, project-only files, rule closure adds, or memory writes.
 
 4. **Show summary.** Before any write, print a table:
    ```
@@ -62,7 +68,7 @@ supervibe-adapt --apply --include "<project-relative-path>"
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
    ```
 
-6. **Update metadata and lifecycle state.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version`, write `baseline.pluginVersion`, and let apply write `.supervibe/memory/adapt/state.json` with `approved -> applied -> verified` or `failed_recoverable`, evidence, updated artifacts, blocked artifacts, and validator outcomes. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
+6. **Update metadata and lifecycle state.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version`, write `baseline.pluginVersion`, and let apply write `.supervibe/memory/adapt/state.json` with `approved -> applied -> artifact_verified` or `failed_recoverable`, evidence, updated artifacts, blocked artifacts, recovery notes, and layered verification fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
@@ -78,7 +84,8 @@ Conflicts:   <count> (manual resolution needed)
 Fast path:   eligible | standard-agent-plan
 Archived:    <count>
 Deleted:     <count>
-State:       .supervibe/memory/adapt/state.json (verified | failed_recoverable)
+State:       .supervibe/memory/adapt/state.json (artifact_verified | applied_unverified | failed_recoverable)
+Layers:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerified=<bool> deployVerified=<bool>
 
 Confidence:  N/10  Rubric: agent-delivery
 ```
@@ -91,6 +98,25 @@ Confidence:  N/10  Rubric: agent-delivery
   metadata required by the adapt plan.
 - User-owned host instruction text outside managed blocks is never overwritten.
 - Index repair is a separate follow-up from artifact adaptation.
+- Completion claims require real runtime receipts. Without
+  `.supervibe/memory/agent-invocations.jsonl`, Adapt may claim artifact
+  changes were applied, but not that real agents completed.
+
+## Deploy Add-ons
+
+Deploy artifacts are opt-in and separate from the base scaffold:
+
+```bash
+node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target dokploy --dry-run
+node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target dokploy --apply
+```
+
+The Dokploy add-on creates `.dockerignore`, `docker-compose.dokploy.yml`,
+`backend/Dockerfile`, `frontend/Dockerfile`, `.env.example`, and
+`docs/deploy/dokploy.md`. Compose uses explicit `env_file` and `environment`
+keys, named Postgres volumes, service healthchecks, Laravel queue and scheduler
+services, and an explicit migration command. It does not auto-migrate or claim
+`deployVerified` until a real deployment health check passes.
 
 ## What is NOT touched
 

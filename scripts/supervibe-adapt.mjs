@@ -4,13 +4,19 @@ import { fileURLToPath } from "node:url";
 
 import {
   applyAdaptPlan,
+  applyDokployDeployPlan,
   createAdaptPlan,
+  createDokployDeployPlan,
   filterAdaptPlanItems,
   formatAdaptApply,
+  formatDokployDeployApply,
+  formatDokployDeployPlan,
   formatAdaptPlan,
   formatAdaptResolve,
   resolveAdaptPlanItems,
   summarizeAdaptApply,
+  summarizeDokployDeployApply,
+  summarizeDokployDeployPlan,
   summarizeAdaptPlan,
   summarizeAdaptResolve,
 } from "./lib/supervibe-adapt.mjs";
@@ -25,6 +31,32 @@ const pluginRoot = args["plugin-root"] || resolveSupervibePluginRoot({ env: proc
 try {
   if (args.help || args.h || rawArgs.includes("-h")) {
     console.log(formatUsage());
+    process.exit(0);
+  }
+
+  if (args.scope === "deploy" || args.target === "dokploy") {
+    if (args.target && args.target !== "dokploy") {
+      throw new Error(`unsupported deploy target: ${args.target}`);
+    }
+    const deployPlan = createDokployDeployPlan({
+      projectRoot,
+      target: args.target || "dokploy",
+    });
+    if (args.apply) {
+      const result = await applyDokployDeployPlan(deployPlan, {
+        include: args.include ? String(args.include).split(",").filter(Boolean) : [],
+        applyAll: Boolean(args.all),
+      });
+      printAdaptValue(result, {
+        summary: summarizeDokployDeployApply,
+        formatter: formatDokployDeployApply,
+      });
+    } else {
+      printAdaptValue(deployPlan, {
+        summary: summarizeDokployDeployPlan,
+        formatter: formatDokployDeployPlan,
+      });
+    }
     process.exit(0);
   }
 
@@ -95,6 +127,8 @@ Options:
   --quiet-identical         Suppress identical artifact details in machine-readable output
   --refresh-memory-index    Refresh .supervibe/memory/index.json during planning
   --no-refresh-memory-index Do not refresh memory index (dry-run default)
+  --scope deploy            Plan or apply a deploy add-on instead of host artifact sync
+  --target dokploy          Select the Dokploy deploy add-on
   --project <path>          Project root to adapt
   --plugin-root <path>      Supervibe plugin root to compare against
   --host <id>               Force host adapter, e.g. codex, claude, cursor
@@ -106,6 +140,7 @@ Examples:
   node scripts/supervibe-adapt.mjs --dry-run
   node scripts/supervibe-adapt.mjs --apply --include ".codex/agents/repo-researcher.md"
   node scripts/supervibe-adapt.mjs --resolve ".codex/agents/repo-researcher.md"
+  node scripts/supervibe-adapt.mjs --scope deploy --target dokploy --dry-run
   node scripts/supervibe-adapt.mjs --apply
 `.trim();
 }

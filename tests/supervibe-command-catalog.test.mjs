@@ -260,6 +260,29 @@ test("adapt command agent plan uses low-risk fast path and reports role sources"
   assert.match(report, /REQUIRED_AGENT_SOURCES: .*supervibe-orchestrator=project artifact.*quality-gate-reviewer=plugin-only/);
 });
 
+test("adapt command agent plan does not use fast path when dry-run wrote memory", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  const plan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: {
+      adds: 0,
+      updates: 1,
+      projectOnly: 0,
+      conflicts: 0,
+      memoryWrites: true,
+    },
+  });
+
+  assert.equal(plan.agentSelectionMode, "standard");
+  assert.ok(plan.requiredAgentIds.includes("rules-curator"));
+  assert.ok(plan.requiredAgentIds.includes("memory-curator"));
+});
+
 test("command agent plan enforces host dispatch proof policy", () => {
   const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
     .filter((entry) => String(entry).endsWith(".md"))

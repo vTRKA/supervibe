@@ -33,7 +33,7 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 ## Shared Dialogue Contract
 
-Lifecycle: `scan -> plan -> review -> approved -> applied -> verified`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition.
+Lifecycle: `scan -> real-dry-run -> agent-plan -> review -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -62,6 +62,7 @@ Russian visible labels:
 3. Read changed manifest files for new deps
 4. Run or consult `node scripts/supervibe-status.mjs --capabilities` so proposed agent, rule and skill updates are grounded in the capability registry.
 5. Resolve the active host adapter before reading or planning writes; use the same precedence as genesis: explicit override -> active runtime/current chat -> filesystem markers.
+6. For `/supervibe-adapt`, run `node scripts/supervibe-adapt.mjs --dry-run --summary-json --changed-only` before `command-agent-plan.mjs`, then pass the actual counts with `--adds`, `--updates`, `--project-only`, `--conflicts`, and `--memory-writes`.
 
 ## Procedure
 
@@ -79,6 +80,7 @@ Russian visible labels:
 10. **User-requested project fit** - when the user asks to adapt rules or agents to the project, compare stack tags, selected install profile, existing host artifacts, and capability registry links; then produce an add/keep/defer plan with reasons.
 11. **Bump versions** + update `last-verified` + `verified-against`
 12. Run `supervibe:audit` to verify clean state
+13. For deploy scope, keep add-ons separate from base scaffold. `--scope deploy --target dokploy` may create Dokploy compose/Docker/env/docs artifacts, but must not auto-migrate or claim `deployVerified` without a real deploy health check.
 
 ## Output contract
 
@@ -93,6 +95,7 @@ Returns:
 - DO NOT: delete agents/skills (rename/archive instead)
 - DO NOT: tell the user to delete all generated project artifacts after plugin updates; use diff-gated adapt instead
 - DO NOT: write `.supervibe/memory/index.json` during dry-run unless the user requested `--refresh-memory-index`
+- DO NOT: claim real agents completed when `.supervibe/memory/agent-invocations.jsonl` or trusted runtime receipts are absent
 - DO NOT: invent new agent (suggest genesis for new components)
 - ALWAYS: re-audit after adapt to verify clean
 

@@ -41,6 +41,7 @@ function parseArgs(argv) {
     else if (key === "execution-mode") options.executionMode = value;
     else if (key === "host") options.host = value;
     else if (key === "adds" || key === "updates" || key === "project-only" || key === "conflicts") options[key] = Number(value);
+    else if (key === "memory-writes") options[key] = parseBoolean(value);
     else options[key] = value;
   }
   return options;
@@ -52,7 +53,8 @@ function usage() {
     "USAGE:",
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host claude",
     "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --json",
-    "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --low-risk",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --low-risk",
     "  node scripts/command-agent-plan.mjs --command /supervibe-genesis --bootstrap-pre-agent --installed-only",
     "",
     "NOTES:",
@@ -98,6 +100,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         updates: options.updates,
         projectOnly: options["project-only"],
         conflicts: options.conflicts,
+        memoryWrites: options["memory-writes"] === undefined ? false : options["memory-writes"],
       },
     });
     const report = {
@@ -151,4 +154,11 @@ function addAgentSources(sources, dir, source) {
       if (source === "project artifact" || !sources.has(id)) sources.set(id, source);
     }
   }
+}
+
+function parseBoolean(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return Boolean(value);
 }

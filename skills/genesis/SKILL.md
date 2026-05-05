@@ -30,7 +30,7 @@ WHEN target project has no host-specific Supervibe scaffold OR no managed routin
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -93,7 +93,7 @@ Match exact pack?
 2. Compose if no exact match
    - Prefer `stack-packs/tauri-react-rust-postgres/pack.yaml` when fingerprint contains Tauri 2, React/Vite, Rust and SQLx/Postgres evidence.
 3. Resolve install profile before copying agents:
-   - `minimal` (recommended): orchestrator, repo-researcher, code-reviewer, quality-gate-reviewer, root-cause-debugger, selected stack developer(s), selected stack architect(s)
+   - `minimal` (recommended): orchestrator, repo-researcher, rules-curator, memory-curator, code-reviewer, quality-gate-reviewer, root-cause-debugger, selected stack developer(s), selected stack architect(s)
    - `product-design`: minimal + product, UX, copy, prototype, presentation, accessibility, polish
    - `full-stack`: all stack-pack groups
    - `research-heavy`: minimal + researcher agents for uncertain stack, stale best practices, security or dependency discovery
@@ -103,6 +103,9 @@ Match exact pack?
    - `security-audit`: adds the `/supervibe-security-audit` chain agents.
    - `ai-prompting`: adds `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
    - `project-adaptation`: adds `rules-curator`, `memory-curator`, and `repo-researcher` when the user explicitly asks to adapt project rules or agents and close coverage gaps.
+   - `github-actions`: creates `.github/workflows/supervibe-ci.yml`; base scaffold creates no CI workflow.
+   - `gitlab-ci`: creates `.gitlab-ci.yml`; base scaffold creates no CI workflow.
+   - `ci-ready`: creates provider-neutral CI readiness notes without choosing a provider.
    - `network-ops`: adds `network-router-engineer`; high-risk and never default.
    - `custom`: user explicitly selects add-on agents.
 6. Resolve the host adapter from the active host instruction files and folders (the active host instruction file, `.claude`, `AGENTS.md`, `.codex`, `.cursor/rules`, `GEMINI.md`, `.gemini`, `opencode.json`) plus active CLI hints.
@@ -114,8 +117,9 @@ Match exact pack?
 11. Generate or update the selected adapter's instruction file through `scripts/lib/supervibe-context-migrator.mjs`, using managed block markers and preserving user-owned content.
 11b. Create Supervibe-owned state under `.supervibe/memory/` only, including `.supervibe/memory/index-config.json` and `.supervibe/memory/.supervibe-version`. Do not create the legacy Claude memory path unless the user explicitly asks for migration.
 9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack
-10. Generate skeleton dirs (backend/, frontend/, .supervibe/artifacts/prototypes/, docs/)
-11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks)
+10. Generate placeholder dirs (backend/, frontend/, .supervibe/artifacts/prototypes/, docs/). Do not call them Laravel/Next/Vite skeletons until the separate approved `generate-apps` step runs real scaffolders.
+11. Run `post-genesis-actions` from manifest (composer install, npm install, prepare hooks) only when the user approved those app-level commands.
+11b. Keep CI optional. Do not create `.github/workflows/` unless the user chose a CI add-on.
 11a. If the dry-run has `missingArtifacts`, list gaps, ask user to confirm or remediate before any write.
 12. Confidence-score(scaffold-bundle) ≥9
 13. Run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` from the target project root before the final `/supervibe-status` check. For large projects, repeat this bounded atomic batch until source coverage is healthy; heartbeat/progress JSON lines and `.supervibe/memory/code-index-checkpoint.json` are the liveness/checkpoint evidence, and `.supervibe/memory/code-index.lock` prevents duplicate indexers while stale locks with dead PIDs are cleaned automatically. If the run stops at `SUPERVIBE_INDEX_BOUNDED_TIMEOUT`, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then rerun the same `--resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` command. Graph warning output does not fail genesis when source RAG coverage is healthy. Build graph/semantic data separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; use `--strict-index-health` only for explicit graph audits.

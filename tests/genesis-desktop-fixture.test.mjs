@@ -245,8 +245,15 @@ test("empty-project genesis dry run uses explicit user stack tags", async () => 
     assert.equal(report.stackPack.id, "laravel-nextjs-postgres");
     assert.equal(report.stackPack.exact, true);
     assert.ok(!report.agentProfile.selectedAgents.includes("redis-architect"), "Redis must not be selected without Redis evidence or add-on");
+    assert.ok(report.agentProfile.selectedAgents.includes("rules-curator"), "minimal profile must include rules curator required by command flow");
+    assert.ok(report.agentProfile.selectedAgents.includes("memory-curator"), "minimal profile must include memory curator required by command flow");
     assert.equal(report.stateWriteAllowed, true);
     assert.equal(report.scaffoldWriteRequiresApproval, true);
+    assert.ok(report.scaffoldArtifacts.some((entry) => entry.path === "backend/" && /backend placeholder/i.test(entry.reason)));
+    assert.ok(report.scaffoldArtifacts.some((entry) => entry.path === "frontend/" && /frontend placeholder/i.test(entry.reason)));
+    assert.ok(!report.scaffoldArtifacts.some((entry) => entry.path === ".github/workflows/"), "base scaffold must not create empty CI directories");
+    assert.equal(report.generateAppsStep.id, "generate-apps");
+    assert.equal(report.generateAppsStep.approvalRequired, true);
     assert.match(formatGenesisDryRunReport(report), /STACK: .*nextjs.*postgres/);
   } finally {
     await rm(targetRoot, { recursive: true, force: true });

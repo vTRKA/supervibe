@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -77,6 +78,7 @@ async function main() {
 
 async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
   const created = [];
+  const updated = [];
   const skipped = [];
   const missing = [];
   const adapter = report.host.folders;
@@ -124,12 +126,21 @@ async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
 
   await writeSupervibeStateArtifacts({ targetRoot, pluginRoot, report, created, skipped });
   await writeHostSettings({ targetRoot, report, created, skipped });
-  await applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, skipped, missing });
+  await applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, updated, skipped, missing });
+  const generatedApps = options["generate-apps"]
+    ? await runGenerateAppsStep({ targetRoot, report })
+    : {
+        status: "not-requested",
+        commands: report.generateAppsStep?.commands || [],
+        note: "Run with --generate-apps only after approving real framework scaffolding.",
+      };
 
   return {
     created,
+    updated,
     skipped,
     missing,
+    generatedApps,
     postApplyCommands: report.postApplyCommands,
     verificationCommand: "node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs",
   };
@@ -224,7 +235,7 @@ async function writeHostSettings({ targetRoot, report, created, skipped }) {
   created.push(adapterSettings.path);
 }
 
-async function applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, skipped, missing }) {
+async function applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created, updated, skipped, missing }) {
   for (const artifact of report.scaffoldArtifacts || []) {
     const target = join(targetRoot, artifact.path);
     if (artifact.type === "directory" || artifact.path.endsWith("/")) {
@@ -233,6 +244,13 @@ async function applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created,
         await mkdir(target, { recursive: true });
         created.push(artifact.path);
       }
+      continue;
+    }
+    if (artifact.path === ".gitignore") {
+      const result = await applyManagedGitignore({ targetRoot, pluginRoot, artifact });
+      if (result.status === "created") created.push(artifact.path);
+      else if (result.status === "updated") updated.push(artifact.path);
+      else skipped.push(artifact.path);
       continue;
     }
     if (existsSync(target)) {
@@ -253,6 +271,61 @@ async function applyScaffoldArtifacts({ targetRoot, pluginRoot, report, created,
     await writeFile(target, content, "utf8");
     created.push(artifact.path);
   }
+}
+
+async function applyManagedGitignore({ targetRoot, pluginRoot, artifact }) {
+  const target = join(targetRoot, artifact.path);
+  const source = artifact.source ? join(pluginRoot, artifact.source) : null;
+  const template = source && existsSync(source)
+    ? await renderTemplateFile({ source, targetRoot })
+    : defaultManagedGitignoreBlock();
+  const block = extractManagedBlock(template, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore")
+    || defaultManagedGitignoreBlock();
+  if (!existsSync(target)) {
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, ensureTrailingLf(template), "utf8");
+    return { status: "created" };
+  }
+  const current = await readFile(target, "utf8");
+  const next = upsertManagedBlock(current, block, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore");
+  if (next === current) return { status: "skipped" };
+  await writeFile(target, next, "utf8");
+  return { status: "updated" };
+}
+
+async function runGenerateAppsStep({ targetRoot, report }) {
+  const results = [];
+  for (const entry of report.generateAppsStep?.commands || []) {
+    const command = String(entry.command || "").trim();
+    if (!command) continue;
+    const result = spawnSync(command, {
+      cwd: targetRoot,
+      encoding: "utf8",
+      shell: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 10,
+    });
+    results.push({
+      command,
+      when: entry.when,
+      status: result.status === 0 ? "completed" : "failed_recoverable",
+      exitCode: result.status,
+      error: result.error?.message || null,
+      stdoutTail: tailLines(result.stdout || "", 20),
+      stderrTail: tailLines(result.stderr || "", 20),
+    });
+    if (result.status !== 0) break;
+  }
+  return {
+    status: results.length === 0
+      ? "not-needed"
+      : results.every((item) => item.status === "completed")
+        ? "completed"
+        : "failed_recoverable",
+    commands: report.generateAppsStep?.commands || [],
+    results,
+    note: "This step runs real framework scaffolders only when --generate-apps is explicitly provided. Failed commands are recoverable; install missing dependencies or rerun the command manually.",
+  };
 }
 
 async function renderTemplateFile({ source, targetRoot }) {
@@ -296,8 +369,18 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     scaffoldWriteRequiresApproval: true,
     approved: mode === "applied",
     applied: mode === "applied",
-    verified: false,
-    targetRoot,
+    currentStage: mode,
+    verification: {
+      artifactVerified: mode === "applied" && !(operations?.missing || []).length,
+      agentReceiptsVerified: hasAgentInvocationEvidence(targetRoot),
+      appVerified: false,
+      deployVerified: false,
+      completionClaimAllowed: false,
+      completionClaim: mode === "applied"
+        ? "bootstrap applied; real agents and app/deploy verification are not claimed without receipts and explicit verification commands"
+        : "dry-run state only; no scaffold completion claim",
+    },
+    targetRoot: "<project-root>",
     host: report.host,
     stackPack: report.stackPack,
     fingerprint: report.fingerprint,
@@ -308,6 +391,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     filesToCreate: report.filesToCreate,
     filesToModify: report.filesToModify,
     missingArtifacts: report.missingArtifacts,
+    generateAppsStep: report.generateAppsStep,
     operations,
     history,
   };
@@ -328,6 +412,7 @@ function outputResult(result, options) {
     `STACK: ${result.report.fingerprint.tags.join(", ") || "unknown"}`,
     `STATE_WRITTEN: ${result.statePath}`,
     `CREATED: ${result.created.length}`,
+    `UPDATED: ${(result.updated || []).length}`,
     `SKIPPED: ${result.skipped.length}`,
     `MISSING: ${result.missing.length}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
@@ -335,6 +420,7 @@ function outputResult(result, options) {
     formatGenesisDryRunReport(result.report),
   ];
   for (const entry of result.created.slice(0, 20)) lines.push(`CREATED_PATH: ${entry}`);
+  for (const entry of (result.updated || []).slice(0, 20)) lines.push(`UPDATED_PATH: ${entry}`);
   for (const entry of result.skipped.slice(0, 20)) lines.push(`SKIPPED_PATH: ${entry}`);
   for (const entry of result.missing) lines.push(`MISSING_PATH: ${entry}`);
   console.log(lines.join("\n"));
@@ -342,7 +428,7 @@ function outputResult(result, options) {
 
 function parseArgs(argv) {
   const parsed = {};
-  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color"]);
+  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps"]);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "-h") {
@@ -359,6 +445,71 @@ function parseArgs(argv) {
     index += 1;
   }
   return parsed;
+}
+
+function hasAgentInvocationEvidence(targetRoot) {
+  const path = join(targetRoot, ".supervibe", "memory", "agent-invocations.jsonl");
+  try {
+    return existsSync(path) && readFileSync(path, "utf8").trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function extractManagedBlock(content, beginMarker, endMarker) {
+  const begin = `# ${beginMarker}`;
+  const end = `# ${endMarker}`;
+  const start = content.indexOf(begin);
+  const finish = content.indexOf(end);
+  if (start === -1 || finish === -1 || finish < start) return null;
+  return ensureTrailingLf(content.slice(start, finish + end.length));
+}
+
+function upsertManagedBlock(current, block, beginMarker, endMarker) {
+  const begin = `# ${beginMarker}`;
+  const end = `# ${endMarker}`;
+  const normalizedBlock = ensureTrailingLf(block);
+  const start = current.indexOf(begin);
+  const finish = current.indexOf(end);
+  if (start !== -1 && finish !== -1 && finish >= start) {
+    const before = current.slice(0, start).replace(/\s+$/g, "");
+    const after = current.slice(finish + end.length).replace(/^\s+/g, "");
+    return [before, normalizedBlock.trimEnd(), after].filter(Boolean).join("\n\n") + "\n";
+  }
+  return `${current.replace(/\s+$/g, "")}\n\n${normalizedBlock}`;
+}
+
+function defaultManagedGitignoreBlock() {
+  return [
+    "# SUPERVIBE:BEGIN managed-gitignore",
+    ".supervibe/memory/code.db*",
+    ".supervibe/memory/code-index-checkpoint.json",
+    ".supervibe/memory/code-index.lock",
+    ".supervibe/memory/agent-invocations.jsonl",
+    ".supervibe/memory/workflow-invocation-ledger.jsonl",
+    ".supervibe/memory/genesis/state.json",
+    ".supervibe/memory/adapt/state.json",
+    ".supervibe/research-cache/",
+    "docker-compose.override.yml",
+    "postgres-data/",
+    ".docker/volumes/",
+    "*.sql",
+    "*.dump",
+    ".env",
+    ".env.*",
+    "!.env.example",
+    "# SUPERVIBE:END managed-gitignore",
+    "",
+  ].join("\n");
+}
+
+function ensureTrailingLf(value) {
+  return String(value || "").replace(/\r\n/g, "\n").replace(/\s+$/g, "") + "\n";
+}
+
+function tailLines(value, maxLines) {
+  const lines = String(value || "").replace(/\r\n/g, "\n").trim().split("\n").filter(Boolean);
+  return lines.slice(-maxLines).join("\n");
 }
 
 function splitList(value) {
@@ -386,7 +537,8 @@ function formatHelp() {
     "  --dry-run        Default. Writes only .supervibe/memory/genesis/state.json.",
     "  --apply          Writes scaffold files non-destructively; existing files are skipped.",
     "  --profile        minimal, product-design, full-stack, research-heavy, or custom.",
-    "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation.",
+    "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation, github-actions, gitlab-ci, ci-ready.",
+    "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",
     "  --request        Free-form user stack/context text used as stack evidence.",

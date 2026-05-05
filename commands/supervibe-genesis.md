@@ -15,6 +15,7 @@ Set up Supervibe for a fresh project or an existing project that needs host-awar
 /supervibe-genesis --profile product-design --host codex
 supervibe-genesis --dry-run --target .
 supervibe-genesis --apply --host codex --stack-tags nextjs,laravel,postgres
+supervibe-genesis --apply --addons github-actions --host codex --stack-tags nextjs,laravel,postgres
 ```
 
 Terminal runner: `supervibe-genesis` is executable for deterministic dry-run,
@@ -27,7 +28,7 @@ manifests.
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> verified`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text. State uses layered verification fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -87,6 +88,9 @@ Scenario evals assert this post-delivery menu and persisted command state via
    - `ai-prompting` - installs `prompt-ai-engineer` for prompts, agent instructions, intent routing, prompt evals, and prompt-injection hardening.
    - `project-adaptation` - installs `rules-curator`, `memory-curator`, and supporting research so user-requested project-specific rule/agent gap closing is deliberate.
    - `security-audit` — installs the multi-agent security audit chain used by `/supervibe-security-audit`.
+   - `github-actions` - creates `.github/workflows/supervibe-ci.yml`; base scaffold creates no CI workflow.
+   - `gitlab-ci` - creates `.gitlab-ci.yml`; base scaffold creates no CI workflow.
+   - `ci-ready` - creates provider-neutral CI notes without choosing a provider.
    - `network-ops` — installs `network-router-engineer`; never default because router/server mutations require scoped approval.
    - `none` — keep the base profile only.
 
@@ -111,6 +115,15 @@ Scenario evals assert this post-delivery menu and persisted command state via
    stack-pack root files, husky hooks, directories, and `missingArtifacts`. If
    `missingArtifacts` is non-empty, remediate or ask before applying.
 
+6a. **Keep app generation separate.** Base stack-packs create truthful
+   placeholders such as `backend/` and `frontend/`; they must not call these
+   Laravel, Next.js, or Vite skeletons until real framework scaffolders run. The
+   separate approved `generate-apps` step records commands such as
+   `composer create-project laravel/laravel backend`,
+   `npx create-next-app@latest frontend ...`, or
+   `npm create vite@latest frontend ...`. Do not run these commands without
+   explicit approval and dependency availability.
+
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
 8. **Initialize and verify indexes.** From the target project root, first make source RAG ready with bounded atomic batches: `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`. The indexer logs heartbeat/progress lines with stage, current file, processed/remaining counts, elapsed time, ETA and checkpoint path, and writes `.supervibe/memory/code-index-checkpoint.json` after each file/batch. It also uses `.supervibe/memory/code-index.lock` to block duplicate indexers and removes stale locks whose PID is gone. If the run stops at `SUPERVIBE_INDEX_BOUNDED_TIMEOUT`, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then rerun the same `--resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` command until source coverage is healthy. Graph warning output is not a genesis failure when source RAG coverage is healthy. Build graph/semantic data separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`. The banner should show source coverage as `indexed/eligible`, fresh code RAG counts, graph warnings separately, and `SUPERVIBE_INDEX_CONFIG` with `REFRESH_INTERVAL: 5m`.
@@ -123,11 +136,12 @@ Scenario evals assert this post-delivery menu and persisted command state via
 Detected stack:    <fingerprint summary>
 Pack chosen:       <pack name>  (composition score: X.X/10)
 Install profile:   <minimal | product-design | full-stack | research-heavy | custom>
-Add-ons:           <none | security-audit | ai-prompting | project-adaptation | network-ops | custom list>
+Add-ons:           <none | security-audit | ai-prompting | project-adaptation | github-actions | gitlab-ci | ci-ready | network-ops | custom list>
 Agent roles:       <agent id -> responsibility list or docs/agent-roster.md reference>
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
 Next:              open the project, restart your AI CLI, watch for [supervibe] welcome banner; after plugin updates use /supervibe-update then /supervibe-adapt
+Verification:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerified=<bool> deployVerified=<bool>
 ```
 
 ## When NOT to invoke
