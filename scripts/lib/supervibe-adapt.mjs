@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
@@ -22,7 +23,8 @@ import {
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
-const DOKPLOY_MIGRATION_COMMAND = "docker compose -f docker-compose.dokploy.yml run --rm backend php artisan migrate --force";
+const DOKPLOY_FULL_STACK_MIGRATION_COMMAND = "docker compose -f docker-compose.dokploy.yml run --rm backend php artisan migrate --force";
+const DOCKER_LARAVEL_MIGRATION_COMMAND = "docker compose run --rm backend php artisan migrate --force";
 
 export async function createAdaptPlan({
   projectRoot = process.cwd(),
@@ -209,14 +211,18 @@ export function createDokployDeployPlan({
   projectRoot = process.cwd(),
   target = "dokploy",
 } = {}) {
-  const artifacts = dokployDeployArtifacts();
+  const deployProfile = resolveDeployProfile(projectRoot, target);
+  const artifacts = deployArtifacts(deployProfile);
   const items = artifacts.map((artifact) => {
-    const projectAbs = join(projectRoot, artifact.path);
-    if (!existsSync(projectAbs)) {
+    const primaryAbs = join(projectRoot, artifact.path);
+    if (!existsSync(primaryAbs)) {
+      const existingAlternate = findAcceptableDeployAlternate({ projectRoot, artifact, deployProfile });
+      if (existingAlternate) return existingAlternate;
       return {
         ...artifact,
-        projectAbs,
+        projectAbs: primaryAbs,
         projectRel: artifact.path,
+        canonicalRel: artifact.path,
         action: "create",
         classification: "deploy-addon-missing",
         projectHash: null,
@@ -224,16 +230,18 @@ export function createDokployDeployPlan({
         diff: summarizeLineDiff("", artifact.content),
       };
     }
-    const current = readFileSync(projectAbs, "utf8");
+    const current = readFileSync(primaryAbs, "utf8");
     const projectHash = hashContent(current);
     const templateHash = hashContent(artifact.content);
-    const identical = projectHash === templateHash;
+    const projectLayerPresent = projectHash !== templateHash && acceptsExistingDeployLayer({ artifact, current, deployProfile });
+    const identical = projectHash === templateHash || projectLayerPresent;
     return {
       ...artifact,
-      projectAbs,
+      projectAbs: primaryAbs,
       projectRel: artifact.path,
+      canonicalRel: artifact.path,
       action: identical ? "identical" : "update",
-      classification: identical ? "deploy-addon-identical" : "deploy-addon-review-update",
+      classification: projectLayerPresent ? "deploy-addon-project-layer-present" : identical ? "deploy-addon-identical" : "deploy-addon-review-update",
       projectHash,
       templateHash,
       diff: identical ? { additions: 0, deletions: 0 } : summarizeLineDiff(current, artifact.content),
@@ -248,12 +256,46 @@ export function createDokployDeployPlan({
     kind: "adapt-deploy-plan",
     scope: "deploy",
     target,
+    deployProfile,
     projectRoot,
     approvalRequired: counts.create > 0 || counts.update > 0,
     counts,
     items,
-    migrationCommand: DOKPLOY_MIGRATION_COMMAND,
+    migrationCommand: deployProfile.migrationCommand,
+    dockerVerification: inspectDockerRuntime(),
   };
+}
+
+function findAcceptableDeployAlternate({ projectRoot, artifact, deployProfile }) {
+  const templateHash = hashContent(artifact.content);
+  for (const alternatePath of artifact.alternatePaths || []) {
+    const alternateRel = normalizeRel(alternatePath);
+    const alternateAbs = join(projectRoot, alternateRel);
+    if (!existsSync(alternateAbs)) continue;
+    const current = readFileSync(alternateAbs, "utf8");
+    const projectHash = hashContent(current);
+    const alternateArtifact = {
+      ...artifact,
+      path: alternateRel,
+      canonicalPath: artifact.path,
+    };
+    const projectLayerPresent = projectHash !== templateHash
+      && acceptsExistingDeployLayer({ artifact: alternateArtifact, current, deployProfile });
+    const identical = projectHash === templateHash || projectLayerPresent;
+    if (!identical) continue;
+    return {
+      ...artifact,
+      projectAbs: alternateAbs,
+      projectRel: alternateRel,
+      canonicalRel: artifact.path,
+      action: "identical",
+      classification: projectLayerPresent ? "deploy-addon-project-layer-present" : "deploy-addon-identical",
+      projectHash,
+      templateHash,
+      diff: { additions: 0, deletions: 0 },
+    };
+  }
+  return null;
 }
 
 export async function applyDokployDeployPlan(plan, {
@@ -284,11 +326,13 @@ export async function applyDokployDeployPlan(plan, {
     kind: "adapt-deploy-apply",
     scope: plan.scope,
     target: plan.target,
+    deployProfile: plan.deployProfile,
     projectRoot: plan.projectRoot,
     created,
     updated,
     skipped,
     migrationCommand: plan.migrationCommand,
+    dockerVerification: plan.dockerVerification,
     mutatedPaths: [...created, ...updated].map((item) => item.projectRel),
   };
   result.lifecycleState = await writeDeployLifecycleState(plan, result);
@@ -409,13 +453,18 @@ export function formatDokployDeployPlan(plan) {
     "SUPERVIBE_ADAPT_DEPLOY_DRY_RUN",
     `SCOPE: ${plan.scope}`,
     `TARGET: ${plan.target}`,
+    `DEPLOY_PROFILE: ${plan.deployProfile?.id || "unknown"}`,
+    `STACK_EVIDENCE: ${(plan.deployProfile?.evidence || []).join(",") || "none"}`,
     `ARTIFACTS: ${(plan.items || []).length}`,
     `CREATES: ${plan.counts?.create ?? 0}`,
     `UPDATES: ${plan.counts?.update ?? 0}`,
     `IDENTICAL: ${plan.counts?.identical ?? 0}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired === true}`,
-    `MIGRATION_COMMAND: ${plan.migrationCommand}`,
+    `MIGRATION_COMMAND: ${plan.migrationCommand || "none"}`,
+    `DOCKER_INSTALLED: ${plan.dockerVerification?.dockerInstalled === true}`,
+    `DOCKER_DAEMON_RUNNING: ${plan.dockerVerification?.daemonRunning === true}`,
   ];
+  if (plan.deployProfile?.blockedReason) lines.push(`BLOCKED: ${plan.deployProfile.blockedReason}`);
   for (const item of plan.items || []) {
     if (item.action === "create") lines.push(`CREATE: ${item.projectRel} (${item.reason})`);
     else if (item.action === "update") lines.push(`UPDATE: ${item.projectRel} (${item.classification})`);
@@ -476,6 +525,7 @@ export function formatDokployDeployApply(result) {
     "SUPERVIBE_ADAPT_DEPLOY_APPLY",
     `SCOPE: ${result.scope}`,
     `TARGET: ${result.target}`,
+    `DEPLOY_PROFILE: ${result.deployProfile?.id || "unknown"}`,
     `CREATED: ${(result.created || []).length}`,
     `UPDATED: ${(result.updated || []).length}`,
     `SKIPPED: ${(result.skipped || []).length}`,
@@ -484,7 +534,9 @@ export function formatDokployDeployApply(result) {
     `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
-    `MIGRATION_COMMAND: ${result.migrationCommand}`,
+    `MIGRATION_COMMAND: ${result.migrationCommand || "none"}`,
+    `DOCKER_INSTALLED: ${result.dockerVerification?.dockerInstalled === true}`,
+    `DOCKER_DAEMON_RUNNING: ${result.dockerVerification?.daemonRunning === true}`,
   ];
   for (const item of result.created || []) lines.push(`CREATED_FILE: ${item.projectRel}`);
   for (const item of result.updated || []) lines.push(`UPDATED_FILE: ${item.projectRel}`);
@@ -562,9 +614,11 @@ export function summarizeDokployDeployPlan(plan) {
     kind: "adapt-deploy-summary",
     scope: plan.scope,
     target: plan.target,
+    deployProfile: plan.deployProfile,
     counts: plan.counts,
     approvalRequired: plan.approvalRequired === true,
     migrationCommand: plan.migrationCommand,
+    dockerVerification: plan.dockerVerification,
     changedItems: (plan.items || [])
       .filter((item) => item.action === "create" || item.action === "update")
       .map((item) => ({
@@ -673,11 +727,13 @@ export function summarizeDokployDeployApply(result) {
     kind: "adapt-deploy-apply-summary",
     scope: result.scope,
     target: result.target,
+    deployProfile: result.deployProfile,
     created: (result.created || []).map((item) => item.projectRel),
     updated: (result.updated || []).map((item) => item.projectRel),
     skipped: (result.skipped || []).map((item) => ({ path: item.projectRel, reason: item.reason || "skipped" })),
     mutatedPaths: result.mutatedPaths || [],
     migrationCommand: result.migrationCommand,
+    dockerVerification: result.dockerVerification,
     lifecycleState: result.lifecycleState,
   };
 }
@@ -785,6 +841,10 @@ function buildAdaptChangeDetection(projectRoot) {
       ? "No .git directory found; Adapt compared the current file manifest with the last saved snapshot."
       : "No .git directory found and no Adapt snapshot exists yet; this is not fatal. Adapt will write the first snapshot after apply.",
   };
+}
+
+export async function writeAdaptFileManifestSnapshot(projectRoot = process.cwd()) {
+  return writeNoGitFileManifest(projectRoot);
 }
 
 async function writeNoGitFileManifest(projectRoot) {
@@ -1287,6 +1347,7 @@ async function writeDeployLifecycleState(plan, result) {
     command: "/supervibe-adapt",
     scope: "deploy",
     target: plan.target,
+    deployProfile: plan.deployProfile || null,
     lifecycle: artifactVerified ? "artifact_verified" : "applied_unverified",
     currentStage: artifactVerified ? "artifact_verified" : "applied_unverified",
     approvedArtifacts: [...createdArtifacts, ...updatedArtifacts],
@@ -1317,7 +1378,10 @@ async function writeDeployLifecycleState(plan, result) {
     },
     evidence: {
       migrationCommand: plan.migrationCommand,
-      envPolicy: "Compose uses env_file and explicit environment keys; Dokploy UI env is not assumed to appear magically in containers.",
+      envPolicy: plan.target === "dokploy"
+        ? "Compose uses env_file and explicit environment keys; Dokploy UI env is not assumed to appear magically in containers."
+        : "Compose uses env_file and explicit environment keys for portable Docker runs.",
+      dockerVerification: result.dockerVerification || plan.dockerVerification || null,
       agentRuntime,
     },
     validators: {
@@ -1586,19 +1650,368 @@ async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}
   };
 }
 
-function dokployDeployArtifacts() {
+function resolveDeployProfile(projectRoot, target = "dokploy") {
+  const genesisChoice = readGenesisFrontendDecision(projectRoot);
+  const frontendEvidence = collectFrontendPackageEvidence({ rootDir: projectRoot });
+  const nextServices = assignServiceNames(discoverNextServices(projectRoot, frontendEvidence, genesisChoice), "frontend");
+  const laravel = detectLaravelEvidence(projectRoot);
+  const laravelServices = assignServiceNames(laravel.services, "backend");
+  const services = [...laravelServices, ...nextServices];
+  const migrationCommands = buildLaravelMigrationCommands({ target, services: laravelServices });
+  if (laravelServices.length > 0) {
+    const id = nextServices.length > 0 ? "laravel-next-postgres" : "laravel-postgres";
+    return {
+      id,
+      target,
+      appDir: nextServices[0]?.dir || null,
+      backendDir: laravelServices[0]?.dir || null,
+      services,
+      nextServices,
+      laravelServices,
+      unsupportedServices: discoverUnsupportedDeployServices(projectRoot, frontendEvidence, services),
+      migrationCommand: migrationCommands.join(" && ") || null,
+      migrationCommands,
+      evidence: services.flatMap((service) => service.evidence || []),
+    };
+  }
+  if (nextServices.length > 0) {
+    return {
+      id: "next-only",
+      target,
+      appDir: nextServices[0]?.dir || "frontend",
+      backendDir: null,
+      services,
+      nextServices,
+      laravelServices: [],
+      unsupportedServices: discoverUnsupportedDeployServices(projectRoot, frontendEvidence, services),
+      migrationCommand: null,
+      migrationCommands: [],
+      evidence: services.flatMap((service) => service.evidence || []),
+    };
+  }
+  const unsupportedServices = discoverUnsupportedDeployServices(projectRoot, frontendEvidence, []);
+  return {
+    id: "needs-stack-evidence",
+    target,
+    appDir: null,
+    backendDir: null,
+    services: [],
+    nextServices: [],
+    laravelServices: [],
+    unsupportedServices,
+    migrationCommand: null,
+    migrationCommands: [],
+    evidence: [],
+    blockedReason: unsupportedServices.length > 0
+      ? `Only unsupported deploy services were found (${unsupportedServices.map((service) => service.kind).join(",")}); refusing to generate a ${target} plan without an explicit supported stack pack.`
+      : `No Laravel or Next.js evidence was found; refusing to generate a ${target} backend, frontend, or migration plan from directory names alone.`,
+  };
+}
+
+function detectLaravelEvidence(projectRoot) {
+  const candidates = findComposerJsonFiles(projectRoot).map((rel) => ({
+    rel,
+    backendDir: rel === "composer.json" ? "." : dirname(rel),
+  }));
+  const evidence = [];
+  const services = [];
+  for (const candidate of candidates) {
+    const abs = join(projectRoot, candidate.rel);
+    if (!existsSync(abs)) continue;
+    const json = readJsonOptional(abs);
+    const deps = { ...(json?.require || {}), ...(json?.["require-dev"] || {}) };
+    if (deps["laravel/framework"] || existsSync(join(projectRoot, candidate.backendDir, "artisan"))) {
+      const itemEvidence = [`laravel:${candidate.rel}`];
+      evidence.push(...itemEvidence);
+      services.push({
+        kind: "laravel",
+        dir: normalizeRel(candidate.backendDir),
+        packagePath: normalizeRel(candidate.rel),
+        port: 8000,
+        evidence: itemEvidence,
+      });
+    }
+  }
+  return {
+    present: services.length > 0,
+    evidence,
+    services,
+    backendDir: services[0]?.dir || "backend",
+  };
+}
+
+function discoverNextServices(projectRoot, frontendEvidence = [], genesisChoice = null) {
+  const services = [];
+  for (const entry of frontendEvidence || []) {
+    if (!(entry.tags || []).includes("nextjs")) continue;
+    const dir = entry.path === "package.json" ? "." : dirname(entry.path);
+    services.push({
+      kind: "next",
+      dir: normalizeRel(dir),
+      packagePath: normalizeRel(entry.path),
+      packageName: entry.packageName || "",
+      port: 3000,
+      evidence: [`next:${normalizeRel(dir)}`],
+    });
+  }
+  if (services.length === 0 && genesisChoice === "next-app") {
+    const dir = existsSync(join(projectRoot, "frontend", "package.json")) ? "frontend" : "frontend";
+    services.push({
+      kind: "next",
+      dir,
+      packagePath: `${dir}/package.json`,
+      packageName: "",
+      port: 3000,
+      evidence: [`next:${dir}`, "genesis:next-app"],
+    });
+  }
+  return services;
+}
+
+function discoverUnsupportedDeployServices(projectRoot, frontendEvidence = [], supportedServices = []) {
+  const supportedPackagePaths = new Set(supportedServices.map((service) => normalizeRel(service.packagePath || "")));
+  const unsupported = [];
+  for (const entry of frontendEvidence || []) {
+    const rel = normalizeRel(entry.path || "");
+    if (!rel || supportedPackagePaths.has(rel)) continue;
+    const tags = entry.tags || [];
+    if (tags.includes("nextjs")) continue;
+    unsupported.push({
+      kind: tags.join("+") || "frontend-package",
+      dir: rel === "package.json" ? "." : dirname(rel),
+      packagePath: rel,
+      packageName: entry.packageName || "",
+      reason: "No Docker deploy pack is registered for this service kind yet.",
+    });
+  }
+  for (const composerPath of findComposerJsonFiles(projectRoot)) {
+    const rel = normalizeRel(composerPath);
+    if (supportedPackagePaths.has(rel)) continue;
+    const json = readJsonOptional(join(projectRoot, rel));
+    if (!json) continue;
+    unsupported.push({
+      kind: "php-composer",
+      dir: rel === "composer.json" ? "." : dirname(rel),
+      packagePath: rel,
+      packageName: json.name || "",
+      reason: "Composer project is not Laravel; no generic PHP Docker pack is inferred.",
+    });
+  }
+  return dedupeUnsupportedServices(unsupported);
+}
+
+function findComposerJsonFiles(rootDir, { maxDepth = 4 } = {}) {
+  const found = [];
+  const skipDirs = new Set([
+    "vendor",
+    "node_modules",
+    ".git",
+    ".supervibe",
+    ".claude",
+    ".codex",
+    ".cursor",
+    ".gemini",
+    ".opencode",
+    "storage",
+    "bootstrap",
+    "public",
+  ]);
+  const visit = (dir, depth) => {
+    if (depth > maxDepth) return;
+    let entries = [];
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (skipDirs.has(entry.name) || (entry.name.startsWith(".") && entry.name !== ".github")) continue;
+        visit(abs, depth + 1);
+        continue;
+      }
+      if (entry.isFile() && entry.name === "composer.json") found.push(normalizeRel(relative(rootDir, abs)));
+    }
+  };
+  visit(rootDir, 0);
+  return found.sort();
+}
+
+function assignServiceNames(services = [], singleFallback = "service") {
+  const used = new Set();
+  return services.map((service, index) => {
+    const fallback = services.length === 1 ? singleFallback : service.kind || singleFallback;
+    const base = services.length === 1
+      ? fallback
+      : `${service.kind || "service"}-${service.dir === "." ? "root" : service.dir}`;
+    const name = uniqueServiceName(slugifyServiceName(base), used, index + 1);
+    return {
+      ...service,
+      composeName: name,
+      envPrefix: envPrefixForService(name),
+      dockerfilePath: service.dir === "." ? "Dockerfile" : `${service.dir}/Dockerfile`,
+    };
+  });
+}
+
+function uniqueServiceName(base, used, suffix) {
+  let name = base || `service-${suffix}`;
+  let i = 2;
+  while (used.has(name)) {
+    name = `${base}-${i}`;
+    i += 1;
+  }
+  used.add(name);
+  return name;
+}
+
+function slugifyServiceName(value = "") {
+  const slug = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "service";
+}
+
+function envPrefixForService(name = "service") {
+  return slugifyServiceName(name).replace(/-/g, "_").toUpperCase();
+}
+
+function buildLaravelMigrationCommands({ target = "dokploy", services = [] } = {}) {
+  const composeFile = target === "dokploy" ? " -f docker-compose.dokploy.yml" : "";
+  return (services || []).map((service) => `docker compose${composeFile} run --rm ${service.composeName || "backend"} php artisan migrate --force`);
+}
+
+function dedupeUnsupportedServices(services = []) {
+  const byPath = new Map();
+  for (const service of services || []) {
+    const key = normalizeRel(service.packagePath || `${service.kind}:${service.dir}`);
+    if (!byPath.has(key)) byPath.set(key, service);
+  }
+  return [...byPath.values()];
+}
+
+function deployArtifacts(profile = {}) {
+  if (profile.id === "needs-stack-evidence") return [];
+  if (profile.target === "docker") return dockerDeployArtifacts(profile);
+  return dokployDeployArtifacts(profile);
+}
+
+function dokployDeployArtifacts(profile = {}) {
+  if (profile.id === "next-only") return nextOnlyDokployDeployArtifacts(profile);
+  if (profile.id === "laravel-postgres") return laravelOnlyDokployDeployArtifacts(profile);
+  if (profile.id !== "laravel-next-postgres") return [];
+  const nextServices = deployNextServices(profile);
+  const laravelServices = deployLaravelServices(profile);
   return [
     fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
-    fileArtifact("docker-compose.dokploy.yml", "Dokploy compose stack with explicit env propagation, healthchecks, queue, scheduler, and named Postgres volume", dokployComposeTemplate()),
-    fileArtifact("backend/Dockerfile", "Laravel backend runtime image", backendDockerfileTemplate()),
-    fileArtifact("frontend/Dockerfile", "Next.js frontend runtime image", frontendDockerfileTemplate()),
+    fileArtifact("docker-compose.dokploy.yml", "Dokploy compose stack with explicit env propagation, healthchecks, Laravel services, Next services, and named Postgres volume", dokployComposeTemplate({ nextServices, laravelServices })),
+    ...serviceDockerignoreArtifacts([...laravelServices, ...nextServices]),
+    ...laravelServices.map((service) => fileArtifact(service.dockerfilePath, `Laravel runtime image for ${service.dir}`, backendDockerfileTemplate())),
+    ...nextServices.map((service) => fileArtifact(service.dockerfilePath, `Next.js runtime image for ${service.dir}`, frontendDockerfileTemplate())),
     fileArtifact(".env.example", "Dokploy environment example; copy to .env or map keys explicitly in Dokploy", envExampleTemplate()),
-    fileArtifact("docs/deploy/dokploy.md", "Dokploy deployment notes and migration policy", dokployReadmeTemplate()),
+    fileArtifact("docs/deploy/dokploy.md", "Dokploy deployment notes and migration policy", dokployReadmeTemplate({ nextServices, laravelServices })),
   ];
 }
 
-function fileArtifact(path, reason, content) {
-  return { path, reason, content: ensureLf(content), type: "file" };
+function nextOnlyDokployDeployArtifacts(profile = {}) {
+  const nextServices = deployNextServices(profile);
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.dokploy.yml", "Next-only Dokploy compose stack with internal port 3000 and no backend service", nextOnlyDokployComposeTemplate({ services: nextServices }), {
+      alternatePaths: ["docker-compose.yml"],
+    }),
+    ...serviceDockerignoreArtifacts(nextServices),
+    ...nextServices.map((service) => fileArtifact(service.dockerfilePath, `Next.js runtime image for ${service.dir}`, nextOnlyDockerfileTemplate())),
+    fileArtifact(".env.example", "Next-only Dokploy environment example", nextOnlyEnvExampleTemplate()),
+    fileArtifact("docs/deploy/dokploy.md", "Next-only Dokploy deployment notes", nextOnlyDokployReadmeTemplate({ services: nextServices }), {
+      alternatePaths: ["docs/dokploy-deploy.md"],
+    }),
+  ];
+}
+
+function laravelOnlyDokployDeployArtifacts(profile = {}) {
+  const laravelServices = deployLaravelServices(profile);
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.dokploy.yml", "Laravel-only Dokploy compose stack with backend and Postgres services", laravelOnlyDokployComposeTemplate({ services: laravelServices })),
+    ...serviceDockerignoreArtifacts(laravelServices),
+    ...laravelServices.map((service) => fileArtifact(service.dockerfilePath, `Laravel runtime image for ${service.dir}`, backendDockerfileTemplate())),
+    fileArtifact(".env.example", "Laravel-only Dokploy environment example", laravelOnlyEnvExampleTemplate()),
+    fileArtifact("docs/deploy/dokploy.md", "Laravel-only Dokploy deployment notes", laravelOnlyDokployReadmeTemplate({ services: laravelServices })),
+  ];
+}
+
+function dockerDeployArtifacts(profile = {}) {
+  if (profile.id === "next-only") return nextOnlyDockerDeployArtifacts(profile);
+  if (profile.id === "laravel-postgres") return laravelOnlyDockerDeployArtifacts(profile);
+  if (profile.id === "laravel-next-postgres") return fullStackDockerDeployArtifacts(profile);
+  return [];
+}
+
+function nextOnlyDockerDeployArtifacts(profile = {}) {
+  const nextServices = deployNextServices(profile);
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.yml", "Next-only Docker Compose stack for local/container deployment", nextOnlyDockerComposeTemplate({ services: nextServices })),
+    ...serviceDockerignoreArtifacts(nextServices),
+    ...nextServices.map((service) => fileArtifact(service.dockerfilePath, `Next.js runtime image for ${service.dir}`, nextOnlyDockerfileTemplate())),
+    fileArtifact(".env.example", "Next-only Docker environment example", nextOnlyEnvExampleTemplate()),
+    fileArtifact("docs/deploy/docker.md", "Next-only Docker deployment notes", nextOnlyDockerReadmeTemplate({ services: nextServices })),
+  ];
+}
+
+function laravelOnlyDockerDeployArtifacts(profile = {}) {
+  const laravelServices = deployLaravelServices(profile);
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.yml", "Laravel-only Docker Compose stack with backend and Postgres services", laravelOnlyDockerComposeTemplate({ services: laravelServices })),
+    ...serviceDockerignoreArtifacts(laravelServices),
+    ...laravelServices.map((service) => fileArtifact(service.dockerfilePath, `Laravel runtime image for ${service.dir}`, backendDockerfileTemplate())),
+    fileArtifact(".env.example", "Laravel-only Docker environment example", laravelOnlyEnvExampleTemplate()),
+    fileArtifact("docs/deploy/docker.md", "Laravel-only Docker deployment notes", laravelOnlyDockerReadmeTemplate({ services: laravelServices })),
+  ];
+}
+
+function fullStackDockerDeployArtifacts(profile = {}) {
+  const nextServices = deployNextServices(profile);
+  const laravelServices = deployLaravelServices(profile);
+  return [
+    fileArtifact(".dockerignore", "Docker build context ignore policy", dockerignoreTemplate()),
+    fileArtifact("docker-compose.yml", "Laravel + Next.js Docker Compose stack with Postgres", fullStackDockerComposeTemplate({ nextServices, laravelServices })),
+    ...serviceDockerignoreArtifacts([...laravelServices, ...nextServices]),
+    ...laravelServices.map((service) => fileArtifact(service.dockerfilePath, `Laravel runtime image for ${service.dir}`, backendDockerfileTemplate())),
+    ...nextServices.map((service) => fileArtifact(service.dockerfilePath, `Next.js runtime image for ${service.dir}`, frontendDockerfileTemplate())),
+    fileArtifact(".env.example", "Laravel + Next.js Docker environment example", envExampleTemplate()),
+    fileArtifact("docs/deploy/docker.md", "Laravel + Next.js Docker deployment notes", fullStackDockerReadmeTemplate({ nextServices, laravelServices })),
+  ];
+}
+
+function deployNextServices(profile = {}) {
+  if (Array.isArray(profile.nextServices) && profile.nextServices.length > 0) return profile.nextServices;
+  const dir = normalizeRel(profile.appDir || "frontend");
+  return assignServiceNames([{ kind: "next", dir, port: 3000, evidence: [`next:${dir}`] }], "frontend");
+}
+
+function deployLaravelServices(profile = {}) {
+  if (Array.isArray(profile.laravelServices) && profile.laravelServices.length > 0) return profile.laravelServices;
+  const dir = normalizeRel(profile.backendDir || "backend");
+  return assignServiceNames([{ kind: "laravel", dir, port: 8000, evidence: [`laravel:${dir}`] }], "backend");
+}
+
+function serviceDockerignoreArtifacts(services = []) {
+  const dirs = new Map();
+  for (const service of services || []) {
+    const dir = normalizeRel(service.dir || ".");
+    if (dir === ".") continue;
+    if (!dirs.has(dir)) dirs.set(dir, service.kind || "service");
+  }
+  return [...dirs.entries()].map(([dir, kind]) => fileArtifact(
+    `${dir}/.dockerignore`,
+    `Docker build context ignore policy for ${dir}`,
+    serviceDockerignoreTemplate(kind),
+  ));
+}
+
+function fileArtifact(path, reason, content, options = {}) {
+  return { path, reason, content: ensureLf(content), type: "file", ...options };
 }
 
 function dockerignoreTemplate() {
@@ -1626,7 +2039,809 @@ postgres-data
 `;
 }
 
-function dokployComposeTemplate() {
+function serviceDockerignoreTemplate(kind = "service") {
+  const common = [
+    ".git",
+    ".env",
+    ".env.*",
+    "!.env.example",
+    "coverage",
+    "*.log",
+  ];
+  if (kind === "next") {
+    return [
+      ...common,
+      "node_modules",
+      ".next",
+      "out",
+      "dist",
+      "build",
+    ].join("\n");
+  }
+  if (kind === "laravel") {
+    return [
+      ...common,
+      "vendor",
+      "node_modules",
+      "storage/logs",
+      "storage/framework/cache",
+      "storage/framework/sessions",
+      "storage/framework/views",
+    ].join("\n");
+  }
+  return [
+    ...common,
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+  ].join("\n");
+}
+
+function nextOnlyDokployComposeTemplate({ services = null, appDir = "frontend" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "services:",
+      ...services.map((service) => nextComposeServiceBlock(service, { dokploy: true })),
+      "",
+      "networks:",
+      "  dokploy-network:",
+      "    external: true",
+      "",
+    ].join("\n");
+  }
+  const context = appDir === "." ? "." : `./${appDir}`;
+  return `
+services:
+  frontend:
+    build:
+      context: ${context}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL}
+    expose:
+      - "3000"
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  dokploy-network:
+    external: true
+`;
+}
+
+function nextOnlyDockerComposeTemplate({ services = null, appDir = "frontend" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "services:",
+      ...services.map((service) => nextComposeServiceBlock(service, { dokploy: false })),
+      "",
+    ].join("\n");
+  }
+  const context = appDir === "." ? "." : `./${appDir}`;
+  return `
+services:
+  frontend:
+    build:
+      context: ${context}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL}
+    ports:
+      - "\${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+`;
+}
+
+function laravelOnlyDokployComposeTemplate({ services = null, backendDir = "backend" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "services:",
+      postgresComposeServiceBlock({ dokploy: true }),
+      ...services.map((service) => laravelComposeServiceBlock(service, { dokploy: true })),
+      "",
+      postgresVolumeBlock(),
+      "",
+      "networks:",
+      "  dokploy-network:",
+      "    external: true",
+      "",
+    ].join("\n");
+  }
+  const context = backendDir === "." ? "." : `./${backendDir}`;
+  return `
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: \${POSTGRES_DB}
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ${context}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      APP_DEBUG: \${APP_DEBUG:-false}
+      APP_URL: \${APP_URL}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+    expose:
+      - "8000"
+    networks:
+      - dokploy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan about --only=environment >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres-data:
+    name: \${COMPOSE_PROJECT_NAME:-supervibe}-postgres-data
+
+networks:
+  dokploy-network:
+    external: true
+`;
+}
+
+function laravelOnlyDockerComposeTemplate({ services = null, backendDir = "backend" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "services:",
+      postgresComposeServiceBlock({ dokploy: false }),
+      ...services.map((service) => laravelComposeServiceBlock(service, { dokploy: false })),
+      "",
+      postgresVolumeBlock(),
+      "",
+    ].join("\n");
+  }
+  const context = backendDir === "." ? "." : `./${backendDir}`;
+  return `
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: \${POSTGRES_DB}
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+    ports:
+      - "\${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ${context}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      APP_DEBUG: \${APP_DEBUG:-false}
+      APP_URL: \${APP_URL}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+    ports:
+      - "\${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan about --only=environment >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres-data:
+    name: \${COMPOSE_PROJECT_NAME:-supervibe}-postgres-data
+`;
+}
+
+function fullStackDockerComposeTemplate({ nextServices = null, laravelServices = null, appDir = "frontend", backendDir = "backend" } = {}) {
+  if (Array.isArray(nextServices) && nextServices.length > 0 && Array.isArray(laravelServices) && laravelServices.length > 0) {
+    return [
+      "services:",
+      postgresComposeServiceBlock({ dokploy: false }),
+      ...laravelServices.map((service) => laravelComposeServiceBlock(service, { dokploy: false })),
+      ...nextServices.map((service) => nextComposeServiceBlock(service, { dokploy: false, apiService: laravelServices[0]?.composeName })),
+      "",
+      postgresVolumeBlock(),
+      "",
+    ].join("\n");
+  }
+  const frontendContext = appDir === "." ? "." : `./${appDir}`;
+  const backendContext = backendDir === "." ? "." : `./${backendDir}`;
+  return `
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: \${POSTGRES_DB}
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+    ports:
+      - "\${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ${backendContext}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: \${APP_ENV:-production}
+      APP_DEBUG: \${APP_DEBUG:-false}
+      APP_URL: \${APP_URL}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: \${POSTGRES_DB}
+      DB_USERNAME: \${POSTGRES_USER}
+      DB_PASSWORD: \${POSTGRES_PASSWORD}
+    ports:
+      - "\${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan about --only=environment >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ${frontendContext}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL}
+    ports:
+      - "\${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres-data:
+    name: \${COMPOSE_PROJECT_NAME:-supervibe}-postgres-data
+`;
+}
+
+function postgresComposeServiceBlock({ dokploy = false } = {}) {
+  const networks = dokploy ? ["    networks:", "      - dokploy-network"] : [];
+  const ports = dokploy ? [] : ["    ports:", '      - "${POSTGRES_PORT:-5432}:5432"'];
+  return [
+    "  postgres:",
+    "    image: postgres:16-alpine",
+    "    restart: unless-stopped",
+    "    env_file:",
+    "      - .env",
+    "    environment:",
+    "      POSTGRES_DB: ${POSTGRES_DB}",
+    "      POSTGRES_USER: ${POSTGRES_USER}",
+    "      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}",
+    ...ports,
+    "    volumes:",
+    "      - postgres-data:/var/lib/postgresql/data",
+    ...networks,
+    "    healthcheck:",
+    '      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]',
+    "      interval: 10s",
+    "      timeout: 5s",
+    "      retries: 5",
+    "",
+  ].join("\n");
+}
+
+function laravelComposeServiceBlock(service = {}, { dokploy = false } = {}) {
+  const context = service.dir === "." ? "." : `./${service.dir}`;
+  const name = service.composeName || "backend";
+  const portKey = `${service.envPrefix || envPrefixForService(name)}_PORT`;
+  const networkLines = dokploy ? ["    networks:", "      - dokploy-network"] : [];
+  const exposureLines = dokploy
+    ? ["    expose:", '      - "8000"']
+    : ["    ports:", `      - "\${${portKey}:-8000}:8000"`];
+  return [
+    `  ${name}:`,
+    "    build:",
+    `      context: ${context}`,
+    "      dockerfile: Dockerfile",
+    "    restart: unless-stopped",
+    "    env_file:",
+    "      - .env",
+    "    environment:",
+    "      APP_ENV: ${APP_ENV:-production}",
+    "      APP_DEBUG: ${APP_DEBUG:-false}",
+    "      APP_URL: ${APP_URL}",
+    "      DB_CONNECTION: pgsql",
+    "      DB_HOST: postgres",
+    "      DB_PORT: 5432",
+    "      DB_DATABASE: ${POSTGRES_DB}",
+    "      DB_USERNAME: ${POSTGRES_USER}",
+    "      DB_PASSWORD: ${POSTGRES_PASSWORD}",
+    ...exposureLines,
+    ...networkLines,
+    "    depends_on:",
+    "      postgres:",
+    "        condition: service_healthy",
+    "    healthcheck:",
+    '      test: ["CMD-SHELL", "php artisan about --only=environment >/dev/null 2>&1 || exit 1"]',
+    "      interval: 30s",
+    "      timeout: 10s",
+    "      retries: 3",
+    "",
+  ].join("\n");
+}
+
+function laravelQueueSchedulerBlocks(service = {}) {
+  const context = service.dir === "." ? "." : `./${service.dir}`;
+  const baseName = service.composeName || "backend";
+  const queueName = baseName === "backend" ? "queue" : `${baseName}-queue`;
+  const schedulerName = baseName === "backend" ? "scheduler" : `${baseName}-scheduler`;
+  const shared = [
+    "    build:",
+    `      context: ${context}`,
+    "      dockerfile: Dockerfile",
+    "    restart: unless-stopped",
+    "    env_file:",
+    "      - .env",
+    "    environment:",
+    "      APP_ENV: ${APP_ENV:-production}",
+    "      DB_HOST: postgres",
+    "      DB_DATABASE: ${POSTGRES_DB}",
+    "      DB_USERNAME: ${POSTGRES_USER}",
+    "      DB_PASSWORD: ${POSTGRES_PASSWORD}",
+    "    networks:",
+    "      - dokploy-network",
+    "    depends_on:",
+    `      ${baseName}:`,
+    "        condition: service_healthy",
+  ];
+  return [
+    [
+      `  ${queueName}:`,
+      ...shared,
+      '    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]',
+      "",
+    ].join("\n"),
+    [
+      `  ${schedulerName}:`,
+      ...shared,
+      '    command: ["sh", "-lc", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]',
+      "",
+    ].join("\n"),
+  ];
+}
+
+function nextComposeServiceBlock(service = {}, { dokploy = false, apiService = "" } = {}) {
+  const context = service.dir === "." ? "." : `./${service.dir}`;
+  const name = service.composeName || "frontend";
+  const portKey = `${service.envPrefix || envPrefixForService(name)}_PORT`;
+  const networkLines = dokploy ? ["    networks:", "      - dokploy-network"] : [];
+  const exposureLines = dokploy
+    ? ["    expose:", '      - "3000"']
+    : ["    ports:", `      - "\${${portKey}:-3000}:3000"`];
+  const apiLines = apiService ? ["      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"] : ["      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}"];
+  const dependencyLines = apiService
+    ? ["    depends_on:", `      ${apiService}:`, "        condition: service_healthy"]
+    : [];
+  return [
+    `  ${name}:`,
+    "    build:",
+    `      context: ${context}`,
+    "      dockerfile: Dockerfile",
+    "    restart: unless-stopped",
+    "    env_file:",
+    "      - .env",
+    "    environment:",
+    "      NODE_ENV: production",
+    "      PORT: 3000",
+    "      HOSTNAME: 0.0.0.0",
+    ...apiLines,
+    ...exposureLines,
+    ...networkLines,
+    ...dependencyLines,
+    "    healthcheck:",
+    '      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]',
+    "      interval: 30s",
+    "      timeout: 10s",
+    "      retries: 3",
+    "",
+  ].join("\n");
+}
+
+function postgresVolumeBlock() {
+  return [
+    "volumes:",
+    "  postgres-data:",
+    "    name: ${COMPOSE_PROJECT_NAME:-supervibe}-postgres-data",
+  ].join("\n");
+}
+
+function nextOnlyDockerfileTemplate() {
+  return `
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+COPY --from=build /app ./
+EXPOSE 3000
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]
+`;
+}
+
+function nextOnlyEnvExampleTemplate() {
+  return `
+COMPOSE_PROJECT_NAME=supervibe-next
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://example.com
+`;
+}
+
+function nextOnlyDokployReadmeTemplate({ services = null, appDir = "frontend", dockerfilePath = "frontend/Dockerfile" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "# Dokploy Deploy Notes",
+      "",
+      "This is a Next-only Dokploy layer. It intentionally does not create backend, Laravel, Postgres, queue, scheduler, or migration artifacts.",
+      "",
+      "## Services",
+      "",
+      ...services.map((service) => `- ${service.composeName}: builds from \`${service.dir}\` using \`${service.dockerfilePath}\` and exposes internal port \`3000\`.`),
+      "",
+      "The compose file does not publish host ports. Route traffic through Dokploy using each service name and port 3000.",
+      "",
+      "## Docker Verification",
+      "",
+      "```bash",
+      `docker compose -f docker-compose.dokploy.yml build ${services.map((service) => service.composeName).join(" ")}`,
+      "docker compose -f docker-compose.dokploy.yml config",
+      "```",
+      "",
+    ].join("\n");
+  }
+  return [
+    "# Dokploy Deploy Notes",
+    "",
+    "This is a Next-only Dokploy layer. It intentionally does not create backend, Laravel, Postgres, queue, scheduler, or migration artifacts.",
+    "",
+    "## Services",
+    "",
+    `The Next.js app builds from \`${appDir}\` using \`${dockerfilePath}\` and exposes internal port \`3000\` for Dokploy routing.`,
+    "",
+    "The compose file does not publish a host port. Route traffic through Dokploy using the frontend service and port 3000.",
+    "",
+    "## Docker Verification",
+    "",
+    "Before claiming deploy readiness, verify Docker is installed and the daemon is running. A local build can be checked with:",
+    "",
+    "```bash",
+    "docker compose build frontend",
+    "docker compose config",
+    "```",
+    "",
+    "## Domains",
+    "",
+    "Set NEXT_PUBLIC_APP_URL to the public URL Dokploy routes to the frontend service.",
+    "",
+    "## Traefik Labels",
+    "",
+    "Add Traefik labels only after the domain is known. Keep them commented or omitted in the generated baseline.",
+    "",
+  ].join("\n");
+}
+
+function nextOnlyDockerReadmeTemplate({ services = null, appDir = "frontend", dockerfilePath = "frontend/Dockerfile" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "# Docker Deploy Notes",
+      "",
+      "This is a Next-only Docker layer. It intentionally does not create backend, Laravel, Postgres, queue, scheduler, or migration artifacts.",
+      "",
+      "## Services",
+      "",
+      ...services.map((service) => `- ${service.composeName}: builds from \`${service.dir}\` using \`${service.dockerfilePath}\` and publishes \`${"${" + service.envPrefix + "_PORT:-3000}"}:3000\`.`),
+      "",
+      "## Verification",
+      "",
+      "```bash",
+      "docker compose config",
+      `docker compose build ${services.map((service) => service.composeName).join(" ")}`,
+      "docker compose up -d",
+      "```",
+      "",
+      "Use `--target dokploy` when you need Dokploy-specific compose networking without host port publishing.",
+      "",
+    ].join("\n");
+  }
+  return [
+    "# Docker Deploy Notes",
+    "",
+    "This is a Next-only Docker layer. It intentionally does not create backend, Laravel, Postgres, queue, scheduler, or migration artifacts.",
+    "",
+    "## Services",
+    "",
+    `The Next.js app builds from \`${appDir}\` using \`${dockerfilePath}\`, exposes container port \`3000\`, and publishes \`${"${FRONTEND_PORT:-3000}"}:3000\` for local/container deployment.`,
+    "",
+    "## Verification",
+    "",
+    "```bash",
+    "docker compose config",
+    "docker compose build frontend",
+    "docker compose up -d frontend",
+    "```",
+    "",
+    "Use `--target dokploy` when you need Dokploy-specific compose networking without host port publishing.",
+    "",
+  ].join("\n");
+}
+
+function laravelOnlyEnvExampleTemplate() {
+  return `
+COMPOSE_PROJECT_NAME=supervibe-laravel
+
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.example.com
+APP_KEY=
+
+POSTGRES_DB=app
+POSTGRES_USER=app
+POSTGRES_PASSWORD=change-me
+`;
+}
+
+function laravelOnlyDokployReadmeTemplate({ services = null, backendDir = "backend", dockerfilePath = "backend/Dockerfile" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "# Dokploy Deploy Notes",
+      "",
+      "This is a Laravel-only Dokploy layer. It intentionally does not create Next.js, frontend, or Node runtime artifacts.",
+      "",
+      "## Services",
+      "",
+      ...services.map((service) => `- ${service.composeName}: builds from \`${service.dir}\` using \`${service.dockerfilePath}\`, exposes internal port \`8000\`, and connects to Postgres.`),
+      "",
+      "## Migrations",
+      "",
+      "Run migrations explicitly after reviewing the release:",
+      "",
+      "```bash",
+      ...services.map((service) => `docker compose -f docker-compose.dokploy.yml run --rm ${service.composeName} php artisan migrate --force`),
+      "```",
+      "",
+      "Do not auto-migrate on container start without an approved rollout and rollback policy.",
+      "",
+    ].join("\n");
+  }
+  return [
+    "# Dokploy Deploy Notes",
+    "",
+    "This is a Laravel-only Dokploy layer. It intentionally does not create Next.js, frontend, or Node runtime artifacts.",
+    "",
+    "## Services",
+    "",
+    `The Laravel backend builds from \`${backendDir}\` using \`${dockerfilePath}\`, exposes internal port \`8000\`, and connects to the Postgres service.`,
+    "",
+    "Route API traffic through Dokploy using the backend service and port 8000.",
+    "",
+    "## Migrations",
+    "",
+    "Run migrations explicitly after reviewing the release:",
+    "",
+    "```bash",
+    DOKPLOY_FULL_STACK_MIGRATION_COMMAND,
+    "```",
+    "",
+    "Do not auto-migrate on container start without an approved rollout and rollback policy.",
+    "",
+  ].join("\n");
+}
+
+function laravelOnlyDockerReadmeTemplate({ services = null, backendDir = "backend", dockerfilePath = "backend/Dockerfile" } = {}) {
+  if (Array.isArray(services) && services.length > 0) {
+    return [
+      "# Docker Deploy Notes",
+      "",
+      "This is a Laravel-only Docker layer. It intentionally does not create Next.js, frontend, or Node runtime artifacts.",
+      "",
+      "## Services",
+      "",
+      ...services.map((service) => `- ${service.composeName}: builds from \`${service.dir}\` using \`${service.dockerfilePath}\`, publishes \`${"${" + service.envPrefix + "_PORT:-8000}"}:8000\`, and connects to Postgres.`),
+      "",
+      "## Verification",
+      "",
+      "```bash",
+      "docker compose config",
+      `docker compose build ${services.map((service) => service.composeName).join(" ")}`,
+      "docker compose up -d postgres",
+      ...services.map((service) => `docker compose run --rm ${service.composeName} php artisan migrate --force`),
+      "```",
+      "",
+    ].join("\n");
+  }
+  return [
+    "# Docker Deploy Notes",
+    "",
+    "This is a Laravel-only Docker layer. It intentionally does not create Next.js, frontend, or Node runtime artifacts.",
+    "",
+    "## Services",
+    "",
+    `The Laravel backend builds from \`${backendDir}\` using \`${dockerfilePath}\`, publishes \`${"${BACKEND_PORT:-8000}"}:8000\`, and connects to Postgres.`,
+    "",
+    "## Verification",
+    "",
+    "```bash",
+    "docker compose config",
+    "docker compose build backend",
+    "docker compose up -d postgres backend",
+    DOCKER_LARAVEL_MIGRATION_COMMAND,
+    "```",
+    "",
+  ].join("\n");
+}
+
+function fullStackDockerReadmeTemplate({ nextServices = null, laravelServices = null, appDir = "frontend", backendDir = "backend" } = {}) {
+  if (Array.isArray(nextServices) && Array.isArray(laravelServices) && nextServices.length > 0 && laravelServices.length > 0) {
+    return [
+      "# Docker Deploy Notes",
+      "",
+      "This is a Laravel + Next.js Docker layer. Use `--target dokploy` when you need Dokploy-specific compose networking without host port publishing.",
+      "",
+      "## Services",
+      "",
+      ...laravelServices.map((service) => `- ${service.composeName}: Laravel service from \`${service.dir}\`, publishes \`${"${" + service.envPrefix + "_PORT:-8000}"}:8000\`.`),
+      ...nextServices.map((service) => `- ${service.composeName}: Next.js service from \`${service.dir}\`, publishes \`${"${" + service.envPrefix + "_PORT:-3000}"}:3000\`.`),
+      "Postgres uses a named volume.",
+      "",
+      "## Verification",
+      "",
+      "```bash",
+      "docker compose config",
+      `docker compose build ${[...laravelServices, ...nextServices].map((service) => service.composeName).join(" ")}`,
+      "docker compose up -d",
+      ...laravelServices.map((service) => `docker compose run --rm ${service.composeName} php artisan migrate --force`),
+      "```",
+      "",
+    ].join("\n");
+  }
+  return [
+    "# Docker Deploy Notes",
+    "",
+    "This is a Laravel + Next.js Docker layer. Use `--target dokploy` when you need Dokploy-specific compose networking without host port publishing.",
+    "",
+    "## Services",
+    "",
+    `The Laravel backend builds from \`${backendDir}\` and publishes \`${"${BACKEND_PORT:-8000}"}:8000\`.`,
+    `The Next.js frontend builds from \`${appDir}\` and publishes \`${"${FRONTEND_PORT:-3000}"}:3000\`.`,
+    "Postgres uses a named volume.",
+    "",
+    "## Verification",
+    "",
+    "```bash",
+    "docker compose config",
+    "docker compose build backend frontend",
+    "docker compose up -d postgres backend frontend",
+    DOCKER_LARAVEL_MIGRATION_COMMAND,
+    "```",
+    "",
+  ].join("\n");
+}
+
+function dokployComposeTemplate({ nextServices = null, laravelServices = null, appDir = "frontend", backendDir = "backend" } = {}) {
+  if (Array.isArray(nextServices) && nextServices.length > 0 && Array.isArray(laravelServices) && laravelServices.length > 0) {
+    return [
+      "services:",
+      postgresComposeServiceBlock({ dokploy: true }),
+      ...laravelServices.map((service) => laravelComposeServiceBlock(service, { dokploy: true })),
+      ...laravelServices.flatMap((service) => laravelQueueSchedulerBlocks(service)),
+      ...nextServices.map((service) => nextComposeServiceBlock(service, { dokploy: true, apiService: laravelServices[0]?.composeName })),
+      "",
+      postgresVolumeBlock(),
+      "",
+      "networks:",
+      "  dokploy-network:",
+      "    external: true",
+      "",
+    ].join("\n");
+  }
+  const frontendContext = appDir === "." ? "." : `./${appDir}`;
+  const backendContext = backendDir === "." ? "." : `./${backendDir}`;
   return `
 services:
   postgres:
@@ -1648,7 +2863,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ${backendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
@@ -1675,7 +2890,7 @@ services:
 
   queue:
     build:
-      context: ./backend
+      context: ${backendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
@@ -1694,7 +2909,7 @@ services:
 
   scheduler:
     build:
-      context: ./backend
+      context: ${backendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["sh", "-lc", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
@@ -1712,7 +2927,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ${frontendContext}
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
@@ -1794,7 +3009,34 @@ NEXT_PUBLIC_API_URL=https://api.example.com
 `;
 }
 
-function dokployReadmeTemplate() {
+function dokployReadmeTemplate({ nextServices = null, laravelServices = null, appDir = "frontend", backendDir = "backend" } = {}) {
+  if (Array.isArray(nextServices) && Array.isArray(laravelServices) && nextServices.length > 0 && laravelServices.length > 0) {
+    return [
+      "# Dokploy Deploy Notes",
+      "",
+      "This add-on creates deploy artifacts only. It does not run a deployment, migrate the database, or assume Dokploy UI variables appear inside containers automatically.",
+      "",
+      "## Services",
+      "",
+      ...laravelServices.map((service) => `- ${service.composeName}: Laravel service from \`${service.dir}\`, internal port \`8000\`.`),
+      ...nextServices.map((service) => `- ${service.composeName}: Next.js service from \`${service.dir}\`, internal port \`3000\`.`),
+      "",
+      "## Environment",
+      "",
+      "Use .env.example as the contract. In Dokploy, either mount an .env file through the compose project or map the same keys explicitly.",
+      "",
+      "## Migrations",
+      "",
+      "Run migrations explicitly after reviewing the release:",
+      "",
+      "```bash",
+      ...laravelServices.map((service) => `docker compose -f docker-compose.dokploy.yml run --rm ${service.composeName} php artisan migrate --force`),
+      "```",
+      "",
+      "Do not auto-migrate on container start without an approved rollout and rollback policy.",
+      "",
+    ].join("\n");
+  }
   return [
     "# Dokploy Deploy Notes",
     "",
@@ -1806,7 +3048,7 @@ function dokployReadmeTemplate() {
     "",
     "## Domains",
     "",
-    "Point the frontend domain at the frontend service on port 3000. Point the API domain at the backend service on port 8000. Set APP_URL and NEXT_PUBLIC_API_URL to the public URLs that Dokploy routes.",
+    `Point the frontend domain at the frontend service on port 3000 from \`${appDir}\`. Point the API domain at the backend service on port 8000 from \`${backendDir}\`. Set APP_URL and NEXT_PUBLIC_API_URL to the public URLs that Dokploy routes.`,
     "",
     "## Volumes",
     "",
@@ -1817,7 +3059,7 @@ function dokployReadmeTemplate() {
     "Run migrations explicitly after reviewing the release:",
     "",
     "```bash",
-    DOKPLOY_MIGRATION_COMMAND,
+    DOKPLOY_FULL_STACK_MIGRATION_COMMAND,
     "```",
     "",
     "Do not auto-migrate on container start without an approved rollout and rollback policy.",
@@ -1829,8 +3071,85 @@ function dokployReadmeTemplate() {
   ].join("\n");
 }
 
+function acceptsExistingDeployLayer({ artifact, current, deployProfile = {} } = {}) {
+  if (deployProfile.target !== "dokploy" || deployProfile.id !== "next-only") return false;
+  const rel = normalizeRel(artifact?.path || "");
+  const canonicalRel = normalizeRel(artifact?.canonicalPath || artifact?.path || "");
+  const text = String(current || "");
+  if (rel === "docker-compose.yml" || canonicalRel === "docker-compose.dokploy.yml") {
+    return /services:/i.test(text)
+      && /3000/.test(text)
+      && /dokploy/i.test(text)
+      && !/\bbackend:/i.test(text)
+      && !/php artisan/i.test(text);
+  }
+  if (rel.endsWith("/Dockerfile") || rel === "Dockerfile") {
+    return /FROM\s+node:/i.test(text) && /3000/.test(text) && !/php artisan/i.test(text);
+  }
+  if (rel === "docs/dokploy-deploy.md" || canonicalRel === "docs/deploy/dokploy.md") {
+    return /dokploy/i.test(text) && /3000/.test(text) && !/php artisan/i.test(text);
+  }
+  return false;
+}
+
+function inspectDockerRuntime() {
+  if (process.env.SUPERVIBE_SKIP_DOCKER_PROBE === "1") {
+    return {
+      dockerInstalled: false,
+      composeAvailable: false,
+      daemonRunning: false,
+      status: "docker-probe-skipped",
+      version: "",
+      daemonError: "",
+    };
+  }
+  const version = spawnSync("docker", ["--version"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 3000,
+    windowsHide: true,
+  });
+  const dockerInstalled = version.status === 0;
+  const compose = dockerInstalled
+    ? spawnSync("docker", ["compose", "version"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 3000,
+        windowsHide: true,
+      })
+    : null;
+  const info = dockerInstalled
+    ? spawnSync("docker", ["info", "--format", "{{json .ServerVersion}}"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 3000,
+        windowsHide: true,
+      })
+    : null;
+  return {
+    dockerInstalled,
+    composeAvailable: compose?.status === 0,
+    daemonRunning: info?.status === 0,
+    status: !dockerInstalled
+      ? "docker-not-installed"
+      : info?.status === 0
+        ? "docker-daemon-running"
+        : "docker-daemon-not-running",
+    version: dockerInstalled ? tailLines(version.stdout || "", 1).trim() : "",
+    daemonError: dockerInstalled && info?.status !== 0 ? tailLines(info?.stderr || info?.stdout || "", 3) : "",
+  };
+}
+
 function ensureLf(value) {
   return String(value || "").replace(/\r\n/g, "\n").replace(/^\n+/, "").replace(/\s+$/g, "") + "\n";
+}
+
+function tailLines(value, maxLines = 5) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .slice(-maxLines)
+    .join("\n");
 }
 
 function normalizeRel(value) {

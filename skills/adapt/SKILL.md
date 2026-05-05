@@ -90,7 +90,7 @@ apply/revise wording.
 10. **User-requested project fit** - when the user asks to adapt rules or agents to the project, compare stack tags, selected install profile, existing host artifacts, and capability registry links; then produce an add/keep/defer plan with reasons.
 11. **Bump versions** + update `last-verified` + `verified-against`
 12. Run `supervibe:audit` to verify clean state
-13. For deploy scope, keep add-ons separate from base scaffold. `--scope deploy --target dokploy` may create Dokploy compose/Docker/env/docs artifacts, but must not auto-migrate or claim `deployVerified` without a real deploy health check.
+13. For deploy scope, keep add-ons separate from base scaffold. `--scope deploy --target docker|dokploy` may create compose/Docker/env/docs artifacts, but must not auto-migrate or claim `deployVerified` without a real deploy health check.
 
 Additional drift policy:
 
@@ -103,6 +103,14 @@ Additional drift policy:
   framework major/minor line. Compatible nested dependency repair must surface
   `overrides`/`resolutions`, remediation reason, and the rerun sequence:
   `npm install`, `npm audit`, lint, build, and `dependency-health`.
+- Deploy drift is service-evidence based, not folder-name based. Detect any
+  number of supported services from manifests:
+  `next-only`, `laravel-postgres`, or `laravel-next-postgres`. Generate
+  service-local Dockerfiles only for detected supported services. Never create a
+  Laravel/backend service, Postgres, queue, scheduler, or `php artisan` command
+  without Laravel evidence; never create a Next/frontend service without Next.js
+  evidence. Unsupported services must be listed as unsupported and require a
+  new stack pack or explicit user approval before Dockerfiles are generated.
 
 ## Output contract
 
@@ -119,6 +127,9 @@ Returns:
 - DO NOT: write `.supervibe/memory/index.json` during dry-run unless the user requested `--refresh-memory-index`
 - DO NOT: treat no `.git` as fatal; use the Adapt file-manifest snapshot fallback.
 - DO NOT: let package tags override Genesis app choice without a frontend target decision.
+- DO NOT: assume a project has exactly `frontend/` and `backend/`; service
+  discovery must support multiple service directories and must block unknown
+  technologies instead of guessing.
 - DO NOT: claim real agents completed when `.supervibe/memory/agent-invocations.jsonl` or trusted runtime receipts are absent
 - DO NOT: invent new agent (suggest genesis for new components)
 - ALWAYS: re-audit after adapt to verify clean

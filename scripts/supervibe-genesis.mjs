@@ -12,6 +12,7 @@ import {
 } from "./lib/supervibe-agent-recommendation.mjs";
 import { collectDependencyHealth, hasDependencyManifests } from "./lib/dependency-health.mjs";
 import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs";
+import { writeAdaptFileManifestSnapshot } from "./lib/supervibe-adapt.mjs";
 import { writeContextMigrationPlan } from "./lib/supervibe-context-migrator.mjs";
 import { resolveSupervibePluginRoot } from "./lib/supervibe-plugin-root.mjs";
 
@@ -88,6 +89,9 @@ async function main() {
     options,
     operations: applyResult,
   });
+  const adaptFileManifest = !existsSync(join(targetRoot, ".git"))
+    ? await writeAdaptFileManifestSnapshot(targetRoot)
+    : null;
   const generatedAppsForOutput = applyResult.generatedApps?.status === "not-requested"
     ? appliedState.state.generateAppsStep
     : applyResult.generatedApps;
@@ -95,6 +99,7 @@ async function main() {
     mode,
     report,
     statePath: appliedState.path,
+    adaptFileManifest,
     ...applyResult,
     generatedApps: generatedAppsForOutput,
   }, options);
@@ -384,9 +389,16 @@ async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env
   }
   const completed = results.length > 0 && results.every((item) => item.status === "completed");
   const verificationResults = results.flatMap((item) => item.verification?.results || []);
+  const dependencyHealthResults = results.map((item) => item.verification?.dependencyHealth).filter(Boolean);
+  const buildVerified = verifyApps
+    && verificationResults.length > 0
+    && verificationResults.every((item) => item.status === "completed");
+  const dependencyHealthVerified = dependencyHealthResults.length > 0
+    ? dependencyHealthResults.every((item) => item.pass === true)
+    : null;
   const verificationStatus = !verifyApps
     ? "not-run"
-    : verificationResults.length > 0 && verificationResults.every((item) => item.status === "completed")
+    : buildVerified
       ? "completed"
       : "failed_recoverable";
   return {
@@ -396,12 +408,16 @@ async function runGenerateAppsStep({ targetRoot, report, verifyApps = false, env
         ? "completed"
         : "failed_recoverable",
     appGenerated: completed,
-    appVerified: verificationStatus === "completed",
+    appVerified: buildVerified,
+    buildVerified,
+    dependencyHealthVerified,
     appVerification: {
       status: verificationStatus,
       results: verificationResults,
+      dependencyHealthVerified,
+      dependencyHealth: dependencyHealthResults[0] || null,
       note: verifyApps
-        ? "App verification ran after generation; appVerified is true only when every declared command passes."
+        ? "App verification ran after generation; appVerified/buildVerified follow declared lint/build commands. Dependency health is reported separately."
         : "App generation is tracked separately from app verification. Run --verify-apps to execute declared lint/build checks.",
     },
     commands: report.generateAppsStep?.commands || [],
@@ -438,17 +454,26 @@ async function runVerifyExistingAppsStep({ targetRoot, report, env = process.env
     });
   }
   const verificationResults = results.flatMap((item) => item.verification?.results || []);
-  const completed = results.length > 0 && results.every((item) => item.status === "completed");
+  const dependencyHealthResults = results.map((item) => item.verification?.dependencyHealth).filter(Boolean);
+  const buildVerified = verificationResults.length > 0
+    && verificationResults.every((item) => item.status === "completed");
+  const dependencyHealthVerified = dependencyHealthResults.length > 0
+    ? dependencyHealthResults.every((item) => item.pass === true)
+    : null;
   const appGenerated = results.length > 0 && results.every((item) => existsSync(generatedAppDir(targetRoot, item)));
   return {
     ...(report.generateAppsStep || {}),
-    status: results.length === 0 ? "not-needed" : completed ? "completed" : "failed_recoverable",
+    status: results.length === 0 ? "not-needed" : buildVerified ? "completed" : "failed_recoverable",
     appGenerated,
-    appVerified: completed,
+    appVerified: buildVerified,
+    buildVerified,
+    dependencyHealthVerified,
     appVerification: {
-      status: completed ? "completed" : "failed_recoverable",
+      status: buildVerified ? "completed" : "failed_recoverable",
       results: verificationResults,
-      note: "App verification ran against existing generated app directories without rerunning scaffolders.",
+      dependencyHealthVerified,
+      dependencyHealth: dependencyHealthResults[0] || null,
+      note: "App verification ran against existing generated app directories without rerunning scaffolders. Dependency health is reported separately.",
     },
     commands: report.generateAppsStep?.commands || [],
     results,
@@ -542,7 +567,7 @@ async function runScaffolderShellFallback({ targetRoot, entry, spawnPlan, env, p
   }
   const executable = executableForShellFallback(spawnPlan.executable);
   const args = shellFallbackArgs(executable, spawnPlan.args || []);
-  const result = spawnSync(executable, args, {
+  const result = spawnSync(shellCommandLine(executable, args), {
     cwd: targetRoot,
     encoding: "utf8",
     shell: true,
@@ -700,24 +725,20 @@ async function runAppVerificationCommands({ targetRoot, entry, env = process.env
     if (result.status !== 0) break;
   }
   const dependencyRoot = join(targetRoot, entry.appDir || ".");
+  let dependencyHealth = null;
   if (entry.dependencyHealth !== false && hasDependencyManifests(dependencyRoot)) {
-    const dependencyHealth = await collectDependencyHealth({
+    dependencyHealth = await collectDependencyHealth({
       rootDir: dependencyRoot,
       env,
     });
-    results.push({
-      command: "node scripts/dependency-health.mjs --root .",
-      cwd: entry.appDir || ".",
-      status: dependencyHealth.pass ? "completed" : "failed_recoverable",
-      exitCode: dependencyHealth.pass ? 0 : 2,
-      stdoutTail: "",
-      stderrTail: "",
-      error: null,
-      dependencyHealth,
-    });
+    dependencyHealth.status = dependencyHealth.pass ? "completed" : "action_required";
   }
+  const buildVerified = results.length > 0 && results.every((item) => item.status === "completed");
   return {
-    status: results.length > 0 && results.every((item) => item.status === "completed") ? "completed" : "failed_recoverable",
+    status: buildVerified ? "completed" : "failed_recoverable",
+    buildVerified,
+    dependencyHealthVerified: dependencyHealth ? dependencyHealth.pass === true : null,
+    dependencyHealth,
     results,
   };
 }
@@ -734,7 +755,7 @@ function runChildCommandWithShellFallback({ cwd, executable, args = [], env = pr
   const fallbackExecutable = executableForShellFallback(executable);
   const fallbackArgs = shellFallbackArgs(fallbackExecutable, args);
   return {
-    ...spawnSync(fallbackExecutable, fallbackArgs, {
+    ...spawnSync(shellCommandLine(fallbackExecutable, fallbackArgs), {
       cwd,
       encoding: "utf8",
       shell: true,
@@ -749,6 +770,16 @@ function runChildCommandWithShellFallback({ cwd, executable, args = [], env = pr
       executable,
     },
   };
+}
+
+function shellCommandLine(executable = "", args = []) {
+  return [executable, ...args].map(shellQuote).join(" ");
+}
+
+function shellQuote(value = "") {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:=@%+-]+$/.test(text)) return text;
+  return `"${text.replace(/(["\\])/g, "\\$1")}"`;
 }
 
 function generatedAppDir(targetRoot, entry = {}) {
@@ -810,6 +841,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
       || previous?.appChoice
       || null,
   );
+  const artifactVerification = inspectGenesisArtifactVerification({ targetRoot, report, mode, operations });
   const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
   const history = [
     ...(Array.isArray(previous?.history) ? previous.history : []),
@@ -826,11 +858,15 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     applied: mode === "applied",
     currentStage: mode,
     verification: {
-      artifactVerified: mode === "applied" && !(operations?.missing || []).length,
+      artifactVerified: artifactVerification.verified,
+      artifactStatus: artifactVerification.status,
+      missingArtifactPaths: artifactVerification.missingPaths,
       agentReceiptsVerified: agentRuntime.verified,
       agentRuntimeVerified: agentRuntime.verified,
       appGenerated,
       appVerified,
+      buildVerified: generateAppsState?.buildVerified === true,
+      dependencyHealthVerified: generateAppsState?.dependencyHealthVerified === true,
       deployVerified: false,
       completionClaimAllowed: false,
       completionClaim: mode === "applied"
@@ -850,6 +886,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     filesToCreate: report.filesToCreate,
     filesToModify: report.filesToModify,
     missingArtifacts: report.missingArtifacts,
+    artifactVerification,
     generateAppsStep: {
       ...(report.generateAppsStep || {}),
       ...(generateAppsState || {}),
@@ -876,6 +913,53 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
   };
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   return { path: toRel(targetRoot, statePath), state };
+}
+
+function inspectGenesisArtifactVerification({ targetRoot, report, mode, operations = null } = {}) {
+  if (mode !== "applied") {
+    return {
+      verified: false,
+      status: "not-applied",
+      missingPaths: [],
+      note: "Dry-run state is not artifact verification.",
+    };
+  }
+  const missingPaths = new Set((operations?.missing || []).map(String));
+  for (const artifact of report?.scaffoldArtifacts || []) {
+    const rel = normalizeRelPath(artifact.path || "");
+    if (!rel) continue;
+    if (!existsScaffoldPath(targetRoot, rel)) missingPaths.add(rel);
+  }
+  for (const rel of requiredPrecommitArtifactPaths()) {
+    if (!existsScaffoldPath(targetRoot, rel)) missingPaths.add(rel);
+  }
+  return {
+    verified: missingPaths.size === 0,
+    status: missingPaths.size === 0 ? "verified" : "missing-required-artifacts",
+    missingPaths: [...missingPaths].sort(),
+    note: missingPaths.size === 0
+      ? "Selected scaffold artifacts and scaffold-rubric pre-commit artifacts exist."
+      : "artifactVerified remains false until required scaffold and pre-commit artifacts exist.",
+  };
+}
+
+function requiredPrecommitArtifactPaths() {
+  return [
+    "commitlint.config.js",
+    "lint-staged.config.js",
+    ".husky/pre-commit",
+    ".husky/commit-msg",
+  ];
+}
+
+function existsScaffoldPath(targetRoot, relPath) {
+  const normalized = normalizeRelPath(relPath);
+  if (!normalized) return true;
+  return existsSync(join(targetRoot, ...normalized.split("/").filter(Boolean)));
+}
+
+function normalizeRelPath(value = "") {
+  return String(value || "").replace(/\\/g, "/").replace(/\/+$/g, "");
 }
 
 function mergeGenerateAppsState({
@@ -913,7 +997,7 @@ function mergeGenerateAppsState({
 
 function outputResult(result, options) {
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(toGenesisJsonResult(result), null, 2));
     return;
   }
   const lines = [
@@ -930,6 +1014,9 @@ function outputResult(result, options) {
     `GENERATED_APPS: ${result.generatedApps?.status || "not-requested"}`,
     `APP_GENERATED: ${result.generatedApps?.appGenerated === true}`,
     `APP_VERIFIED: ${result.generatedApps?.appVerified === true}`,
+    `BUILD_VERIFIED: ${result.generatedApps?.buildVerified === true}`,
+    `DEPENDENCY_HEALTH_VERIFIED: ${result.generatedApps?.dependencyHealthVerified === true}`,
+    `ADAPT_FILE_MANIFEST: ${result.adaptFileManifest?.path || "not-written"}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
     "",
     formatGenesisDryRunReport(result.report),
@@ -947,20 +1034,32 @@ function outputResult(result, options) {
     }
     for (const verifyResult of appResult.verification?.results || []) {
       lines.push(`APP_VERIFY_RESULT: ${verifyResult.status} ${verifyResult.command} cwd=${verifyResult.cwd || "."}`);
-      if (verifyResult.dependencyHealth) {
-        lines.push(`APP_DEPENDENCY_HEALTH: ${verifyResult.dependencyHealth.status} pass=${verifyResult.dependencyHealth.pass === true}`);
-        lines.push(`APP_DEPENDENCY_ECOSYSTEMS: ${(verifyResult.dependencyHealth.ecosystems || []).map((entry) => entry.id).join(", ") || "none"}`);
-        for (const finding of verifyResult.dependencyHealth.auditFindings || []) {
-          for (const chain of finding.vulnerableChains || []) lines.push(`APP_DEPENDENCY_VULNERABLE_CHAIN: ${chain}`);
-          lines.push(`APP_DEPENDENCY_REMEDIATION: ${finding.packageName} ${finding.remediation?.policy || "review"} ${finding.latestVersion || "latest-unknown"}`);
-        }
-        for (const issue of verifyResult.dependencyHealth.issues || []) {
-          lines.push(`APP_DEPENDENCY_ISSUE: ${issue.ecosystem || "unknown"} ${issue.code}`);
-        }
-      }
     }
+    const dependencyHealth = appResult.verification?.dependencyHealth;
+    if (dependencyHealth) appendDependencyHealthLines(lines, dependencyHealth);
   }
   console.log(lines.join("\n"));
+}
+
+function toGenesisJsonResult(result) {
+  const dryRun = result.mode !== "apply";
+  return {
+    ...result,
+    dryRun,
+    report: result.report ? { ...result.report, dryRun } : result.report,
+  };
+}
+
+function appendDependencyHealthLines(lines, dependencyHealth) {
+  lines.push(`APP_DEPENDENCY_HEALTH: ${dependencyHealth.status} pass=${dependencyHealth.pass === true}`);
+  lines.push(`APP_DEPENDENCY_ECOSYSTEMS: ${(dependencyHealth.ecosystems || []).map((entry) => entry.id).join(", ") || "none"}`);
+  for (const finding of dependencyHealth.auditFindings || []) {
+    for (const chain of finding.vulnerableChains || []) lines.push(`APP_DEPENDENCY_VULNERABLE_CHAIN: ${chain}`);
+    lines.push(`APP_DEPENDENCY_REMEDIATION: ${finding.packageName} ${finding.remediation?.policy || "review"} ${finding.latestVersion || "latest-unknown"}`);
+  }
+  for (const issue of dependencyHealth.issues || []) {
+    lines.push(`APP_DEPENDENCY_ISSUE: ${issue.ecosystem || "unknown"} ${issue.code}`);
+  }
 }
 
 function parseArgs(argv) {

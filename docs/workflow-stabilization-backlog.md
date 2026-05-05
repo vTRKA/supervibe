@@ -258,6 +258,52 @@ proof gates, dependency remediation UX, and UTF-8 command surfaces.
   launch paths, managed preview/dev-server registry, and successful real
   host-agent smoke telemetry.
 
+## Fixed In 2.0.87
+
+Genesis + Adapt feedback on truthful app verification, deploy plan safety, and
+Docker/Dokploy service coverage.
+
+- [x] Fixed Genesis apply JSON so applied runs report `dryRun=false` at both
+  the top level and inside `report`.
+- [x] Split Genesis app verification state into `buildVerified`,
+  `dependencyHealthVerified`, `appVerified`, and `deployVerified`; dependency
+  warnings no longer make a successful lint/build look like failed app
+  generation.
+- [x] Kept `artifactVerified=false` when scaffold-rubric artifacts such as
+  `.husky`, `commitlint`, or `lint-staged` are missing.
+- [x] Genesis now writes the first no-git Adapt file-manifest snapshot after
+  apply so Adapt does not start from "initial snapshot missing" on new projects.
+- [x] Added Docker runtime probing for deploy plans:
+  `dockerInstalled`, `composeAvailable`, and `daemonRunning` are reported
+  separately and Docker daemon absence is not confused with artifact failure.
+- [x] Replaced the fixed Laravel/Next Dokploy assumption with service-evidence
+  deployment profiles for `--target docker` and `--target dokploy`:
+  `next-only`, `laravel-postgres`, and `laravel-next-postgres`.
+- [x] Added Next-only Docker/Dokploy packs that create service-local
+  Dockerfiles and compose docs without backend, Postgres, queue/scheduler, or
+  `php artisan` migration commands.
+- [x] Added Laravel-only Docker/Dokploy packs that create backend/Postgres
+  artifacts without Next/frontend artifacts.
+- [x] Added multi-service discovery so monorepos with any number of supported
+  Next.js and Laravel services are generated from manifest evidence rather than
+  hard-coded `frontend/` and `backend/` paths.
+- [x] Unsupported service-only projects, such as Vite-only or non-Laravel
+  Composer projects, now block deploy artifact generation and surface
+  `deployProfile.unsupportedServices` instead of guessing Dockerfiles.
+- [x] Dokploy planning recognizes an existing equivalent hand-written
+  Next-only `docker-compose.yml` and `docs/dokploy-deploy.md` layer instead of
+  forcing `docker-compose.dokploy.yml`.
+- [ ] Add first-class deploy packs for more technologies (Vite SPA, Node API,
+  Python, Go, Rust, workers, databases, queues) with the same manifest-evidence
+  rule before generating Dockerfiles.
+- [ ] Make `--verify-agents` run a Codex receipt-bound smoke dispatch through
+  the real host path when host permissions allow it; current gates still avoid
+  pretending agents ran when telemetry is empty.
+- [ ] Make compact CLI output the default for very large dry-runs and reserve
+  full JSON payloads for `--json --verbose`.
+- [ ] Add real Docker/Dokploy e2e with daemon-running and daemon-stopped cases,
+  plus Windows PowerShell ANSI/UTF-8 process-output coverage.
+
 ## Feedback TODO Closed After 2.0.85
 
 Genesis + Adapt workflow feedback from Windows app generation, repeated apply,

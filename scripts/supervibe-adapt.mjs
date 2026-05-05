@@ -53,8 +53,8 @@ try {
     process.exit(result.agentRuntime.verified ? 0 : 2);
   }
 
-  if (args.scope === "deploy" || args.target === "dokploy") {
-    if (args.target && args.target !== "dokploy") {
+  if (args.scope === "deploy" || args.target === "dokploy" || args.target === "docker") {
+    if (args.target && !["dokploy", "docker"].includes(args.target)) {
       throw new Error(`unsupported deploy target: ${args.target}`);
     }
     const deployPlan = createDokployDeployPlan({
@@ -253,7 +253,7 @@ Options:
   --refresh-memory-index    Refresh .supervibe/memory/index.json during planning
   --no-refresh-memory-index Do not refresh memory index (dry-run default)
   --scope deploy            Plan or apply a deploy add-on instead of host artifact sync
-  --target dokploy          Select the Dokploy deploy add-on
+  --target <dokploy|docker> Select the deploy add-on target
   --add-agents <ids>        Provision comma-separated agents through Adapt
   --agents <ids>            Alias for --add-agents
   --skills <ids>            Provision comma-separated supporting skills
@@ -276,6 +276,7 @@ Examples:
   node scripts/supervibe-adapt.mjs --add-agents creative-director,prototype-builder
   node scripts/supervibe-adapt.mjs --profile product-design --addons creative-brand,web-design --apply
   node scripts/supervibe-adapt.mjs --scope deploy --target dokploy --dry-run
+  node scripts/supervibe-adapt.mjs --scope deploy --target docker --dry-run
   node scripts/supervibe-adapt.mjs --apply
 `.trim();
 }

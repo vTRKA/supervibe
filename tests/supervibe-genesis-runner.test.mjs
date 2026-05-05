@@ -222,6 +222,9 @@ test("supervibe-genesis generate-apps normalizes nested git and generated host f
     assert.equal(state.generateAppsStep.appGenerated, true);
     assert.equal(state.verification.appGenerated, true);
     assert.equal(state.verification.appVerified, false);
+    assert.equal(state.verification.artifactVerified, false);
+    assert.ok(state.verification.missingArtifactPaths.includes("commitlint.config.js"));
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json")), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -254,13 +257,17 @@ test("supervibe-genesis verify-apps runs against existing generated app without 
 
     assert.match(out, /GENERATED_APPS: completed/);
     assert.match(out, /APP_VERIFIED: true/);
+    assert.match(out, /BUILD_VERIFIED: true/);
     assert.match(out, /APP_VERIFY_RESULT: completed npm run lint cwd=frontend/);
-    assert.match(out, /APP_VERIFY_RESULT: completed node scripts\/dependency-health\.mjs --root \. cwd=frontend/);
+    assert.match(out, /APP_DEPENDENCY_HEALTH: completed pass=true/);
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.generateAppsStep.verifyOnly, true);
     assert.equal(state.generateAppsStep.appGenerated, true);
     assert.equal(state.generateAppsStep.appVerified, true);
+    assert.equal(state.generateAppsStep.buildVerified, true);
+    assert.equal(state.generateAppsStep.dependencyHealthVerified, true);
     assert.equal(state.verification.appVerified, true);
+    assert.equal(state.verification.buildVerified, true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -451,6 +458,30 @@ test("supervibe-genesis json output is machine-readable UTF-8", async () => {
     assert.equal(parsed.mode, "dry-run");
     assert.equal(parsed.report.stackPack.id, "laravel-nextjs-postgres");
     assert.ok(parsed.report.fingerprint.tags.includes("laravel"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis apply json does not mark execution as dry-run", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-apply-json-"));
+  try {
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "laravel,nextjs,postgres",
+      "--json",
+    ], projectRoot);
+    const parsed = JSON.parse(out);
+
+    assert.equal(parsed.mode, "apply");
+    assert.equal(parsed.dryRun, false);
+    assert.equal(parsed.report.dryRun, false);
+    assert.equal(parsed.adaptFileManifest.path, ".supervibe/memory/adapt/file-manifest.json");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

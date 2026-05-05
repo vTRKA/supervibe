@@ -20,6 +20,8 @@ supervibe-adapt --dry-run --evidence-summary --quiet-identical
 supervibe-adapt --apply --include "<project-relative-path>"
 supervibe-adapt --scope deploy --target dokploy --dry-run
 supervibe-adapt --scope deploy --target dokploy --apply
+supervibe-adapt --scope deploy --target docker --dry-run
+supervibe-adapt --scope deploy --target docker --apply
 ```
 
 ## When to invoke
@@ -131,14 +133,32 @@ Deploy artifacts are opt-in and separate from the base scaffold:
 ```bash
 node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target dokploy --dry-run
 node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target dokploy --apply
+node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target docker --dry-run
+node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --scope deploy --target docker --apply
 ```
 
-The Dokploy add-on creates `.dockerignore`, `docker-compose.dokploy.yml`,
-`backend/Dockerfile`, `frontend/Dockerfile`, `.env.example`, and
-`docs/deploy/dokploy.md`. Compose uses explicit `env_file` and `environment`
-keys, named Postgres volumes, service healthchecks, Laravel queue and scheduler
-services, and an explicit migration command. It does not auto-migrate or claim
-`deployVerified` until a real deployment health check passes.
+Deploy add-ons are stack-evidence gated. The resolver scans supported service
+manifests instead of assuming exactly `frontend/` and `backend/`:
+
+- `next-only`: Next.js services get service-local `Dockerfile` and
+  `.dockerignore`, compose port `3000`, no backend, no Postgres, no migration.
+- `laravel-postgres`: Laravel services get service-local `Dockerfile` and
+  `.dockerignore`, Postgres, port `8000`, and explicit migration commands, no
+  frontend artifacts.
+- `laravel-next-postgres`: all detected Laravel and Next.js services are
+  included; one-service projects keep service names `backend` and `frontend`,
+  multi-service projects use stable names derived from service paths.
+- Unsupported service-only projects, such as Vite-only or non-Laravel Composer
+  projects, are reported in `deployProfile.unsupportedServices` and do not
+  receive guessed Dockerfiles.
+
+`--target docker` writes portable `docker-compose.yml` with host ports.
+`--target dokploy` writes Dokploy-specific compose, internal `expose`, and
+`dokploy-network`; it also recognizes an existing hand-written
+`docker-compose.yml`/`docs/dokploy-deploy.md` Next-only layer as present when it
+is equivalent. Neither target auto-migrates or claims `deployVerified` until a
+real deployment health check passes. Docker probing reports
+`dockerInstalled`, `composeAvailable`, and `daemonRunning` separately.
 
 ## What is NOT touched
 

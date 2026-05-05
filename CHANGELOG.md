@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.87] - 2026-05-06
+
+### Added
+
+- Added profile-aware Docker deploy planning for Adapt with
+  `--scope deploy --target docker` alongside the existing Dokploy target.
+- Added service-evidence deploy discovery for any number of supported Next.js
+  and Laravel services instead of assuming exactly `frontend/` and `backend/`.
+- Added Next-only, Laravel-only, and Laravel+Next Docker/Dokploy deploy packs
+  with service-local Dockerfiles and `.dockerignore` files.
+- Added Docker runtime probing that reports `dockerInstalled`,
+  `composeAvailable`, and `daemonRunning` separately.
+
+### Changed
+
+- Adapt deploy plans now block unsupported service-only projects instead of
+  guessing Dockerfiles from directory names.
+- Genesis app state now separates `buildVerified` from
+  `dependencyHealthVerified` and writes an initial no-git Adapt snapshot after
+  apply.
+
+### Fixed
+
+- Fixed Genesis apply JSON reporting `dryRun: true`.
+- Fixed Genesis `artifactVerified` so it remains false when required scaffold
+  rubric artifacts such as Husky, commitlint, or lint-staged are missing.
+- Fixed Dokploy deploy planning so Next-only projects do not receive Laravel
+  backend Dockerfiles or `php artisan` migration commands.
+- Fixed Dokploy planning to recognize equivalent hand-written Next-only
+  `docker-compose.yml` and docs layers.
+
 ## [2.0.86] - 2026-05-05
 
 ### Added

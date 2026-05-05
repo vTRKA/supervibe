@@ -46,6 +46,7 @@ function runAdapt(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
       ...process.env,
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: pluginRoot,
+      SUPERVIBE_SKIP_DOCKER_PROBE: "1",
     },
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -59,6 +60,7 @@ function runAdaptRaw(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
       ...process.env,
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: pluginRoot,
+      SUPERVIBE_SKIP_DOCKER_PROBE: "1",
     },
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -543,17 +545,24 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
   try {
     mkdirSync(join(projectRoot, "backend"), { recursive: true });
     mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    writeFileSync(join(projectRoot, "backend", "composer.json"), JSON.stringify({
+      require: { "laravel/framework": "^12.0" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
 
     const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--dry-run", "--summary-json", "--no-color"]);
     const summary = JSON.parse(dryRun);
     assert.equal(summary.kind, "adapt-deploy-summary");
-    assert.equal(summary.counts.create, 6);
+    assert.equal(summary.deployProfile.id, "laravel-next-postgres");
+    assert.equal(summary.counts.create, 8);
     assert.equal(summary.approvalRequired, true);
     assert.match(summary.migrationCommand, /php artisan migrate --force/);
 
     const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
     assert.match(apply, /SUPERVIBE_ADAPT_DEPLOY_APPLY/);
-    assert.match(apply, /CREATED: 6/);
+    assert.match(apply, /CREATED: 8/);
     assert.match(apply, /DEPLOY_VERIFIED: false/);
 
     const compose = readFileSync(join(projectRoot, "docker-compose.dokploy.yml"), "utf8");
@@ -564,6 +573,8 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
     assert.match(compose, /healthcheck:/);
     assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), true);
     assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, "backend", ".dockerignore")), true);
+    assert.equal(existsSync(join(projectRoot, "frontend", ".dockerignore")), true);
     assert.equal(existsSync(join(projectRoot, ".env.example")), true);
 
     const notes = readFileSync(join(projectRoot, "docs", "deploy", "dokploy.md"), "utf8");
@@ -574,6 +585,232 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
     assert.equal(state.scope, "deploy");
     assert.equal(state.verification.artifactVerified, true);
     assert.equal(state.verification.deployVerified, false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt dokploy deploy add-on uses Next-only pack without Laravel evidence", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-dokploy-next-"));
+  try {
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "genesis"), { recursive: true });
+    mkdirSync(join(projectRoot, "docs"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
+      frontendTarget: { id: "next-app", bundler: "turbopack" },
+      appChoice: { id: "next-app" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "docker-compose.yml"), [
+      "services:",
+      "  frontend:",
+      "    image: example/next-app",
+      "    expose:",
+      "      - \"3000\"",
+      "    networks:",
+      "      - dokploy-network",
+      "networks:",
+      "  dokploy-network:",
+      "    external: true",
+      "",
+    ].join("\n"));
+    writeFileSync(join(projectRoot, "docs", "dokploy-deploy.md"), "Dokploy deploy docs for frontend service on port 3000.\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.deployProfile.id, "next-only");
+    assert.equal(summary.migrationCommand, null);
+    assert.equal(summary.changedItems.some((item) => item.path === "backend/Dockerfile"), false);
+    assert.equal(summary.changedItems.some((item) => item.path === "docker-compose.dokploy.yml"), false);
+    assert.equal(summary.changedItems.some((item) => item.path === "docker-compose.yml"), false);
+    assert.equal(summary.counts.identical >= 2, true);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
+    assert.match(apply, /DEPLOY_PROFILE: next-only/);
+    assert.match(apply, /MIGRATION_COMMAND: none/);
+    assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), false);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.dokploy.yml")), false);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt dokploy deploy add-on uses Laravel-only backend pack without Next evidence", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-dokploy-laravel-"));
+  try {
+    mkdirSync(join(projectRoot, "backend"), { recursive: true });
+    writeFileSync(join(projectRoot, "backend", "composer.json"), JSON.stringify({
+      require: { "laravel/framework": "^12.0" },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.deployProfile.id, "laravel-postgres");
+    assert.equal(summary.deployProfile.target, "dokploy");
+    assert.match(summary.migrationCommand, /php artisan migrate --force/);
+    assert.equal(summary.changedItems.some((item) => item.path === "frontend/Dockerfile"), false);
+    assert.equal(summary.changedItems.some((item) => item.path === "backend/Dockerfile"), true);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
+    assert.match(apply, /DEPLOY_PROFILE: laravel-postgres/);
+    assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), false);
+    const compose = readFileSync(join(projectRoot, "docker-compose.dokploy.yml"), "utf8");
+    assert.match(compose, /backend:/);
+    assert.doesNotMatch(compose, /frontend:/);
+    assert.doesNotMatch(compose, /NEXT_PUBLIC/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt docker deploy add-on uses Next-only Docker pack without Dokploy coupling", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-docker-next-"));
+  try {
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "genesis"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
+      frontendTarget: { id: "next-app", bundler: "turbopack" },
+      appChoice: { id: "next-app" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.target, "docker");
+    assert.equal(summary.deployProfile.id, "next-only");
+    assert.equal(summary.deployProfile.target, "docker");
+    assert.equal(summary.migrationCommand, null);
+    assert.equal(summary.changedItems.some((item) => item.path === "backend/Dockerfile"), false);
+    assert.equal(summary.changedItems.some((item) => item.path === "docker-compose.dokploy.yml"), false);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--apply", "--no-color"]);
+    assert.match(apply, /TARGET: docker/);
+    assert.match(apply, /DEPLOY_PROFILE: next-only/);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.yml")), true);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.dokploy.yml")), false);
+    const compose = readFileSync(join(projectRoot, "docker-compose.yml"), "utf8");
+    assert.match(compose, /ports:/);
+    assert.doesNotMatch(compose, /dokploy-network/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt docker deploy add-on uses Laravel-only backend pack without frontend artifacts", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-docker-laravel-"));
+  try {
+    mkdirSync(join(projectRoot, "backend"), { recursive: true });
+    writeFileSync(join(projectRoot, "backend", "composer.json"), JSON.stringify({
+      require: { "laravel/framework": "^12.0" },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.target, "docker");
+    assert.equal(summary.deployProfile.id, "laravel-postgres");
+    assert.equal(summary.deployProfile.target, "docker");
+    assert.match(summary.migrationCommand, /docker compose run --rm backend php artisan migrate --force/);
+    assert.equal(summary.changedItems.some((item) => item.path === "frontend/Dockerfile"), false);
+    assert.equal(summary.changedItems.some((item) => item.path === "backend/Dockerfile"), true);
+
+    runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--apply", "--no-color"]);
+    assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), true);
+    assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), false);
+    const compose = readFileSync(join(projectRoot, "docker-compose.yml"), "utf8");
+    assert.match(compose, /backend:/);
+    assert.match(compose, /postgres:/);
+    assert.doesNotMatch(compose, /frontend:/);
+    assert.doesNotMatch(compose, /NEXT_PUBLIC/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt docker deploy add-on discovers multiple supported services without frontend/backend folder assumptions", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-docker-multi-"));
+  try {
+    for (const dir of ["apps/web", "apps/admin", "services/api", "services/billing"]) {
+      mkdirSync(join(projectRoot, dir), { recursive: true });
+    }
+    writeFileSync(join(projectRoot, "apps", "web", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "apps", "admin", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "services", "api", "composer.json"), JSON.stringify({
+      require: { "laravel/framework": "^12.0" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "services", "billing", "composer.json"), JSON.stringify({
+      require: { "laravel/framework": "^12.0" },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.deployProfile.id, "laravel-next-postgres");
+    assert.equal(summary.deployProfile.services.length, 4);
+    assert.equal(summary.deployProfile.nextServices.length, 2);
+    assert.equal(summary.deployProfile.laravelServices.length, 2);
+    assert.equal(summary.deployProfile.unsupportedServices.length, 0);
+    assert.equal(summary.counts.create, 12);
+    assert.match(summary.migrationCommand, /laravel-services-api/);
+    assert.match(summary.migrationCommand, /laravel-services-billing/);
+
+    runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--apply", "--no-color"]);
+    for (const path of [
+      "apps/web/Dockerfile",
+      "apps/admin/Dockerfile",
+      "services/api/Dockerfile",
+      "services/billing/Dockerfile",
+      "apps/web/.dockerignore",
+      "apps/admin/.dockerignore",
+      "services/api/.dockerignore",
+      "services/billing/.dockerignore",
+    ]) {
+      assert.equal(existsSync(join(projectRoot, ...path.split("/"))), true, path);
+    }
+    const compose = readFileSync(join(projectRoot, "docker-compose.yml"), "utf8");
+    assert.match(compose, /next-apps-web:/);
+    assert.match(compose, /next-apps-admin:/);
+    assert.match(compose, /laravel-services-api:/);
+    assert.match(compose, /laravel-services-billing:/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt deploy add-on blocks unsupported service-only projects instead of guessing Dockerfiles", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-docker-unsupported-"));
+  try {
+    mkdirSync(join(projectRoot, "apps", "portal"), { recursive: true });
+    writeFileSync(join(projectRoot, "apps", "portal", "package.json"), JSON.stringify({
+      dependencies: { "@vitejs/plugin-react": "latest", vite: "latest", react: "19.2.4" },
+    }, null, 2) + "\n");
+
+    const dryRun = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--dry-run", "--summary-json", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+
+    assert.equal(summary.deployProfile.id, "needs-stack-evidence");
+    assert.equal(summary.counts.create, 0);
+    assert.equal(summary.deployProfile.unsupportedServices.length, 1);
+    assert.match(summary.deployProfile.blockedReason, /unsupported deploy services/);
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "docker", "--apply", "--no-color"]);
+    assert.match(apply, /ARTIFACT_VERIFIED: false/);
+    assert.equal(existsSync(join(projectRoot, "apps", "portal", "Dockerfile")), false);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.yml")), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
