@@ -226,6 +226,38 @@ dependency repair guardrails.
   reruns across Codex-only, Claude-only, mixed-host, no-git, dirty, and monorepo
   roots.
 
+## Fixed In 2.0.86
+
+Genesis + Adapt feedback on frontend ambiguity, no-git drift, runtime-agent
+proof gates, dependency remediation UX, and UTF-8 command surfaces.
+
+- [x] Added a shared `frontend-target-resolver` used by Genesis and Adapt:
+  `Next + React + Vite` resolves to `next-app` on Turbopack by default,
+  `vite-spa` stays a separate SPA target, `two-frontends` is explicit
+  monorepo intent, and `tooling-only` Vite no longer changes the app target.
+- [x] Persisted Genesis frontend decisions (`appChoice`, `bundler`,
+  `ignoredStackTags`) and made Adapt read them as source-of-truth so a later
+  Vite dependency in a Next app is reported as drift, not an automatic stack
+  switch.
+- [x] Split command-agent lifecycle gates: Genesis dry-run/apply/generate-apps
+  are bootstrap-pre-agent phases, Adapt dry-run is read-only and agentless, and
+  `--verify-agents` is the separate runtime receipt gate.
+- [x] Added `--verify-agents` CLI gates for Genesis and Adapt. They validate
+  receipt-bound real host-agent telemetry, update command state when present,
+  and print the exact `agent-invocation.mjs log ... --issue-receipt` next
+  action instead of pretending agents ran.
+- [x] Added no-git Adapt drift detection through
+  `.supervibe/memory/adapt/file-manifest.json`; absence of `.git` is no longer
+  fatal, and apply writes the first snapshot.
+- [x] Extended dependency remediation output with safe policy reasons and
+  verification commands (`install`, `audit`, `lint`, `build`,
+  `dependency-health`) after override/resolution-style repairs.
+- [x] Replaced mojibake in Genesis/Adapt visible Russian command labels with
+  real UTF-8 text and covered the flow with targeted regression tests.
+- [ ] Add network-enabled Windows/POSIX e2e for real scaffolders, PowerShell
+  launch paths, managed preview/dev-server registry, and successful real
+  host-agent smoke telemetry.
+
 ## Feedback TODO Closed After 2.0.85
 
 Genesis + Adapt workflow feedback from Windows app generation, repeated apply,

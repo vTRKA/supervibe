@@ -13,6 +13,11 @@ import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
 import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 import { validateAgentProducerReceipts } from "./agent-producer-contract.mjs";
+import {
+  collectFrontendPackageEvidence,
+  readGenesisFrontendDecision,
+  resolveFrontendTarget,
+} from "./frontend-target-resolver.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
@@ -37,6 +42,15 @@ export async function createAdaptPlan({
   const memoryIndex = refreshMemoryIndex
     ? await ensureMemoryIndex(projectRoot)
     : readMemoryIndexStatus(projectRoot);
+  const changeDetection = buildAdaptChangeDetection(projectRoot);
+  const frontendEvidence = collectFrontendPackageEvidence({ rootDir: projectRoot });
+  const frontendTags = unique(frontendEvidence.flatMap((entry) => entry.tags || []));
+  const frontendTarget = resolveFrontendTarget({
+    tags: frontendTags,
+    facts: frontendEvidence,
+    previousChoice: readGenesisFrontendDecision(projectRoot),
+    source: "adapt",
+  });
   const upstream = buildUpstreamIndex(pluginRoot);
   const projectArtifacts = listProjectArtifacts(projectRoot, adapter);
   const projectItems = projectArtifacts.map((artifact) => classifyArtifact({
@@ -75,6 +89,8 @@ export async function createAdaptPlan({
     baselineVersionDrift,
     baselineRefreshRequired,
     metadataUpdateRequired,
+    changeDetection,
+    frontendTarget,
     memoryWrites,
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
@@ -150,11 +166,15 @@ export async function applyAdaptPlan(plan, {
     refreshMemoryIndex,
   });
   const indexGate = await inspectIndexGate(plan.projectRoot);
+  const fileManifest = plan.changeDetection?.mode === "snapshot"
+    ? await writeNoGitFileManifest(plan.projectRoot)
+    : null;
   const result = {
     kind: "adapt-apply",
     projectRoot: plan.projectRoot,
     pluginRoot: plan.pluginRoot,
     host: plan.host,
+    frontendTarget: plan.frontendTarget,
     currentVersion: plan.currentVersion,
     lastSeenVersion: plan.lastSeenVersion,
     applied,
@@ -172,6 +192,7 @@ export async function applyAdaptPlan(plan, {
     },
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,
+    fileManifest,
   };
   result.lifecycleState = await writeAdaptLifecycleState(plan, result, {
     include,
@@ -179,6 +200,7 @@ export async function applyAdaptPlan(plan, {
   });
   result.mutatedPaths.push(result.lifecycleState.path);
   if (result.memoryIndex?.refreshed && result.memoryIndex?.path) result.mutatedPaths.push(result.memoryIndex.path);
+  if (result.fileManifest?.path) result.mutatedPaths.push(result.fileManifest.path);
   result.mutatedPaths = [...new Set(result.mutatedPaths)];
   return result;
 }
@@ -335,6 +357,11 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `VERSION_DRIFT: ${plan.versionDrift ? "true" : "false"}`,
     `BASELINE_REFRESH_REQUIRED: ${plan.baselineRefreshRequired ? "true" : "false"}`,
     `METADATA_UPDATE_REQUIRED: ${plan.metadataUpdateRequired ? "true" : "false"}`,
+    `CHANGE_DETECTION: ${plan.changeDetection?.mode || "unknown"}`,
+    `GIT_PRESENT: ${plan.changeDetection?.gitPresent === true}`,
+    `NO_GIT_SNAPSHOT: ${plan.changeDetection?.mode === "snapshot" ? plan.changeDetection.status : "not-needed"}`,
+    `FRONTEND_TARGET: ${plan.frontendTarget?.id || "none"}`,
+    `FRONTEND_BUNDLER: ${plan.frontendTarget?.bundler || "none"}`,
     `ARTIFACTS: ${plan.items.length}`,
     `ADDS: ${plan.counts.add}`,
     `UPDATES: ${plan.counts.update}`,
@@ -352,6 +379,10 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary(plan));
+  for (const warning of plan.frontendTarget?.driftWarnings || []) {
+    lines.push(`FRONTEND_DRIFT: ${warning.code} - ${warning.message}`);
+    lines.push(`FRONTEND_CHOICES: ${(warning.options || []).map((choice) => choice.id).join(", ")}`);
+  }
   for (const item of plan.items) {
     if (item.action === "add") {
       const mandatory = item.mandatory === undefined ? "unknown" : String(Boolean(item.mandatory));
@@ -406,6 +437,8 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `BLOCKED: ${result.blocked.length}`,
     `METADATA_UPDATED: ${result.metadataUpdated ? "true" : "false"}`,
     `BASELINE_REFRESHED: ${result.baselineRefreshed ? "true" : "false"}`,
+    `CHANGE_DETECTION: ${result.fileManifest?.mode || "git-or-not-written"}`,
+    `FRONTEND_TARGET: ${result.lifecycleState?.frontendTarget?.id || result.frontendTarget?.id || "none"}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
@@ -504,6 +537,8 @@ export function summarizeAdaptPlan(plan) {
     memoryWrites: plan.memoryWrites === true,
     fastPath: plan.fastPath,
     agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
+    changeDetection: plan.changeDetection,
+    frontendTarget: plan.frontendTarget,
     baselineRefreshRequired: plan.baselineRefreshRequired === true,
     approvalRequired: plan.approvalRequired === true,
     memoryIndex: plan.memoryIndex,
@@ -559,7 +594,78 @@ export function summarizeAdaptApply(result) {
     postApply: result.postApply,
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
+    fileManifest: result.fileManifest || null,
   };
+}
+
+export async function verifyAdaptAgentRuntime(projectRoot = process.cwd()) {
+  const agentRuntime = inspectAgentRuntimeEvidence(projectRoot);
+  const statePath = join(projectRoot, ...STATE_PATH);
+  const previous = readJsonOptional(statePath);
+  const now = new Date().toISOString();
+  let stateUpdated = false;
+  if (previous) {
+    const verification = {
+      ...(previous.verification || {}),
+      agentReceiptsVerified: agentRuntime.verified,
+      agentRuntimeVerified: agentRuntime.verified,
+      completionClaimAllowed: previous.verification?.artifactVerified === true && agentRuntime.verified,
+      completionClaim: agentRuntime.verified
+        ? "artifact adaptation and runtime agent receipt evidence are verified"
+        : "artifact adaptation may be verified, but real agent completion is not claimed without receipt-bound host-agent telemetry",
+    };
+    const state = {
+      ...previous,
+      updatedAt: now,
+      currentStage: agentRuntime.verified ? "agent-runtime-verified" : previous.currentStage,
+      verification,
+      evidence: {
+        ...(previous.evidence || {}),
+        agentRuntime,
+      },
+      validators: {
+        ...(previous.validators || {}),
+        agentReceiptsVerified: agentRuntime.verified,
+        agentRuntimeVerified: agentRuntime.verified,
+      },
+      history: [
+        ...(Array.isArray(previous.history) ? previous.history : []),
+        {
+          state: "agent-runtime-verification",
+          at: now,
+          validators: { agentReceiptsVerified: agentRuntime.verified },
+        },
+      ],
+    };
+    await mkdir(dirname(statePath), { recursive: true });
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    stateUpdated = true;
+  }
+  return {
+    kind: "adapt-agent-runtime-verification",
+    command: "/supervibe-adapt",
+    agentRuntime,
+    stateUpdated,
+    statePath: previous ? normalizeRel(relative(projectRoot, statePath)) : null,
+    nextAction: agentRuntime.verified
+      ? "Adapt agent runtime receipt gate is verified."
+      : "Run real host-agent stages, then log each with `node scripts/agent-invocation.mjs log ... --issue-receipt --command /supervibe-adapt --stage agent-smoke-test`.",
+  };
+}
+
+export function formatAdaptAgentRuntimeVerification(result) {
+  const lines = [
+    "SUPERVIBE_ADAPT_VERIFY_AGENTS",
+    `AGENT_RUNTIME_VERIFIED: ${result.agentRuntime.verified === true}`,
+    `STATUS: ${result.agentRuntime.status}`,
+    `TRUSTED_HOST_AGENT_RECEIPTS: ${result.agentRuntime.trustedHostAgentReceipts}`,
+    `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
+    `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
+    `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-adapt-state"}`,
+  ];
+  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
+  if (result.nextAction) lines.push(`NEXT_ACTION: ${result.nextAction}`);
+  return lines.join("\n");
 }
 
 export function summarizeDokployDeployApply(result) {
@@ -642,12 +748,166 @@ function buildAdaptAgentPlanCommand({ counts = {}, memoryWrites = false } = {}) 
   return [
     "node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs",
     "--command /supervibe-adapt",
+    "--dry-run",
     `--adds ${Number(counts.add || 0)}`,
     `--updates ${Number(counts.update || 0)}`,
     `--project-only ${Number(counts.projectOnly || 0)}`,
     `--conflicts ${Number(counts.conflicts || 0)}`,
     `--memory-writes ${memoryWrites === true ? "true" : "false"}`,
   ].join(" ");
+}
+
+function buildAdaptChangeDetection(projectRoot) {
+  const gitPath = join(projectRoot, ".git");
+  if (existsSync(gitPath)) {
+    return {
+      mode: "git",
+      gitPresent: true,
+      status: "git-diff-available",
+      command: "git diff <verified-against>..HEAD --stat",
+    };
+  }
+
+  const manifestPath = join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json");
+  const current = buildNoGitFileManifest(projectRoot);
+  const previous = readJsonOptional(manifestPath);
+  const diff = diffFileManifest(previous, current);
+  return {
+    mode: "snapshot",
+    gitPresent: false,
+    status: previous ? "snapshot-diff-ready" : "initial-snapshot-missing",
+    path: normalizeRel(relative(projectRoot, manifestPath)),
+    previousExists: Boolean(previous),
+    currentHash: current.manifestHash,
+    counts: diff.counts,
+    changedFiles: diff.changedFiles.slice(0, 50),
+    note: previous
+      ? "No .git directory found; Adapt compared the current file manifest with the last saved snapshot."
+      : "No .git directory found and no Adapt snapshot exists yet; this is not fatal. Adapt will write the first snapshot after apply.",
+  };
+}
+
+async function writeNoGitFileManifest(projectRoot) {
+  const manifestPath = join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json");
+  const manifest = buildNoGitFileManifest(projectRoot);
+  await mkdir(dirname(manifestPath), { recursive: true });
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return {
+    mode: "snapshot",
+    path: normalizeRel(relative(projectRoot, manifestPath)),
+    files: manifest.files.length,
+    manifestHash: manifest.manifestHash,
+  };
+}
+
+function buildNoGitFileManifest(projectRoot) {
+  const files = listSnapshotFiles(projectRoot).map((path) => {
+    const rel = normalizeRel(relative(projectRoot, path));
+    const content = readFileSync(path);
+    return {
+      path: rel,
+      hash: createHash("sha256").update(content).digest("hex"),
+      bytes: content.length,
+    };
+  });
+  const manifestHash = hashContent(JSON.stringify(files.map((entry) => [entry.path, entry.hash, entry.bytes])));
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    root: "<project-root>",
+    strategy: "no-git-snapshot",
+    files,
+    summary: {
+      files: files.length,
+      bytes: files.reduce((sum, entry) => sum + entry.bytes, 0),
+    },
+    manifestHash,
+  };
+}
+
+function diffFileManifest(previous, current) {
+  if (!previous?.files) {
+    return {
+      counts: { added: current.files.length, changed: 0, deleted: 0 },
+      changedFiles: current.files.map((entry) => ({ path: entry.path, status: "added" })),
+    };
+  }
+  const previousByPath = new Map((previous.files || []).map((entry) => [entry.path, entry]));
+  const currentByPath = new Map((current.files || []).map((entry) => [entry.path, entry]));
+  const changedFiles = [];
+  for (const entry of current.files) {
+    const old = previousByPath.get(entry.path);
+    if (!old) changedFiles.push({ path: entry.path, status: "added" });
+    else if (old.hash !== entry.hash || old.bytes !== entry.bytes) changedFiles.push({ path: entry.path, status: "changed" });
+  }
+  for (const entry of previous.files || []) {
+    if (!currentByPath.has(entry.path)) changedFiles.push({ path: entry.path, status: "deleted" });
+  }
+  return {
+    counts: {
+      added: changedFiles.filter((entry) => entry.status === "added").length,
+      changed: changedFiles.filter((entry) => entry.status === "changed").length,
+      deleted: changedFiles.filter((entry) => entry.status === "deleted").length,
+    },
+    changedFiles: changedFiles.sort((a, b) => a.path.localeCompare(b.path)),
+  };
+}
+
+function listSnapshotFiles(projectRoot) {
+  const out = [];
+  const visit = (dir) => {
+    let entries = [];
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const path = join(dir, entry.name);
+      const rel = normalizeRel(relative(projectRoot, path));
+      if (entry.isDirectory()) {
+        if (snapshotDirectoryExcluded(entry.name, rel)) continue;
+        visit(path);
+      } else if (entry.isFile() && !snapshotFileExcluded(rel)) {
+        out.push(path);
+      }
+    }
+  };
+  visit(projectRoot);
+  return out.sort((a, b) => normalizeRel(relative(projectRoot, a)).localeCompare(normalizeRel(relative(projectRoot, b))));
+}
+
+function snapshotDirectoryExcluded(name, rel) {
+  return [
+    ".git",
+    "node_modules",
+    "bower_components",
+    "jspm_packages",
+    "dist",
+    "build",
+    "out",
+    "coverage",
+    ".next",
+    ".nuxt",
+    ".svelte-kit",
+    ".turbo",
+    ".cache",
+  ].includes(name) || rel === ".supervibe/memory/workflow-receipts-stale";
+}
+
+function snapshotFileExcluded(rel) {
+  return /^\.supervibe\/memory\/code\.db/.test(rel)
+    || /^\.supervibe\/memory\/.*\.jsonl$/.test(rel)
+    || /^\.supervibe\/memory\/.*\.(lock|key)$/.test(rel)
+    || rel === ".supervibe/memory/adapt/file-manifest.json";
+}
+
+function readJsonOptional(path) {
+  try {
+    return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
+  } catch {
+    return null;
+  }
+}
+
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function classifyArtifact({ artifact, upstream, baselineHash }) {
@@ -939,6 +1199,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     lifecycle,
     currentStage: lifecycle,
     host: result.host,
+    frontendTarget: plan.frontendTarget || null,
+    changeDetection: plan.changeDetection || null,
     currentVersion: result.currentVersion,
     previousVersion: result.lastSeenVersion || null,
     approvedArtifacts,
@@ -948,6 +1210,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     verification: {
       artifactVerified,
       agentReceiptsVerified,
+      agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
       deployVerified,
       completionClaimAllowed: artifactVerified && agentReceiptsVerified,
@@ -964,11 +1227,13 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       postApply: result.postApply,
       indexGate: result.indexGate,
       agentRuntime,
+      fileManifest: result.fileManifest || null,
     },
     validators: {
       artifactAdaptClean: result.postApply?.clean === true,
       artifactVerified,
       agentReceiptsVerified,
+      agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
       deployVerified,
       codeIndexReady: result.indexGate?.ready === true,
@@ -984,6 +1249,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
           artifactAdaptClean: result.postApply?.clean === true,
           artifactVerified,
           agentReceiptsVerified,
+          agentRuntimeVerified: agentReceiptsVerified,
           appVerified,
           deployVerified,
           codeIndexReady: result.indexGate?.ready === true,
@@ -999,6 +1265,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     path: normalizeRel(relative(plan.projectRoot, path)),
     lifecycle,
     updatedArtifacts,
+    frontendTarget: state.frontendTarget,
     verification: state.verification,
     validators: state.validators,
   };
@@ -1029,6 +1296,7 @@ async function writeDeployLifecycleState(plan, result) {
     verification: {
       artifactVerified,
       agentReceiptsVerified,
+      agentRuntimeVerified: agentReceiptsVerified,
       appVerified: false,
       deployVerified: false,
       completionClaimAllowed: false,
@@ -1055,6 +1323,7 @@ async function writeDeployLifecycleState(plan, result) {
     validators: {
       artifactVerified,
       agentReceiptsVerified,
+      agentRuntimeVerified: agentReceiptsVerified,
       appVerified: false,
       deployVerified: false,
       blockedCount: 0,

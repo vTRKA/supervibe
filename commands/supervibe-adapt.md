@@ -39,8 +39,18 @@ supervibe-adapt --scope deploy --target dokploy --apply
    The implementation resolves `pluginRoot` explicitly, detects the active host adapter, compares project host artifacts such as `.codex/agents`, `.codex/rules`, and `.codex/skills` against upstream plugin artifacts, computes `related-rules` closure candidates, and never reuses `supervibe-status --genesis-dry-run` as an adapt substitute. Dry-run is read-only by default; use `--refresh-memory-index` only when you intentionally want to rewrite `.supervibe/memory/index.json` during planning.
    Feed the returned counts into:
    ```bash
-   node "<resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs" --command /supervibe-adapt --adds <adds> --updates <updates> --project-only <projectOnly> --conflicts <conflicts> --memory-writes <true|false>
+   node "<resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs" --command /supervibe-adapt --dry-run --adds <adds> --updates <updates> --project-only <projectOnly> --conflicts <conflicts> --memory-writes <true|false>
    ```
+
+   If `.git` is absent, this is not fatal. The dry-run compares the current
+   tree against `.supervibe/memory/adapt/file-manifest.json` when available;
+   apply writes a fresh snapshot for the next Adapt run.
+
+0a. **Honor Genesis state.** Read `.supervibe/memory/genesis/state.json` when
+   present. `appChoice=next-app`, `appGenerated`, `appVerified`, and ignored
+   stack tags such as `vite` are source-of-truth for stack drift. A new `vite`
+   dependency inside a Genesis Next app is accidental/tooling/separate-SPA
+   evidence, not an automatic switch to Vite agents.
 
 1. **Read upstream.** Resolve the active host adapter first, then for each file in `<adapter>/agents`, `<adapter>/rules`, and `<adapter>/skills`, find the matching upstream file in the resolved Supervibe plugin root under `agents/`, `rules/`, or `skills/`.
 
@@ -74,6 +84,12 @@ supervibe-adapt --scope deploy --target dokploy --apply
 
 8. **Separate adapt from index health.** A clean adapt can still leave code index health red. Treat `ARTIFACT_ADAPT_CLEAN: true` as the artifact-sync result and `CODE_INDEX_READY: false` as a separate follow-up. When index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling the adapt incomplete.
 
+9. **Handle dependency remediation as policy.** If dependency health reports a
+   vulnerable nested package, block `npm audit fix --force` when it downgrades a
+   framework major/minor line. Prefer a reviewed `overrides`/`resolutions` plan
+   only when compatibility evidence exists, then rerun `npm install`,
+   `npm audit`, lint, build, and `dependency-health`.
+
 ## Output contract
 
 ```
@@ -86,6 +102,8 @@ Archived:    <count>
 Deleted:     <count>
 State:       .supervibe/memory/adapt/state.json (artifact_verified | applied_unverified | failed_recoverable)
 Layers:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerified=<bool> deployVerified=<bool>
+Frontend:    target=<next-app|vite-spa|monorepo-two-frontends|none> bundler=<turbopack|vite|mixed|none>
+Diff mode:   git | no-git snapshot
 
 Confidence:  N/10  Rubric: agent-delivery
 ```
@@ -96,6 +114,10 @@ Confidence:  N/10  Rubric: agent-delivery
   explicitly requested.
 - Apply writes only approved project host artifacts and `.supervibe/memory/`
   metadata required by the adapt plan.
+- No-git projects use `.supervibe/memory/adapt/file-manifest.json` snapshots
+  instead of failing before `git init`.
+- Package tags must not override a Genesis frontend decision without a
+  frontend target resolution.
 - User-owned host instruction text outside managed blocks is never overwritten.
 - Index repair is a separate follow-up from artifact adaptation.
 - Completion claims require real runtime receipts. Without
@@ -139,7 +161,7 @@ managed block.
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt --adds <n> --updates <n> --project-only <n> --conflicts <n>` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, and durable-write permission before any agent-owned artifact is produced. Role sources must be visible as `project artifact`, `plugin-only`, or `logical role` so users can tell whether a role is installed into the project or supplied by the plugin profile.
+Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt --dry-run --adds <n> --updates <n> --project-only <n> --conflicts <n>` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. Adapt dry-run is read-only and may print `EXECUTION_MODE: dry-run-no-agent`; approved `--apply` and `--verify-agents` are separate gates. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, and durable-write permission before any agent-owned artifact is produced. Role sources must be visible as `project artifact`, `plugin-only`, or `logical role` so users can tell whether a role is installed into the project or supplied by the plugin profile.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts

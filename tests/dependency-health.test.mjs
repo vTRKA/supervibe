@@ -81,6 +81,14 @@ test("dependency health classifies nested vulnerable transitive dependency and b
       },
     },
   });
+  assert.equal(finding.remediation.reason, "npm audit fix --force is unsafe because it would downgrade a framework major/minor line.");
+  assert.deepEqual(finding.remediation.verificationCommands, [
+    "npm install",
+    "npm audit --json",
+    "npm run lint",
+    "npm run build",
+    "node <resolved-supervibe-plugin-root>/scripts/dependency-health.mjs --root .",
+  ]);
   assert.equal(report.outdatedFindings[0].policy.level, "safe-patch-update");
 
   const formatted = formatDependencyHealthReport(report);
@@ -88,6 +96,9 @@ test("dependency health classifies nested vulnerable transitive dependency and b
   assert.match(formatted, /OCCURRENCE_OK: @tailwindcss\/postcss@4\.2\.4 -> postcss@8\.5\.14/);
   assert.match(formatted, /NPM_AUDIT_FORCE: blocked_downgrade next 16\.2\.4 -> 9\.3\.3/);
   assert.match(formatted, /OVERRIDE_OPTION: \{"overrides":\{"next":\{"postcss":"8\.5\.14"\}\}\}/);
+  assert.match(formatted, /REMEDIATION_REASON: npm audit fix --force is unsafe/);
+  assert.match(formatted, /REMEDIATION_VERIFY: npm install/);
+  assert.match(formatted, /REMEDIATION_VERIFY: node <resolved-supervibe-plugin-root>\/scripts\/dependency-health\.mjs --root \./);
 });
 
 test("dependency health covers non-npm ecosystems without false green status", () => {

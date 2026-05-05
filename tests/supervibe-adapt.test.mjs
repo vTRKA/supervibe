@@ -235,6 +235,8 @@ test("supervibe-adapt dry-run plans host-aware project artifact updates without 
     assert.match(out, /SUPERVIBE_ADAPT_DRY_RUN/);
     assert.match(out, /HOST: codex/);
     assert.match(out, new RegExp(`VERSION: 2\\.0\\.27 -> ${CURRENT_VERSION.replaceAll(".", "\\.")}`));
+    assert.match(out, /CHANGE_DETECTION: snapshot/);
+    assert.match(out, /NO_GIT_SNAPSHOT: initial-snapshot-missing/);
     assert.match(out, /CONFLICTS: 0/);
     assert.match(out, /FAST_PATH_ELIGIBLE: true/);
     assert.match(out, /FAST_PATH_ROLES: .*supervibe-orchestrator.*quality-gate-reviewer/);
@@ -242,6 +244,42 @@ test("supervibe-adapt dry-run plans host-aware project artifact updates without 
     assert.match(out, /APPROVAL_REQUIRED: true/);
     assert.doesNotMatch(out, /SUPERVIBE_GENESIS_DRY_RUN/);
     assert.doesNotMatch(out, /RECOMMENDED_AGENTS: none/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt reads Genesis frontend state before classifying Vite drift", () => {
+  const projectRoot = createCodexProject();
+  try {
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "genesis"), { recursive: true });
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
+      schemaVersion: 1,
+      command: "/supervibe-genesis",
+      appChoice: {
+        id: "next-app",
+        bundler: "turbopack",
+        ignoredStackTags: ["vite"],
+      },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
+      private: true,
+      dependencies: {
+        next: "16.2.4",
+        react: "19.2.4",
+        vite: "^7.0.0",
+      },
+    }, null, 2) + "\n");
+
+    const out = runAdapt(projectRoot, ["--dry-run", "--summary-json", "--changed-only", "--no-color"]);
+    const summary = JSON.parse(out);
+
+    assert.equal(summary.frontendTarget.id, "next-app");
+    assert.equal(summary.frontendTarget.bundler, "turbopack");
+    assert.deepEqual(summary.frontendTarget.ignoredStackTags, ["vite"]);
+    assert.ok(summary.frontendTarget.driftWarnings.some((entry) => entry.code === "vite-detected-in-next-app"));
+    assert.equal(summary.frontendTarget.activeStackTags.includes("vite"), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -268,6 +306,7 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
       readFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "utf8").trim(),
       CURRENT_VERSION,
     );
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "adapt", "file-manifest.json")), true);
     const baseline = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), "utf8"));
     assert.equal(baseline.pluginVersion, CURRENT_VERSION);
   } finally {
@@ -301,6 +340,31 @@ test("supervibe-adapt applies only explicitly approved files and updates version
     assert.equal(state.verification.appVerified, false);
     assert.equal(state.verification.deployVerified, false);
     assert.equal(state.recovery.appliedFiles.includes(approvedPath), true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt verify-agents updates runtime proof gate without blocking artifact state", () => {
+  const projectRoot = createCodexProject();
+  try {
+    const approvedPath = ".codex/agents/repo-researcher.md";
+    runAdapt(projectRoot, ["--apply", "--include", approvedPath, "--no-color"]);
+
+    const result = runAdaptMaybeFails(projectRoot, ["--verify-agents", "--no-color"]);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stdout, /SUPERVIBE_ADAPT_VERIFY_AGENTS/);
+    assert.match(result.stdout, /AGENT_RUNTIME_VERIFIED: false/);
+    assert.match(result.stdout, /STATE_UPDATED: \.supervibe\/memory\/adapt\/state\.json/);
+    assert.match(result.stdout, /NEXT_ACTION: Run real host-agent stages/);
+
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+    assert.equal(state.verification.artifactVerified, true);
+    assert.equal(state.verification.agentRuntimeVerified, false);
+    assert.equal(state.validators.agentRuntimeVerified, false);
+    assert.equal(state.evidence.agentRuntime.status, "awaiting-real-host-agent");
+    assert.ok(state.history.some((entry) => entry.state === "agent-runtime-verification"));
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

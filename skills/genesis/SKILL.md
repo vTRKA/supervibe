@@ -39,7 +39,8 @@ Default behavior: choose the safest minimal profile, no add-ons, dry-run only un
 Executable path: `node scripts/supervibe-genesis.mjs --dry-run --target <project>`
 is the deterministic runner for dry-run/state output; `--apply` is the only
 mode that writes project scaffold files. It accepts `--profile`, `--addons`,
-`--host`, `--stack-tags`, `--request`, and `--json`. State writes to
+`--host`, `--stack-tags`, `--request`, `--generate-apps`, `--verify-apps`,
+`--app-choice`, and `--json`. State writes to
 `.supervibe/memory/genesis/state.json` are allowed during dry-run so
 interrupt/resume has a durable checkpoint; host adapter agents/rules/skills,
 settings, instructions, and stack scaffold files remain blocked until explicit
@@ -56,18 +57,23 @@ English visible labels:
 - Review dry-run deeper - run status, audit or confidence scoring before applying the scaffold.
 - Stop without installing - persist current dry-run state and exit without changing the project.
 
-Russian visible labels:
-- Apply scaffold - recommended only when dry-run host, profile, agents, rules, and files look correct; write the scaffold and run index/status checks.
-- Adjust install plan - user gives one focused host, profile, add-on, stack-pack, agent, or rule change; rebuild dry-run without writing files.
-- Compare another set - prepare another profile, host, or agent/rule set with explicit tradeoffs before writing files.
-- Review dry-run deeper - run status, audit, or confidence scoring before applying the scaffold.
-- Stop without installing - persist current dry-run state and exit without project changes.
+Russian visible labels are supplied by
+`scripts/lib/supervibe-dialogue-contract.mjs` to keep this skill contract
+ASCII-safe for validators. The ru locale must map to the same scaffold-specific
+actions above and must not fall back to generic apply/revise wording.
 
 ## Step 0 — Read source of truth (required)
 
 1. Read stack-fingerprint from `supervibe:stack-discovery`
    - On empty projects, merge explicit stack tags or request text from the user
      before falling back to manifest-only detection.
+   - Resolve frontend target with `scripts/lib/frontend-target-resolver.mjs`
+     before dry-run output. `next-app` means Next.js + React + TS + Tailwind
+     with Turbopack, `vite-spa` means standalone React/Vite, and
+     `monorepo-two-frontends` means separate explicit app dirs. If Next.js and
+     Vite appear together without an explicit separate target, default to
+     `next-app`, mark `vite` as an ignored stack tag for app generation, and
+     still show the alternative choices.
 2. Read `stack-packs/` to find matching pack
 3. Read `templates/` for host instruction and settings templates
 4. Run `node scripts/supervibe-status.mjs --host-diagnostics` or call `scripts/lib/supervibe-host-detector.mjs` logic before selecting an output layout. Host precedence is explicit override (`SUPERVIBE_HOST`) -> active runtime/current chat -> filesystem markers.
@@ -90,6 +96,10 @@ Match exact pack?
 ## Procedure
 
 1. Resolve stack-pack from fingerprint
+   - For `Next.js + Vite`, use the shared frontend target resolver before
+     stack-pack/app generation. Next 16 uses Turbopack by default for
+     `next dev` and `next build`; never generate Vite inside a single Next app
+     unless the user explicitly chooses a separate frontend.
 2. Compose if no exact match
    - Prefer `stack-packs/tauri-react-rust-postgres/pack.yaml` when fingerprint contains Tauri 2, React/Vite, Rust and SQLx/Postgres evidence.
 3. Resolve install profile before copying agents:
@@ -124,7 +134,8 @@ Match exact pack?
 12. Confidence-score(scaffold-bundle) ≥9
 13. Run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` from the target project root before the final `/supervibe-status` check. For large projects, repeat this bounded atomic batch until source coverage is healthy; heartbeat/progress JSON lines and `.supervibe/memory/code-index-checkpoint.json` are the liveness/checkpoint evidence, and `.supervibe/memory/code-index.lock` prevents duplicate indexers while stale locks with dead PIDs are cleaned automatically. If the run stops at `SUPERVIBE_INDEX_BOUNDED_TIMEOUT`, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then rerun the same `--resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` command. Graph warning output does not fail genesis when source RAG coverage is healthy. Build graph/semantic data separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; use `--strict-index-health` only for explicit graph audits.
 13a. Keep app builds separate from genesis success. Only run `npm run build` or equivalent when the user explicitly asks or the stack-pack marks it as a required post-genesis check. If it fails in existing project code, report `Project verification failed after genesis` with command, exit code, and repo-relative error paths only; do not include absolute local paths, project names, or call it unrelated without a captured pre-genesis baseline.
-13b. For Next.js app generation, use `create-next-app --disable-git` whenever the target is already a Supervibe root or workspace. After any approved framework scaffolder succeeds from an empty placeholder, remove nested app `.git`, archive generated app-local host files under `.supervibe/memory/genesis/`, and update genesis state with `appGenerated=true`. Set `appVerified=true` only after explicit app lint/build verification passes.
+13b. For Next.js app generation, use `create-next-app --disable-git` whenever the target is already a Supervibe root or workspace. Record `bundler=turbopack` for `next-app`. After any approved framework scaffolder succeeds from an empty placeholder, remove nested app `.git`, archive generated app-local host files under `.supervibe/memory/genesis/`, and update genesis state with `appGenerated=true`. Set `appVerified=true` only after explicit app lint/build verification passes.
+13c. Keep `agentReceiptsVerified` and the agent smoke test as a separate `--verify-agents` gate. Bootstrap dry-run/apply/generate-apps may succeed without claiming real-agent runtime completion.
 14. If <9 → list gaps, ask user to confirm or remediate
 
 ## Output contract

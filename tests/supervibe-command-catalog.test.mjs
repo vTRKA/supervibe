@@ -229,6 +229,69 @@ test("genesis bootstrap-pre-agent mode allows only base scaffold before project 
   assert.match(report, /Write only bootstrap scaffold\/state/);
 });
 
+test("genesis dry-run/app generation phases are bootstrap-pre-agent without completion claims", () => {
+  const dryRun = buildCommandAgentPlan("/supervibe-genesis", {
+    availableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { dryRun: true },
+  });
+  assert.equal(dryRun.executionMode, "bootstrap-pre-agent");
+  assert.equal(dryRun.durableWritesAllowed, false);
+  assert.equal(dryRun.bootstrapPreAgentAllowed, true);
+  assert.equal(dryRun.agentDispatchRequired, false);
+  assert.equal(dryRun.receiptGate, "bootstrap-pre-agent-basic-scaffold");
+
+  const appGeneration = buildCommandAgentPlan("/supervibe-genesis", {
+    availableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { apply: true, generateApps: true },
+  });
+  assert.equal(appGeneration.executionMode, "bootstrap-pre-agent");
+  assert.equal(appGeneration.durableWritesAllowed, true);
+
+  const smokeGate = buildCommandAgentPlan("/supervibe-genesis", {
+    availableAgentIds: readdirSync(join(ROOT, "agents"), { recursive: true })
+      .filter((entry) => String(entry).endsWith(".md"))
+      .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, "")),
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { verifyAgents: true },
+  });
+  assert.equal(smokeGate.executionMode, "agent-dispatch-required");
+  assert.equal(smokeGate.receiptGate, "pending-runtime-agent-receipts");
+});
+
+test("adapt dry-run command plan is read-only and agentless while verify-agents keeps the receipt gate", () => {
+  const dryRun = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { dryRun: true, adds: 0, updates: 1, projectOnly: 0, conflicts: 0, memoryWrites: false },
+  });
+  const report = formatCommandAgentPlan(dryRun);
+
+  assert.equal(dryRun.executionMode, "dry-run-no-agent");
+  assert.equal(dryRun.durableWritesAllowed, false);
+  assert.equal(dryRun.agentDispatchRequired, false);
+  assert.equal(dryRun.agentOwnedOutputRequiresReceipts, false);
+  assert.equal(dryRun.receiptGate, "not-required-for-dry-run");
+  assert.match(report, /DRY_RUN_AGENTLESS_ALLOWED: true/);
+  assert.match(report, /RECEIPT_GATE: not-required-for-dry-run/);
+
+  const verifyAgents = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: readdirSync(join(ROOT, "agents"), { recursive: true })
+      .filter((entry) => String(entry).endsWith(".md"))
+      .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, "")),
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: { verifyAgents: true, adds: 0, updates: 1, projectOnly: 0, conflicts: 0, memoryWrites: false },
+  });
+  assert.equal(verifyAgents.executionMode, "agent-dispatch-required");
+  assert.equal(verifyAgents.receiptGate, "pending-runtime-agent-receipts");
+});
+
 test("adapt command agent plan uses low-risk fast path and reports role sources", () => {
   const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
     .filter((entry) => String(entry).endsWith(".md"))

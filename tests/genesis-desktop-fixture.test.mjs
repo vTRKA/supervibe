@@ -239,9 +239,13 @@ test("empty-project genesis dry run uses explicit user stack tags", async () => 
       stackText: "React Next.js Vite TypeScript Tailwind Laravel PostgreSQL",
     });
 
-    for (const tag of ["react", "nextjs", "vite", "typescript", "tailwind", "laravel", "postgres"]) {
+    for (const tag of ["react", "nextjs", "typescript", "tailwind", "laravel", "postgres"]) {
       assert.ok(report.fingerprint.tags.includes(tag), `missing explicit stack tag: ${tag}`);
     }
+    assert.equal(report.fingerprint.tags.includes("vite"), false, "Vite must not remain an active app tag for a single Next app");
+    assert.equal(report.fingerprint.appChoice.id, "next-app");
+    assert.equal(report.fingerprint.appChoice.bundler, "turbopack");
+    assert.deepEqual(report.fingerprint.appChoice.ignoredStackTags, ["vite"]);
     assert.equal(report.stackPack.id, "laravel-nextjs-postgres");
     assert.equal(report.stackPack.exact, true);
     assert.ok(!report.agentProfile.selectedAgents.includes("redis-architect"), "Redis must not be selected without Redis evidence or add-on");

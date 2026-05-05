@@ -35,6 +35,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 Lifecycle: `scan -> real-dry-run -> agent-plan -> review -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
 
+Lifecycle gates are split by phase: `--dry-run` is read-only and may run
+without real-agent receipts; `--apply` requires explicit user approval for
+writes; `--verify-agents` is the separate runtime smoke gate that can set
+`agentReceiptsVerified=true`.
+
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
 Default behavior: produce a dry-run adaptation plan and do not edit artifacts until approval. Free-form path: the user can name exact agents, rules, skills, paths, or stack changes to include or exclude.
@@ -48,21 +53,26 @@ English visible labels:
 - Review adaptation deeper - run audit or confidence scoring before applying.
 - Stop without adapting - persist current state and exit without changing project artifacts.
 
-Russian visible labels:
-- Apply adaptation - recommended when the dry-run adaptation plan looks correct; apply the selected artifact updates.
-- Adjust adaptation plan - user gives one focused agent, rule, skill, path, or stack change; rebuild dry-run without writing files.
-- Compare another scope - prepare another adaptation scope with explicit tradeoffs.
-- Review adaptation deeper - run audit or confidence scoring before applying.
-- Stop without adapting - persist current state and exit without changing project artifacts.
+Russian visible labels are supplied by
+`scripts/lib/supervibe-dialogue-contract.mjs` to keep this skill contract
+ASCII-safe for validators. The ru locale must map to the same
+adaptation-specific actions above and must not fall back to generic
+apply/revise wording.
 
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current state
-2. Run `git diff <verified-against>..HEAD --stat` to find changes
+2. Run `git diff <verified-against>..HEAD --stat` to find changes. If `.git`
+   is absent, do not fail: compare against
+   `.supervibe/memory/adapt/file-manifest.json`; after approved apply, write a
+   fresh snapshot there.
 3. Read changed manifest files for new deps
 4. Run or consult `node scripts/supervibe-status.mjs --capabilities` so proposed agent, rule and skill updates are grounded in the capability registry.
 5. Resolve the canonical project root before host selection: nearest parent `.supervibe/` wins over nested app host files, then workspace manifest/root `.git`. Resolve the active host adapter before reading or planning writes; use the same precedence as genesis: explicit override -> active runtime/current chat -> filesystem markers.
-6. For `/supervibe-adapt`, run `node scripts/supervibe-adapt.mjs --dry-run --summary-json --changed-only` before `command-agent-plan.mjs`, then pass the actual counts with `--adds`, `--updates`, `--project-only`, `--conflicts`, and `--memory-writes`.
+6. Read `.supervibe/memory/genesis/state.json` when present. Genesis
+   decisions such as `appGenerated`, `appVerified`, `appChoice=next-app`, and
+   `ignoredStackTags=["vite"]` are source-of-truth for Adapt stack drift.
+7. For `/supervibe-adapt`, run `node scripts/supervibe-adapt.mjs --dry-run --summary-json --changed-only` before `command-agent-plan.mjs`, then pass the actual counts with `--dry-run`, `--adds`, `--updates`, `--project-only`, `--conflicts`, and `--memory-writes`.
 
 ## Procedure
 
@@ -82,6 +92,18 @@ Russian visible labels:
 12. Run `supervibe:audit` to verify clean state
 13. For deploy scope, keep add-ons separate from base scaffold. `--scope deploy --target dokploy` may create Dokploy compose/Docker/env/docs artifacts, but must not auto-migrate or claim `deployVerified` without a real deploy health check.
 
+Additional drift policy:
+
+- `vite` inside an existing Genesis `next-app` is an ambiguity, not an
+  automatic stack switch. Classify it as accidental, tooling-only, or a
+  separate Vite SPA.
+- `next` inside an existing `vite-spa` is migration/new-app evidence and needs
+  a Genesis/component plan.
+- Dependency drift blocks `npm audit fix --force` when it downgrades a
+  framework major/minor line. Compatible nested dependency repair must surface
+  `overrides`/`resolutions`, remediation reason, and the rerun sequence:
+  `npm install`, `npm audit`, lint, build, and `dependency-health`.
+
 ## Output contract
 
 Returns:
@@ -95,6 +117,8 @@ Returns:
 - DO NOT: delete agents/skills (rename/archive instead)
 - DO NOT: tell the user to delete all generated project artifacts after plugin updates; use diff-gated adapt instead
 - DO NOT: write `.supervibe/memory/index.json` during dry-run unless the user requested `--refresh-memory-index`
+- DO NOT: treat no `.git` as fatal; use the Adapt file-manifest snapshot fallback.
+- DO NOT: let package tags override Genesis app choice without a frontend target decision.
 - DO NOT: claim real agents completed when `.supervibe/memory/agent-invocations.jsonl` or trusted runtime receipts are absent
 - DO NOT: invent new agent (suggest genesis for new components)
 - ALWAYS: re-audit after adapt to verify clean

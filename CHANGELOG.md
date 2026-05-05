@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.86] - 2026-05-05
+
+### Added
+
+- Added a shared frontend target resolver for Genesis and Adapt so Next/Vite
+  ambiguity resolves to `next-app` on Turbopack unless the user explicitly asks
+  for a Vite SPA, tooling-only Vite, or a two-frontend monorepo.
+- Added Genesis and Adapt `--verify-agents` gates that validate receipt-bound
+  real host-agent telemetry separately from scaffold/app/artifact verification.
+- Added Adapt no-git snapshot drift detection through
+  `.supervibe/memory/adapt/file-manifest.json`.
+- Added regression coverage for frontend target policy, Adapt Genesis-state
+  preservation, no-git snapshots, dependency remediation copy, and agent runtime
+  verification gates.
+
+### Changed
+
+- Genesis now persists resolved app choice, bundler, and ignored stack tags so
+  Adapt can keep Next apps on Turbopack instead of reactivating Vite from a
+  stale request or nested dependency.
+- Command-agent planning now treats Genesis bootstrap/app-generation and Adapt
+  dry-run as separate lifecycle phases from the real-agent receipt gate.
+- Dependency health remediation output now includes the policy reason and the
+  follow-up verification command sequence.
+
+### Fixed
+
+- Replaced mojibake in Genesis/Adapt Russian command labels with UTF-8 text.
+
 ## [2.0.85] - 2026-05-05
 
 ### Added

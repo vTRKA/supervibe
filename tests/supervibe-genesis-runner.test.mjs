@@ -23,6 +23,22 @@ function runGenesis(args, cwd, env = {}) {
   });
 }
 
+function runGenesisMaybeFails(args, cwd, env = {}) {
+  try {
+    return {
+      status: 0,
+      stdout: runGenesis(args, cwd, env),
+      stderr: "",
+    };
+  } catch (error) {
+    return {
+      status: error.status,
+      stdout: error.stdout?.toString("utf8") || "",
+      stderr: error.stderr?.toString("utf8") || "",
+    };
+  }
+}
+
 test("supervibe-genesis dry-run writes resume state but no scaffold files in an empty no-git project", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-empty-"));
   try {
@@ -50,6 +66,42 @@ test("supervibe-genesis dry-run writes resume state but no scaffold files in an 
     assert.ok(state.fingerprint.tags.includes("laravel"));
     assert.ok(state.fingerprint.tags.includes("nextjs"));
     assert.ok(state.fingerprint.tags.includes("postgres"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis verify-agents keeps runtime proof as a separate state gate", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-agent-verify-"));
+  try {
+    runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+    ], projectRoot);
+
+    const result = runGenesisMaybeFails([
+      "--verify-agents",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+    ], projectRoot);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stdout, /SUPERVIBE_GENESIS_VERIFY_AGENTS/);
+    assert.match(result.stdout, /AGENT_RUNTIME_VERIFIED: false/);
+    assert.match(result.stdout, /NEXT_ACTION: node <resolved-supervibe-plugin-root>\/scripts\/agent-invocation\.mjs log/);
+
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+    assert.equal(state.verification.agentRuntimeVerified, false);
+    assert.equal(state.bootstrap.agentRuntime.status, "awaiting-real-host-agent");
+    assert.equal(state.bootstrap.agentSmokeTest.status, "pending-real-host-agent");
+    assert.ok(state.history.some((entry) => entry.lifecycle === "agent-runtime-verification"));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -287,6 +339,35 @@ test("supervibe-genesis parser handles negated Vite and persists explicit app ch
     assert.equal(persisted.report.generateAppsStep.appChoice.id, "next-app");
     assert.equal(persisted.report.generateAppsStep.clarificationRequired, false);
     assert.equal(persisted.report.fingerprint.tags.includes("vite"), false);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-genesis resolves Next plus Vite to a Turbopack Next app by policy", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-next-vite-policy-"));
+  try {
+    const out = runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "React Next.js Vite TypeScript Tailwind",
+      "--json",
+    ], projectRoot);
+    const parsed = JSON.parse(out);
+
+    assert.equal(parsed.report.generateAppsStep.appChoice.id, "next-app");
+    assert.equal(parsed.report.generateAppsStep.appChoice.bundler, "turbopack");
+    assert.equal(parsed.report.generateAppsStep.clarificationRequired, false);
+    assert.equal(parsed.report.fingerprint.tags.includes("nextjs"), true);
+    assert.equal(parsed.report.fingerprint.tags.includes("vite"), false);
+    assert.deepEqual(parsed.report.fingerprint.appChoice.ignoredStackTags, ["vite"]);
+    assert.match(parsed.report.fingerprint.frontendTarget.policy, /Turbopack/);
+    assert.equal(parsed.report.generateAppsStep.commands.filter((entry) => entry.framework === "nextjs").length, 1);
+    assert.equal(parsed.report.generateAppsStep.commands.filter((entry) => entry.framework === "vite").length, 0);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

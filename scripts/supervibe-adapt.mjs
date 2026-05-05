@@ -9,6 +9,7 @@ import {
   createDokployDeployPlan,
   filterAdaptPlanItems,
   formatAdaptApply,
+  formatAdaptAgentRuntimeVerification,
   formatDokployDeployApply,
   formatDokployDeployPlan,
   formatAdaptPlan,
@@ -19,6 +20,7 @@ import {
   summarizeDokployDeployPlan,
   summarizeAdaptPlan,
   summarizeAdaptResolve,
+  verifyAdaptAgentRuntime,
 } from "./lib/supervibe-adapt.mjs";
 import {
   applyAgentProvisioningPlan,
@@ -42,6 +44,13 @@ try {
   if (args.help || args.h || rawArgs.includes("-h")) {
     console.log(formatUsage());
     process.exit(0);
+  }
+
+  if (args["verify-agents"]) {
+    const result = await verifyAdaptAgentRuntime(projectRoot);
+    if (args.json || args["summary-json"]) console.log(JSON.stringify(result, null, 2));
+    else console.log(formatAdaptAgentRuntimeVerification(result));
+    process.exit(result.agentRuntime.verified ? 0 : 2);
   }
 
   if (args.scope === "deploy" || args.target === "dokploy") {
@@ -232,6 +241,7 @@ Usage:
 Options:
   --dry-run                 Inspect artifact and metadata drift (default)
   --apply                   Apply approved artifact updates or metadata-only drift
+  --verify-agents           Verify receipt-bound real host-agent telemetry and update Adapt state
   --resolve <paths>         Mark manually merged files resolved when they match upstream, ignoring CRLF/LF
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update
@@ -262,6 +272,7 @@ Examples:
   node scripts/supervibe-adapt.mjs --dry-run
   node scripts/supervibe-adapt.mjs --apply --include ".codex/agents/repo-researcher.md"
   node scripts/supervibe-adapt.mjs --resolve ".codex/agents/repo-researcher.md"
+  node scripts/supervibe-adapt.mjs --verify-agents
   node scripts/supervibe-adapt.mjs --add-agents creative-director,prototype-builder
   node scripts/supervibe-adapt.mjs --profile product-design --addons creative-brand,web-design --apply
   node scripts/supervibe-adapt.mjs --scope deploy --target dokploy --dry-run
@@ -291,6 +302,7 @@ function parseArgs(argv) {
     "no-context",
     "refresh-memory-index",
     "no-refresh-memory-index",
+    "verify-agents",
     "help",
     "h",
   ]);

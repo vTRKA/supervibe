@@ -218,6 +218,12 @@ export function formatDependencyHealthReport(report = {}) {
     if (finding.remediation?.override) {
       lines.push(`OVERRIDE_OPTION: ${JSON.stringify(finding.remediation.override)}`);
     }
+    if (finding.remediation?.reason) {
+      lines.push(`REMEDIATION_REASON: ${finding.remediation.reason}`);
+    }
+    for (const command of finding.remediation?.verificationCommands || []) {
+      lines.push(`REMEDIATION_VERIFY: ${command}`);
+    }
     if (finding.forcePolicy?.status === "blocked_downgrade") {
       lines.push(`NPM_AUDIT_FORCE: blocked_downgrade ${finding.forcePolicy.packageName} ${finding.forcePolicy.currentVersion} -> ${finding.forcePolicy.proposedVersion} latest=${finding.forcePolicy.latestVersion || "unknown"}`);
     }
@@ -747,16 +753,20 @@ function classifyNpmAuditRemediation({ vulnerability, vulnerableOccurrences = []
       : null;
     return {
       policy: "breaking-fix-blocked",
+      reason: "npm audit fix --force is unsafe because it would downgrade a framework major/minor line.",
       nextAction: override
         ? `Do not use npm audit fix --force because it downgrades a framework major/minor line; wait for ${parent.name} to update ${packageName}, or test the controlled override with npm install, lint, build, and npm audit.`
         : "Do not use npm audit fix --force because it downgrades a framework major/minor line.",
+      verificationCommands: npmRemediationVerificationCommands(),
       ...(override ? { override } : {}),
     };
   }
   if (!direct && parent && latestVersion) {
     return {
       policy: "wait-upstream-or-controlled-override",
+      reason: "Nested vulnerable dependency can be remediated only after compatibility review of the parent package chain.",
       nextAction: `Wait for ${parent.name} to update ${packageName}, or test a controlled override followed by npm install, lint, build, and npm audit.`,
+      verificationCommands: npmRemediationVerificationCommands(),
       override: {
         overrides: {
           [parent.name]: {
@@ -769,15 +779,29 @@ function classifyNpmAuditRemediation({ vulnerability, vulnerableOccurrences = []
   if (!direct) {
     return {
       policy: "wait-upstream-or-manual-action",
+      reason: "Transitive vulnerable dependency has no safe compatible override target in current evidence.",
       nextAction: `Wait for the parent package to update ${packageName}, or document an explicit exception with owner and expiry.`,
+      verificationCommands: npmRemediationVerificationCommands(),
     };
   }
   return {
     policy: "manual-action",
+    reason: "Direct vulnerable dependency requires an explicit package update and lockfile review.",
     nextAction: latestVersion
       ? `Update ${packageName} to ${latestVersion}, then run npm install, lint, build, and npm audit.`
       : `Update ${packageName} to a fixed version, then run npm install, lint, build, and npm audit.`,
+    verificationCommands: npmRemediationVerificationCommands(),
   };
+}
+
+function npmRemediationVerificationCommands() {
+  return [
+    "npm install",
+    "npm audit --json",
+    "npm run lint",
+    "npm run build",
+    "node <resolved-supervibe-plugin-root>/scripts/dependency-health.mjs --root .",
+  ];
 }
 
 function firstParentPackage(vulnerableOccurrences = []) {

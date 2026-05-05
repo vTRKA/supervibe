@@ -16,15 +16,16 @@ Set up Supervibe for a fresh project or an existing project that needs host-awar
 supervibe-genesis --dry-run --target .
 supervibe-genesis --apply --host codex --stack-tags nextjs,laravel,postgres
 supervibe-genesis --apply --addons github-actions --host codex --stack-tags nextjs,laravel,postgres
+supervibe-genesis --apply --generate-apps --verify-apps --app-choice next-app
 ```
 
 Terminal runner: `supervibe-genesis` is executable for deterministic dry-run,
 state persistence, and approved scaffold apply. The runner writes
 `.supervibe/memory/genesis/state.json` during dry-run, but project scaffold
 files are written only with explicit `--apply`. It accepts `--profile`,
-`--addons`, `--host`, `--stack-tags`, `--request`, and `--json` so empty
-projects can use the stack named by the user instead of relying only on
-manifests.
+`--addons`, `--host`, `--stack-tags`, `--request`, `--app-choice`,
+`--generate-apps`, `--verify-apps`, and `--json` so empty projects can use the
+stack named by the user instead of relying only on manifests.
 
 ## Shared Dialogue Contract
 
@@ -53,12 +54,10 @@ English visible labels:
 - Review dry-run deeper - run status, audit or confidence scoring before applying the scaffold.
 - Stop without installing - persist current dry-run state and exit without changing the project.
 
-Russian visible labels:
-- Apply scaffold - recommended only when dry-run host, profile, agents, rules, and files look correct; write the scaffold and run index/status checks.
-- Adjust install plan - user gives one focused host, profile, add-on, stack-pack, agent, or rule change; rebuild dry-run without writing files.
-- Compare another set - prepare another profile, host, or agent/rule set with explicit tradeoffs before writing files.
-- Review dry-run deeper - run status, audit, or confidence scoring before applying the scaffold.
-- Stop without installing - persist current dry-run state and exit without project changes.
+Russian visible labels are supplied by
+`scripts/lib/supervibe-dialogue-contract.mjs` to keep this command contract
+ASCII-safe for validators. The ru locale must map to the same scaffold-specific
+actions above and must not fall back to generic apply/revise wording.
 
 Scenario evals assert this post-delivery menu and persisted command state via
 `tests/fixtures/scenario-evals/supervibe-user-flows.json`.
@@ -72,6 +71,14 @@ Scenario evals assert this post-delivery menu and persisted command state via
    - If an existing host instruction file already has custom content, plan a dry-run managed-block update instead of overwriting it.
 
 2. **Detect stack.** Invoke the `supervibe:stack-discovery` skill. It reads manifests (`package.json`, `composer.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, etc.) and returns a stack-fingerprint with primary language, framework(s), database(s), queue(s), and confidence per axis.
+
+2a. **Resolve frontend target.** Before dry-run output, run the shared
+   `scripts/lib/frontend-target-resolver.mjs` policy. `next-app` is a single
+   Next.js app on Turbopack, `vite-spa` is a standalone Vite SPA,
+   `monorepo-two-frontends` means separate app dirs, and `tooling-only` keeps
+   the resolved app target unchanged. If the request says "React/Next.js/Vite"
+   without an explicit separate frontend, default to `next-app`, mark `vite` as
+   ignored for app generation, and show the alternatives in the dry-run.
 
 3. **Confirm intent.** Show the user the detected fingerprint and ask exactly one `Step N/M` question at a time (e.g. monorepo vs single-app first, deployment environments only if still needed). Wait for the answer before the next question.
 
@@ -128,6 +135,12 @@ Scenario evals assert this post-delivery menu and persisted command state via
    verification separately; `appVerified=true` requires explicit lint/build
    verification such as `--verify-apps`.
 
+6b. **Keep agent runtime proof separate.** `--dry-run`, `--apply`, and
+   `--generate-apps` are bootstrap-pre-agent phases. They may write dry-run
+   state, scaffold files, or approved framework apps, but they must not claim
+   real-agent completion. Use the separate `--verify-agents` smoke gate for
+   `agentReceiptsVerified=true`.
+
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
 8. **Initialize and verify indexes.** From the target project root, first make source RAG ready with bounded atomic batches: `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`. The indexer logs heartbeat/progress lines with stage, current file, processed/remaining counts, elapsed time, ETA and checkpoint path, and writes `.supervibe/memory/code-index-checkpoint.json` after each file/batch. It also uses `.supervibe/memory/code-index.lock` to block duplicate indexers and removes stale locks whose PID is gone. If the run stops at `SUPERVIBE_INDEX_BOUNDED_TIMEOUT`, inspect gaps with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then rerun the same `--resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` command until source coverage is healthy. Graph warning output is not a genesis failure when source RAG coverage is healthy. Build graph/semantic data separately with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`; only use `--strict-index-health` when explicitly auditing graph extraction. Then run `npm run supervibe:status` or `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs`. The banner should show source coverage as `indexed/eligible`, fresh code RAG counts, graph warnings separately, and `SUPERVIBE_INDEX_CONFIG` with `REFRESH_INTERVAL: 5m`.
@@ -165,7 +178,7 @@ Verification:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerif
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, and durable-write permission before any agent-owned artifact is produced. For a first install into an empty project, the executable runner may use `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis --bootstrap-pre-agent --installed-only` to allow base scaffold/state writes before project agents exist. This exception does not allow specialist-owned output or completion claims; rebuild the real-agent plan after the scaffold installs agents.
+Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, required agents, and durable-write permission before any agent-owned artifact is produced. For a first install into an empty project, the executable runner may use `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis --dry-run|--apply|--generate-apps --installed-only` or `--bootstrap-pre-agent` to allow base scaffold/state/app-generation phases before project agents exist. This exception does not allow specialist-owned output or completion claims; rebuild the real-agent plan or run `--verify-agents` after the scaffold installs agents.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts

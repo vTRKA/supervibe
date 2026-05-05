@@ -30,6 +30,10 @@ function parseArgs(argv) {
       else if (key === "no-host-proof") options.enforceHostProof = false;
       else if (key === "installed-only") options.installedOnly = true;
       else if (key === "bootstrap-pre-agent") options.bootstrapPreAgent = true;
+      else if (key === "dry-run") options.dryRun = true;
+      else if (key === "apply") options.apply = true;
+      else if (key === "generate-apps") options.generateApps = true;
+      else if (key === "verify-agents") options.verifyAgents = true;
       else if (key === "strict" || key === "strict-exit") options.strictExit = true;
       else options[key] = true;
       continue;
@@ -64,6 +68,8 @@ function usage() {
     "  Workflow counts can select dynamic required roles, including low-risk fast paths.",
     "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
     "  /supervibe-genesis may use --bootstrap-pre-agent to install only base scaffold/state before project agents exist.",
+    "  /supervibe-genesis --dry-run/--apply/--generate-apps are bootstrap-pre-agent phases; --verify-agents is the separate runtime smoke gate.",
+    "  /supervibe-adapt --dry-run is agentless/read-only planning; --apply needs approval and --verify-agents is the separate runtime receipt gate.",
   ].join("\n");
 }
 
@@ -96,6 +102,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       workflowContext: {
         lowRisk: options["low-risk"] === true,
         bootstrapPreAgent: options.bootstrapPreAgent === true,
+        dryRun: options.dryRun === true || options["dry-run"] === true,
+        apply: options.apply === true,
+        generateApps: options.generateApps === true || options["generate-apps"] === true,
+        verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
         adds: options.adds,
         updates: options.updates,
         projectOnly: options["project-only"],

@@ -37,6 +37,18 @@ async function main() {
   const env = { ...process.env };
   if (options.host) env.SUPERVIBE_HOST = options.host;
   const previousState = await readGenesisState(targetRoot);
+
+  if (options["verify-agents"]) {
+    const verification = await verifyGenesisAgents({
+      targetRoot,
+      previousState,
+      host: options.host || previousState?.host?.adapterId || env.SUPERVIBE_HOST || "codex",
+    });
+    outputGenesisAgentVerification(verification, options);
+    if (!verification.agentRuntime.verified) process.exitCode = 2;
+    return;
+  }
+
   const appChoice = options["app-choice"]
     || previousState?.appChoice?.id
     || previousState?.generateAppsStep?.appChoice?.id
@@ -816,6 +828,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     verification: {
       artifactVerified: mode === "applied" && !(operations?.missing || []).length,
       agentReceiptsVerified: agentRuntime.verified,
+      agentRuntimeVerified: agentRuntime.verified,
       appGenerated,
       appVerified,
       deployVerified: false,
@@ -829,6 +842,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     stackPack: report.stackPack,
     fingerprint: report.fingerprint,
     appChoice,
+    frontendTarget: report.fingerprint?.frontendTarget || null,
     selectedProfile: report.agentProfile.selectedProfile,
     addOns: splitList(options.addons),
     explicitStackTags: splitList(options["stack-tags"]),
@@ -951,7 +965,7 @@ function outputResult(result, options) {
 
 function parseArgs(argv) {
   const parsed = {};
-  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps", "verify-apps"]);
+  const booleans = new Set(["apply", "dry-run", "json", "help", "no-color", "generate-apps", "verify-apps", "verify-agents"]);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "-h") {
@@ -977,6 +991,79 @@ async function readGenesisState(targetRoot) {
   } catch {
     return null;
   }
+}
+
+async function verifyGenesisAgents({ targetRoot, previousState = null, host = "codex" } = {}) {
+  const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
+  const agentSmokeTest = {
+    ...buildAgentSmokeTestState(host),
+    status: agentRuntime.verified ? "verified-real-host-agent" : "pending-real-host-agent",
+  };
+  const now = new Date().toISOString();
+  let statePath = null;
+  let stateUpdated = false;
+  if (previousState) {
+    statePath = join(targetRoot, ".supervibe", "memory", "genesis", "state.json");
+    const verification = {
+      ...(previousState.verification || {}),
+      agentReceiptsVerified: agentRuntime.verified,
+      agentRuntimeVerified: agentRuntime.verified,
+      completionClaimAllowed: previousState.verification?.artifactVerified === true
+        && agentRuntime.verified
+        && previousState.verification?.appVerified === true
+        && previousState.verification?.deployVerified === true,
+      completionClaim: agentRuntime.verified
+        ? "agent runtime receipt gate verified; app and deploy gates remain separate"
+        : "real agent completion is not claimed until receipt-bound host-agent telemetry is present",
+    };
+    const state = {
+      ...previousState,
+      updatedAt: now,
+      currentStage: agentRuntime.verified ? "agent-runtime-verified" : previousState.currentStage,
+      verification,
+      bootstrap: {
+        ...(previousState.bootstrap || {}),
+        agentRuntime,
+        agentSmokeTest,
+      },
+      history: [
+        ...(Array.isArray(previousState.history) ? previousState.history : []),
+        {
+          at: now,
+          lifecycle: "agent-runtime-verification",
+          agentRuntimeVerified: agentRuntime.verified,
+        },
+      ],
+    };
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    stateUpdated = true;
+  }
+  return {
+    command: "/supervibe-genesis",
+    agentRuntime,
+    agentSmokeTest,
+    statePath: statePath ? toRel(targetRoot, statePath) : null,
+    stateUpdated,
+  };
+}
+
+function outputGenesisAgentVerification(result, options = {}) {
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  const lines = [
+    "SUPERVIBE_GENESIS_VERIFY_AGENTS",
+    `AGENT_RUNTIME_VERIFIED: ${result.agentRuntime.verified === true}`,
+    `STATUS: ${result.agentRuntime.status}`,
+    `TRUSTED_HOST_AGENT_RECEIPTS: ${result.agentRuntime.trustedHostAgentReceipts}`,
+    `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
+    `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
+    `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-genesis-state"}`,
+  ];
+  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
+  if (!result.agentRuntime.verified) lines.push(`NEXT_ACTION: ${result.agentSmokeTest.commandTemplate}`);
+  console.log(lines.join("\n"));
 }
 
 function inspectAgentRuntimeEvidence(targetRoot) {
@@ -1029,7 +1116,9 @@ function normalizeAppChoiceState(value) {
   return {
     id: normalized,
     source: record ? record.source || "resolved" : "resolved",
+    bundler: record?.bundler || null,
     ignoredStackTags: Array.isArray(record?.ignoredStackTags) ? record.ignoredStackTags : [],
+    toolingOnlyTags: Array.isArray(record?.toolingOnlyTags) ? record.toolingOnlyTags : [],
   };
 }
 
@@ -1120,6 +1209,7 @@ function formatHelp() {
     "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation, github-actions, gitlab-ci, ci-ready.",
     "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
     "  --verify-apps    Run declared app lint/build/dependency-health checks; works after --generate-apps or as verify-only for existing apps.",
+    "  --verify-agents  Verify receipt-bound real host-agent telemetry and update Genesis state.",
     "  --app-choice     Persist frontend choice: next-app, vite-spa, or monorepo-two-frontends.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",

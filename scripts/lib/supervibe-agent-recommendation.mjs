@@ -3,6 +3,11 @@ import { join, relative, sep } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import { planContextMigration } from "./supervibe-context-migrator.mjs";
+import {
+  applyFrontendTargetResolution,
+  normalizeFrontendTargetChoice,
+  resolveFrontendTarget,
+} from "./frontend-target-resolver.mjs";
 import { formatAgentRoleSummaries, loadAgentRosterSync, pickAgentRoleSummaries } from "./supervibe-agent-roster.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
@@ -209,11 +214,18 @@ export function discoverGenesisStackFingerprint({
     addTag(tag, "user-request", tag);
   }
 
-  return applyFrontendAppChoice({
+  const fingerprint = {
     rootDir,
     tags: [...tags].sort(),
     facts,
-  }, normalizeAppChoice(appChoice) || inferAppChoiceFromText(stackText));
+  };
+  return applyFrontendTargetResolution(fingerprint, resolveFrontendTarget({
+    tags: fingerprint.tags,
+    facts,
+    requestText: stackText,
+    appChoice,
+    source: "genesis",
+  }));
 }
 
 export function buildGenesisAgentRecommendation({
@@ -437,7 +449,8 @@ export function buildGenesisDryRunReport({
 
 function buildGenerateAppsStep(fingerprint = {}) {
   const tags = new Set(fingerprint.tags || []);
-  const appChoice = normalizeAppChoice(fingerprint.appChoice?.id || fingerprint.appChoice);
+  const frontendTarget = fingerprint.frontendTarget || null;
+  const appChoice = normalizeFrontendTargetChoice(fingerprint.appChoice?.id || fingerprint.appChoice);
   const commands = [];
   if (tags.has("laravel")) {
     commands.push({
@@ -458,20 +471,26 @@ function buildGenerateAppsStep(fingerprint = {}) {
   } else if (tags.has("vite")) {
     commands.push(viteAppCommand({ appDir: "frontend" }));
   }
-  const stackAmbiguities = buildStackAmbiguities(tags);
+  const stackAmbiguities = buildStackAmbiguities(tags, frontendTarget);
   return {
     id: "generate-apps",
     approvalRequired: commands.length > 0,
     status: "not-run",
     commands,
     appChoice: appChoice
-      ? { id: appChoice, source: fingerprint.appChoice?.source || "resolved" }
+      ? {
+          id: appChoice,
+          source: fingerprint.appChoice?.source || "resolved",
+          bundler: fingerprint.appChoice?.bundler || frontendTarget?.bundler || null,
+          ignoredStackTags: fingerprint.appChoice?.ignoredStackTags || [],
+        }
       : null,
+    frontendTarget,
     stackAmbiguities,
-    clarificationRequired: !appChoice && stackAmbiguities.length > 0,
+    clarificationRequired: !appChoice && stackAmbiguities.some((entry) => entry.requiresChoice === true),
     note: stackAmbiguities.length > 0
       ? (appChoice
-          ? `Base scaffold creates placeholders only; frontend app choice ${appChoice} is persisted for app generation.`
+          ? `Base scaffold creates placeholders only; frontend app choice ${appChoice} uses ${fingerprint.appChoice?.bundler || frontendTarget?.bundler || "the resolved bundler"} and is persisted for app generation.`
           : "Base scaffold creates placeholders only; Next.js and Vite evidence together require choosing Next app, Vite SPA, or intentional monorepo before adding another frontend.")
       : "Base scaffold creates placeholders only; run this approved step to create real framework apps.",
   };
@@ -484,6 +503,8 @@ function nextAppCommand({ appDir }) {
     args: ["create-next-app@latest", appDir, "--ts", "--eslint", "--tailwind", "--app", "--src-dir", "--import-alias", "@/*", "--use-npm", "--disable-git"],
     appDir,
     framework: "nextjs",
+    bundler: "turbopack",
+    bundlerPolicy: "Next 16 defaults to Turbopack for next dev and next build; do not generate Vite inside a single Next app.",
     verifyCommands: [
       { command: "npm run lint", executable: "npm", args: ["run", "lint"], cwd: appDir },
       { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: appDir },
@@ -500,6 +521,7 @@ function viteAppCommand({ appDir }) {
     args: ["create", "vite@latest", appDir, "--", "--template", "react-ts"],
     appDir,
     framework: "vite",
+    bundler: "vite",
     verifyCommands: [
       { command: "npm run build", executable: "npm", args: ["run", "build"], cwd: appDir },
     ],
@@ -508,17 +530,30 @@ function viteAppCommand({ appDir }) {
   };
 }
 
-function buildStackAmbiguities(tags) {
+function buildStackAmbiguities(tags, frontendTarget = null) {
+  const warnings = frontendTarget?.driftWarnings || [];
+  if (warnings.length > 0) {
+    return warnings.map((warning) => ({
+      code: warning.code,
+      choices: warning.options || frontendTarget.choices || [],
+      message: warning.message,
+      requiresChoice: false,
+      recommendedId: frontendTarget.id || "next-app",
+      policy: frontendTarget.policy || "",
+    }));
+  }
   if (!(tags.has("nextjs") && tags.has("vite"))) return [];
   if (tags.has("tauri") || tags.has("chrome-extension")) return [];
   return [{
     code: "nextjs-vite-frontend",
     choices: [
-      { id: "next-app", label: "Next app", tradeoff: "Use this when the web frontend is a single Next.js app; Vite evidence is ignored for app generation.", provenance: "genesis-stack-ambiguity" },
+      { id: "next-app", label: "Next app on Turbopack", tradeoff: "Use this when the web frontend is a single Next.js app; Vite evidence is ignored for app generation.", provenance: "genesis-stack-ambiguity" },
       { id: "vite-spa", label: "Vite SPA", tradeoff: "Use this when the frontend is a standalone Vite SPA instead of Next.js; Next agents should be deferred.", provenance: "genesis-stack-ambiguity" },
       { id: "monorepo-two-frontends", label: "Two frontends", tradeoff: "Use this only when Next.js and Vite are intentional separate apps; requires explicit app-dir choices.", provenance: "genesis-stack-ambiguity" },
+      { id: "tooling-only", label: "Vite tooling only", tradeoff: "Keep the resolved app target and classify Vite as tooling evidence only.", provenance: "genesis-stack-ambiguity" },
     ],
-    message: "Next.js uses its own build pipeline; Vite evidence should be a separate SPA/frontend only when the project is an intentional monorepo.",
+    message: "Next.js uses Turbopack by default; Vite evidence should be a separate SPA/frontend or tooling dependency only when explicit.",
+    requiresChoice: true,
   }];
 }
 
@@ -542,6 +577,7 @@ export function formatGenesisDryRunReport(report) {
     `GENERATE_APPS_STEP: ${report.generateAppsStep?.approvalRequired ? "approval-required" : "not-needed"}`,
     `STACK_CLARIFICATION_REQUIRED: ${report.generateAppsStep?.clarificationRequired ? "true" : "false"}`,
     `APP_CHOICE: ${report.generateAppsStep?.appChoice?.id || "none"}`,
+    `FRONTEND_BUNDLER: ${report.generateAppsStep?.appChoice?.bundler || report.generateAppsStep?.frontendTarget?.bundler || "none"}`,
     `POST_APPLY_COMMANDS: ${report.postApplyCommands.map((entry) => entry.command).join(" && ")}`,
     "AGENT_ROLES:",
     formatAgentRoleSummaries(report.agentProfile.selectedAgents, { agents: report.agentProfile.agentResponsibilities }, { max: 80 }) || "- none",
@@ -552,6 +588,7 @@ export function formatGenesisDryRunReport(report) {
   for (const ambiguity of report.generateAppsStep?.stackAmbiguities || []) {
     lines.push(`STACK_AMBIGUITY: ${ambiguity.code} - ${ambiguity.message}`);
     lines.push(`STACK_CHOICES: ${(ambiguity.choices || []).map((choice) => choice.id).join(", ")}`);
+    if (ambiguity.recommendedId) lines.push(`STACK_RECOMMENDED: ${ambiguity.recommendedId}`);
   }
   for (const entry of report.generateAppsStep?.commands || []) lines.push(`GENERATE_APPS_COMMAND: ${entry.command} (${entry.when})`);
   return lines.join("\n");
@@ -862,52 +899,6 @@ function hasAffirmedStackMention(value, terms = []) {
 function isNegatedMention(before = "", after = "") {
   return /(?:\bno\b|\bnot\b|\bwithout\b|\bdo\s+not\s+use\b|\bdon't\s+use\b|\bnot\s+using\b|\bне\b|\bбез\b)\s*$/i.test(before)
     || /^\s*(?:is\s+not\s+used|isn't\s+used|not\s+used|not\s+in\s+use|not\s+part|unused|не\s+используется)\b/i.test(after);
-}
-
-function applyFrontendAppChoice(fingerprint, appChoice = "") {
-  const normalized = normalizeAppChoice(appChoice);
-  if (!normalized) return fingerprint;
-  const tags = new Set(fingerprint.tags || []);
-  const ignoredStackTags = [];
-  if (normalized === "next-app" && tags.delete("vite")) ignoredStackTags.push("vite");
-  if (normalized === "vite-spa" && tags.delete("nextjs")) ignoredStackTags.push("nextjs");
-  const decision = {
-    id: normalized,
-    source: typeof appChoice === "object" ? appChoice.source || "resolved" : "resolved",
-    ignoredStackTags,
-  };
-  return {
-    ...fingerprint,
-    tags: [...tags].sort(),
-    appChoice: decision,
-    decisions: {
-      ...(fingerprint.decisions || {}),
-      frontendAppChoice: decision,
-    },
-  };
-}
-
-function normalizeAppChoice(value = "") {
-  const id = typeof value === "object" ? value.id : value;
-  const normalized = String(id || "").trim().toLowerCase();
-  if (["next-app", "next", "nextjs", "next.js"].includes(normalized)) return "next-app";
-  if (["vite-spa", "vite", "spa"].includes(normalized)) return "vite-spa";
-  if (["monorepo-two-frontends", "two-frontends", "monorepo", "both"].includes(normalized)) return "monorepo-two-frontends";
-  return "";
-}
-
-function inferAppChoiceFromText(text = "") {
-  const value = String(text || "").toLowerCase();
-  if (/\bnext(?:\.js|js)?\s+app\b|\bchoose\s+next\b|\bselected\s+next\b/.test(value)) {
-    return { id: "next-app", source: "request-text" };
-  }
-  if (/\bvite\s+spa\b|\bchoose\s+vite\b|\bselected\s+vite\b/.test(value)) {
-    return { id: "vite-spa", source: "request-text" };
-  }
-  if (/\b(two|2)\s+frontends\b|\bmonorepo\b.*\b(next|vite)\b|\b(next|vite)\b.*\bmonorepo\b/.test(value)) {
-    return { id: "monorepo-two-frontends", source: "request-text" };
-  }
-  return "";
 }
 
 function normalizeExplicitStackTags(values = []) {

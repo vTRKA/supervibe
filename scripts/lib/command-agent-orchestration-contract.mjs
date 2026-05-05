@@ -275,7 +275,19 @@ export function buildCommandAgentPlan(commandId, {
   }
 
   const requestedMode = normalizeExecutionMode(requestedExecutionMode || profile.defaultExecutionMode);
-  const bootstrapPreAgent = profile.commandId === "/supervibe-genesis" && workflowContext.bootstrapPreAgent === true;
+  const genesisBootstrapPhase = profile.commandId === "/supervibe-genesis"
+    && (
+      workflowContext.bootstrapPreAgent === true
+      || workflowContext.dryRun === true
+      || workflowContext.apply === true
+      || workflowContext.generateApps === true
+    )
+    && workflowContext.verifyAgents !== true;
+  const adaptDryRunPhase = profile.commandId === "/supervibe-adapt"
+    && workflowContext.dryRun === true
+    && workflowContext.apply !== true
+    && workflowContext.verifyAgents !== true;
+  const bootstrapPreAgent = genesisBootstrapPhase;
   const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
   const requiredAgentIds = unique([
     profile.ownerAgentId,
@@ -295,9 +307,11 @@ export function buildCommandAgentPlan(commandId, {
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
-  const blocked = !bootstrapPreAgent && requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
+  const blocked = !bootstrapPreAgent && !adaptDryRunPhase && requestedMode !== "inline" && (missingAgents.length > 0 || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
+    : adaptDryRunPhase
+      ? "dry-run-no-agent"
     : bootstrapPreAgent
       ? "bootstrap-pre-agent"
     : requestedMode === "inline"
@@ -306,7 +320,8 @@ export function buildCommandAgentPlan(commandId, {
   const inlineOnly = executionMode === "inline";
   const realAgentCapable = executionMode === "agent-dispatch-required";
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
-  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline" && !bootstrapPreAgent
+  const dryRunAgentless = executionMode === "dry-run-no-agent";
+  const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex" && requestedMode !== "inline" && !bootstrapPreAgent && !dryRunAgentless
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
     : [];
 
@@ -333,17 +348,20 @@ export function buildCommandAgentPlan(commandId, {
     hostDispatchAvailable: hostDispatch?.status === "supported",
     agentInvocationsCompleted: false,
     agentReceiptsTrusted: false,
-    receiptGate: bootstrapOnly ? "bootstrap-pre-agent-basic-scaffold" : realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
+    receiptGate: dryRunAgentless ? "not-required-for-dry-run" : bootstrapOnly ? "bootstrap-pre-agent-basic-scaffold" : realAgentCapable ? "pending-runtime-agent-receipts" : "not-applicable",
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: bootstrapOnly,
+    durableWritesAllowed: bootstrapOnly && workflowContext.dryRun !== true,
     agentOwnedOutputAllowed: false,
     agentOwnedOutputRequiresReceipts: realAgentCapable,
     agentDispatchRequired: realAgentCapable,
     inlineDraftAllowed: inlineOnly,
     bootstrapPreAgentAllowed: bootstrapOnly,
+    dryRunAgentlessAllowed: dryRunAgentless,
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
+      : dryRunAgentless
+        ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
       : bootstrapOnly
         ? "Bootstrap-pre-agent mode may install base host scaffold and state only; specialist-owned output and completion claims still require runtime agent receipts after agents are installed."
       : hostProofBlocked
@@ -493,6 +511,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_INVOCATIONS_COMPLETED: ${plan.agentInvocationsCompleted === true}`,
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
+    `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
@@ -707,6 +726,9 @@ function nextActionForPlan(plan = {}) {
   }
   if (plan.executionMode === "bootstrap-pre-agent") {
     return "Write only bootstrap scaffold/state, then rebuild the real-agent plan after installed agents are available.";
+  }
+  if (plan.executionMode === "dry-run-no-agent") {
+    return "Run the read-only dry-run and review the plan; use apply for approved writes and verify-agents for runtime receipt proof.";
   }
   if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
   if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {
