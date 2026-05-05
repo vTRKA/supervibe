@@ -153,6 +153,25 @@ test("audit command defers domain specialists behind the global maturity gate", 
   assert.match(report, /CODEX_DEFERRED_SPAWN_PAYLOADS:/);
 });
 
+test("command catalog routes Russian plugin and agent-system audit requests", () => {
+  for (const request of [
+    "Проведи аудит агентской системы",
+    "сделай аудит плагина",
+    "хочу 10 из 10 аудит агентской системы",
+    "audit agent system maturity",
+  ]) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.command, "/supervibe-audit", request);
+    assert.equal(match.intent, "supervibe_audit", request);
+    assert.equal(match.doNotSearchProject, true, request);
+    assert.match(formatCommandMatch(match), /AGENT_STAGE_GATE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-agent-maturity\.mjs|AGENT_PLAN_COMMAND:/, request);
+  }
+});
+
 test("every slash command has a mandatory real-agents profile", () => {
   const commandIds = readdirSync(join(ROOT, "commands"))
     .filter((file) => file.endsWith(".md"))

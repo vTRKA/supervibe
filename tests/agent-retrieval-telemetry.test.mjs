@@ -78,7 +78,7 @@ test("agent retrieval telemetry does not report 10/10 when samples are too thin"
   assert.ok(report.globalViolations.some((item) => item.includes("insufficient invocation sample")));
 });
 
-test("agent retrieval telemetry skips legacy invocations without post-enforcement evidence", () => {
+test("agent retrieval telemetry caps maturity for legacy-only invocations", () => {
   const invocations = Array.from({ length: 10 }, (_, index) => ({
     ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
     agent_id: `legacy-${index}`,
@@ -93,8 +93,9 @@ test("agent retrieval telemetry skips legacy invocations without post-enforcemen
   });
 
   assert.equal(report.pass, true);
-  assert.equal(report.maturityScore, 10);
+  assert.equal(report.maturityScore, 8);
   assert.equal(report.summary.invocations, 0);
   assert.equal(report.summary.legacySkipped, 10);
   assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");
+  assert.ok(report.globalWarnings.some((item) => item.includes("post-enforcement retrieval telemetry samples")));
 });

@@ -132,13 +132,23 @@ export function buildAgentRetrievalTelemetryReport({
     evidenceEntries,
     thresholds: policy,
   });
+  const globalWarnings = detectGlobalRetrievalTelemetryWarnings({
+    rawInvocations: invocations,
+    scoredInvocations,
+    legacySkipped,
+  });
   const strengtheningTasks = createStrengtheningTasks({ agents: failingAgents, underperformers, evidenceFailed });
   const pass = globalViolations.length === 0 && failingAgents.length === 0 && evidenceFailed.length === 0;
+  const maturityScore = pass
+    ? globalWarnings.length
+      ? 8
+      : 10
+    : Math.max(0, 10 - Math.min(6, globalViolations.length + failingAgents.length + evidenceFailed.length));
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     pass,
-    maturityScore: pass ? 10 : Math.max(0, 10 - Math.min(6, globalViolations.length + failingAgents.length + evidenceFailed.length)),
+    maturityScore,
     thresholds: policy,
     summary: {
       agents: agents.length,
@@ -152,6 +162,7 @@ export function buildAgentRetrievalTelemetryReport({
       strengtheningTasks: strengtheningTasks.length,
     },
     globalViolations,
+    globalWarnings,
     sampleStatus: scoredInvocations.length
       ? "scored-samples"
       : legacySkipped
@@ -229,6 +240,9 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
   for (const violation of report.globalViolations || []) {
     lines.push(`WARN: ${violation}`);
   }
+  for (const warning of report.globalWarnings || []) {
+    lines.push(`WARN: ${warning}`);
+  }
   for (const agent of report.agents || []) {
     const status = agent.violations?.length ? "WARN" : "OK";
     lines.push(`${status}: ${agent.agentId} sample=${agent.sample} mem=${pct(agent.memoryRate)} rag=${pct(agent.ragRate)} graph=${pct(agent.codegraphRate)} evidence=${pct(agent.evidenceContractPassRate)} confidence=${agent.avgConfidence}`);
@@ -258,6 +272,18 @@ function detectGlobalRetrievalTelemetryViolations({
     violations.push("missing evidence ledger entries for retrieval quality scoring");
   }
   return violations;
+}
+
+function detectGlobalRetrievalTelemetryWarnings({
+  rawInvocations = [],
+  scoredInvocations = [],
+  legacySkipped = 0,
+} = {}) {
+  const warnings = [];
+  if (rawInvocations.length > 0 && scoredInvocations.length === 0 && legacySkipped > 0) {
+    warnings.push("post-enforcement retrieval telemetry samples are not available yet; readiness is green, but maturity score is capped until new scored agent invocations exist");
+  }
+  return warnings;
 }
 
 function isRetrievalTelemetryScoredInvocation(entry = {}) {

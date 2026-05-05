@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.91] - 2026-05-06
+
+### Changed
+
+- Hardened natural-language command routing for Russian plugin and agent-system
+  audit requests so `/supervibe-audit` is selected before broad repository
+  search.
+- Capped retrieval telemetry maturity when only legacy pre-enforcement agent
+  invocations exist, while keeping readiness green and surfacing an explicit
+  warning.
+
+### Fixed
+
+- Added regression coverage for Russian audit routing and legacy-only retrieval
+  telemetry scoring.
+
 ## [2.0.90] - 2026-05-06
 
 ### Changed

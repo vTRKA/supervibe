@@ -84,8 +84,21 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-audit",
     title: "Audit project health",
-    aliases: ["проведи аудит проекта", "run project audit", "проверь проект", "health check project"],
-    keywordGroups: [["audit", "check", "review", "проверь", "проведи", "аудит"], ["project", "health", "качество", "проект", "здоровье"]],
+    aliases: [
+      "проведи аудит проекта",
+      "run project audit",
+      "проверь проект",
+      "health check project",
+      "проведи аудит агентской системы",
+      "сделай аудит плагина",
+      "проверь зрелость агентской системы",
+      "audit agent system maturity",
+      "run plugin audit",
+    ],
+    keywordGroups: [
+      ["audit", "check", "review", "проверь", "проведи", "сделай", "аудит"],
+      ["project", "health", "plugin", "agent system", "agents", "maturity", "качество", "проект", "здоровье", "плагин", "агент", "агенты", "агентской системы", "зрелость"],
+    ],
   },
   {
     command: "/supervibe-brainstorm",
