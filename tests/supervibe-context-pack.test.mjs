@@ -17,6 +17,7 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
   try {
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "src", "checkout.ts"), [
+      "// @supervibe-contract id=checkout-contract purpose=\"Preserve checkout payment context\" invariant=\"idempotency stays stable\" forbidden=\"skip payment evidence\" verify=\"npm test -- checkout\"",
       "// @supervibe-anchor id=checkout-context symbol=buildCheckout responsibility=\"Build checkout payment context\" verify=\"npm test -- checkout\"",
       "export function buildCheckout() { return true; }",
       "",
@@ -62,11 +63,15 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
     assert.equal(pack.memory[0].id, "checkout-payment-decision");
     assert.equal(pack.memory[0].freshness, "fresh");
     assert.equal(pack.semanticAnchors[0].anchorId, "checkout-context");
+    assert.equal(pack.fileLocalContracts[0].contractId, "checkout-contract");
+    assert.ok(pack.fileLocalContracts[0].invariants.includes("idempotency stays stable"));
     assert.equal(pack.workflowSignal.phase, "execute");
     assert.equal(pack.workflowSignal.epicId, "epic-context");
     assert.match(pack.markdown, /Workflow Signal/);
     assert.match(pack.markdown, /Omitted Context/);
     assert.match(pack.markdown, /Semantic Anchors/);
+    assert.match(pack.markdown, /File-Local Contracts/);
+    assert.match(pack.markdown, /checkout-contract/);
     assert.ok(pack.summary.estimatedTokens > 0);
     assert.equal(pack.summary.tokenBudget.status, "ok");
     assert.match(pack.markdown, /Token budget: ok/);

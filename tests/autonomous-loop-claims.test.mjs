@@ -58,6 +58,17 @@ test("createClaimRecord creates deterministic active lease fields", () => {
   assert.equal(claim.attemptId, "attempt-1");
 });
 
+test("default claim leases support long goal-until-complete work without acting as a runtime budget", () => {
+  const claim = createClaimRecord({
+    taskId: "t1",
+    agentId: "stack-developer",
+    attemptId: "attempt-1",
+    now: "2026-04-29T00:00:00.000Z",
+  });
+
+  assert.equal(claim.expiresAt, "2026-04-29T04:00:00.000Z");
+});
+
 test("expired claims are visible and repairable", () => {
   const task = { id: "t1", goal: "Implement", category: "implementation", policyRiskLevel: "low" };
   const first = claimTask({

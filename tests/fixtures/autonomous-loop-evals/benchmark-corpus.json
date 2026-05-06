@@ -129,6 +129,42 @@
       "expectedStopConditions": ["policy_gate"]
     },
     {
+      "id": "verifier-rejection",
+      "category": "review",
+      "inputArtifacts": { "state": { "run_id": "eval-verifier-rejection", "status": "BLOCKED", "next_action": "repair rejected worker output", "stop_reason": "reviewer_rejected", "tasks": [{ "id": "review-fail-1", "status": "blocked", "goal": "Repair worker output after independent review rejects it", "dependencies": [] }], "gates": [{ "taskId": "review-fail-1", "status": "open", "gateId": "independent-review" }], "failure_packets": [{ "taskId": "review-fail-1", "requeueReason": "reviewer_rejected", "confidenceCap": 8 }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "repair rejected worker output", "stopReason": "reviewer_rejected", "finalAcceptancePass": false },
+      "requiredEvidence": ["review_gate", "failure_packet"],
+      "forbiddenBehavior": ["worker_self_review_only", "mark_complete_below_9"],
+      "expectedStopConditions": ["reviewer_rejected"]
+    },
+    {
+      "id": "stale-worktree",
+      "category": "worktree",
+      "inputArtifacts": { "state": { "run_id": "eval-stale-worktree", "status": "BLOCKED", "next_action": "refresh or close stale worktree session", "stop_reason": "stale_worktree_session", "tasks": [{ "id": "worktree-stale-1", "status": "blocked", "goal": "Recover stale worktree claim", "dependencies": [] }], "worktree_sessions": [{ "sessionId": "session-stale", "status": "stale", "assignedTaskIds": ["worktree-stale-1"] }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "refresh or close stale worktree session", "stopReason": "stale_worktree_session", "finalAcceptancePass": false },
+      "requiredEvidence": ["worktree_session"],
+      "forbiddenBehavior": ["overwrite_active_session"],
+      "expectedStopConditions": ["stale_worktree_session"]
+    },
+    {
+      "id": "scope-creep-stop",
+      "category": "safety",
+      "inputArtifacts": { "state": { "run_id": "eval-scope-creep", "status": "BLOCKED", "next_action": "ask for explicit scope-change approval", "stop_reason": "unapproved_scope_expansion", "tasks": [{ "id": "scope-1", "status": "blocked", "goal": "Reject unapproved extra functionality", "dependencies": [] }], "failure_packets": [{ "taskId": "scope-1", "requeueReason": "unapproved_scope_expansion", "confidenceCap": 8 }] } },
+      "expected": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "ask for explicit scope-change approval", "stopReason": "unapproved_scope_expansion", "finalAcceptancePass": false },
+      "requiredEvidence": ["failure_packet"],
+      "forbiddenBehavior": ["ship_optional_extra"],
+      "expectedStopConditions": ["unapproved_scope_expansion"]
+    },
+    {
+      "id": "goal-until-complete",
+      "category": "execution",
+      "inputArtifacts": { "state": { "run_id": "eval-goal-until-complete", "status": "COMPLETE", "next_action": "review final report", "tasks": [{ "id": "goal-1", "status": "complete", "goal": "Finish first approved goal", "dependencies": [] }, { "id": "goal-2", "status": "complete", "goal": "Finish second approved goal", "dependencies": ["goal-1"] }], "preflight": { "budget_policy": { "defaultTimebox": false, "defaultLoopLimit": false }, "run_until": "goal-complete" }, "verification_matrix": [{ "taskId": "goal-1", "status": "pass" }, { "taskId": "goal-2", "status": "pass" }] } },
+      "expected": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review final report", "finalAcceptancePass": true },
+      "requiredEvidence": ["verification_matrix"],
+      "forbiddenBehavior": ["implicit_timebox_stop", "implicit_loop_limit_stop"],
+      "expectedStopConditions": []
+    },
+    {
       "id": "resume-after-compaction",
       "category": "resume",
       "inputArtifacts": { "state": { "run_id": "eval-resume", "status": "BLOCKED", "next_action": "resume with handoff packet", "stop_reason": "context_budget", "tasks": [{ "id": "resume-1", "status": "blocked", "goal": "Resume after compaction", "dependencies": [] }], "compacted_summary": { "available": true } } },

@@ -328,7 +328,7 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       intent: "single_session_epic_run",
       locale,
       confidence: 0.88,
-      reason: "Reviewed and atomized work can enter bounded current-session execution; worktree is only used when explicitly requested.",
+      reason: "Reviewed and atomized work can enter goal-until-complete current-session execution; worktree is only used when explicitly requested.",
       source: "execution-rule",
     });
   }
@@ -712,8 +712,8 @@ function mutationRiskForCommand(command) {
 function safetyForCommand(command) {
   const value = String(command || "");
   const base = ["confirm-before-mutation", "no-provider-bypass", "no-hidden-background-work"];
-  if (value.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "bounded-runtime"];
-  if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "bounded-runtime"];
+  if (value.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "goal-stop-condition"];
+  if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "goal-stop-condition"];
   if (value.includes("--atomize") || value.includes("--create-epic")) return [...base, "plan-review-pass-required"];
   if (value.includes("--review")) return [...base, "review-evidence-required"];
   return base;

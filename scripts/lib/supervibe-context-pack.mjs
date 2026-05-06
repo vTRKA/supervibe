@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import { createWorkItemIndex } from "./supervibe-work-item-query.mjs";
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { parseSemanticAnchors } from "./supervibe-semantic-anchor-index.mjs";
+import { extractFileLocalContracts } from "./supervibe-file-local-contracts.mjs";
 import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
@@ -54,6 +55,7 @@ export async function buildContextPack({
   })).slice(0, memoryLimit);
   const evidence = collectEvidence(graph, activeItem, evidenceLimit);
   const semanticAnchors = await collectSemanticAnchors({ rootDir, activeItem, limit: 8 });
+  const fileLocalContracts = await collectFileLocalContracts({ rootDir, activeItem, semanticAnchors, limit: 8 });
   const workflowFlow = createWorkflowFlowModel({ graph, index });
   const workflowSignal = buildWorkflowSignal(activeItem || {}, {
     signalSource: "supervibe-context-pack",
@@ -85,6 +87,7 @@ export async function buildContextPack({
     evidence,
     memory,
     semanticAnchors,
+    fileLocalContracts,
     summary: {
       totalItems: index.length,
       ready: index.filter((item) => item.effectiveStatus === "ready").length,
@@ -92,6 +95,7 @@ export async function buildContextPack({
       done: index.filter((item) => item.effectiveStatus === "done").length,
       omittedItems: Math.max(0, index.length - 1 - dependencies.length - blockers.length),
       semanticAnchors: semanticAnchors.length,
+      fileLocalContracts: fileLocalContracts.length,
       maxChars,
       estimatedTokens: 0,
       tokenBudget: null,
@@ -165,6 +169,9 @@ export function formatContextPackMarkdown(pack = {}) {
     "",
     "## Semantic Anchors",
     formatList((pack.semanticAnchors || []).map((anchor) => `${anchor.filePath}:${anchor.startLine} ${anchor.anchorId} ${anchor.symbolName || ""} ${anchor.responsibility || ""}`)),
+    "",
+    "## File-Local Contracts",
+    formatList((pack.fileLocalContracts || []).map((contract) => `${contract.filePath}:${contract.startLine} ${contract.contractId} ${contract.purpose} invariants=${formatInlineList(contract.invariants)} forbidden=${formatInlineList(contract.forbiddenChanges)}`)),
     "",
     "## Omitted Context",
     formatList(pack.omitted || []),
@@ -280,6 +287,25 @@ async function collectSemanticAnchors({ rootDir, activeItem, limit }) {
   return anchors.slice(0, limit);
 }
 
+async function collectFileLocalContracts({ rootDir, activeItem, semanticAnchors = [], limit }) {
+  const paths = [...new Set((activeItem?.writeScope || []).map((scope) => scope.path || scope).filter(Boolean))];
+  const contracts = [];
+  for (const relPath of paths) {
+    const fullPath = join(rootDir, relPath);
+    if (!existsSync(fullPath)) continue;
+    try {
+      contracts.push(...extractFileLocalContracts(await readFile(fullPath, "utf8"), {
+        filePath: relPath,
+        anchors: semanticAnchors,
+      }));
+    } catch {
+      // Ignore unreadable source files; write scope remains visible.
+    }
+    if (contracts.length >= limit) break;
+  }
+  return contracts.slice(0, limit);
+}
+
 function formatWorkflowSignal(signal = null, flow = null) {
   if (!signal) return "- none";
   const steps = (flow?.steps || signal.flowSteps || [])
@@ -300,6 +326,11 @@ function formatList(items) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return "- none";
   return list.map((item) => `- ${String(item)}`).join("\n");
+}
+
+function formatInlineList(items) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  return list.length ? list.join(";") : "none";
 }
 
 function trimPackMarkdown(markdown, maxChars) {

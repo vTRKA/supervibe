@@ -806,7 +806,7 @@ function artifactSatisfied(name, artifacts) {
     "epic-id": ["epic", "epicId"],
     "approved-scope": ["approvedScope", "approval", "approvals"],
     "clean-or-isolated-worktree": ["worktreeClean", "worktreePath"],
-    "duration-budget": ["durationBudget", "maxDuration"],
+    "explicit-budget": ["durationBudget", "maxDuration", "maxLoops"],
     "readiness-audit": ["readinessAudit", "planReviewPassed"],
     "accepted-change-summary": ["changeSummary", "acceptedChangeSummary"],
     "design-brief": ["designBrief", "brief", "request", "userRequest"],
@@ -824,8 +824,8 @@ function safetyBlockersFor(route, artifacts) {
   if (!["none", "writes-generated-index", "explicit-user-command", "delegates-to-command"].includes(route.mutationRisk) && artifacts.confirmedMutation !== true) {
     blockers.push("needs-explicit-user-confirmation");
   }
-  if (route.requiredSafety?.includes("bounded-runtime") && !artifacts.maxDuration && !artifacts.durationBudget) {
-    blockers.push("needs-bounded-runtime");
+  if (route.requiredSafety?.includes("goal-stop-condition") && artifacts.goalStopCondition === false) {
+    blockers.push("needs-goal-stop-condition");
   }
   if (route.requiredSafety?.includes("stop-command") && artifacts.stopCommandAvailable === false) {
     blockers.push("stop-command-unavailable");
@@ -879,7 +879,7 @@ function requiredSafetyFor(intent) {
   if (intent === "code_index_build") return [...base, "bounded-index-run", "single-run-lock", "generated-state-only"];
   if (intent === "genesis_setup") return [...base, "dry-run-before-host-file-write", "preserve-existing-host-files"];
   if (["autonomous_epic_run", "worktree_autonomous_run"].includes(intent)) {
-    return [...base, "bounded-runtime", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
+    return [...base, "goal-stop-condition", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
   }
   if (intent === "execute_plan") return [...base, "readiness-gate", "completion-gate"];
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];

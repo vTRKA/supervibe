@@ -2,11 +2,11 @@
 name: autonomous-agent-loop
 namespace: process
 description: >-
-  Use WHEN the user wants TO run a bounded autonomous multi-agent loop, epic,
-  worktree run, or 3h timeboxed session that turns a plan into tasks, dispatches
-  specialists, supports status/resume/stop, and stops safely on policy, budget,
+  Use WHEN the user wants TO run a goal-until-complete autonomous multi-agent loop, epic,
+  worktree run, or long-running session that turns a plan into tasks, dispatches
+  specialists, supports status/resume/stop, and stops safely on policy, explicit budget,
   approval, or missing evidence. Triggers: 'autonomous loop', 'epic',
-  'worktree', 'эпик', '3 часа'.
+  'worktree', 'goal-complete', 'эпик'.
 allowed-tools:
   - Read
   - Grep
@@ -28,10 +28,10 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 ## When to invoke
 
-Use this skill when a user asks for an autonomous run, epic execution, bounded
+Use this skill when a user asks for an autonomous run, epic execution, goal-bounded
 multi-agent loop, long worktree session, or multi-step delivery that must keep
-working until the queue is exhausted, blocked, cancelled, or out of approved
-budget. This skill is the loop controller contract, not a short checklist.
+working until the goals are complete, blocked, cancelled, or out of an explicit
+approved budget. This skill is the loop controller contract, not a short checklist.
 
 Do not use it for one small local edit, a read-only explanation, or a plan that
 has not passed review unless the invocation is explicitly dry-run/readiness
@@ -55,7 +55,7 @@ enter readiness repair instead of dispatch.
 ## Decision tree
 
 ```
-Request lacks approved scope, budget, stop condition, or verification target
+Request lacks approved scope, stop condition, or verification target
   -> Do readiness repair or ask one focused Step N/M question before dispatch.
 
 Task graph has independent disjoint write sets
@@ -76,7 +76,7 @@ First wave finishes but ready work remains
 Every run has three roles even when one human or one AI session performs more
 than one role:
 
-- Controller: owns task graph, scope, policy, budget, approvals, state, and
+- Controller: owns task graph, scope, policy, explicit budget, approvals, state, and
   final truth. The controller decides ready/blocked/done.
 - Worker: owns one bounded task with a declared write set, verification command,
   stop condition, and no authority to expand scope.
@@ -120,10 +120,11 @@ A task is done only when all of these are true:
 
 ## Continuation Contract
 
-Do not stop after the first task or wave. Continue ready work until the task
-queue is exhausted, max-duration/max-iteration/provider budget is reached,
-policy or approval gates block progress, verification fails, no-progress policy
-fires, or the user explicitly pauses/stops.
+Do not stop after the first task or wave. Continue ready work until the user
+goals are complete, a max-duration/max-iteration/provider budget explicitly
+requested by the user is reached, policy or approval gates block progress,
+verification fails, no-progress policy fires, or the user explicitly
+pauses/stops. Without an explicit budget, the loop is not time-limited.
 
 Wave reviews, taste checks, first working tests, first agent handoffs, and
 partial reports are checkpoints, not terminal states. If the loop pauses, print
@@ -140,7 +141,7 @@ or wave, artifact path, next command, stop command, and blocker, then ask one
 `Step N/M` or `Step N/M` resume question: continue ready work, skip/delegate safe non-final decisions to the controller and continue, pause current loop and switch topic, or stop/archive the current state.
 
 Skipped or delegated decisions must be recorded in loop state, side-effect
-ledger, and final report. They cannot bypass policy, budget, approval,
+ledger, and final report. They cannot bypass policy, explicit budget, approval,
 production, destructive-operation, review, verification, or scope-expansion
 gates.
 
@@ -194,7 +195,7 @@ different result.
 ## Procedure
 
 1. Normalize the user request or read the provided plan.
-2. Run preflight for scope, autonomy level, budget, environment, MCP/tool
+2. Run preflight for scope, autonomy level, optional explicit budgets, environment, MCP/tool
    permissions, access needs, secret handling, approval leases, and rollback
    expectations.
    - Apply the Scope Safety Gate from `docs/references/scope-safety-standard.md`: distinguish approved
@@ -233,7 +234,7 @@ different result.
 11. Score every task on the autonomous-loop rubric. Anything below 9.0 is not
    complete and must be re-queued, repaired, blocked for user input, or marked
    partial only with explicit user acceptance.
-12. Stop on policy, budget, no progress, approval expiry, side-effect
+12. Stop on policy, explicit budget, no progress, approval expiry, side-effect
    reconciliation failure, state migration failure, cancellation, or missing
    required evidence.
     Treat failed provider permission audit as a policy stop before any task

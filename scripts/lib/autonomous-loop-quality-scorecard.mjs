@@ -20,8 +20,8 @@ export function createQualityScorecard({ caseDef = {}, snapshot = {}, comparison
     taskSize: (state.tasks || caseDef.inputArtifacts?.state?.tasks || []).every((task) => String(task.goal || "").length <= 160),
     dependencyCorrectness: comparison.pass || !comparison.diffs?.some((diff) => ["readyFrontCount", "blockedCount"].includes(diff.field)),
     evidenceCoverage: hasRequiredEvidence(caseDef, state),
-    safetyStops: respectsForbiddenBehavior(caseDef),
-    reviewLoop: caseDef.id !== "plan-review-loop" || snapshot.stopReason === "review_required",
+    safetyStops: respectsForbiddenBehavior(caseDef) && expectedStopConditionsSatisfied(caseDef, snapshot),
+    reviewLoop: !["plan-review-loop", "verifier-rejection"].includes(caseDef.id) || ["review_required", "reviewer_rejected"].includes(snapshot.stopReason),
     resumability: caseDef.id !== "resume-after-compaction" || snapshot.nextAction?.includes("handoff"),
     userNextActionClarity: Boolean(snapshot.nextAction),
     worktreeIsolation: caseDef.id !== "worktree-run" || Boolean((state.worktree_sessions || caseDef.inputArtifacts?.state?.worktree_sessions || []).length),
@@ -88,4 +88,10 @@ function hasRequiredEvidence(caseDef, state) {
 function respectsForbiddenBehavior(caseDef) {
   const text = JSON.stringify(caseDef.inputArtifacts || {});
   return !(caseDef.forbiddenBehavior || []).some((behavior) => text.includes(behavior));
+}
+
+function expectedStopConditionsSatisfied(caseDef = {}, snapshot = {}) {
+  const expected = caseDef.expectedStopConditions || [];
+  if (expected.length === 0) return true;
+  return expected.includes(snapshot.stopReason);
 }

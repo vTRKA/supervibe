@@ -38,6 +38,15 @@ test("live eval mode is explicitly budget gated and never updates golden outcome
   assert.equal(allowed.pass, true);
 });
 
+test("chaos eval cases cover reviewer rejection, stale worktrees, scope creep, and goal-until-complete", async () => {
+  for (const caseId of ["verifier-rejection", "stale-worktree", "scope-creep-stop", "goal-until-complete"]) {
+    const report = await runAutonomousLoopEvals({ rootDir: ROOT, caseId });
+    assert.equal(report.pass, true, caseId);
+    assert.equal(report.summary.total, 1);
+    assert.ok(report.cases[0].scorecard.score >= 8, caseId);
+  }
+});
+
 test("loop eval CLI and status eval-report command expose local reports", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-eval-cli-"));
   const outPath = join(dir, "latest-report.json");

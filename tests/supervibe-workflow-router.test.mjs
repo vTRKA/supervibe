@@ -69,10 +69,10 @@ test("single-session execution does not force worktree orchestration", () => {
     artifacts: { planReviewPassed: true, workItemsReady: true, epicId: "EPIC-1", stopCommandAvailable: true },
   });
   assert.equal(route.intent, "single_session_epic_run");
-  assert.equal(route.command, "/supervibe-loop --guided --max-duration 3h");
+  assert.equal(route.command, "/supervibe-loop --guided");
   assert.equal(route.command.includes("--worktree"), false);
   assert.equal(route.skill, "supervibe:autonomous-agent-loop");
-  assert.match(route.nextPromptText, /current session/i);
+  assert.match(route.nextPromptText, /goals are complete|current session/i);
 });
 
 test("multi-session plan requests route to worktree orchestration", () => {

@@ -40,12 +40,13 @@ describe("supervibe trigger router", () => {
     assert.equal(route.skill, "supervibe:using-git-worktrees");
     assert.equal(route.mutationRisk, "creates-worktree");
     assert.equal(route.safetyBlockers.includes("needs-explicit-user-confirmation"), true);
-    assert.equal(route.safetyBlockers.includes("needs-bounded-runtime"), true);
+    assert.equal(route.requiredSafety.includes("goal-stop-condition"), true);
+    assert.equal(route.command, "/supervibe-loop --epic --worktree");
   });
 
   it("routes multi-session worktree orchestration phrases", () => {
     const route = routeTriggerRequest("run 10 sessions on the same plan in worktree", {
-      artifacts: { epicId: "SV-10", worktreeClean: true, maxDuration: "3h", confirmedMutation: true },
+      artifacts: { epicId: "SV-10", worktreeClean: true, confirmedMutation: true },
     });
 
     assert.equal(route.intent, "worktree_autonomous_run");

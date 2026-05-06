@@ -1,7 +1,7 @@
 export function createBudget(options = {}) {
   return {
-    maxLoops: Number(options.maxLoops || 20),
-    maxRuntimeMinutes: Number(options.maxRuntimeMinutes || 60),
+    maxLoops: optionalPositiveNumber(options.maxLoops),
+    maxRuntimeMinutes: optionalPositiveNumber(options.maxRuntimeMinutes),
     maxDispatchesPerTask: Number(options.maxDispatchesPerTask || 3),
     maxRepairAttempts: Number(options.maxRepairAttempts || 3),
     maxConcurrentAgents: Number(options.maxConcurrentAgents || 3),
@@ -12,8 +12,8 @@ export function createBudget(options = {}) {
 
 export function budgetRemaining(budget, usage = {}) {
   return {
-    loops: budget.maxLoops - Number(usage.loops || 0),
-    runtimeMinutes: budget.maxRuntimeMinutes - Number(usage.runtimeMinutes || 0),
+    loops: remainingFor(budget.maxLoops, usage.loops),
+    runtimeMinutes: remainingFor(budget.maxRuntimeMinutes, usage.runtimeMinutes),
     providerCalls: budget.providerCallBudget == null ? null : budget.providerCallBudget - Number(usage.providerCalls || 0),
     tokens: budget.tokenBudget == null ? null : budget.tokenBudget - Number(usage.tokens || 0),
   };
@@ -28,4 +28,15 @@ export function budgetStatus(budget, usage = {}) {
     remaining,
     status: exceeded.length > 0 ? "budget_stopped" : "within_budget",
   };
+}
+
+function optionalPositiveNumber(value) {
+  if (value === undefined || value === null || value === "" || value === false) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function remainingFor(limit, used) {
+  if (limit === undefined || limit === null) return null;
+  return Number(limit) - Number(used || 0);
 }

@@ -17,7 +17,7 @@ const FILE_REQUIREMENTS = [
   },
   {
     file: "commands/supervibe-loop.md",
-    required: ["autonomous", "epic", "worktree", "3h", "stop", "resume", "policy"],
+    required: ["autonomous", "epic", "worktree", "goal-complete", "stop", "resume", "policy"],
   },
   {
     file: "commands/supervibe-execute-plan.md",
@@ -37,7 +37,7 @@ const FILE_REQUIREMENTS = [
   },
   {
     file: "skills/autonomous-agent-loop/SKILL.md",
-    required: ["autonomous", "epic", "worktree", "3h", "stop", "resume"],
+    required: ["autonomous", "epic", "worktree", "goal-complete", "stop", "resume"],
   },
   {
     file: "skills/subagent-driven-development/SKILL.md",

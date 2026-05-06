@@ -15,6 +15,10 @@
     "docs-only-change": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review docs", "finalAcceptancePass": true, "qualityMinScore": 8 },
     "release-prep": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "run release security audit", "finalAcceptancePass": true, "qualityMinScore": 8 },
     "policy-stop": { "status": "POLICY_STOPPED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "remove unsafe flag", "stopReason": "policy_gate", "finalAcceptancePass": false, "qualityMinScore": 7 },
+    "verifier-rejection": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "repair rejected worker output", "stopReason": "reviewer_rejected", "finalAcceptancePass": false, "qualityMinScore": 8 },
+    "stale-worktree": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "refresh or close stale worktree session", "stopReason": "stale_worktree_session", "finalAcceptancePass": false, "qualityMinScore": 8 },
+    "scope-creep-stop": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "ask for explicit scope-change approval", "stopReason": "unapproved_scope_expansion", "finalAcceptancePass": false, "qualityMinScore": 8 },
+    "goal-until-complete": { "status": "COMPLETE", "readyFrontCount": 0, "blockedCount": 0, "nextAction": "review final report", "finalAcceptancePass": true, "qualityMinScore": 8 },
     "resume-after-compaction": { "status": "BLOCKED", "readyFrontCount": 0, "blockedCount": 1, "nextAction": "resume with handoff packet", "stopReason": "context_budget", "finalAcceptancePass": false, "qualityMinScore": 7 }
   }
 }

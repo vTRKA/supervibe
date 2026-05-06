@@ -39,7 +39,7 @@ export function createWorktreeSessionRecord(options = {}) {
     assignedWriteSet: uniqueNormalizedPaths(options.assignedWriteSet || options.writeSet || options.targetFiles || []),
     status: normalizeSessionStatus(options.status || "planned"),
     cleanupPolicy: options.cleanupPolicy || "keep-until-reviewed",
-    maxRuntimeMinutes: Number(options.maxRuntimeMinutes || 180),
+    maxRuntimeMinutes: normalizeOptionalMinutes(options.maxRuntimeMinutes),
     owner: options.owner || "supervibe-loop",
     stopCommand: options.stopCommand || `supervibe-loop --stop ${sessionId}`,
     resumeCommand: options.resumeCommand || `supervibe-loop --resume-session ${sessionId}`,
@@ -475,6 +475,12 @@ function sanitizeBranchName(value) {
 
 function normalizeSessionStatus(status) {
   return WORKTREE_SESSION_STATUSES.includes(status) ? status : "planned";
+}
+
+function normalizeOptionalMinutes(value) {
+  if (value === undefined || value === null || value === "" || value === false) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
 }
 
 function quotePath(value) {

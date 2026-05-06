@@ -1,15 +1,16 @@
 ---
 description: >-
-  Use WHEN running an autonomous loop, epic, atomic work queue, 3h timeboxed
+  Use WHEN running an autonomous loop, epic, atomic work queue, goal-until-complete
   session, or separate worktree TO perform provider-safe policy preflight,
-  bounded execution, status, resume, stop, side-effect ledger, and cleanup
-  gates. Triggers: 'loop', 'epic', 'worktree', 'эпик', '3 часа'.
+  goal-bounded execution, status, resume, stop, side-effect ledger, and cleanup
+  gates. Triggers: 'loop', 'epic', 'worktree', 'goal-complete', 'эпик'.
 ---
 
 # /supervibe-loop
 
-Run a bounded autonomous loop for a user plan or open request. The command is
-observable, cancellable, policy-gated, and blocked below a 9/10 task score.
+Run a goal-until-complete autonomous loop for a user plan or open request. The
+command is observable, cancellable, policy-gated, and blocked below a 9/10 task
+score.
 For large specs, the loop must preserve the full SDLC path from discovery to
 production release: MVP slice, phased implementation, verification, release
 gate, rollback, support owner, and post-release learning.
@@ -26,9 +27,9 @@ Primary path:
 /supervibe-loop --request "validate code and fix integration bugs"
 /supervibe-loop --happy-path --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --request "finish onboarding design and wire it into app" --max-loops 20
-/supervibe-loop --guided --max-duration 3h
-/supervibe-loop --epic SV-123 --worktree --max-duration 3h
-/supervibe-loop --epic SV-123 --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
+/supervibe-loop --guided
+/supervibe-loop --epic SV-123 --worktree
+/supervibe-loop --epic SV-123 --worktree --assigned-task T1 --assigned-write-set src/auth.ts
 /supervibe-loop --worktree-existing .worktrees/loop-upgrade --resume-session session-loop-upgrade
 /supervibe-loop --worktree-status
 /supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -167,7 +168,7 @@ backup; source comments require manual review. `--summarize-changes` appends a
 redacted per-file change summary linked to task/evidence/verification refs.
 
 Multi-agent orchestration remains explicit and inspectable. `--plan-waves`
-builds a bounded wave plan from ready work, dependency state, write-set overlap,
+builds a goal-scoped wave plan from ready work, dependency state, write-set overlap,
 risk, reviewer availability, and worktree sessions. `--assign-ready --explain`
 prints worker and reviewer assignments with alternatives, required evidence,
 semantic anchors, module contracts, and policy constraints. `--setup-worker-presets`
@@ -190,8 +191,8 @@ resolution comment or linked decision.
 Worktree sessions:
 
 ```bash
-/supervibe-loop --guided --max-duration 3h
-/supervibe-loop --epic <epic-id> --worktree --max-duration 3h
+/supervibe-loop --guided
+/supervibe-loop --epic <epic-id> --worktree
 /supervibe-loop --epic <epic-id> --worktree --assigned-task T1 --assigned-write-set src/auth.ts
 /supervibe-loop --epic <epic-id> --worktree --assigned-task T2 --assigned-write-set src/billing.ts
 /supervibe-loop --worktree-existing .worktrees/<session> --resume-session <session-id>
@@ -233,7 +234,7 @@ commands as the portable baseline.
 ## Contract
 
 - Build a task queue from a plan or request.
-- Run preflight for scope, autonomy, budget, environment, MCP/tool permissions,
+- Run preflight for scope, autonomy, optional explicit budgets, environment, MCP/tool permissions,
   access needs, and approval boundaries.
 - Apply Scope Safety Gate before atomization or execution: each task must map
   to approved scope or an explicit user-approved scope change; optional extras
@@ -254,12 +255,14 @@ commands as the portable baseline.
   --format mermaid` output or `/supervibe-ui` URL plus a text fallback listing
   ready, blocked, review, done, open gates, release blockers, and rollback owner.
 - Treat task score below 9.0 as incomplete.
-- Stop for policy, budget, missing access, production approval, cancellation,
-  state migration, unapproved scope expansion, or side-effect reconciliation.
+- Continue by default until user goals are complete. Stop only for policy,
+  explicit budget, missing access, production approval, cancellation, state
+  migration, unapproved scope expansion, verification failure, no-progress, or
+  side-effect reconciliation.
 
 ## Continuation Contract
 
-Do not stop after the first task or wave if there is still ready work, budget, and no blocker. The loop should continue ready work until the queue is exhausted, a configured max-duration/max-iteration/provider budget is reached, a policy or approval gate blocks progress, verification fails, or the user explicitly stops/pauses.
+Do not stop after the first task or wave if there is still ready work and no blocker. The loop should continue ready work until the user goals are complete, a configured max-duration/max-iteration/provider budget is reached, a policy or approval gate blocks progress, verification fails, no-progress policy fires, or the user explicitly stops/pauses. If no explicit budget is configured, the default run is not time-limited.
 
 Wave reviews are checkpoints, not default terminal states. If a wave passes and more tasks are ready, continue to the next wave or print the exact blocker that prevents continuation. Final output must distinguish "finished all available work" from "paused by gate/budget/user".
 
@@ -267,7 +270,7 @@ Wave reviews are checkpoints, not default terminal states. If a wave passes and 
 
 If the user shifts topic while `.supervibe/memory/loops/<run-id>/state.json`, `contextPack.workflowSignal`, or a queued handoff exists, do not silently drop the loop. Surface run id, current phase, active task or wave, artifact path, next command, stop command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue ready work, skip/delegate safe non-final decisions to the controller and continue, pause current loop and switch topic, or stop/archive the current state.
 
-Skipped or delegated decisions must be recorded in loop state, side-effect ledger, and final report. They cannot bypass policy, budget, approval, production, destructive-operation, review, verification, or scope-expansion gates.
+Skipped or delegated decisions must be recorded in loop state, side-effect ledger, and final report. They cannot bypass policy, explicit budget, approval, production, destructive-operation, review, verification, or scope-expansion gates.
 
 ## Safety Boundaries
 
@@ -277,8 +280,9 @@ Skipped or delegated decisions must be recorded in loop state, side-effect ledge
   `--bypass-permissions`, `--all-tools`, and `bypassPermissions` are blocked by
   default. A narrow test-only override requires an exact approval lease, a
   declared local sandbox, and an explicit policy profile.
-- Long-running runs are bounded, visible, and cancellable. A 3h request means
-  an explicit max-duration budget plus status, stop, resume, and final report.
+- Long-running runs are goal-bounded, visible, and cancellable. They are not
+  time-limited by default; a 3h request means an explicit max-duration budget
+  plus status, stop, resume, and final report.
 - No production deploy, destructive migration, credential mutation, remote
   server mutation, billing, account, or DNS action without explicit approval.
 - Secrets are requested as references only, never raw values.

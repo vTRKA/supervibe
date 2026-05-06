@@ -119,7 +119,7 @@ Before any execution audit, confirm the plan has:
 
 If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` after review passes.
 
-For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree --max-duration 3h` so the run has an active session registry, heartbeat, and cleanup-safe worktree path.
+For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree` so the run has an active session registry, heartbeat, and cleanup-safe worktree path. Add `--max-duration` only when the user wants an explicit time budget; otherwise the loop continues until goals are complete or a real stop gate blocks progress.
 For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.
 
 ### 0. Resolve plan path

@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { approvalLeaseAllows } from "./autonomous-loop-policy-guard.mjs";
 
+const DEFAULT_CLAIM_TTL_MINUTES = 240;
+
 export function createClaimRecord({
   taskId,
   agentId,
   attemptId,
   now = new Date(),
-  ttlMinutes = 30,
+  ttlMinutes = DEFAULT_CLAIM_TTL_MINUTES,
   waveId = null,
   worktreeSessionId = null,
 }) {
@@ -119,7 +121,7 @@ export function summarizeClaims(claims = [], now = new Date()) {
 }
 
 function leaseTtlMinutes(approvalLease) {
-  if (!approvalLease?.budget?.max_runtime_minutes) return 30;
+  if (!approvalLease?.budget?.max_runtime_minutes) return DEFAULT_CLAIM_TTL_MINUTES;
   return Number(approvalLease.budget.max_runtime_minutes);
 }
 

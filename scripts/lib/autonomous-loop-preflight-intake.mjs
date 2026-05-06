@@ -24,6 +24,7 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   const environmentTarget = options.environmentTarget || inferEnvironmentTarget(request, tasks);
   const autonomyLevel = options.autonomyLevel || (environmentTarget === "production" ? "production-prep" : "implement-and-test");
   const executionMode = normalizeExecutionMode(options.executionMode || (options.dryRun ? "dry-run" : "dry-run"));
+  const runBudget = normalizeGoalUntilCompleteBudget(options);
   const toolAdapters = detectToolAdapters({
     env: options.env || process.env,
     availableCommands: options.availableCommands || {},
@@ -64,8 +65,8 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
     remoteMutation: Boolean(options.remoteMutation),
     rateLimit: options.rateLimit || {},
     budget: {
-      maxLoops: Number(options.maxLoops || 20),
-      maxRuntimeMinutes: Number(options.maxRuntimeMinutes || 60),
+      maxLoops: runBudget.maxLoops,
+      maxRuntimeMinutes: runBudget.maxRuntimeMinutes,
     },
     managedPolicy: options.managedPolicy || {},
     projectPolicy: options.projectPolicy || {},
@@ -99,8 +100,10 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
     scope_in: options.scopeIn || ["repository-local changes"],
     scope_out: options.scopeOut || ["unapproved production mutations", "raw secret handling"],
     autonomy_level: autonomyLevel,
-    max_loops: Number(options.maxLoops || 20),
-    max_runtime_minutes: Number(options.maxRuntimeMinutes || 60),
+    max_loops: runBudget.maxLoops,
+    max_runtime_minutes: runBudget.maxRuntimeMinutes,
+    run_until: runBudget.runUntil,
+    budget_policy: runBudget.policy,
     max_concurrent_agents: Number(options.maxConcurrentAgents || 3),
     allowed_write_scope: options.allowedWriteScope || ["project"],
     required_checks: options.requiredChecks || ["focused tests", "policy guard", "confidence score"],
@@ -172,13 +175,14 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
       environment: environmentTarget,
       tools: options.mcpToolsAllowed || [],
       budget: {
-        max_loops: Number(options.maxLoops || 20),
-        max_runtime_minutes: Number(options.maxRuntimeMinutes || 60),
+        max_loops: runBudget.maxLoops,
+        max_runtime_minutes: runBudget.maxRuntimeMinutes,
+        run_until: runBudget.runUntil,
         max_concurrent_agents: Number(options.maxConcurrentAgents || 3),
       },
-      duration: `${Number(options.approvalExpiresAfterLoops || 20)} loops`,
-      expires_after_loops: Number(options.approvalExpiresAfterLoops || 20),
-      expires_at: new Date(Date.now() + Number(options.maxRuntimeMinutes || 60) * 60 * 1000).toISOString(),
+      duration: runBudget.duration,
+      expires_after_loops: runBudget.expiresAfterLoops,
+      expires_at: runBudget.expiresAt,
       renewal_triggers: ["risk_escalation", "environment_change", "budget_change", "credential_scope_change"],
     },
     rollback_expectation: options.rollbackExpectation || "document rollback or cleanup before side effects",
@@ -298,4 +302,42 @@ function resolveProviderCapabilities(requestedId, fallbackId) {
   } catch {
     return resolveToolLoopCapabilities(fallbackId);
   }
+}
+
+function normalizeGoalUntilCompleteBudget(options = {}) {
+  const maxLoops = optionalPositiveNumber(options.maxLoops);
+  const maxRuntimeMinutes = optionalPositiveNumber(options.maxRuntimeMinutes);
+  const approvalLoops = optionalPositiveNumber(options.approvalExpiresAfterLoops);
+  const explicit = maxLoops != null || maxRuntimeMinutes != null || approvalLoops != null;
+  return {
+    maxLoops,
+    maxRuntimeMinutes,
+    runUntil: explicit ? "goal-complete-or-explicit-budget" : "goal-complete",
+    duration: explicit ? "until-goal-complete-or-explicit-budget" : "until-goal-complete",
+    expiresAfterLoops: approvalLoops ?? maxLoops ?? "until-goal-complete",
+    expiresAt: maxRuntimeMinutes == null
+      ? "until-goal-complete"
+      : new Date(Date.now() + maxRuntimeMinutes * 60 * 1000).toISOString(),
+    policy: {
+      defaultTimebox: false,
+      defaultLoopLimit: false,
+      stopWhen: [
+        "all-goals-complete",
+        "policy-stop",
+        "verification-failure",
+        "missing-access",
+        "approval-required",
+        "side-effect-reconciliation-failure",
+        "no-progress",
+        "user-stop",
+        "explicit-budget-exhausted",
+      ],
+    },
+  };
+}
+
+function optionalPositiveNumber(value) {
+  if (value === undefined || value === null || value === "" || value === false) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
 }

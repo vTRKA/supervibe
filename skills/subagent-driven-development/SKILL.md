@@ -1,7 +1,7 @@
 ---
 name: subagent-driven-development
 namespace: process
-description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and two-stage review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, 3h autonomous, active session registry."
+description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and two-stage review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry."
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
 phase: exec
 prerequisites: [implementation-plan]
@@ -22,7 +22,7 @@ WHEN executing a plan AND subagent dispatch is available AND plan has 5+ indepen
 
 Continue through every ready wave until the wave queue is exhausted, a
 verification/review gate fails, a policy or approval gate blocks progress, a
-write-set conflict appears, budget expires, or the user explicitly pauses. Do
+write-set conflict appears, an explicit budget expires, or the user explicitly pauses. Do
 not stop after the first subagent result, first green task, first rejected task,
 or first review checkpoint when unrelated ready work remains.
 

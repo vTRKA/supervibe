@@ -21,7 +21,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent improvement loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents  never auto-dispatches |
-| Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a bounded, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
+| Autonomous loop | `/supervibe-loop` turns a reviewed plan, PRD, epic, or validation request into a goal-until-complete, visible, cancellable agent loop with task graph scheduling, work-item templates, provider permission audit, side-effect ledger, and 9/10 confidence completion |
 | Security audit loop | `/supervibe-security-audit` runs read-only multi-agent AppSec/dependency/ops/AI security review, ranks vulnerabilities, then optionally plans, executes, and re-audits remediation to a 10/10 gate |
 | Prompt AI engineering | Optional `prompt-ai-engineer` add-on strengthens prompts, agent instructions, intent routing, structured outputs, tool policies, evals, and prompt-injection defenses |
 | Visible context intelligence | Context packs show memory/RAG/codegraph/repo-map citations, confidence delta, omitted context, repair actions, and no-silent-done lifecycle evidence |
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.98 initialized for this project
+[supervibe] welcome  plugin v2.0.99 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -205,7 +205,7 @@ The trigger-safe path is explicit and chainable:
 2. `/supervibe-plan --from-brainstorm <spec-path>` writes the plan from that brainstorm spec, then asks for the review loop before execution.
 3. `/supervibe-plan --review <plan-path>` reviews plan quality, safety, missing checks, and README impact.
 4. `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` splits the reviewed plan into atomic work items and an epic.
-5. `/supervibe-loop --guided --max-duration 3h` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
+5. `/supervibe-loop --guided` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. It keeps working until goals are complete unless a policy, approval, verification, no-progress, user stop, or explicit budget gate blocks progress. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
 
@@ -235,9 +235,9 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
 /supervibe-plan --review .supervibe/artifacts/plans/example.md
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
-/supervibe-loop --guided --max-duration 3h
-/supervibe-loop --epic example-epic --worktree --max-duration 3h
-/supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts --max-duration 3h
+/supervibe-loop --guided
+/supervibe-loop --epic example-epic --worktree
+/supervibe-loop --epic example-epic --worktree --assigned-task T1 --assigned-write-set src/auth.ts
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
 /supervibe-loop --stop example-run
@@ -246,7 +246,9 @@ Copy-paste path from brainstorm -> reviewed plan -> atomized epic -> safe execut
 Execution modes are explicit: `--dry-run`, `--guided`, `--manual`,
 `--fresh-context --tool codex|claude|gemini|opencode`, and optional worktree-backed
 execution with `--worktree`. A single current-session run is valid when the user
-does not need isolation or parallel sessions. Provider prompts, rate limits, network/MCP approvals,
+does not need isolation or parallel sessions. Add `--max-duration`, `--max-loops`,
+or provider budget flags only when the user explicitly wants a budget stop;
+otherwise `/supervibe-loop` is goal-until-complete. Provider prompts, rate limits, network/MCP approvals,
 secrets, billing, deploys, production mutations, and credential changes are
 never bypassed. Missing credentials, missing provider permissions,
 CI/external access failures, worktree conflicts, policy stops, stale claims, and
@@ -416,7 +418,7 @@ Slash commands (run inside an AI CLI session). The normal user path is intention
 | `/supervibe-brainstorm <topic>` | Explicit entry to the brainstorming flow; produces an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn an approved spec into a phased TDD implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with explicit 10/10 confidence gates. Supports `--dry-run` and `--resume` |
-| `/supervibe-loop --request/--plan/--from-prd` | Bounded autonomous loop with graph scheduler, status/resume/stop, doctor, graph export, and policy gates |
+| `/supervibe-loop --request/--plan/--from-prd` | Goal-until-complete autonomous loop with graph scheduler, status/resume/stop, doctor, graph export, and policy gates |
 | `/supervibe-security-audit` | Read-only multi-agent security audit, prioritized vulnerability backlog, optional remediation plan, execute, and re-audit loop to 10/10 |
 | `/supervibe-ui` | Local browser/IDE-webview control plane with Kanban for epics, tasks, agent claims, loop state, waves, context packs, reports, and safe local actions |
 | `/supervibe-gc` | Reversible dry-run-first cleanup for completed work-item graphs and stale/superseded memory |

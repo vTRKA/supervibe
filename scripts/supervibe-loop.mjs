@@ -175,7 +175,7 @@ async function main() {
       request: args.request || args._.join(" "),
       epicId: args.epic || "<epic-id>",
       graphPath: args.file,
-      maxDuration: args["max-duration"] || "3h",
+      maxDuration: args["max-duration"] || "until-goal-complete",
       tool: args.tool || "codex",
       dryRun: !args.apply,
     });
@@ -718,7 +718,7 @@ async function main() {
     dryRun: Boolean(args["dry-run"]),
     fixture: args.fixture,
     maxLoops: args["max-loops"],
-    maxRuntimeMinutes: args["max-runtime-minutes"],
+    maxRuntimeMinutes: args["max-runtime-minutes"] || parseDurationToMinutes(args["max-duration"]),
     environmentTarget: args.environment,
     executionMode: deriveExecutionMode(args),
     commitPerTask: Boolean(args["commit-per-task"]),
@@ -849,7 +849,7 @@ async function maybePrepareWorktreeSession(args, rootDir) {
     assignedWaveId,
     assignedTaskIds,
     assignedWriteSet,
-    maxRuntimeMinutes: args["max-runtime-minutes"] || parseDurationToMinutes(args["max-duration"]) || 180,
+    maxRuntimeMinutes: args["max-runtime-minutes"] || parseDurationToMinutes(args["max-duration"]),
     status: "ready",
   });
   const upsert = args["dry-run"]
@@ -945,7 +945,7 @@ Execution modes:
   --fresh-context --tool codex|claude|gemini|opencode
   --provider-matrix
   --commit-per-task
-  --worktree --epic <epic-id> --max-duration 3h
+  --worktree --epic <epic-id> [--max-duration 3h]
   --worktree --epic <epic-id> --assigned-task T1 --assigned-write-set src/file.ts
   --worktree-existing .worktrees/<session>
   --resume-session <session-id>`);

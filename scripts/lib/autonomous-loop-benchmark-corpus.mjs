@@ -19,6 +19,10 @@ export const REQUIRED_BENCHMARK_CASES = Object.freeze([
   "docs-only-change",
   "release-prep",
   "policy-stop",
+  "verifier-rejection",
+  "stale-worktree",
+  "scope-creep-stop",
+  "goal-until-complete",
   "resume-after-compaction",
 ]);
 

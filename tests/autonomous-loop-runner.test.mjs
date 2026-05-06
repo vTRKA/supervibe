@@ -126,6 +126,11 @@ test("runner sizes default loop budget for plan tasks", async () => {
   assert.equal(result.status, "COMPLETE");
   assert.equal(result.state.tasks.length, 21);
   assert.equal(result.stopReason, null);
+  assert.equal(result.state.preflight.run_until, "goal-complete");
+  assert.equal(result.state.preflight.max_loops, null);
+  assert.equal(result.state.preflight.max_runtime_minutes, null);
+  assert.equal(result.state.budget_remaining.loops, null);
+  assert.equal(result.state.budget_remaining.runtimeMinutes, null);
   assert.equal(result.state.final_acceptance.score, 10);
   assert.equal(result.state.scheduler.graph_summary.complete, 21);
   assert.ok(result.state.scheduler.snapshots.length >= 1);

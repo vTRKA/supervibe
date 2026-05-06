@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.99] - 2026-05-07
+
+### Added
+
+- Added autonomous loop chaos eval coverage for verifier rejection, stale
+  worktree sessions, unapproved scope expansion, and goal-until-complete runs.
+- Added file-local contract extraction to context packs so workers see
+  module-level invariants and forbidden changes before editing.
+
+### Changed
+
+- Made `/supervibe-loop` goal-until-complete by default with no implicit
+  max-duration or max-loop budget; explicit budgets remain opt-in stop gates.
+- Hardened work-item and loop claim leases with conflict evidence, longer
+  default leases, and safe stale-claim recovery.
+- Updated release and host manifest versions to 2.0.99.
+
 ## [2.0.98] - 2026-05-07
 
 ### Added

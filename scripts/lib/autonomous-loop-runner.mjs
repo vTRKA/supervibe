@@ -60,7 +60,6 @@ export async function runAutonomousLoop(options = {}) {
   const tasks = taskGraph.tasks;
   const budget = createBudget({
     ...options,
-    maxLoops: options.maxLoops ?? (options.plan ? Math.max(20, tasks.length) : undefined),
   });
   const preflight = buildPreflight({
     request: options.request || options.plan || "",

@@ -34,10 +34,10 @@ const HANDOFFS = {
   execution_preflight: {
     phase: "execution_preflight",
     nextPhase: "execution",
-    command: "/supervibe-loop --epic --worktree --max-duration 3h",
+    command: "/supervibe-loop --epic --worktree",
     skill: "supervibe:using-git-worktrees",
     artifact: "approved-preflight",
-    nextQuestion: "Шаг 1/1: стартовать bounded run с stop/resume/status контролями?",
+    nextQuestion: "Шаг 1/1: стартовать goal-until-complete run со stop/resume/status контролями?",
   },
 };
 
