@@ -292,6 +292,17 @@
       "requiresHealthGate": true
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "rag-index-health"
+        ],
+        "sourceChunkIds": [
+          "scripts/build-code-index.mjs#resume"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "rag-index-health"
@@ -331,6 +342,17 @@
       "command": "/supervibe-plan --from-brainstorm"
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-workflow-router.mjs#brainstorm"
+        ],
+        "graphSymbols": [
+          "routeWorkflowRequest"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "dialogue-contract"
@@ -370,6 +392,17 @@
       "command": "/supervibe-plan --review"
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "plan-review-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-workflow-router.mjs#review"
+        ],
+        "graphSymbols": [
+          "routeWorkflowRequest"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "plan-review-contract"
@@ -409,6 +442,17 @@
       "command": "/supervibe-loop --from-plan --create-epic"
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "work-item-graph"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-plan-to-work-items.mjs#atomize"
+        ],
+        "graphSymbols": [
+          "atomizePlanToWorkItems"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "work-item-graph"
@@ -449,6 +493,17 @@
       "requiresLifecycleState": true
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "design-readiness-handoff-boundary"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-design.md#target"
+        ],
+        "graphSymbols": [
+          "buildDesignAgentPlan"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "design-readiness-handoff-boundary"
@@ -488,6 +543,17 @@
       "command": "/supervibe-security-audit"
     },
     "quality": {
+      "gold": {
+        "memoryIds": [
+          "release-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-release-security-audit.mjs#gate"
+        ],
+        "graphSymbols": [
+          "runReleaseSecurityAudit"
+        ]
+      },
       "retrieved": {
         "memoryIds": [
           "release-hardening"

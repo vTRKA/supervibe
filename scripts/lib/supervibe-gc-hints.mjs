@@ -1,4 +1,5 @@
 import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
+import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
 
 export async function buildGcHints({
@@ -8,20 +9,25 @@ export async function buildGcHints({
   staleOpenDays = 90,
   includeStaleOpen = false,
 } = {}) {
-  const [workItems, memory] = await Promise.all([
+  const [workItems, memory, artifacts] = await Promise.all([
     scanWorkItemGc({ rootDir, now, retentionDays, staleOpenDays, includeStaleOpen }),
     scanMemoryGc({ rootDir, now }),
+    scanSupervibeArtifactGc({ rootDir, now, retentionDays }),
   ]);
   const memorySchedule = await evaluateMemoryGcSchedule({ rootDir, now, scan: memory });
-  const needsAttention = workItems.summary.candidates > 0 || memory.summary.candidates > 0;
+  const artifactSchedule = await evaluateArtifactGcSchedule({ rootDir, now, scan: artifacts });
+  const needsAttention = workItems.summary.candidates > 0 || memory.summary.candidates > 0 || artifacts.summary.candidates > 0;
   return {
     schemaVersion: 1,
     generatedAt: now,
     needsAttention,
     workItems: summarizeWorkItems(workItems),
     memory: { ...summarizeMemory(memory), schedule: memorySchedule },
+    artifacts: { ...summarizeArtifacts(artifacts), schedule: artifactSchedule },
     nextAction: memorySchedule.due
       ? memorySchedule.nextAction
+      : artifactSchedule.due && artifacts.summary.candidates > 0
+        ? artifactSchedule.nextAction
       : needsAttention
         ? "run npm run supervibe:gc -- --all --dry-run"
       : "no cleanup needed",
@@ -36,10 +42,28 @@ export function formatGcHints(hints = {}) {
     `WORK_ITEM_TOP: ${(hints.workItems?.top || []).map((item) => `${item.graphId}:${item.reason}`).join(",") || "none"}`,
     `MEMORY_CANDIDATES: ${hints.memory?.candidates || 0}`,
     `MEMORY_TOP: ${(hints.memory?.top || []).map((item) => `${item.id}:${item.reason}`).join(",") || "none"}`,
+    `ARTIFACT_CANDIDATES: ${hints.artifacts?.candidates || 0}`,
+    `ARTIFACT_ACTIVE_NOISE: ${hints.artifacts?.activeNoise || 0}`,
+    `ARTIFACT_TOP: ${(hints.artifacts?.top || []).map((item) => `${item.relPath}:${item.reason}`).join(",") || "none"}`,
+    `ARTIFACT_GC_DUE: ${Boolean(hints.artifacts?.schedule?.due)}`,
+    `ARTIFACT_GC_NEXT: ${hints.artifacts?.schedule?.nextRunAt || "unknown"}`,
     `MEMORY_GC_DUE: ${Boolean(hints.memory?.schedule?.due)}`,
     `MEMORY_GC_NEXT: ${hints.memory?.schedule?.nextRunAt || "unknown"}`,
     `NEXT_ACTION: ${hints.nextAction || "inspect status"}`,
   ].join("\n");
+}
+
+function summarizeArtifacts(scan) {
+  return {
+    scanned: scan.summary?.scanned || 0,
+    candidates: scan.summary?.candidates || 0,
+    activeNoise: scan.summary?.activeNoise || 0,
+    top: (scan.candidates || []).slice(0, 5).map((candidate) => ({
+      relPath: candidate.relPath,
+      reason: candidate.reason,
+      ageDays: candidate.ageDays,
+    })),
+  };
 }
 
 function summarizeWorkItems(scan) {

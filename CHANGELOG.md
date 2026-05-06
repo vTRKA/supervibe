@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.96] - 2026-05-06
+
+### Added
+
+- Added artifact GC for stale receipt archives, preview logs, backup files,
+  preview runtime state, and old unreferenced agent outputs under `.supervibe`.
+- Added `sync-approved-prototype-state` to repair approved prototype drift across
+  `config.json`, `design-flow-state.json`, and design-system `manifest.json`.
+- Added approval-time generation for prototype review artifacts and
+  `_reviews/quality-gate.json` from browser verification evidence.
+- Added `supervibe:workflow-check`, `supervibe:artifact-gc`, and a tracked
+  agent-workflow hardening TODO.
+
+### Changed
+
+- `workflow-receipt prune-stale` now archives drifted receipts under
+  `.supervibe/.archive/` instead of active project memory.
+- Design agent continuation now runs an index-health preflight before durable
+  design dispatch/write flows.
+- Added a `commerce-dossier-dark` palette choice for approved dark editorial
+  design-system variants.
+- Updated release and host manifest versions to 2.0.96.
+
+### Fixed
+
+- Restored context-quality precision in the scenario suite by adding explicit
+  gold sets to all retrieved user-flow cases.
+- Extended generated `.gitignore` policy so runtime/cache `.supervibe` files do
+  not become durable source-of-truth artifacts.
+
 ## [2.0.95] - 2026-05-06
 
 ### Added

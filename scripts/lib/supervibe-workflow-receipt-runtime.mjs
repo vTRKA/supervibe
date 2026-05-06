@@ -339,7 +339,7 @@ export async function pruneStaleWorkflowReceipts({
     .filter((item) => item.driftIssues.length > 0);
   const archived = [];
   if (apply) {
-    const archiveRoot = join(rootDir, ".supervibe", "memory", "workflow-receipts-stale", sanitizeId(timestamp));
+    const archiveRoot = join(rootDir, ".supervibe", ".archive", "workflow-receipts-stale", sanitizeId(timestamp));
     for (const item of stale) {
       const source = join(rootDir, ...item.receipt.__file.split("/"));
       const target = join(archiveRoot, ...item.receipt.__file.split("/"));

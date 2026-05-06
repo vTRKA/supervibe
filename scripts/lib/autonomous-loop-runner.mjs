@@ -34,6 +34,7 @@ import { createVerificationMatrix, validateEvidenceCoverage } from "./autonomous
 import { runFreshContextAttempt } from "./autonomous-loop-fresh-context-executor.mjs";
 import { createToolAdapter, normalizeExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
+import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
 
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
@@ -91,6 +92,8 @@ export async function runAutonomousLoop(options = {}) {
   const progressEntries = [];
   const pluginVersion = await loadPluginVersion(rootDir);
   const retentionPolicy = createRetentionPolicy(options);
+  const artifactGcScan = await scanSupervibeArtifactGc({ rootDir });
+  const artifactGcSchedule = await evaluateArtifactGcSchedule({ rootDir, scan: artifactGcScan });
   const memoryWritePolicy = {
     redaction: true,
     stale_filter: true,
@@ -560,6 +563,13 @@ export async function runAutonomousLoop(options = {}) {
   state.failure_packets = failurePackets;
   state.autonomy_readiness = scoreAutonomyReadiness({ tasks, contracts, preflight, gates });
   state.retention_policy = retentionPolicy;
+  state.artifact_gc = {
+    scheduled: true,
+    due: artifactGcSchedule.due,
+    candidates: artifactGcScan.summary?.candidates || 0,
+    activeNoise: artifactGcScan.summary?.activeNoise || 0,
+    nextAction: artifactGcSchedule.nextAction,
+  };
   state.execution_mode = executionMode;
   state.commit_per_task = commitPerTask;
   state.tool_adapters = preflight.tool_adapters;
@@ -660,6 +670,7 @@ Environment: ${preflight.environment_target}
 - Policy risk: ${state.policy_risk}
 - Approval lease: ${preflight.approval_lease.scope}
 - Policy profile: ${preflight.policy_profile?.name || "none"} (${preflight.policy_profile?.role || "no role"})
+- Artifact GC: ${state.artifact_gc?.candidates || 0} candidate(s), due=${state.artifact_gc?.due === true}, next=${state.artifact_gc?.nextAction || "none"}
 - Final acceptance: ${finalAcceptance.pass ? "pass" : "fail"}
 - Final acceptance score: ${finalAcceptance.score}/10
 - Provenance task ids: ${provenance.taskIds.length}

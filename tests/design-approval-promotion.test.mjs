@@ -58,6 +58,11 @@ test("approval promotion moves design-system and prototype state from candidate 
       approval: "candidate",
       status: "candidate",
       mode: "full-prototype-pipeline",
+      designWizard: {
+        decisions: {
+          palette_mood: { choiceId: "commerce-dossier-dark" },
+        },
+      },
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
@@ -81,6 +86,8 @@ test("approval promotion moves design-system and prototype state from candidate 
     assert.equal(manifest.status, "approved");
     assert.equal(manifest.tokensState, "final");
     assert.ok(REQUIRED_SECTIONS.every((section) => manifest.sections[section] === "approved"));
+    assert.equal(manifest.approvedVariant, "commerce-dossier-dark");
+    assert.equal(manifest.variants["commerce-dossier-dark"].status, "approved");
 
     const flow = await readJson(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json");
     assert.equal(flow.design_system.status, "approved");
@@ -151,6 +158,55 @@ test("approval promotion blocks prototype approval when review gate has blocker 
     assert.equal(config.approval, "candidate");
     assert.equal(config.status, "candidate");
     assert.equal(existsSync(join(root, ".supervibe/artifacts/prototypes/agent-chat/.approval.json")), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("approval promotion materializes review and quality-gate artifacts from browser evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-approval-browser-evidence-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", `${JSON.stringify({
+      status: "candidate",
+      tokensState: "candidate",
+      sections: Object.fromEntries(REQUIRED_SECTIONS.map((section) => [section, "candidate"])),
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", `${JSON.stringify({
+      creative_direction: { status: "selected" },
+      design_system: {
+        status: "candidate",
+        approved_sections: [],
+        sections: Object.fromEntries(REQUIRED_SECTIONS.map((section) => [section, { status: "candidate" }])),
+      },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
+      approval: "candidate",
+      status: "candidate",
+      mode: "full-prototype-pipeline",
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_verification/browser.json", `${JSON.stringify({
+      pass: true,
+      score: 9.4,
+      summary: "desktop and mobile visual verification passed",
+    }, null, 2)}\n`);
+
+    const result = await promoteDesignApprovalState(root, {
+      slug: "agent-chat",
+      approvedBy: "test-user",
+      approvedAt: "2026-05-03T12:00:00.000Z",
+      feedbackHash: "sha256:test",
+    });
+
+    assert.equal(result.pass, true);
+    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md"));
+    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md"));
+    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json"));
+
+    const qualityGate = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json");
+    assert.equal(qualityGate.pass, true);
+    assert.equal(qualityGate.approvalAllowed, true);
+    assert.equal(qualityGate.missingRequiredReviews.length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

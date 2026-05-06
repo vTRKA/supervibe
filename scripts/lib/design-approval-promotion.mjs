@@ -8,8 +8,16 @@ import {
   evaluateDesignQualityGate,
 } from "./design-quality-gate-aggregator.mjs";
 import {
+  ensureDesignReviewArtifactsFromEvidence,
+  writeDesignQualityGateArtifact,
+} from "./design-review-artifacts.mjs";
+import {
   buildDesignPrototypeStageTriage,
 } from "./design-workflow-status.mjs";
+import {
+  promoteManifestVariant,
+  resolveApprovedDesignSystemVariant,
+} from "./design-workflow-state-sync.mjs";
 import {
   artifactRoot,
 } from "./supervibe-artifact-roots.mjs";
@@ -44,7 +52,25 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
     const prototypeRoot = join(prototypesRoot, slug);
     if (existsSync(prototypeRoot)) {
       if (prototypeArtifactExists(prototypeRoot) && approvalScope !== "design-system-only") {
+        const reviewArtifacts = await ensureDesignReviewArtifactsFromEvidence(rootDir, {
+          slug,
+          reviewedBy: approvedBy,
+          reviewedAt: approvedAt,
+        });
+        createdFiles.push(...reviewArtifacts.createdFiles);
+        updatedFiles.push(...reviewArtifacts.updatedFiles);
         const qualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
+        const qualityGatePath = join(prototypeRoot, "_reviews", "quality-gate.json");
+        const qualityGateExisted = existsSync(qualityGatePath);
+        const qualityGateArtifact = await writeDesignQualityGateArtifact(rootDir, {
+          slug,
+          qualityGate,
+          generatedAt: approvedAt,
+        });
+        if (qualityGateArtifact.written) {
+          (qualityGateExisted ? updatedFiles : createdFiles).push(qualityGateArtifact.path);
+          updatedFiles.push(qualityGateArtifact.path);
+        }
         if (!qualityGate.approvalAllowed) {
           issues.push(`prototype quality gate blocked approval: blockers=${qualityGate.blockerCount}, high=${qualityGate.highCount}`);
           for (const issue of qualityGate.issues) {
@@ -60,6 +86,11 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
         await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await writePrototypeApproval(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await promoteMarkdownStatuses(rootDir, prototypeRoot, { updatedFiles });
+        await promoteApprovedPrototypeVariant(rootDir, designSystemRoot, prototypeRoot, {
+          slug,
+          approvedAt,
+          updatedFiles,
+        });
         await writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, { approvedAt, updatedFiles, createdFiles });
       } else {
         await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
@@ -75,6 +106,24 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
     createdFiles: [...new Set(createdFiles)],
     issues,
   };
+}
+
+async function promoteApprovedPrototypeVariant(rootDir, designSystemRoot, prototypeRoot, context) {
+  const manifestPath = join(designSystemRoot, "manifest.json");
+  if (!existsSync(manifestPath)) return;
+  const manifest = await readJson(manifestPath);
+  const config = await readJson(join(prototypeRoot, "config.json"));
+  const approval = await readJson(join(prototypeRoot, ".approval.json"));
+  const variant = resolveApprovedDesignSystemVariant(config || {}, approval || {}, manifest || {});
+  if (!manifest || !variant) return;
+  promoteManifestVariant(manifest, {
+    variant,
+    slug: context.slug,
+    source: rel(rootDir, join(prototypeRoot, ".approval.json")),
+    approvedAt: context.approvedAt,
+  });
+  await writeJson(manifestPath, manifest);
+  context.updatedFiles.push(rel(rootDir, manifestPath));
 }
 
 async function writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, context) {

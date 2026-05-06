@@ -1,13 +1,15 @@
 ---
 description: >-
   Use WHEN cleaning stale completed epics, archived work-item graphs, superseded
-  memory, low-confidence old learnings, or project-memory clutter TO run the
-  reversible Supervibe garbage-collection preview or apply flow.
+  memory, low-confidence old learnings, stale receipt archives, runtime logs, or
+  .supervibe clutter TO run the reversible Supervibe garbage-collection preview
+  or apply flow.
 ---
 
 # /supervibe-gc
 
-Runs local, reversible cleanup for Supervibe work items and project memory.
+Runs local, reversible cleanup for Supervibe work items, project memory, and
+runtime/artifact noise under `.supervibe`.
 Default mode is dry-run. Applying cleanup requires an explicit `--apply`.
 
 ## Invocation
@@ -15,9 +17,11 @@ Default mode is dry-run. Applying cleanup requires an explicit `--apply`.
 ```bash
 /supervibe-gc --work-items
 /supervibe-gc --memory
+/supervibe-gc --artifacts
 /supervibe-gc --all
 /supervibe-gc --work-items --apply
 /supervibe-gc --memory --category learnings --apply
+/supervibe-gc --artifacts --scheduled --apply
 /supervibe-gc --memory --restore <memory-id>
 /supervibe-gc --work-items --restore <graph-id>
 ```
@@ -26,6 +30,7 @@ Equivalent local commands:
 
 ```bash
 npm run supervibe:gc -- --all --dry-run
+npm run supervibe:gc -- --artifacts --scheduled --dry-run
 npm run supervibe:gc -- --memory --restore <memory-id>
 npm run supervibe:gc -- --work-items --restore <graph-id>
 npm run supervibe:work-items-gc -- --dry-run
@@ -46,9 +51,22 @@ Memory GC archives:
 - incidents after retention
 - low-confidence learnings after retention
 
+Artifact GC archives stale or noisy runtime outputs that should not be active
+agent context:
+
+- stale workflow receipt archives under `.supervibe/memory/workflow-receipts-stale/`
+- preview/server logs and preview runtime state
+- backup files such as `.bak`
+- old unreferenced `.supervibe/artifacts/_agent-outputs/*` folders
+
+Receipt-linked agent outputs, code DBs, memory DBs, ledgers, invocation logs, and
+the receipt runtime key are reported as active runtime/cache noise and are not
+auto-archived by artifact GC.
+
 Archives are moved under `.supervibe/memory/**/.archive/` and recorded in JSONL
-archive logs. Archived entries are excluded from active memory and work-item
-views by default.
+archive logs for memory/work-items, or under `.supervibe/.archive/` for artifact
+noise. Archived entries are excluded from active memory and work-item views by
+default.
 
 ## Output Contract
 
@@ -62,6 +80,16 @@ SUPERVIBE_MEMORY_GC
 SCANNED: <n>
 CANDIDATES: <n>
 ACTIVE: <n>
+
+SUPERVIBE_ARTIFACT_GC
+SCANNED: <n>
+CANDIDATES: <n>
+ACTIVE_NOISE: <n>
+
+SUPERVIBE_ARTIFACT_GC_POLICY
+DUE: <true|false>
+INTERVAL_DAYS: <n>
+CANDIDATES: <n>
 ```
 
 Confidence: N/A    Rubric: read-only-research

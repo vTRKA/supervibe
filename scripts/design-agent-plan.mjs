@@ -25,6 +25,10 @@ import {
 import {
   classifyDesignIntent,
 } from "./lib/design-intent-classifier.mjs";
+import {
+  collectIndexHealthPreflight,
+  formatIndexHealthPreflight,
+} from "./lib/supervibe-index-preflight.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(name);
@@ -72,14 +76,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     hostAdapterId: host,
     intake,
   });
+  const indexPreflight = await collectIndexHealthPreflight(projectRoot, { strictGraph: true });
+  const indexBlocked = indexPreflight.ready === false && (planWrites || dispatchHostAgents);
   const prewriteManifest = buildDesignPrewriteManifest(plan, { slug });
-  const nextDispatch = nextDispatchTarget(plan, prewriteManifest.nextProducer, prewriteManifest);
-  const continuation = canonicalDesignContinuation({ plan, prewriteManifest, nextDispatch });
+  const nextDispatch = indexBlocked ? null : nextDispatchTarget(plan, prewriteManifest.nextProducer, prewriteManifest);
+  const continuation = indexBlocked
+    ? indexRepairContinuation({ plan, indexPreflight })
+    : canonicalDesignContinuation({ plan, prewriteManifest, nextDispatch });
 
   if (json) {
     console.log(JSON.stringify({
       intake,
       plan,
+      indexPreflight,
+      indexBlocked,
       prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null,
       continuation,
     }, null, 2));
@@ -97,6 +107,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
+    console.log(formatIndexHealthPreflight(indexPreflight));
     console.log(`NEXT_ACTION: ${continuation.nextAction}`);
     console.log(`NEXT_QUESTION: ${continuation.nextQuestion}`);
     console.log(`NEXT_DISPATCH: ${formatDispatchTarget(nextDispatch)}`);
@@ -111,8 +122,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     console.log(`WIZARD_COVERAGE: ${plan.wizard.coverage.score}`);
     console.log(`WIZARD_BLOCKED_REASON: ${plan.wizard.gates.blockedReason || "none"}`);
-    console.log(`WRITE_GATE_ALLOWED: ${plan.writeGate.durableWritesAllowed === true}`);
-    console.log(`WRITE_GATE_BLOCKED_REASON: ${plan.writeGate.blockedReason || "none"}`);
+    console.log(`WRITE_GATE_ALLOWED: ${plan.writeGate.durableWritesAllowed === true && !indexBlocked}`);
+    console.log(`WRITE_GATE_BLOCKED_REASON: ${formatWriteGateBlockedReason(plan.writeGate, indexBlocked, indexPreflight)}`);
     console.log(`ALLOWED_WRITE_CLASSES: ${plan.writeGate.allowedWriteClasses.join(",")}`);
     if (status) {
       console.log(formatDesignWizardStatus(plan.wizard));
@@ -136,6 +147,41 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`- ${stage.id}: ${stage.agentId || stage.skillId} :: ${stage.reason}`);
     }
   }
+}
+
+function indexRepairContinuation({ plan = {}, indexPreflight = {} } = {}) {
+  return {
+    nextAction: "repair:index-health",
+    nextQuestion: "none",
+    machine: {
+      schemaVersion: 1,
+      command: "/supervibe-design",
+      slug: plan.slug || null,
+      executionMode: plan.executionStatus?.executionMode || null,
+      writeGateAllowed: false,
+      nextAction: "repair:index-health",
+      nextQuestion: "none",
+      nextDispatch: null,
+      nextProducer: null,
+      nextQuestionSource: null,
+      nextQuestionAxis: null,
+      indexHealth: {
+        ready: false,
+        failed: indexPreflight.failed || [],
+        repairCommand: indexPreflight.repairCommand || null,
+        graphRepairCommand: indexPreflight.graphRepairCommand || null,
+      },
+    },
+  };
+}
+
+function formatWriteGateBlockedReason(writeGate = {}, indexBlocked = false, indexPreflight = {}) {
+  const reasons = [];
+  if (writeGate.blockedReason) reasons.push(writeGate.blockedReason);
+  if (indexBlocked) {
+    reasons.push(`code index health is not READY before durable design work: failed=${(indexPreflight.failed || []).join(",") || "unknown"}`);
+  }
+  return reasons.join("; ") || "none";
 }
 
 function namespaceNestedNextLines(text = "", namespace = "STATUS") {

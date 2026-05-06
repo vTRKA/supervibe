@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -351,6 +352,8 @@ test("workflow receipt CLI prune-stale archives drifted receipts and rebuilds le
     assert.equal(result.pass, true);
     assert.equal(result.receipts, 0);
     assert.equal(result.ledgerEntries, 0);
+    assert.equal(existsSync(join(root, ".supervibe", "memory", "workflow-receipts-stale")), false);
+    assert.equal(existsSync(join(root, ".supervibe", ".archive", "workflow-receipts-stale")), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

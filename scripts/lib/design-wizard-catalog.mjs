@@ -106,6 +106,7 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
       choice("graphite-cyan", "Graphite + cyan", "Precise technical signal; can skew cool if overused."),
       choice("graphite-amber", "Graphite + amber", "Warm operational emphasis; higher risk of warning-color confusion."),
       choice("light-first", "Light first", "Best for daily productivity and readability; less cinematic impact."),
+      choice("commerce-dossier-dark", "Commerce dossier dark", "Approved dark editorial/commercial variant; requires explicit contrast and long-reading checks."),
       choice("high-contrast", "High contrast", "Strong accessibility and command feel; must be softened for long sessions."),
     ],
   }),
@@ -1130,6 +1131,7 @@ function aliasesFor(id, label) {
     "graphite-cyan": ["cyan", "blue accent"],
     "graphite-amber": ["amber", "yellow accent"],
     "light-first": ["light theme", "light mode"],
+    "commerce-dossier-dark": ["dark editorial", "dark commerce", "commerce dossier", "dark dossier"],
     "high-contrast": ["contrast", "wcag"],
     "visual-inspiration": ["visual inspiration", "style reference", "in the style of"],
     "functional-only": [
