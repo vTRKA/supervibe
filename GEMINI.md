@@ -27,8 +27,8 @@ Same Supervibe project context, adapted for Gemini CLI:
 - 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - Agent smartness is validated by `npm run validate:agent-content-quality` and
   `npm run validate:agent-tool-use-matrix`, not by padding files to a line count.
-- 55 process skills in `./skills/`, validated by `npm run validate:skill-content-quality`
-- 30 project rules in `./rules/`
+- 56 process skills in `./skills/`, validated by `npm run validate:skill-content-quality`
+- 31 project rules in `./rules/`
 - 17 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
 - Idea-to-production routing starts with `/supervibe-brainstorm`, then `/supervibe-plan --from-brainstorm`, `/supervibe-plan --review`, `/supervibe-loop --atomize-plan`, and only then provider-safe execution.

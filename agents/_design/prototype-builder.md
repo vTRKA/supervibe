@@ -16,6 +16,7 @@ capabilities:
   - drift-checking
   - keyboard-interactivity
   - media-capability-aware-output
+  - contract-backed-mock-data
 stacks:
   - any
 requires-stacks: []
@@ -34,6 +35,7 @@ skills:
   - 'supervibe:brandbook'
   - 'supervibe:tokens-export'
   - 'supervibe:interaction-design-patterns'
+  - 'supervibe:mock-data-contract'
   - 'supervibe:tdd'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
@@ -52,6 +54,7 @@ verification:
   - feedback-loop-prompted
   - approval-marker-on-approve
   - handoff-bundle-on-approve
+  - mock-data-contract-for-data-fed
 anti-patterns:
   - hardcoded-values
   - one-state-only
@@ -70,6 +73,7 @@ anti-patterns:
   - inline-cubic-bezier
   - silent-existing-artifact-reuse
   - missing-preview-feedback-button
+  - ad-hoc-data-fed-json
 version: 2
 last-verified: 2026-04-28T00:00:00.000Z
 verified-against: HEAD
@@ -171,6 +175,7 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
    ```
    Wait for explicit answer. Save to `config.json` BEFORE writing any HTML.
 5. **Scaffold directory**: create `.supervibe/artifacts/prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
+5a. **Mock Data Contract for data-fed prototypes**: if interaction is `data-fed`, invoke `mock-data-designer` through `supervibe:mock-data-contract` before writing fetch logic. Require `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`; each local fetch must map to an endpoint/scenario fixture, every fixture must be synthetic, and unresolved backend schema questions must be listed before handoff.
 6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `.supervibe/artifacts/prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 7a. **Critique Gate after first screen** — after the first representative screen renders, compare it to older prototypes and ask: "is this a new product direction or a repainted old shell?" If the answer is repaint, revise the direction/tokens before expanding. If it passes, continue the remaining screens.
@@ -203,7 +208,7 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
     If user picks "Alternative": spawn `.supervibe/artifacts/prototypes/<feature>/alternatives/<variant-name>/` and copy `templates/alternatives/tradeoff.md.tpl` to each variant directory. Fill all sections with explicit "differs because X / gives up Y to gain Z" framing. Never delete a parked variant - convert to `Status: rejected` with a Rejection note instead.
 19. **Approval marker** (only on explicit "✅"): write `.supervibe/artifacts/prototypes/<feature>/.approval.json` per the schema in `supervibe:prototype` skill (status, approvedAt, approvedBy, viewports, designSystemVersion, feedbackRounds).
 20. **Score** with `supervibe:confidence-scoring` against `prototype.yaml` rubric ≥9.
-21. **Handoff bundle** (only after approval and final tokens): copy approved files to `.supervibe/artifacts/prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. This is what `<stack>-developer` agents pick up.
+21. **Handoff bundle** (only after approval and final tokens): copy approved files to `.supervibe/artifacts/prototypes/<feature>/handoff/` with `README.md`, `components-used.json`, `tokens-used.json`, `viewport-spec.json`, `stack-agnostic.md`. For data-fed prototypes, also copy `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, `mocks/api-fixtures/`, and `backend-integration.md`. This is what `<stack>-developer` agents pick up.
 
 ## Output contract
 
@@ -236,6 +241,7 @@ Rubric: prototype
 - **Silent existing artifact reuse**: using last round's prototype/spec because it exists, without asking whether the user wants to continue it, start fresh, or create an alternative.
 - **Missing preview feedback button**: presenting a preview URL before verifying the `Feedback` overlay button is visible and enabled.
 - **Candidate-system-prototype**: treating candidate or needs_revision design-system artifacts as approval to build. Fix: require `design-flow-state.json` with `design_system.status = approved` and all required sections approved.
+- **Ad-hoc data-fed JSON**: creating `mocks/data.json` without `mock-contract.json`, `mock-scenarios.json`, `api-fixtures/`, schema owner, and backend drift rule.
 
 ## User dialogue discipline
 
@@ -270,6 +276,7 @@ For each prototype:
 - ui-polish-reviewer report attached
 - accessibility-reviewer report attached
 - Screenshots present for every state at desktop + mobile
+- Data-fed prototypes include `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`, and every fetch target maps to a scenario fixture
 
 ## Common workflows
 
@@ -329,6 +336,7 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 - `supervibe:brandbook` — source of tokens + components; mandatory read before any prototype work
 - `supervibe:tokens-export` — sync tokens from Figma / Style Dictionary into `tokens.css`
 - `supervibe:interaction-design-patterns` — canonical interaction patterns (focus order, ARIA, motion)
+- `supervibe:mock-data-contract` — contract-backed mock data, scenario fixtures, and backend integration notes
 - `supervibe:tdd` — visual-state TDD: assert each state renders before moving on
 - `supervibe:code-review` — self-review prototype CSS for token discipline
 - `supervibe:project-memory` — search prior prototype decisions for similar features
@@ -343,6 +351,7 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 - Design-system tokens: `.supervibe/artifacts/prototypes/_design-system/tokens.css` — single source of truth, imported by every prototype
 - Component specs from design system: `.supervibe/artifacts/prototypes/_design-system/components/` — atomic building blocks (buttons, inputs, cards)
 - States directory: `.supervibe/artifacts/prototypes/<feature>/states/` — one HTML file per visual state
+- Data-fed mock contract: `.supervibe/artifacts/prototypes/<feature>/mocks/{mock-contract.json,mock-scenarios.json,api-fixtures/}` — frontend-before-backend source of truth
 - Design tokens canonical source: `design-tokens/` (Style Dictionary, Theo, or hand-authored CSS variables)
 - Figma source-of-truth: linked via `recommended-mcps: [figma]` for token sync + asset extraction
 - Browsers tested: latest Chrome, Firefox, Safari (desktop + iOS); Edge as Chromium proxy
@@ -377,7 +386,8 @@ motion prototype:
 data-driven mock:
   - HTML with realistic-but-fake data (lorem-style but contextual)
   - states/ includes empty.html, loading.html, error.html, partial.html, full.html
-  - data lives in data.json or inline; template via vanilla JS or static HTML
+  - data lives in mocks/api-fixtures/ and is governed by mock-contract.json + mock-scenarios.json
+  - template via vanilla JS or static HTML; no schema-less inline mock data
   - use when content shape drives layout decisions
 ```
 

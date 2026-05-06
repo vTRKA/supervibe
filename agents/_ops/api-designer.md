@@ -238,6 +238,7 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 
 ## Related
 
+- `supervibe:_ops:mock-data-designer` — turns API/schema contracts into frontend-safe mock contracts and scenario fixtures
 - `supervibe:_ops:api-contract-reviewer` — runs lint/diff on PRs; this agent designs the contract
 - `supervibe:_core:architect-reviewer` — reviews surface-level design choices that this agent specifies
 - `supervibe:_core:auth-architect` — auth scheme that this agent's spec references

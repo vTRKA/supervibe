@@ -54,7 +54,7 @@ Existing projects should not be wiped after plugin updates. Run `/supervibe-upda
 
 ## Available agents
 
-Supervibe ships 89 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
+Supervibe ships 90 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
 
 Core examples:
 - `supervibe-orchestrator` routes work, verifies skill/agent selection and keeps the workflow moving.
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.97 initialized for this project
+[supervibe] welcome  plugin v2.0.98 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```

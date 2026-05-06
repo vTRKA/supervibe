@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.98] - 2026-05-07
+
+### Added
+
+- Added `mock-data-designer` and `supervibe:mock-data-contract` for
+  contract-backed mock data, scenario fixtures, and backend integration notes.
+- Added `rules/mock-data-contract.md`, mock-data templates, and
+  `validate:mock-data-contracts` with regression tests.
+
+### Changed
+
+- Extended `/supervibe-design`, `supervibe:prototype`, `prototype-builder`,
+  `supervibe:prototype-handoff`, and prototype-to-production guidance so
+  data-fed prototypes require `mock-contract.json`, `mock-scenarios.json`, and
+  `api-fixtures/` before frontend-before-backend handoff.
+- Updated release and host manifest versions to 2.0.98.
+
 ## [2.0.97] - 2026-05-06
 
 ### Changed

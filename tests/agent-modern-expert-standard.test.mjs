@@ -6,7 +6,7 @@ import matter from "gray-matter";
 
 test("all agents carry the 2026 modern expert standard", async () => {
   const files = await listAgentFiles("agents");
-  assert.equal(files.length, 89);
+  assert.equal(files.length, 90);
 
   const missing = [];
   for (const file of files) {

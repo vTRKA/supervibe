@@ -12,6 +12,7 @@ version: 1
 last-verified: 2026-04-27T00:00:00.000Z
 related-rules:
   - confidence-discipline
+  - mock-data-contract
 ---
 
 # Prototype-to-Production
@@ -23,6 +24,8 @@ Designs approved as prototypes regularly drift during implementation — devs re
 By treating `.supervibe/artifacts/prototypes/` as 1:1 source of truth and measuring drift, we keep design discipline. Approved prototype = contract; production violates at its peril.
 
 Draft prototypes are not production visual contracts. They may communicate the product model, flow, states, evidence, and human decisions, but production visual implementation starts only from `approved prototype + final tokens` in `.supervibe/artifacts/prototypes/<slug>/handoff/`.
+
+Mock data is not production data. For data-fed prototypes, frontend implementation can start before backend only when a Mock Data Contract exists: `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, `mocks/api-fixtures/`, and `handoff/backend-integration.md`. Backend schema drift must be visible before stack developers wire live endpoints.
 
 Concrete consequence of NOT following: approved design is a fiction; stakeholders reject production saying "this isn't what we approved"; rework cycles.
 
@@ -40,15 +43,17 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 1. Build HTML prototype with `supervibe:prototype` skill only after `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` has `design_system.status = approved` and every required section approved
 2. Use approved design-system tokens (`.supervibe/artifacts/prototypes/_design-system/tokens.css`) for draft proof, then final handoff token metadata after visual approval
 3. Render all 8 standard states (resting/hover/active/focus/disabled/loading/empty/error)
-4. Get stakeholder approval (creative-director + user)
+4. For data-fed prototypes, run `supervibe:mock-data-contract` so mock JSON is tied to API/schema ownership, scenario fixtures, and backend drift rules
+5. Get stakeholder approval (creative-director + user)
 
 ### Production transfer phase
 
 1. Frontend developer reads `.supervibe/artifacts/prototypes/<feature>/handoff/`
 2. Confirms `.approval.json` is approved and `manifest.json` has final tokens
-3. Implements 1:1 in framework (React/Vue/Svelte/etc.)
-4. Token references map directly (CSS var → JS theme object)
-5. State implementations match prototype variants
+3. If data-fed, confirms `handoff/mocks/mock-contract.json`, `handoff/mocks/mock-scenarios.json`, `handoff/mocks/api-fixtures/`, and `handoff/backend-integration.md` exist
+4. Implements 1:1 in framework (React/Vue/Svelte/etc.)
+5. Token references map directly (CSS var → JS theme object)
+6. State implementations match prototype variants and mock scenario fixtures
 
 ### Drift verification phase
 
@@ -62,6 +67,7 @@ This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., 
 - Pixel-diff for static comparison (Pixelmatch / Resemble.js)
 - Token coverage check (grep for hex values in production CSS — should be 0 outside theme file)
 - State coverage check (Storybook or Chromatic for state matrix)
+- Contract drift check for data-fed work (mock-contract.json vs current backend schema/API spec)
 
 ## Examples
 
@@ -98,6 +104,7 @@ Why this is good: 1:1 token reference; brand change = single token swap.
 ## Related rules
 
 - `confidence-discipline` — drift = score < 9 → blocked
+- `mock-data-contract` — data-fed scenario fixtures and backend integration notes
 
 ## See also
 

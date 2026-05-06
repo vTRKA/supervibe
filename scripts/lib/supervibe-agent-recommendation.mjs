@@ -66,7 +66,7 @@ const GROUPS = Object.freeze([
   group("cache-redis", "Redis cache and queues", ["redis-architect", "job-scheduler-architect"], ["minimal", "full-stack"], ["redis"]),
   group("search-elasticsearch", "Elasticsearch search", ["elasticsearch-architect"], ["minimal", "full-stack"], ["elasticsearch"]),
   group("graphql-api", "GraphQL API", ["graphql-schema-designer", "api-contract-reviewer"], ["minimal", "full-stack"], ["graphql"]),
-  group("product-design", "Product and design", ["product-manager", "creative-director", "ux-ui-designer", "copywriter", "prototype-builder", "ui-polish-reviewer"], ["product-design", "full-stack"]),
+  group("product-design", "Product and design", ["product-manager", "creative-director", "ux-ui-designer", "copywriter", "prototype-builder", "mock-data-designer", "ui-polish-reviewer"], ["product-design", "full-stack"]),
   group("ops-security", "Operations and security", ["security-auditor", "performance-reviewer", "dependency-reviewer"], ["full-stack"]),
   group("research", "Research-heavy support", ["repo-researcher", "security-researcher", "dependency-reviewer"], ["research-heavy"]),
 ]);
@@ -88,6 +88,7 @@ const ADD_ON_AGENTS = Object.freeze({
     "accessibility-reviewer",
     "ux-ui-designer",
     "prototype-builder",
+    "mock-data-designer",
     "ui-polish-reviewer",
     "competitive-design-researcher",
   ],

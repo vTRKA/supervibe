@@ -109,6 +109,8 @@ Quality Gate Aggregator: receipt validation is provenance only. Prototype approv
 
 Prototype-builder confidence discipline: before `prototype-builder` may record `confidence >= 9`, input or verification evidence must cover no overflow at target viewport, focus trap, Escape behavior, `aria-activedescendant`, `aria-selected`, native button semantics, disabled/blocked composer during approval, visible focus, and reduced motion. Missing evidence keeps the stage below 9 and blocks a 10/10 approval claim.
 
+Mock Data Contract gate: every data-fed prototype must run `supervibe:mock-data-contract` through `mock-data-designer` before the prototype can claim frontend-before-backend readiness. Local JSON alone is diagnostic only. Durable data-fed work requires `.supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json`, `mock-scenarios.json`, `api-fixtures/`, and synthetic-data/PII notes. If no OpenAPI, GraphQL, JSON Schema, API designer output, or data-model source exists, mark the contract `provisional`, list backend questions, and cap confidence below 9 until the backend schema owner confirms it. Handoff must copy the mock bundle into `handoff/mocks/` and include `handoff/backend-integration.md`; any backend schema, pagination, validation, permission, or error-envelope drift requires a mock contract update before stack-developer handoff.
+
 Visual regression is part of the design gate, not a nice-to-have. For desktop/Tauri/Electron, capture and review screenshots at `1920x1080`, `1440x900`, and `1280x800`, then run DOM overflow, text overlap, contrast audit, focus-visible, reduced-motion, and Tauri webview smoke checks. Web flows include mobile `375x812`, `1440x900`, and `1920x1080`. Styleboard QA is first-class: before section approval, run the styleboard review plan emitted by the wizard (`screenshot-render`, `canvas-nonblank`, `dom-overflow`, `text-overlap`, `contrast-audit`, `focus-visible`, `reduced-motion`) and save evidence next to the design-system review packet.
 
 Run the unified workflow validator before claiming design workflow completion:
@@ -516,6 +518,7 @@ Both skills enforce:
 - All animations from `.supervibe/artifacts/prototypes/_design-system/motion.css` (no inline cubic-beziers)
 - Video only if `config.json.mediaCapabilities.video === true`; otherwise use CSS/WAAPI, SVG/Lottie specs, storyboard frames, or static poster alternatives.
 - One question at a time when clarification needed
+- Data-fed prototypes must include `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, `mocks/api-fixtures/`, and a `supervibe:mock-data-contract` status before claiming readiness for frontend-before-backend work
 
 After the first representative screen is rendered, run the **Critique Gate** before expanding the rest of the flow: "is this a new product direction or a repainted old shell?" If it reads as a repaint, revise brand direction/tokens first. If the critique passes, continue building the remaining screens without turning the gate into an unnecessary stop.
 
@@ -592,6 +595,8 @@ When the user explicitly approves the artifact:
    ├── components-used.json       ← inventory: which design-system components, with file:line refs
    ├── tokens-used.json           ← inventory: which design tokens (color/space/radius/motion) consumed
    ├── viewport-spec.json         ← exact breakpoints + container queries used
+   ├── mocks/                     ← mock-contract.json, mock-scenarios.json, api-fixtures/ for data-fed prototypes
+   ├── backend-integration.md     ← endpoint mapping, backend questions, switch-to-live rule
    └── stack-agnostic.md          ← per-stack adapter hints (React component skeleton, Vue SFC skeleton, Next.js page skeleton — all derivable from this prototype)
    ```
 
@@ -618,6 +623,7 @@ Execution:    executionMode <inline | real-agents | hybrid | agent-required-bloc
 Spec:         .supervibe/artifacts/prototypes/<slug>/spec.md
 Copy:         .supervibe/artifacts/prototypes/<slug>/content/copy.md
 Prototype:    .supervibe/artifacts/prototypes/<slug>/index.html
+Mock data:    <N/A | provisional | api-backed | schema-backed | data-model-backed> .supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json
 Viewports:    [375, 1440]
 Preview URL:  http://localhost:NNNN  (PID: ...; idle-shutdown 30 min)
 Reviews:      polish (N issues) + a11y (M violations) [+ seo if landing]
@@ -647,6 +653,7 @@ Rubric:     prototype
 - `copywriter` — Stage 4 copy
 - `prototype-builder` + `supervibe:prototype` / `supervibe:landing-page` — Stage 5 native build
 - `supervibe:preview-server` — Stage 6 live URL
+- `mock-data-designer` + `supervibe:mock-data-contract` — data-fed mock contracts, scenarios, fixtures, backend integration notes
 - `ui-polish-reviewer` + `accessibility-reviewer` + `seo-specialist` — Stage 6 reviews
 - `supervibe:tokens-export` — when downstream stack picked, exports tokens to its format
 - `<stack>-developer` agents (laravel / nextjs / vue / etc.) — pick up `handoff/` after Stage 8

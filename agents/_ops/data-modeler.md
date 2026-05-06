@@ -249,6 +249,7 @@ Do NOT implement migrations (defer to service team).
 
 ## Related
 
+- `supervibe:_ops:mock-data-designer` — uses entity invariants to keep provisional mock contracts honest before backend APIs exist
 - `supervibe:_ops:db-reviewer` — query/index/migration review; this agent designs the shape
 - `supervibe:_core:architect-reviewer` — overall system shape including data ownership
 - `supervibe:_ops:api-designer` — resource shape exposed in API maps to data model

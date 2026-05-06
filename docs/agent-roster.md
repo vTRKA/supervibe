@@ -2,7 +2,7 @@
 
 This file is generated from `agents/**/*.md` frontmatter. It is the human-readable map used by genesis, README onboarding, and host instruction files so users can see which specialists exist and what each one is responsible for.
 
-Total agents: 89
+Total agents: 90
 
 ## Core workflow
 
@@ -49,6 +49,7 @@ Total agents: 89
 - `job-scheduler-architect` - Use BEFORE introducing background jobs, queues, or scheduled tasks to choose delivery semantics, retry policy, and queue technology. Stacks: any.
 - `llm-evals-engineer` - Use WHEN building or reviewing LLM, prompt, agent, RAG, tool-use, routing, safety, or regression eval suites. Stacks: ai, llm, any.
 - `llm-rag-architect` - Use WHEN designing, reviewing, or repairing LLM retrieval, RAG, embeddings, chunking, reranking, context packing, citation quality, memory retrieval, or graph-augmented context systems. Stacks: ai, llm, any.
+- `mock-data-designer` - Use WHEN a prototype, frontend handoff, or backend integration needs realistic mock data tied to API/schema contracts before backend is ready. Stacks: any.
 - `model-ops-engineer` - Use WHEN designing or reviewing model selection, local/hosted inference, latency and cost budgets, model rollout, fallback, prompt/model versioning, eval-to-release promotion, or AI production operations. Stacks: ai, llm, any.
 - `network-router-engineer` - Use WHEN diagnosing or planning work on routers, switches, Wi-Fi gateways, firewalls, NAT, VPN, DNS/DHCP, VLANs, routing stability, or ISP edge issues. Defaults to read-only diagnostics and requires explicit scoped ap... Stacks: network, any.
 - `observability-architect` - Use BEFORE shipping a service to production to design tracing, metrics, logs, SLOs, and on-call so incidents are detectable and debuggable. Stacks: any.

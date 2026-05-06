@@ -21,7 +21,7 @@ prerequisites:
 emits-artifact: handoff-bundle
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 1.1
+version: 1.2
 last-verified: 2026-04-28T00:00:00.000Z
 ---
 
@@ -49,6 +49,7 @@ NOT for:
 4. **Verbatim copy of approved files.** No "improvements" during handoff — the prototype is already approved as-is.
 5. **Inventory + traceability.** Every component used + every token consumed listed with file:line refs so downstream developer doesn't have to grep.
 6. **No competing prototypes.** If multiple alternatives remain active, pick one approved prototype and mark the rest parked/rejected before claiming ready-for-development.
+7. **Mock contract for data-fed prototypes.** If `config.json.interaction === "data-fed"` or local fetches reference `mocks/`, the handoff must include `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, `mocks/api-fixtures/`, and `backend-integration.md`.
 
 ## Expert Operating Standard
 
@@ -60,7 +61,8 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 2. Read `.supervibe/artifacts/prototypes/<slug>/config.json` for declared viewports, interaction depth, structure.
 3. Read `.supervibe/artifacts/prototypes/_design-system/manifest.json` to confirm system version matches `approval.designSystemVersion` and tokens are final. If mismatch (system was updated after approval) → WARN user; ask whether to re-approve against new system OR proceed with stale snapshot only when final token state is preserved.
 4. Check `.supervibe/artifacts/prototypes/<slug>/alternatives/` and sibling candidate prototypes. If competing prototypes are still active, STOP until exactly one source is approved and the rest are parked/rejected.
-5. Read every file in `.supervibe/artifacts/prototypes/<slug>/` to inventory components and tokens used.
+5. For data-fed prototypes, read `.supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json`, `mock-scenarios.json`, and `api-fixtures/`. If missing, STOP and run `supervibe:mock-data-contract` before handoff.
+6. Read every file in `.supervibe/artifacts/prototypes/<slug>/` to inventory components and tokens used.
 
 ## Decision tree
 
@@ -73,6 +75,9 @@ Design-system manifest is missing, candidate, or newer than approval
 
 Multiple candidate prototypes remain active for the same surface
   -> STOP until one source is approved and the rest are parked or rejected.
+
+Data-fed prototype lacks mock-contract.json, mock-scenarios.json, api-fixtures/, or backend-integration.md
+  -> STOP and route through supervibe:mock-data-contract before stack-developer handoff.
 
 Target is web, chrome-extension, electron, tauri, or mobile-native
   -> Generate the stack-agnostic bundle plus the target-specific adapter required by config.
@@ -105,6 +110,8 @@ Handoff output is produced by an executable producer
 ├── components-used.json     ← inventory (see Stage 3)
 ├── tokens-used.json         ← inventory (see Stage 4)
 ├── viewport-spec.json       ← exact breakpoints + container queries used
+├── mocks/                   ← copied mock-contract.json, mock-scenarios.json, api-fixtures/ for data-fed prototypes
+├── backend-integration.md   ← endpoint mapping, backend questions, switch-to-live rule
 └── stack-agnostic.md        ← per-stack adapter hints (see Stage 5)
 ```
 
@@ -233,6 +240,19 @@ that the implementer will need to decide in framework context: client
 state vs server state, hydration boundary, route nesting, etc.)
 ```
 
+### Stage 5a - Mock data and backend integration
+
+For data-fed prototypes, copy `.supervibe/artifacts/prototypes/<slug>/mocks/` to `handoff/mocks/` without changing fixture shapes. Then write `handoff/backend-integration.md` from `templates/mock-data/backend-integration.md.tpl` with:
+
+- contract status (`api-backed`, `schema-backed`, `data-model-backed`, or `provisional`)
+- endpoint mapping from prototype fetches to live backend endpoints
+- scenario coverage from `mock-scenarios.json`
+- backend questions and ownership
+- switch-to-live rule
+- contract drift rule for backend schema, pagination, validation, permission, and error-envelope changes
+
+If the mock contract is `provisional`, the handoff may proceed as a frontend draft but must not claim backend-ready integration until the backend owner confirms the shape.
+
 ### Stage 6 — README
 
 Write `handoff/README.md`:
@@ -277,6 +297,7 @@ Bundle:         .supervibe/artifacts/prototypes/<slug>/handoff/
 Components:     <N> documented in components-used.json
 Tokens:         <N> documented in tokens-used.json
 Viewports:      375, 1440
+Mock data:      <N/A | provisional | api-backed | schema-backed | data-model-backed> handoff/mocks/mock-contract.json
 Stack-agnostic adapter hints: 5 frameworks documented (React, Vue, Svelte, Laravel, vanilla)
 Reviews carry-over: polish + a11y + seo (where applicable)
 Status:         ready-for-development
@@ -294,6 +315,7 @@ Rubric:     prototype
 - DO NOT pick a framework. Bundle is stack-agnostic.
 - DO NOT skip the design-system version check. If system drifted post-approval, WARN.
 - DO NOT claim ready-for-development while competing prototypes remain active.
+- DO NOT claim a data-fed handoff is backend-ready without mock contract, scenario catalog, fixtures, and backend integration notes.
 - DO NOT delete the source `.supervibe/artifacts/prototypes/<slug>/` files — handoff is a copy, not a move.
 
 ## Verification
@@ -303,6 +325,7 @@ Rubric:     prototype
 - `tokens-used.json.rawValues.{hex,px,cubicBezier}` are empty arrays
 - Design-system version recorded matches `.supervibe/artifacts/prototypes/_design-system/` HEAD and final token state
 - No active competing prototypes remain for the same surface
+- Data-fed handoff includes `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, `mocks/api-fixtures/`, and `backend-integration.md`
 - README explains the bundle in ≤2 minutes of reading
 
 ## Related
@@ -310,5 +333,6 @@ Rubric:     prototype
 - `supervibe:prototype` + `supervibe:landing-page` — produce the source prototype
 - `supervibe:brandbook` — produces the design system this bundle inherits
 - `supervibe:tokens-export` — invoked by downstream `<stack>-developer` to convert tokens
+- `supervibe:mock-data-contract` — produces mock contract, scenario fixtures, and backend integration notes
 - `commands/supervibe-design.md` — Stage 8 invokes this skill
 - `<stack>-developer` agents — consumers of the handoff bundle

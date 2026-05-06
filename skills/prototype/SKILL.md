@@ -54,6 +54,7 @@ NOT for:
 5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
 6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
 7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
+8. **Data-fed mocks are contract-backed.** If interaction depth is `data-fed`, run `supervibe:mock-data-contract` and create `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` before claiming frontend-before-backend readiness.
 
 ## Expert Operating Standard
 
@@ -122,6 +123,7 @@ What level of fidelity does this prototype need?
 │   (defer to supervibe:interaction-design-patterns for recipes)
 └─ Data-fed mock — fake API responses, realistic content state
     → fetch() against local JSON files in .supervibe/artifacts/prototypes/<slug>/mocks/
+    → requires supervibe:mock-data-contract with mock-contract.json, mock-scenarios.json, and api-fixtures/
 ```
 
 ## Procedure
@@ -131,6 +133,7 @@ What level of fidelity does this prototype need?
 1. Pick a slug for the prototype: `.supervibe/artifacts/prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
 2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `.supervibe/artifacts/prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
 3. Confirm interaction depth level (visual-only / click-through / realistic / data-fed). One question, multiple-choice format.
+3a. If interaction is `data-fed`, run `supervibe:mock-data-contract` before writing mock fetch logic. The mock bundle must declare contract status, owner, schema refs, scenarios, PII policy, and backend drift rule.
 4. Create directory layout:
    ```
    .supervibe/artifacts/prototypes/<slug>/
@@ -142,7 +145,10 @@ What level of fidelity does this prototype need?
    │   ├── system.css           imports from ../../_design-system/tokens.css
    │   └── pages.css            per-page composition (no token literals)
    ├── scripts/                 native JS modules
-   ├── mocks/                   fake JSON if interaction='data-fed'
+   ├── mocks/                   contract-backed JSON if interaction='data-fed'
+   │   ├── mock-contract.json    API/schema ownership, endpoints, entities, drift rule
+   │   ├── mock-scenarios.json   success/loading/empty/error/permission/validation/partial/large-list matrix
+   │   └── api-fixtures/         one synthetic JSON fixture per scenario
    ├── assets/                  per-prototype images (icons in design-system, not here)
    └── _reviews/                ui-polish + a11y reports land here later
    ```
@@ -169,6 +175,7 @@ Wait for explicit answer. Then next question. Never combine.
 2. Compose components by reading `.supervibe/artifacts/prototypes/_design-system/components/<name>.md` for each — NEVER invent component patterns; if the design system doesn't have what you need, STOP and ask user to extend the system.
 3. Animations come from `.supervibe/artifacts/prototypes/_design-system/motion.css` (named keyframes + named easings + named durations) — apply, don't author new motion in the prototype.
 4. **No framework imports.** Verify `<script src=>` and `<link href=>` reference only relative files. No CDN, no `import` from npm. Greppable: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css))' .supervibe/artifacts/prototypes/<slug>/` must return zero results.
+5. **Data-fed state matrix.** For `data-fed` prototypes, every local `fetch()` target must be listed in `mocks/mock-contract.json`, every UI state must map to a scenario in `mocks/mock-scenarios.json`, and every scenario must have a synthetic fixture in `mocks/api-fixtures/`.
 
 ### Stage 4 — Live preview
 
@@ -230,6 +237,7 @@ Slug:           <slug>
 Location:       .supervibe/artifacts/prototypes/<slug>/
 Viewports:      [375, 1440]   (mobile, desktop)
 Interaction:    click-through
+Mock data:      <N/A | provisional | api-backed | schema-backed | data-model-backed> .supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json
 Files:          index.html (1) + pages (N) + styles (M) + scripts (K)
 Design system:  .supervibe/artifacts/prototypes/_design-system/  (commit: <sha>)
 Preview URL:    http://localhost:NNNN
@@ -250,6 +258,7 @@ Rubric:     prototype
 - DO NOT disable preview feedback overlay for prototype previews.
 - DO NOT verify design delivery through `file://`; use the Supervibe preview server so the feedback button and shared tokens are checked in the same mode the user sees.
 - DO NOT build or preview from a candidate or needs_revision design system.
+- DO NOT claim a data-fed prototype is frontend-before-backend ready without `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`.
 - DO NOT mark approved without `.approval.json` artifact.
 - DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
 - DO NOT ask >1 question per message.
@@ -261,6 +270,7 @@ Rubric:     prototype
 - `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits
 - `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
 - Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
+- If interaction is `data-fed`, `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` exist and map every local fetch to a scenario fixture
 - Approval marker written when the user explicitly approves
 - `prefers-reduced-motion: reduce` honored — animations disabled or shortened to ≤100ms
 
@@ -273,11 +283,13 @@ Rubric:     prototype
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 - `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
 - `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
+- `ad-hoc-data-fed-json` — local JSON exists without mock-contract.json, mock-scenarios.json, scenario fixtures, schema owner, and backend drift rule.
 
 ## Related
 
 - `supervibe:brandbook` — produces the design system this skill consumes (PREREQUISITE)
 - `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`
+- `supervibe:mock-data-contract` — data-fed mock contract, scenario fixtures, and backend integration notes
 - `supervibe:preview-server` — auto-spawned at Stage 4 for live URL
 - `supervibe:landing-page` — sibling skill for marketing-page-specific concerns (SEO, analytics)
 - `agents/_design/prototype-builder` — the implementer agent that wraps this skill

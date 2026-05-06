@@ -44,9 +44,9 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 ## Agent And Artifact Map
 
-- Agents: 89 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality gate in `scripts/validate-agent-content-quality.mjs`.
-- Skills: 55 folders under `skills/`; content-quality gate in `scripts/validate-skill-content-quality.mjs`.
-- Rules: 30 files under `rules/`.
+- Agents: 90 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality gate in `scripts/validate-agent-content-quality.mjs`.
+- Skills: 56 folders under `skills/`; content-quality gate in `scripts/validate-skill-content-quality.mjs`.
+- Rules: 31 files under `rules/`.
 - Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.
 - Core libraries: `scripts/lib/`.
