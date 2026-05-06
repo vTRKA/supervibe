@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.101] - 2026-05-07
+
+### Added
+
+- Added an agent technology readiness gate that reports the seven selected
+  architecture upgrades without introducing heavy runtime dependencies:
+  OpenTelemetry-compatible local traces, Context MCP resource schemas,
+  repo-map context evidence, agent/RAG regression evidence, checkpoint
+  semantics, memory graph summaries, and optional SCIP readiness.
+- Added local runtime trace and SCIP readiness helpers with regression coverage
+  for redaction and no-overclaim import behavior.
+
+### Changed
+
+- Expanded Context MCP self-test resources with strict read-only schemas for
+  repo map, project knowledge graph, regression, runtime trace, and SCIP
+  evidence.
+- Updated release and host manifest versions to 2.0.101.
+
 ## [2.0.100] - 2026-05-07
 
 ### Added
