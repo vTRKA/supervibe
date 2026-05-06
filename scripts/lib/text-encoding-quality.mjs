@@ -34,6 +34,8 @@ const LANGUAGE_POLICY_SURFACES_RE = /^(?:agents|skills|commands|rules|docs)\//;
 const QUESTION_MARK_POLICY_SURFACES_RE =
   /^(?:agents|skills|commands|rules|docs|templates|scripts|\.supervibe\/artifacts|\.supervibe\/memory|README\.md|CHANGELOG\.md|registry\.yaml)(?:\/|$)/;
 const SKIP_DIRS = new Set([
+  ".next",
+  ".turbo",
   ".git",
   "build",
   "coverage",
@@ -164,15 +166,16 @@ function findSuspiciousQuestionMarkRuns(relPath, text) {
   return [];
 }
 
-export function collectTextFiles(rootDir) {
+export function collectTextFiles(rootDir, options = {}) {
   const files = [];
-  walk(rootDir, files, rootDir);
+  walk(rootDir, files, rootDir, options);
   return files.sort();
 }
 
-export function validateTextEncoding(rootDir = process.cwd()) {
+export function validateTextEncoding(rootDir = process.cwd(), options = {}) {
   const issues = [];
-  for (const file of collectTextFiles(rootDir)) {
+  const files = collectTextFiles(rootDir, options);
+  for (const file of files) {
     const relPath = normalizeRelPath(relative(rootDir, file));
     const text = readFileSync(file, "utf8");
     if (containsReplacementCharacter(text)) {
@@ -203,7 +206,7 @@ export function validateTextEncoding(rootDir = process.cwd()) {
   }
   return {
     pass: issues.length === 0,
-    checked: collectTextFiles(rootDir).length,
+    checked: files.length,
     issues,
   };
 }
@@ -231,16 +234,16 @@ export function formatTextEncodingReport(result) {
   return lines.join("\n");
 }
 
-function walk(dir, files, rootDir) {
+function walk(dir, files, rootDir, options = {}) {
   if (!existsSync(dir)) return;
   const rel = normalizeRelPath(relative(rootDir, dir));
   const base = rel.split("/").at(-1);
-  if (base && SKIP_DIRS.has(base)) return;
+  if (!options.includeGenerated && base && SKIP_DIRS.has(base)) return;
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      walk(full, files, rootDir);
+      walk(full, files, rootDir, options);
       continue;
     }
     if (!entry.isFile()) continue;

@@ -97,6 +97,42 @@ does not teach the specific rule. `.repeat(3);
   }
 });
 
+test("rule content quality does not flag same example headings with distinct code evidence", async () => {
+  const root = await createTempRulesRoot();
+  const sharedProse = `These examples use the same Bad/Good headings, but the rule-specific evidence
+is carried by different command surfaces and should not force artificial
+heading rewrites when the actual examples are distinct. `;
+  const example = (symbol) => `## Examples
+
+${sharedProse.repeat(5)}
+
+### Bad
+
+\`\`\`js
+${symbol}.unsafeCall("manual-state");
+\`\`\`
+
+### Good
+
+\`\`\`js
+${symbol}.verifiedCall("runtime-receipt");
+\`\`\`
+`;
+
+  try {
+    await writeRule(root, "alpha.md", example("alphaCommand"));
+    await writeRule(root, "beta.md", example("betaCommand"));
+    await writeRule(root, "gamma.md", example("gammaCommand"));
+
+    const report = validateRuleContentQuality(root);
+
+    assert.equal(report.pass, true, JSON.stringify(report.issues, null, 2));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
 async function createTempRulesRoot() {
   const root = await mkdtemp(join(tmpdir(), "supervibe-rule-quality-"));
   await mkdir(join(root, "rules"));

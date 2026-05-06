@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.104] - 2026-05-07
+
+### Added
+
+- Added embedded command-agent planning, stable transaction artifacts, and runtime receipts to Adapt orchestration.
+- Added fixed-point Adapt apply recovery for related-rule closure and interrupted-run recovery status output.
+
+### Changed
+
+- Unified root resolution for command/workflow validators and generated-directory defaults for text encoding checks.
+- Updated release and host manifest versions to 2.0.104.
+
+### Fixed
+
+- Resynced Genesis agent receipt confidence after trusted smoke receipts and made deploy handoff status explicit.
+- Reduced false positives in duplicated rule-section detection when examples share headings but contain distinct evidence.
+
 ## [2.0.103] - 2026-05-07
 
 ### Added

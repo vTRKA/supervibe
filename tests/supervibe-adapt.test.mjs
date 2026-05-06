@@ -407,6 +407,25 @@ test("supervibe-adapt verify-agents updates runtime proof gate without blocking 
   }
 });
 
+test("supervibe-adapt recovery-status reports last trusted stage and one next safe command", () => {
+  const projectRoot = createCodexProject();
+  try {
+    runAdapt(projectRoot, ["--apply", "--include", ".codex/agents/repo-researcher.md", "--no-color"]);
+
+    const out = runAdapt(projectRoot, ["--recovery-status", "--no-color"]);
+
+    assert.match(out, /SUPERVIBE_ADAPT_RECOVERY_STATUS/);
+    assert.match(out, /TRUSTED_RECEIPTS: 1/);
+    assert.match(out, /DIRTY_RECEIPTS: 0/);
+    assert.match(out, /LAST_TRUSTED_ADAPT_STAGE: \/supervibe-adapt:command:supervibe-adapt-runner@adapt-apply/);
+    assert.match(out, /ADAPT_STATE: \.supervibe\/memory\/adapt\/state\.json/);
+    assert.match(out, /ADAPT_CURRENT_STAGE: artifact_verified/);
+    assert.match(out, /NEXT_SAFE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --verify-agents/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-adapt provisions agents through first-class add-agents mode", () => {
   const projectRoot = createCodexProject();
   try {
@@ -569,6 +588,84 @@ test("supervibe-adapt adds upstream related-rule closure candidates", () => {
       readFileSync(join(projectRoot, ".codex", "rules", "optional-rule.md"), "utf8"),
       readFileSync(join(pluginRoot, "rules", "optional-rule.md"), "utf8"),
     );
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt fixed-point apply closes related-rule additions discovered after first update", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-fixed-point-"));
+  const pluginRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-fixed-point-plugin-"));
+  try {
+    mkdirSync(join(projectRoot, ".codex", "rules"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "adapt"), { recursive: true });
+    mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(pluginRoot, "rules"), { recursive: true });
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+    writeFileSync(join(pluginRoot, ".claude-plugin", "plugin.json"), JSON.stringify({ version: "9.9.9" }));
+    const oldBaseRule = [
+      "---",
+      "name: base-rule",
+      "mandatory: true",
+      "related-rules: []",
+      "---",
+      "# Base Rule",
+      "",
+    ].join("\n");
+    writeFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "9.9.8\n");
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), JSON.stringify({
+      schemaVersion: 1,
+      pluginVersion: "9.9.8",
+      hostAdapter: "codex",
+      artifacts: {
+        ".codex/rules/base-rule.md": {
+          hash: sha256(oldBaseRule),
+          upstream: "rules/base-rule.md",
+          updatedAt: "2026-05-01T00:00:00.000Z",
+        },
+      },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, ".codex", "rules", "base-rule.md"), oldBaseRule);
+    writeFileSync(join(pluginRoot, "rules", "base-rule.md"), [
+      "---",
+      "name: base-rule",
+      "mandatory: true",
+      "related-rules: [optional-rule]",
+      "---",
+      "# Base Rule",
+      "",
+    ].join("\n"));
+    writeFileSync(join(pluginRoot, "rules", "optional-rule.md"), [
+      "---",
+      "name: optional-rule",
+      "mandatory: false",
+      "related-rules: []",
+      "---",
+      "# Optional Rule",
+      "",
+    ].join("\n"));
+
+    const apply = runAdapt(projectRoot, ["--apply", "--all", "--fixed-point", "--no-refresh-memory-index", "--no-color"], { pluginRoot });
+
+    assert.match(apply, /FIXED_POINT: true/);
+    assert.match(apply, /FIXED_POINT_STATUS: clean/);
+    assert.match(apply, /FIXED_POINT_ROUNDS: 2/);
+    assert.match(apply, /NEXT_APPLY: null/);
+    assert.match(apply, /TRANSACTION_ARTIFACT: \.supervibe\/artifacts\/_workflow-transactions\/supervibe-adapt\//);
+    assert.match(apply, /WORKFLOW_RECEIPT: \.supervibe\/artifacts\/_workflow-invocations\/supervibe-adapt\//);
+    assert.equal(existsSync(join(projectRoot, ".codex", "rules", "optional-rule.md")), true);
+
+    const validation = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-workflow-receipts.mjs"),
+      "--root",
+      projectRoot,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.match(validation, /PASS: true/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(pluginRoot, { recursive: true, force: true });

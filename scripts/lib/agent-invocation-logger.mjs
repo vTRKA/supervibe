@@ -41,6 +41,13 @@ export async function logInvocation(entry) {
     }),
     ...redactedEntry,
   };
+  record.host_invocation_id = entry.host_invocation_id || entry.hostInvocationId || record.invocation_id;
+  record.retrieval_policy = normalizeRetrievalPolicy(entry);
+  record.evidence = normalizeInvocationEvidence(entry);
+  record.changed_files = normalizeList(record.changedFiles || record.changed_files);
+  record.risks = normalizeList(record.risks);
+  record.recommendations = normalizeList(record.recommendations);
+  record.confidence = normalizeInvocationConfidence(record.confidence_score);
   record.structured_output = structuredOutputPathsForRecord(record);
   record.retrieval_enforcement = {
     schemaVersion: 1,
@@ -205,12 +212,16 @@ async function writeStructuredAgentOutput(record = {}) {
     schemaVersion: 1,
     invocationId: record.invocation_id,
     agentId: record.agent_id,
+    hostInvocationId: record.host_invocation_id || record.invocation_id,
     host: record.host || null,
     hostInvocationSource: record.host_invocation_source || record.source || null,
     taskSummary: record.task_summary,
     status: record.status || 'completed',
+    confidence: record.confidence || normalizeInvocationConfidence(record.confidence_score),
     confidenceScore: record.confidence_score,
-    changedFiles: normalizeList(record.changedFiles || record.changed_files),
+    retrievalPolicy: record.retrieval_policy || normalizeRetrievalPolicy(record),
+    evidence: record.evidence || normalizeInvocationEvidence(record),
+    changedFiles: normalizeList(record.changed_files || record.changedFiles),
     risks: normalizeList(record.risks),
     recommendations: normalizeList(record.recommendations),
     evidenceGate: record.evidence_gate?.summary || record.evidence_gate || null,
@@ -277,6 +288,7 @@ function formatAgentOutputSummary(payload = {}) {
     `# Agent Output: ${payload.agentId || 'unknown'}`,
     '',
     `Invocation: ${payload.invocationId || 'unknown'}`,
+    `Host Invocation: ${payload.hostInvocationId || 'unknown'}`,
     `Status: ${payload.status || 'unknown'}`,
     `Confidence: ${payload.confidenceScore ?? 'unknown'}`,
     '',
@@ -312,6 +324,64 @@ function normalizeList(value) {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
   if (!value) return [];
   return String(value).split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeRetrievalPolicy(entry = {}) {
+  const policy = entry.retrievalPolicy || entry.retrieval_policy || entry.evidence?.retrievalPolicy || entry.evidence?.retrieval_policy;
+  if (policy && typeof policy === 'object') {
+    return {
+      schemaVersion: 1,
+      provided: true,
+      policy,
+    };
+  }
+  if (typeof policy === 'string' && policy.trim()) {
+    return {
+      schemaVersion: 1,
+      provided: true,
+      policy: { raw: policy.trim() },
+    };
+  }
+  return {
+    schemaVersion: 1,
+    provided: false,
+    reason: 'not-provided',
+  };
+}
+
+function normalizeInvocationEvidence(entry = {}) {
+  const evidence = entry.evidence;
+  if (evidence && typeof evidence === 'object') {
+    return {
+      schemaVersion: 1,
+      provided: true,
+      memoryIds: normalizeList(evidence.memoryIds || evidence.memory_ids),
+      ragChunkIds: normalizeList(evidence.ragChunkIds || evidence.rag_chunk_ids),
+      graphSymbols: normalizeList(evidence.graphSymbols || evidence.graph_symbols),
+      citations: Array.isArray(evidence.citations) ? evidence.citations : [],
+      verificationCommands: normalizeList(evidence.verificationCommands || evidence.verification_commands),
+      redactionStatus: evidence.redactionStatus || evidence.redaction_status || 'unknown',
+      bypassReasons: normalizeList(evidence.bypassReasons || evidence.bypass_reasons),
+      diagnosticEvents: Array.isArray(evidence.diagnosticEvents || evidence.diagnostic_events)
+        ? evidence.diagnosticEvents || evidence.diagnostic_events
+        : [],
+      workspaceId: evidence.workspaceId || evidence.workspace_id || null,
+    };
+  }
+  return {
+    schemaVersion: 1,
+    provided: false,
+    reason: 'not-provided',
+  };
+}
+
+function normalizeInvocationConfidence(value) {
+  const score = typeof value === 'number' && Number.isFinite(value) ? value : null;
+  return {
+    schemaVersion: 1,
+    score,
+    status: score === null ? 'missing' : score >= 9 ? 'pass' : 'review',
+  };
 }
 
 function hasRetrievalEvidenceInput(entry = {}) {

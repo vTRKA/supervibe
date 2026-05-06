@@ -136,9 +136,14 @@ test("supervibe-genesis verify-agents can record a receipt-bound smoke invocatio
     assert.equal(summary.verified, true);
     assert.equal(summary.smokeRecord.status, "recorded");
     assert.equal(summary.agentRuntime.trustedHostAgentReceipts, 1);
+    assert.equal(summary.confidence.score, 8);
+    assert.equal(summary.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"), false);
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.verification.agentRuntimeVerified, true);
+    assert.equal(state.verification.agentReceiptsVerified, true);
+    assert.equal(state.confidence.score, 8);
+    assert.equal(state.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"), false);
     assert.equal(state.bootstrap.agentSmokeTest.smokeRecord.status, "recorded");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -191,6 +196,9 @@ test("supervibe-genesis summary-json returns compact operator state", async () =
     assert.equal(summary.lifecycle, "dry-run");
     assert.equal(summary.host.adapterId, "codex");
     assert.equal(summary.deployAddOnPolicy.status, "requires-adapt-deploy-scope");
+    assert.equal(summary.deploy.status, "pending");
+    assert.equal(summary.deploy.verified, false);
+    assert.match(summary.deploy.nextCommand, /supervibe-adapt\.mjs --scope deploy --target dokploy --dry-run/);
     assert.equal(summary.nodeRuntimePreflight.expected, "22.x");
     assert.equal(summary.app.appChoice.id, "next-app");
     assert.match(summary.nextAgentGate, /supervibe-genesis\.mjs --verify-agents --host codex/);
@@ -484,6 +492,20 @@ test("supervibe-genesis records Docker tag as explicit Adapt deploy policy", asy
     assert.match(parsed.report.deployAddOnPolicy.policy, /does not guess Dockerfiles from placeholder folders/);
     assert.equal(parsed.report.postApplyCommands.some((entry) => /--scope deploy --target docker --dry-run/.test(entry.command)), true);
     assert.equal(parsed.report.filesToCreate.some((entry) => entry.path === "frontend/Dockerfile"), false);
+
+    const summary = JSON.parse(runGenesis([
+      "--dry-run",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--request",
+      "Next.js TypeScript Tailwind Docker",
+      "--summary-json",
+    ], projectRoot));
+    assert.equal(summary.deploy.status, "pending");
+    assert.equal(summary.deploy.verified, false);
+    assert.match(summary.deploy.nextCommand, /supervibe-adapt\.mjs --scope deploy --target docker --dry-run/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

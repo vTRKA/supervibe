@@ -4,6 +4,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateCommandAgentProfiles } from "./lib/command-agent-orchestration-contract.mjs";
+import {
+  resolveCliRoots,
+  resolvePluginContentRoot,
+} from "./lib/supervibe-cli-roots.mjs";
+
+const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const REQUIRED_SECTIONS = Object.freeze([
   {
@@ -259,8 +265,13 @@ const COMMAND_LOOKUP_RULES = Object.freeze([
   },
 ]);
 
-export function validateCommandOperationalContracts(rootDir = process.cwd()) {
-  const commandsDir = join(rootDir, "commands");
+export function validateCommandOperationalContracts(rootDir = process.cwd(), options = {}) {
+  const resolvedRoot = resolvePluginContentRoot({
+    rootDir,
+    pluginRoot: options.pluginRoot,
+    requiredDir: "commands",
+  });
+  const commandsDir = join(resolvedRoot, "commands");
   const issues = [];
   if (!existsSync(commandsDir)) {
     return {
@@ -320,7 +331,7 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
   const commandIds = files.map((file) => `/${file.replace(/\.md$/, "")}`);
   const profileResult = validateCommandAgentProfiles({
     commandIds,
-    availableAgentIds: listAvailableAgentIds(rootDir),
+    availableAgentIds: listAvailableAgentIds(resolvedRoot),
   });
   for (const profileIssue of profileResult.issues) {
     issues.push({
@@ -354,7 +365,7 @@ export function validateCommandOperationalContracts(rootDir = process.cwd()) {
   }
 
   for (const rule of COMMAND_LOOKUP_RULES) {
-    const absPath = join(rootDir, ...rule.file.split("/"));
+    const absPath = join(resolvedRoot, ...rule.file.split("/"));
     if (!existsSync(absPath)) {
       issues.push({
         file: rule.file,
@@ -415,7 +426,11 @@ export function formatCommandOperationalContractsReport(result) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateCommandOperationalContracts(process.cwd());
+  const roots = resolveCliRoots({
+    argv: process.argv.slice(2),
+    scriptPluginRoot: SCRIPT_PLUGIN_ROOT,
+  });
+  const result = validateCommandOperationalContracts(roots.root, { pluginRoot: roots.pluginRoot });
   console.log(formatCommandOperationalContractsReport(result));
   process.exit(result.pass ? 0 : 1);
 }

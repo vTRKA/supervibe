@@ -1,8 +1,13 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { basename, join, relative } from "node:path";
 import matter from "gray-matter";
+import {
+  resolveCliRoots,
+  resolvePluginContentRoot,
+} from "./lib/supervibe-cli-roots.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -57,7 +62,12 @@ const MANDATORY_RULE_PATTERNS = Object.freeze([
 ]);
 
 export function validateRuleContentQuality(rootDir = process.cwd()) {
-  const rulesDir = join(rootDir, "rules");
+  const resolvedRoot = resolvePluginContentRoot({
+    rootDir,
+    pluginRoot: ROOT,
+    requiredDir: "rules",
+  });
+  const rulesDir = join(resolvedRoot, "rules");
   const issues = [];
   const sectionOwners = new Map();
   const files = existsSync(rulesDir)
@@ -69,7 +79,7 @@ export function validateRuleContentQuality(rootDir = process.cwd()) {
     const raw = readFileSync(absPath, "utf8");
     const parsed = matter(raw);
     const text = parsed.content;
-    const relPath = toPosix(relative(rootDir, absPath));
+    const relPath = toPosix(relative(resolvedRoot, absPath));
 
     for (const section of KNOWN_FILLER_SECTIONS) {
       if (section.pattern.test(text)) {
@@ -132,12 +142,19 @@ function extractLargeSections(text) {
 
 function normalizeSection(section) {
   return section
+    .replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/gi, (_match, lang, body) => {
+      return `\n fenced-code:${String(lang || "").toLowerCase()}:sha256:${sha256(body).slice(0, 16)} \n`;
+    })
     .replace(/`[^`]+`/g, "`x`")
     .replace(/[A-Za-z0-9_.\\/-]+\.md/g, "x.md")
     .replace(/[A-Za-z0-9_.\\/-]+\.mjs/g, "x.mjs")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function sha256(value) {
+  return createHash("sha256").update(String(value || ""), "utf8").digest("hex");
 }
 
 function toPosix(path) {
@@ -151,7 +168,11 @@ function formatIssue(issue) {
 }
 
 async function main() {
-  const report = validateRuleContentQuality(ROOT);
+  const roots = resolveCliRoots({
+    argv: process.argv.slice(2),
+    scriptPluginRoot: ROOT,
+  });
+  const report = validateRuleContentQuality(roots.root || roots.pluginRoot);
   for (const issue of report.issues) console.log(formatIssue(issue));
   if (!report.pass) {
     console.log(`RULE_CONTENT_QUALITY PASS:false checked=${report.checked} issues=${report.issues.length}`);

@@ -3,6 +3,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  resolveCliRoots,
+  resolvePluginContentRoot,
+} from "./lib/supervibe-cli-roots.mjs";
+
+const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
+
 const TOPIC_DRIFT_REQUIRED = Object.freeze([
   /## Topic Drift \/ Resume Contract/i,
   /skip\/delegate safe non-final decisions/i,
@@ -208,11 +215,16 @@ const RULES = Object.freeze([
   },
 ]);
 
-export function validateWorkflowContinuation(rootDir = process.cwd()) {
+export function validateWorkflowContinuation(rootDir = process.cwd(), options = {}) {
+  const resolvedRoot = resolvePluginContentRoot({
+    rootDir,
+    pluginRoot: options.pluginRoot,
+    requiredDir: "commands",
+  });
   const issues = [];
 
   for (const rule of RULES) {
-    const absPath = join(rootDir, ...rule.file.split("/"));
+    const absPath = join(resolvedRoot, ...rule.file.split("/"));
     if (!existsSync(absPath)) {
       issues.push({
         file: rule.file,
@@ -267,7 +279,11 @@ export function formatWorkflowContinuationReport(result) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateWorkflowContinuation(process.cwd());
+  const roots = resolveCliRoots({
+    argv: process.argv.slice(2),
+    scriptPluginRoot: SCRIPT_PLUGIN_ROOT,
+  });
+  const result = validateWorkflowContinuation(roots.root, { pluginRoot: roots.pluginRoot });
   console.log(formatWorkflowContinuationReport(result));
   process.exit(result.pass ? 0 : 1);
 }

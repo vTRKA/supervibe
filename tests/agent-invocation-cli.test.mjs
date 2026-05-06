@@ -52,9 +52,32 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
     const record = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), "utf8").trim());
     assert.equal(record.agent_id, "creative-director");
     assert.equal(record.invocation_id, "codex-agent-123");
+    assert.equal(record.host_invocation_id, "codex-agent-123");
     assert.equal(record.host_invocation_source, "codex-spawn-agent");
+    assert.deepEqual(record.retrieval_policy, {
+      schemaVersion: 1,
+      provided: false,
+      reason: "not-provided",
+    });
+    assert.deepEqual(record.evidence, {
+      schemaVersion: 1,
+      provided: false,
+      reason: "not-provided",
+    });
+    assert.deepEqual(record.changed_files, [".supervibe/artifacts/brandbook/direction.md"]);
+    assert.deepEqual(record.risks, ["Needs approval"]);
+    assert.deepEqual(record.recommendations, ["Review styleboard"]);
+    assert.deepEqual(record.confidence, {
+      schemaVersion: 1,
+      score: 9,
+      status: "pass",
+    });
     assert.equal(record.structured_output.json, ".supervibe/artifacts/_agent-outputs/codex-agent-123/agent-output.json");
     const agentOutput = JSON.parse(readFileSync(join(projectRoot, ...record.structured_output.json.split("/")), "utf8"));
+    assert.equal(agentOutput.hostInvocationId, "codex-agent-123");
+    assert.equal(agentOutput.retrievalPolicy.provided, false);
+    assert.equal(agentOutput.evidence.provided, false);
+    assert.equal(agentOutput.confidence.score, 9);
     assert.deepEqual(agentOutput.changedFiles, [".supervibe/artifacts/brandbook/direction.md"]);
     assert.deepEqual(agentOutput.risks, ["Needs approval"]);
     const effectiveness = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "effectiveness.jsonl"), "utf8").trim());
@@ -377,7 +400,15 @@ test("agent invocation CLI writes evidence ledger from retrieval flags", () => {
     assert.match(logged, /SUPERVIBE_AGENT_INVOCATION_LOGGED/);
     const record = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), "utf8").trim());
     assert.equal(record.retrieval_enforcement.evidenceLedger, "written");
+    assert.equal(record.retrieval_policy.provided, true);
+    assert.equal(record.retrieval_policy.policy.memory, "mandatory");
+    assert.equal(record.evidence.provided, true);
+    assert.deepEqual(record.evidence.verificationCommands, ["node --test tests/checkout.test.mjs"]);
     assert.equal(record.evidence_gate.pass, true);
+    const agentOutput = JSON.parse(readFileSync(join(projectRoot, ...record.structured_output.json.split("/")), "utf8"));
+    assert.equal(agentOutput.retrievalPolicy.provided, true);
+    assert.equal(agentOutput.evidence.provided, true);
+    assert.deepEqual(agentOutput.evidence.ragChunkIds, ["scripts/checkout.mjs:12"]);
     const ledger = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "evidence-ledger.jsonl"), "utf8").trim());
     assert.equal(ledger.agentId, "repo-researcher");
     assert.equal(ledger.gate.pass, true);

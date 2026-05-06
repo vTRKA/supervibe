@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -75,4 +75,23 @@ test("text encoding validator rejects mojibake and redundant bilingual descripti
   assert.ok(result.issues.some((issue) => issue.code === "cyrillic-outside-trigger"));
   assert.ok(result.issues.some((issue) => issue.code === "question-mark-text-loss" && issue.file === "commands/lost.md"));
   assert.ok(result.issues.some((issue) => issue.code === "question-mark-text-loss" && issue.file === ".supervibe/artifacts/prototypes/demo/.approval.json"));
+});
+
+test("text encoding validator skips generated directories unless explicitly included", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-text-generated-"));
+  try {
+    const generated = join(root, ".next", "dev", "static", "polyfill-nomodule.js");
+    await mkdir(dirname(generated), { recursive: true });
+    await writeFile(generated, `const broken = '${corruptAsWindows1251("нужен")}';\n`, "utf8");
+
+    const defaultResult = validateTextEncoding(root);
+    const includedResult = validateTextEncoding(root, { includeGenerated: true });
+
+    assert.equal(defaultResult.pass, true);
+    assert.equal(defaultResult.checked, 0);
+    assert.equal(includedResult.pass, false);
+    assert.ok(includedResult.issues.some((issue) => issue.file === ".next/dev/static/polyfill-nomodule.js"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

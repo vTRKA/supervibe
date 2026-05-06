@@ -43,7 +43,7 @@ function parseArgs(argv) {
     }
     index += 1;
     if (key === "command" || key === "cmd") options.command = value;
-    else if (key === "project" || key === "root") options.projectRoot = value;
+    else if (key === "project" || key === "project-root" || key === "root") options.projectRoot = value;
     else if (key === "plugin-root") options.pluginRoot = value;
     else if (key === "execution-mode") options.executionMode = value;
     else if (key === "host") options.host = value;
@@ -84,30 +84,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   try {
-    const projectRoot = resolve(options.projectRoot);
-    const pluginRoot = resolve(options.pluginRoot);
-    const env = { ...process.env };
-    if (options.host) env.SUPERVIBE_HOST = options.host;
-    const hostSelection = selectHostAdapter({ rootDir: projectRoot, env });
-    const genesisDefaultDryRun = isBareGenesisBootstrapPlan(options);
-    const availableAgentSources = listAvailableAgentSources({
-      pluginRoot,
-      projectRoot,
-      hostAgentsFolder: hostSelection.adapter.agentsFolder,
-      installedOnly: options.installedOnly,
-    });
-    const availableAgentIds = [...availableAgentSources.keys()];
-    const plan = buildCommandAgentPlan(options.command, {
+    const report = buildRuntimeCommandAgentPlan({
+      command: options.command,
+      projectRoot: options.projectRoot,
+      pluginRoot: options.pluginRoot,
+      host: options.host,
       requestedExecutionMode: options.executionMode,
-      availableAgentIds,
-      availableAgentSources,
-      hostAdapterId: hostSelection.adapter.id,
       enforceHostProof: options.enforceHostProof,
-      receiptTrust: inspectReceiptTrust(projectRoot),
       workflowContext: {
         lowRisk: options["low-risk"] === true,
         bootstrapPreAgent: options.bootstrapPreAgent === true,
-        dryRun: options.dryRun === true || options["dry-run"] === true || genesisDefaultDryRun,
+        dryRun: options.dryRun === true || options["dry-run"] === true,
         apply: options.apply === true,
         generateApps: options.generateApps === true || options["generate-apps"] === true,
         verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
@@ -117,24 +104,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         conflicts: options.conflicts,
         memoryWrites: options["memory-writes"] === undefined ? false : options["memory-writes"],
       },
-    });
-    const report = {
-      pass: plan.executionMode !== "agent-required-blocked",
-      projectRoot,
-      pluginRoot,
-      selectedHost: hostSelection.selectedHost,
-      hostConfidence: hostSelection.confidence,
-      availableAgentCount: availableAgentIds.length,
       installedOnly: options.installedOnly,
-      plan,
-    };
+      env: process.env,
+    });
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {
-      console.log(formatCommandAgentPlan(plan));
-      console.log(`HOST_SELECTED: ${hostSelection.selectedHost}`);
-      console.log(`HOST_CONFIDENCE: ${hostSelection.confidence}`);
-      console.log(`AVAILABLE_AGENTS: ${availableAgentIds.length}`);
+      console.log(formatCommandAgentPlan(report.plan));
+      console.log(`HOST_SELECTED: ${report.selectedHost}`);
+      console.log(`HOST_CONFIDENCE: ${report.hostConfidence}`);
+      console.log(`AVAILABLE_AGENTS: ${report.availableAgentCount}`);
       console.log(`INSTALLED_ONLY: ${options.installedOnly}`);
     }
     process.exit(options.strictExit && !report.pass ? 3 : 0);
@@ -143,6 +122,57 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`ERROR: ${error.message}`);
     process.exit(2);
   }
+}
+
+export function buildRuntimeCommandAgentPlan({
+  command,
+  projectRoot = process.cwd(),
+  pluginRoot = process.env.SUPERVIBE_PLUGIN_ROOT || PLUGIN_ROOT,
+  host = null,
+  requestedExecutionMode = null,
+  enforceHostProof = true,
+  installedOnly = false,
+  workflowContext = {},
+  env = process.env,
+} = {}) {
+  const resolvedProjectRoot = resolve(projectRoot);
+  const resolvedPluginRoot = resolve(pluginRoot);
+  const nextEnv = { ...env };
+  if (host) nextEnv.SUPERVIBE_HOST = host;
+  const hostSelection = selectHostAdapter({ rootDir: resolvedProjectRoot, env: nextEnv });
+  const normalizedContext = {
+    ...workflowContext,
+    dryRun: workflowContext.dryRun === true || isBareGenesisBootstrapPlan({
+      command,
+      ...workflowContext,
+    }),
+  };
+  const availableAgentSources = listAvailableAgentSources({
+    pluginRoot: resolvedPluginRoot,
+    projectRoot: resolvedProjectRoot,
+    hostAgentsFolder: hostSelection.adapter.agentsFolder,
+    installedOnly,
+  });
+  const availableAgentIds = [...availableAgentSources.keys()];
+  const plan = buildCommandAgentPlan(command, {
+    requestedExecutionMode,
+    availableAgentIds,
+    availableAgentSources,
+    hostAdapterId: hostSelection.adapter.id,
+    enforceHostProof,
+    receiptTrust: inspectReceiptTrust(resolvedProjectRoot),
+    workflowContext: normalizedContext,
+  });
+  return {
+    pass: plan.executionMode !== "agent-required-blocked",
+    projectRoot: resolvedProjectRoot,
+    pluginRoot: resolvedPluginRoot,
+    selectedHost: hostSelection.selectedHost,
+    hostConfidence: hostSelection.confidence,
+    availableAgentCount: availableAgentIds.length,
+    installedOnly,
+    plan,
+  };
 }
 
 function isBareGenesisBootstrapPlan(options = {}) {

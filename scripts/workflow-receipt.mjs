@@ -83,7 +83,7 @@ function inferSubjectId(options) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const options = parseArgs(process.argv);
-  const rootDir = options.root || process.cwd();
+  const rootDir = options["project-root"] || options.root || process.cwd();
 
   if (options.help || options.h) {
     console.log(usage());

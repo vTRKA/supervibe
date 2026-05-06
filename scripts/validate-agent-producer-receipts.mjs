@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import {
   validateAgentProducerReceipts,
 } from "./lib/agent-producer-contract.mjs";
+import {
+  resolveCliRoots,
+} from "./lib/supervibe-cli-roots.mjs";
 
 export function formatAgentProducerReceiptsReport(result) {
   const lines = [
@@ -72,7 +75,8 @@ function nextAction(result = {}) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const options = parseArgs(process.argv);
-  const result = validateAgentProducerReceipts(process.cwd(), {
+  const roots = resolveCliRoots({ argv: process.argv.slice(2) });
+  const result = validateAgentProducerReceipts(roots.root, {
     requireHostAgentReceipts: Boolean(options["strict-host-agents"]),
     minHostAgentReceipts: options["min-host-agent-receipts"],
     minAgentInvocations: options["min-agent-invocations"],

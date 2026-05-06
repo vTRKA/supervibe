@@ -211,6 +211,57 @@ export async function applyAdaptPlan(plan, {
   return result;
 }
 
+export async function applyAdaptPlanFixedPoint(plan, {
+  include = [],
+  applyAll = false,
+  refreshMemoryIndex = true,
+  maxRounds = 5,
+} = {}) {
+  const rounds = [];
+  let result = await applyAdaptPlan(plan, { include, applyAll, refreshMemoryIndex });
+  rounds.push(fixedPointRoundSummary(1, result));
+  if ((result.blocked || []).length > 0) {
+    result.fixedPoint = {
+      enabled: true,
+      status: "blocked",
+      rounds,
+      nextApply: nextApplyForPostApply(result),
+    };
+    return result;
+  }
+
+  for (let round = 2; round <= maxRounds && result.postApply?.clean !== true; round += 1) {
+    const nextPlan = await createAdaptPlan({
+      projectRoot: plan.projectRoot,
+      pluginRoot: plan.pluginRoot,
+      adapterId: plan.host.adapterId,
+      refreshMemoryIndex: false,
+    });
+    const candidates = (nextPlan.items || []).filter((item) => item.action === "add" || item.action === "update");
+    if (candidates.length === 0) break;
+    const nextResult = await applyAdaptPlan(nextPlan, {
+      include: candidates.map((item) => item.projectRel),
+      applyAll: true,
+      refreshMemoryIndex,
+    });
+    rounds.push(fixedPointRoundSummary(round, nextResult));
+    result = mergeAdaptApplyResults(result, nextResult);
+    if ((nextResult.blocked || []).length > 0) break;
+  }
+
+  result.fixedPoint = {
+    enabled: true,
+    status: (result.blocked || []).length > 0
+      ? "blocked"
+      : result.postApply?.clean === true
+        ? "clean"
+        : "max-rounds-reached",
+    rounds,
+    nextApply: nextApplyForPostApply(result),
+  };
+  return result;
+}
+
 export function createDokployDeployPlan({
   projectRoot = process.cwd(),
   target = "dokploy",
@@ -433,6 +484,10 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `FAST_PATH_ROLES: ${(plan.fastPath?.requiredRoles || []).join(",") || "none"}`,
     `FAST_PATH_EXECUTION: ${plan.fastPath?.allowedExecution || "unknown"}`,
     `AGENT_PLAN_COMMAND: ${plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites })}`,
+    `AGENT_PLAN_EMBEDDED: ${Boolean(plan.commandAgentPlan)}`,
+    `AGENT_PLAN_EXECUTION_MODE: ${plan.commandAgentPlan?.executionMode || "not-run"}`,
+    `AGENT_PLAN_RECEIPT_GATE: ${plan.commandAgentPlan?.receiptGate || "not-run"}`,
+    `AGENT_PLAN_REQUIRED_AGENTS: ${(plan.commandAgentPlan?.requiredAgentIds || []).join(",") || "none"}`,
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
@@ -479,6 +534,9 @@ export function formatDokployDeployPlan(plan) {
     `DOCKER_INSTALLED: ${plan.dockerVerification?.dockerInstalled === true}`,
     `DOCKER_COMPOSE_AVAILABLE: ${plan.dockerVerification?.composeAvailable === true}`,
     `DOCKER_DAEMON_RUNNING: ${plan.dockerVerification?.daemonRunning === true}`,
+    `AGENT_PLAN_EMBEDDED: ${Boolean(plan.commandAgentPlan)}`,
+    `AGENT_PLAN_EXECUTION_MODE: ${plan.commandAgentPlan?.executionMode || "not-run"}`,
+    `AGENT_PLAN_RECEIPT_GATE: ${plan.commandAgentPlan?.receiptGate || "not-run"}`,
   ];
   if (plan.deployProfile?.blockedReason) lines.push(`BLOCKED: ${plan.deployProfile.blockedReason}`);
   for (const item of plan.items || []) {
@@ -514,6 +572,8 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
     `DEPLOY_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.deployVerificationStatus || "not-run-by-adapt"}`,
+    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
+    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
@@ -532,6 +592,10 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
   lines.push(`ARTIFACT_ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
   lines.push(`POST_APPLY_ADDS: ${result.postApply?.adds ?? "unknown"}`);
   lines.push(`POST_APPLY_UPDATES: ${result.postApply?.updates ?? "unknown"}`);
+  lines.push(`FIXED_POINT: ${result.fixedPoint?.enabled === true}`);
+  lines.push(`FIXED_POINT_STATUS: ${result.fixedPoint?.status || "not-run"}`);
+  lines.push(`FIXED_POINT_ROUNDS: ${result.fixedPoint?.rounds?.length || 0}`);
+  lines.push(`NEXT_APPLY: ${result.fixedPoint?.nextApply ?? (result.postApply?.clean ? "null" : "rerun-dry-run")}`);
   lines.push(`CODE_INDEX_READY: ${result.indexGate?.ready === true ? "true" : "false"}`);
   if (result.indexGate?.ready === false) {
     lines.push(`INDEX_REASON: ${result.indexGate.reason || result.indexGate.failed || "unknown"}`);
@@ -562,6 +626,8 @@ export function formatDokployDeployApply(result) {
     `DOCKER_COMPOSE_AVAILABLE: ${result.dockerVerification?.composeAvailable === true}`,
     `DOCKER_DAEMON_RUNNING: ${result.dockerVerification?.daemonRunning === true}`,
     `COMPOSE_CONFIG_STATUS: ${result.composeConfigVerification?.status || "not-run"}`,
+    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
+    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   if (result.composeConfigVerification?.command) lines.push(`COMPOSE_CONFIG_COMMAND: ${result.composeConfigVerification.command}`);
   if (result.lifecycleState?.genesisReconciliation?.path) lines.push(`GENESIS_STATE_RECONCILED: ${result.lifecycleState.genesisReconciliation.path}`);
@@ -616,6 +682,8 @@ export function summarizeAdaptPlan(plan) {
     memoryWrites: plan.memoryWrites === true,
     fastPath: plan.fastPath,
     agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
+    commandAgentPlan: plan.commandAgentPlan || null,
+    commandAgentPlanReport: plan.commandAgentPlanReport || null,
     changeDetection: plan.changeDetection,
     frontendTarget: plan.frontendTarget,
     baselineRefreshRequired: plan.baselineRefreshRequired === true,
@@ -646,6 +714,8 @@ export function summarizeDokployDeployPlan(plan) {
     approvalRequired: plan.approvalRequired === true,
     migrationCommand: plan.migrationCommand,
     dockerVerification: plan.dockerVerification,
+    commandAgentPlan: plan.commandAgentPlan || null,
+    commandAgentPlanReport: plan.commandAgentPlanReport || null,
     changedItems: (plan.items || [])
       .filter((item) => item.action === "create" || item.action === "update")
       .map((item) => ({
@@ -676,6 +746,8 @@ export function summarizeAdaptApply(result) {
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
     fileManifest: result.fileManifest || null,
+    workflowTransaction: result.workflowTransaction || null,
+    fixedPoint: result.fixedPoint || null,
   };
 }
 
@@ -761,6 +833,8 @@ export function formatAdaptAgentRuntimeVerification(result) {
     `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-adapt-state"}`,
+    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
+    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
   for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
@@ -782,6 +856,7 @@ export function summarizeDokployDeployApply(result) {
     dockerVerification: result.dockerVerification,
     composeConfigVerification: result.composeConfigVerification || null,
     lifecycleState: result.lifecycleState,
+    workflowTransaction: result.workflowTransaction || null,
   };
 }
 
@@ -1814,6 +1889,34 @@ function dedupeBaselineItems(items = []) {
     byPath.set(item.projectRel, item);
   }
   return [...byPath.values()].sort((a, b) => a.projectRel.localeCompare(b.projectRel));
+}
+
+function fixedPointRoundSummary(round, result = {}) {
+  return {
+    round,
+    applied: (result.applied || []).map((item) => item.projectRel),
+    blocked: (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason })),
+    postApply: result.postApply || null,
+    lifecycle: result.lifecycleState?.lifecycle || null,
+  };
+}
+
+function mergeAdaptApplyResults(previous = {}, next = {}) {
+  return {
+    ...next,
+    applied: dedupePlanItems([...(previous.applied || []), ...(next.applied || [])]),
+    skipped: dedupePlanItems([...(previous.skipped || []), ...(next.skipped || [])]),
+    blocked: dedupePlanItems([...(previous.blocked || []), ...(next.blocked || [])]),
+    metadataUpdated: previous.metadataUpdated === true || next.metadataUpdated === true,
+    baselineRefreshed: previous.baselineRefreshed === true || next.baselineRefreshed === true,
+    mutatedPaths: [...new Set([...(previous.mutatedPaths || []), ...(next.mutatedPaths || [])])],
+  };
+}
+
+function nextApplyForPostApply(result = {}) {
+  if (result.postApply?.clean === true) return null;
+  if ((result.blocked || []).length > 0) return "manual-merge-or-resolve-blocked-artifacts";
+  return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --all --fixed-point";
 }
 
 async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}) {

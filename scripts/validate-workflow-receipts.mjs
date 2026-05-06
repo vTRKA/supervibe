@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import {
   validateWorkflowReceipts,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  resolveCliRoots,
+} from "./lib/supervibe-cli-roots.mjs";
 
 export function formatWorkflowReceiptsReport(result) {
   const lines = [
@@ -30,7 +33,8 @@ function coverageStatus(result = {}) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateWorkflowReceipts(process.cwd());
+  const roots = resolveCliRoots({ argv: process.argv.slice(2) });
+  const result = validateWorkflowReceipts(roots.root);
   console.log(formatWorkflowReceiptsReport(result));
   process.exit(result.pass ? 0 : 1);
 }

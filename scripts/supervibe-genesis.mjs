@@ -19,6 +19,7 @@ import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs
 import { writeAdaptFileManifestSnapshot } from "./lib/supervibe-adapt.mjs";
 import { writeContextMigrationPlan } from "./lib/supervibe-context-migrator.mjs";
 import { resolveSupervibePluginRoot } from "./lib/supervibe-plugin-root.mjs";
+import { buildRuntimeCommandAgentPlan } from "./command-agent-plan.mjs";
 
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -37,7 +38,7 @@ async function main() {
     return;
   }
 
-  const targetRoot = resolve(options.target || options.project || process.cwd());
+  const targetRoot = resolve(options.target || options["project-root"] || options.project || options.root || process.cwd());
   const pluginRoot = resolve(options["plugin-root"] || resolveSupervibePluginRoot({ env: process.env, cwd: SCRIPT_PLUGIN_ROOT }));
   const env = { ...process.env };
   if (options.host) env.SUPERVIBE_HOST = options.host;
@@ -79,6 +80,8 @@ async function main() {
       mode,
       report,
       statePath: dryRunState.path,
+      targetRoot,
+      pluginRoot,
       confidence: dryRunState.state.confidence,
       created: [],
       skipped: [],
@@ -106,6 +109,8 @@ async function main() {
     mode,
     report,
     statePath: appliedState.path,
+    targetRoot,
+    pluginRoot,
     confidence: appliedState.state.confidence,
     nextAgentGate: buildVerifyAgentsCommand(report.host?.adapterId || "codex"),
     adaptFileManifest,
@@ -1095,6 +1100,8 @@ function outputResult(result, options) {
     return;
   }
   const displayReport = reportForExecutionMode(result.report, result.mode);
+  const agentPlan = buildGenesisRuntimeAgentPlan({ result, displayReport });
+  const deployHandoff = buildGenesisDeployHandoff(displayReport);
   const lines = [
     "SUPERVIBE_GENESIS_RUNNER",
     `MODE: ${result.mode}`,
@@ -1113,6 +1120,13 @@ function outputResult(result, options) {
     `DEPENDENCY_HEALTH_VERIFIED: ${result.generatedApps?.dependencyHealthVerified === true}`,
     `ADAPT_FILE_MANIFEST: ${result.adaptFileManifest?.path || "not-written"}`,
     `CONFIDENCE: ${result.confidence?.label || "unknown"} ${result.confidence?.status || "unknown"}`,
+    `AGENT_PLAN_EMBEDDED: ${Boolean(agentPlan)}`,
+    `AGENT_PLAN_EXECUTION_MODE: ${agentPlan?.plan?.executionMode || "not-run"}`,
+    `AGENT_PLAN_RECEIPT_GATE: ${agentPlan?.plan?.receiptGate || "not-run"}`,
+    `AGENT_PLAN_REQUIRED_AGENTS: ${(agentPlan?.plan?.requiredAgentIds || []).join(",") || "none"}`,
+    `DEPLOY_STATUS: ${deployHandoff.status}`,
+    `DEPLOY_VERIFIED: ${deployHandoff.deployVerified}`,
+    `NEXT_DEPLOY_COMMAND: ${deployHandoff.nextCommand || "none"}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
     `NEXT_AGENT_GATE: ${result.nextAgentGate || buildVerifyAgentsCommand(displayReport.host.adapterId)}`,
     "",
@@ -1138,6 +1152,38 @@ function outputResult(result, options) {
   console.log(lines.join("\n"));
 }
 
+function buildGenesisRuntimeAgentPlan({ result, displayReport } = {}) {
+  if (!displayReport) return null;
+  return buildRuntimeCommandAgentPlan({
+    command: "/supervibe-genesis",
+    projectRoot: result.targetRoot || process.cwd(),
+    pluginRoot: result.pluginRoot || SCRIPT_PLUGIN_ROOT,
+    host: displayReport.host?.adapterId || "codex",
+    installedOnly: result.mode === "apply",
+    workflowContext: {
+      dryRun: result.mode !== "apply",
+      apply: result.mode === "apply",
+      generateApps: result.generatedApps?.status && result.generatedApps.status !== "not-requested",
+      verifyAgents: false,
+      bootstrapPreAgent: true,
+    },
+    env: process.env,
+  });
+}
+
+function buildGenesisDeployHandoff(report = null) {
+  const policy = report?.deployAddOnPolicy || null;
+  const requested = policy?.requested === true || (policy?.targets || []).length > 0;
+  if (!requested) return { status: "not-requested", deployVerified: false, nextCommand: null };
+  const targets = Array.isArray(policy.targets) && policy.targets.length ? policy.targets : ["dokploy"];
+  const target = targets.includes("docker") ? "docker" : targets[0];
+  return {
+    status: "pending",
+    deployVerified: false,
+    nextCommand: `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --scope deploy --target ${target} --dry-run`,
+  };
+}
+
 function toGenesisJsonResult(result) {
   const report = reportForExecutionMode(result.report, result.mode);
   if (!report) {
@@ -1155,6 +1201,7 @@ function toGenesisJsonResult(result) {
 function toGenesisSummaryResult(result) {
   const report = reportForExecutionMode(result.report, result.mode);
   const generatedApps = result.generatedApps || {};
+  const deployHandoff = buildGenesisDeployHandoff(report);
   return {
     kind: "genesis-summary",
     mode: result.mode,
@@ -1180,6 +1227,11 @@ function toGenesisSummaryResult(result) {
       buildVerified: generatedApps.buildVerified === true,
       dependencyHealthVerified: generatedApps.dependencyHealthVerified === true,
       appChoice: report?.generateAppsStep?.appChoice || null,
+    },
+    deploy: {
+      status: deployHandoff.status,
+      verified: deployHandoff.deployVerified,
+      nextCommand: deployHandoff.nextCommand,
     },
     nextAgentGate: result.nextAgentGate || buildVerifyAgentsCommand(report?.host?.adapterId || "codex"),
   };
@@ -1257,6 +1309,7 @@ async function verifyGenesisAgents({ targetRoot, pluginRoot, options = {}, previ
   const now = new Date().toISOString();
   let statePath = null;
   let stateUpdated = false;
+  let confidence = null;
   if (previousState) {
     statePath = join(targetRoot, ".supervibe", "memory", "genesis", "state.json");
     const verification = {
@@ -1271,11 +1324,14 @@ async function verifyGenesisAgents({ targetRoot, pluginRoot, options = {}, previ
         ? "agent runtime receipt gate verified; app and deploy gates remain separate"
         : "real agent completion is not claimed until receipt-bound host-agent telemetry is present",
     };
+    confidence = reconcileGenesisConfidenceAfterAgentVerification(previousState.confidence, verification);
+    verification.confidenceScore = confidence;
     const state = {
       ...previousState,
       updatedAt: now,
       currentStage: agentRuntime.verified ? "agent-runtime-verified" : previousState.currentStage,
       verification,
+      confidence,
       bootstrap: {
         ...(previousState.bootstrap || {}),
         agentRuntime,
@@ -1300,6 +1356,29 @@ async function verifyGenesisAgents({ targetRoot, pluginRoot, options = {}, previ
     smokeRecord,
     statePath: statePath ? toRel(targetRoot, statePath) : null,
     stateUpdated,
+    confidence,
+  };
+}
+
+function reconcileGenesisConfidenceAfterAgentVerification(confidence = null, verification = {}) {
+  if (!confidence || typeof confidence !== "object") return confidence;
+  const gaps = (confidence.gaps || []).filter((gap) => gap?.code !== "agent-runtime-pending");
+  const shouldPass = verification.artifactVerified === true
+    && verification.agentRuntimeVerified === true
+    && verification.appVerified === true
+    && verification.deployVerified === true
+    && gaps.length === 0;
+  const score = shouldPass
+    ? 10
+    : verification.agentRuntimeVerified === true
+      ? Math.max(Number(confidence.score || 0), 8)
+      : Number(confidence.score || 0);
+  return {
+    ...confidence,
+    score,
+    label: `${score}/10`,
+    status: shouldPass ? "PASS" : gaps.length > 0 ? "WARN" : confidence.status,
+    gaps,
   };
 }
 
@@ -1313,6 +1392,7 @@ function outputGenesisAgentVerification(result, options = {}) {
       smokeRecord: result.smokeRecord,
       stateUpdated: result.stateUpdated,
       statePath: result.statePath,
+      confidence: result.confidence || null,
       nextAction: result.agentRuntime.verified ? null : result.agentSmokeTest.commandTemplate,
     }, null, 2));
     return;
@@ -1329,6 +1409,7 @@ function outputGenesisAgentVerification(result, options = {}) {
     `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-genesis-state"}`,
+    `CONFIDENCE: ${result.confidence?.label || "not-updated"} ${result.confidence?.status || ""}`.trim(),
   ];
   if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
   for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);

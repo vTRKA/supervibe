@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -47,4 +47,16 @@ test("current multi-stage workflow docs preserve continuation contracts", () => 
 
   assert.deepEqual(result.issues, []);
   assert.equal(result.pass, true);
+});
+
+test("workflow continuation validator can run from project root with explicit plugin root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-continuation-project-"));
+  try {
+    const result = validateWorkflowContinuation(root, { pluginRoot: process.cwd() });
+
+    assert.deepEqual(result.issues, []);
+    assert.equal(result.pass, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
