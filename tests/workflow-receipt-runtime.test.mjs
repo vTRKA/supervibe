@@ -17,6 +17,9 @@ import {
   validateWorkflowReceiptLedgerChain,
   validateWorkflowReceipts,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  readTraceSpans,
+} from "../scripts/lib/supervibe-runtime-trace.mjs";
 
 const execFileAsync = promisify(execFile);
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -56,6 +59,49 @@ test("workflow receipt runtime accepts command receipts for brainstorm outputs",
     assert.match(defaultWorkflowReceiptKeyPath(root), /workflow-receipt-runtime\.key$/);
     assert.match(defaultWorkflowReceiptLedgerPath(root), /workflow-invocation-ledger\.jsonl$/);
     assert.equal(WORKFLOW_RECEIPT_ISSUER, "supervibe-workflow-receipt-runtime");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt runtime preserves host trace metadata and emits receipt spans", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-trace-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/plans/trace/plan.md", "# Plan\n");
+
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-plan",
+      subjectType: "command",
+      subjectId: "supervibe:writing-plans",
+      stage: "stage-1-plan",
+      invocationReason: "traceable plan output",
+      outputArtifacts: [".supervibe/artifacts/plans/trace/plan.md"],
+      startedAt: "2026-05-07T00:00:00.000Z",
+      completedAt: "2026-05-07T00:01:00.000Z",
+      handoffId: "trace-plan",
+      secret: "test-secret",
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId: "codex-trace-run-1",
+        traceId: "trace-receipt-1",
+        spanId: "span-agent-1",
+      },
+    });
+
+    assert.equal(issued.receipt.hostInvocation.traceId, "trace-receipt-1");
+    assert.equal(issued.receipt.hostInvocation.spanId, "span-agent-1");
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+
+    const spans = await readTraceSpans({ rootDir: root });
+    const receiptSpan = spans.find((span) => span.name === "supervibe.workflow.receipt.issue");
+    assert.ok(receiptSpan);
+    assert.equal(receiptSpan.traceId, "trace-receipt-1");
+    assert.equal(receiptSpan.parentSpanId, "span-agent-1");
+    assert.equal(receiptSpan.attributes["supervibe.workflow.receipt_id"], issued.receipt.receiptId);
+
+    await writeUtf8(root, ".supervibe/artifacts/plans/trace/plan.md", "# Modified\n");
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

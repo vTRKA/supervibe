@@ -5,6 +5,11 @@ import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import {
   assertWorkflowStageId,
 } from "./workflow-stage-registry.mjs";
+import {
+  appendTraceSpan,
+  createTraceContext,
+  createTraceSpan,
+} from "./supervibe-runtime-trace.mjs";
 
 export const WORKFLOW_RECEIPT_ISSUER = "supervibe-workflow-receipt-runtime";
 
@@ -155,6 +160,36 @@ export async function issueWorkflowInvocationReceipt({
     });
     return { relArtifactLinksPath: relLinksPath, ledgerEntry: entry };
   });
+
+  const traceContext = createTraceContext({
+    traceId: normalizedHostInvocation?.traceId || undefined,
+    parentSpanId: normalizedHostInvocation?.spanId || null,
+  });
+  const receiptSpan = createTraceSpan({
+    name: "supervibe.workflow.receipt.issue",
+    traceId: traceContext.traceId,
+    parentSpanId: traceContext.parentSpanId,
+    startTime: startedAt || resolvedRunTimestamp,
+    endTime: completedAt || resolvedRunTimestamp,
+    status: "ok",
+    attributes: {
+      "supervibe.workflow.command": command,
+      "supervibe.workflow.stage": stage,
+      "supervibe.workflow.subject_type": subjectType,
+      "supervibe.workflow.subject_id": subjectId,
+      "supervibe.workflow.handoff_id": handoffId,
+      "supervibe.workflow.receipt_id": receiptId,
+      "supervibe.workflow.receipt_path": relReceiptPath,
+    },
+    links: normalizedHostInvocation?.traceId
+      ? [{
+          traceId: normalizedHostInvocation.traceId,
+          spanId: normalizedHostInvocation.spanId || null,
+          attributes: { "supervibe.link.type": "hostInvocation" },
+        }]
+      : [],
+  });
+  await appendTraceSpan({ rootDir, span: receiptSpan }).catch(() => null);
 
   return {
     receipt,

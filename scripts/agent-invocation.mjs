@@ -14,6 +14,11 @@ import {
 import {
   assertReceiptOutputContracts,
 } from "./lib/agent-output-contracts.mjs";
+import {
+  appendTraceSpan,
+  createTraceContext,
+  createTraceSpan,
+} from "./lib/supervibe-runtime-trace.mjs";
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
   claude: "claude-code-task-hook",
@@ -92,6 +97,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       });
     }
 
+    const traceContext = createTraceContext({
+      traceId: options["trace-id"] || process.env.SUPERVIBE_TRACE_ID || undefined,
+      parentSpanId: options["parent-span-id"] || process.env.SUPERVIBE_PARENT_SPAN_ID || null,
+    });
+    const invocationSpanStartedAt = new Date().toISOString();
+    const invocationSpan = createTraceSpan({
+      name: "supervibe.agent.invocation",
+      traceId: traceContext.traceId,
+      spanId: options["span-id"] || undefined,
+      parentSpanId: traceContext.parentSpanId,
+      startTime: invocationSpanStartedAt,
+      attributes: {
+        "supervibe.agent.id": agentId,
+        "supervibe.host": host,
+        "supervibe.host.source": source,
+        "supervibe.host.invocation_id": invocationId,
+      },
+    });
     const logPath = join(rootDir, ".supervibe", "memory", "agent-invocations.jsonl");
     mkdirSync(dirname(logPath), { recursive: true });
     setInvocationLogPath(logPath);
@@ -107,8 +130,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         host_invocation_source: source,
         session_id: options.session || options["session-id"] || null,
         status: options.status || "completed",
-        trace_id: options["trace-id"] || null,
-        span_id: options["span-id"] || null,
+        trace_id: traceContext.traceId,
+        span_id: invocationSpan.spanId,
         changedFiles: splitList(options["changed-files"] || options.changedFiles),
         risks: splitList(options.risks),
         recommendations: splitList(options.recommendations),
@@ -124,7 +147,29 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         invocationId,
         taskSummary,
         record,
+        traceId: traceContext.traceId,
+        spanId: record.span_id,
       });
+      const span = createTraceSpan({
+        name: "supervibe.agent.invocation",
+        traceId: traceContext.traceId,
+        spanId: invocationSpan.spanId,
+        parentSpanId: traceContext.parentSpanId,
+        startTime: invocationSpanStartedAt,
+        endTime: new Date().toISOString(),
+        status: String(record.status || "completed").toLowerCase() === "completed" ? "ok" : String(record.status || "completed"),
+        attributes: {
+          "supervibe.agent.id": agentId,
+          "supervibe.host": host,
+          "supervibe.host.source": source,
+          "supervibe.host.invocation_id": invocationId,
+          "supervibe.workflow.command": options.command || options.workflow || null,
+          "supervibe.workflow.stage": options.stage || options["stage-id"] || null,
+          "supervibe.workflow.receipt_path": receiptResult?.receiptPath || null,
+        },
+      });
+      record.span_id = span.spanId;
+      await appendTraceSpan({ rootDir, span }).catch(() => null);
     } catch (error) {
       if (record && truthyFlag(options["issue-receipt"] || options.issueReceipt)) {
         await rollbackInvocationSideEffects({ rootDir, record });
@@ -137,6 +182,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`HOST: ${host}`);
     console.log(`HOST_SOURCE: ${source}`);
     console.log(`INVOCATION_ID: ${record.invocation_id}`);
+    console.log(`TRACE_ID: ${record.trace_id || "none"}`);
+    console.log(`SPAN_ID: ${record.span_id || "none"}`);
     console.log("EVIDENCE: .supervibe/memory/agent-invocations.jsonl");
     console.log(`AGENT_OUTPUT_JSON: ${record.structured_output.json}`);
     console.log(`AGENT_OUTPUT_SUMMARY: ${record.structured_output.summary}`);
@@ -152,7 +199,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
-async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, invocationId, taskSummary, record }) {
+async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, invocationId, taskSummary, record, traceId = null, spanId = null }) {
   if (!truthyFlag(options["issue-receipt"] || options.issueReceipt)) return null;
   const command = options.command || options.workflow;
   const stage = options.stage || options["stage-id"];
@@ -182,8 +229,8 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
       source,
       invocationId,
       agentId,
-      traceId: options["trace-id"] || null,
-      spanId: options["span-id"] || null,
+      traceId: traceId || options["trace-id"] || null,
+      spanId: spanId || options["span-id"] || null,
     },
   });
 }

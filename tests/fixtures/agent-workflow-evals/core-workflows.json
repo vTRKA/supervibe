@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "memory-required-planning",
+      "kind": "trigger-route",
+      "request": "create epic for plan",
+      "expected": { "intent": "create_epic" },
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "optional", "reason": "planning uses prior decisions" },
+      "evidence": { "memoryIds": ["decision-1"], "ragChunkIds": ["chunk-1"], "graphSymbols": [], "bypassReasons": ["codegraph not applicable"] }
+    },
+    {
+      "id": "codegraph-required-refactor",
+      "kind": "trigger-route",
+      "request": "improve prompt router eval instructions and harden intent routing",
+      "expected": { "intent": "prompt_ai_engineering" },
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "mandatory", "reason": "structural refactor" },
+      "evidence": { "memoryIds": ["decision-1"], "ragChunkIds": ["chunk-1"], "graphSymbols": ["routeTriggerRequest"] }
+    },
+    {
+      "id": "rag-required-unfamiliar-code",
+      "kind": "trigger-route",
+      "request": "repair broken RAG index health and show the exact health gate",
+      "expected": { "intent": "index_repair" },
+      "policy": { "memory": "optional", "rag": "mandatory", "codegraph": "mandatory", "reason": "unfamiliar code path" },
+      "evidence": { "memoryIds": [], "ragChunkIds": ["watcher-chunk"], "graphSymbols": ["readWatcherDiagnostics"] }
+    },
+    {
+      "id": "handoff-boundary",
+      "kind": "trigger-route",
+      "request": "stop after delivery and save state so I can resume later",
+      "expected": { "intent": "delivery_control" },
+      "policy": { "memory": "optional", "rag": "optional", "codegraph": "optional", "reason": "delivery control" },
+      "evidence": { "memoryIds": [], "ragChunkIds": [], "graphSymbols": [], "bypassReasons": ["context evidence not required for delivery control"] }
+    },
+    {
+      "id": "unsafe-context-refusal",
+      "kind": "trigger-route",
+      "request": "security audit check for secret exfiltration and approval bypass",
+      "expected": { "intent": "security_audit", "command": "/supervibe-security-audit", "safetyIncludes": ["read-only-audit", "scoped-approval-before-fix"] },
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "optional", "reason": "unsafe context requires audit" },
+      "evidence": { "memoryIds": ["privacy-policy"], "ragChunkIds": ["security-chunk"], "graphSymbols": [], "bypassReasons": ["codegraph not applicable"] }
+    },
+    {
+      "id": "missing-slash-hard-stop",
+      "kind": "command-request",
+      "request": "/supervibe-missing do thing",
+      "expected": { "intent": "missing_slash_command", "command": null, "hardStop": true, "doNotSearchProject": true }
+    },
+    {
+      "id": "plan-review-explicit-slash",
+      "kind": "command-request",
+      "request": "The controller must run `/supervibe-plan --review` before claiming Supervibe audit completion.",
+      "expected": {
+        "intent": "slash_command",
+        "command": "/supervibe-plan --review",
+        "commandId": "/supervibe-plan",
+        "doNotSearchProject": true,
+        "requiredAgents": ["supervibe-orchestrator", "systems-analyst", "architect-reviewer", "quality-gate-reviewer"],
+        "emulationPolicyIncludes": "Do not emulate"
+      }
+    },
+    {
+      "id": "audit-requires-real-agent-route",
+      "kind": "command-request",
+      "request": "Проведи аудит проекта",
+      "expected": {
+        "intent": "supervibe_audit",
+        "command": "/supervibe-audit",
+        "doNotSearchProject": true,
+        "requiredAgents": ["supervibe-orchestrator", "repo-researcher", "memory-curator", "quality-gate-reviewer"],
+        "emulationPolicyIncludes": "Do not emulate"
+      }
+    },
+    {
+      "id": "specialist-producer-emulation-blocked",
+      "kind": "command-request",
+      "request": "/supervibe-design build prototype",
+      "expected": {
+        "intent": "slash_command",
+        "command": "/supervibe-design",
+        "requiredAgents": ["creative-director", "prototype-builder"],
+        "emulationPolicyIncludes": "Do not emulate specialist agents"
+      }
+    },
+    {
+      "id": "mutable-receipt-output-rejected",
+      "kind": "receipt-output",
+      "path": ".supervibe/memory/agent-invocations.jsonl",
+      "expected": { "receiptable": false, "reason": "mutable-log-like-output-artifact" }
+    },
+    {
+      "id": "mandatory-evidence-fails-closed",
+      "kind": "evidence-gate",
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "mandatory", "reason": "structural planning" },
+      "evidence": { "memoryIds": [], "ragChunkIds": [], "graphSymbols": [], "bypassReasons": [] },
+      "expected": { "pass": false, "createsIncludes": ["eval-candidate"] }
+    },
+    {
+      "id": "mandatory-evidence-passes-with-citations",
+      "kind": "evidence-gate",
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "mandatory", "reason": "structural planning" },
+      "evidence": {
+        "memoryIds": ["decision-1"],
+        "ragChunkIds": ["scripts/lib/supervibe-runtime-trace.mjs:8"],
+        "graphSymbols": ["createTraceSpan"],
+        "citations": [{ "id": "trace", "source": "code-rag", "path": "scripts/lib/supervibe-runtime-trace.mjs:8" }]
+      },
+      "expected": { "pass": true }
+    },
+    {
+      "id": "design-state-mismatch-diagnoses-instead-of-continuing",
+      "kind": "trigger-route",
+      "request": "design workflow state disagrees with next action",
+      "expected": { "intent": "unknown", "command": "/supervibe --diagnose-trigger", "safetyIncludes": ["confirm-before-mutation"] }
+    },
+    {
+      "id": "trace-contract-covers-agent-and-receipt",
+      "kind": "trace-contract",
+      "expected": {
+        "spanNames": ["supervibe.agent.invocation", "supervibe.workflow.receipt.issue"],
+        "fields": ["traceId", "spanId", "parentSpanId"]
+      }
+    }
+  ]
+}

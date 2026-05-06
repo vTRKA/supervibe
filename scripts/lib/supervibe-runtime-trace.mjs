@@ -53,6 +53,64 @@ export function createTraceSpan({
   };
 }
 
+export function createTraceContext({
+  traceId = randomHex(16),
+  parentSpanId = null,
+} = {}) {
+  return { traceId, parentSpanId };
+}
+
+export function createChildTraceSpan({
+  context = createTraceContext(),
+  parentSpanId = context.parentSpanId || null,
+  ...span
+} = {}) {
+  return createTraceSpan({
+    ...span,
+    traceId: span.traceId || context.traceId,
+    parentSpanId,
+  });
+}
+
+export async function appendCompletedTraceSpan({
+  rootDir = process.cwd(),
+  tracePath = defaultTracePath(rootDir),
+  context = createTraceContext(),
+  name,
+  kind = "internal",
+  parentSpanId = context.parentSpanId || null,
+  startTime = new Date().toISOString(),
+  endTime = new Date().toISOString(),
+  status = "ok",
+  attributes = {},
+  events = [],
+  links = [],
+  nonFatal = false,
+} = {}) {
+  try {
+    const span = createChildTraceSpan({
+      context,
+      name,
+      kind,
+      parentSpanId,
+      startTime,
+      endTime,
+      status,
+      attributes,
+      events,
+      links,
+    });
+    return await appendTraceSpan({ rootDir, tracePath, span });
+  } catch (error) {
+    if (!nonFatal) throw error;
+    return {
+      tracePath,
+      span: null,
+      error: error.message,
+    };
+  }
+}
+
 export async function appendTraceSpan({
   rootDir = process.cwd(),
   span,

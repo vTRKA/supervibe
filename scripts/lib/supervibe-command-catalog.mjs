@@ -779,7 +779,8 @@ function isBareScriptReferenceAllowed(script) {
 
 function parseExplicitSupervibeCommand(request) {
   const text = String(request || "");
-  const match = text.match(/(?:^|[\s`"'(])(?<raw>\/?supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
+  const match = text.match(/(?:^|[\s`"'(])(?<raw>\/supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i)
+    || text.match(/(?:^|[\s`"'(])(?<raw>supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
   if (!match?.groups?.raw) return null;
   const raw = match.groups.raw;
   const name = raw.startsWith("/") ? raw : `/${raw}`;
@@ -810,7 +811,7 @@ const VALUE_SLASH_FLAGS = new Set([
 ]);
 
 function splitSlashCommandRest(rest = "") {
-  const tokens = String(rest || "").trim().split(/\s+/).filter(Boolean);
+  const tokens = String(rest || "").trim().split(/\s+/).filter(Boolean).map(cleanSlashCommandToken).filter(Boolean);
   if (tokens.length === 0) return { args: "", context: "" };
   const args = [];
   let index = 0;
@@ -829,6 +830,10 @@ function splitSlashCommandRest(rest = "") {
     args: args.join(" "),
     context: tokens.slice(index).join(" "),
   };
+}
+
+function cleanSlashCommandToken(token = "") {
+  return String(token || "").replace(/^[`"']+/, "").replace(/[`\\"",)]+$/g, "");
 }
 
 function portablePluginScriptCommand(command, args = "") {

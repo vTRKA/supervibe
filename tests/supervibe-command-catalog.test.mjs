@@ -119,6 +119,20 @@ test("slash command parser keeps command id separate from free-form context", ()
   assert.equal(flagged.commandContext, "под next laravel postgres");
 });
 
+test("command resolver prefers explicit slash command embedded in long specialist text", () => {
+  const request = "The controller must run `/supervibe-plan --review` before claiming Supervibe audit completion.";
+  const match = resolveCommandRequest(request, {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.commandId, "/supervibe-plan");
+  assert.equal(match.command, "/supervibe-plan --review");
+  assert.equal(match.commandArgs, "--review");
+  assert.equal(match.doNotSearchProject, true);
+});
+
 test("command catalog routes natural-language genesis setup with stack names", () => {
   const match = resolveCommandRequest("сделай genesis scaffold под next laravel postgres", {
     pluginRoot: ROOT,

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.102] - 2026-05-07
+
+### Added
+
+- Added runtime trace context helpers and local JSONL spans for agent
+  invocation and workflow receipt issuance, preserving trace IDs across agent
+  records and receipt metadata.
+- Added a fixture-backed agent workflow eval matrix with 14 deterministic cases
+  for command routing, evidence gates, receipt safety, and trace contract
+  coverage.
+
+### Changed
+
+- Updated release and host manifest versions to 2.0.102.
+
+### Fixed
+
+- Fixed explicit slash-command precedence so embedded commands such as
+  `/supervibe-plan --review` route to the slash command before broader
+  natural-language shortcuts.
+
 ## [2.0.101] - 2026-05-07
 
 ### Added

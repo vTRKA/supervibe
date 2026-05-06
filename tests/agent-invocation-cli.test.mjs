@@ -5,6 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import {
+  readTraceSpans,
+} from "../scripts/lib/supervibe-runtime-trace.mjs";
+
 const ROOT = process.cwd();
 
 test("agent invocation CLI records Codex spawn proof usable by receipts", () => {
@@ -377,6 +381,69 @@ test("agent invocation CLI writes evidence ledger from retrieval flags", () => {
     const ledger = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "evidence-ledger.jsonl"), "utf8").trim());
     assert.equal(ledger.agentId, "repo-researcher");
     assert.equal(ledger.gate.pass, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("agent invocation CLI emits runtime trace span and binds receipt trace metadata", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-trace-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/codex-agent-trace-1/agent-output.json";
+    const logged = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "agent-invocation.mjs"),
+      "log",
+      "--root",
+      projectRoot,
+      "--agent",
+      "repo-researcher",
+      "--host",
+      "codex",
+      "--host-invocation-id",
+      "codex-agent-trace-1",
+      "--task",
+      "Review runtime trace plan",
+      "--confidence",
+      "9",
+      "--trace-id",
+      "trace-cli-1",
+      "--span-id",
+      "span-cli-1",
+      "--issue-receipt",
+      "--command",
+      "/supervibe-plan",
+      "--stage",
+      "plan-review-repo-researcher",
+      "--handoff-id",
+      "trace-cli",
+      "--output-artifacts",
+      outputRel,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(logged, /TRACE_ID: trace-cli-1/);
+    assert.match(logged, /SPAN_ID: span-cli-1/);
+    const record = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "agent-invocations.jsonl"), "utf8").trim());
+    assert.equal(record.trace_id, "trace-cli-1");
+    assert.equal(record.span_id, "span-cli-1");
+    const receipt = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-plan", "trace-cli", "repo-researcher-plan-review-repo-researcher.json"), "utf8"));
+    assert.equal(receipt.hostInvocation.traceId, "trace-cli-1");
+    assert.equal(receipt.hostInvocation.spanId, "span-cli-1");
+
+    const spans = await readTraceSpans({ rootDir: projectRoot });
+    const agentSpan = spans.find((span) => span.name === "supervibe.agent.invocation");
+    const receiptSpan = spans.find((span) => span.name === "supervibe.workflow.receipt.issue");
+    assert.equal(spans.length, 2);
+    assert.ok(agentSpan);
+    assert.ok(receiptSpan);
+    assert.equal(agentSpan.traceId, "trace-cli-1");
+    assert.equal(agentSpan.spanId, "span-cli-1");
+    assert.equal(agentSpan.attributes["supervibe.workflow.receipt_path"], ".supervibe/artifacts/_workflow-invocations/supervibe-plan/trace-cli/repo-researcher-plan-review-repo-researcher.json");
+    assert.equal(receiptSpan.traceId, "trace-cli-1");
+    assert.equal(receiptSpan.parentSpanId, "span-cli-1");
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
