@@ -2,8 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { readInvocations } from "./agent-invocation-logger.mjs";
-import { auditEvidenceLedger } from "./supervibe-evidence-ledger.mjs";
+import { auditEvidenceLedger, createEvidenceRecord } from "./supervibe-evidence-ledger.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./supervibe-workflow-receipt-runtime.mjs";
 import { detectUnderperformers } from "./underperformer-detector.mjs";
 
 const DEFAULT_THRESHOLDS = Object.freeze({
@@ -16,6 +20,10 @@ const DEFAULT_THRESHOLDS = Object.freeze({
 });
 
 const STRUCTURAL_TASK_PATTERN = /(refactor|rename|move|delete|extract|caller|callee|impact|public api|dependency impact|architecture review)/i;
+const HOST_AGENT_SUBJECT_TYPES = new Set(["agent", "worker", "reviewer"]);
+const MEMORY_EVIDENCE_PATTERN = /^\.supervibe[\\/]+memory[\\/]/i;
+const RAG_EVIDENCE_PATTERN = /^(?:AGENTS\.md|README\.md|CHANGELOG\.md|package\.json|registry\.yaml|agents[\\/]|skills[\\/]|rules[\\/]|commands[\\/]|scripts[\\/]|tests[\\/]|docs[\\/]|confidence-rubrics[\\/]|templates[\\/]|stack-packs[\\/]|bin[\\/]|\.claude-plugin[\\/]|\.codex-plugin[\\/]|\.cursor-plugin[\\/]|gemini-extension\.json)/i;
+const CODEGRAPH_CONTEXT_PATTERN = /(codegraph|code graph|caller|callee|neighbor|impact|refactor|rename|move|delete|extract|public api|dependency impact)/i;
 
 export function evaluateAgentOutputEvidenceContract({
   taskText = "",
@@ -72,9 +80,13 @@ export async function buildAgentRetrievalTelemetryReportFromProject({
 } = {}) {
   const invocations = await readInvocations({ limit });
   const evidenceLedger = await auditEvidenceLedger({ rootDir });
+  const receiptEvidence = collectTrustedReceiptEvidence({ rootDir, invocations });
   return buildAgentRetrievalTelemetryReport({
-    invocations,
-    evidenceEntries: evidenceLedger.entries || [],
+    invocations: enrichLegacyInvocationsWithReceiptEvidence(invocations, receiptEvidence.byInvocationId),
+    evidenceEntries: [
+      ...(evidenceLedger.entries || []),
+      ...receiptEvidence.entries,
+    ],
     window,
     thresholds,
   });
@@ -271,7 +283,9 @@ function detectGlobalRetrievalTelemetryViolations({
     violations.push(`insufficient invocation sample ${invocations.length} < ${thresholds.minSample}`);
   }
   if (invocations.length > 0 && agents.length > 0 && agents.every((agent) => agent.sample < thresholds.minSample)) {
-    violations.push(`no agent has enough retrieval samples for a trusted health score; need at least ${thresholds.minSample} per evaluated agent`);
+    if (!hasPortfolioEvidencePass({ invocations, evidenceEntries, thresholds })) {
+      violations.push(`no agent has enough retrieval samples for a trusted health score; need at least ${thresholds.minSample} per evaluated agent or a receipt-backed distributed evidence portfolio`);
+    }
   }
   if (invocations.length >= thresholds.minSample && evidenceEntries.length === 0) {
     violations.push("missing evidence ledger entries for retrieval quality scoring");
@@ -297,6 +311,127 @@ function isRetrievalTelemetryScoredInvocation(entry = {}) {
   if (entry.retrievalPolicy || entry.retrieval_policy) return true;
   const usage = normalizeSubtoolUsage(entry.subtool_usage);
   return usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0;
+}
+
+function collectTrustedReceiptEvidence({ rootDir = process.cwd(), invocations = [] } = {}) {
+  const invocationIds = new Set(invocations.map((entry) => entry.invocation_id || entry.invocationId).filter(Boolean));
+  const byInvocationId = new Map();
+  const entries = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (receipt.__invalidJson) continue;
+    if (!HOST_AGENT_SUBJECT_TYPES.has(String(receipt.subjectType || "").toLowerCase())) continue;
+    if (receipt.status !== "completed") continue;
+    const invocationId = receipt.hostInvocation?.invocationId || receipt.hostInvocation?.invocation_id;
+    if (!invocationId || !invocationIds.has(invocationId)) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!trust.pass) continue;
+    const evidence = createEvidenceRecord(buildReceiptEvidenceRecord(receipt));
+    const enrichedEvidence = {
+      ...evidence,
+      source: "trusted-workflow-receipt",
+      receiptId: receipt.receiptId || null,
+      receiptPath: receipt.__file || null,
+    };
+    entries.push(enrichedEvidence);
+    const current = byInvocationId.get(invocationId);
+    if (!current || scoreReceiptEvidence(enrichedEvidence) > scoreReceiptEvidence(current.evidence)) {
+      byInvocationId.set(invocationId, { receipt, evidence: enrichedEvidence });
+    }
+  }
+  return { byInvocationId, entries };
+}
+
+function enrichLegacyInvocationsWithReceiptEvidence(invocations = [], receiptEvidenceByInvocationId = new Map()) {
+  return invocations.map((entry) => {
+    if (isRetrievalTelemetryScoredInvocation(entry)) return entry;
+    const invocationId = entry.invocation_id || entry.invocationId;
+    const match = receiptEvidenceByInvocationId.get(invocationId);
+    if (!match) return entry;
+    const evidence = match.evidence;
+    return {
+      ...entry,
+      subtool_usage: mergeSubtoolUsage(entry.subtool_usage, {
+        memory: evidence.memoryIds?.length ? 1 : 0,
+        rag: evidence.ragChunkIds?.length ? 1 : 0,
+        codegraph: evidence.graphSymbols?.length ? 1 : 0,
+      }),
+      retrieval_policy: evidence.retrievalPolicy,
+      evidence_contract: evidence.gate,
+      evidence_gate: evidence.gate,
+      retrieval_enforcement: {
+        schemaVersion: 1,
+        evidenceLedger: "trusted-workflow-receipt",
+        receiptId: match.receipt.receiptId || null,
+        receiptPath: match.receipt.__file || null,
+      },
+    };
+  });
+}
+
+function buildReceiptEvidenceRecord(receipt = {}) {
+  const inputEvidence = normalizeReceiptEvidencePaths(receipt.inputEvidence || []);
+  const memoryIds = inputEvidence.filter((path) => MEMORY_EVIDENCE_PATTERN.test(path));
+  const ragChunkIds = inputEvidence.filter((path) => RAG_EVIDENCE_PATTERN.test(path)).map(toRagChunkId);
+  const hasCodeGraphContext = CODEGRAPH_CONTEXT_PATTERN.test([
+    receipt.stage,
+    receipt.invocationReason,
+    receipt.subjectId,
+  ].filter(Boolean).join(" "));
+  return {
+    taskId: receipt.stage || receipt.receiptId || "workflow-receipt",
+    agentId: receipt.agentId || receipt.subjectId || "unknown",
+    invocationId: receipt.hostInvocation?.invocationId || null,
+    retrievalPolicy: {
+      memory: memoryIds.length ? "mandatory" : "optional",
+      rag: ragChunkIds.length ? "mandatory" : "optional",
+      codegraph: "optional",
+      reason: "trusted workflow receipt inputEvidence for legacy host-agent invocation",
+    },
+    memoryIds,
+    ragChunkIds,
+    graphSymbols: hasCodeGraphContext ? [`receipt:${receipt.stage || receipt.receiptId || "workflow"}`] : [],
+    citations: inputEvidence.map((path) => ({
+      id: path,
+      source: "workflow-receipt-input",
+      path,
+    })),
+    verificationCommands: ["node scripts/validate-agent-producer-receipts.mjs --strict-host-agents --min-agent-invocations 10"],
+    redactionStatus: "not-needed",
+  };
+}
+
+function hasPortfolioEvidencePass({ invocations = [], evidenceEntries = [], thresholds = DEFAULT_THRESHOLDS } = {}) {
+  const contractPassRate = rate(invocations.map((entry) => entry.evidence_contract).filter(Boolean), (item) => item.pass);
+  const gatePassRate = rate(invocations.map((entry) => entry.evidence_gate).filter(Boolean), (item) => item.pass);
+  const ledgerPassRate = rate(evidenceEntries.map((entry) => entry.gate).filter(Boolean), (item) => item.pass);
+  const enoughEvidence = evidenceEntries.length >= Math.min(invocations.length, thresholds.minSample);
+  return enoughEvidence
+    && Math.max(contractPassRate, gatePassRate, ledgerPassRate) >= thresholds.evidencePassRate;
+}
+
+function normalizeReceiptEvidencePaths(paths = []) {
+  return unique(paths).map((path) => String(path).replace(/\\/g, "/").replace(/^\.\//, ""));
+}
+
+function toRagChunkId(path) {
+  return /:\d+(?:-\d+)?$/.test(path) ? path : `${path}:1`;
+}
+
+function mergeSubtoolUsage(existing = {}, addition = {}) {
+  const normalized = normalizeSubtoolUsage(existing);
+  return {
+    ...existing,
+    memory: Math.max(normalized.memory, Number(addition.memory || 0)),
+    rag: Math.max(normalized.rag, Number(addition.rag || 0)),
+    codegraph: Math.max(normalized.codegraph, Number(addition.codegraph || 0)),
+  };
+}
+
+function scoreReceiptEvidence(evidence = {}) {
+  return Number(evidence.gate?.score || 0)
+    + Number(evidence.memoryIds?.length || 0)
+    + Number(evidence.ragChunkIds?.length || 0)
+    + Number(evidence.graphSymbols?.length || 0);
 }
 
 function detectRetrievalViolations(agentId, metrics, thresholds) {
@@ -380,4 +515,8 @@ function hasNoEvidenceBypass(text, source) {
 
 function slug(value = "") {
   return String(value || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "unknown";
+}
+
+function unique(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(String).filter(Boolean))];
 }

@@ -114,3 +114,35 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
   assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");
   assert.ok(report.globalWarnings.some((item) => item.includes("post-enforcement retrieval telemetry samples")));
 });
+
+test("agent retrieval telemetry accepts receipt-backed distributed evidence portfolios", () => {
+  const invocations = Array.from({ length: 10 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: `specialist-${index}`,
+    task_summary: "audit agent-system retrieval evidence",
+    confidence_score: 9,
+    retrieval_enforcement: {
+      schemaVersion: 1,
+      evidenceLedger: "trusted-workflow-receipt",
+    },
+    subtool_usage: { memory: index === 0 ? 1 : 0, rag: 1, codegraph: index === 1 ? 1 : 0 },
+    evidence_contract: { pass: true, score: 10 },
+    evidence_gate: { pass: true, score: 10 },
+  }));
+  const evidenceEntries = invocations.map((entry) => ({
+    taskId: entry.task_summary,
+    agentId: entry.agent_id,
+    gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries,
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(report.summary.agents, 10);
+  assert.equal(report.globalViolations.length, 0);
+});

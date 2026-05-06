@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.97] - 2026-05-06
+
+### Changed
+
+- Upgraded receipt-backed retrieval telemetry so trusted host-agent workflow
+  receipts with concrete `inputEvidence` produce scored evidence samples for
+  legacy host invocations.
+- Allowed the 10-agent audit portfolio to satisfy the strict retrieval maturity
+  gate when every specialist has trusted receipt-backed evidence coverage.
+- Updated release and host manifest versions to 2.0.97.
+
+### Fixed
+
+- Restored the agent-system maturity gate to a verified 10/10 score without
+  accepting untrusted legacy-only retrieval rows.
+
 ## [2.0.96] - 2026-05-06
 
 ### Added
