@@ -12,6 +12,7 @@ export async function runFixture(rootDir, fixtureName, options = {}) {
     dryRun: true,
     fixture: fixtureDir,
     maxLoops: 20,
+    requireUserAcceptance: Boolean(options.requireUserAcceptance),
   });
   await writeFile(join(fixtureDir, "last-result.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8");
   return result;

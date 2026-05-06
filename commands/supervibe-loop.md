@@ -60,6 +60,10 @@ Primary path:
 /supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
 /supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --setup-worker-presets
+/supervibe-loop --require-user-acceptance --request "validate integrations"
+/supervibe-loop --accept-goals --file .supervibe/memory/loops/<run-id>/state.json --accepted-by <name>
+/supervibe-loop --reject-goals --file .supervibe/memory/loops/<run-id>/state.json --feedback "what is missing"
+/supervibe-loop --fork-checkpoint --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
@@ -259,12 +263,23 @@ commands as the portable baseline.
   explicit budget, missing access, production approval, cancellation, state
   migration, unapproved scope expansion, verification failure, no-progress, or
   side-effect reconciliation.
+- Distinguish system acceptance from user goal acceptance. A run can pass all
+  internal gates and still stop as `AWAITING_USER_ACCEPTANCE` until the user
+  confirms the goals, rejects them with feedback, or forks a checkpoint for a
+  new direction. Non-dry execution requires this confirmation by default; dry
+  runs can opt in with `--require-user-acceptance`.
+- Rejected user goal acceptance must not be treated as complete. It becomes
+  `REPLAN_REQUIRED` and should use `--fork-checkpoint` before changing goals,
+  tasks, or flow direction.
 
 ## Continuation Contract
 
 Do not stop after the first task or wave if there is still ready work and no blocker. The loop should continue ready work until the user goals are complete, a configured max-duration/max-iteration/provider budget is reached, a policy or approval gate blocks progress, verification fails, no-progress policy fires, or the user explicitly stops/pauses. If no explicit budget is configured, the default run is not time-limited.
 
 Wave reviews are checkpoints, not default terminal states. If a wave passes and more tasks are ready, continue to the next wave or print the exact blocker that prevents continuation. Final output must distinguish "finished all available work" from "paused by gate/budget/user".
+Final completion also requires the user goal acceptance state to be approved
+when required. If the user rejects the result, preserve the original state and
+fork a checkpoint for replan instead of overwriting the completed evidence.
 
 ## Topic Drift / Resume Contract
 
@@ -310,6 +325,9 @@ npm run supervibe:eval -- --case plan-review-loop
 npm run supervibe:loop -- graph --file .supervibe/memory/loops/<run-id>/state.json --format dot
 npm run supervibe:loop -- doctor --file .supervibe/memory/loops/<run-id>/state.json
 npm run supervibe:loop -- prime --file .supervibe/memory/loops/<run-id>/state.json
+npm run supervibe:loop -- --accept-goals --file .supervibe/memory/loops/<run-id>/state.json --accepted-by <name>
+npm run supervibe:loop -- --reject-goals --file .supervibe/memory/loops/<run-id>/state.json --feedback "what is missing"
+npm run supervibe:loop -- --fork-checkpoint --file .supervibe/memory/loops/<run-id>/state.json
 npm run supervibe:loop -- --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
 npm run supervibe:context-pack -- --file .supervibe/memory/work-items/<epic-id>/graph.json --item T1
 npm run supervibe:ui -- --file .supervibe/memory/work-items/<epic-id>/graph.json

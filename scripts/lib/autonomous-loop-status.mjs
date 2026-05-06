@@ -68,6 +68,7 @@ export function formatStatus(state) {
   const permissionSummary = state.permission_audit_summary || summarizePermissionAudit(state.permission_audit || null);
   const observability = state.observability_summary || summarizeRunObservability({ state });
   const providerCapabilities = state.provider_capabilities || state.preflight?.provider_capabilities || null;
+  const userGoalAcceptance = state.user_goal_acceptance || { required: false, status: "not-required" };
   const lines = [
     "SUPERVIBE_LOOP_STATUS",
     `STATUS: ${state.status}`,
@@ -88,6 +89,9 @@ export function formatStatus(state) {
     `POLICY_ROLE: ${state.policy_profile?.role || "none"}`,
     `ADAPTERS: ${adapterSummary.available.join(",") || "none"}`,
     `PERMISSION_MODE: ${permissionSummary.permissionMode}`,
+    `USER_GOAL_ACCEPTANCE: ${userGoalAcceptance.status}`,
+    `USER_GOAL_REQUIRED: ${userGoalAcceptance.required === true}`,
+    `USER_GOAL_NEXT_ACTION: ${userGoalAcceptance.next_action || "none"}`,
     `BYPASS_DISABLED: ${permissionSummary.bypassDisabled}`,
     `DENIED_TOOLS: ${permissionSummary.deniedToolClasses.join(",") || "none"}`,
     `PROMPT_REQUIRED_TOOLS: ${permissionSummary.promptRequiredToolClasses.join(",") || "none"}`,

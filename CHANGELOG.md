@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.100] - 2026-05-07
+
+### Added
+
+- Added `/supervibe-loop` user goal acceptance state, CLI acceptance/rejection
+  commands, and checkpoint fork support for user-directed replan after system
+  acceptance.
+- Expanded autonomous loop scenario coverage for goal-until-complete,
+  user-rejection, checkpoint, worktree, regulated-domain, scope-creep, and
+  provider-fallback cases.
+
+### Changed
+
+- Split loop completion into system acceptance and user goal acceptance so
+  non-dry runs cannot report final completion before user confirmation.
+- Exposed scope-value guard evidence in loop state and final reports to defer
+  low-value extras instead of silently inflating MVP scope.
+- Updated release and host manifest versions to 2.0.100.
+
+### Fixed
+
+- Hardened Windows worktree-session tests with retrying temporary-directory
+  cleanup after concurrent registry writes.
+
 ## [2.0.99] - 2026-05-07
 
 ### Added

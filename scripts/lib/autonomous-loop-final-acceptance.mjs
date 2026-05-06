@@ -149,12 +149,26 @@ export function evaluateFinalAcceptance({
     missing.push(`autonomous loop replay eval: ${regression}`);
   }
 
+  const userGoalAcceptance = normalizeUserGoalAcceptance(state.user_goal_acceptance);
+  if (userGoalAcceptance.required) {
+    if (!userGoalAcceptance.system_acceptance_id) {
+      missing.push("user goal acceptance system acceptance id");
+    }
+    if (userGoalAcceptance.status !== "approved") {
+      missing.push(`user goal acceptance ${userGoalAcceptance.status}`);
+    } else {
+      requireField(userGoalAcceptance, "accepted_by", missing, "user goal acceptance accepted by");
+      requireField(userGoalAcceptance, "accepted_at", missing, "user goal acceptance accepted at");
+    }
+  }
+
   return {
     pass: missing.length === 0,
     score: missing.length === 0 ? 10 : Math.max(0, Number((10 - missing.length * 0.5).toFixed(1))),
     missing,
     assignmentExplanationSummary: summarizeAssignmentExplanations(dispatches),
     approvalReceiptSummary: sideEffects.map((sideEffect) => approvalReceiptSummaryForSideEffect(sideEffect, approvalReceipts)),
+    userGoalAcceptanceSummary: summarizeUserGoalAcceptance(userGoalAcceptance),
   };
 }
 
@@ -182,5 +196,30 @@ function summarizeAssignmentExplanations(dispatches = []) {
     explainedDispatches: explained.length,
     manualAssignments: explained.filter((dispatch) => dispatch.assignmentExplanation.workerAgentId === "manual").length,
     serializedOrBlocked: explained.filter((dispatch) => (dispatch.assignmentExplanation.notParallelizedBecause || []).length > 0).length,
+  };
+}
+
+function normalizeUserGoalAcceptance(value = {}) {
+  return {
+    required: Boolean(value.required),
+    status: value.status || (value.required ? "pending" : "not-required"),
+    system_acceptance_id: value.system_acceptance_id || null,
+    accepted_by: value.accepted_by || null,
+    accepted_at: value.accepted_at || null,
+    rejected_by: value.rejected_by || null,
+    rejected_at: value.rejected_at || null,
+    feedback: value.feedback || null,
+    next_action: value.next_action || null,
+  };
+}
+
+function summarizeUserGoalAcceptance(acceptance) {
+  return {
+    required: acceptance.required,
+    status: acceptance.status,
+    systemAcceptanceId: acceptance.system_acceptance_id,
+    acceptedBy: acceptance.accepted_by,
+    rejectedBy: acceptance.rejected_by,
+    nextAction: acceptance.next_action,
   };
 }

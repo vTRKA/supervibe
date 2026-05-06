@@ -579,6 +579,7 @@ export async function runAutonomousLoop(options = {}) {
   state.permission_audit = permissionAudit;
   state.permission_audit_summary = preflight.provider_permission_audit_summary;
   state.attempts = attempts;
+  state.scope_value_guard = createScopeValueGuard({ preflight, tasks });
 
   const provenance = finalReportProvenance({
     tasks,
@@ -588,6 +589,34 @@ export async function runAutonomousLoop(options = {}) {
     verification: scores.map((score) => ({ taskId: score.taskId, finalScore: score.finalScore })),
   });
   state.final_report_provenance = provenance;
+  const systemAcceptance = evaluateFinalAcceptance({
+    state: { ...state, user_goal_acceptance: { required: false, status: "not-required" } },
+    preflight,
+    tasks,
+    scores,
+    handoffs,
+    sideEffects,
+    dispatches,
+    mcpPlans,
+    retentionPolicy,
+    provenance,
+    verificationMatrix,
+    failurePackets,
+    sideEffectStatus,
+  });
+  state.system_acceptance = {
+    acceptance_id: `${runId}:system-final-acceptance`,
+    pass: systemAcceptance.pass,
+    score: systemAcceptance.score,
+    missing: systemAcceptance.missing,
+    evaluated_at: nowIso(),
+  };
+  state.user_goal_acceptance = createUserGoalAcceptance({
+    runId,
+    required: shouldRequireUserGoalAcceptance({ executionMode, options, runScore, stopReason }),
+    systemAcceptance: state.system_acceptance,
+    tasks,
+  });
   const finalAcceptance = evaluateFinalAcceptance({
     state,
     preflight,
@@ -604,7 +633,21 @@ export async function runAutonomousLoop(options = {}) {
     sideEffectStatus,
   });
   state.final_acceptance = finalAcceptance;
-  if (!finalAcceptance.pass && !stopReason) {
+  if (!state.system_acceptance.pass && !stopReason) {
+    stopReason = "final_acceptance_failed";
+    state.status = "BLOCKED";
+    state.stop_reason = stopReason;
+    state.next_action = "fix_final_acceptance_gaps";
+    state.run_score = Math.min(state.run_score, state.system_acceptance.score);
+  } else if (state.user_goal_acceptance.required && state.user_goal_acceptance.status !== "approved" && !stopReason) {
+    stopReason = state.user_goal_acceptance.status === "rejected"
+      ? "user_goal_acceptance_rejected"
+      : "user_goal_acceptance_required";
+    state.status = state.user_goal_acceptance.status === "rejected" ? "REPLAN_REQUIRED" : "AWAITING_USER_ACCEPTANCE";
+    state.stop_reason = stopReason;
+    state.next_action = state.user_goal_acceptance.next_action;
+    state.run_score = Math.min(state.run_score, finalAcceptance.score);
+  } else if (!finalAcceptance.pass && !stopReason) {
     stopReason = "final_acceptance_failed";
     state.status = "BLOCKED";
     state.stop_reason = stopReason;
@@ -652,6 +695,116 @@ export async function stopAutonomousLoop(statePath, reason = "user_requested_sto
   return next;
 }
 
+export async function recordUserGoalAcceptance(statePath, {
+  accepted = true,
+  acceptedBy = "user",
+  feedback = null,
+  now = nowIso(),
+} = {}) {
+  const state = await readState(statePath);
+  const current = state.user_goal_acceptance || createUserGoalAcceptance({
+    runId: state.run_id,
+    required: true,
+    systemAcceptance: state.system_acceptance || {
+      acceptance_id: `${state.run_id || "loop"}:system-final-acceptance`,
+      pass: state.final_acceptance?.pass !== false,
+      score: state.final_acceptance?.score ?? state.run_score ?? 0,
+      missing: withoutUserGoalAcceptanceMissing(state.final_acceptance?.missing || []),
+    },
+    tasks: state.tasks || [],
+  });
+  state.user_goal_acceptance = {
+    ...current,
+    required: true,
+    status: accepted ? "approved" : "rejected",
+    accepted_by: accepted ? acceptedBy : null,
+    accepted_at: accepted ? now : null,
+    rejected_by: accepted ? null : acceptedBy,
+    rejected_at: accepted ? null : now,
+    feedback: feedback || current.feedback || null,
+    next_action: accepted ? "archive_or_continue_release_handoff" : "fork_checkpoint_or_replan",
+  };
+
+  const nonUserMissing = withoutUserGoalAcceptanceMissing(state.final_acceptance?.missing || []);
+  const systemPass = state.system_acceptance?.pass !== false && nonUserMissing.length === 0;
+  state.final_acceptance = {
+    ...(state.final_acceptance || {}),
+    pass: accepted && systemPass,
+    score: accepted && systemPass
+      ? Math.max(state.final_acceptance?.score || 0, state.system_acceptance?.score || state.run_score || 0)
+      : Math.min(state.final_acceptance?.score || state.run_score || 0, accepted ? 8.5 : 8),
+    missing: accepted ? nonUserMissing : [...new Set([...nonUserMissing, "user goal acceptance rejected"])],
+    userGoalAcceptanceSummary: {
+      required: true,
+      status: state.user_goal_acceptance.status,
+      systemAcceptanceId: state.user_goal_acceptance.system_acceptance_id,
+      acceptedBy: state.user_goal_acceptance.accepted_by,
+      rejectedBy: state.user_goal_acceptance.rejected_by,
+      nextAction: state.user_goal_acceptance.next_action,
+    },
+  };
+
+  if (accepted && systemPass) {
+    state.status = "COMPLETE";
+    state.stop_reason = null;
+    state.next_action = "none";
+    state.run_score = Math.max(state.run_score || 0, state.system_acceptance?.score || state.final_acceptance.score);
+  } else if (accepted) {
+    state.status = "BLOCKED";
+    state.stop_reason = "final_acceptance_failed";
+    state.next_action = "fix_final_acceptance_gaps";
+    state.run_score = Math.min(state.run_score ?? state.final_acceptance.score, state.final_acceptance.score);
+  } else {
+    state.status = "REPLAN_REQUIRED";
+    state.stop_reason = "user_goal_acceptance_rejected";
+    state.next_action = "fork_checkpoint_or_replan";
+    state.run_score = Math.min(state.run_score ?? state.final_acceptance.score, state.final_acceptance.score);
+  }
+
+  await writeState(statePath, state);
+  return state;
+}
+
+export async function forkAutonomousLoopCheckpoint(statePath, {
+  outPath = null,
+  reason = "user_goal_replan",
+  now = nowIso(),
+} = {}) {
+  const state = await readState(statePath);
+  const forkRunId = `${state.run_id || "loop"}-replan-${safeTimestamp(now)}`;
+  const forkState = {
+    ...state,
+    run_id: forkRunId,
+    status: "REPLAN_REQUIRED",
+    stop_reason: "checkpoint_forked_for_replan",
+    next_action: "update_goals_plan_or_tasks_then_resume",
+    forked_from: {
+      run_id: state.run_id || null,
+      state_path: statePath,
+      forked_at: now,
+      reason,
+      original_status: state.status || null,
+      original_stop_reason: state.stop_reason || null,
+    },
+    checkpoint_policy: {
+      rollback_to_state_path: statePath,
+      user_can_change_direction: true,
+      preserve_original_artifacts: true,
+      replan_requires_user_goal_confirmation: true,
+    },
+  };
+  forkState.user_goal_acceptance = {
+    ...(forkState.user_goal_acceptance || {}),
+    required: true,
+    status: "rejected",
+    feedback: forkState.user_goal_acceptance?.feedback || reason,
+    next_action: "update_goals_plan_or_tasks_then_resume",
+  };
+  const target = outPath || join(dirname(statePath), `state.replan-${safeTimestamp(now)}.json`);
+  await writeState(target, forkState);
+  return { state: forkState, path: target };
+}
+
 function finalReport({ runId, state, runScore, preflight, finalAcceptance, provenance }) {
   return `# Autonomous Loop Report
 
@@ -670,8 +823,14 @@ Environment: ${preflight.environment_target}
 - Approval lease: ${preflight.approval_lease.scope}
 - Policy profile: ${preflight.policy_profile?.name || "none"} (${preflight.policy_profile?.role || "no role"})
 - Artifact GC: ${state.artifact_gc?.candidates || 0} candidate(s), due=${state.artifact_gc?.due === true}, next=${state.artifact_gc?.nextAction || "none"}
+- System acceptance: ${state.system_acceptance?.pass ? "pass" : "fail"} (${state.system_acceptance?.score ?? "unknown"}/10)
 - Final acceptance: ${finalAcceptance.pass ? "pass" : "fail"}
 - Final acceptance score: ${finalAcceptance.score}/10
+- User goal acceptance: ${state.user_goal_acceptance?.status || "unknown"} (required=${state.user_goal_acceptance?.required === true})
+- User goal next action: ${state.user_goal_acceptance?.next_action || "none"}
+- Scope accepted: ${(state.scope_value_guard?.accepted || []).join("; ") || "none"}
+- Scope deferred: ${(state.scope_value_guard?.deferred || []).join("; ") || "none"}
+- Scope rejected: ${(state.scope_value_guard?.rejected || []).join("; ") || "none"}
 - Provenance task ids: ${provenance.taskIds.length}
 - Provenance score task ids: ${provenance.scoreTaskIds.length}
 
@@ -686,6 +845,74 @@ Environment: ${preflight.environment_target}
 - Prompt-required tools: ${state.permission_audit?.promptRequiredToolClasses?.join(", ") || "none"}
 - Next safe action: ${state.permission_audit?.nextSafeAction || "none"}
 `;
+}
+
+function shouldRequireUserGoalAcceptance({ executionMode, options, runScore, stopReason }) {
+  if (options.requireUserAcceptance || options["require-user-acceptance"]) return true;
+  if (stopReason || !runScore.complete) return false;
+  return executionMode !== "dry-run";
+}
+
+function createUserGoalAcceptance({ runId, required, systemAcceptance, tasks = [] }) {
+  const status = !required
+    ? "not-required"
+    : systemAcceptance?.pass === false
+      ? "blocked-by-system-acceptance"
+      : "pending";
+  return {
+    required: Boolean(required),
+    status,
+    system_acceptance_id: systemAcceptance?.acceptance_id || `${runId}:system-final-acceptance`,
+    system_acceptance_pass: systemAcceptance?.pass === true,
+    system_acceptance_score: systemAcceptance?.score ?? null,
+    checklist: tasks.map((task) => ({
+      task_id: task.id,
+      status: task.status,
+      goal: task.goal,
+    })),
+    accepted_by: null,
+    accepted_at: null,
+    rejected_by: null,
+    rejected_at: null,
+    feedback: null,
+    next_action: !required
+      ? "none"
+      : systemAcceptance?.pass === false
+        ? "fix_system_acceptance_gaps_before_user_review"
+        : "ask_user_to_accept_or_reject_goals",
+  };
+}
+
+function createScopeValueGuard({ preflight, tasks = [] }) {
+  return {
+    mvp_protection: true,
+    accepted: preflight.scope_in || [],
+    deferred: [
+      ...(preflight.scope_out || []),
+      "optional extras without direct acceptance-criteria value",
+      "scope expansions without user-approved tradeoff",
+    ],
+    rejected: [
+      "unapproved production mutations",
+      "raw secret handling",
+      "features not tied to MVP or production value",
+    ],
+    task_count: tasks.length,
+    evidence_required: [
+      "user outcome",
+      "acceptance criteria",
+      "verification command",
+      "rollback or cleanup path",
+    ],
+  };
+}
+
+function withoutUserGoalAcceptanceMissing(missing = []) {
+  return missing.filter((item) => !String(item).startsWith("user goal acceptance"));
+}
+
+function safeTimestamp(value) {
+  return String(value).replace(/[^0-9A-Za-z]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "checkpoint";
 }
 
 function maxRisk(a, b) {

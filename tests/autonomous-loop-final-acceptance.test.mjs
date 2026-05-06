@@ -69,6 +69,39 @@ test("final acceptance passes when release evidence is complete", () => {
   assert.equal(result.score, 10);
 });
 
+test("final acceptance blocks when user goal acceptance is required and pending", () => {
+  const result = evaluateFinalAcceptance(completeAcceptanceFixture({
+    user_goal_acceptance: {
+      required: true,
+      status: "pending",
+      system_acceptance_id: "run-1:system-final-acceptance",
+      next_action: "ask_user_to_accept_or_reject_goals",
+    },
+  }));
+
+  assert.equal(result.pass, false);
+  assert.ok(result.missing.includes("user goal acceptance pending"));
+  assert.equal(result.userGoalAcceptanceSummary.required, true);
+  assert.equal(result.userGoalAcceptanceSummary.status, "pending");
+});
+
+test("final acceptance passes when required user goal acceptance is approved", () => {
+  const result = evaluateFinalAcceptance(completeAcceptanceFixture({
+    user_goal_acceptance: {
+      required: true,
+      status: "approved",
+      system_acceptance_id: "run-1:system-final-acceptance",
+      accepted_by: "product-owner",
+      accepted_at: "2026-05-07T00:00:00.000Z",
+      next_action: "archive_or_continue_release_handoff",
+    },
+  }));
+
+  assert.equal(result.pass, true);
+  assert.equal(result.score, 10);
+  assert.equal(result.userGoalAcceptanceSummary.acceptedBy, "product-owner");
+});
+
 test("final acceptance tolerates unknown future compatibility fields", () => {
   const task = { id: "t1", status: "complete", future_task_field: "preserved" };
   const result = evaluateFinalAcceptance({
@@ -212,3 +245,57 @@ test("final acceptance lists unresolved failure packets for blocked tasks", () =
   assert.equal(result.pass, false);
   assert.ok(result.missing.some((item) => item.includes("failure packet unresolved")));
 });
+
+function completeAcceptanceFixture(stateExtra = {}) {
+  const task = { id: "t1", status: "complete" };
+  return {
+    state: {
+      schema_version: 1,
+      command_version: 1,
+      rubric_version: 1,
+      plugin_version: "1.0.0",
+      memory_write_policy: { redaction: true, stale_filter: true },
+      progress_summary: { completed: 1, in_progress: 0, blockers: 0, evidence: 1 },
+      ...stateExtra,
+    },
+    preflight: {
+      approval_lease: {
+        scope: "local-read-write",
+        environment: "local",
+        tools: [],
+        budget: { max_loops: 1 },
+        duration: "1 loop",
+        expires_after_loops: 1,
+        expires_at: "2026-04-29T00:00:00.000Z",
+        renewal_triggers: ["risk_escalation"],
+      },
+    },
+    tasks: [task],
+    scores: [{ taskId: "t1", finalScore: 10 }],
+    handoffs: [{
+      taskId: "t1",
+      sourceAgent: "stack-developer",
+      targetAgent: "quality-gate-reviewer",
+      confidenceScore: 10,
+      sideEffectId: "s1",
+      contextPack: { rulesLoaded: ["rules/confidence-discipline.md"], mcpPlan: { required: false, fallback: "none" }, workflowSignal: { taskId: "t1", phase: "execute" } },
+      reviewerEvidence: { independent: true, evidencePaths: ["test"] },
+    }],
+    sideEffects: [{
+      actionId: "s1",
+      expectedSideEffect: "dry-run-no-mutation",
+      idempotencyKey: "idem",
+      approvalLeaseId: "local-read-write",
+    }],
+    dispatches: [{
+      taskId: "t1",
+      routingSignals: { policyRisk: "low" },
+      availabilityChecks: { reviewer: true },
+    }],
+    mcpPlans: [{ taskId: "t1", required: false, fallback: "none" }],
+    retentionPolicy: { privacyMode: "summary", pruningCommand: "prune" },
+    provenance: { taskIds: ["t1"], scoreTaskIds: ["t1"] },
+    verificationMatrix: [{ taskId: "t1", scenario: "unit" }],
+    sideEffectStatus: { ok: true, status: "reconciled" },
+  };
+}

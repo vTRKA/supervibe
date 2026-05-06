@@ -198,7 +198,7 @@ test("registry file upserts serialize concurrent scoped session claims", async (
     assert.equal(conflict.ok, false);
     assert.ok(conflict.conflicts[0].reasons.includes("overlapping-work-items"));
   } finally {
-    await rm(temp, { recursive: true, force: true });
+    await rm(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
 
@@ -258,7 +258,7 @@ test("loop CLI writes scoped sessions and honors allow-conflict flag", async () 
     assert.equal(registry.sessions.length, 2);
     assert.ok(registry.sessions.some((session) => session.sessionId === "session-cli-conflict"));
   } finally {
-    await rm(temp, { recursive: true, force: true });
+    await rm(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
 
@@ -325,7 +325,7 @@ test("registry can be written and read, and CLI reports session status", async (
     assert.match(stdout, /SUPERVIBE_WORKTREE_SESSIONS/);
     assert.match(stdout, /session-1/);
   } finally {
-    await rm(temp, { recursive: true, force: true });
+    await rm(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
 

@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
-import { resumeAutonomousLoop, runAutonomousLoop } from "../scripts/lib/autonomous-loop-runner.mjs";
+import {
+  forkAutonomousLoopCheckpoint,
+  recordUserGoalAcceptance,
+  resumeAutonomousLoop,
+  runAutonomousLoop,
+} from "../scripts/lib/autonomous-loop-runner.mjs";
 import { createShellStubAdapter } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
+
+const execFileAsync = promisify(execFile);
 
 test("runner executes dry-run request and writes loop state", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-"));
@@ -49,6 +58,10 @@ test("runner pins dry-run artifact contract for validate integrations", async ()
   assert.equal(state.run_id, "compat-validate-integrations");
   assert.equal(state.status, "COMPLETE");
   assert.equal(state.final_acceptance.pass, true);
+  assert.equal(state.user_goal_acceptance.required, false);
+  assert.equal(state.user_goal_acceptance.status, "not-required");
+  assert.equal(state.system_acceptance.pass, true);
+  assert.equal(state.scope_value_guard.mvp_protection, true);
   assert.equal(state.claim_summary.completed, state.tasks.length);
   assert.equal(state.progress_summary.completed, state.tasks.length);
   assert.equal(state.execution_mode, "dry-run");
@@ -73,6 +86,98 @@ test("runner pins dry-run artifact contract for validate integrations", async ()
   assert.ok(handoffs.every((entry) => entry.schema_version === 1));
   assert.equal(events[0].type, "run_started");
   assert.equal(sideEffects[0].expectedSideEffect, "dry-run-no-mutation");
+});
+
+test("runner can require user goal acceptance before final completion", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-user-acceptance-"));
+  const result = await runAutonomousLoop({
+    rootDir,
+    request: "validate integrations",
+    dryRun: true,
+    requireUserAcceptance: true,
+  });
+  assert.equal(result.status, "AWAITING_USER_ACCEPTANCE");
+  assert.equal(result.stopReason, "user_goal_acceptance_required");
+  assert.equal(result.state.system_acceptance.pass, true);
+  assert.equal(result.state.final_acceptance.pass, false);
+  assert.equal(result.state.user_goal_acceptance.required, true);
+  assert.equal(result.state.user_goal_acceptance.status, "pending");
+
+  const statePath = join(result.loopDir, "state.json");
+  const accepted = await recordUserGoalAcceptance(statePath, {
+    accepted: true,
+    acceptedBy: "product-owner",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+  assert.equal(accepted.status, "COMPLETE");
+  assert.equal(accepted.stop_reason, null);
+  assert.equal(accepted.final_acceptance.pass, true);
+  assert.equal(accepted.user_goal_acceptance.accepted_by, "product-owner");
+
+  const rejected = await recordUserGoalAcceptance(statePath, {
+    accepted: false,
+    acceptedBy: "product-owner",
+    feedback: "Need another checkout edge case",
+    now: "2026-05-07T00:05:00.000Z",
+  });
+  assert.equal(rejected.status, "REPLAN_REQUIRED");
+  assert.equal(rejected.stop_reason, "user_goal_acceptance_rejected");
+
+  const fork = await forkAutonomousLoopCheckpoint(statePath, {
+    reason: "Need another checkout edge case",
+    now: "2026-05-07T00:10:00.000Z",
+  });
+  assert.equal(fork.state.status, "REPLAN_REQUIRED");
+  assert.equal(fork.state.forked_from.run_id, result.runId);
+  assert.equal(fork.state.checkpoint_policy.user_can_change_direction, true);
+  assert.match(fork.path, /state\.replan-/);
+});
+
+test("loop CLI records goal acceptance and forks checkpoints", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-user-cli-"));
+  const result = await runAutonomousLoop({
+    rootDir,
+    request: "validate integrations",
+    dryRun: true,
+    requireUserAcceptance: true,
+  });
+  const cliPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+  const statePath = join(result.loopDir, "state.json");
+
+  const accepted = await execFileAsync(process.execPath, [
+    cliPath,
+    "--accept-goals",
+    "--file",
+    statePath,
+    "--accepted-by",
+    "cli-user",
+  ], { cwd: rootDir });
+  assert.match(accepted.stdout, /SUPERVIBE_LOOP_USER_GOAL_ACCEPTANCE/);
+  assert.match(accepted.stdout, /USER_GOAL_ACCEPTANCE: approved/);
+
+  const acceptedState = JSON.parse(await readFile(statePath, "utf8"));
+  assert.equal(acceptedState.status, "COMPLETE");
+  assert.equal(acceptedState.user_goal_acceptance.accepted_by, "cli-user");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "--reject-goals",
+    "--file",
+    statePath,
+    "--feedback",
+    "Need stronger validation",
+  ], { cwd: rootDir });
+
+  const fork = await execFileAsync(process.execPath, [
+    cliPath,
+    "--fork-checkpoint",
+    "--file",
+    statePath,
+    "--reason",
+    "Need stronger validation",
+  ], { cwd: rootDir });
+  assert.match(fork.stdout, /SUPERVIBE_LOOP_CHECKPOINT_FORK/);
+  assert.match(fork.stdout, /STATUS: REPLAN_REQUIRED/);
 });
 
 test("status mode preserves SUPERVIBE_LOOP_STATUS compatibility fields", async () => {
@@ -136,7 +241,7 @@ test("runner sizes default loop budget for plan tasks", async () => {
   assert.ok(result.state.scheduler.snapshots.length >= 1);
 });
 
-test("runner requeues a failed fresh-context attempt once and then completes", async () => {
+test("runner requeues a failed fresh-context attempt once and then awaits user acceptance", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-requeue-"));
   const planPath = join(rootDir, "graph.json");
   await writeFile(planPath, JSON.stringify({
@@ -170,13 +275,16 @@ test("runner requeues a failed fresh-context attempt once and then completes", a
     maxLoops: 5,
   });
 
-  assert.equal(result.status, "COMPLETE");
+  assert.equal(result.status, "AWAITING_USER_ACCEPTANCE");
   assert.equal(result.state.attempts.length, 2);
   assert.equal(result.state.attempts[0].status, "requeued");
   assert.equal(result.state.attempts[1].status, "completed");
   assert.equal(result.state.requeue_summary.total, 1);
   assert.equal(result.state.failure_packets.length, 1);
-  assert.equal(result.state.final_acceptance.pass, true);
+  assert.equal(result.state.system_acceptance.pass, true);
+  assert.equal(result.state.final_acceptance.pass, false);
+  assert.equal(result.state.user_goal_acceptance.required, true);
+  assert.equal(result.state.user_goal_acceptance.status, "pending");
 });
 
 test("runner creates blocked approval gate for high-risk production plan task", async () => {

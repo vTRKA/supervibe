@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import { access, mkdir, readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { runAutonomousLoop, resumeAutonomousLoop, stopAutonomousLoop } from "./lib/autonomous-loop-runner.mjs";
+import {
+  forkAutonomousLoopCheckpoint,
+  recordUserGoalAcceptance,
+  runAutonomousLoop,
+  resumeAutonomousLoop,
+  stopAutonomousLoop,
+} from "./lib/autonomous-loop-runner.mjs";
 import { createTasksFromRequest, loadPlanTasks } from "./lib/autonomous-loop-task-source.mjs";
 import { buildPreflight } from "./lib/autonomous-loop-preflight-intake.mjs";
 import { dispatchTask } from "./lib/autonomous-loop-dispatcher.mjs";
@@ -105,6 +111,10 @@ function parseArgs(argv) {
     "checkpoint-status",
     "repair-checkpoints",
     "provider-matrix",
+    "require-user-acceptance",
+    "accept-goals",
+    "reject-goals",
+    "fork-checkpoint",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -707,6 +717,36 @@ async function main() {
     return;
   }
 
+  if (args["accept-goals"] || args["reject-goals"]) {
+    if (!args.file) throw new Error("--accept-goals/--reject-goals requires --file <state.json>");
+    const accepted = Boolean(args["accept-goals"]);
+    const state = await recordUserGoalAcceptance(resolve(rootDir, args.file), {
+      accepted,
+      acceptedBy: args["accepted-by"] || args.actor || "user",
+      feedback: args.feedback || args.reason || null,
+    });
+    console.log("SUPERVIBE_LOOP_USER_GOAL_ACCEPTANCE");
+    console.log(`RUN_ID: ${state.run_id}`);
+    console.log(`STATUS: ${state.status}`);
+    console.log(`USER_GOAL_ACCEPTANCE: ${state.user_goal_acceptance?.status || "unknown"}`);
+    console.log(`NEXT_ACTION: ${state.next_action || "none"}`);
+    return;
+  }
+
+  if (args["fork-checkpoint"]) {
+    if (!args.file) throw new Error("--fork-checkpoint requires --file <state.json>");
+    const result = await forkAutonomousLoopCheckpoint(resolve(rootDir, args.file), {
+      outPath: args.out ? resolve(rootDir, args.out) : null,
+      reason: args.reason || args.feedback || "user_goal_replan",
+    });
+    console.log("SUPERVIBE_LOOP_CHECKPOINT_FORK");
+    console.log(`RUN_ID: ${result.state.run_id}`);
+    console.log(`STATUS: ${result.state.status}`);
+    console.log(`STATE: ${result.path}`);
+    console.log(`NEXT_ACTION: ${result.state.next_action}`);
+    return;
+  }
+
   const positionalRequest = args.request || args._.join(" ");
   const sourcePlan = args.plan || args["from-prd"];
   const worktreeSession = await maybePrepareWorktreeSession(args, rootDir);
@@ -725,6 +765,7 @@ async function main() {
     adapterId: args.tool,
     worktreeSession,
     policyProfile,
+    requireUserAcceptance: Boolean(args["require-user-acceptance"]),
   });
 
   console.log("SUPERVIBE_LOOP_STATUS");
@@ -922,6 +963,10 @@ Primary:
   supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --setup-worker-presets
   supervibe-loop --provider-matrix
+  supervibe-loop --require-user-acceptance --request "validate integrations"
+  supervibe-loop --accept-goals --file .supervibe/memory/loops/<run-id>/state.json --accepted-by <name>
+  supervibe-loop --reject-goals --file .supervibe/memory/loops/<run-id>/state.json --feedback "what is missing"
+  supervibe-loop --fork-checkpoint --file .supervibe/memory/loops/<run-id>/state.json
 
 Advanced:
   supervibe-loop --readiness --plan .supervibe/artifacts/plans/example.md
@@ -944,6 +989,9 @@ Execution modes:
   --manual
   --fresh-context --tool codex|claude|gemini|opencode
   --provider-matrix
+  --require-user-acceptance
+  --accept-goals | --reject-goals --file <state.json>
+  --fork-checkpoint --file <state.json>
   --commit-per-task
   --worktree --epic <epic-id> [--max-duration 3h]
   --worktree --epic <epic-id> --assigned-task T1 --assigned-write-set src/file.ts
