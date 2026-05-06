@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { gunzipSync } from "node:zlib";
 import {
   assertWorkflowStageId,
 } from "./workflow-stage-registry.mjs";
@@ -19,6 +20,7 @@ const LEDGER_RELATIVE_PATH = ".supervibe/memory/workflow-invocation-ledger.jsonl
 const LEDGER_LOCK_RELATIVE_PATH = ".supervibe/memory/workflow-invocation-ledger.lock";
 const DEFAULT_RECEIPT_DIR = ".supervibe/artifacts/_workflow-invocations";
 const ARTIFACT_LINKS_FILE = "artifact-links.json";
+const COMPACT_MANIFEST_TYPE = "supervibe-agent-output-compact-manifest";
 const RECEIPT_LOCK_TIMEOUT_MS = 30_000;
 const RECEIPT_LOCK_RETRY_MS = 25;
 const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
@@ -860,11 +862,47 @@ function hashEvidencePath(rootDir, path, { required }) {
     if (required) throw new Error(`Required artifact missing: ${relPath}`);
     return { path: relPath, exists: false, sha256: null };
   }
+  const content = readFileSync(absPath);
+  const compactDigest = compactManifestOriginalDigest(rootDir, relPath, content);
+  if (compactDigest) {
+    return {
+      path: relPath,
+      exists: true,
+      sha256: compactDigest,
+      compactManifest: true,
+    };
+  }
   return {
     path: relPath,
     exists: true,
-    sha256: sha256(readFileSync(absPath)),
+    sha256: sha256(content),
   };
+}
+
+function compactManifestOriginalDigest(rootDir, relPath, content) {
+  let manifest;
+  try {
+    manifest = JSON.parse(Buffer.isBuffer(content) ? content.toString("utf8") : String(content || ""));
+  } catch {
+    return null;
+  }
+  if (manifest?.type !== COMPACT_MANIFEST_TYPE) return null;
+  if (normalizeRelPath(manifest.originalPath) !== normalizeRelPath(relPath)) return null;
+  if (manifest.compression !== "gzip") return null;
+  if (!manifest.originalSha256 || !manifest.archiveSha256 || !manifest.archivePath) return null;
+  const archiveRel = normalizeRelPath(manifest.archivePath);
+  const archiveAbs = join(rootDir, ...archiveRel.split("/"));
+  if (!existsSync(archiveAbs)) return null;
+  const archived = readFileSync(archiveAbs);
+  if (sha256(archived) !== manifest.archiveSha256) return null;
+  let original;
+  try {
+    original = gunzipSync(archived);
+  } catch {
+    return null;
+  }
+  if (sha256(original) !== manifest.originalSha256) return null;
+  return manifest.originalSha256;
 }
 
 function normalizePathList(paths, rootDir) {

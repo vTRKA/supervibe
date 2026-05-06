@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { readFile, mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { gunzipSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -11,6 +12,9 @@ import {
   scanSupervibeArtifactGc,
   writeArtifactGcScheduleRun,
 } from "../scripts/lib/supervibe-artifact-gc.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 async function writeUtf8(root, relPath, content) {
   const absPath = join(root, ...relPath.split("/"));
@@ -48,6 +52,133 @@ test("artifact GC finds stale .supervibe runtime noise and preserves receipt-lin
     assert.ok(candidates.some((item) => item.includes(".supervibe/artifacts/_agent-outputs/old:unreferenced-agent-output")));
     assert.ok(scan.activeNoise.some((item) => item.relPath === ".supervibe/memory/code.db" && item.reason === "runtime-cache"));
     assert.ok(scan.activeNoise.some((item) => item.relPath === ".supervibe/artifacts/_agent-outputs/linked" && item.reason === "receipt-linked-agent-output"));
+    assert.ok(scan.activeNoise.some((item) => item.relPath === ".supervibe/memory/code.db" && item.tier === "regenerable-cache"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC marks old trusted receipt-linked agent outputs as compactable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-compactable-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/run-1/agent-output.json";
+    const summaryRel = ".supervibe/artifacts/_agent-outputs/run-1/summary.md";
+    await writeUtf8(root, outputRel, `${JSON.stringify({
+      schemaVersion: 1,
+      invocationId: "run-1",
+      agentId: "quality-gate-reviewer",
+      taskSummary: "verified compaction fixture",
+    }, null, 2)}\n`);
+    await writeUtf8(root, summaryRel, "# Agent Output\n\nverified compaction fixture\n");
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "agent output is trusted proof",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-01T00:00:00.000Z",
+      completedAt: "2026-05-01T00:01:00.000Z",
+      handoffId: "compactable-agent-output",
+    });
+
+    const old = new Date("2026-04-01T00:00:00.000Z");
+    await utimes(join(root, ...outputRel.split("/")), old, old);
+    await utimes(join(root, ...summaryRel.split("/")), old, old);
+    await utimes(join(root, ".supervibe", "artifacts", "_agent-outputs", "run-1"), old, old);
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      retentionDays: 14,
+      compactAgentOutputDays: 14,
+    });
+
+    assert.ok(scan.compactable.some((item) => item.relPath === ".supervibe/artifacts/_agent-outputs/run-1" && item.reason === "compactable-agent-output"));
+    assert.ok(scan.compactable.some((item) => item.tier === "required"));
+    assert.equal(scan.summary.compactable, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC apply compacts trusted agent-output JSON into gzip archive plus live manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-compact-apply-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/run-2/agent-output.json";
+    const summaryRel = ".supervibe/artifacts/_agent-outputs/run-2/summary.md";
+    const original = `${JSON.stringify({
+      schemaVersion: 1,
+      invocationId: "run-2",
+      agentId: "repo-researcher",
+      taskSummary: "large proof payload",
+    }, null, 2)}\n`;
+    await writeUtf8(root, outputRel, original);
+    await writeUtf8(root, summaryRel, "# Agent Output\n\nlarge proof payload\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "agent output is trusted proof",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-01T00:00:00.000Z",
+      completedAt: "2026-05-01T00:01:00.000Z",
+      handoffId: "compact-agent-output",
+    });
+    const old = new Date("2026-04-01T00:00:00.000Z");
+    await utimes(join(root, ...outputRel.split("/")), old, old);
+    await utimes(join(root, ...summaryRel.split("/")), old, old);
+    await utimes(join(root, ".supervibe", "artifacts", "_agent-outputs", "run-2"), old, old);
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      retentionDays: 14,
+      compactAgentOutputDays: 14,
+    });
+    const result = await archiveSupervibeArtifactGcCandidates(scan, {
+      rootDir: root,
+      dryRun: false,
+      runTimestamp: "2026-05-06T00:00:00.000Z",
+    });
+
+    assert.equal(result.compacted.length, 1);
+    const manifest = JSON.parse(await readFile(join(root, ...outputRel.split("/")), "utf8"));
+    assert.equal(manifest.type, "supervibe-agent-output-compact-manifest");
+    assert.equal(manifest.originalPath, outputRel);
+    assert.equal(existsSync(join(root, ...summaryRel.split("/"))), true);
+    const archived = await readFile(join(root, ...manifest.archivePath.split("/")));
+    assert.equal(gunzipSync(archived).toString("utf8"), original);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC reports archive cleanup by TTL and size cap without touching live state", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-archive-policy-"));
+  try {
+    const oldArchive = await writeUtf8(root, ".supervibe/.archive/gc/old/old.json", "old archive\n");
+    const olderArchive = await writeUtf8(root, ".supervibe/.archive/gc/older/older.json", "older archive payload\n");
+    const newArchive = await writeUtf8(root, ".supervibe/.archive/gc/new/new.json", "new archive payload\n");
+    await utimes(oldArchive, new Date("2026-01-01T00:00:00.000Z"), new Date("2026-01-01T00:00:00.000Z"));
+    await utimes(olderArchive, new Date("2025-12-01T00:00:00.000Z"), new Date("2025-12-01T00:00:00.000Z"));
+    await utimes(newArchive, new Date("2026-05-05T00:00:00.000Z"), new Date("2026-05-05T00:00:00.000Z"));
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      archiveRetentionDays: 30,
+      maxArchiveBytes: 20,
+    });
+
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === ".supervibe/.archive/gc/old/old.json" && item.reason === "archive-ttl"));
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === ".supervibe/.archive/gc/older/older.json" && item.reason === "archive-ttl"));
+    assert.ok(scan.archiveCleanup.some((item) => item.reason === "archive-size-cap"));
+    assert.ok(!scan.archiveCleanup.some((item) => item.relPath === ".supervibe/.archive/gc/new/new.json" && item.reason === "archive-ttl"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

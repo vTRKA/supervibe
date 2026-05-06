@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 import {
   WORKFLOW_RECEIPT_ISSUER,
@@ -28,6 +30,10 @@ async function writeUtf8(root, relPath, content) {
   const absPath = join(root, ...relPath.split("/"));
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, content, "utf8");
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 test("workflow receipt runtime accepts command receipts for brainstorm outputs", async () => {
@@ -118,6 +124,63 @@ test("workflow receipt output classifier blocks mutable log-like artifacts", () 
   assert.match(mutableState.recommendation, /state snapshot/);
   assert.match(blocked.recommendation, /stable per-agent/i);
   assert.equal(stable.receiptable, true);
+});
+
+test("workflow receipt runtime accepts compact agent-output manifest when archived gzip preserves original digest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-compact-manifest-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/run-compact/agent-output.json";
+    const archiveRel = ".supervibe/.archive/agent-outputs/run-compact/agent-output.json.gz";
+    const original = `${JSON.stringify({
+      schemaVersion: 1,
+      invocationId: "run-compact",
+      agentId: "repo-researcher",
+      taskSummary: "compact manifest validation",
+    }, null, 2)}\n`;
+    await writeUtf8(root, outputRel, original);
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "compactable output fixture",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-06T00:00:00.000Z",
+      completedAt: "2026-05-06T00:01:00.000Z",
+      handoffId: "compact-manifest",
+      secret: "test-secret",
+    });
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+
+    const compressed = gzipSync(Buffer.from(original, "utf8"));
+    await writeUtf8(root, archiveRel, compressed.toString("base64"));
+    await writeFile(join(root, ...archiveRel.split("/")), compressed);
+    await writeUtf8(root, outputRel, `${JSON.stringify({
+      schemaVersion: 1,
+      type: "supervibe-agent-output-compact-manifest",
+      originalPath: outputRel,
+      originalSha256: sha256(original),
+      originalBytes: Buffer.byteLength(original),
+      archivePath: archiveRel,
+      archiveSha256: sha256(compressed),
+      archiveBytes: compressed.length,
+      compression: "gzip",
+      compactedAt: "2026-05-06T00:02:00.000Z",
+    }, null, 2)}\n`);
+
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+
+    const manifest = JSON.parse(await readFile(join(root, ...outputRel.split("/")), "utf8"));
+    manifest.originalSha256 = "bad-digest";
+    await writeUtf8(root, outputRel, `${JSON.stringify(manifest, null, 2)}\n`);
+    const invalid = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(invalid.pass, false);
+    assert.ok(invalid.issues.some((issue) => /hash mismatch|missing/.test(issue.message)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("workflow receipt runtime rejects hand-written command receipts", async () => {

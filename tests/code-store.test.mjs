@@ -277,6 +277,13 @@ test('CodeStore: WAL mode allows concurrent reader instances', async () => {
   }
 });
 
+test('CodeStore.maintain: runs sqlite optimize and optional vacuum', () => {
+  const result = store.maintain({ vacuum: true });
+  assert.strictEqual(result.optimized, true);
+  assert.strictEqual(result.vacuumed, true);
+  assert.ok(typeof result.durationMs === 'number');
+});
+
 test('--since lazy mode: build-code-index --since=HEAD returns cleanly with empty set', async () => {
   // We can't easily fake git history in a sandbox, but we can verify the CLI
   // accepts --since flag without error when the range is empty (HEAD..HEAD).

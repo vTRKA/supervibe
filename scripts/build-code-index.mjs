@@ -44,6 +44,8 @@ Core options:
   --no-embeddings           BM25/source-readiness mode: skip embeddings and graph unless --graph is also passed
   --graph                   Keep graph extraction enabled with --no-embeddings
   --no-graph                Skip graph extraction and cross-file edge resolution
+  --maintenance             Run code.db maintenance only, without indexing
+  --vacuum                  With --maintenance, run VACUUM after PRAGMA optimize
 
 Large-project controls:
   --resume                  Index only missing/stale files from the policy inventory
@@ -623,6 +625,8 @@ async function main() {
       'explain-policy': { type: 'boolean', default: false },
       'watcher-diagnostics': { type: 'boolean', default: false },
       'clean-stale-lock': { type: 'boolean', default: false },
+      maintenance: { type: 'boolean', default: false },
+      vacuum: { type: 'boolean', default: false },
       verbose: { type: 'boolean', default: false },
       'repo-map': { type: 'boolean', default: false },
       'json-progress': { type: 'boolean', default: false },
@@ -793,6 +797,17 @@ async function main() {
       if (recovery.rebuildCommand) console.log(`  Rebuild: ${recovery.rebuildCommand}`);
       store = new CodeStore(rootDir, { useEmbeddings: !noEmbeddings, useGraph: graphEnabled, chunkTimeoutMs, ...largeFileOptions });
       await store.init();
+    }
+
+    if (values.maintenance) {
+      const maintenance = store.maintain({ vacuum: values.vacuum });
+      console.log([
+        "SUPERVIBE_CODE_DB_MAINTENANCE",
+        `OPTIMIZED: ${maintenance.optimized === true}`,
+        `VACUUMED: ${maintenance.vacuumed === true}`,
+        `DURATION_MS: ${maintenance.durationMs}`,
+      ].join("\n"));
+      return;
     }
 
     let filesToIndex = null;

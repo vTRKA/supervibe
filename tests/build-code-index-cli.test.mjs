@@ -76,6 +76,8 @@ test("build-code-index --help prints usage and does not start indexing", () => {
   assert.match(out, /--json-progress/);
   assert.match(out, /--large-file-threshold-bytes/);
   assert.match(out, /--known-failed-ttl/);
+  assert.match(out, /--maintenance/);
+  assert.match(out, /--vacuum/);
   assert.doesNotMatch(out, /Indexing code in/);
 });
 
@@ -173,6 +175,20 @@ test("build-code-index --source-only indexes BM25 chunks without graph work", as
     } finally {
       store.close();
     }
+  });
+});
+
+test("build-code-index --maintenance --vacuum runs sqlite maintenance without indexing", async () => {
+  await withFixture(async (rootDir) => {
+    const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--maintenance", "--vacuum", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.match(out, /SUPERVIBE_CODE_DB_MAINTENANCE/);
+    assert.match(out, /OPTIMIZED: true/);
+    assert.match(out, /VACUUMED: true/);
+    assert.doesNotMatch(out, /Indexing code in/);
   });
 });
 

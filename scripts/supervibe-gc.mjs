@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { CodeStore } from "./lib/code-store.mjs";
 import {
   archiveWorkItemGcCandidates,
   formatWorkItemGcReport,
@@ -36,6 +37,9 @@ try {
       "  npm run supervibe:gc -- --work-items --dry-run",
       "  npm run supervibe:gc -- --memory --category learnings --dry-run",
       "  npm run supervibe:gc -- --artifacts --dry-run",
+      "  npm run supervibe:gc -- --artifacts --dry-run --compact-agent-output-days 14",
+      "  npm run supervibe:gc -- --artifacts --dry-run --archive-retention-days 90 --max-archive-bytes 104857600",
+      "  npm run supervibe:gc -- --code-db-maintenance --vacuum",
       "  npm run supervibe:gc -- --memory --scheduled --auto --apply",
       "  npm run supervibe:gc -- --all --apply",
       "  npm run supervibe:gc -- --memory --restore <memory-id>",
@@ -56,10 +60,11 @@ try {
     }
     process.exit(0);
   }
-  const explicitMode = args.memory || args["work-items"] || args.artifacts;
+  const explicitMode = args.memory || args["work-items"] || args.artifacts || args["code-db-maintenance"];
   const runWorkItems = args.all || args["work-items"] || !explicitMode;
   const runMemory = args.all || args.memory || !explicitMode;
   const runArtifacts = args.all || args.artifacts || !explicitMode;
+  const runCodeDbMaintenance = args.all || args["code-db-maintenance"];
   const blocks = [];
   if (runWorkItems) {
     const scan = await scanWorkItemGc({
@@ -97,6 +102,9 @@ try {
     const scan = await scanSupervibeArtifactGc({
       rootDir,
       retentionDays: args["retention-days"] || 14,
+      compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
+      archiveRetentionDays: args["archive-retention-days"] || 90,
+      maxArchiveBytes: args["max-archive-bytes"] || 0,
     });
     const schedule = await evaluateArtifactGcSchedule({ rootDir, scan });
     blocks.push(formatArtifactGcSchedule(schedule));
@@ -111,6 +119,21 @@ try {
     });
     if (args.apply && args.scheduled) await writeArtifactGcScheduleRun({ rootDir });
     blocks.push(formatSupervibeArtifactGcReport(scan, archiveResult));
+  }
+  if (runCodeDbMaintenance) {
+    const store = new CodeStore(rootDir, { useEmbeddings: false });
+    await store.init();
+    try {
+      const maintenance = store.maintain({ vacuum: Boolean(args.vacuum) });
+      blocks.push([
+        "SUPERVIBE_CODE_DB_MAINTENANCE",
+        `OPTIMIZED: ${maintenance.optimized === true}`,
+        `VACUUMED: ${maintenance.vacuumed === true}`,
+        `DURATION_MS: ${maintenance.durationMs}`,
+      ].join("\n"));
+    } finally {
+      store.close();
+    }
   }
   console.log(blocks.join("\n\n"));
 } catch (err) {
@@ -132,6 +155,8 @@ function parseArgs(argv) {
     else if (arg === "--memory") parsed.memory = true;
     else if (arg === "--work-items") parsed["work-items"] = true;
     else if (arg === "--artifacts") parsed.artifacts = true;
+    else if (arg === "--code-db-maintenance") parsed["code-db-maintenance"] = true;
+    else if (arg === "--vacuum") parsed.vacuum = true;
     else if (arg === "--include-stale-open") parsed["include-stale-open"] = true;
     else if (arg === "--restore") parsed.restore = argv[++i];
     else if (arg.startsWith("--restore=")) parsed.restore = arg.slice("--restore=".length);

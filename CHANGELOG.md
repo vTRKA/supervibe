@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.103] - 2026-05-07
+
+### Added
+
+- Added Supervibe artifact retention tiers for required artifacts,
+  regenerable caches, latest-only diagnostics, and archives.
+- Added agent-output compaction that preserves live summaries and receipt
+  trust through digest manifests while moving full JSON payloads to gzip
+  archive storage.
+- Added archive TTL and size-cap cleanup controls with dry-run-first GC
+  reporting.
+- Added code index maintenance commands for SQLite optimize and optional
+  vacuum after large reindex or GC runs.
+
+### Changed
+
+- Artifact GC now treats trusted, summarized, old receipt-linked agent outputs
+  as compactable instead of permanent active noise.
+- Updated release and host manifest versions to 2.0.103.
+
 ## [2.0.102] - 2026-05-07
 
 ### Added

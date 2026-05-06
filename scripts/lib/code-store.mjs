@@ -1392,6 +1392,17 @@ export class CodeStore {
     };
   }
 
+  maintain({ vacuum = false } = {}) {
+    const started = Date.now();
+    this.db.exec('PRAGMA optimize;');
+    if (vacuum) this.db.exec('VACUUM;');
+    return {
+      optimized: true,
+      vacuumed: Boolean(vacuum),
+      durationMs: Date.now() - started,
+    };
+  }
+
   /**
    * Per-language health: indexed files vs files with extracted symbols.
    * Useful for status command — detects broken grammar queries.
