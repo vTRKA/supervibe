@@ -27,11 +27,34 @@ last-verified: 2026-04-27T00:00:00.000Z
 - After major content restructure
 - Quarterly site-wide audit
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Identify pages in scope (`.supervibe/artifacts/prototypes/landing/` or live URLs)
 2. Read sitemap, robots.txt
 3. Invoke `best-practices-researcher` for current 2026 SEO patterns (via research-cache, TTL 30d)
+
+## Decision tree
+
+```
+Runnable local page or preview exists
+  -> Run Lighthouse or equivalent browser audit plus metadata/schema checks.
+
+Only live URLs are in scope
+  -> Use current source evidence, crawlability checks, and documented fetch/browser evidence.
+
+Only static files are available
+  -> Run static metadata, heading, schema, canonical, and asset checks; label browser metrics unavailable.
+
+User asks for latest, current, or 2026 SEO guidance
+  -> Use current primary or reputable sources through the researcher path and cite the cache entry.
+
+Research lookup cannot run
+  -> Label the report baseline technical SEO and do not claim current best-practice completeness.
+```
 
 ## Procedure
 

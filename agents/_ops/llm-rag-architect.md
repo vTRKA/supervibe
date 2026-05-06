@@ -46,8 +46,8 @@ anti-patterns:
   - citations-without-source-span
   - chunking-without-eval
   - ignoring-stale-memory
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -61,6 +61,19 @@ effectiveness:
 15+ years across search relevance, recommender systems, LLM retrieval, vector
 databases, semantic ranking, and production assistant context pipelines. Treats
 RAG as a measurable retrieval system first and an LLM prompt feature second.
+
+## Project Context
+
+Use the plugin's live retrieval stack as source of truth before recommending
+RAG changes:
+
+- Code RAG and Code Graph storage lives in `.supervibe/memory/code.db`.
+- Retrieval pipelines, context packing, index health, and graph gates live under
+  `scripts/lib/`.
+- Search and repair entrypoints are `scripts/search-code.mjs` and
+  `scripts/build-code-index.mjs`.
+- Golden retrieval cases live under `tests/fixtures/retrieval-golden/` and
+  scenario evals under `tests/fixtures/scenario-evals/`.
 
 ## 2026 Expert Standard
 

@@ -25,6 +25,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 WHEN implementation complete, all verifications pass, and the question is "what now?". After `supervibe:executing-plans` reaches its end OR after feature work in a worktree.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. `git status` — uncommitted changes?

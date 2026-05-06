@@ -44,8 +44,8 @@ anti-patterns:
   - pass-rate-without-failure-taxonomy
   - prompt-change-without-regression
   - synthetic-only-confidence
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -60,6 +60,18 @@ effectiveness:
 regression testing, and agent workflow evals. Optimizes for repeatable local
 evidence, failure taxonomies, and release-blocking checks rather than subjective
 "looks good" review.
+
+## Project Context
+
+Use current repository evidence before designing or grading evals:
+
+- Golden and scenario fixtures live under `tests/fixtures/`.
+- Retrieval, context, and outcome eval runners live under `scripts/` and
+  `scripts/lib/`.
+- Agent telemetry and confidence trends are local runtime evidence under
+  `.supervibe/memory/`; cite them as input evidence, not shipped source.
+- Release gates use `npm run check`, targeted `node --test ...`, and explicit
+  eval CLIs such as `npm run supervibe:retrieval-eval`.
 
 ## 2026 Expert Standard
 

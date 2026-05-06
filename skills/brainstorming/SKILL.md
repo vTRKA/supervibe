@@ -31,6 +31,10 @@ BEFORE any creative work — creating features, building components, adding func
 
 NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writing-plans), documentation tweaks.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 Before asking any question, read:

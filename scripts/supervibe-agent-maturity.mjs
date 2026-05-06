@@ -30,7 +30,7 @@ function usage() {
     "USAGE:",
     "  node scripts/supervibe-agent-maturity.mjs [--root .] [--json] [--min-agent-invocations 10] [--min-host-agent-receipts 1]",
     "",
-    "Checks global agent-system maturity: command orchestration, specialist questions, continuation gates, receipts, host telemetry, Code Graph readiness, eval coverage, and backlog/docs.",
+    "Checks global agent-system maturity: command orchestration, specialist questions, continuation gates, receipts, host telemetry, Code Graph readiness, strict retrieval telemetry, eval coverage, and backlog/docs.",
   ].join("\n");
 }
 

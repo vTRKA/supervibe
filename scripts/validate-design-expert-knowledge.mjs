@@ -50,6 +50,18 @@ const ADAPTIVE_DESIGN_REQUIRED = Object.freeze([
   /missing token|narrow design-system extension|narrow extension/i,
 ]);
 
+const REGULATED_TRUST_REQUIRED = Object.freeze([
+  /Regulated Trust Domains/i,
+  /Finance, legal, healthcare, government, security, insurance/i,
+  /evidence before creative\s+defaults/i,
+  /Product risk/i,
+  /Trust language/i,
+  /Accessibility and safety/i,
+  /Interaction risk/i,
+  /Visual restraint/i,
+  /Domain evidence/i,
+]);
+
 const RULES = Object.freeze([
   {
     file: "docs/references/design-expert-knowledge.md",
@@ -74,6 +86,7 @@ const RULES = Object.freeze([
       ...LOCAL_KNOWLEDGE_DOMAINS,
       /product-fit style matrix/i,
       /stack-aware UI guidance/i,
+      ...REGULATED_TRUST_REQUIRED,
     ],
   },
   {
@@ -87,6 +100,7 @@ const RULES = Object.freeze([
       ...LOCAL_KNOWLEDGE_DOMAINS,
       /product-fit style matrix/i,
       /--daemon/i,
+      /regulated-trust|Finance, legal, healthcare, government, security, insurance/i,
     ],
   },
   {

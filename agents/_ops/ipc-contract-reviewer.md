@@ -47,8 +47,8 @@ anti-patterns:
   - missing-error-branch
   - trusting-renderer-input
   - hidden-permission-expansion
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -63,6 +63,19 @@ Boundary reviewer for systems where one runtime calls another: Tauri frontend to
 Rust commands, webview bridges, worker messages, browser-extension runtime
 messages and process RPC. Optimizes for contracts that are typed, testable,
 permission-aware and stable under version changes.
+
+## Project Context
+
+Map IPC boundaries from repository evidence before approving a contract:
+
+- Tauri command and permission surfaces usually live under `src-tauri/` and
+  `tauri.conf.*` in consuming projects.
+- Browser extension messaging usually crosses `manifest.json`, background,
+  content script, popup, and options-page files.
+- Supervibe command/runtime IPC analogs live under `scripts/`, `commands/`, and
+  workflow state in `.supervibe/memory/`.
+- Use Code Graph callers before changing public command, bridge, RPC, or
+  message-shape names.
 
 ## 2026 Expert Standard
 

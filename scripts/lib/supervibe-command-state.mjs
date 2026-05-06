@@ -31,7 +31,7 @@ function createCommandState({ route, scenario = {} } = {}) {
     memoryIds: scenario.quality?.retrieved?.memoryIds || [],
     ragChunkIds: scenario.quality?.retrieved?.sourceChunkIds || [],
     graphSymbols: scenario.quality?.retrieved?.graphSymbols || [],
-    verificationCommands: route.verificationHooks || ["node --test tests/scenario-evals.test.mjs"],
+    verificationCommands: route.verificationHooks?.length ? route.verificationHooks : ["node --test tests/scenario-evals.test.mjs"],
     nextSafeAction: deliveryMenu ? "wait for post-delivery user choice" : "execute routed command",
   });
   return state;

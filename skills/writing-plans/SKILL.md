@@ -30,6 +30,10 @@ AFTER `supervibe:brainstorming` produces an approved spec, OR AFTER `supervibe:r
 
 NOT for: still-vague requirements (go back to brainstorming), trivial one-line changes (skip to executing).
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** -> STOP and tell the user: "No approved spec exists in `.supervibe/artifacts/specs/`. Run `/supervibe-brainstorm <topic>` to create one, or pass an explicit existing spec path: `/supervibe-plan <path>`." Do not proceed with planning vapor.

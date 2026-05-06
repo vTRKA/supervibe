@@ -62,6 +62,10 @@ Russian visible labels are supplied by
 ASCII-safe for validators. The ru locale must map to the same scaffold-specific
 actions above and must not fall back to generic apply/revise wording.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read stack-fingerprint from `supervibe:stack-discovery`

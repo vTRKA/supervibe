@@ -28,6 +28,40 @@ Read `docs/references/design-expert-knowledge.md` before deck structure or visua
 
 Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, report deck, product demo deck, sales deck, training deck, or a `.pptx` deliverable. This skill is for presentation artifacts, not production UI.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
+
+## Step 0 - Read source of truth (required)
+
+Before storyboard, preview, or export, read source materials, existing
+presentation artifacts, approved design-system state, project memory, design
+intelligence evidence, open browser feedback, and media capability output. If a
+deck already has approval or unresolved feedback, resume that state instead of
+starting a parallel deck.
+
+## Decision tree
+
+```
+Deck brief lacks audience, desired action, source material, language, or length
+  -> Ask one focused Step N/M question before storyboard.
+
+Approved design system exists
+  -> Reuse tokens and visual language; request a design-system extension for missing deck needs.
+
+Deck has unresolved feedback or an approval marker
+  -> Resume that state instead of starting a parallel deck.
+
+User requests PPTX export before preview approval
+  -> Block export and route through preview approval.
+
+Requested media exceeds local capabilities
+  -> Offer storyboard frames, animated HTML, poster sequences, SVG/Lottie specs, or static alternatives.
+```
+
 ## Hard constraints
 
 1. **Review before export.** A `.pptx` is produced only after the user approves the HTML slide preview or an existing deck spec.

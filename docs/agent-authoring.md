@@ -119,10 +119,13 @@ The hook treats `N/A` as null and skips logging.
 2. **scope-precision** (×2) — concrete paths/dirs (not vague)
 3. **anti-patterns** (×2) — ≥4 with reasoning
 4. **verification-commands** (×2) — ≥2 named commands
-5. **size-and-shape** (×1) — ≥250 lines, ≤25 KB, all required frontmatter
+5. **content-quality** (×1) — required sections, project context,
+   retrieval/tool guidance, no unresolved template placeholders
 6. **canonical-output-format** (×1) — Output contract has Confidence + Override + Rubric footer
 
-Threshold: ≥9 to ship. **Note**: in v0.x, many agents are 60-150 lines (compact form). `supervibe:strengthen` pass will expand to ≥250.
+Threshold: ≥9 to ship. Do not pad agents to hit a line count. Use
+`npm run validate:agent-content-quality` to prove the agent has the sections and
+evidence hooks that make it useful.
 
 ## Tool selection
 

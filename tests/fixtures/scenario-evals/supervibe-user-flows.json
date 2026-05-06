@@ -9,22 +9,55 @@
     },
     "quality": {
       "gold": {
-        "memoryIds": ["rag-index-health"],
-        "sourceChunkIds": ["scripts/build-code-index.mjs#index-health", "scripts/lib/supervibe-index-health.mjs#gate"],
-        "graphSymbols": ["collectIndexHealthFromStore", "evaluateIndexHealthGate"]
+        "memoryIds": [
+          "rag-index-health"
+        ],
+        "sourceChunkIds": [
+          "scripts/build-code-index.mjs#index-health",
+          "scripts/lib/supervibe-index-health.mjs#gate"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore",
+          "evaluateIndexHealthGate"
+        ]
       },
       "retrieved": {
-        "memoryIds": ["rag-index-health"],
-        "sourceChunkIds": ["scripts/build-code-index.mjs#index-health", "scripts/lib/supervibe-index-health.mjs#gate"],
-        "graphSymbols": ["collectIndexHealthFromStore", "evaluateIndexHealthGate"],
+        "memoryIds": [
+          "rag-index-health"
+        ],
+        "sourceChunkIds": [
+          "scripts/build-code-index.mjs#index-health",
+          "scripts/lib/supervibe-index-health.mjs#gate"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore",
+          "evaluateIndexHealthGate"
+        ],
         "estimatedTokens": 760,
         "citations": [
-          { "id": "rag-index-health", "source": "memory", "path": ".supervibe/memory/decisions/rag-index-health.md", "redacted": true },
-          { "id": "index-health-gate", "source": "rag", "path": "scripts/lib/supervibe-index-health.mjs", "redacted": true }
+          {
+            "id": "rag-index-health",
+            "source": "memory",
+            "path": ".supervibe/memory/decisions/rag-index-health.md",
+            "redacted": true
+          },
+          {
+            "id": "index-health-gate",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-index-health.mjs",
+            "redacted": true
+          }
         ],
-        "evidence": [{ "id": "health-gate", "stale": false }]
+        "evidence": [
+          {
+            "id": "health-gate",
+            "stale": false
+          }
+        ]
       },
-      "tokenBudget": { "maxTokens": 1200 }
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
     }
   },
   {
@@ -38,21 +71,49 @@
     },
     "quality": {
       "gold": {
-        "memoryIds": ["host-adapter-decision"],
-        "sourceChunkIds": ["commands/supervibe-genesis.md#dry-run", "scripts/lib/supervibe-host-detector.mjs#select"],
-        "graphSymbols": ["selectHostAdapter", "buildGenesisDryRunReport"]
+        "memoryIds": [
+          "host-adapter-decision"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-genesis.md#dry-run",
+          "scripts/lib/supervibe-host-detector.mjs#select"
+        ],
+        "graphSymbols": [
+          "selectHostAdapter",
+          "buildGenesisDryRunReport"
+        ]
       },
       "retrieved": {
-        "memoryIds": ["host-adapter-decision"],
-        "sourceChunkIds": ["commands/supervibe-genesis.md#dry-run", "scripts/lib/supervibe-host-detector.mjs#select"],
-        "graphSymbols": ["selectHostAdapter", "buildGenesisDryRunReport"],
+        "memoryIds": [
+          "host-adapter-decision"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-genesis.md#dry-run",
+          "scripts/lib/supervibe-host-detector.mjs#select"
+        ],
+        "graphSymbols": [
+          "selectHostAdapter",
+          "buildGenesisDryRunReport"
+        ],
         "estimatedTokens": 820,
         "citations": [
-          { "id": "host-adapter", "source": "rag", "path": "scripts/lib/supervibe-host-detector.mjs", "redacted": true }
+          {
+            "id": "host-adapter",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-host-detector.mjs",
+            "redacted": true
+          }
         ],
-        "evidence": [{ "id": "dry-run", "stale": false }]
+        "evidence": [
+          {
+            "id": "dry-run",
+            "stale": false
+          }
+        ]
       },
-      "tokenBudget": { "maxTokens": 1300 }
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
     }
   },
   {
@@ -66,21 +127,49 @@
     },
     "quality": {
       "gold": {
-        "memoryIds": ["codex-host-support"],
-        "sourceChunkIds": ["docs/references/host-adapter-matrix.md#codex", "scripts/lib/supervibe-host-adapters.mjs#codex"],
-        "graphSymbols": ["HOST_ADAPTERS", "normalizeHostPath"]
+        "memoryIds": [
+          "codex-host-support"
+        ],
+        "sourceChunkIds": [
+          "docs/references/host-adapter-matrix.md#codex",
+          "scripts/lib/supervibe-host-adapters.mjs#codex"
+        ],
+        "graphSymbols": [
+          "HOST_ADAPTERS",
+          "normalizeHostPath"
+        ]
       },
       "retrieved": {
-        "memoryIds": ["codex-host-support"],
-        "sourceChunkIds": ["docs/references/host-adapter-matrix.md#codex", "scripts/lib/supervibe-host-adapters.mjs#codex"],
-        "graphSymbols": ["HOST_ADAPTERS", "normalizeHostPath"],
+        "memoryIds": [
+          "codex-host-support"
+        ],
+        "sourceChunkIds": [
+          "docs/references/host-adapter-matrix.md#codex",
+          "scripts/lib/supervibe-host-adapters.mjs#codex"
+        ],
+        "graphSymbols": [
+          "HOST_ADAPTERS",
+          "normalizeHostPath"
+        ],
         "estimatedTokens": 780,
         "citations": [
-          { "id": "codex-adapter", "source": "rag", "path": "scripts/lib/supervibe-host-adapters.mjs", "redacted": true }
+          {
+            "id": "codex-adapter",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-host-adapters.mjs",
+            "redacted": true
+          }
         ],
-        "evidence": [{ "id": "codex-host", "stale": false }]
+        "evidence": [
+          {
+            "id": "codex-host",
+            "stale": false
+          }
+        ]
       },
-      "tokenBudget": { "maxTokens": 1200 }
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
     }
   },
   {
@@ -93,21 +182,49 @@
     },
     "quality": {
       "gold": {
-        "memoryIds": ["silent-windows-daemon"],
-        "sourceChunkIds": ["scripts/lib/supervibe-process-manager.mjs#daemon", "scripts/preview-server.mjs#daemon"],
-        "graphSymbols": ["startSilentProcess", "startPreviewDaemon"]
+        "memoryIds": [
+          "silent-windows-daemon"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-process-manager.mjs#daemon",
+          "scripts/preview-server.mjs#daemon"
+        ],
+        "graphSymbols": [
+          "startSilentProcess",
+          "startPreviewDaemon"
+        ]
       },
       "retrieved": {
-        "memoryIds": ["silent-windows-daemon"],
-        "sourceChunkIds": ["scripts/lib/supervibe-process-manager.mjs#daemon", "scripts/preview-server.mjs#daemon"],
-        "graphSymbols": ["startSilentProcess", "startPreviewDaemon"],
+        "memoryIds": [
+          "silent-windows-daemon"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-process-manager.mjs#daemon",
+          "scripts/preview-server.mjs#daemon"
+        ],
+        "graphSymbols": [
+          "startSilentProcess",
+          "startPreviewDaemon"
+        ],
         "estimatedTokens": 700,
         "citations": [
-          { "id": "process-manager", "source": "rag", "path": "scripts/lib/supervibe-process-manager.mjs", "redacted": true }
+          {
+            "id": "process-manager",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-process-manager.mjs",
+            "redacted": true
+          }
         ],
-        "evidence": [{ "id": "daemon", "stale": false }]
+        "evidence": [
+          {
+            "id": "daemon",
+            "stale": false
+          }
+        ]
       },
-      "tokenBudget": { "maxTokens": 1000 }
+      "tokenBudget": {
+        "maxTokens": 1000
+      }
     }
   },
   {
@@ -121,21 +238,285 @@
     },
     "quality": {
       "gold": {
-        "memoryIds": ["dialogue-contract"],
-        "sourceChunkIds": ["scripts/lib/supervibe-command-state.mjs#delivery", "rules/single-question-discipline.md#post-delivery"],
-        "graphSymbols": ["createCommandState", "evaluateScenarioFlows"]
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-command-state.mjs#delivery",
+          "rules/single-question-discipline.md#post-delivery"
+        ],
+        "graphSymbols": [
+          "createCommandState",
+          "evaluateScenarioFlows"
+        ]
       },
       "retrieved": {
-        "memoryIds": ["dialogue-contract"],
-        "sourceChunkIds": ["scripts/lib/supervibe-command-state.mjs#delivery", "rules/single-question-discipline.md#post-delivery"],
-        "graphSymbols": ["createCommandState", "evaluateScenarioFlows"],
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-command-state.mjs#delivery",
+          "rules/single-question-discipline.md#post-delivery"
+        ],
+        "graphSymbols": [
+          "createCommandState",
+          "evaluateScenarioFlows"
+        ],
         "estimatedTokens": 900,
         "citations": [
-          { "id": "command-state", "source": "rag", "path": "scripts/lib/supervibe-command-state.mjs", "redacted": true }
+          {
+            "id": "command-state",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-command-state.mjs",
+            "redacted": true
+          }
         ],
-        "evidence": [{ "id": "delivery-state", "stale": false }]
+        "evidence": [
+          {
+            "id": "delivery-state",
+            "stale": false
+          }
+        ]
       },
-      "tokenBudget": { "maxTokens": 1400 }
+      "tokenBudget": {
+        "maxTokens": 1400
+      }
+    }
+  },
+  {
+    "id": "index-repair-natural-language",
+    "request": "run code:index and repair missing Code RAG rows",
+    "expected": {
+      "intent": "code_index_build",
+      "command": "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "rag-index-health"
+        ],
+        "sourceChunkIds": [
+          "scripts/build-code-index.mjs#resume"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore"
+        ],
+        "estimatedTokens": 820,
+        "citations": [
+          {
+            "id": "build-code-index",
+            "source": "rag",
+            "path": "scripts/build-code-index.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "index-repair-command",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
+    }
+  },
+  {
+    "id": "brainstorm-to-plan-handoff",
+    "request": "I finished brainstorm, write the implementation plan next",
+    "expected": {
+      "intent": "brainstorm_to_plan",
+      "command": "/supervibe-plan --from-brainstorm"
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-workflow-router.mjs#brainstorm"
+        ],
+        "graphSymbols": [
+          "routeWorkflowRequest"
+        ],
+        "estimatedTokens": 760,
+        "citations": [
+          {
+            "id": "workflow-router",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-workflow-router.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "handoff-state",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
+    }
+  },
+  {
+    "id": "plan-review-required-before-execution",
+    "request": "after this plan, run the mandatory review loop before execution",
+    "expected": {
+      "intent": "plan_review",
+      "command": "/supervibe-plan --review"
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "plan-review-contract"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-workflow-router.mjs#review"
+        ],
+        "graphSymbols": [
+          "routeWorkflowRequest"
+        ],
+        "estimatedTokens": 790,
+        "citations": [
+          {
+            "id": "plan-review",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-workflow-router.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "mandatory-review-gate",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
+    }
+  },
+  {
+    "id": "approved-plan-epic-atomization",
+    "request": "create an epic from this approved plan and atomize it into work items",
+    "expected": {
+      "intent": "create_epic",
+      "command": "/supervibe-loop --from-plan --create-epic"
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "work-item-graph"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-plan-to-work-items.mjs#atomize"
+        ],
+        "graphSymbols": [
+          "atomizePlanToWorkItems"
+        ],
+        "estimatedTokens": 950,
+        "citations": [
+          {
+            "id": "plan-to-work-items",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-plan-to-work-items.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "work-item-atomization",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1500
+      }
+    }
+  },
+  {
+    "id": "design-slash-desktop-system",
+    "request": "build a design system for a desktop app in /supervibe-design",
+    "expected": {
+      "intent": "slash_command",
+      "command": "/supervibe-design",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "design-readiness-handoff-boundary"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-design.md#target"
+        ],
+        "graphSymbols": [
+          "buildDesignAgentPlan"
+        ],
+        "estimatedTokens": 1100,
+        "citations": [
+          {
+            "id": "design-command",
+            "source": "rag",
+            "path": "commands/supervibe-design.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "desktop-target-policy",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1700
+      }
+    }
+  },
+  {
+    "id": "release-security-audit",
+    "request": "audit release security before publishing",
+    "expected": {
+      "intent": "security_audit",
+      "command": "/supervibe-security-audit"
+    },
+    "quality": {
+      "retrieved": {
+        "memoryIds": [
+          "release-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-release-security-audit.mjs#gate"
+        ],
+        "graphSymbols": [
+          "runReleaseSecurityAudit"
+        ],
+        "estimatedTokens": 900,
+        "citations": [
+          {
+            "id": "release-security",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-release-security-audit.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "release-security-gate",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1500
+      }
     }
   }
 ]

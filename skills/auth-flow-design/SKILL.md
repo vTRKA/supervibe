@@ -28,6 +28,10 @@ BEFORE implementing the first auth path of a new app. BEFORE adding a new client
 
 This skill picks the OAuth 2.x / OIDC flow per client type, defines refresh-token rotation, decides session-cookie vs. token storage, and coordinates logout across SPA + API + IdP.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read OAuth 2.1 draft and RFC 6749 / RFC 7636 (PKCE) / RFC 8628 (device authorization) / RFC 6749 §4.3 (ROPC, deprecated) / RFC 6750 (bearer) / RFC 9068 (JWT access tokens).

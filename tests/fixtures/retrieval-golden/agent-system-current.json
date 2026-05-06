@@ -131,6 +131,142 @@
         ],
         "estimatedTokens": 1050
       }
+    },
+    {
+      "id": "index-content-stale-gate-retrieval",
+      "expected": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-index-health.mjs",
+          "scripts/build-code-index.mjs"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore",
+          "evaluateIndexHealthGate"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "graph-neighbor",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2500
+      },
+      "actual": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-index-health.mjs",
+          "scripts/build-code-index.mjs"
+        ],
+        "graphSymbols": [
+          "collectIndexHealthFromStore",
+          "evaluateIndexHealthGate"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "exact-symbol",
+          "fts",
+          "repo-map",
+          "graph-neighbor",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 1220
+      }
+    },
+    {
+      "id": "design-expert-knowledge-regulated-domain-retrieval",
+      "expected": {
+        "memoryIds": [
+          "design-readiness-handoff-boundary"
+        ],
+        "ragPaths": [
+          "docs/references/design-expert-knowledge.md",
+          "scripts/validate-design-expert-knowledge.mjs"
+        ],
+        "graphSymbols": [
+          "validateDesignExpertKnowledge"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2600
+      },
+      "actual": {
+        "memoryIds": [
+          "design-readiness-handoff-boundary"
+        ],
+        "ragPaths": [
+          "docs/references/design-expert-knowledge.md",
+          "scripts/validate-design-expert-knowledge.mjs"
+        ],
+        "graphSymbols": [
+          "validateDesignExpertKnowledge"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 1320
+      }
+    },
+    {
+      "id": "retrieval-telemetry-strict-gate-retrieval",
+      "expected": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-agent-retrieval-telemetry.mjs",
+          "scripts/supervibe-agent-retrieval-health.mjs"
+        ],
+        "graphSymbols": [
+          "isStrictAgentRetrievalTelemetryPass",
+          "buildAgentRetrievalTelemetryReport"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "graph-neighbor",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2600
+      },
+      "actual": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-agent-retrieval-telemetry.mjs",
+          "scripts/supervibe-agent-retrieval-health.mjs"
+        ],
+        "graphSymbols": [
+          "isStrictAgentRetrievalTelemetryPass",
+          "buildAgentRetrievalTelemetryReport"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "exact-symbol",
+          "fts",
+          "embedding",
+          "repo-map",
+          "graph-neighbor",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 1260
+      }
     }
   ]
 }

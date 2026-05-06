@@ -37,6 +37,10 @@ BEFORE any non-trivial code change. Specifically:
 
 This skill replaces blind grep. It surfaces conceptually-related code even when keywords don't overlap, leveraging the multilingual-e5-small embedding model and FTS5 BM25 over the project's source files.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Verify code index exists: `.supervibe/memory/code.db`

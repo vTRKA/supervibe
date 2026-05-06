@@ -8,8 +8,8 @@ applies-to:
   - any
 mandatory: true
 severity: high
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 related-rules:
   - commit-discipline
   - git-discipline
@@ -46,7 +46,7 @@ This rule does NOT apply when:
 4. **No AI watermarks in body**: if the body explains *why*, write it from the user's voice — first person, not "the assistant proposes...".
 5. **PR descriptions**: same rule — no `🤖` icon, no "Generated with X" footer.
 
-### Examples
+## Examples
 
 **Bad** — these will FAIL the rule:
 
@@ -110,6 +110,17 @@ git log main..HEAD --format="%B" | grep -iE "co-authored-by:.*(claude|codex|gemi
 ```
 
 Expected output: `clean`. Any matches → strip them via interactive rebase or amend.
+
+## Enforcement
+
+- Before committing, inspect the prepared commit message for AI footers,
+  generated-with lines, assistant signatures, and explicit tool branding.
+- Run the verification command above when a branch contains commits authored in
+  the current workflow.
+- `commit-discipline` remains responsible for Conventional Commit shape; this
+  rule is only about attribution and identity leakage.
+- If the user explicitly requests attribution, record the override in
+  `.supervibe/confidence-log.jsonl` and keep it scoped to that commit only.
 
 ## Related
 

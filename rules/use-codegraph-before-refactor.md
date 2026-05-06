@@ -27,11 +27,11 @@ severity: critical
 trigger-skills:
   - 'supervibe:code-search'
 created: 2026-04-27T00:00:00.000Z
-last-verified: 2026-04-27T00:00:00.000Z
+last-verified: 2026-05-06
 last-fired: null
 fire-count: 0
 sunset: null
-version: 1
+version: 1.1
 related-rules:
   - anti-hallucination
   - no-dead-code
@@ -85,7 +85,43 @@ This rule auto-fires for skills/agents tagged with `applies-when` keywords above
 
 Override: if graph query genuinely doesn't apply (e.g., adding new endpoint, no symbol changes), state explicitly in output: "Graph queries: N/A (additive change, no symbol modifications)".
 
-## Related
+## Examples
+
+### Bad
+
+```text
+Task: rename buildAgentSystemMaturityReport.
+Action: edit the export and update the one caller found by grep.
+Claim: done.
+```
+
+This is unsafe because grep may miss graph-resolved callers, command entrypoints,
+tests, generated registries, and docs that cite the public symbol.
+
+### Good
+
+```bash
+node scripts/search-code.mjs --callers "buildAgentSystemMaturityReport"
+node scripts/search-code.mjs --neighbors "buildAgentSystemMaturityReport" --depth 2
+```
+
+The agent cites the caller list, updates every impacted path in the same change,
+then reruns `--callers "<old-name>"` after the rename to prove no public caller
+still depends on the old symbol.
+
+## Enforcement
+
+- Structural refactor output must include the exact graph query, symbol name,
+  caller count, and the decision: same-change update, architect review, or N/A.
+- `supervibe:code-search` is mandatory for rename, move, extract, inline, and
+  public delete work; source RAG alone is insufficient.
+- `node scripts/search-code.mjs --context "<task>"` must report Graph Quality
+  Gates before a structural edit is considered evidence-backed.
+- Code review should block refactors that cite only grep, only semantic RAG, or
+  a stale index. If `supervibe-status --index-health` reports missing, stale, or
+  content-changed rows, repair the index first.
+
+## Related rules
 
 - skill: `supervibe:code-search`
 - agent: `refactoring-specialist`, `code-reviewer`, `architect-reviewer`

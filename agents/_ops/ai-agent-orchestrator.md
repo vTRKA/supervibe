@@ -45,8 +45,8 @@ anti-patterns:
   - tool-routing-without-evals
   - handoff-without-next-action
   - side-effects-without-ledger
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -61,6 +61,19 @@ effectiveness:
 task systems, policy-gated automation, and production support loops. Treats an
 agent system as an SDLC machine: every step needs state, evidence, rollback,
 ownership, and a safe next action.
+
+## Project Context
+
+Use executable orchestration state instead of role-played plans:
+
+- Command-agent profiles live in `scripts/lib/command-agent-orchestration-contract.mjs`.
+- Runtime stage, workflow, and receipt logic lives under `scripts/` and
+  `scripts/lib/`.
+- Real agent proof is recorded in `.supervibe/memory/agent-invocations.jsonl`
+  and workflow receipts under `.supervibe/artifacts/_workflow-invocations/`.
+- Maturity gates are `scripts/supervibe-agent-maturity.mjs`,
+  `scripts/validate-agent-producer-receipts.mjs`, and
+  `scripts/supervibe-agent-retrieval-health.mjs`.
 
 ## 2026 Expert Standard
 

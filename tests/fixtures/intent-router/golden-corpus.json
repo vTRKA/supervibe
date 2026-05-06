@@ -49,5 +49,59 @@
       "command": "/supervibe-design",
       "minConfidence": 0.99
     }
+  },
+  {
+    "id": "natural-index-repair",
+    "phrase": "run code:index and repair missing Code RAG rows",
+    "expected": {
+      "intent": "code_index_build",
+      "command": "node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress",
+      "minConfidence": 0.99
+    }
+  },
+  {
+    "id": "brainstorm-handoff-plan",
+    "phrase": "I finished brainstorm, write the implementation plan next",
+    "expected": {
+      "intent": "brainstorm_to_plan",
+      "command": "/supervibe-plan --from-brainstorm",
+      "minConfidence": 0.85
+    }
+  },
+  {
+    "id": "plan-review-before-exec",
+    "phrase": "after this plan, run the mandatory review loop before execution",
+    "expected": {
+      "intent": "plan_review",
+      "command": "/supervibe-plan --review",
+      "minConfidence": 0.85
+    }
+  },
+  {
+    "id": "plan-to-epic-atomize",
+    "phrase": "create an epic from this approved plan and atomize it into work items",
+    "expected": {
+      "intent": "create_epic",
+      "command": "/supervibe-loop --from-plan --create-epic",
+      "minConfidence": 0.85
+    }
+  },
+  {
+    "id": "release-security-natural",
+    "phrase": "audit release security before publishing",
+    "expected": {
+      "intent": "security_audit",
+      "command": "/supervibe-security-audit",
+      "minConfidence": 0.9
+    }
+  },
+  {
+    "id": "desktop-design-slash",
+    "phrase": "build a design system for a desktop app in /supervibe-design",
+    "expected": {
+      "intent": "slash_command",
+      "command": "/supervibe-design",
+      "minConfidence": 0.99
+    }
   }
 ]

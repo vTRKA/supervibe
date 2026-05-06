@@ -11,6 +11,9 @@ const INJECTION_PATTERNS = [
   /send .*https?:\/\//i,
   /paste .*private/i,
   /skip approval/i,
+  /without .*receipt/i,
+  /ignore .*list-missing/i,
+  /legacy-only .*10\/10/i,
   /capture .*private|private .*screenshot|screenshot .*private/i,
 ];
 

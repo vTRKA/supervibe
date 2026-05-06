@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { hashFile } from './file-hash.mjs';
 import { discoverSourceFiles, GENERATED_DIRS } from './supervibe-index-policy.mjs';
 import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './supervibe-command-catalog.mjs';
 
@@ -31,6 +32,7 @@ export function buildIndexHealthSnapshot({
   const eligibleSourceFiles = numberOrZero(manifest.eligibleSourceFiles);
   const indexedSourceFiles = numberOrZero(manifest.indexedSourceFiles ?? manifest.indexedFiles);
   const staleRows = normalizeIndexedPaths(manifest.staleRows || []);
+  const contentChangedRows = normalizeIndexedPaths(manifest.contentChangedRows || []);
   const partialIndexedFiles = normalizeIndexedPaths(manifest.partialIndexedFiles || []);
   const languageCoverage = normalizeLanguageCoverage(manifest.languageCoverage || {});
   const symbolQuality = normalizeSymbolQuality(manifest.symbolQuality || {}, manifest.topSymbols || []);
@@ -73,6 +75,15 @@ export function buildIndexHealthSnapshot({
     });
   }
 
+  if (contentChangedRows.length > 0) {
+    issues.push({
+      code: 'content-changed-index-rows',
+      severity: 'error',
+      message: 'indexed source content changed since last index write',
+      details: { contentChangedRows },
+    });
+  }
+
   if (partialIndexedFiles.length > 0) {
     issues.push({
       code: 'partial-source-index-rows',
@@ -101,6 +112,7 @@ export function buildIndexHealthSnapshot({
     sourceCoverage,
     generatedIndexedFiles,
     staleRows,
+    contentChangedRows,
     partialIndexedFiles,
     languageCoverage,
     symbolQuality,
@@ -116,7 +128,7 @@ export async function collectIndexHealthFromStore(store, {
 } = {}) {
   const stats = store.stats();
   const grammarHealth = store.getGrammarHealth();
-  const indexedRows = store.db.prepare('SELECT path, language, index_status AS indexStatus FROM code_files ORDER BY path').all();
+  const indexedRows = store.db.prepare('SELECT path, language, index_status AS indexStatus, content_hash AS contentHash FROM code_files ORDER BY path').all();
   const indexedPaths = indexedRows.map((row) => row.path);
   const partialIndexedFiles = indexedRows
     .filter((row) => row.indexStatus === 'partial')
@@ -124,6 +136,7 @@ export async function collectIndexHealthFromStore(store, {
   const generatedIndexedFiles = indexedPaths.filter(isGeneratedSourcePath);
   const staleRows = indexedPaths.filter((relPath) => !existsSync(join(rootDir, relPath)));
   const inventory = await collectEligibleSourceInventory(rootDir);
+  const contentChangedRows = await collectContentChangedRows({ rootDir, inventory, indexedRows });
   const topSymbols = readTopSymbolNames(store);
 
   const eligibleByLanguage = new Map();
@@ -155,6 +168,7 @@ export async function collectIndexHealthFromStore(store, {
       indexedPaths,
       generatedIndexedFiles,
       staleRows,
+      contentChangedRows,
       partialIndexedFiles,
       languageCoverage,
       topSymbols,
@@ -168,10 +182,26 @@ export async function collectIndexHealthFromStore(store, {
   });
 }
 
+async function collectContentChangedRows({ rootDir, inventory, indexedRows }) {
+  const byPath = new Map(indexedRows.map((row) => [row.path, row]));
+  const changed = [];
+  for (const file of inventory.files) {
+    const row = byPath.get(file.relPath);
+    if (!row?.contentHash) continue;
+    try {
+      const currentHash = await hashFile(file.absPath);
+      if (currentHash && currentHash !== row.contentHash) changed.push(file.relPath);
+    } catch {
+      // Missing files are reported through staleRows; unreadable files are handled by the indexer repair path.
+    }
+  }
+  return changed;
+}
+
 async function collectEligibleSourceInventory(rootDir) {
   const inventory = await discoverSourceFiles(rootDir);
   return {
-    files: inventory.files.map((file) => ({ path: file.absPath, language: file.language })),
+    files: inventory.files.map((file) => ({ path: file.absPath, absPath: file.absPath, relPath: file.relPath, language: file.language })),
   };
 }
 
@@ -193,6 +223,7 @@ export function formatIndexHealth(health = {}) {
     `sourceCoverage: ${(numberOrZero(health.sourceCoverage) * 100).toFixed(1)}%`,
     `generatedIndexedFiles: ${(health.generatedIndexedFiles || []).length}`,
     `staleRows: ${(health.staleRows || []).length}`,
+    `contentChangedRows: ${(health.contentChangedRows || []).length}`,
     `partialRows: ${(health.partialIndexedFiles || []).length}`,
     `languageCoverage:`,
     ...(languageLines.length ? languageLines : ['  - none']),
@@ -238,6 +269,13 @@ export function evaluateIndexHealthGate(health = {}, {
       code: 'stale-rows',
       message: 'stale index rows present',
       actual: health.staleRows.length,
+    });
+  }
+  if ((health.contentChangedRows || []).length > 0) {
+    failedGates.push({
+      code: 'content-stale',
+      message: 'indexed source content changed since last index write',
+      actual: health.contentChangedRows.length,
     });
   }
   if ((health.partialIndexedFiles || []).length > 0) {

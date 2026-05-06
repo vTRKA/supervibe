@@ -38,6 +38,10 @@ Feedback entries have lifecycle state in `.supervibe/memory/feedback-status.json
 
 Browser feedback entries are not lifecycle approval. A resolved browser feedback entry does not approve the artifact, export a deck, or create a handoff; the surrounding delivery flow must still ask its explicit approve/revise/alternative/stop question.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth
 - Read full feedback entry: `jq -c "select(.id==\"<id>\")" .supervibe/memory/feedback-queue.jsonl`
 - Read artifact config: `.supervibe/artifacts/prototypes/<slug>/config.json`, `.supervibe/artifacts/mockups/<slug>/config.json`, or `.supervibe/artifacts/presentations/<slug>/deck.json`

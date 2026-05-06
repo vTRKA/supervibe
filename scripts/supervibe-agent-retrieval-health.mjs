@@ -3,6 +3,7 @@
 import {
   buildAgentRetrievalTelemetryReportFromProject,
   formatAgentRetrievalTelemetryReport,
+  isStrictAgentRetrievalTelemetryPass,
   writeStrengtheningTasks,
 } from "./lib/supervibe-agent-retrieval-telemetry.mjs";
 
@@ -15,6 +16,8 @@ if (args.help) {
     "  npm run supervibe:agent-retrieval-health",
     "  npm run supervibe:agent-retrieval-health -- --write-strengthening-tasks",
     "  npm run supervibe:agent-retrieval-health -- --strict",
+    "",
+    "--strict exits non-zero unless PASS is true and MATURITY_SCORE is 10/10.",
   ].join("\n"));
   process.exit(0);
 }
@@ -35,7 +38,7 @@ try {
     console.log(formatAgentRetrievalTelemetryReport(report));
     if (writeResult) console.log(`OUT: ${writeResult.outPath}\nTASKS_WRITTEN: ${writeResult.count}`);
   }
-  if (args.strict && !report.pass) process.exitCode = 2;
+  if (args.strict && !isStrictAgentRetrievalTelemetryPass(report)) process.exitCode = 2;
 } catch (error) {
   console.error(`SUPERVIBE_AGENT_RETRIEVAL_HEALTH_ERROR: ${error.message}`);
   process.exitCode = 1;

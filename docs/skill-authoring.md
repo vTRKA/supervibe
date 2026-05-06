@@ -10,7 +10,7 @@ Skills are methodology — they describe HOW to do something. Agents USE skills;
    cp templates/skill.md.tpl skills/<your-skill>/SKILL.md
    ```
 2. Fill in placeholders
-3. Validate: `npm run validate:frontmatter && npm run lint:descriptions`
+3. Validate: `npm run validate:frontmatter && npm run lint:descriptions && npm run validate:skill-content-quality`
 4. Score: `/supervibe-score skill-quality skills/<your-skill>/SKILL.md` — must be ≥9
 
 ## Required frontmatter fields
@@ -46,6 +46,11 @@ Before doing ANYTHING, read:
 
 Without Step 0 you act on assumption — that's hallucination risk.
 
+### `## Expert Operating Standard`
+Link `docs/references/skill-expert-operating-standard.md`. This is the shared
+quality bar: source-of-truth preflight, scope safety, retrieval evidence, real
+producer receipts, confidence gates, and verification before completion claims.
+
 ### `## Decision tree`
 Branching logic for non-trivial cases. Use ASCII tree or if/then table.
 
@@ -72,9 +77,14 @@ Each dimension scored 0/1/2:
 2. **step-zero** — body contains "Step 0" OR "Read source of truth" section
 3. **decision-tree** — non-trivial branching documented
 4. **output-contract** — explicit format spec
-5. **gate-on-exit** — frontmatter `gate-on-exit:true` OR procedure step calling confidence-scoring
+5. **gate-on-exit** — frontmatter `gate-on-exit:true` OR explicit support-skill fallback with confidence and verification evidence
 
 5 × 2 = 10 max. Threshold: ≥9 to ship.
+
+`npm run validate:skill-content-quality` is the hard gate. It checks the expert
+standard reference, Step 0, decision tree, procedure, output contract, guard
+rails, verification, related links, scoped frontmatter, and unresolved
+placeholders outside examples.
 
 ## Anti-patterns
 
@@ -83,6 +93,8 @@ Each dimension scored 0/1/2:
 - **No decision tree** — branching logic hidden in prose
 - **No output contract** — consumers can't parse output reliably
 - **No gate-on-exit** — claims done without scoring
+- **Copied generic bulk** — the skill repeats process filler instead of linking
+  the shared expert operating standard and adding role-specific decisions
 
 ## Examples to study
 
@@ -120,3 +132,4 @@ When `supervibe:audit` flags your skill as weak:
 - Sharpen guard rails
 - Bump `version` (1.0 → 1.1)
 - Update `last-verified`
+- Re-run `npm run validate:skill-content-quality`

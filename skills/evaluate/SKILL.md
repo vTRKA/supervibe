@@ -30,6 +30,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 - After user corrects agent output (signal of partial success)
 - User runs `/supervibe-score --record`
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `.supervibe/memory/effectiveness.jsonl` for prior entries

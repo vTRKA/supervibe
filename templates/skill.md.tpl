@@ -18,6 +18,13 @@ last-verified: {{TODAY}}
 
 {{WHEN_TO_INVOKE}}
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (MANDATORY)
 
 Before doing anything, read:
@@ -79,3 +86,7 @@ Returns: {{OUTPUT_FORMAT}}
 
 This skill's output is verified by:
 - {{VERIFICATION_METHOD}}
+
+## Related
+
+- {{RELATED_SKILL_OR_AGENT}}

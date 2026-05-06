@@ -27,11 +27,34 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 WHEN `rules-curator` updated a rule in one project AND multi-project sync is configured (opt-in via `.supervibe/sync-config.yaml`).
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `.supervibe/sync-config.yaml` for sibling project paths
 2. Read updated rule file
 3. Read sibling projects' versions of same rule (diff source)
+
+## Decision tree
+
+```
+No opt-in sync config exists
+  -> STOP and report that no sibling project is authorized.
+
+Target rule is identical except for the source update
+  -> Propose a clean apply patch in dry-run output.
+
+Target rule has local customization
+  -> Ask whether to merge, skip, or send to manual curator review.
+
+Target project lacks the rule or uses a different host adapter
+  -> Ask whether this stack should receive a translated host-neutral rule.
+
+Target has a newer version or mandatory enforcement differs
+  -> STOP and require manual rule-audit before sync.
+```
 
 ## Procedure
 

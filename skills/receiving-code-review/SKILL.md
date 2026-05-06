@@ -28,6 +28,10 @@ WHEN receiving review feedback (from `code-reviewer` agent, human reviewer, or a
 
 This skill bans performative agreement ("I'll fix everything you said") and demands technical evaluation per finding.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read the full review report (don't skim)

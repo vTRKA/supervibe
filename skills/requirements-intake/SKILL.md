@@ -30,6 +30,10 @@ BEFORE any new feature/bug/refactor request enters the workflow. This is the ent
 
 Triggered when user says: "add X", "fix Y", "refactor Z", "let's build N".
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read project state (Glob package.json/composer.json/Cargo.toml — detect stack)

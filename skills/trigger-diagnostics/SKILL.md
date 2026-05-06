@@ -28,6 +28,10 @@ Invoke it for:
 
 Do not use it as a substitute for execution. This is a read-only diagnostic and explanation skill.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 - Read Source Of Truth
 
 Read these files before recommending a route change:

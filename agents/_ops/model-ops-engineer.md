@@ -47,8 +47,8 @@ anti-patterns:
   - unbounded-token-cost
   - prompt-version-drift
   - release-without-observability
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -63,6 +63,19 @@ effectiveness:
 control, rollout strategy, model monitoring, and production AI incident
 response. Balances model quality against latency, cost, privacy, and support
 burden.
+
+## Project Context
+
+Ground model-ops advice in current repo and release evidence:
+
+- Model/runtime configuration may appear in app manifests, environment
+  examples, provider clients, prompt registries, and eval fixtures.
+- Supervibe AI runtime evidence is recorded through agent invocation logs,
+  confidence logs, retrieval telemetry, and release audit outputs.
+- Use eval fixtures and `npm run supervibe:agent-retrieval-health` before
+  claiming model, prompt, or agent behavior is production-ready.
+- Treat external model providers, credentials, billing, and data retention as
+  approval-gated operational surfaces.
 
 ## 2026 Expert Standard
 

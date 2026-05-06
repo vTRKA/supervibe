@@ -69,6 +69,10 @@ Use candidate completion markers for intermediate sections when the recommended/
 
 The design-system review packet is a chat-level gate. Ask explicit approval/revision for every required section before writing `design_system.status = approved` in `design-flow-state.json`; final handoff metadata is not stamped until an approved prototype proves the visual direction. If the user says stop, pause, skip, or asks to review a specific section manually, honor that instruction and persist partial state.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `.supervibe/artifacts/brandbook/direction.md` if exists (creative-director's moodboard + intent doc).

@@ -20,6 +20,10 @@ BEFORE starting feature work or executing a plan, IF current workspace has uncom
 
 NOT for: small fixes, doc-only changes, work on a fresh repo.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Run `git status` — check for uncommitted changes

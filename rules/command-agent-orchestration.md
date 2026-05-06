@@ -3,8 +3,8 @@ name: command-agent-orchestration
 description: "All Supervibe slash commands must build a real agent plan by default and must block rather than emulate missing specialist agents."
 applies-to: [slash-command, command-routing, workflow-orchestration]
 mandatory: true
-version: 1.1
-last-verified: 2026-05-04
+version: 1.2
+last-verified: 2026-05-06
 related-rules: [workflow-invocation-receipts, confidence-discipline, operational-safety, instruction-surface-integrity]
 ---
 
@@ -15,6 +15,15 @@ related-rules: [workflow-invocation-receipts, confidence-discipline, operational
 Supervibe is an agentic plugin. A command that only role-plays specialists
 inline breaks the product contract: users see an agent workflow, but no real
 agent invocation, handoff, receipt, or reviewer accountability happened.
+
+## Scope
+
+This rule applies to every published `/supervibe-*` command, natural-language
+command route, command-agent plan, staged workflow runner, and durable command
+artifact that claims command, specialist, reviewer, worker, or validator work.
+
+It does not require real specialist dispatch for diagnostics that explicitly
+return dry-run output and do not claim producer completion.
 
 ## Source of truth
 
@@ -108,3 +117,39 @@ Every published `/supervibe-*` command must have a profile with:
 - `npm run validate:workflow-receipts` and
   `npm run validate:agent-producer-receipts` verify runtime proof before
   completion claims.
+
+## Examples
+
+### Bad
+
+```text
+/supervibe-audit result:
+security-auditor says everything is fine.
+code-reviewer says everything is fine.
+```
+
+No command-agent plan, host invocation id, agent output artifact, or workflow
+receipt proves those specialists actually ran.
+
+### Good
+
+```bash
+node scripts/command-agent-plan.mjs --command /supervibe-audit
+node scripts/agent-invocation.mjs log --agent security-auditor --host codex \
+  --host-invocation-id <runtime-id> --task "release security audit" \
+  --confidence 9 --issue-receipt --command /supervibe-audit \
+  --stage security-review --handoff-id <handoff-id> \
+  --output-artifacts .supervibe/artifacts/_agent-outputs/<runtime-id>/agent-output.json
+npm run validate:agent-producer-receipts
+```
+
+The command can claim specialist output only after the runtime id, output
+artifact, receipt, and producer validator agree.
+
+## Related rules
+
+- `workflow-invocation-receipts` - provenance for claimed producers.
+- `confidence-discipline` - command completion claims need evidence.
+- `operational-safety` - blocked agent stages must not be hidden as manual work.
+- `instruction-surface-integrity` - command docs must not drift from executable
+  profile behavior.

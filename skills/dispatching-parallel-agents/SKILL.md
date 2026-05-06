@@ -57,6 +57,10 @@ contradictory recommendations, missing evidence, and verification status for
 each task. The combined answer must cite per-agent outcomes and explain any
 discarded, re-run, or serialized task.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. List the candidate tasks

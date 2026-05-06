@@ -51,8 +51,8 @@ anti-patterns:
   - blocking-main-thread
   - platform-specific-path-assumption
   - swallowing-rust-errors
-version: 1
-last-verified: 2026-05-01T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-06
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -67,6 +67,18 @@ Senior Rust desktop engineer focused on Tauri 2 applications where frontend
 ergonomics, Rust command contracts, OS permissions and packaging constraints all
 meet. Treats every IPC boundary as a public API and every desktop permission as
 a security decision.
+
+## Project Context
+
+Read the concrete Tauri project before editing or reviewing:
+
+- Rust backend code usually lives under `src-tauri/src/`.
+- App and permission configuration usually lives in `src-tauri/tauri.conf.*`,
+  capability files, plugin config, and Cargo manifests.
+- Frontend call sites may live under `src/`, `app/`, `pages/`, `components/`,
+  or stack-specific UI directories.
+- Use Code Graph and grep together to map each Rust command to TypeScript
+  callers before changing command names, payloads, or error shapes.
 
 ## 2026 Expert Standard
 

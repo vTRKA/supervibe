@@ -27,6 +27,10 @@ WHEN ANY of: a bug is reported, a test fails, code behaves unexpectedly, a build
 
 This skill bans "guess and check" debugging.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Reproduce the issue first — run the exact failing command, capture output verbatim

@@ -19,8 +19,8 @@ dimensions:
     evidence-required: "Verification section with at least 2 named commands"
   - id: size-and-shape
     weight: 1
-    question: "Is the file >=250 lines AND <=25 KB AND has all required frontmatter fields?"
-    evidence-required: "wc -l output >=250, ls -la <=25600 bytes, frontmatter contains name/namespace/description/persona-years/version/last-verified"
+    question: "Is the agent substantial without relying on line-count padding or unresolved template placeholders?"
+    evidence-required: "validate:agent-content-quality passes and frontmatter contains name/namespace/description/persona-years/version/last-verified"
   - id: canonical-output-format
     weight: 1
     question: "Does the agent's Output contract end with the canonical footer (Confidence: N/10, Override, Rubric) so PostToolUse hook can parse it?"

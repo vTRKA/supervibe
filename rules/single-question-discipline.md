@@ -10,7 +10,7 @@ applies-to:
   - agents/_ops/**
   - agents/stacks/**
 severity: high
-version: 1.1
+version: 1.2
 last-verified: 2026-05-06
 mandatory: true
 related-rules:
@@ -95,9 +95,55 @@ Validator `scripts/validate-question-discipline.mjs` (run in `npm run check`) ch
 
 Failures block commit.
 
+## Examples
+
+### Bad
+
+```text
+Before I start, answer these:
+1. Web or desktop?
+2. Who is the audience?
+3. Should I use dark mode?
+4. Do you want animations?
+```
+
+This creates partial answers and ambiguous state. The user can answer only one
+item, the agent may infer the rest, and no saved workflow state records which
+decision unlocked which artifact.
+
+### Good
+
+```markdown
+**Step 1/3:** Which target should this design flow produce first?
+
+Why: target choice controls viewport policy, review gates, and handoff files.
+Decision unlocked: design target for `.supervibe/memory/design-wizard/<slug>.runtime.json`.
+If skipped: I will stop before durable design artifacts.
+
+- Web landing page (recommended) - fastest path for browser preview and SEO review.
+- Desktop app shell - applies Tauri/Electron viewport and interaction rules.
+- Stop here - saves no new design state.
+
+A free-form answer is also accepted.
+```
+
+This is answerable in one turn, names the artifact impact, and preserves the
+stop condition.
+
+## Enforcement
+
+- `npm run validate:question-discipline` blocks agents that omit the dialogue
+  section, `Step N/M`, anti-patterns, or transparency markers.
+- `npm run validate:dialogue-ux` checks delivery menus and visible option
+  labels for supported workflow surfaces.
+- `npm run validate:multistage-user-gates` catches missing continuation choices
+  around approval, review, and resume gates.
+- Code review should reject visible raw ids such as `creative_direction` or
+  `blocked_mode`; those are saved-state ids, not user-facing labels.
+
 ## Override
 If an agent legitimately cannot follow this rule (e.g., the orchestrator dispatches in parallel and never owns dialogue), declare in frontmatter: `dialogue: noninteractive` and the validator skips it.
 
-## Related
+## Related rules
 - `rules/confidence-discipline.md` — every agent reports confidence
 - `skills/brainstorming/SKILL.md` — meta-skill that itself follows this rule

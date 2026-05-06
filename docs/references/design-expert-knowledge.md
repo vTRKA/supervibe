@@ -144,6 +144,33 @@ Examples of product-fit decisions:
   encodings, filtering, export, pagination or virtualization, and no color-only
   meaning.
 
+## Regulated Trust Domains
+
+Finance, legal, healthcare, government, security, insurance, education for
+minors, and other regulated-trust domains require evidence before creative
+defaults. The agent must classify the trust burden before choosing palette,
+typography, tone, imagery, layout density, motion, proof blocks, or conversion
+copy.
+
+Minimum evidence packet for regulated-trust briefs:
+
+- Product risk: user harm, compliance sensitivity, data sensitivity,
+  reversibility, auditability, and support/recovery expectations.
+- Trust language: claims that need substantiation, prohibited overpromising,
+  disclaimers, escalation copy, and jurisdiction-specific unknowns.
+- Accessibility and safety: contrast, focus, reduced motion, error recovery,
+  readable type, plain-language copy, and assistive-technology state coverage.
+- Interaction risk: confirmation, undo, review-before-submit, destructive
+  action treatment, fraud or abuse paths, and visible account/security status.
+- Visual restraint: conservative motion, stable layout, direct affordances,
+  legible charts/tables, and no decorative trend that reduces comprehension.
+- Domain evidence: project memory, approved brand/system artifacts, local
+  design-intelligence rows, and current authoritative references when the
+  domain has live policy or market expectations.
+
+If the evidence is missing, ask one question that resolves the highest-risk
+domain assumption before creating candidate tokens or prototype screens.
+
 ## Stack-Aware UI Guidance
 
 Design guidance must be stack-aware UI guidance, not generic visual taste:

@@ -110,8 +110,8 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 - **Receipt repair/recovery**: use `node scripts/workflow-receipt.mjs reissue`, `prune-stale --apply`, `rebuild-ledger`, or `recovery-status`; never repair receipt trust by manually editing JSON or the ledger.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)
-- **Agents**: ≥250 lines + cache-friendly section order (Persona before Project Context, validated by `npm run validate:agent-section-order`)
-- **Skills**: trigger-clarity description; references/ are 1-deep (validated by `npm run validate:no-deep-refs`)
+- **Agents**: content-quality gate + cache-friendly section order (validated by `npm run validate:agent-content-quality` and `npm run validate:agent-section-order`); do not pad agents to satisfy line-count heuristics.
+- **Skills**: expert operating standard, Step 0, decision tree, output contract, guard rails, verification, related links, and trigger-clarity (validated by `npm run validate:skill-content-quality` and `npm run validate:no-deep-refs`); do not pad skills to satisfy line-count heuristics.
 - **Tests**: `node:test`; `tests/*.test.mjs`
 - **No native deps**: pure JS / WASM / SQLite. **No Docker. No external services.**
 

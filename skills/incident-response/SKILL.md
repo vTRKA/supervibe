@@ -29,6 +29,10 @@ WHEN production is broken: outage, data corruption, security event, user-facing 
 
 This skill prioritizes mitigation > investigation > postmortem (in that order, time-pressured).
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read incident channel / pager / monitoring dashboard for the symptom

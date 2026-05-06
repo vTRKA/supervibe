@@ -27,6 +27,10 @@ BEFORE merging the first commit that gates new behaviour behind a flag. BEFORE e
 
 This skill picks the rollout *shape* (kill-switch, percentage, cohort), defines the *rollback contract*, and locks in a *cleanup deadline*. Without all three, a flag is a long-lived branch in production and accrues debt.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read product spec / PRD: identify the blast radius and the success metric.

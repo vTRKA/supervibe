@@ -37,6 +37,40 @@ Do not use it for one small local edit, a read-only explanation, or a plan that
 has not passed review unless the invocation is explicitly dry-run/readiness
 only.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
+
+## Step 0 - Read source of truth (required)
+
+Before planning or dispatching a loop, read the approved user request, current
+plan/spec if present, active host instruction file, `.supervibe/memory/`
+workflow state, recent project memory, Code RAG/CodeGraph health, command-agent
+plan output, and receipt recovery status. If any source is missing or stale,
+enter readiness repair instead of dispatch.
+
+## Decision tree
+
+```
+Request lacks approved scope, budget, stop condition, or verification target
+  -> Do readiness repair or ask one focused Step N/M question before dispatch.
+
+Task graph has independent disjoint write sets
+  -> Build a small parallel wave with explicit worker packets and reviewer gates.
+
+Tasks share write sets, public contracts, migrations, or release state
+  -> Serialize or split until conflicts and rollback are clear.
+
+Provider permission, receipt, index, or retrieval evidence is missing
+  -> Policy/readiness stop; repair evidence before executing non-dry work.
+
+First wave finishes but ready work remains
+  -> Continue the loop; do not report final completion until the queue is done or blocked.
+```
+
 ## Controller Model
 
 Every run has three roles even when one human or one AI session performs more
@@ -251,3 +285,10 @@ SCOPE_CHANGES: number
 - Run the validator, test, dry-run, or audit command named by this skill when one exists.
 - Include concrete command/output evidence before claiming the skill completed successfully.
 - If verification cannot run, state the blocker and keep confidence below the passing gate.
+
+## Related
+
+- `supervibe:subagent-driven-development` - executes ready task waves with worker packets.
+- `supervibe:dispatching-parallel-agents` - decides when parallel fan-out is safe.
+- `supervibe:using-git-worktrees` - isolates long-running or risky execution.
+- `supervibe:verification` - supplies evidence before completion claims.

@@ -33,6 +33,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 Audit is read-only and non-interactive by default. No-prompt path: run the audit, print the structured report, and stop without mutation. If the user asks what to do next, ask one `Step 1/1` question with the recommended/default repair path first and include a stop option.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current artifact list
@@ -41,13 +45,32 @@ Audit is read-only and non-interactive by default. No-prompt path: run the audit
 4. Check `.supervibe/memory/index.json`; if missing, report `memory-index-missing` and the exact `node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs` repair command before any project-memory-dependent checks
 5. Read recent commits for context
 
+## Decision tree
+
+```
+Audit request targets 10/10 plugin maturity?
+  -> Run maturity, index, retrieval telemetry, receipt, content-quality, and eval coverage gates.
+
+Audit request targets docs, agents, skills, or rules?
+  -> Run the matching content-quality validators and flag missing Step 0, decision tree, output contract, placeholders, stale references, or filler.
+
+Audit finds stale code index or retrieval evidence?
+  -> Report the exact incremental index repair command and keep maturity below 10/10 until strict retrieval telemetry is green.
+
+Audit finds receipt or producer provenance drift?
+  -> Recommend workflow-receipt recovery, reissue, prune-stale, or ledger rebuild instead of hand-written repair.
+
+Audit finds weak artifacts with valid structure but shallow role guidance?
+  -> Route to supervibe:strengthen with concrete files and missing evidence, not a generic rewrite.
+```
+
 ## Procedure
 
 1. **Stale references** — for each artifact, grep paths/funcs/cmds it mentions; flag MISSING
 2. **Coverage gaps** — Glob source dirs vs registry; flag uncovered modules
    - Run `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-health --no-gc-hints`; if `SUPERVIBE_INDEX_GATE READY: false`, flag stale or incomplete code index state with the failed gate codes.
    - Run `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-policy-diagnostics` when privacy/indexing is in scope; report classes and paths, never secret values.
-3. **Weak artifacts** — agents <250 lines, skills <80 lines, rules <200 lines, missing Persona/Step 0/decision-tree
+3. **Weak artifacts** — failing `validate:agent-content-quality`, `validate:skill-content-quality`, `validate:rule-content-quality`, unresolved template placeholders, missing Step 0/decision tree/output contract, stale retrieval evidence, or copied filler sections
 4. **Agent-freshness** — every agent's `last-verified` >90d → STALE
 5. **Rule-freshness** — every rule's `last-verified` >90d → STALE
 6. **Override-rate** — compute over last 100 entries; >5% → flag systemic

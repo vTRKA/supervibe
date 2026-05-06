@@ -29,6 +29,10 @@ BEFORE writing any production code for a new feature, bug fix, or refactor that 
 
 NOT for: pure config changes, scaffolding files, documentation updates, dependency bumps.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read project's test conventions from the active host instruction file

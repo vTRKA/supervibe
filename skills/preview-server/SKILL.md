@@ -36,6 +36,10 @@ Trigger phrases from the user: "show me what it would look like", "open it in th
 
 Do NOT invoke for: pure code review, schema/spec work, or anything without a renderable artifact.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth
 
 1. Verify mockup files exist under the expected output directory (Glob for `*.html`, `index.html`, or framework entry files).

@@ -25,6 +25,10 @@ last-verified: 2026-05-06T00:00:00.000Z
 
 AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framework doesn't yet have configured. Output is consumed by `supervibe:genesis` and `supervibe:requirements-intake`.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Glob for known manifest files: `package.json`, `composer.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml`, `build.gradle`, `*.csproj`, `mix.exs`, `pubspec.yaml`

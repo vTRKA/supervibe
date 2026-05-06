@@ -28,6 +28,10 @@ WHEN designing the first endpoint of a new API. WHEN extending an API whose erro
 
 The skill produces a single answer for the project: one envelope shape, one error-code registry, one retry contract, one partial-failure pattern. Mixed envelopes are the most common cause of unreliable client retries.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read API style guide / OpenAPI / GraphQL schema / proto files for the project.

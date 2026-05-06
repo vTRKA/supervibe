@@ -36,6 +36,10 @@ BEFORE starting any non-trivial task — feature, bug fix, refactor, design deci
 
 This skill is the **library card catalog** for the project's accumulated wisdom. Without consulting it, every task starts from zero — that's wasted effort across the lifetime of the project.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Verify `.supervibe/memory/` exists; if not, propose `supervibe:add-memory` is needed first

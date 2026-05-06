@@ -17,6 +17,8 @@ Useful commands:
 npm ci
 npm run supervibe:status
 npm run check
+npm run validate:agent-content-quality
+npm run validate:skill-content-quality
 node --test tests/<name>.test.mjs
 node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 ```
@@ -42,8 +44,8 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 ## Agent And Artifact Map
 
-- Agents: 89 files under `agents/`; human-readable role map in `docs/agent-roster.md`.
-- Skills: 55 folders under `skills/`.
+- Agents: 89 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality gate in `scripts/validate-agent-content-quality.mjs`.
+- Skills: 55 folders under `skills/`; content-quality gate in `scripts/validate-skill-content-quality.mjs`.
 - Rules: 30 files under `rules/`.
 - Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.

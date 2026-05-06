@@ -61,7 +61,7 @@ test("retrieval golden eval CLI uses the tracked default agent-system cases", as
   ], { cwd: process.cwd() });
 
   assert.match(cli.stdout, /PASS: true/);
-  assert.match(cli.stdout, /CASES: 3/);
+  assert.match(cli.stdout, /CASES: 6/);
 });
 
 test("retrieval golden eval fails missing required evidence", () => {

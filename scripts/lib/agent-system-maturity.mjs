@@ -16,11 +16,24 @@ import {
   validateDynamicQuestionSystems,
 } from "../validate-dynamic-question-systems.mjs";
 import {
+  validateRuleContentQuality,
+} from "../validate-rule-content-quality.mjs";
+import {
+  validateAgentContentQuality,
+} from "../validate-agent-content-quality.mjs";
+import {
+  validateSkillContentQuality,
+} from "../validate-skill-content-quality.mjs";
+import {
   validateWorkflowContinuation,
 } from "../validate-workflow-continuation.mjs";
 import {
   validateWorkflowReceipts,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import {
+  buildAgentRetrievalTelemetryReportFromProject,
+  isStrictAgentRetrievalTelemetryPass,
+} from "./supervibe-agent-retrieval-telemetry.mjs";
 
 export const AGENT_SYSTEM_MATURITY_DIMENSIONS = Object.freeze([
   { id: "roster-coverage", max: 1.0 },
@@ -38,6 +51,9 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
   const roster = countArtifacts(rootDir);
   const commandContracts = validateCommandOperationalContracts(rootDir);
   const dynamicQuestions = validateDynamicQuestionSystems();
+  const ruleContentQuality = validateRuleContentQuality(rootDir);
+  const agentContentQuality = validateAgentContentQuality(rootDir);
+  const skillContentQuality = validateSkillContentQuality(rootDir);
   const continuation = validateWorkflowContinuation(rootDir);
   const workflowReceipts = validateWorkflowReceipts(rootDir, options.receiptOptions || {});
   const agentReceipts = validateAgentProducerReceipts(rootDir, {
@@ -46,7 +62,8 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
     minHostAgentReceipts: options.minHostAgentReceipts ?? 1,
     minAgentInvocations: options.minAgentInvocations ?? 10,
   });
-  const indexGate = await collectCodeGraphGate(rootDir);
+  const retrievalTelemetry = await collectRetrievalTelemetryGate(rootDir);
+  const indexGate = await collectCodeGraphGate(rootDir, { retrievalTelemetry });
   const docs = inspectBacklogAndDocs(rootDir);
 
   return scoreAgentSystemMaturity({
@@ -54,6 +71,9 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
     validators: {
       commandContracts,
       dynamicQuestions,
+      ruleContentQuality,
+      agentContentQuality,
+      skillContentQuality,
       continuation,
       workflowReceipts,
       agentReceipts,
@@ -144,15 +164,18 @@ export function scoreAgentSystemMaturity({
     "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
   );
 
+  const retrievalTelemetryReady = indexGate.retrievalTelemetryStrictPass !== false
+    && Number(indexGate.retrievalTelemetryMaturityScore ?? 10) >= 10;
   const graphReady = indexGate.ready === true
     && indexGate.retrievalEnforcementPass === true
+    && retrievalTelemetryReady
     && !String(indexGate.warnings || "").includes("symbol-coverage");
   add(
     "code-graph-readiness",
     1.0,
     graphReady ? 1.0 : indexGate.sourceReady ? 0.5 : 0,
     indexGate.evidence || "index status unavailable",
-    "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health.",
+    "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, then npm run supervibe:agent-retrieval-health -- --strict.",
   );
   add(
     "eval-coverage",
@@ -164,9 +187,15 @@ export function scoreAgentSystemMaturity({
   add(
     "backlog-and-docs",
     1.25,
-    (docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog) && docs.hasMaturityScriptDocs ? 1.25 : 0.65,
-    `release hardening notes=${(docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog) === true}, maturity docs=${docs.hasMaturityScriptDocs === true}`,
-    "Keep release hardening notes in CHANGELOG.md and durable operational docs instead of an ad hoc backlog file.",
+    (docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog)
+      && docs.hasMaturityScriptDocs
+      && validators.ruleContentQuality?.pass === true
+      && validators.agentContentQuality?.pass === true
+      && validators.skillContentQuality?.pass === true
+      ? 1.25
+      : 0.65,
+    `release hardening notes=${(docs.hasReleaseHardeningNotes || docs.hasTenOutOfTenBacklog) === true}, maturity docs=${docs.hasMaturityScriptDocs === true}, rule content quality=${validators.ruleContentQuality?.pass === true}, agent content quality=${validators.agentContentQuality?.pass === true}, skill content quality=${validators.skillContentQuality?.pass === true}`,
+    "Keep release hardening notes in CHANGELOG.md and durable operational docs, and run npm run validate:agent-content-quality, npm run validate:skill-content-quality, and npm run validate:rule-content-quality after artifact edits.",
   );
 
   const total = dimensions.reduce((sum, item) => sum + item.score, 0);
@@ -214,7 +243,7 @@ function countArtifacts(rootDir) {
   };
 }
 
-async function collectCodeGraphGate(rootDir) {
+async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {}) {
   const enforcement = inspectRetrievalEnforcement(rootDir);
   if (!existsSync(join(rootDir, ".supervibe", "memory", "code.db"))) {
     return {
@@ -233,8 +262,10 @@ async function collectCodeGraphGate(rootDir) {
       ready: gate.ready,
       sourceReady: (gate.failedGates || []).every((item) => item.code !== "source-coverage"),
       warnings: (gate.warnings || []).map((item) => item.code).join(","),
-      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}, retrievalEnforcement=${enforcement.pass}`,
+      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}, retrievalEnforcement=${enforcement.pass}, retrievalTelemetry=${retrievalTelemetry?.maturityScore ?? "unknown"}/10`,
       retrievalEnforcementPass: enforcement.pass,
+      retrievalTelemetryMaturityScore: retrievalTelemetry?.maturityScore ?? null,
+      retrievalTelemetryStrictPass: retrievalTelemetry ? isStrictAgentRetrievalTelemetryPass(retrievalTelemetry) : false,
     };
   } catch (error) {
     return {
@@ -245,6 +276,19 @@ async function collectCodeGraphGate(rootDir) {
     };
   } finally {
     store.close();
+  }
+}
+
+async function collectRetrievalTelemetryGate(rootDir) {
+  try {
+    return await buildAgentRetrievalTelemetryReportFromProject({ rootDir });
+  } catch {
+    return {
+      pass: false,
+      maturityScore: 0,
+      summary: {},
+      globalViolations: ["retrieval telemetry unavailable"],
+    };
   }
 }
 

@@ -60,6 +60,10 @@ Plus landing-specific:
 9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifacts exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
 10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` with `design_system.status = "approved"` and all required sections approved, plus `{tokens.css, components/, voice.md}`. STOP if missing, candidate, needs_revision, or incomplete.

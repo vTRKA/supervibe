@@ -5,8 +5,8 @@ applies-to:
   - any
 mandatory: true
 severity: high
-version: 1.0
-last-verified: 2026-05-03
+version: 1.1
+last-verified: 2026-05-06
 related-rules:
   - anti-hallucination
   - single-question-discipline
@@ -117,7 +117,39 @@ used for routing and agent behavior.
 - `delegated-final-approval` - treating candidate markers or agent defaults as
   user approval.
 
-## Related
+## Examples
+
+### Bad
+
+```yaml
+description: "Use for design. RU: ask style, then build immediately."
+```
+
+```text
+NEXT_ACTION: continue
+```
+
+The description mixes behavior languages in a routing surface, and the state line
+drops the actual stage, artifact, next command, and safe continuation choices.
+
+### Good
+
+```yaml
+description: >-
+  Use when creating or revising design artifacts. Triggers: "design",
+  "prototype", "styleboard".
+```
+
+```text
+NEXT_STEP_HANDOFF: /supervibe-design --continue --slug legal-landing
+PHASE: styleboard-review
+CHOICES: continue, pause-and-switch-topic, stop-and-archive
+```
+
+The stored instruction stays in one base language, trigger phrases remain quoted,
+and workflow state is specific enough for a fresh agent to resume safely.
+
+## Related rules
 
 - `rules/single-question-discipline.md`
 - `rules/i18n.md`

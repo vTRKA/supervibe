@@ -22,6 +22,12 @@ architecture, verification, and product review. Presets define context packet
 shape, allowed write scope, required evidence, forbidden behavior, and review
 handoff format.
 
+Context packet evidence follows
+[context-intelligence-contract.md](references/context-intelligence-contract.md)
+so worker and reviewer handoffs expose memory, Code RAG, CodeGraph, host
+context, citations, freshness, and token-budget status instead of one opaque
+summary.
+
 Reviewer presets cannot review their own worker output. If the best reviewer
 would match the worker, the selector falls back to an independent reviewer.
 

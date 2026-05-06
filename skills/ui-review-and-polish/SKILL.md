@@ -25,6 +25,10 @@ or implemented screen exists and needs review before approval, handoff, or
 production claim. Do not use it to invent a visual direction from scratch; use
 the design or prototype flow first.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 - Read Source Of Truth
 
 1. Identify the artifact type: prototype, framework screen, extension view,
@@ -49,6 +53,28 @@ Review should focus on local evidence, IA/user-flow, responsive/platform,
 quality, and feedback/approval gaps. External references are supplemental; use
 the internet only for current references or official platform evidence after
 local data has been checked.
+
+## Decision tree
+
+```
+Artifact is a prototype with a runnable preview
+  -> Open or serve it, inspect declared mobile and desktop viewports, and cite screenshot/browser evidence.
+
+Artifact is an implemented framework screen
+  -> Run the local UI, typecheck, lint, test, or screenshot command defined by the project.
+
+Artifact targets desktop, extension, or mobile-native
+  -> Apply the matching platform viewport, density, input, and shell policy before judging layout.
+
+Approved design system exists
+  -> Review token/component adherence and treat deviations as findings.
+
+Design system is missing, candidate, or needs_revision
+  -> Mark design-system evidence as a gap instead of approving visual readiness.
+
+Brief is legal, finance, health, government, security, or other regulated trust
+  -> Require domain evidence before accepting palette, copy, trust cues, or data-display defaults.
+```
 
 ## Review Dimensions
 

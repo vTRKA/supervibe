@@ -26,6 +26,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch. Invoked by `supervibe:finishing-a-development-branch` and `supervibe:requesting-code-review`.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read project's check command(s) from the active host instruction file or `package.json`/`composer.json`/`Cargo.toml`/`Makefile`

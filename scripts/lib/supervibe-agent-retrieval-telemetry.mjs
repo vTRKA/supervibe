@@ -255,6 +255,10 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
   return lines.join("\n");
 }
 
+export function isStrictAgentRetrievalTelemetryPass(report = {}) {
+  return report.pass === true && Number(report.maturityScore || 0) >= 10;
+}
+
 function detectGlobalRetrievalTelemetryViolations({
   invocations = [],
   agents = [],

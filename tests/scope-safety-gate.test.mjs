@@ -20,7 +20,7 @@ test("scope safety standard is a mandatory rule with current references", async 
 
   const parsed = matter(await readFile("rules/scope-safety.md", "utf8"));
   assert.equal(parsed.data.mandatory, true);
-  assert.equal(new Date(parsed.data["last-verified"]).toISOString().slice(0, 10), "2026-05-01");
+  assert.equal(new Date(parsed.data["last-verified"]).toISOString().slice(0, 10), "2026-05-06");
   assert.match(parsed.content, /include \| defer \| reject \| spike \| ask-one-question/i);
 });
 

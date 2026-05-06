@@ -27,11 +27,34 @@ last-verified: 2026-04-27T00:00:00.000Z
 - After `supervibe:sync-rules` completes
 - Periodic (every 90 days as part of `supervibe:audit`)
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read all selected host adapter rule files, e.g. `.codex/rules/*.md` in Codex or `selected host rules files` in Claude Code
 2. Read MEMORY.md for prior incidents
 3. Read the active host instruction file for mandatory rule references
+
+## Decision tree
+
+```
+Two rules require incompatible behavior in the same context
+  -> CRITICAL contradiction; recommend one canonical rule or an explicit precedence note.
+
+Rules repeat the same broad section or checklist
+  -> Run validate:rule-content-quality and recommend linking to the canonical rule instead of copying filler.
+
+Mandatory rule lacks rationale, scope, examples, enforcement, or related rules
+  -> MAJOR content gap; route to rules-curator with the missing section list.
+
+Rule references a deleted path, old command, or old host surface
+  -> STALE reference; route to supervibe:adapt or a narrow rule update.
+
+Fix would delete, merge, or change mandatory enforcement
+  -> Require explicit approval before mutation.
+```
 
 ## Procedure
 

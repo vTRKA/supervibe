@@ -36,6 +36,10 @@ NOT for: trivial fixes, single-obvious-solution tasks.
 
 This skill bans "first idea wins" thinking. Forces comparison.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read task context (spec / plan / bug report)

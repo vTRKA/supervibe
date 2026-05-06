@@ -50,6 +50,10 @@ NOT for:
 5. **Inventory + traceability.** Every component used + every token consumed listed with file:line refs so downstream developer doesn't have to grep.
 6. **No competing prototypes.** If multiple alternatives remain active, pick one approved prototype and mark the rest parked/rejected before claiming ready-for-development.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `.supervibe/artifacts/prototypes/<slug>/.approval.json`. Parse `status`, `viewports`, `designSystemVersion`, `approvedAt`. If `status !== "approved"` → STOP.
@@ -57,6 +61,25 @@ NOT for:
 3. Read `.supervibe/artifacts/prototypes/_design-system/manifest.json` to confirm system version matches `approval.designSystemVersion` and tokens are final. If mismatch (system was updated after approval) → WARN user; ask whether to re-approve against new system OR proceed with stale snapshot only when final token state is preserved.
 4. Check `.supervibe/artifacts/prototypes/<slug>/alternatives/` and sibling candidate prototypes. If competing prototypes are still active, STOP until exactly one source is approved and the rest are parked/rejected.
 5. Read every file in `.supervibe/artifacts/prototypes/<slug>/` to inventory components and tokens used.
+
+## Decision tree
+
+```
+Approval marker is missing or status is not approved
+  -> STOP and route back to prototype approval.
+
+Design-system manifest is missing, candidate, or newer than approval
+  -> STOP or ask for re-approval against the final token snapshot.
+
+Multiple candidate prototypes remain active for the same surface
+  -> STOP until one source is approved and the rest are parked or rejected.
+
+Target is web, chrome-extension, electron, tauri, or mobile-native
+  -> Generate the stack-agnostic bundle plus the target-specific adapter required by config.
+
+Handoff output is produced by an executable producer
+  -> Bind it with a runtime workflow receipt before claiming the bundle is ready.
+```
 
 ## Procedure
 

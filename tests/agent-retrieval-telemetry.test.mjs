@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildAgentRetrievalTelemetryReport,
   evaluateAgentOutputEvidenceContract,
+  isStrictAgentRetrievalTelemetryPass,
 } from "../scripts/lib/supervibe-agent-retrieval-telemetry.mjs";
 
 test("agent output evidence contract requires citations for non-trivial retrieval", () => {
@@ -107,6 +108,7 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
 
   assert.equal(report.pass, true);
   assert.equal(report.maturityScore, 8);
+  assert.equal(isStrictAgentRetrievalTelemetryPass(report), false);
   assert.equal(report.summary.invocations, 0);
   assert.equal(report.summary.legacySkipped, 10);
   assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");

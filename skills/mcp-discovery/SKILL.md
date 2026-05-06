@@ -26,6 +26,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 BEFORE picking a tool for current-docs research / browser automation / design extraction / web crawling. Don't hardcode `mcp__context7__*` in agent procedures — invoke this skill to find the best available tool for the task.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth
 
 1. Run `node <resolved-supervibe-plugin-root>/scripts/discover-mcps.mjs` (or rely on SessionStart having done it)

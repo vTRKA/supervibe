@@ -23,6 +23,40 @@ commands that need retrieval-backed product, style, UX, chart, deck, collateral,
 or stack UI guidance. It should enrich a design decision with citations, not
 replace the owning design, review, or handoff skill.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
+
+## Step 0 - Read source of truth (required)
+
+Before lookup, read the active design workflow state, approved design-system
+manifest if present, project memory, Code RAG hits for existing UI/tokens, and
+`docs/references/design-expert-knowledge.md`. For regulated-trust briefs, gather
+domain evidence before accepting palette, typography, copy-risk, or trust
+defaults.
+
+## Decision tree
+
+```
+Approved design system exists and matches the target
+  -> Reuse tokens, components, decisions, and prior approval evidence.
+
+Design system is candidate, needs_revision, missing, or mismatched
+  -> Return a gap and route to the owning design-system workflow before durable output.
+
+Local memory, code, or design-intelligence rows conflict
+  -> Apply precedence: approved design system, project memory, codebase patterns, accessibility law, external lookup.
+
+Brief is regulated-trust or safety-sensitive
+  -> Require domain evidence before palette, typography, trust-copy, or data-display recommendations.
+
+Lookup has no relevant local evidence
+  -> Return fallback reason and recommend the owning skill gather external/current evidence if needed.
+```
+
 ## Invocation Scope
 
 Use through existing routes only:
@@ -164,3 +198,10 @@ Returns:
 - Run the validator, test, dry-run, or audit command named by this skill when one exists.
 - Include concrete command/output evidence before claiming the skill completed successfully.
 - If verification cannot run, state the blocker and keep confidence below the passing gate.
+
+## Related
+
+- `supervibe:brandbook` - owns approved design-system creation.
+- `supervibe:prototype` - consumes evidence for UI prototypes.
+- `supervibe:presentation-deck` - consumes deck and slide evidence.
+- `supervibe:ui-review-and-polish` - verifies design evidence in rendered artifacts.

@@ -30,6 +30,10 @@ WHEN a plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md` with 
 
 If subagents available, prefer `supervibe:subagent-driven-development` for fresh-context per task.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read the full plan file

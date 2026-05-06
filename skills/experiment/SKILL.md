@@ -29,6 +29,10 @@ BEFORE launching an A/B test, multivariate test, gradual rollout, or holdout tes
 
 NOT for: bug fixes (no need to test), forced rollouts (legal/compliance required).
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read existing experiments in `.supervibe/artifacts/experiments/` for format consistency

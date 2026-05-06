@@ -69,6 +69,10 @@ Stage 2 review, verification output, side-effect reconciliation, scope safety,
 subagent run, and confidence at least 9/10. Rejected or partial worker output is not progress
 until it is repaired or explicitly accepted as partial by the user.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read full plan

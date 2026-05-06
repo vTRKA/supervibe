@@ -3,8 +3,8 @@ name: workflow-invocation-receipts
 description: "Supervibe command flows must prove claimed command, skill, agent, reviewer, worker, validator, or tool invocations with runtime-issued workflow receipts."
 applies-to: [any]
 mandatory: true
-version: 1.1
-last-verified: 2026-05-04
+version: 1.2
+last-verified: 2026-05-06
 related-rules: [command-agent-orchestration, confidence-discipline, operational-safety, instruction-surface-integrity]
 ---
 
@@ -49,6 +49,36 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Do not claim an agent, skill, reviewer, worker, validator, command, or external tool was invoked when a trusted completed receipt is missing.
 - Do not substitute a command receipt for a missing specialist receipt. If a specialist agent, worker, or reviewer was unavailable, stop before the agent-required durable artifact; do not mark the stage complete as `degraded-manual`. Manual drafts may be saved only as non-agent drafts with visible quality impact.
 - Do not use a receipt to bypass an approval gate; receipts prove invocation provenance, not user approval.
+
+## Examples
+
+### Bad
+
+```text
+Receipt: command /supervibe-design completed
+Claim: ux-ui-designer produced the styleboard
+Output: .supervibe/artifacts/prototypes/app/styleboard.md
+```
+
+The command receipt proves only the command stage. It does not prove the
+designer agent ran, and it cannot substitute for an agent, worker, reviewer, or
+executable skill producer receipt.
+
+### Good
+
+```bash
+node scripts/agent-invocation.mjs log --agent ux-ui-designer --host codex \
+  --host-invocation-id <runtime-id> --task "styleboard direction" \
+  --confidence 9 --issue-receipt --command /supervibe-design \
+  --stage styleboard --handoff-id <slug> \
+  --input-evidence .supervibe/memory/design-wizard/<slug>.runtime.json \
+  --output-artifacts .supervibe/artifacts/_agent-outputs/<runtime-id>/agent-output.json
+npm run validate:workflow-receipts
+npm run validate:agent-producer-receipts
+```
+
+The claim is now tied to a host invocation id, stable agent output artifact,
+workflow receipt, producer validator, and ledger chain.
 
 ## Enforcement
 

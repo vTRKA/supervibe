@@ -26,6 +26,10 @@ ALWAYS, before saying any of: "works", "fixed", "complete", "passing", "done", "
 
 The single line that calls this skill: **evidence before assertion, always.**
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 Read:

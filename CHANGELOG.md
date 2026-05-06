@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.95] - 2026-05-06
+
+### Added
+
+- Added content-quality validators for agents, skills, and rules so maturity
+  scoring checks expert standards, source-of-truth preflight, decision trees,
+  output contracts, verification, related links, and placeholder hygiene
+  instead of line-count padding.
+- Added a cross-agent tool-use matrix and stricter retrieval telemetry maturity
+  gate for 10/10 agent-system claims.
+- Expanded scenario, intent-router, retrieval-golden, and adversarial fixtures
+  for workflow continuation, index repair, design, and release audit cases.
+
+### Changed
+
+- Strengthened skill operating contracts with the shared expert operating
+  standard, role-specific decision trees, and updated authoring guidance.
+- Hardened index health so content-changed source rows fail readiness until the
+  Code RAG/Code Graph index is refreshed.
+- Updated release and host manifest versions to 2.0.95.
+
 ## [2.0.94] - 2026-05-06
 
 ### Changed

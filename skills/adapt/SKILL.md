@@ -59,6 +59,10 @@ ASCII-safe for validators. The ru locale must map to the same
 adaptation-specific actions above and must not fall back to generic
 apply/revise wording.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read `registry.yaml` for current state
@@ -73,6 +77,25 @@ apply/revise wording.
    decisions such as `appGenerated`, `appVerified`, `appChoice=next-app`, and
    `ignoredStackTags=["vite"]` are source-of-truth for Adapt stack drift.
 7. For `/supervibe-adapt`, run `node scripts/supervibe-adapt.mjs --dry-run --summary-json --changed-only` before `command-agent-plan.mjs`, then pass the actual counts with `--dry-run`, `--adds`, `--updates`, `--project-only`, `--conflicts`, and `--memory-writes`.
+
+## Decision tree
+
+```
+Stack drift is only tooling or a minor dependency inside the selected app
+  -> Update affected context references and verification notes.
+
+Stack drift indicates a new app, framework, service, or runtime boundary
+  -> Suggest supervibe:genesis or a component plan before changing agents broadly.
+
+Host instruction file or managed block changed
+  -> Use the context migrator and preserve user-owned sections.
+
+Deleted or renamed files are referenced by agents, skills, rules, or commands
+  -> Update the artifact or flag the stale reference with grep evidence.
+
+Adapt apply would write project artifacts
+  -> Require dry-run evidence and explicit approval before mutation.
+```
 
 ## Procedure
 

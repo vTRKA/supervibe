@@ -62,6 +62,29 @@ test('index health gate does not mark unhealthy index as ready', async () => {
   assert.match(gate.repairCommand, /<resolved-supervibe-plugin-root>/);
 });
 
+test('index health gate fails when indexed source content changed after indexing', () => {
+  const health = buildIndexHealthSnapshot({
+    manifest: {
+      eligibleSourceFiles: 2,
+      indexedSourceFiles: 2,
+      languageCoverage: {
+        javascript: { eligible: 2, indexed: 2, filesWithSymbols: 2 },
+      },
+      generatedIndexedFiles: [],
+      staleRows: [],
+      contentChangedRows: ['scripts/lib/supervibe-trigger-router.mjs'],
+      crossResolvedEdges: { resolved: 1, total: 1 },
+    },
+  });
+  const gate = evaluateIndexHealthGate(health);
+  const formatted = formatIndexHealth(health);
+
+  assert.equal(health.ok, false);
+  assert.equal(gate.ready, false);
+  assert.ok(gate.failedGates.some((item) => item.code === 'content-stale'));
+  assert.match(formatted, /contentChangedRows: 1/);
+});
+
 test('graph-only symbol degradation warns by default but fails strict graph gate', () => {
   const health = buildIndexHealthSnapshot({
     manifest: {

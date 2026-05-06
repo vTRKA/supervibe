@@ -41,6 +41,18 @@ Concrete consequence of NOT following: contradictory rules ("always commit per t
 6. Cross-link from related rules
 7. `supervibe:sync-rules` if multi-project setup
 
+### Content quality
+
+- Do not pad rules to satisfy a line-count heuristic. A short precise rule is
+  better than copied operational checklists.
+- Shared process belongs in one canonical rule or skill, with links from related
+  rules. Do not paste the same large section into many rule files.
+- Every added section must explain something specific to that rule: trigger,
+  evidence, failure mode, repair path, or enforcement owner.
+- Run `npm run validate:rule-content-quality` after rule edits. This validator
+  blocks known filler sections, empty placeholders, and large duplicated rule
+  sections.
+
 ### Modifying
 
 - Bump `version` (1.0 → 1.1 for content; 2.0 for breaking change)

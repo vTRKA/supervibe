@@ -31,6 +31,10 @@ BEFORE invoking `code-reviewer` agent OR before opening a PR for external review
 
 Also invoke this as the mandatory **plan-review loop** immediately after `supervibe:writing-plans` saves a plan. In plan-review mode, review the plan artifact itself before atomization, epic creation, or execution.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read the spec/plan that motivated the change

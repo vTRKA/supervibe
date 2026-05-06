@@ -2,7 +2,12 @@
 name: component-library-integration
 namespace: supervibe
 description: Use AFTER design-system-approved AND BEFORE prototype-handoff TO bridge brandbook tokens into a chosen component library (MUI, shadcn/ui, Radix UI, HeadlessUI, Mantine, or fully-custom). Decides which library fits, then generates the token bridge so the library renders with project palette/typography/motion.
-allowed-tools: Read, Write, Edit, Glob, Grep
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
 phase: design-system
 prerequisites:
   - design-system-approved
@@ -23,6 +28,10 @@ Before choosing or bridging a component library, run project memory, code search
 - AFTER `brandbook` skill produces `manifest.json` with `status: approved`.
 - BEFORE `prototype-handoff` runs, IF the target stack uses a component library.
 - WHEN user asks "use shadcn / use MUI / can we adopt <library>" — propose this skill.
+
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
 
 ## Step 0 — Read source of truth
 - `.supervibe/artifacts/prototypes/_design-system/manifest.json` (status must be approved)

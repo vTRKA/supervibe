@@ -24,6 +24,10 @@ Use when validating, applying, or dry-running Supervibe project rules against a
 codebase or host artifact set. Prefer this before claiming a rule is useful,
 safe, missing, stale, overbroad, or ready for host adaptation.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 - Read Source Of Truth
 
 1. Read the target rules from `rules/` or the selected host adapter rules

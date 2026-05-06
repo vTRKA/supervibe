@@ -55,6 +55,10 @@ tests/verification pass, security/privacy/observability/release gates are
 handled for the risk level, code review and quality gate evidence exist, and no
 deferred optional scope is hidden inside the delivered work.
 
+## Expert Operating Standard
+
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+
 ## Step 0 — Read source of truth (required)
 
 1. Read project state (stack, conventions, existing patterns)
