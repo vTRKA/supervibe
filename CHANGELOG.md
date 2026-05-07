@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.106] - 2026-05-07
+
+### Fixed
+
+- Replaced generated Next.js Docker/Dokploy healthchecks that depended on `wget`
+  with Node runtime `fetch` healthchecks and added `start_period` for startup
+  grace.
+- Kept Dokploy Next.js compose output explicit about `PORT=3000`,
+  `HOSTNAME=0.0.0.0`, and service-port exposure for domain routing.
+
 ## [2.0.105] - 2026-05-07
 
 ### Added

@@ -29,6 +29,22 @@ const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
 const DOKPLOY_FULL_STACK_MIGRATION_COMMAND = "docker compose -f docker-compose.dokploy.yml run --rm backend php artisan migrate --force";
 const DOCKER_LARAVEL_MIGRATION_COMMAND = "docker compose run --rm backend php artisan migrate --force";
+const NEXT_HEALTHCHECK_TEST = `["CMD-SHELL", "node -e \\"fetch('http://127.0.0.1:' + (process.env.PORT || 3000)).then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\\""]`;
+
+function nextHealthcheckLines(indent = "    ") {
+  return [
+    `${indent}healthcheck:`,
+    `${indent}  test: ${NEXT_HEALTHCHECK_TEST}`,
+    `${indent}  interval: 30s`,
+    `${indent}  timeout: 10s`,
+    `${indent}  start_period: 30s`,
+    `${indent}  retries: 3`,
+  ];
+}
+
+function nextHealthcheckBlock(indent = "    ") {
+  return nextHealthcheckLines(indent).join("\n");
+}
 
 export async function createAdaptPlan({
   projectRoot = process.cwd(),
@@ -2444,11 +2460,7 @@ services:
       - "3000"
     networks:
       - dokploy-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+${nextHealthcheckBlock()}
 
 networks:
   dokploy-network:
@@ -2479,11 +2491,7 @@ services:
       NEXT_PUBLIC_APP_URL: \${NEXT_PUBLIC_APP_URL:-}
     ports:
       - "\${FRONTEND_PORT:-3000}:3000"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+${nextHealthcheckBlock()}
 `;
 }
 
@@ -2697,11 +2705,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+${nextHealthcheckBlock()}
 
 volumes:
   postgres-data:
@@ -2835,11 +2839,7 @@ function nextComposeServiceBlock(service = {}, { dokploy = false, apiService = "
     ...exposureLines,
     ...networkLines,
     ...dependencyLines,
-    "    healthcheck:",
-    '      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]',
-    "      interval: 30s",
-    "      timeout: 10s",
-    "      retries: 3",
+    ...nextHealthcheckLines(),
     "",
   ].join("\n");
 }
@@ -3235,15 +3235,17 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL:-}
+    expose:
+      - "3000"
+    networks:
+      - dokploy-network
     depends_on:
       backend:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+${nextHealthcheckBlock()}
 
 volumes:
   postgres-data:

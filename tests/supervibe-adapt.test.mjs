@@ -12,6 +12,7 @@ import { writeAdaptFileManifestSnapshot } from "../scripts/lib/supervibe-adapt.m
 const ROOT = process.cwd();
 const ADAPT_SCRIPT = join(ROOT, "scripts", "supervibe-adapt.mjs");
 const CURRENT_VERSION = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
+const NEXT_HEALTHCHECK_FETCH_RE = /fetch\('http:\/\/127\.0\.0\.1:' \+ \(process\.env\.PORT \|\| 3000\)\)/;
 
 function createCodexProject() {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-project-"));
@@ -707,6 +708,9 @@ test("supervibe-adapt dokploy deploy add-on creates explicit deploy artifacts wi
     assert.match(compose, /scheduler:/);
     assert.match(compose, /postgres-data:/);
     assert.match(compose, /healthcheck:/);
+    assert.match(compose, NEXT_HEALTHCHECK_FETCH_RE);
+    assert.match(compose, /start_period: 30s/);
+    assert.doesNotMatch(compose, /wget -qO-/);
     assert.equal(existsSync(join(projectRoot, "backend", "Dockerfile")), true);
     assert.equal(existsSync(join(projectRoot, "frontend", "Dockerfile")), true);
     assert.equal(existsSync(join(projectRoot, "backend", ".dockerignore")), true);
@@ -792,6 +796,35 @@ test("supervibe-adapt dokploy deploy add-on uses Next-only pack without Laravel 
   }
 });
 
+test("supervibe-adapt dokploy deploy add-on creates Next-only healthcheck without wget", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-dokploy-next-health-"));
+  try {
+    mkdirSync(join(projectRoot, "frontend"), { recursive: true });
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "genesis"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), JSON.stringify({
+      frontendTarget: { id: "next-app", bundler: "turbopack" },
+      appChoice: { id: "next-app" },
+    }, null, 2) + "\n");
+    writeFileSync(join(projectRoot, "frontend", "package.json"), JSON.stringify({
+      dependencies: { next: "16.2.4", react: "19.2.4", "react-dom": "19.2.4" },
+    }, null, 2) + "\n");
+
+    const apply = runAdapt(projectRoot, ["--scope", "deploy", "--target", "dokploy", "--apply", "--no-color"]);
+    assert.match(apply, /DEPLOY_PROFILE: next-only/);
+    assert.equal(existsSync(join(projectRoot, "docker-compose.dokploy.yml")), true);
+
+    const compose = readFileSync(join(projectRoot, "docker-compose.dokploy.yml"), "utf8");
+    assert.match(compose, /HOSTNAME: 0\.0\.0\.0/);
+    assert.match(compose, /PORT: 3000/);
+    assert.match(compose, /expose:\n      - "3000"/);
+    assert.match(compose, NEXT_HEALTHCHECK_FETCH_RE);
+    assert.match(compose, /start_period: 30s/);
+    assert.doesNotMatch(compose, /wget -qO-/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-adapt dokploy deploy add-on uses Laravel-only backend pack without Next evidence", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-dokploy-laravel-"));
   try {
@@ -853,6 +886,9 @@ test("supervibe-adapt docker deploy add-on uses Next-only Docker pack without Do
     assert.equal(existsSync(join(projectRoot, "docker-compose.dokploy.yml")), false);
     const compose = readFileSync(join(projectRoot, "docker-compose.yml"), "utf8");
     assert.match(compose, /ports:/);
+    assert.match(compose, NEXT_HEALTHCHECK_FETCH_RE);
+    assert.match(compose, /start_period: 30s/);
+    assert.doesNotMatch(compose, /wget -qO-/);
     assert.doesNotMatch(compose, /dokploy-network/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -971,6 +1007,9 @@ test("supervibe-adapt docker deploy add-on discovers multiple supported services
     assert.match(compose, /next-apps-admin:/);
     assert.match(compose, /laravel-services-api:/);
     assert.match(compose, /laravel-services-billing:/);
+    assert.match(compose, NEXT_HEALTHCHECK_FETCH_RE);
+    assert.match(compose, /start_period: 30s/);
+    assert.doesNotMatch(compose, /wget -qO-/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
