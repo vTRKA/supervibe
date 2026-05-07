@@ -560,7 +560,12 @@ async function main() {
     for (const p of previews) {
       const url = `http://localhost:${p.port}`;
       const ago = ((Date.now() - new Date(p.startedAt).getTime()) / 1000 / 60).toFixed(1);
-      console.log(color(`  ${url}  ${p.label}  (pid=${p.pid}, ${ago}m ago)`, 'dim'));
+      const feedbackNote = p.managed === false && p.feedbackOverlay === false
+        ? `; feedback overlay: not injected; proxy with \`${p.proxyCommand}\``
+        : p.feedbackOverlay === false
+          ? '; feedback overlay: off'
+          : '';
+      console.log(color(`  ${url}  ${p.label}  (pid=${p.pid}, ${ago}m ago${feedbackNote})`, 'dim'));
     }
   }
 

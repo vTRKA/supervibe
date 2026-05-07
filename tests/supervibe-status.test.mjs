@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { execFileSync, execSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -77,6 +78,51 @@ test('supervibe-status: reports preview server state', () => {
     /Preview servers: \d+ running/.test(out) || /Preview servers: none/.test(out),
     'should report preview server state'
   );
+});
+
+test('supervibe-status labels unmanaged framework servers as no-overlay and suggests proxy', async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-framework-dev-'));
+  const candidatePorts = [3001, 3002, 4173, 4321, 5173, 5174, 8080];
+  let server = null;
+  let port = null;
+  try {
+    mkdirSync(join(projectRoot, '.supervibe', 'memory'), { recursive: true });
+    writeFileSync(join(projectRoot, 'package.json'), JSON.stringify({
+      dependencies: { next: '16.2.4', react: '19.0.0' },
+    }, null, 2));
+
+    for (const candidate of candidatePorts) {
+      server = createServer();
+      try {
+        await new Promise((resolve, reject) => {
+          server.once('error', reject);
+          server.listen(candidate, '127.0.0.1', resolve);
+        });
+        port = candidate;
+        break;
+      } catch {
+        server = null;
+      }
+    }
+    assert.ok(port, 'expected one framework candidate port to be available for status test');
+
+    const out = execFileSync(process.execPath, [STATUS_SCRIPT, '--no-color', '--no-gc-hints'], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_HOST: 'codex',
+        SUPERVIBE_PLUGIN_ROOT: ROOT,
+      },
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    assert.match(out, /feedback overlay: not injected/);
+    assert.match(out, new RegExp(`--target http://127\\.0\\.0\\.1:${port} --daemon`));
+  } finally {
+    if (server) await new Promise((resolve) => server.close(resolve));
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test('supervibe-status: reports MCP registry state', () => {

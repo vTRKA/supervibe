@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.105] - 2026-05-07
+
+### Added
+
+- Added a managed Supervibe preview proxy for local framework dev servers so HTML responses get the Feedback overlay without modifying the app server.
+- Added regression coverage for proxied overlay injection, local feedback queue writes, loopback target validation, and framework WebSocket tunnel pass-through.
+
+### Changed
+
+- Made status output label detected framework dev servers as unmanaged and no-overlay, with the exact proxy command to use for browser feedback review.
+- Updated preview command and skill docs to route framework feedback review through the managed proxy URL.
+
 ## [2.0.104] - 2026-05-07
 
 ### Added

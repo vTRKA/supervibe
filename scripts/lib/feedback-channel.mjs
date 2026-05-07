@@ -91,38 +91,44 @@ export function createFeedbackChannel({ queuePath }) {
     return full;
   }
 
-  function attachUpgrade(server) {
-    server.on('upgrade', (req, socket) => {
-      if (!isWsUpgrade(req) || !req.url.startsWith('/_feedback')) {
-        socket.destroy();
-        return;
-      }
-      performWsHandshake(req, socket);
-      clients.add(socket);
-      socket.on('close', () => clients.delete(socket));
-      socket.on('error', () => clients.delete(socket));
+  function handleUpgrade(req, socket) {
+    if (!isWsUpgrade(req) || !req.url.startsWith('/_feedback')) {
+      return false;
+    }
+    performWsHandshake(req, socket);
+    clients.add(socket);
+    socket.on('close', () => clients.delete(socket));
+    socket.on('error', () => clients.delete(socket));
 
-      let buf = Buffer.alloc(0);
-      socket.on('data', async chunk => {
-        buf = Buffer.concat([buf, chunk]);
-        while (true) {
-          const frame = parseWsFrame(buf);
-          if (!frame) break;
-          buf = buf.slice(frame.totalLen);
-          if (frame.opcode === 0x8) { socket.end(); return; }
-          if (frame.opcode === 0x1) {
-            try {
-              const payload = JSON.parse(frame.payload.toString('utf8'));
-              const stored = await submit(payload);
-              socket.write(buildWsFrame(JSON.stringify({ ack: stored.id })));
-            } catch (e) {
-              socket.write(buildWsFrame(JSON.stringify({ error: e.message })));
-            }
+    let buf = Buffer.alloc(0);
+    socket.on('data', async chunk => {
+      buf = Buffer.concat([buf, chunk]);
+      while (true) {
+        const frame = parseWsFrame(buf);
+        if (!frame) break;
+        buf = buf.slice(frame.totalLen);
+        if (frame.opcode === 0x8) { socket.end(); return; }
+        if (frame.opcode === 0x1) {
+          try {
+            const payload = JSON.parse(frame.payload.toString('utf8'));
+            const stored = await submit(payload);
+            socket.write(buildWsFrame(JSON.stringify({ ack: stored.id })));
+          } catch (e) {
+            socket.write(buildWsFrame(JSON.stringify({ error: e.message })));
           }
         }
-      });
+      }
+    });
+    return true;
+  }
+
+  function attachUpgrade(server) {
+    server.on('upgrade', (req, socket) => {
+      if (!handleUpgrade(req, socket)) {
+        socket.destroy();
+      }
     });
   }
 
-  return { submit, attachUpgrade };
+  return { submit, handleUpgrade, attachUpgrade };
 }

@@ -52,18 +52,18 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 | -------------------------------------- | ---------------------------------------------- |
 | Single self-contained `index.html`     | `npx serve` or `python -m http.server` + LiveReload shim |
 | Multi-file static mockup (HTML+CSS+JS) | `npx live-server` (hot-reload built in)        |
-| Vite / Next.js / framework dev project | `npm run dev` from the project's own scripts   |
+| Vite / Next.js / framework dev project | Start the framework dev server, then expose feedback through `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --target http://127.0.0.1:<dev-port> --label "<label>" --daemon` |
 | Static screenshots only (PNG/JPG)      | Skip server — return file paths instead        |
 
-Always prefer the project's own dev script when one exists; fall back to `live-server` for ad-hoc HTML.
+Always prefer the project's own dev script for building and HMR, but do not send the user to the raw framework URL when browser feedback is expected. Start the Supervibe proxy with `--target` and return the managed proxy URL; the proxy injects the Feedback button and keeps framework HMR tunneled to the target. Fall back to `live-server` for ad-hoc HTML only when no Supervibe preview server is available.
 
 ## Procedure
 
 1. Complete Step 0 (verification + `--list` check).
 2. Pick a human-readable label for the preview (e.g. `landing-v3`, `checkout-flow`).
-3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>" --daemon`; capture the PID. For prototype roots that import shared `_design-system` files, prefer root `.supervibe/artifacts/prototypes` with `--label <slug>` and return `http://localhost:<port>/<slug>/`. If a `<slug>` root is served, the static server maps `/_design-system/*` to the sibling folder so token imports still work. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them. Use `--foreground` only when the user explicitly asks to debug server output.
+3. Start the server with `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --root <mockup-root> --label "<label>" --daemon`; capture the PID. For framework dev servers, first run the app's dev command, then start `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --target http://127.0.0.1:<dev-port> --label "<label>" --daemon` and return only the managed Supervibe proxy URL for feedback review. For prototype roots that import shared `_design-system` files, prefer root `.supervibe/artifacts/prototypes` with `--label <slug>` and return `http://localhost:<port>/<slug>/`. If a `<slug>` root is served, the static server maps `/_design-system/*` to the sibling folder so token imports still work. Design roots include `.supervibe/artifacts/prototypes/<slug>`, `.supervibe/artifacts/mockups/<slug>`, and `.supervibe/artifacts/presentations/<slug>`; never pass `--no-feedback` for them. Use `--foreground` only when the user explicitly asks to debug server output.
 4. Wait for the server to report ready, then capture the canonical URL (`http://localhost:<port>`).
-5. For a design root, verify the response body contains `supervibe-fb-toggle`, the visible `Feedback` button is available, and any shared `_design-system` token URL returns HTTP 200. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
+5. For a design root or framework proxy URL, verify the response body contains `supervibe-fb-toggle`, the visible `Feedback` button is available, and any shared `_design-system` token URL returns HTTP 200 when relevant. If the host IDE does not support prompt hooks, also mention that pending comments can be read with `node "<resolved-supervibe-plugin-root>/scripts/feedback-status.mjs" --list`.
 6. Hand the URL to the user using the Output contract template below.
 7. If the user (or upstream skill) requested a screenshot, drive Playwright against the URL and save the PNG next to the mockup files.
 8. Continue the surrounding task — keep the server alive only while the user is reviewing.
@@ -102,8 +102,8 @@ The Supervibe orchestrator consumes this block to populate `emits-artifact: prev
 After spawn, before reporting success, confirm:
 
 1. `curl -sS http://localhost:<port>/ | head -n 5` returns HTML (HTTP 200, `<!doctype html>` or `<html` present).
-2. The response body contains the hot-reload `EventSource` / WebSocket injection (skip for framework dev servers that use their own HMR channel).
-3. For design roots, the response body contains `supervibe-fb-toggle` and the visible button text `Feedback`.
+2. The response body contains the hot-reload `EventSource` / WebSocket injection (skip for framework proxy URLs that use the framework's own HMR channel through the proxy).
+3. For design roots and framework proxy URLs, the response body contains `supervibe-fb-toggle` and the visible button text `Feedback`.
 4. For prototypes importing shared tokens, `curl -sS http://localhost:<port>/_design-system/tokens.css` or the parent-root equivalent returns HTTP 200.
 5. `node "<resolved-supervibe-plugin-root>/scripts/preview-server.mjs" --list` now shows the preview-server entry with the same PID.
 

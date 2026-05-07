@@ -74,11 +74,21 @@ export function isPidAlive(pid) {
 }
 
 /** Add an entry. */
-export async function registerServer({ port, pid, root, label = '', watching = [], mode = 'foreground', logs = null }) {
+export async function registerServer({
+  port,
+  pid,
+  root,
+  label = '',
+  watching = [],
+  mode = 'foreground',
+  logs = null,
+  target = null,
+  feedbackOverlay = true,
+}) {
   const entries = await readRegistry();
   const filtered = entries.filter(e => e.port !== port);
   filtered.push({
-    port, pid, root, label, watching, mode, logs,
+    port, pid, root, label, watching, mode, logs, target, feedbackOverlay,
     startedAt: new Date().toISOString(),
   });
   await writeRegistry(filtered);
@@ -113,6 +123,7 @@ export async function detectFrameworkDevServers({
     detected.push({
       kind: 'framework-dev',
       managed: false,
+      feedbackOverlay: false,
       port,
       pid: null,
       root: rootDir,
@@ -120,6 +131,7 @@ export async function detectFrameworkDevServers({
       watching: [],
       mode: 'detected-framework-dev',
       logs: null,
+      proxyCommand: `node scripts/preview-server.mjs --target http://127.0.0.1:${port} --daemon`,
       startedAt: null,
     });
   }

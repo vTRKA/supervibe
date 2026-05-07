@@ -3,6 +3,7 @@
 //
 // Modes:
 //   --root <dir>            Start server serving <dir> (default: ./mockups or ./)
+//   --target <url>          Proxy a local framework dev server and inject feedback overlay
 //   --port <N>              Specific port (default: auto-allocate 3047-3099 then OS)
 //   --label "<name>"        Friendly label for the registry
 //   --daemon                Start silently in the background and return the URL
@@ -20,6 +21,7 @@ import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { startStaticServer } from './lib/preview-static-server.mjs';
+import { normalizeProxyTarget, startProxyServer } from './lib/preview-proxy-server.mjs';
 import { attachHotReload } from './lib/preview-hot-reload.mjs';
 import { assertFeedbackAllowed, isFeedbackRequiredPreviewRoot } from './lib/preview-feedback-policy.mjs';
 import { formatPreviewUrl } from './lib/preview-url.mjs';
@@ -37,6 +39,7 @@ const daemonLogs = activateDaemonLoggingFromEnv();
 const { values } = parseArgs({
   options: {
     root: { type: 'string', default: '' },
+    target: { type: 'string', default: '' },
     port: { type: 'string', default: '' },
     label: { type: 'string', default: '' },
     'no-watch': { type: 'boolean', default: false },
@@ -58,6 +61,7 @@ if (values.help) {
 
 Usage:
   preview-server.mjs --root <dir> [--port N] [--label "name"] [--daemon|--foreground] [--no-watch] [--idle-timeout <min>] [--force]
+  preview-server.mjs --target http://127.0.0.1:3000 [--port N] [--label "name"] [--daemon|--foreground] [--idle-timeout <min>] [--force]
   preview-server.mjs --list
   preview-server.mjs --kill <port>
   preview-server.mjs --kill-all
@@ -109,38 +113,58 @@ if (existingServers.length >= MAX_SERVERS_DEFAULT && !force) {
 }
 
 // Start mode
+const targetMode = Boolean(values.target);
 let rootDir = values.root;
-if (!rootDir) {
-  if (existsSync('mockups')) rootDir = 'mockups';
-  else if (existsSync('prototypes')) rootDir = 'prototypes';
-  else rootDir = '.';
-}
-const absRoot = resolve(PROJECT_ROOT, rootDir);
-if (!existsSync(absRoot)) {
-  console.error(`Root directory does not exist: ${absRoot}`);
-  process.exit(1);
-}
-try {
-  assertFeedbackAllowed({ root: absRoot, noFeedback: Boolean(values['no-feedback']) });
-} catch (err) {
-  console.error(`[supervibe-preview] ${err.message}`);
-  process.exit(2);
+let absRoot = PROJECT_ROOT;
+let targetOrigin = '';
+if (targetMode) {
+  try {
+    targetOrigin = normalizeProxyTarget(values.target).origin;
+  } catch (err) {
+    console.error(`[supervibe-preview] ${err.message}`);
+    process.exit(2);
+  }
+} else {
+  if (!rootDir) {
+    if (existsSync('mockups')) rootDir = 'mockups';
+    else if (existsSync('prototypes')) rootDir = 'prototypes';
+    else rootDir = '.';
+  }
+  absRoot = resolve(PROJECT_ROOT, rootDir);
+  if (!existsSync(absRoot)) {
+    console.error(`Root directory does not exist: ${absRoot}`);
+    process.exit(1);
+  }
+  try {
+    assertFeedbackAllowed({ root: absRoot, noFeedback: Boolean(values['no-feedback']) });
+  } catch (err) {
+    console.error(`[supervibe-preview] ${err.message}`);
+    process.exit(2);
+  }
 }
 
 const portArg = values.port ? parseInt(values.port, 10) : 0;
 const port = portArg || await findFreePort();
-const label = values.label || basename(absRoot);
+const label = values.label || (targetMode ? `proxy-${new URL(targetOrigin).host}` : basename(absRoot));
 const designRoot = isFeedbackRequiredPreviewRoot(absRoot);
 const daemonMode = (values.daemon || designRoot) && !values.foreground;
 
 if (daemonMode) {
-  const childArgs = [
-    '--root', absRoot,
-    '--port', String(port),
-    '--label', label,
-    '--idle-timeout', String(values['idle-timeout'] ?? '30'),
-    '--foreground',
-  ];
+  const childArgs = targetMode
+    ? [
+      '--target', targetOrigin,
+      '--port', String(port),
+      '--label', label,
+      '--idle-timeout', String(values['idle-timeout'] ?? '30'),
+      '--foreground',
+    ]
+    : [
+      '--root', absRoot,
+      '--port', String(port),
+      '--label', label,
+      '--idle-timeout', String(values['idle-timeout'] ?? '30'),
+      '--foreground',
+    ];
   if (values['no-watch']) childArgs.push('--no-watch');
   if (values['no-feedback']) childArgs.push('--no-feedback');
   if (values.force) childArgs.push('--force');
@@ -154,20 +178,28 @@ if (daemonMode) {
   console.log('SUPERVIBE_PREVIEW_DAEMON');
   console.log(`URL: ${formatPreviewUrl({ port, root: absRoot, label })}`);
   console.log(`PID: ${child.pid}`);
-  console.log(`ROOT: ${absRoot}`);
+  if (targetMode) console.log(`TARGET: ${targetOrigin}`);
+  else console.log(`ROOT: ${absRoot}`);
   console.log(`LOG_STDOUT: ${child.logs.stdout}`);
   console.log(`LOG_STDERR: ${child.logs.stderr}`);
   process.exit(0);
 }
 
-const server = await startStaticServer({
-  root: absRoot,
-  port,
-  feedback: !values['no-feedback'],
-  projectRoot: PROJECT_ROOT,
-});
+const server = targetMode
+  ? await startProxyServer({
+    target: targetOrigin,
+    port,
+    feedback: !values['no-feedback'],
+    projectRoot: PROJECT_ROOT,
+  })
+  : await startStaticServer({
+    root: absRoot,
+    port,
+    feedback: !values['no-feedback'],
+    projectRoot: PROJECT_ROOT,
+  });
 let watcher = null;
-if (!values['no-watch']) {
+if (!targetMode && !values['no-watch']) {
   watcher = await attachHotReload({ root: absRoot, server });
 }
 
@@ -177,14 +209,19 @@ await registerServer({
   root: absRoot,
   label,
   watching: watcher ? ['*'] : [],
-  mode: process.env.SUPERVIBE_SERVER_DAEMON === '1' ? 'daemon' : 'foreground',
+  mode: targetMode
+    ? (process.env.SUPERVIBE_SERVER_DAEMON === '1' ? 'proxy-daemon' : 'proxy-foreground')
+    : (process.env.SUPERVIBE_SERVER_DAEMON === '1' ? 'daemon' : 'foreground'),
   logs: daemonLogs,
+  target: targetMode ? server.target : null,
+  feedbackOverlay: !values['no-feedback'],
 });
 
 const url = formatPreviewUrl({ port: server.port, root: absRoot, label });
 console.log(`[supervibe-preview] ${label} → ${url}`);
-console.log(`[supervibe-preview] root: ${absRoot}`);
-console.log(`[supervibe-preview] hot-reload: ${watcher ? 'on' : 'off'}`);
+if (targetMode) console.log(`[supervibe-preview] target: ${server.target}`);
+else console.log(`[supervibe-preview] root: ${absRoot}`);
+console.log(`[supervibe-preview] hot-reload: ${targetMode ? 'framework-managed' : (watcher ? 'on' : 'off')}`);
 console.log(`[supervibe-preview] feedback overlay: ${values['no-feedback'] ? 'off' : 'on'} (click Feedback in browser)`);
 console.log(`[supervibe-preview] PID: ${process.pid}`);
 console.log(`[supervibe-preview] press Ctrl+C to stop`);

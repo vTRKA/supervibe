@@ -85,7 +85,9 @@ test('detectFrameworkDevServers finds unmanaged framework dev ports', async () =
     assert.equal(detected.length, 1);
     assert.equal(detected[0].kind, 'framework-dev');
     assert.equal(detected[0].managed, false);
+    assert.equal(detected[0].feedbackOverlay, false);
     assert.equal(detected[0].label, 'Next.js dev server');
+    assert.equal(detected[0].proxyCommand, `node scripts/preview-server.mjs --target http://127.0.0.1:${port} --daemon`);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
