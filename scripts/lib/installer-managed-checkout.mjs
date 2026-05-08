@@ -5,6 +5,8 @@ export const INSTALLER_MANAGED_TRACKED_PATHS = Object.freeze([
   },
 ]);
 
+const MANAGED_CHECKOUT_TRACKED_DRIFT_REASON = "tracked local plugin drift in managed checkout";
+
 const MANAGED_BY_PATH = new Map(INSTALLER_MANAGED_TRACKED_PATHS.map((entry) => [entry.path, entry]));
 
 export function pathFromPorcelainLine(line) {
@@ -17,7 +19,7 @@ export function pathFromPorcelainLine(line) {
   return normalizeGitPath(path);
 }
 
-export function partitionTrackedPorcelainLines(lines = []) {
+export function partitionTrackedPorcelainLines(lines = [], { restoreAllTracked = false } = {}) {
   const installerManaged = [];
   const userOwned = [];
   const untracked = [];
@@ -31,7 +33,9 @@ export function partitionTrackedPorcelainLines(lines = []) {
     }
 
     const path = pathFromPorcelainLine(text);
-    const managed = MANAGED_BY_PATH.get(path);
+    const managed = MANAGED_BY_PATH.get(path) || (restoreAllTracked
+      ? { path, reason: MANAGED_CHECKOUT_TRACKED_DRIFT_REASON }
+      : null);
     if (managed) {
       installerManaged.push({ ...managed, line: text });
     } else {

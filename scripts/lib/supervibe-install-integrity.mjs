@@ -53,8 +53,10 @@ export function auditInstallIntegrityData(data = {}) {
     "update.sh": scripts.updateSh,
     "update.ps1": scripts.updatePs1,
   })) {
-    requirePattern(source, /installer-managed tracked artifact/, label, "must self-heal installer-managed package-lock drift before refusing user edits", issues);
-    requirePattern(source, /package-lock\.json/, label, "must recognize the managed package-lock artifact", issues);
+    requirePattern(source, /managed checkout tracked drift|tracked local plugin drift/, label, "must self-heal managed checkout tracked drift before update progress", issues);
+    if (/case "\$path" in\s*"package-lock\.json"/s.test(source || "") || /\$managedPaths\s*=\s*@\('package-lock\.json'\)/.test(source || "")) {
+      addIssue(issues, "installer-integrity-too-narrow", `${label}: tracked drift restore is limited to package-lock.json`, "Restore every tracked local plugin drift file in managed install/update paths.");
+    }
   }
   requirePattern(scripts.installSh, /git -C "\$root" clean -ffdx -e "\$LOCAL_ONNX_MODEL_PATH"/, "install.sh", "must preserve the already-downloaded local ONNX model during cleanup", issues);
   requirePattern(scripts.installPs1, /'clean', '-ffdx', '-e', \$LocalOnnxModelPath/, "install.ps1", "must preserve the already-downloaded local ONNX model during cleanup", issues);

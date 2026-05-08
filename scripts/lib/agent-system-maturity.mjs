@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 import {
@@ -169,13 +170,14 @@ export function scoreAgentSystemMaturity({
   const graphReady = indexGate.ready === true
     && indexGate.retrievalEnforcementPass === true
     && retrievalTelemetryReady
+    && Number(indexGate.missingOrStale ?? Number.NaN) === 0
     && !String(indexGate.warnings || "").includes("symbol-coverage");
   add(
     "code-graph-readiness",
     1.0,
     graphReady ? 1.0 : indexGate.sourceReady ? 0.5 : 0,
     indexGate.evidence || "index status unavailable",
-    "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, then npm run supervibe:agent-retrieval-health -- --strict.",
+    "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, confirm node scripts/build-code-index.mjs --root . --list-missing reports MISSING_OR_STALE: 0, then npm run supervibe:agent-retrieval-health -- --strict.",
   );
   add(
     "eval-coverage",
@@ -245,12 +247,14 @@ function countArtifacts(rootDir) {
 
 async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {}) {
   const enforcement = inspectRetrievalEnforcement(rootDir);
+  const missing = inspectMissingOrStaleIndex(rootDir);
   if (!existsSync(join(rootDir, ".supervibe", "memory", "code.db"))) {
     return {
       ready: false,
       sourceReady: false,
       warnings: "missing-code-index",
-      evidence: "code.db missing",
+      missingOrStale: missing.count,
+      evidence: `code.db missing, missingOrStale=${missing.count ?? "unknown"}`,
     };
   }
   const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });
@@ -262,7 +266,8 @@ async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {})
       ready: gate.ready,
       sourceReady: (gate.failedGates || []).every((item) => item.code !== "source-coverage"),
       warnings: (gate.warnings || []).map((item) => item.code).join(","),
-      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}, retrievalEnforcement=${enforcement.pass}, retrievalTelemetry=${retrievalTelemetry?.maturityScore ?? "unknown"}/10`,
+      missingOrStale: missing.count,
+      evidence: `source=${gate.indexedSourceFiles}/${gate.eligibleSourceFiles}, failed=${(gate.failedGates || []).map((item) => item.code).join(",") || "none"}, warnings=${(gate.warnings || []).map((item) => item.code).join(",") || "none"}, missingOrStale=${missing.count ?? "unknown"}, retrievalEnforcement=${enforcement.pass}, retrievalTelemetry=${retrievalTelemetry?.maturityScore ?? "unknown"}/10`,
       retrievalEnforcementPass: enforcement.pass,
       retrievalTelemetryMaturityScore: retrievalTelemetry?.maturityScore ?? null,
       retrievalTelemetryStrictPass: retrievalTelemetry ? isStrictAgentRetrievalTelemetryPass(retrievalTelemetry) : false,
@@ -272,11 +277,42 @@ async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {})
       ready: false,
       sourceReady: false,
       warnings: "index-health-error",
-      evidence: `index health error: ${error.message}`,
+      missingOrStale: missing.count,
+      evidence: `index health error: ${error.message}, missingOrStale=${missing.count ?? "unknown"}`,
     };
   } finally {
     store.close();
   }
+}
+
+function inspectMissingOrStaleIndex(rootDir) {
+  const scriptPath = join(rootDir, "scripts", "build-code-index.mjs");
+  if (!existsSync(scriptPath)) {
+    return { count: null, pass: false, evidence: "build-code-index.mjs missing" };
+  }
+  const result = spawnSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing"], {
+    cwd: rootDir,
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if (result.error) {
+    return { count: null, pass: false, evidence: `list-missing error: ${result.error.message}` };
+  }
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`.trim();
+  const match = /MISSING_OR_STALE:\s*(\d+)/.exec(output);
+  if (!match || result.status !== 0) {
+    return {
+      count: null,
+      pass: false,
+      evidence: `list-missing unavailable: ${output.split(/\r?\n/).slice(0, 4).join(" | ") || "no output"}`,
+    };
+  }
+  const count = Number(match[1]);
+  return {
+    count,
+    pass: count === 0,
+    evidence: `MISSING_OR_STALE: ${count}`,
+  };
 }
 
 async function collectRetrievalTelemetryGate(rootDir) {

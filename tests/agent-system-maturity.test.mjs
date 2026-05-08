@@ -39,6 +39,7 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
       sourceReady: true,
       warnings: "",
       retrievalEnforcementPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -75,6 +76,7 @@ test("agent-system maturity score blocks 10/10 when host telemetry is missing", 
       sourceReady: true,
       warnings: "",
       retrievalEnforcementPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -112,6 +114,7 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
       sourceReady: true,
       warnings: "",
       retrievalEnforcementPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none",
     },
     docs: {
@@ -142,6 +145,7 @@ test("agent-system maturity blocks 10/10 when retrieval enforcement hook is miss
       sourceReady: true,
       warnings: "",
       retrievalEnforcementPass: false,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=false",
     },
     docs: {
@@ -172,6 +176,7 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
       retrievalEnforcementPass: true,
       retrievalTelemetryMaturityScore: 8,
       retrievalTelemetryStrictPass: false,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=8/10",
     },
     docs: {
@@ -184,6 +189,39 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
   assert.equal(report.pass, false);
   assert.ok(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"));
   assert.match(formatAgentSystemMaturityReport(report), /retrievalTelemetry=8\/10/);
+});
+
+test("agent-system maturity blocks 10/10 when list-missing reports stale graph rows", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 90,
+      skills: 56,
+      commands: 19,
+      rules: 30,
+      testFiles: 287,
+    },
+    validators: PASSING_VALIDATORS,
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 1,
+      evidence: "source=325/325, failed=none, warnings=none, missingOrStale=1, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"));
+  assert.match(formatAgentSystemMaturityReport(report), /missingOrStale=1/);
+  assert.match(formatAgentSystemMaturityReport(report), /--list-missing reports MISSING_OR_STALE: 0/);
 });
 
 test("agent-system maturity blocks 10/10 when rules rely on filler content", () => {
@@ -206,6 +244,7 @@ test("agent-system maturity blocks 10/10 when rules rely on filler content", () 
       retrievalEnforcementPass: true,
       retrievalTelemetryMaturityScore: 10,
       retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
     },
     docs: {
@@ -240,6 +279,7 @@ test("agent-system maturity blocks 10/10 when agent content quality is weak", ()
       retrievalEnforcementPass: true,
       retrievalTelemetryMaturityScore: 10,
       retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
     },
     docs: {
@@ -274,6 +314,7 @@ test("agent-system maturity blocks 10/10 when skill content quality is weak", ()
       retrievalEnforcementPass: true,
       retrievalTelemetryMaturityScore: 10,
       retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
       evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
     },
     docs: {

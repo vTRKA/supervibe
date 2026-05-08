@@ -293,6 +293,38 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: audit docs for stale and internal development artifacts?",
     prerequisites: [],
   },
+  source_truth_research: {
+    phase: "research",
+    command: "/supervibe-audit --source-of-truth",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Шаг 1/1: выбрать источник правды, проверить конфликты и свежесть перед выводами?",
+    nextQuestionEn: "Step 1/1: select the source of truth, check conflicts and freshness before findings?",
+    prerequisites: ["user-request"],
+  },
+  visual_explanation: {
+    phase: "planning",
+    command: "/supervibe-plan --diagram",
+    skill: "supervibe:writing-plans",
+    nextQuestionRu: "Шаг 1/1: показать компактную диаграмму и текстовый fallback перед планированием?",
+    nextQuestionEn: "Step 1/1: show a compact diagram and text fallback before planning?",
+    prerequisites: ["user-request"],
+  },
+  task_readiness_intake: {
+    phase: "intake",
+    command: "/supervibe-plan --intake",
+    skill: "supervibe:requirements-intake",
+    nextQuestionRu: "Шаг 1/1: довести сырую задачу до readiness gate перед передачей агентам?",
+    nextQuestionEn: "Step 1/1: turn the raw task into a readiness-gated packet before assigning agents?",
+    prerequisites: ["user-request"],
+  },
+  plugin_update_repair: {
+    phase: "maintenance",
+    command: "npm run supervibe:upgrade",
+    skill: "supervibe:verification",
+    nextQuestionRu: "Шаг 1/1: запустить управляемое обновление плагина с восстановлением tracked drift?",
+    nextQuestionEn: "Step 1/1: run managed plugin update with tracked drift restore?",
+    prerequisites: [],
+  },
   figma_source_of_truth: {
     phase: "design",
     command: "/supervibe-design --figma-source-of-truth",
@@ -394,6 +426,30 @@ const RULES = [
     intent: "security_audit",
     confidence: 0.93,
     test: (text) => hasAny(text, ["security", "appsec", "vulnerability", "vulnerabilities", "owasp", "cve", "secret", "секьюрити", "безопасность", "уязвимость", "уязвимости"]) && hasAny(text, ["audit", "scan", "review", "check", "провер", "аудит"]),
+  },
+  {
+    intent: "source_truth_research",
+    confidence: 0.96,
+    test: (text) => hasAny(text, ["source of truth", "source-of-truth", "truth conflict", "official source", "primary source", "external vendor", "vendor documentation", "источник правды", "источник истины"]) &&
+      hasAny(text, ["research", "audit", "validate", "resolve", "compare", "check", "исслед", "аудит", "провер"]),
+  },
+  {
+    intent: "visual_explanation",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["diagram", "flowchart", "mermaid", "visual", "visually", "show visually", "диаграм", "визуаль"]) &&
+      hasAny(text, ["explain", "show", "logic", "system", "task", "plan", "architecture", "объясн", "покаж", "логик", "систем", "задач"]),
+  },
+  {
+    intent: "task_readiness_intake",
+    confidence: 0.91,
+    test: (text) => hasAny(text, ["raw task", "vague task", "unclear task", "not ready", "requirements intake", "readiness", "сырая задача", "сырую задачу", "готовность"]) &&
+      hasAny(text, ["before agents", "before assigning", "intake", "requirements", "agents start", "агент", "требован", "проработ"]),
+  },
+  {
+    intent: "plugin_update_repair",
+    confidence: 0.93,
+    test: (text) => hasAny(text, ["update plugin", "upgrade plugin", "plugin update", "supervibe upgrade", "обнови плагин", "обновление плагина"]) &&
+      hasAny(text, ["local drift", "local changes", "tracked drift", "replace with upstream", "upstream files", "локальн", "изменен", "замен"]),
   },
   {
     intent: "network_ops",
@@ -862,6 +918,7 @@ function mutationRiskFor(intent) {
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
+  if (intent === "plugin_update_repair") return "explicit-user-command";
   if (["brainstorm_to_plan", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
@@ -883,6 +940,10 @@ function requiredSafetyFor(intent) {
   }
   if (intent === "execute_plan") return [...base, "readiness-gate", "completion-gate"];
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
+  if (intent === "source_truth_research") return [...base, "source-hierarchy", "freshness-check", "conflict-resolution-log"];
+  if (intent === "visual_explanation") return [...base, "diagram-text-fallback", "no-unverified-implementation-claims"];
+  if (intent === "task_readiness_intake") return [...base, "requirements-gate", "raw-task-block", "acceptance-criteria-required"];
+  if (intent === "plugin_update_repair") return [...base, "managed-checkout-drift-restore", "mirror-clean-assertion"];
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];
   if (intent === "prompt_ai_engineering") return [...base, "eval-before-claim", "tool-boundary-review"];
   if (intent === "agent_provisioning") return [...base, "dry-run-before-host-file-write", "refresh-managed-instructions", "no-agent-emulation"];

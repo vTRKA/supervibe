@@ -115,7 +115,7 @@ test('install.ps1 has strict-mode + Stop action + env-based JSON upsert', () => 
   assert.match(src, /replace\(\/\^\\uFEFF\//, 'must tolerate existing BOM-prefixed JSON files');
   assert.doesNotMatch(src, /param\(\[string\[\]\]\$Args/, 'must not shadow PowerShell automatic $args variable');
   assert.match(src, /\$ErrorActionPreference\s*=\s*'Continue'/, 'must let native stderr warnings pass through log capture');
-  assert.match(src, /Restore-InstallerManagedTrackedEdits/, 'must self-heal package-lock/model drift left by older installer runs');
+  assert.match(src, /Restore-InstallerManagedTrackedEdits/, 'must self-heal tracked plugin drift left by local edits or older installer runs');
 });
 
 test('install.sh and install.ps1 reference the same marketplace name', () => {
@@ -189,23 +189,23 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
 });
 
-test('install and update scripts self-heal installer-managed package-lock before refusing user edits', () => {
+test('install and update scripts self-heal managed checkout tracked drift before update', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
   const updateSh = readFileSync(UPD_SH, 'utf8');
   const updatePs1 = readFileSync(UPD_PS1, 'utf8');
 
   for (const [name, src] of [['install.sh', sh], ['update.sh', updateSh]]) {
-    assert.match(src, /restore_installer_managed_tracked_edits/, `${name} must restore managed tracked artifacts before dirty refusal`);
-    assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
-    assert.match(src, /package-lock\.json/, `${name} must self-heal package-lock drift`);
+    assert.match(src, /restore_installer_managed_tracked_edits/, `${name} must restore managed tracked drift before update`);
+    assert.match(src, /managed checkout tracked drift|tracked local plugin drift/, `${name} must explain managed checkout drift restoration`);
+    assert.doesNotMatch(src, /case "\$path" in\s*"package-lock\.json"/s, `${name} must not limit managed drift restore to package-lock only`);
     assert.doesNotMatch(src, /INSTALLER_MANAGED_MODEL_PATH|GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs/i, `${name} must not require repository large-file smudge handling`);
   }
 
   for (const [name, src] of [['install.ps1', ps1], ['update.ps1', updatePs1]]) {
-    assert.match(src, /Restore-InstallerManagedTrackedEdits/, `${name} must restore managed tracked artifacts before dirty refusal`);
-    assert.match(src, /installer-managed tracked artifact/, `${name} must explain managed artifact restoration`);
-    assert.match(src, /package-lock\.json/, `${name} must self-heal package-lock drift`);
+    assert.match(src, /Restore-InstallerManagedTrackedEdits/, `${name} must restore managed tracked drift before update`);
+    assert.match(src, /managed checkout tracked drift|tracked local plugin drift/, `${name} must explain managed checkout drift restoration`);
+    assert.doesNotMatch(src, /\$managedPaths\s*=\s*@\('package-lock\.json'\)/, `${name} must not limit managed drift restore to package-lock only`);
     assert.doesNotMatch(src, /\$InstallerManagedModelPath|GIT_LFS_SKIP_SMUDGE|SkipLfsSmudge|Invoke-GitNoLfsSmudge|filter\.lfs|git lfs/i, `${name} must not require repository large-file smudge handling`);
   }
 

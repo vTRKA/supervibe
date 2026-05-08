@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.107] - 2026-05-08
+
+### Added
+
+- Added an agent-system coverage matrix for internal audits, external research,
+  source-of-truth validation, raw task prevention, regulated-domain evidence,
+  visual explanations, and plugin update drift repair.
+- Added `supervibe:maturity-report` to summarize user-case coverage,
+  source-of-truth readiness, visual explanation coverage, route coverage, and
+  managed update self-heal.
+
+### Changed
+
+- Strengthened agent-system maturity so 10/10 requires Code RAG/CodeGraph
+  `--list-missing` to report `MISSING_OR_STALE: 0`.
+- Routed source-of-truth research, visual explanation, raw task intake, and
+  plugin update repair intents directly instead of falling through to trigger
+  diagnostics.
+
+### Fixed
+
+- Managed install/update paths now restore tracked local plugin drift before
+  pulling upstream, so local edits inside the plugin checkout no longer block
+  users from receiving updated plugin files.
+
 ## [2.0.106] - 2026-05-07
 
 ### Fixed

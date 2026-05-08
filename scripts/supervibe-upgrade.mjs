@@ -4,7 +4,7 @@
 //
 // Steps:
 //   1. Read current version from .claude-plugin/plugin.json
-//   2. Refuse tracked local edits, then clean untracked/ignored stale files
+//   2. Restore managed checkout tracked drift, then clean untracked/ignored stale files
 //   3. git fetch + git pull --ff-only (refuses to clobber local commits)
 //   4. Assert the tracked plugin checkout is a clean mirror of upstream
 //   5. ensure the required ONNX embedding model is downloaded and usable
@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { partitionTrackedPorcelainLines } from './lib/installer-managed-checkout.mjs';
+import { isManagedInstallPath } from './lib/supervibe-auto-update.mjs';
 import { MODEL_RELATIVE_PATH } from './ensure-onnx-model.mjs';
 import {
   SQLITE_NODE_MIN_VERSION,
@@ -26,6 +27,10 @@ import {
 } from './lib/node-runtime-requirements.mjs';
 
 const PLUGIN_ROOT = resolveSupervibePluginRoot();
+
+function envFlag(value) {
+  return /^(1|true|yes|y|on)$/i.test(String(value || '').trim());
+}
 
 function manifestVersion(root) {
   try {
@@ -82,14 +87,14 @@ function readDirtyState(stage) {
     fail(`git status failed during ${stage}: ${status.stderr || status.stdout || 'unknown error'}`);
   }
   const dirty = statusLines(status.stdout);
-  return { dirty, ...partitionTrackedPorcelainLines(dirty) };
+  return { dirty, ...partitionTrackedPorcelainLines(dirty, { restoreAllTracked: restoreAllTrackedDrift }) };
 }
 
 function restoreInstallerManagedTrackedEdits(entries) {
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   for (const [path, entry] of byPath) {
-    console.log(`[supervibe:upgrade] restoring installer-managed tracked artifact: ${path} (${entry.reason})`);
-    if (!run('git', ['checkout', '--', path])) fail(`failed to restore installer-managed tracked artifact: ${path}`);
+    console.log(`[supervibe:upgrade] restoring managed checkout tracked drift: ${path} (${entry.reason})`);
+    if (!run('git', ['checkout', '--', path])) fail(`failed to restore managed checkout tracked drift: ${path}`);
   }
 }
 
@@ -126,16 +131,23 @@ if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
 const before = manifestVersion(PLUGIN_ROOT);
 console.log(`[supervibe:upgrade] current version: ${before || 'unknown'}`);
 
-// Refuse user-owned tracked local edits; clean untracked/ignored stale files from the managed checkout.
+const restoreAllTrackedDrift =
+  isManagedInstallPath(PLUGIN_ROOT) || envFlag(process.env.SUPERVIBE_RESTORE_PLUGIN_DRIFT);
+
+if (!restoreAllTrackedDrift) {
+  console.log('[supervibe:upgrade] non-managed checkout mode: only legacy installer-managed drift will be restored');
+}
+
+// Restore tracked plugin drift in managed installs; clean untracked/ignored stale files from the managed checkout.
 let dirtyState = readDirtyState('pre-update dirty check');
 if (dirtyState.installerManaged.length > 0) {
   restoreInstallerManagedTrackedEdits(dirtyState.installerManaged);
-  dirtyState = readDirtyState('post managed-artifact restore');
+  dirtyState = readDirtyState('post managed checkout drift restore');
 }
 if (dirtyState.userOwned.length > 0) {
   console.error('[supervibe:upgrade] uncommitted changes in plugin dir:');
   console.error(dirtyState.userOwned.join('\n'));
-  fail('Commit/stash tracked changes in the plugin checkout first, then re-run.');
+  fail('Non-managed development checkout has tracked changes in the plugin checkout. Commit/stash them or set SUPERVIBE_RESTORE_PLUGIN_DRIFT=1 for a managed plugin repair run.');
 }
 if (dirtyState.untracked.length > 0) {
   console.log(`[supervibe:upgrade] removing ${dirtyState.untracked.length} untracked stale file(s) from managed plugin checkout ...`);

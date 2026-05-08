@@ -14,7 +14,7 @@
 #   1. Detects which AI CLIs are installed (Claude Code, Codex, Gemini)
 #   2. Clones the Supervibe repo
 #   3. Ensures Node.js 22.5+ (prompted install/upgrade with user consent if needed)
-#   4. Restores known installer-managed drift and cleans stale files before reinstalling
+#   4. Restores managed checkout tracked drift and cleans stale files before reinstalling
 #   5. Downloads the required ONNX embedding model before registration
 #   6. Runs npm ci + registry build + install lifecycle audit
 #   7. Registers the plugin in every detected CLI:
@@ -119,24 +119,26 @@ ensure_required_onnx_model() {
 restore_installer_managed_tracked_edits() {
   local root="$1"
   local status="$2"
-  local line path
+  local line path restored
+  restored=0
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     case "$line" in "?? "*) continue ;; esac
     path="${line#???}"
     case "$path" in *" -> "*) path="${path##* -> }" ;; esac
-    case "$path" in
-      "package-lock.json")
-        warn "restoring installer-managed tracked artifact: $path"
-        run_git -C "$root" checkout -- "$path" >/dev/null 2>>"$LOG_DIR/restore-managed-artifacts.log" || {
-          cat "$LOG_DIR/restore-managed-artifacts.log" >&2
-          die "failed to restore installer-managed tracked artifact: $path"
-        }
-        ;;
-    esac
+    [ -n "$path" ] || continue
+    warn "restoring managed checkout tracked drift: $path"
+    run_git -C "$root" checkout -- "$path" >/dev/null 2>>"$LOG_DIR/restore-managed-artifacts.log" || {
+      cat "$LOG_DIR/restore-managed-artifacts.log" >&2
+      die "failed to restore managed checkout tracked drift: $path"
+    }
+    restored=$((restored + 1))
   done <<EOF
 $status
 EOF
+  if [ "$restored" -gt 0 ]; then
+    warn "restored $restored tracked local plugin drift file(s); edit project files instead of the managed plugin checkout"
+  fi
 }
 
 clean_managed_checkout() {
@@ -148,7 +150,7 @@ clean_managed_checkout() {
   tracked_dirty=$(printf '%s\n' "$status" | grep -v -E '^\?\? ' | sed '/^$/d' || true)
   if [ -n "$tracked_dirty" ]; then
     printf '%s\n' "$tracked_dirty" >&2
-    die "user-owned tracked local edits in $root; commit/stash them before reinstalling. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
+    die "tracked plugin checkout drift remains after restore in $root; inspect permissions or git checkout errors before reinstalling. Untracked stale files are cleaned automatically."
   fi
   untracked_count=$(printf '%s\n' "$status" | grep -c -E '^\?\? ' || true)
   if [ "$untracked_count" -gt 0 ]; then

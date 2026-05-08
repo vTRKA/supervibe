@@ -11,7 +11,7 @@
 #
 # Idempotent - safe to re-run for upgrades.
 
-# Existing managed checkouts restore known installer-managed drift and clean stale
+# Existing managed checkouts restore managed checkout tracked drift and clean stale
 # files before reinstall so older plugin versions cannot stay active.
 $ErrorActionPreference = 'Stop'
 
@@ -206,15 +206,18 @@ function Get-PorcelainPath {
 
 function Restore-InstallerManagedTrackedEdits {
   param([string]$Path, [string[]]$Status)
-  $managedPaths = @('package-lock.json')
+  $restored = 0
   foreach ($line in $Status) {
     if (-not $line -or $line.StartsWith('?? ')) { continue }
     $trackedPath = Get-PorcelainPath $line
-    if ($managedPaths -contains $trackedPath) {
-      Warn "restoring installer-managed tracked artifact: $trackedPath"
-      $safeLogName = "restore-managed-artifact-$($trackedPath -replace '[^A-Za-z0-9_.-]', '-')"
-      $null = Run-Git @('-C', $Path, 'checkout', '--', $trackedPath) $safeLogName
-    }
+    if (-not $trackedPath) { continue }
+    Warn "restoring managed checkout tracked drift: $trackedPath"
+    $safeLogName = "restore-managed-checkout-drift-$($trackedPath -replace '[^A-Za-z0-9_.-]', '-')"
+    $null = Run-Git @('-C', $Path, 'checkout', '--', $trackedPath) $safeLogName
+    $restored += 1
+  }
+  if ($restored -gt 0) {
+    Warn "restored $restored tracked local plugin drift file(s); edit project files instead of the managed plugin checkout"
   }
 }
 
@@ -226,7 +229,7 @@ function Invoke-CleanManagedCheckout {
   $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
   if ($trackedDirty.Count -gt 0) {
     $trackedDirty | Write-Host
-    Die "user-owned tracked local edits in $Path; commit/stash them before reinstalling. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
+    Die "tracked plugin checkout drift remains after restore in $Path; inspect permissions or git checkout errors before reinstalling. Untracked stale files are cleaned automatically."
   }
   $untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
   if ($untrackedDirty.Count -gt 0) {

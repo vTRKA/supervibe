@@ -6,7 +6,7 @@
 # What it does:
 #   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
 #   2. If missing, delegates to install.ps1 for first-time install
-#   3. Refuses to clobber user-owned local edits; restores known installer-managed drift
+#   3. Restores managed checkout tracked drift and refuses only if restore fails
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout
 #      (fetch + pull --ff-only + mirror cleanup + required ONNX model setup + install audit)
 #
@@ -89,15 +89,18 @@ function Get-PorcelainPath {
 
 function Restore-InstallerManagedTrackedEdits {
   param([string]$Path, [string[]]$Status)
-  $managedPaths = @('package-lock.json')
+  $restored = 0
   foreach ($line in $Status) {
     if (-not $line -or $line.StartsWith('?? ')) { continue }
     $trackedPath = Get-PorcelainPath $line
-    if ($managedPaths -contains $trackedPath) {
-      Warn "restoring installer-managed tracked artifact: $trackedPath"
-      & git -C $Path checkout -- $trackedPath
-      if ($LASTEXITCODE -ne 0) { Die "failed to restore installer-managed tracked artifact: $trackedPath" }
-    }
+    if (-not $trackedPath) { continue }
+    Warn "restoring managed checkout tracked drift: $trackedPath"
+    & git -C $Path checkout -- $trackedPath
+    if ($LASTEXITCODE -ne 0) { Die "failed to restore managed checkout tracked drift: $trackedPath" }
+    $restored += 1
+  }
+  if ($restored -gt 0) {
+    Warn "restored $restored tracked local plugin drift file(s); edit project files instead of the managed plugin checkout"
   }
 }
 
@@ -184,7 +187,7 @@ Ok "found checkout at $PluginRoot"
 if (-not (Get-Command git  -ErrorAction SilentlyContinue)) { Die 'git not found.' }
 Ensure-NodeRuntime
 if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Die "npm not found after Node.js setup. Reinstall Node.js $MinNodeVersion+ and re-run." }
-Say "plan: will update existing checkout at $PluginRoot, preserve user-owned tracked local edits, self-heal installer-managed artifacts, and clean stale untracked files"
+Say "plan: will update existing checkout at $PluginRoot, restore managed checkout tracked drift, and clean stale untracked files"
 Say "plan: integrity pins expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 # ---- safety: refuse to clobber local edits ----
@@ -196,7 +199,7 @@ $trackedDirty = @($status | Where-Object { $_ -and -not $_.StartsWith('?? ') })
 $untrackedDirty = @($status | Where-Object { $_ -and $_.StartsWith('?? ') })
 if ($trackedDirty.Count -gt 0) {
   $trackedDirty | Write-Host
-  Die "user-owned tracked local edits in $PluginRoot; commit or stash before updating. Installer-managed artifacts are restored automatically, and untracked stale files are cleaned automatically."
+  Die "tracked plugin checkout drift remains after restore in $PluginRoot; inspect permissions or git checkout errors before updating. Untracked stale files are cleaned automatically."
 }
 if ($untrackedDirty.Count -gt 0) {
   Warn "$($untrackedDirty.Count) untracked stale file(s) will be removed by npm run supervibe:upgrade"

@@ -584,5 +584,390 @@
         "maxTokens": 1500
       }
     }
+  },
+  {
+    "id": "internal-application-audit",
+    "request": "audit internal application docs and project memory before findings",
+    "expected": {
+      "intent": "docs_audit",
+      "command": "/supervibe-audit --docs",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#internal-private-sources",
+          "scripts/lib/supervibe-trigger-router.mjs#docs-audit"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#internal-private-sources",
+          "scripts/lib/supervibe-trigger-router.mjs#docs-audit"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ],
+        "estimatedTokens": 820,
+        "citations": [
+          {
+            "id": "coverage-matrix",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "internal-source-gate",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1400
+      }
+    }
+  },
+  {
+    "id": "external-research-source-truth",
+    "request": "research external vendor documentation and resolve source of truth conflicts",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#external-research-sources",
+          "docs/references/agent-system-coverage-matrix.md#source-of-truth-hierarchy"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#external-research-sources",
+          "docs/references/agent-system-coverage-matrix.md#source-of-truth-hierarchy"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ],
+        "estimatedTokens": 900,
+        "citations": [
+          {
+            "id": "source-truth",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "external-primary-source",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1500
+      }
+    }
+  },
+  {
+    "id": "source-of-truth-conflict-resolution",
+    "request": "source of truth conflict: compare official docs, project code and old tutorial before deciding",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#source-of-truth-hierarchy",
+          "docs/references/agent-system-coverage-matrix.md#negative-source-patterns"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "rankSemanticIntents"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#source-of-truth-hierarchy",
+          "docs/references/agent-system-coverage-matrix.md#negative-source-patterns"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "rankSemanticIntents"
+        ],
+        "estimatedTokens": 760,
+        "citations": [
+          {
+            "id": "conflict-policy",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "conflict-resolution",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
+    }
+  },
+  {
+    "id": "visual-chat-explanation-required",
+    "request": "explain this system visually with a diagram before implementation",
+    "expected": {
+      "intent": "visual_explanation",
+      "command": "/supervibe-plan --diagram",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
+          "docs/references/visual-explanation-standard.md#diagrams"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "formatWorkflowRoute"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
+          "docs/references/visual-explanation-standard.md#diagrams"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "formatWorkflowRoute"
+        ],
+        "estimatedTokens": 720,
+        "citations": [
+          {
+            "id": "visual-policy",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "diagram-fallback",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
+    }
+  },
+  {
+    "id": "raw-task-prevention",
+    "request": "raw vague task needs requirements intake before agents start",
+    "expected": {
+      "intent": "task_readiness_intake",
+      "command": "/supervibe-plan --intake",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#raw-task-prevention",
+          "skills/requirements-intake/SKILL.md#workflow"
+        ],
+        "graphSymbols": [
+          "routeWorkflowIntent",
+          "createAgentCheckpoint"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#raw-task-prevention",
+          "skills/requirements-intake/SKILL.md#workflow"
+        ],
+        "graphSymbols": [
+          "routeWorkflowIntent",
+          "createAgentCheckpoint"
+        ],
+        "estimatedTokens": 780,
+        "citations": [
+          {
+            "id": "raw-task-gate",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "readiness-gate",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
+    }
+  },
+  {
+    "id": "regulated-domain-evidence",
+    "request": "source of truth regulated finance audit with official primary source evidence only",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#regulated-domain-policies",
+          "docs/references/agent-system-coverage-matrix.md#external-research-sources"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#regulated-domain-policies",
+          "docs/references/agent-system-coverage-matrix.md#external-research-sources"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "decideRetrievalPolicy"
+        ],
+        "estimatedTokens": 880,
+        "citations": [
+          {
+            "id": "regulated-source-policy",
+            "source": "rag",
+            "path": "docs/references/agent-system-coverage-matrix.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "primary-source-only",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1500
+      }
+    }
+  },
+  {
+    "id": "plugin-update-local-drift",
+    "request": "update plugin should replace local plugin drift with upstream files",
+    "expected": {
+      "intent": "plugin_update_repair",
+      "command": "npm run supervibe:upgrade",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "scripts/supervibe-upgrade.mjs#managed-drift",
+          "scripts/lib/installer-managed-checkout.mjs#restore-all-tracked"
+        ],
+        "graphSymbols": [
+          "partitionTrackedPorcelainLines",
+          "isManagedInstallPath"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "scripts/supervibe-upgrade.mjs#managed-drift",
+          "scripts/lib/installer-managed-checkout.mjs#restore-all-tracked"
+        ],
+        "graphSymbols": [
+          "partitionTrackedPorcelainLines",
+          "isManagedInstallPath"
+        ],
+        "estimatedTokens": 840,
+        "citations": [
+          {
+            "id": "upgrade-self-heal",
+            "source": "rag",
+            "path": "scripts/supervibe-upgrade.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "managed-checkout-drift",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1400
+      }
+    }
   }
 ]

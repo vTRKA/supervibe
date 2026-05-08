@@ -364,12 +364,20 @@ function validateInstallUpdateSmoke(scripts, issues) {
     "update.sh": scripts.updateSh,
     "update.ps1": scripts.updatePs1,
   })) {
-    if (!/installer-managed tracked artifact/.test(source || "") || !/package-lock\.json/.test(source || "")) {
+    if (!/managed checkout tracked drift|tracked local plugin drift/.test(source || "")) {
       addIssue(
         issues,
         "managed-artifact-self-heal-missing",
-        `${label} must self-heal installer-managed package-lock drift before refusing user edits`,
-        "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
+        `${label} must self-heal managed checkout tracked drift before refusing update progress`,
+        "Restore tracked drift in managed plugin checkouts before cleaning untracked stale files."
+      );
+    }
+    if (/case "\$path" in\s*"package-lock\.json"/s.test(source || "") || /\$managedPaths\s*=\s*@\('package-lock\.json'\)/.test(source || "")) {
+      addIssue(
+        issues,
+        "managed-artifact-self-heal-too-narrow",
+        `${label} still limits managed checkout drift restore to package-lock.json`,
+        "Restore every tracked local plugin drift file in managed install/update paths."
       );
     }
   }
@@ -381,12 +389,18 @@ function validateInstallUpdateSmoke(scripts, issues) {
       "Exclude the ready local model from git clean so updates do not force unnecessary re-downloads."
     );
   }
-  if (!/installer-managed tracked artifact/.test(scripts.upgradeMjs || "") || !/partitionTrackedPorcelainLines/.test(scripts.upgradeMjs || "")) {
+  if (
+    !/partitionTrackedPorcelainLines/.test(scripts.upgradeMjs || "")
+    || !/restoreAllTracked/.test(scripts.upgradeMjs || "")
+    || !/SUPERVIBE_RESTORE_PLUGIN_DRIFT/.test(scripts.upgradeMjs || "")
+    || !/isManagedInstallPath/.test(scripts.upgradeMjs || "")
+    || !/managed checkout tracked drift|tracked local plugin drift/.test(scripts.upgradeMjs || "")
+  ) {
     addIssue(
       issues,
       "managed-artifact-self-heal-missing",
-      "scripts/supervibe-upgrade.mjs must self-heal installer-managed package-lock drift before refusing user edits",
-      "Restore only known installer-managed tracked artifacts, then still refuse user-owned tracked edits."
+      "scripts/supervibe-upgrade.mjs must self-heal managed checkout tracked drift in managed installs",
+      "Use managed-install detection plus SUPERVIBE_RESTORE_PLUGIN_DRIFT override to restore tracked plugin drift before update."
     );
   }
   if (!/SUPERVIBE_INSTALL_NODE/.test(scripts.installSh || "") || !/SUPERVIBE_INSTALL_NODE/.test(scripts.installPs1 || "")) {
