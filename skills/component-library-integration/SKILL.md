@@ -123,3 +123,4 @@ Rubric: framework
 - `supervibe:brandbook` — produces tokens this skill consumes
 - `supervibe:prototype-handoff` — consumes bridge as part of handoff bundle
 - `agents/_design/creative-director.md` — invokes this skill when component-library decision branch fires
+- `agents/_design/design-system-architect.md` — verifies the bridge references approved project tokens and blocks library-default leakage

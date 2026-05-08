@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.109] - 2026-05-08
+
+### Added
+
+- Added `design-system-architect` as the explicit design-system owner for token
+  governance, component coverage, library bridge review, styleboard QA, memory
+  writeback, and prototype-to-production drift.
+- Added `supervibe:design-maturity` to score design-agent maturity across
+  ownership, design intelligence resources, workflow gates, creative/trend
+  coverage, design-system implementation, memory/effectiveness telemetry, and
+  regression coverage.
+
+### Changed
+
+- `/supervibe-design` now routes Stage 2 design-system review through
+  `design-system-architect` after brandbook materialization and before
+  prototype unlock.
+- Product-design provisioning, autonomous design chains, Codex spawn payloads,
+  and stack handoffs now include the design-system architect where token or
+  component-governance decisions are involved.
+
 ## [2.0.108] - 2026-05-08
 
 ### Added

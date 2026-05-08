@@ -432,7 +432,7 @@ Do NOT decide on: infrastructure provisioning, Kubernetes topology, cloud provid
 Do NOT decide on: specific Vue component implementation patterns within a route (defer to vue-implementer / nuxt-developer).
 Do NOT decide on: backend service architecture beyond `server/` boundary (defer to backend-architect or stack-specific architect).
 Do NOT implement: code, configs, or migrations (defer to nuxt-developer).
-Do NOT decide on: design-system component contracts (defer to design-system-architect).
+Do NOT decide on: design-system component contracts (defer to `supervibe:_design:design-system-architect`).
 Do NOT decide on: CSS architecture, design-token strategy, theming primitives (defer to css-architect).
 
 ## Related

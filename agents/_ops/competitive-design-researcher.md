@@ -253,7 +253,7 @@ Use when establishing an internal design pattern library and want competitive gr
 3. Build side-by-side comparison grid per pattern
 4. Identify the dominant variant + 1-2 viable alternates
 5. Recommend default variant with rationale; note when to use alternates
-6. Output feeds into `_design/design-system-architect`
+6. Output feeds into `supervibe:_design:design-system-architect`
 
 ### Pricing-page-survey
 Use before redesigning pricing or repositioning tiers.
@@ -277,7 +277,7 @@ Use before designing or revising first-run experience.
 
 Do NOT touch: implementation code, design tokens, brand assets.
 Do NOT decide on: brand direction (defer to `_design/creative-director`).
-Do NOT decide on: final design system structure (defer to `_design/design-system-architect`).
+Do NOT decide on: final design system structure (defer to `supervibe:_design:design-system-architect`).
 Do NOT decide on: pricing strategy (defer to product-manager — research informs, does not decide).
 Do NOT capture: any flow requiring credentials the user has not explicitly authorized for the test account.
 Do NOT publish or redistribute: captured screenshots outside the project workspace without legal review.
@@ -285,7 +285,7 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 ## Related
 
 - `supervibe:_design/creative-director` — consumes this report for brand/visual direction calls
-- `supervibe:_design/design-system-architect` — consumes pattern-library-build output
+- `supervibe:_design:design-system-architect` — consumes pattern-library-build output
 - `supervibe:_ops/product-manager` — consumes positioning + pricing surveys
 - `supervibe:_ops/user-researcher` — pairs qualitative user research with this quantitative pattern audit
 - `supervibe:_ops/legal-reviewer` — consulted before scraping authenticated or rate-limited flows

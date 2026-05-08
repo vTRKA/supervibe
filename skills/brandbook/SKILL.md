@@ -444,6 +444,7 @@ Rubric:     brandbook
 ## Related
 
 - `agents/_design/creative-director` — produces brand DIRECTION (mood-board, intent) BEFORE this skill materializes the system
+- `agents/_design/design-system-architect` — reviews candidate tokens, component coverage, styleboard QA, library bridge, drift, and memory writeback before prototype unlock
 - `supervibe:tokens-export` — when system approved, exports to framework-specific format (Tailwind / MUI / CSS vars / Style Dictionary) for downstream stack
 - `supervibe:prototype` + `supervibe:landing-page` — consume this system; cannot run without it (prerequisite: `design-system-approved`)
 - `supervibe:interaction-design-patterns` — animation recipe library; system DECLARES which timings/easings to use

@@ -10,6 +10,7 @@ const DESIGN_STAGE_IDS = Object.freeze([
   "stage-0-reference-inventory",
   "stage-1-brand-direction",
   "stage-2-design-system",
+  "stage-2-design-system-review",
   "stage-3-screen-spec",
   "stage-4-copy",
   "stage-5-prototype-build",

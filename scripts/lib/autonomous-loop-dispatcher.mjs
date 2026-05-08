@@ -6,7 +6,7 @@ import { loadAgentRoster } from "./supervibe-agent-roster.mjs";
 import { selectReviewerPreset, selectWorkerPreset } from "./supervibe-worker-reviewer-presets.mjs";
 
 const DEFAULT_CHAINS = {
-  design: ["creative-director", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer", "stack-developer"],
+  design: ["creative-director", "design-system-architect", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer", "stack-developer"],
   integration: ["repo-researcher", "dependency-reviewer", "stack-developer", "qa-test-engineer", "quality-gate-reviewer"],
   architecture: ["systems-analyst", "architect-reviewer", "stack-developer", "code-reviewer"],
   security: ["security-auditor", "stack-developer", "quality-gate-reviewer"],

@@ -253,7 +253,7 @@ For each feature delivery:
 
 Do NOT touch: cross-feature architecture decisions (MVVM vs TCA vs VIPER org-wide) — defer to ios-architect + ADR.
 Do NOT decide on: app modularization strategy (single target vs SPM-per-feature vs Tuist-managed) — defer to ios-architect.
-Do NOT decide on: design system / theming strategy (custom design tokens, semantic colors, custom controls library) — defer to design-system-architect.
+Do NOT decide on: design system / theming strategy (custom design tokens, semantic colors, custom controls library) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: persistence framework choice (CoreData vs SwiftData vs GRDB vs Realm) — defer to ios-architect.
 Do NOT decide on: cross-platform integration approach (Flutter platform channels, React Native bridges) — coordinate with flutter-developer / react-native-developer.
 Do NOT decide on: CI / release pipeline (Fastlane lanes, signing, App Store Connect metadata) — defer to mobile-release-engineer.

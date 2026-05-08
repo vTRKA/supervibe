@@ -66,7 +66,7 @@ const GROUPS = Object.freeze([
   group("cache-redis", "Redis cache and queues", ["redis-architect", "job-scheduler-architect"], ["minimal", "full-stack"], ["redis"]),
   group("search-elasticsearch", "Elasticsearch search", ["elasticsearch-architect"], ["minimal", "full-stack"], ["elasticsearch"]),
   group("graphql-api", "GraphQL API", ["graphql-schema-designer", "api-contract-reviewer"], ["minimal", "full-stack"], ["graphql"]),
-  group("product-design", "Product and design", ["product-manager", "creative-director", "ux-ui-designer", "copywriter", "prototype-builder", "mock-data-designer", "ui-polish-reviewer"], ["product-design", "full-stack"]),
+  group("product-design", "Product and design", ["product-manager", "creative-director", "design-system-architect", "ux-ui-designer", "copywriter", "prototype-builder", "mock-data-designer", "ui-polish-reviewer"], ["product-design", "full-stack"]),
   group("ops-security", "Operations and security", ["security-auditor", "performance-reviewer", "dependency-reviewer"], ["full-stack"]),
   group("research", "Research-heavy support", ["repo-researcher", "security-researcher", "dependency-reviewer"], ["research-heavy"]),
 ]);
@@ -76,7 +76,7 @@ const ADD_ON_AGENTS = Object.freeze({
   "ai-prompting": ["prompt-ai-engineer"],
   "project-adaptation": ["rules-curator", "memory-curator", "repo-researcher"],
   redis: ["redis-architect", "job-scheduler-architect"],
-  "creative-brand": ["creative-director", "copywriter", "competitive-design-researcher"],
+  "creative-brand": ["creative-director", "design-system-architect", "copywriter", "competitive-design-researcher"],
   "web-design": ["ux-ui-designer", "accessibility-reviewer", "ui-polish-reviewer"],
   prototype: ["prototype-builder", "ui-polish-reviewer"],
   presentation: ["presentation-director", "presentation-deck-builder"],
@@ -84,6 +84,7 @@ const ADD_ON_AGENTS = Object.freeze({
   desktop: ["electron-ui-designer", "tauri-ui-designer"],
   "product-design-extended": [
     "creative-director",
+    "design-system-architect",
     "copywriter",
     "accessibility-reviewer",
     "ux-ui-designer",

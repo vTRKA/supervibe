@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
   "description": "Supervibe plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
-  "version": "2.0.108",
+  "version": "2.0.109",
   "author": {
     "name": "vTRKA"
   },
@@ -34,6 +34,7 @@
     "./agents/_design/accessibility-reviewer.md",
     "./agents/_design/copywriter.md",
     "./agents/_design/creative-director.md",
+    "./agents/_design/design-system-architect.md",
     "./agents/_design/electron-ui-designer.md",
     "./agents/_design/extension-ui-designer.md",
     "./agents/_design/mobile-ui-designer.md",

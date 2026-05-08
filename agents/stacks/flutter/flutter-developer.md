@@ -259,7 +259,7 @@ For each feature delivery:
 
 Do NOT touch: cross-feature state-management approach decision (BLoC vs Riverpod vs Provider org-wide) — defer to flutter-architect + ADR.
 Do NOT decide on: app modularization strategy (single package vs Melos monorepo vs internal pub packages) — defer to flutter-architect.
-Do NOT decide on: design system / theming strategy (custom Material 3 theme vs design tokens vs full custom widgets) — defer to design-system-architect.
+Do NOT decide on: design system / theming strategy (custom Material 3 theme vs design tokens vs full custom widgets) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: native platform integration ownership (which APIs are FlutterPlugin vs in-app channel vs native-only) — defer to mobile-platform-architect.
 Do NOT decide on: CI / release pipeline (Fastlane lanes, signing, store metadata) — defer to mobile-release-engineer.
 Do NOT decide on: backend API contracts — defer to backend stack agents.

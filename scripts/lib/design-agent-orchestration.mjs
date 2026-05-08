@@ -148,6 +148,11 @@ export function buildDesignAgentPlan({
       skillId: "supervibe:brandbook",
       reason: "candidate tokens and design-system sections require the brandbook skill and explicit approval lifecycle",
     }));
+    stages.push(stage({
+      id: "stage-2-design-system-review",
+      agentId: "design-system-architect",
+      reason: "design-system architecture, token drift, component coverage, library bridge, and memory writeback require an explicit specialist review before prototype unlock",
+    }));
   }
 
   stages.push(stage({
@@ -287,6 +292,7 @@ export function buildDesignWriteGate({ intake = null, plan = null } = {}) {
       ".supervibe/artifacts/prototypes/_design-system/manifest.json",
       ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
       ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+      ".supervibe/artifacts/prototypes/_design-system/_reviews/architecture.md",
       ".supervibe/artifacts/prototypes/_design-system/.approvals/*.json",
     ],
     blockedReasons: blocked,
@@ -708,6 +714,7 @@ function designReceiptRequirementsForPlan(plan = {}) {
     ]) {
       add({ command: "/supervibe-design", outputArtifact: artifact, subjectType: "skill", subjectId: "supervibe:brandbook", stageId: "stage-2-design-system" });
     }
+    add({ command: "/supervibe-design", outputArtifact: ".supervibe/artifacts/prototypes/_design-system/_reviews/architecture.md", subjectType: "agent", subjectId: "design-system-architect", stageId: "stage-2-design-system-review" });
     return requirements;
   }
 

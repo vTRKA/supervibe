@@ -242,7 +242,7 @@ Do NOT decide on: Pinia plugin choices (persistence, undo/redo), state-shape acr
 Do NOT decide on: Vue Router topology, route-level code-splitting strategy, navigation guards architecture (defer to vue-architect).
 Do NOT decide on: SSR / hydration strategy, server engine choice — these are Nuxt concerns (defer to nuxt-architect).
 Do NOT decide on: build pipeline, Vite plugin set beyond `@vitejs/plugin-vue`, monorepo layout (defer to devops-sre).
-Do NOT decide on: design-system component API contracts that span multiple consumer apps (defer to design-system-architect).
+Do NOT decide on: design-system component API contracts that span multiple consumer apps (defer to `supervibe:_design:design-system-architect`).
 
 ## Related
 

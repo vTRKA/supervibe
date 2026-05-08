@@ -36,6 +36,7 @@ test("routes Russian and English design intents without adding lookup commands",
   assert.equal(design.skill, "supervibe:brandbook");
   assert.equal(design.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.ok(design.agentProfile.requiredAgentIds.includes("creative-director"));
+  assert.ok(design.agentProfile.requiredAgentIds.includes("design-system-architect"));
   assert.match(design.nextQuestion, /creative direction.*brandbook.*(prototype|прототип)/i);
   assert.equal(design.requiredSafety.includes("creative-direction-first"), true);
 

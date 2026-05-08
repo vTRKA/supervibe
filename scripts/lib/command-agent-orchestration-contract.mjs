@@ -83,6 +83,7 @@ const CODEX_EXECUTION_MODE_HINT_OVERRIDES = Object.freeze({
   "competitive-design-researcher": "default",
   "copywriter": "default",
   "creative-director": "default",
+  "design-system-architect": "default",
   "db-reviewer": "default",
   "dependency-reviewer": "default",
   "memory-curator": "default",
@@ -142,6 +143,7 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
   profile("/supervibe-design", [
     "supervibe-orchestrator",
     "creative-director",
+    "design-system-architect",
     "ux-ui-designer",
     "copywriter",
     "prototype-builder",

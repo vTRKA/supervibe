@@ -261,7 +261,7 @@ For each feature delivery:
 
 Do NOT touch: cross-feature architecture decisions (MVVM vs MVI vs Redux org-wide) — defer to android-architect + ADR.
 Do NOT decide on: app modularization strategy (single-module vs multi-feature-modules vs KMP-shared) — defer to android-architect.
-Do NOT decide on: design system / theming strategy (full custom design tokens, dynamic color opt-out policy) — defer to design-system-architect.
+Do NOT decide on: design system / theming strategy (full custom design tokens, dynamic color opt-out policy) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: persistence framework choice (Room vs SQLDelight vs Realm) — defer to android-architect.
 Do NOT decide on: cross-platform integration (Flutter platform channels, React Native bridges) — coordinate with flutter-developer / react-native-developer.
 Do NOT decide on: CI / release pipeline (Gradle Play Publisher, Fastlane, signing config, Play Console metadata) — defer to mobile-release-engineer.

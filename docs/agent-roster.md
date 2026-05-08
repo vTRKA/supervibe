@@ -2,7 +2,7 @@
 
 This file is generated from `agents/**/*.md` frontmatter. It is the human-readable map used by genesis, README onboarding, and host instruction files so users can see which specialists exist and what each one is responsible for.
 
-Total agents: 90
+Total agents: 91
 
 ## Core workflow
 
@@ -20,6 +20,7 @@ Total agents: 90
 - `accessibility-reviewer` - Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation, screen reader support, contrast measurement, motion sensitivity, and ARIA correctness. Stacks: any.
 - `copywriter` - Use WHEN writing or reviewing UI copy (labels, body, CTAs, errors, microcopy) to ensure voice consistency, clarity, and localization-readiness. Stacks: any.
 - `creative-director` - Use WHEN starting any new product or major visual direction shift to define brand language, mood, palette intent, typographic intent, motion intent, and emotional anchors. Stacks: any.
+- `design-system-architect` - Use WHEN defining, reviewing, extending, or auditing the project design-system contract: tokens, component baseline, motion, accessibility platform rules, component-library bridge, token drift, and prototype-to-produc... Stacks: any.
 - `electron-ui-designer` - Use WHEN designing UI for an Electron desktop application — main window, settings, modals, tray dropdowns, multi-window experiences — to produce platform-faithful mockups that respect macOS / Windows / Linux HIG, nati... Stacks: electron.
 - `extension-ui-designer` - Use WHEN designing UI for a browser extension (Chrome MV3, Edge, Brave, Firefox WebExtensions) — popup, side panel, options, new-tab override — to produce surface-aware mockups that respect host-browser etiquette, CSP... Stacks: chrome-extension.
 - `mobile-ui-designer` - Use WHEN designing UI for a native mobile app — iOS (SwiftUI / UIKit), Android (Jetpack Compose / Views), React Native, or Flutter — to produce platform-faithful mockups that respect iOS HIG and Android Material 3, sa... Stacks: ios, android, react-native, flutter.

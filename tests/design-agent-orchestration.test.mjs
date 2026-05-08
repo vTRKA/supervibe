@@ -95,6 +95,7 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.agentId === "supervibe-orchestrator" && stage.immediate === true));
   assert.ok(plan.stages.some((stage) => stage.agentId === "creative-director"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:brandbook"));
+  assert.ok(plan.stages.some((stage) => stage.agentId === "design-system-architect"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "ux-ui-designer"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "prototype-builder"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:mcp-discovery" && stage.reason.includes("website")));
@@ -668,7 +669,8 @@ test("design prewrite manifest completes per-artifact receipts without unblockin
     const report = formatDesignPrewriteManifest(manifest);
 
     assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
-    assert.equal(plan.executionStatus.agentReceiptsTrusted, true);
+    assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
+    assert.ok(plan.executionStatus.durableMissingRuntimeProofs.some((proof) => proof.subjectId === "design-system-architect"));
     assert.equal(plan.executionStatus.producerReceiptsTrusted, false);
     assert.equal(manifest.durableWritesAllowed, false);
     assert.equal(direction.status, "complete");
@@ -677,6 +679,7 @@ test("design prewrite manifest completes per-artifact receipts without unblockin
     assert.equal(tokens.producerType, "skill");
     assert.equal(tokens.producerId, "supervibe:brandbook");
     assert.equal(manifest.nextProducer.producerId, "supervibe:brandbook");
+    assert.ok(manifest.files.some((file) => file.path === ".supervibe/artifacts/prototypes/_design-system/_reviews/architecture.md" && file.producerId === "design-system-architect"));
     assert.match(report, /complete durable-design-artifacts .supervibe\/artifacts\/brandbook\/direction\.md/);
     assert.match(report, /NEXT_PRODUCER: skill:supervibe:brandbook@stage-2-design-system/);
   } finally {
@@ -698,6 +701,68 @@ test("design agent receipt validator rejects durable outputs without completed r
     assert.match(result.qualityImpact, /creative-director/);
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "creative-director"));
     assert.ok(result.issues.some((issue) => issue.expectedAgentId === "ux-ui-designer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design system architect becomes next producer after brandbook artifacts are trusted", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-system-architect-next-"));
+  try {
+    const brandbookArtifacts = [
+      ".supervibe/artifacts/prototypes/_design-system/tokens.css",
+      ".supervibe/artifacts/prototypes/_design-system/manifest.json",
+      ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+      ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+    ];
+    for (const artifact of brandbookArtifacts) {
+      await writeUtf8(root, artifact, artifact.endsWith(".json") ? "{}\n" : "ok\n");
+    }
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "brandbook skill produced candidate design-system artifacts",
+      inputEvidence: [".supervibe/artifacts/brandbook/direction.md"],
+      outputArtifacts: brandbookArtifacts,
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+    });
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      stage: "stage-1-brand-direction",
+      invocationReason: "brand direction required",
+      inputEvidence: [".supervibe/artifacts/brandbook/preferences.json"],
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+      hostInvocation: await writeAgentInvocation(root),
+    });
+
+    const plan = buildDesignAgentPlan({
+      brief: "Use completed preferences for a desktop agent chat design system.",
+      target: "web",
+      mode: "design-system-only",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: completedWizardDecisions(),
+    });
+    const manifest = buildDesignPrewriteManifest(plan, { slug: "agent-chat" });
+
+    assert.equal(manifest.nextProducer.producerType, "agent");
+    assert.equal(manifest.nextProducer.producerId, "design-system-architect");
+    assert.equal(manifest.nextProducer.stageId, "stage-2-design-system-review");
+    assert.match(formatDesignPrewriteManifest(manifest), /NEXT_PRODUCER: agent:design-system-architect@stage-2-design-system-review/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

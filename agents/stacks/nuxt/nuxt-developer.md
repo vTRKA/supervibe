@@ -266,7 +266,7 @@ Do NOT decide on: Pinia store namespacing scheme app-wide, store-splitting strat
 Do NOT decide on: layer extraction, multi-app composition, white-label architecture (defer to `nuxt-architect`).
 Do NOT decide on: runtime config schema additions involving secrets — schema changes need security review (defer to `security-auditor` + `nuxt-architect`).
 Do NOT decide on: Vue Router topology beyond what file-based routing provides (defer to `nuxt-architect`).
-Do NOT decide on: design-system component contracts (defer to design-system-architect).
+Do NOT decide on: design-system component contracts (defer to `supervibe:_design:design-system-architect`).
 Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defer to devops-sre).
 
 ## Related

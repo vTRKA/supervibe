@@ -21,7 +21,7 @@ If agent quality is judged only by file existence or persona wording, a weak
 agent can appear mature while missing retrieval, tool-use, verification,
 dialogue, safety, and confidence behavior.
 
-Concrete consequence of not following: a host can load 90 agents, but a fresh
+Concrete consequence of not following: a host can load 91 agents, but a fresh
 agent still guesses current APIs, skips Code Graph before a rename, asks six
 questions at once, or claims specialist work without receipts.
 

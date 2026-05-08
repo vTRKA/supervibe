@@ -27,7 +27,7 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
 
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -57,7 +57,7 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
 test("agent-system maturity score blocks 10/10 when host telemetry is missing", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -95,7 +95,7 @@ test("agent-system maturity score blocks 10/10 when host telemetry is missing", 
 test("agent-system maturity score blocks 10/10 when strict producer validation fails despite telemetry counts", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -133,7 +133,7 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
 test("agent-system maturity blocks 10/10 when retrieval enforcement hook is missing", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -162,7 +162,7 @@ test("agent-system maturity blocks 10/10 when retrieval enforcement hook is miss
 test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 10/10", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -194,7 +194,7 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
 test("agent-system maturity blocks 10/10 when list-missing reports stale graph rows", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -227,7 +227,7 @@ test("agent-system maturity blocks 10/10 when list-missing reports stale graph r
 test("agent-system maturity blocks 10/10 when rules rely on filler content", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -262,7 +262,7 @@ test("agent-system maturity blocks 10/10 when rules rely on filler content", () 
 test("agent-system maturity blocks 10/10 when agent content quality is weak", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,
@@ -297,7 +297,7 @@ test("agent-system maturity blocks 10/10 when agent content quality is weak", ()
 test("agent-system maturity blocks 10/10 when skill content quality is weak", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 90,
+      agents: 91,
       skills: 56,
       commands: 19,
       rules: 30,

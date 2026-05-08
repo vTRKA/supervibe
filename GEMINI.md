@@ -24,7 +24,7 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 ## What Supervibe provides
 
 Same Supervibe project context, adapted for Gemini CLI:
-- 89 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
+- 91 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - Agent smartness is validated by `npm run validate:agent-content-quality` and
   `npm run validate:agent-tool-use-matrix`, not by padding files to a line count.
 - 56 process skills in `./skills/`, validated by `npm run validate:skill-content-quality`

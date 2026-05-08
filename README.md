@@ -2,7 +2,7 @@
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 91 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
 **v2.0** - MIT - Windows / macOS / Linux - 1024 tests
 
@@ -12,7 +12,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 89 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 89 specialist agents | 250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
+| 91 specialist agents | 250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
@@ -54,7 +54,7 @@ Existing projects should not be wiped after plugin updates. Run `/supervibe-upda
 
 ## Available agents
 
-Supervibe ships 90 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
+Supervibe ships 91 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
 
 Core examples:
 - `supervibe-orchestrator` routes work, verifies skill/agent selection and keeps the workflow moving.
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.108 initialized for this project
+[supervibe] welcome  plugin v2.0.109 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
