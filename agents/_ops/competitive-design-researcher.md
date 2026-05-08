@@ -28,6 +28,9 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:project-memory'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:design-intelligence'
 verification:
   - screenshot-evidence
   - public-design-system-citations
@@ -45,8 +48,8 @@ anti-patterns:
   - scrape-without-consent
   - single-competitor-bias
   - no-attribution
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -317,6 +320,10 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 
 - `supervibe:confidence-scoring` — research-output rubric ≥9
 - `supervibe:project-memory` — surface prior reports for the same category to avoid redundant capture
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context
 

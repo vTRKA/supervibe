@@ -83,10 +83,22 @@ test("provider capability matrix captures native continuation and degraded modes
 
   assert.equal(codex.nativeGoalWorkflows, true);
   assert.match(codex.nativeContinuation, /codex-goal/);
+  assert.equal(codex.headlessMode, true);
+  assert.equal(codex.contextForking, "codex-goal-task-packet");
+  assert.equal(codex.permissionPromptBridgeRequired, true);
+  assert.equal(codex.spawnReceiptRequired, true);
+  assert.equal(codex.externalSpawnRequiresAllowSpawn, true);
   assert.equal(claude.stopHooks, true);
+  assert.equal(claude.contextForking, "claude-headless-task-packet");
   assert.equal(cursor.freshContextAdapter, false);
+  assert.equal(cursor.permissionPromptBridgeRequired, false);
   assert.ok(summary.fresh_context.includes("codex"));
   assert.ok(summary.guided_or_manual_only.includes("cursor"));
+  assert.ok(summary.permission_prompt_bridge_required.includes("codex"));
+  assert.ok(summary.spawn_receipt_required.includes("claude"));
+  assert.ok(summary.context_forking_missing.includes("cursor"));
   assert.match(formatLoopProviderCapabilityMatrix(matrix), /SUPERVIBE_LOOP_PROVIDER_CAPABILITIES/);
+  assert.match(formatLoopProviderCapabilityMatrix(matrix), /prompt_bridge=true/);
+  assert.match(formatLoopProviderCapabilityMatrix(matrix), /context_forking=codex-goal-task-packet/);
   assert.equal(resolveToolLoopCapabilities("cursor").recommendedMode, "guided");
 });

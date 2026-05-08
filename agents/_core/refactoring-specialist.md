@@ -30,6 +30,10 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:project-memory'
   - 'supervibe:verification'
+  - 'supervibe:explore-alternatives'
+  - 'supervibe:pre-pr-check'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:using-git-worktrees'
 verification:
   - tests-pass-before
   - tests-pass-after
@@ -44,8 +48,8 @@ anti-patterns:
   - no-test-baseline
   - ignore-callers
   - refactor-without-greenline
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -316,6 +320,10 @@ npm run typecheck   # or: tsc --noEmit
 - `supervibe:code-search` — grep/glob/LSP discipline for caller mapping and symbol radius computation
 - `supervibe:project-memory` — search prior refactor decisions, abandoned attempts, and "do not touch" zones
 - `supervibe:verification` — captures pre/post test output and warning deltas as evidence
+- `supervibe:explore-alternatives` - compare multiple viable approaches before committing to a non-trivial decision.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
 
 ## Project Context
 

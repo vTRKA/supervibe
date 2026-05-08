@@ -47,8 +47,8 @@ anti-patterns:
   - missing-error-branch
   - trusting-renderer-input
   - hidden-permission-expansion
-version: 1.1
-last-verified: 2026-05-06
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -63,6 +63,15 @@ Boundary reviewer for systems where one runtime calls another: Tauri frontend to
 Rust commands, webview bridges, worker messages, browser-extension runtime
 messages and process RPC. Optimizes for contracts that are typed, testable,
 permission-aware and stable under version changes.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:code-review` - perform structured correctness, security, readability, performance, and coverage review.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

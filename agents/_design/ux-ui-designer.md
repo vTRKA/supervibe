@@ -45,6 +45,7 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:interaction-design-patterns'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:landing-page'
 verification:
   - screen-spec-with-all-states
   - component-inventory
@@ -67,8 +68,8 @@ anti-patterns:
   - no-reference-scan
   - video-assumption-without-capability-check
   - silent-existing-artifact-reuse
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -343,6 +344,9 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 - `supervibe:prototype` — produces 1:1 HTML implementation for spec validation
 - `supervibe:confidence-scoring` — screen-spec rubric ≥9 before handoff
 - `supervibe:interaction-design-patterns` — vetted patterns for common flows (search, filter, multi-step, undo)
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
+- `supervibe:landing-page` - produce or audit marketing page structure, SEO, accessibility, and conversion evidence.
 
 ## Project Context
 

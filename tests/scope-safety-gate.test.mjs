@@ -26,7 +26,7 @@ test("scope safety standard is a mandatory rule with current references", async 
 
 test("all agents carry scope safety instructions", async () => {
   const files = await listMarkdown("agents");
-  assert.equal(files.length, 91);
+  assert.equal(files.length, 92);
 
   const missing = [];
   for (const file of files) {

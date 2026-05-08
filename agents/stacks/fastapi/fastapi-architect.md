@@ -32,6 +32,11 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:test-strategy'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:pre-pr-check'
 verification:
   - openapi-schema-valid
   - dependency-graph-acyclic
@@ -46,8 +51,8 @@ anti-patterns:
   - settings-in-globals
   - alembic-without-review
   - blocking-startup
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -287,6 +292,11 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 - `supervibe:project-memory` — search prior architecture decisions, ADRs, incident postmortems
 - `supervibe:code-search` — locate existing modules, routers, dependencies before proposing structure
 - `supervibe:adr` — emit architecture decision records as the deliverable
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

@@ -23,6 +23,12 @@ const STUB_LOOP_CAPABILITIES = Object.freeze({
   nativeGoalWorkflows: false,
   stopHooks: false,
   teammateIdleHooks: false,
+  headlessMode: true,
+  contextForking: "deterministic-test-packet",
+  permissionPromptBridgeRequired: false,
+  spawnReceiptRequired: false,
+  externalSpawnRequiresAllowSpawn: false,
+  controllerStopSupported: true,
   worktreeIsolation: true,
   backgroundProcesses: false,
   recommendedMode: "dry-run",
@@ -57,6 +63,9 @@ export function detectToolAdapters({
         safeDefault: true,
         executionModes: [...capabilities.supportedExecutionModes],
         capabilities,
+        requiresAllowSpawn: capabilities.externalSpawnRequiresAllowSpawn,
+        permissionPromptBridgeRequired: capabilities.permissionPromptBridgeRequired,
+        spawnReceiptRequired: capabilities.spawnReceiptRequired,
         continuationMode: capabilities.nativeContinuation,
         recommendedMode: capabilities.recommendedMode,
         fallbackMode: capabilities.fallbackMode,
@@ -78,6 +87,9 @@ export function detectToolAdapters({
       safeDefault: false,
       executionModes: capabilities.supportedExecutionModes.filter((mode) => mode !== "dry-run"),
       capabilities,
+      requiresAllowSpawn: capabilities.externalSpawnRequiresAllowSpawn,
+      permissionPromptBridgeRequired: capabilities.permissionPromptBridgeRequired,
+      spawnReceiptRequired: capabilities.spawnReceiptRequired,
       continuationMode: capabilities.nativeContinuation,
       recommendedMode: capabilities.recommendedMode,
       fallbackMode: capabilities.fallbackMode,
@@ -126,11 +138,17 @@ export function summarizeLoopProviderCapabilities(matrix = getLoopProviderCapabi
   const degraded = matrix.filter((entry) => !entry.freshContextAdapter).map((entry) => entry.id);
   const nativeGoalWorkflows = matrix.filter((entry) => entry.nativeGoalWorkflows).map((entry) => entry.id);
   const stopHooks = matrix.filter((entry) => entry.stopHooks || entry.teammateIdleHooks).map((entry) => entry.id);
+  const promptBridgeRequired = matrix.filter((entry) => entry.permissionPromptBridgeRequired).map((entry) => entry.id);
+  const spawnReceiptRequired = matrix.filter((entry) => entry.spawnReceiptRequired).map((entry) => entry.id);
+  const missingContextForking = matrix.filter((entry) => !entry.contextForking || entry.contextForking === "manual-guided-only").map((entry) => entry.id);
   return {
     fresh_context: freshContext,
     guided_or_manual_only: degraded,
     native_goal_workflows: nativeGoalWorkflows,
     native_stop_hooks: stopHooks,
+    permission_prompt_bridge_required: promptBridgeRequired,
+    spawn_receipt_required: spawnReceiptRequired,
+    context_forking_missing: missingContextForking,
     portable_state_baseline: matrix.every((entry) => Boolean(entry.qualityGateStrategy)),
     lowest_stability_score: matrix.length ? Math.min(...matrix.map((entry) => entry.stabilityScore)) : 0,
   };
@@ -148,6 +166,10 @@ export function formatLoopProviderCapabilityMatrix(matrix = getLoopProviderCapab
     ...matrix.map((entry) => [
       entry.id,
       `fresh_context=${entry.freshContextAdapter}`,
+      `headless=${entry.headlessMode}`,
+      `context_forking=${entry.contextForking}`,
+      `prompt_bridge=${entry.permissionPromptBridgeRequired}`,
+      `spawn_receipt=${entry.spawnReceiptRequired}`,
       `continuation=${entry.nativeContinuation}`,
       `recommended=${entry.recommendedMode}`,
       `fallback=${entry.fallbackMode}`,

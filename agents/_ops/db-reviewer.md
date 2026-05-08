@@ -37,6 +37,9 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:test-strategy'
+  - 'supervibe:pre-pr-check'
+  - 'supervibe:mock-data-contract'
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -52,8 +55,8 @@ anti-patterns:
   - n-plus-one
   - sequential-scan-tolerated
   - drop-column-in-one-deploy
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -337,6 +340,9 @@ Do NOT decide on: business-driven retention or compliance scope (defer to produc
 - `supervibe:code-search` — locate ORM call sites, raw SQL, migration history, model definitions
 - `supervibe:verification` — EXPLAIN ANALYZE outputs, lock estimates, dry-run logs as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before APPROVED verdict
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:mock-data-contract` - create schema-tied mock contracts and fixtures for realistic frontend/backend work.
 
 ## Project Context
 

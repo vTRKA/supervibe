@@ -51,8 +51,8 @@ anti-patterns:
   - hardcoded-deck-style
   - promising-video-without-capability-check
   - random-regen-instead-of-tradeoff-alternatives
-version: 1
-last-verified: 2026-04-29T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -407,6 +407,16 @@ Before final response:
 2. Discover Drive integration or MCP if available.
 3. Upload directly only with authenticated tooling.
 4. Otherwise fill `google-drive-handoff.md` and mark `Upload state: pending`.
+
+## Skills
+
+- `supervibe:presentation-deck` - build or review storyboard, slide preview, export, and deck handoff.
+- `supervibe:prototype` - create framework-agnostic native HTML/CSS/JS prototypes for approval.
+- `supervibe:preview-server` - serve generated HTML/CSS/JS prototypes locally and capture preview evidence.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

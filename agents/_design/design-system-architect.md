@@ -55,8 +55,8 @@ anti-patterns:
   - raw-hex-or-magic-px
   - no-styleboard-proof
   - asking-multiple-questions-at-once
-version: 1
-last-verified: 2026-05-08T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -369,6 +369,17 @@ return to the prior design-system review.
   target with rationale.
 - Creative QA and design-agent effectiveness telemetry are present before
   design-system approval is claimed.
+
+## Skills
+
+- `supervibe:brandbook` - materialize durable brand and design-system direction before UI production.
+- `supervibe:component-library-integration` - bridge approved design tokens into a concrete component-library implementation.
+- `supervibe:tokens-export` - export approved brandbook tokens to framework-specific theme formats.
+- `supervibe:prototype-handoff` - package approved prototypes into framework-agnostic implementation handoff.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

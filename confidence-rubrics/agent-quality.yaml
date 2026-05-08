@@ -17,10 +17,10 @@ dimensions:
     weight: 2
     question: "Does the agent declare specific verification commands for the stack (cargo check, pytest, tsc, etc.)?"
     evidence-required: "Verification section with at least 2 named commands"
-  - id: size-and-shape
+  - id: skill-coverage
     weight: 1
-    question: "Is the agent substantial without relying on line-count padding or unresolved template placeholders?"
-    evidence-required: "validate:agent-content-quality passes and frontmatter contains name/namespace/description/persona-years/version/last-verified"
+    question: "Does the agent declare and explain enough foundational plus specialist skills for its role?"
+    evidence-required: "validate:agent-skill-coverage passes: at least 4 skills, at least 2 foundational skills, at least 1 specialist skill, every declared skill explained in ## Skills"
   - id: canonical-output-format
     weight: 1
     question: "Does the agent's Output contract end with the canonical footer (Confidence: N/10, Override, Rubric) so PostToolUse hook can parse it?"

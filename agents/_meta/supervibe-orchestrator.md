@@ -35,6 +35,13 @@ skills:
   - 'supervibe:requirements-intake'
   - 'supervibe:project-memory'
   - 'supervibe:stack-discovery'
+  - 'supervibe:dispatching-parallel-agents'
+  - 'supervibe:executing-plans'
+  - 'supervibe:genesis'
+  - 'supervibe:new-feature'
+  - 'supervibe:subagent-driven-development'
+  - 'supervibe:trigger-diagnostics'
+  - 'supervibe:using-git-worktrees'
 verification:
   - decision-trace
   - user-confirm-before-state-change
@@ -54,8 +61,8 @@ anti-patterns:
   - silent-rule-bypass
   - re-propose-declined-decisions
   - batch-multiple-proposals
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -294,6 +301,13 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - `supervibe:requirements-intake` — entry-gate for new feature requests
 - `supervibe:project-memory` — search prior decisions before dispatch
 - `supervibe:stack-discovery` — fingerprint stack before stack-specific dispatch
+- `supervibe:dispatching-parallel-agents` - split independent work safely before parallel delegation.
+- `supervibe:executing-plans` - execute an approved plan phase-by-phase with verification gates.
+- `supervibe:genesis` - bootstrap host-aware Supervibe scaffolding for a project stack.
+- `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
+- `supervibe:subagent-driven-development` - coordinate independent implementation work with isolated sessions.
+- `supervibe:trigger-diagnostics` - diagnose command, trigger, and skill routing mismatches.
+- `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
 
 ## Project Context
 

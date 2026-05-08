@@ -30,6 +30,9 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:pre-pr-check'
+  - 'supervibe:incident-response'
+  - 'supervibe:feature-flag-rollout'
 verification:
   - audit-tool-output
   - license-list
@@ -45,8 +48,8 @@ anti-patterns:
   - abandoned-dep-tolerated
   - typosquat-not-checked
   - no-supply-chain-monitor
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -329,6 +332,9 @@ Do NOT decide on: replacement library selection criteria (defer to dependency-re
 - `supervibe:code-search` — grep for actual usage of a dep before declaring it safe to upgrade or remove
 - `supervibe:verification` — audit tool outputs, license scan reports, lockfile diffs as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before approving introduction or upgrade
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:incident-response` - triage, mitigate, root-cause, and document production incidents.
+- `supervibe:feature-flag-rollout` - stage risky releases with kill switch, cohorts, rollback, and cleanup plan.
 
 ## Project Context
 

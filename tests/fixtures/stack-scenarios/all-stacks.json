@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    { "id": "laravel", "stackText": "Laravel PHP app", "expectedTags": ["laravel"], "expectedAgents": ["laravel-developer"] },
+    { "id": "nextjs", "stackText": "Next.js React app", "expectedTags": ["nextjs", "react"], "expectedAgents": ["nextjs-developer"] },
+    { "id": "nuxt", "stackText": "Nuxt Vue app", "expectedTags": ["nuxt", "vue"], "expectedAgents": ["nuxt-developer"] },
+    { "id": "vue", "stackText": "Vue frontend", "expectedTags": ["vue"], "expectedAgents": ["vue-implementer"] },
+    { "id": "sveltekit", "stackText": "SvelteKit application", "expectedTags": ["sveltekit"], "expectedAgents": ["sveltekit-developer"] },
+    { "id": "react", "stackText": "React Vite frontend", "expectedTags": ["react", "vite"], "expectedAgents": ["react-implementer"] },
+    { "id": "express", "stackText": "Express Node API", "expectedTags": ["express"], "expectedAgents": ["express-developer"] },
+    { "id": "fastify", "stackText": "Fastify Node API", "expectedTags": ["fastify"], "expectedAgents": ["fastify-developer"] },
+    { "id": "nestjs", "stackText": "NestJS TypeScript API", "expectedTags": ["nestjs"], "expectedAgents": ["nestjs-developer"] },
+    { "id": "fastapi", "stackText": "FastAPI Python service", "expectedTags": ["fastapi"], "expectedAgents": ["fastapi-developer"] },
+    { "id": "django-drf", "stackText": "Django DRF backend", "expectedTags": ["django"], "expectedAgents": ["django-developer", "drf-specialist"] },
+    { "id": "rails", "stackText": "Ruby on Rails application", "expectedTags": ["rails"], "expectedAgents": ["rails-developer"] },
+    { "id": "spring", "stackText": "Spring Boot Kotlin service", "expectedTags": ["spring"], "expectedAgents": ["spring-developer"] },
+    { "id": "aspnet", "stackText": "ASP.NET Core API", "expectedTags": ["aspnet"], "expectedAgents": ["aspnet-developer"] },
+    { "id": "go", "stackText": "Go service", "expectedTags": ["go"], "expectedAgents": ["go-service-developer"] },
+    { "id": "flutter", "stackText": "Flutter mobile app", "expectedTags": ["flutter"], "expectedAgents": ["flutter-developer"] },
+    { "id": "ios", "stackText": "iOS Swift app", "expectedTags": ["ios"], "expectedAgents": ["ios-developer"] },
+    { "id": "android", "stackText": "Android Kotlin app", "expectedTags": ["android"], "expectedAgents": ["android-developer"] },
+    { "id": "chrome-extension", "stackText": "Chrome extension MV3 WXT", "expectedTags": ["chrome-extension"], "expectedAgents": ["chrome-extension-developer"] },
+    { "id": "graphql", "stackText": "GraphQL Apollo API", "expectedTags": ["graphql"], "expectedAgents": ["graphql-schema-designer"] },
+    { "id": "postgres", "stackText": "PostgreSQL database", "expectedTags": ["postgres"], "expectedAgents": ["postgres-architect"] },
+    { "id": "mysql", "stackText": "MySQL database", "expectedTags": ["mysql"], "expectedAgents": ["mysql-architect"] },
+    { "id": "mongodb", "stackText": "MongoDB document database", "expectedTags": ["mongodb"], "expectedAgents": ["mongo-architect"] },
+    { "id": "elasticsearch", "stackText": "Elasticsearch search cluster", "expectedTags": ["elasticsearch"], "expectedAgents": ["elasticsearch-architect"] },
+    { "id": "redis", "stackText": "Redis cache and queue", "expectedTags": ["redis"], "expectedAgents": ["redis-architect"] },
+    { "id": "tauri", "stackText": "Tauri React Rust desktop app", "expectedTags": ["tauri", "react", "rust"], "expectedAgents": ["tauri-rust-engineer"] }
+  ]
+}

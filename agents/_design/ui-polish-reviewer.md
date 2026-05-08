@@ -42,6 +42,7 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:interaction-design-patterns'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:browser-feedback'
 verification:
   - 8-dim-review-output
   - severity-ranked-findings
@@ -58,8 +59,8 @@ anti-patterns:
   - vague-feedback
   - cosmetic-only
   - no-baseline-screenshots
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -271,6 +272,9 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 - `supervibe:code-search` — locate component instances, token usages, hex literals
 - `supervibe:confidence-scoring` — review-output rubric ≥9
 - `supervibe:interaction-design-patterns` — canonical state matrices and motion grammar
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
+- `supervibe:browser-feedback` - route browser feedback into the active prototype or UI repair loop.
 
 ## Project Context
 

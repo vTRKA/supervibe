@@ -162,8 +162,8 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-plan",
     title: "Write or review an implementation plan",
-    aliases: ["напиши план реализации", "create implementation plan", "составь план", "review the plan"],
-    keywordGroups: [["plan", "planning", "план", "спланируй", "составь"], ["implementation", "реализация", "review", "ревью"]],
+    aliases: ["напиши план реализации", "create implementation plan", "составь план", "составь детальный план реализации", "review the plan"],
+    keywordGroups: [["plan", "planning", "план", "спланируй", "составь"], ["implementation", "реализация", "реализации", "review", "ревью"]],
   },
   {
     command: "/supervibe-presentation",

@@ -53,8 +53,8 @@ anti-patterns:
   - never-retire
   - broken-cross-links
   - low-confidence-entries-kept
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -314,6 +314,7 @@ Do NOT delete entries — archive only. Restoration must always be possible.
 - `supervibe:project-memory` — primary read interface; used to scan all entries by category
 - `supervibe:add-memory` — write interface; used as the quality bar reference (entries must pass its rubric ≥9)
 - `supervibe:confidence-scoring` — memory-entry rubric ≥9 required for kept entries
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source or rules.
 
 ## Project Context
 

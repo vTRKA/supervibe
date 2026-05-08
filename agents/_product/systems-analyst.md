@@ -30,6 +30,9 @@ skills:
   - 'supervibe:writing-plans'
   - 'supervibe:requirements-intake'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:executing-plans'
+  - 'supervibe:genesis'
+  - 'supervibe:new-feature'
 verification:
   - acceptance-criteria-measurable
   - edge-cases-enumerated
@@ -44,8 +47,8 @@ anti-patterns:
   - untestable-acceptance-criteria
   - one-mega-story
   - no-traceability
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -284,6 +287,9 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 - `supervibe:writing-plans` — produce structured requirement package as a plan artifact
 - `supervibe:requirements-intake` — entry-gate skill for new requirement requests
 - `supervibe:confidence-scoring` — requirements-spec rubric ≥9 before handoff
+- `supervibe:executing-plans` - execute an approved plan phase-by-phase with verification gates.
+- `supervibe:genesis` - bootstrap host-aware Supervibe scaffolding for a project stack.
+- `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
 
 ## Project Context
 

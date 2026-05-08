@@ -34,6 +34,10 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:mock-data-contract'
+  - 'supervibe:pre-pr-check'
 verification:
   - explain-query-output
   - telescope-queries
@@ -49,8 +53,8 @@ anti-patterns:
   - observer-with-side-effects
   - factory-with-state-leak
   - accessors-with-IO
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -319,6 +323,10 @@ Do NOT decide on: queue infrastructure, broadcast channels (defer to laravel-arc
 - `supervibe:code-search` — locate every callsite of a relationship before changing its eager-load contract
 - `supervibe:verification` — Telescope query counts, EXPLAIN output, factory test results as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before recommendation lands
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:mock-data-contract` - create schema-tied mock contracts and fixtures for realistic frontend/backend work.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

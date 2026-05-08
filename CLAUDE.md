@@ -44,7 +44,7 @@ These six principles override defaults whenever they conflict with general pract
 ```
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
-├── agents/                        91 agents (_core/_meta/_design/_ops/_product + stacks/)
+├── agents/                        92 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        56 process skills
 ├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
 ├── rules/                         31 project rules
@@ -110,8 +110,8 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 - **Receipt repair/recovery**: use `node scripts/workflow-receipt.mjs reissue`, `prune-stale --apply`, `rebuild-ledger`, or `recovery-status`; never repair receipt trust by manually editing JSON or the ledger.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)
-- **Agents**: content-quality gate + cache-friendly section order (validated by `npm run validate:agent-content-quality` and `npm run validate:agent-section-order`); do not pad agents to satisfy line-count heuristics.
-- **Skills**: expert operating standard, Step 0, decision tree, output contract, guard rails, verification, related links, and trigger-clarity (validated by `npm run validate:skill-content-quality` and `npm run validate:no-deep-refs`); do not pad skills to satisfy line-count heuristics.
+- **Agents**: content-quality, skill-coverage, empirical hardening, tool-use matrix, and cache-friendly section order (validated by `npm run validate:agent-content-quality`, `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, `npm run validate:agent-tool-use-matrix`, and `npm run validate:agent-section-order`); every agent must explain each declared skill in `## Skills`, must stay current through freshness gates, and can be scored with `npm run supervibe:agent-heatmap` instead of only pass/fail validation.
+- **Skills**: expert operating standard, Step 0, decision tree, output contract, guard rails, verification, related links, trigger-clarity, and at least one owning agent (validated by `npm run validate:skill-content-quality`, `npm run validate:skill-operational-contracts`, `npm run validate:agent-skill-coverage`, and `npm run validate:no-deep-refs`); do not pad skills to satisfy line-count heuristics.
 - **Tests**: `node:test`; `tests/*.test.mjs`
 - **No native deps**: pure JS / WASM / SQLite. **No Docker. No external services.**
 

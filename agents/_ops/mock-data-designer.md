@@ -49,8 +49,8 @@ anti-patterns:
   - schema-less-mock-contract
   - backend-drift-hidden
   - frontend-only-state-shape
-version: 1
-last-verified: 2026-05-07T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -209,6 +209,14 @@ Do NOT pick a frontend state library; the stack developer owns implementation.
 - `supervibe:_ops:data-modeler` - owns entity invariants and persistence shape
 - `supervibe:_design:prototype-builder` - consumes scenario fixtures in data-fed prototypes
 - `supervibe:prototype-handoff` - packages mock contract, scenarios, fixtures, and backend notes for implementation
+
+## Skills
+
+- `supervibe:mock-data-contract` - create schema-tied mock contracts and fixtures for realistic frontend/backend work.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:verification` - capture concrete command output before claiming complete.
 
 ## Project Context
 

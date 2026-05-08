@@ -35,6 +35,9 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:incident-response'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:pre-pr-check'
 verification:
   - npm-audit
   - composer-audit
@@ -59,8 +62,8 @@ anti-patterns:
   - pattern-hit-without-reachability
   - mutating-during-audit
   - fix-without-reaudit
-version: 1.2
-last-verified: 2026-04-30T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -304,6 +307,10 @@ Do NOT decide on: compliance scope (defer to product-manager).
 - `supervibe:verification` — audit tool outputs as evidence
 - `supervibe:project-memory` — search prior security incidents/decisions
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:incident-response` - triage, mitigate, root-cause, and document production incidents.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

@@ -29,6 +29,10 @@ tools:
 skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
+  - 'supervibe:incident-response'
 verification:
   - cve-list-with-cvss
   - advisory-snapshot
@@ -49,8 +53,8 @@ anti-patterns:
   - cherry-pick-favorable-source
   - advisory-without-mitigation
   - no-cvss-vector
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -278,6 +282,11 @@ Do NOT decide on: incident response operational steps (defer to devops-sre).
 ## Skills
 
 - `supervibe:confidence-scoring` — research-output rubric ≥9 (citation-density, recency, applicability)
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:incident-response` - triage, mitigate, root-cause, and document production incidents.
 
 ## Project Context
 

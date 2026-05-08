@@ -34,6 +34,8 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:rule-application'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:rule-audit'
+  - 'supervibe:sync-rules'
 verification:
   - rule-quality-rubric-9plus
   - no-contradictions-grep
@@ -47,8 +49,8 @@ anti-patterns:
   - contradictions-uncaught
   - never-retire
   - over-prescribe
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -274,6 +276,9 @@ For each curation pass:
 - `supervibe:project-memory` — search past incidents to anchor rule rationale; every rule cites at least one incident ID, ADR, or live constraint surfaced through this skill.
 - `supervibe:rule-application` — verify a new/modified rule is mechanically picked up by downstream agents; this is the curator's primary dry-run target and the gate between draft rule and merged rule.
 - `supervibe:confidence-scoring` — rule-quality rubric ≥9 before merging into the rulebook; below 9 means revise, not merge with a note.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source or rules.
+- `supervibe:rule-audit` - detect gaps, contradictions, and redundancy across rule artifacts.
+- `supervibe:sync-rules` - propagate approved rule changes across compatible projects.
 
 ## Project Context
 

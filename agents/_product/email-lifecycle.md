@@ -37,6 +37,9 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:verification'
+  - 'supervibe:experiment'
+  - 'supervibe:feature-flag-rollout'
+  - 'supervibe:confidence-scoring'
 verification:
   - spf-dkim-dmarc
   - html-email-renders-cross-client
@@ -53,8 +56,8 @@ anti-patterns:
   - no-list-unsubscribe-header
   - shared-ip-without-warmup
   - inline-style-only
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -290,6 +293,9 @@ Do NOT decide on: analytics event taxonomy (defer to analytics-implementation).
 - `supervibe:project-memory` — search prior deliverability incidents and reputation history
 - `supervibe:code-search` — locate templates, sender configuration, suppression integration points
 - `supervibe:verification` — DNS lookup output, spam-score reports, render screenshots as evidence
+- `supervibe:experiment` - define measurable experiment hypotheses, metrics, cohorts, and analysis plans.
+- `supervibe:feature-flag-rollout` - stage risky releases with kill switch, cohorts, rollback, and cleanup plan.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

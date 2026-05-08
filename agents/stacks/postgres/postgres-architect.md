@@ -28,6 +28,10 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:adr'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:test-strategy'
+  - 'supervibe:mock-data-contract'
+  - 'supervibe:pre-pr-check'
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -43,8 +47,8 @@ anti-patterns:
   - replication-impact-ignored
   - partition-without-prune-strategy
   - RLS-bypass-tolerated
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -297,6 +301,10 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 - `supervibe:project-memory` — search prior schema decisions, past migration incidents, partitioning rollouts already in flight
 - `supervibe:code-search` — locate every call site of a column/table before proposing a rename or drop
 - `supervibe:adr` — record the schema/migration/index decision with alternatives considered
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:mock-data-contract` - create schema-tied mock contracts and fixtures for realistic frontend/backend work.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

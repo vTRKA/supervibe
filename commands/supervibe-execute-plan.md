@@ -206,7 +206,7 @@ After all phases done, score against 10 completion dimensions:
 
 [1/10] All checkboxes ticked              ✓ (147/147)
 [2/10] All verifications ran              ✓
-[3/10] All tests pass                     ✓ (320/320 + 10 validators + knip)
+[3/10] All tests pass                     ✓ (validator suite + 1400+ tests + knip)
 [4/10] No regressions                     ✓ (Phase 7 baseline diff clean)
 [5/10] Memory updated                     ✓ (3 decisions, 2 learnings added)
 [6/10] Files created exist                ✓ (87/87)

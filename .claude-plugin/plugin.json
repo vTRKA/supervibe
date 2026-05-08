@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
-  "description": "Supervibe plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 24 stacks.",
-  "version": "2.0.112",
+  "description": "Supervibe plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 25 stacks.",
+  "version": "2.0.113",
   "author": {
     "name": "vTRKA"
   },
@@ -86,6 +86,7 @@
     "./agents/stacks/django/drf-specialist.md",
     "./agents/stacks/elasticsearch/elasticsearch-architect.md",
     "./agents/stacks/express/express-developer.md",
+    "./agents/stacks/fastify/fastify-developer.md",
     "./agents/stacks/fastapi/fastapi-architect.md",
     "./agents/stacks/fastapi/fastapi-developer.md",
     "./agents/stacks/flutter/flutter-developer.md",

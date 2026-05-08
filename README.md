@@ -2,9 +2,9 @@
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
-A plugin that turns Claude Code, Codex, and Gemini into a team of 91 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
+A plugin that turns Claude Code, Codex, and Gemini into a team of 92 specialist agents with a code graph, project memory, design intelligence, and confidence gates. Runs locally. No Docker.
 
-**v2.0** - MIT - Windows / macOS / Linux - 1024 tests
+**v2.0** - MIT - Windows / macOS / Linux - 1417 tests
 
 ---
 
@@ -12,12 +12,12 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 91 specialist 
 
 | Feature | What it means |
 |---------|---------------|
-| 91 specialist agents | 250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
+| 92 specialist agents | 250 lines each: persona, decision tree, procedure, output contract, anti-patterns, verification. See [agent roster](docs/agent-roster.md) |
 | Code graph (10 languages) | tree-sitter symbols and edges. Query `--callers X`, `--callees Y`, `--neighbors Z --depth 2` |
 | Semantic code search | multilingual-e5-small. Works offline. Speaks Russian, English, and 100 other languages |
 | Project memory | Five categories with FTS5 plus per-chunk embeddings. Decisions get reused, not rederived |
 | Confidence engine | Seventeen rubrics. Gate at score 9. Override rate above 5% triggers an audit |
-| 26 discipline rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
+| 31 project rules | `operational-safety`, compact `agent-excellence-baseline` validation, `use-codegraph-before-refactor`, `single-question-discipline`, `design-system-governance`, `agent-install-profiles`, `anti-hallucination`, and more |
 | Auto-reindex | A PostToolUse hook plus an mtime scan on session start. The `memory:watch` daemon is optional |
 | Agent improvement loop | Telemetry, underperformer detection, and `/supervibe-strengthen` with a user gate |
 | Re-dispatch suggester | When a Task finishes at confidence < 8.0, the hook checks past high-confidence runs on similar tasks and prints a `[supervibe] dispatch-hint:` with up to 3 alternative agents  never auto-dispatches |
@@ -37,7 +37,7 @@ A plugin that turns Claude Code, Codex, and Gemini into a team of 91 specialist 
 | Pre-write prototype guard | `PreToolUse` hook blocks writes to `.supervibe/artifacts/prototypes/<slug>/` until `config.json` exists AND blocks framework imports  prototypes stay native HTML/CSS/JS |
 | Multi-CLI | One installer wires Claude Code, Codex, and Gemini together |
 
-24 stacks supported: PHP (Laravel)  TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, NestJS)  Python (FastAPI, Django + DRF)  Ruby (Rails)  Java / Kotlin (Spring)  C# (ASP.NET)  Go  Mobile (Flutter, iOS, Android)  Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS)  GraphQL  PostgreSQL  MySQL  MongoDB  Elasticsearch  Redis.
+25 stacks supported: PHP (Laravel)  TypeScript / JavaScript (Next.js, Nuxt, Vue, Svelte, React, Express, Fastify, NestJS)  Python (FastAPI, Django + DRF)  Ruby (Rails)  Java / Kotlin (Spring)  C# (ASP.NET)  Go  Mobile (Flutter, iOS, Android)  Browser Extensions (Chrome MV3 / WXT / Plasmo / Vite-CRXJS)  GraphQL  PostgreSQL  MySQL  MongoDB  Elasticsearch  Redis.
 
 ---
 
@@ -54,7 +54,7 @@ Existing projects should not be wiped after plugin updates. Run `/supervibe-upda
 
 ## Available agents
 
-Supervibe ships 91 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations.
+Supervibe ships 92 agents grouped by core workflow, product/design, operations/security, system improvement and stack specialists. The generated roster lives at [docs/agent-roster.md](docs/agent-roster.md) and is built from the same frontmatter that genesis uses for role explanations. Agent readiness is scored empirically: per-agent eval packs, stack scenario fixtures, Russian routing regression cases, critical-agent playbooks, freshness gates, and the capability heatmap are validated by `npm run validate:agent-empirical-hardening` and inspected with `npm run supervibe:agent-heatmap`.
 
 Core examples:
 - `supervibe-orchestrator` routes work, verifies skill/agent selection and keeps the workflow moving.
@@ -63,7 +63,7 @@ Core examples:
 - `quality-gate-reviewer` checks final readiness, tests and release evidence.
 - `root-cause-debugger` isolates bugs with hypothesis/evidence loops.
 
-Stack examples include React, Next.js, Vue, Nuxt, SvelteKit, Laravel, Django, FastAPI, Rails, Go, Spring, ASP.NET, Tauri, mobile, databases, GraphQL, Redis and Elasticsearch specialists.
+Stack examples include React, Next.js, Vue, Nuxt, SvelteKit, Laravel, Django, FastAPI, Express, Fastify, Rails, Go, Spring, ASP.NET, Tauri, mobile, databases, GraphQL, Redis and Elasticsearch specialists.
 
 ## Indexing config
 
@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.112 initialized for this project
+[supervibe] welcome  plugin v2.0.113 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -208,6 +208,20 @@ The trigger-safe path is explicit and chainable:
 5. `/supervibe-loop --guided` runs in the current session after provider-safe preflight, explicit approval, side-effect ledger setup, and stop/resume/status controls. It keeps working until goals are complete unless a policy, approval, verification, no-progress, user stop, or explicit budget gate blocks progress. System acceptance is not final user acceptance: guided/fresh-context runs stop as `AWAITING_USER_ACCEPTANCE` until the user accepts goals or rejects them into a checkpointed replan. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions.
 
 Diagnostics are first-class: use `/supervibe --diagnose-trigger` when a phrase did not route as expected, and `/supervibe --why-trigger` to explain the selected command, selected skill, confidence, missing artifacts, and safety blockers. The router also has a semantic intent layer for implicit needs: "I cannot see epics/tasks", "old tasks are cluttering memory", "agents do not use tools", "RAG/codegraph wastes tokens", "docs has internal TODO garbage", and "Figma tokens drift from code" all route to the nearest safe command without requiring slash-command phrasing. Long-running work stays visible through stop/resume/status commands and never attempts provider bypass, hidden background execution, or policy evasion.
+
+True fresh-context autonomous execution is not the same as typing a loop request
+inside the current chat. It requires a provider adapter that can run a scoped
+headless task packet with explicit context-forking, for example Codex CLI,
+Claude CLI/SDK, Gemini CLI, or OpenCode, plus explicit spawn, permission-prompt
+handling, and runtime spawn receipts:
+
+```bash
+/supervibe-loop --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --request "validate integrations"
+```
+
+If those requirements are not met, Supervibe must fall back to `--guided` or
+`--manual`, or stop with a status artifact that names the missing adapter or
+permission bridge.
 
 For command-like requests, agents ask the deterministic catalog before searching the repo. This covers explicit slash commands, explicit `npm run ...` phrases, bare `supervibe:<script>` names, and English/Russian natural-language requests for the primary workflows:
 
@@ -449,6 +463,7 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | Command | What it does |
 |---------|--------------|
 | `npm run supervibe:status` | Health check across every index |
+| `npm run supervibe:agent-heatmap` | Per-agent capability heatmap with eval-pack coverage, freshness, score, and critical-playbook status |
 | `npm run supervibe:loop -- --help` | Local no-tty help for loop status, graph, doctor, prime, export/import, and execution modes |
 | `npm run supervibe:ui -- --file <graph.json>` | Local visual control plane for work items, loop state, RAG/memory/codegraph health, reports, context packs, and safe actions |
 | `npm run supervibe:ide-bridge -- --out .supervibe/ide-bridge.json` | Webview descriptor for wrapping the local UI in any IDE |
@@ -470,7 +485,8 @@ Shell scripts (run inside the plugin directory `~/.claude/plugins/marketplaces/s
 | `npm run presentation:build -- --input .supervibe/artifacts/presentations/<slug>/deck.json --output .supervibe/artifacts/presentations/<slug>/export/<slug>.pptx` | Export an approved deck spec to PPTX |
 | `npm run memory:watch` | Plugin-directory alias for the optional watcher daemon; from a user project prefer `node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs` |
 | `npm run migrate:prototype-configs` | One-shot: backfill `config.json` for legacy prototype directories (also runs auto on SessionStart) |
-| `npm run check` | Full test suite plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, knip, confidence-gate, package, and release-security validation |
+| `npm run validate:agent-empirical-hardening` | Agent empirical readiness gate: eval packs, heatmap scores, freshness, stack fixtures, Russian corpus, and critical playbooks |
+| `npm run check` | Full test suite plus manifest, frontmatter, design-skill, question-discipline, spec-artifact, plan-artifact, agent-footer, empirical agent hardening, knip, confidence-gate, package, and release-security validation |
 
 ---
 

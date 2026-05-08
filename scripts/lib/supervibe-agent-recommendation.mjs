@@ -46,9 +46,10 @@ const GROUPS = Object.freeze([
   group("nuxt-web", "Nuxt web app", ["nuxt-architect", "nuxt-developer"], ["minimal", "product-design", "full-stack"], ["nuxt"]),
   group("sveltekit-web", "SvelteKit web app", ["sveltekit-developer", "ux-ui-designer", "accessibility-reviewer"], ["minimal", "product-design", "full-stack"], ["sveltekit"]),
   group("chrome-extension", "Chrome extension", ["chrome-extension-architect", "chrome-extension-developer", "extension-ui-designer"], ["minimal", "product-design", "full-stack"], ["chrome-extension"]),
-  group("django-backend", "Django backend", ["django-architect", "django-developer"], ["minimal", "full-stack"], ["django"]),
+  group("django-backend", "Django backend", ["django-architect", "django-developer", "drf-specialist"], ["minimal", "full-stack"], ["django"]),
   group("fastapi-backend", "FastAPI backend", ["fastapi-architect", "fastapi-developer"], ["minimal", "full-stack"], ["fastapi"]),
   group("express-backend", "Express backend", ["express-developer", "api-designer"], ["minimal", "full-stack"], ["express"]),
+  group("fastify-backend", "Fastify backend", ["fastify-developer", "api-designer"], ["minimal", "full-stack"], ["fastify"]),
   group("nestjs-backend", "NestJS backend", ["nestjs-developer", "api-designer"], ["minimal", "full-stack"], ["nestjs"]),
   group("laravel-backend", "Laravel backend", ["laravel-architect", "laravel-developer", "eloquent-modeler"], ["minimal", "full-stack"], ["laravel"]),
   group("rails-backend", "Rails backend", ["rails-architect", "rails-developer"], ["minimal", "full-stack"], ["rails"]),
@@ -856,6 +857,7 @@ function detectPackageStack(deps, source, addTag) {
   if (hasDep(deps, ["nuxt"])) addTag("nuxt", source, "nuxt");
   if (hasDep(deps, ["svelte", "@sveltejs/kit"])) addTag("sveltekit", source, "sveltekit");
   if (hasDep(deps, ["express"])) addTag("express", source, "express");
+  if (hasDep(deps, ["fastify"])) addTag("fastify", source, "fastify");
   if (hasDep(deps, ["@nestjs/core", "nestjs"])) addTag("nestjs", source, "nestjs");
   if (hasDep(deps, ["@tauri-apps/api"])) addTag("tauri", source, "@tauri-apps/api");
   if (hasDep(deps, ["electron"])) addTag("electron", source, "electron");
@@ -936,8 +938,17 @@ function extractStackTagsFromText(text = "") {
     ["nuxt", /\bnuxt\b/, ["nuxt"]],
     ["sveltekit", /\bsvelte(?:kit)?\b/, ["svelte", "sveltekit"]],
     ["django", /\bdjango\b/, ["django"]],
+    ["express", /\bexpress(?:\.js)?\b/, ["express", "express.js"]],
     ["fastapi", /\bfastapi\b/, ["fastapi"]],
-    ["rails", /\brails\b/, ["rails"]],
+    ["fastify", /\bfastify\b/, ["fastify"]],
+    ["nestjs", /\bnest(?:\.js|js)?\b|\bnestjs\b/, ["nest", "nest.js", "nestjs"]],
+    ["rails", /\brails\b|\bruby on rails\b/, ["rails", "ruby on rails"]],
+    ["spring", /\bspring(?: boot)?\b/, ["spring", "spring boot"]],
+    ["aspnet", /\basp\.?net\b|\baspnet\b|(?:^|\s)\.net core\b|\bdotnet\b|\b\.net\b/, ["asp.net", "aspnet", ".net core", "dotnet", ".net"]],
+    ["android", /\bandroid\b|\bkotlin android\b/, ["android", "kotlin android"]],
+    ["ios", /\bios\b|\bswift\b/, ["ios", "swift"]],
+    ["flutter", /\bflutter\b|\bdart\b/, ["flutter", "dart"]],
+    ["elasticsearch", /\belasticsearch\b|\belastic search\b|\bopensearch\b/, ["elasticsearch", "elastic search", "opensearch"]],
     ["go", /\bgolang\b|\bgo\b/, ["golang", "go"]],
     ["chrome-extension", /\bchrome extension\b|\bmv3\b|\bextension\b/, ["chrome extension", "mv3", "extension"]],
     ["docker", /\bdocker\b|\bdockerfile\b|\bcompose\b/, ["docker", "dockerfile", "compose"]],
@@ -999,6 +1010,14 @@ function normalizeStackTag(name) {
   if (value === "nuxt") return "nuxt";
   if (value === "svelte" || value === "@sveltejs/kit") return "sveltekit";
   if (value === "express") return "express";
+  if (value === "fastify") return "fastify";
+  if (value === "rails") return "rails";
+  if (value === "spring" || value === "springboot" || value === "spring-boot") return "spring";
+  if (value === "aspnet" || value === "asp.net" || value === ".netcore" || value === "dotnet") return "aspnet";
+  if (value === "android") return "android";
+  if (value === "ios" || value === "swift") return "ios";
+  if (value === "flutter" || value === "dart") return "flutter";
+  if (value === "elasticsearch" || value === "opensearch") return "elasticsearch";
   if (value === "@nestjs/core" || value === "nestjs") return "nestjs";
   if (value.includes("vite")) return "vite";
   if (value.includes("tailwind")) return "tailwind";
@@ -1150,7 +1169,7 @@ function basePlaceholderDirectories(fingerprint = {}) {
   if (tags.has("nextjs") || tags.has("vite") || tags.has("react")) {
     dirs.push({ path: "frontend/", source: null, type: "directory", reason: "frontend placeholder; run approved generate-apps step for real app scaffold" });
   }
-  if (tags.has("laravel") || tags.has("fastapi") || tags.has("django") || tags.has("rails") || tags.has("express") || tags.has("nestjs")) {
+  if (tags.has("laravel") || tags.has("fastapi") || tags.has("django") || tags.has("rails") || tags.has("express") || tags.has("fastify") || tags.has("nestjs")) {
     dirs.push({ path: "backend/", source: null, type: "directory", reason: "backend placeholder; run approved generate-apps step for real app scaffold" });
   }
   return dirs;

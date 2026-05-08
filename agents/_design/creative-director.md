@@ -82,8 +82,8 @@ anti-patterns:
   - asking-multiple-questions-at-once
   - random-regen-instead-of-tradeoff-alternatives
   - brand-name-as-style-authority
-version: 1.2
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -472,6 +472,7 @@ Do NOT skip the design-system approval gate — even for "small" projects. The g
 - `supervibe:prototype` — applies direction to specific screens for trial layouts and stress-testing (only AFTER system approval)
 - `supervibe:confidence-scoring` — brand direction rubric ≥9 before stakeholder presentation
 - `supervibe:mcp-discovery` — locate Figma / scrape MCPs before manual fetches
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context
 

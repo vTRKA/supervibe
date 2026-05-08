@@ -49,6 +49,7 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:design-intelligence'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:chrome-extension-build'
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -69,8 +70,8 @@ anti-patterns:
   - host-page-style-leak
   - asking-multiple-questions-at-once
   - advancing-without-feedback-prompt
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -304,6 +305,8 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 - `supervibe:ui-review-and-polish` — review the produced mockup against the 8-dimension checklist, scoped to extension viewports
 - `supervibe:project-memory` — search prior popup decisions, abandoned side-panel structures, permission-prompt copy
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff to chrome-extension-developer
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:chrome-extension-build` - validate MV3 extension build, manifest, icons, and store-ready packaging.
 
 ## Project Context
 

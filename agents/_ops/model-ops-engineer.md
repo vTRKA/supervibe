@@ -47,8 +47,8 @@ anti-patterns:
   - unbounded-token-cost
   - prompt-version-drift
   - release-without-observability
-version: 1.1
-last-verified: 2026-05-06
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -63,6 +63,14 @@ effectiveness:
 control, rollout strategy, model monitoring, and production AI incident
 response. Balances model quality against latency, cost, privacy, and support
 burden.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:feature-flag-rollout` - stage risky releases with kill switch, cohorts, rollback, and cleanup plan.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

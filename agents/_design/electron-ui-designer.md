@@ -71,8 +71,8 @@ anti-patterns:
   - inconsistent-accelerators
   - asking-multiple-questions-at-once
   - advancing-without-feedback-prompt
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -297,6 +297,7 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 - `supervibe:ui-review-and-polish` — review the produced mockup at desktop viewports
 - `supervibe:project-memory` — search prior window decisions and accelerator conflicts
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context
 

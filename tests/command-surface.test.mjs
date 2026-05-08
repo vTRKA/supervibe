@@ -85,7 +85,9 @@ test("documented npm scripts exist in package.json", async () => {
   const scripts = new Set(Object.keys(pkg.scripts));
   const docs = [
     join(ROOT, "README.md"),
+    join(ROOT, "AGENTS.md"),
     join(ROOT, "CLAUDE.md"),
+    join(ROOT, "GEMINI.md"),
     ...await listFiles(join(ROOT, "docs"), (file) => file.endsWith(".md")),
     ...await listFiles(join(ROOT, "commands"), (file) => file.endsWith(".md")),
     ...await listFiles(join(ROOT, "references", "internal-commands"), (file) => file.endsWith(".md")),
@@ -103,14 +105,52 @@ test("documented npm scripts exist in package.json", async () => {
 });
 
 test("host instruction surfaces keep artifact counts in sync", async () => {
+  const agentCount = (await listFiles(join(ROOT, "agents"), (file) => file.endsWith(".md"))).length;
+  const skillCount = (await readdir(join(ROOT, "skills"), { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory()).length;
   const ruleCount = (await readdir(join(ROOT, "rules"))).filter((file) => file.endsWith(".md")).length;
   const ag = await readFile(join(ROOT, "AGENTS.md"), "utf8");
   const claude = await readFile(join(ROOT, "CLAUDE.md"), "utf8");
   const gemini = await readFile(join(ROOT, "GEMINI.md"), "utf8");
 
+  assert.match(ag, new RegExp(`Agents: ${agentCount} files under`));
+  assert.match(ag, new RegExp(`Skills: ${skillCount} folders under`));
   assert.match(ag, new RegExp(`Rules: ${ruleCount} files under`));
+  assert.match(claude, new RegExp(`agents/\\s+${agentCount} agents`));
+  assert.match(claude, new RegExp(`skills/\\s+${skillCount} process skills`));
   assert.match(claude, new RegExp(`rules/\\s+${ruleCount} project rules`));
+  assert.match(gemini, new RegExp(`${agentCount} specialist agents in`));
+  assert.match(gemini, new RegExp(`${skillCount} process skills in`));
   assert.match(gemini, new RegExp(`${ruleCount} project rules in`));
+});
+
+test("host instruction surfaces document agent and skill coverage gates", async () => {
+  const files = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
+  const required = [
+    "validate:agent-content-quality",
+    "validate:agent-skill-coverage",
+    "validate:agent-empirical-hardening",
+    "validate:agent-tool-use-matrix",
+    "validate:skill-operational-contracts",
+    "validate:skill-content-quality",
+    "supervibe:agent-heatmap",
+  ];
+
+  for (const file of files) {
+    const content = await readFile(join(ROOT, file), "utf8");
+    for (const script of required) {
+      assert.match(content, new RegExp(script.replaceAll(":", ":")), `${file} must mention npm run ${script}`);
+    }
+  }
+});
+
+test("host instruction surfaces document empirical agent gates", async () => {
+  const files = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
+  for (const file of files) {
+    const content = await readFile(join(ROOT, file), "utf8");
+    assert.match(content, /empirical/i, `${file} must describe empirical agent readiness`);
+    assert.match(content, /heatmap/i, `${file} must mention the agent capability heatmap`);
+  }
 });
 
 test("public command docs do not advertise unpublished slash commands", async () => {
@@ -182,6 +222,10 @@ test("loop command documents graph inspection surface", async () => {
   assert.match(content, /import --file/);
   assert.match(content, /--fresh-context --tool codex/);
   assert.match(content, /provider capability matrix/i);
+  assert.match(content, /context-forking/);
+  assert.match(content, /permission-prompt bridge/);
+  assert.match(content, /spawn receipt/);
+  assert.match(content, /allow-spawn requirement/);
   assert.match(content, /--commit-per-task/);
   assert.match(content, /--assigned-task T1/);
   assert.match(content, /--assigned-write-set src\/auth\.ts/);
@@ -240,6 +284,8 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
   assert.match(stdout, /--from-prd \.supervibe\/artifacts\/specs\/example.md/);
   assert.match(stdout, /graph --file/);
   assert.match(stdout, /--fresh-context --tool codex\|claude\|gemini\|opencode/);
+  assert.match(stdout, /--allow-spawn --permission-prompt-bridge/);
+  assert.match(stdout, /--adapter-command <command>/);
   assert.match(stdout, /--provider-matrix/);
   assert.match(stdout, /--happy-path --plan \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(stdout, /--assigned-task T1 --assigned-write-set src\/file\.ts/);

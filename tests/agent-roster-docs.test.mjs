@@ -12,7 +12,7 @@ import {
 test("agent roster exposes every installed agent with a responsibility", async () => {
   const roster = await loadAgentRoster({ rootDir: process.cwd() });
 
-  assert.equal(roster.count, 91);
+  assert.equal(roster.count, 92);
   assert.ok(roster.categories.includes("Core workflow"));
   assert.ok(roster.categories.includes("Stack: react"));
 
@@ -33,7 +33,7 @@ test("agent roster markdown stays in sync with the generated docs page", async (
   const committed = await readFile("docs/agent-roster.md", "utf8");
 
   assert.equal(committed, generated);
-  assert.match(committed, /Total agents: 91/);
+  assert.match(committed, /Total agents: 92/);
   assert.match(committed, /`repo-researcher`/);
   assert.match(committed, /`react-implementer`/);
 });

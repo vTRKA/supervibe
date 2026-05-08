@@ -96,6 +96,7 @@ test("genesis fingerprint detects polyglot web and API stacks", async () => {
         next: "^15.0.0",
         react: "^19.0.0",
         "react-dom": "^19.0.0",
+        fastify: "^5.0.0",
         "@apollo/client": "^3.0.0",
         pg: "^8.0.0",
         redis: "^4.0.0",
@@ -124,7 +125,7 @@ test("genesis fingerprint detects polyglot web and API stacks", async () => {
     ].join("\n"));
 
     const fingerprint = discoverGenesisStackFingerprint({ rootDir });
-    for (const tag of ["nextjs", "react", "python", "django", "fastapi", "postgres", "redis", "graphql"]) {
+    for (const tag of ["nextjs", "react", "python", "django", "fastapi", "fastify", "postgres", "redis", "graphql"]) {
       assert.ok(fingerprint.tags.includes(tag), `missing stack tag: ${tag}`);
     }
 
@@ -134,7 +135,7 @@ test("genesis fingerprint detects polyglot web and API stacks", async () => {
       selectedProfile: "minimal",
       addOns: [],
     });
-    for (const agent of ["nextjs-developer", "django-developer", "fastapi-developer", "postgres-architect", "redis-architect", "graphql-schema-designer"]) {
+    for (const agent of ["nextjs-developer", "django-developer", "fastapi-developer", "fastify-developer", "postgres-architect", "redis-architect", "graphql-schema-designer"]) {
       assert.ok(recommendation.selectedAgents.includes(agent), `missing selected agent: ${agent}`);
     }
     assert.deepEqual(recommendation.missingSpecialists, []);

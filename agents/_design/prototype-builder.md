@@ -42,6 +42,7 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:design-intelligence'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:browser-feedback'
 verification:
   - approved-design-flow-state-before-build
   - all-states-rendered
@@ -74,8 +75,8 @@ anti-patterns:
   - silent-existing-artifact-reuse
   - missing-preview-feedback-button
   - ad-hoc-data-fed-json
-version: 2
-last-verified: 2026-04-28T00:00:00.000Z
+version: 2.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -342,6 +343,9 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 - `supervibe:project-memory` — search prior prototype decisions for similar features
 - `supervibe:confidence-scoring` — prototype rubric ≥9 before handoff
 - `supervibe:preview-server` — spawn http://localhost preview after generating mockup files
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
+- `supervibe:browser-feedback` - route browser feedback into the active prototype or UI repair loop.
 
 ## Project Context
 

@@ -57,8 +57,8 @@ anti-patterns:
   - no-server-engine-choice-rationale
   - runtime-config-leaks-secrets
   - Pinia-stores-not-namespaced
-version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -133,6 +133,9 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver (perf incident, deploy target change, hydration mismatch, SEO regression)
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering recommendation
 - `supervibe:mcp-discovery` — surface context7 for current Nuxt/Nitro docs when API surface is non-trivial or recently changed
+- `supervibe:tdd` - drive implementation from failing test to minimal green code to refactor.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:code-review` - perform structured review before approving implementation decisions.
 
 ## Decision tree
 

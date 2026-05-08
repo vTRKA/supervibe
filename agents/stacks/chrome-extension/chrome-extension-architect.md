@@ -48,6 +48,8 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:chrome-extension-build'
+  - 'supervibe:pre-pr-check'
 verification:
   - manifest-valid-mv3
   - permissions-justified
@@ -73,8 +75,8 @@ anti-patterns:
   - optional-permissions-not-considered
   - host-permissions-without-match-pattern-tightening
   - ignoring-cws-purposes-disclosure
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -155,6 +157,8 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated user-facing capability driver
 - `supervibe:mcp-discovery` — check if context7 has up-to-date Chrome Extensions API docs before relying on training data
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
+- `supervibe:chrome-extension-build` - validate MV3 extension build, manifest, icons, and store-ready packaging.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Decision tree
 

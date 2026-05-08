@@ -29,6 +29,7 @@ skills:
   - 'supervibe:requesting-code-review'
   - 'supervibe:receiving-code-review'
   - 'supervibe:code-search'
+  - 'supervibe:finishing-a-development-branch'
 verification:
   - npm run check
   - git diff --stat
@@ -43,8 +44,8 @@ anti-patterns:
   - severity-inflation
   - ignore-blast-radius
   - blame-author-not-code
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -313,6 +314,7 @@ Do NOT request changes outside diff scope (file follow-up issue instead).
 - `supervibe:requesting-code-review` — used when delegating sub-review to specialist
 - `supervibe:receiving-code-review` — used when responding to user's challenges to findings
 - `supervibe:code-search` — locate callers/callees, sibling tests, prior art, and related rules/specs across the repository before making severity calls
+- `supervibe:finishing-a-development-branch` - wrap up branch integration with safety checks and final evidence.
 
 ## Project Context
 

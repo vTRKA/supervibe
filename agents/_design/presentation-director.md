@@ -56,8 +56,8 @@ anti-patterns:
   - parallel-design-system
   - promising-video-without-capability-check
   - random-regen-instead-of-tradeoff-alternatives
-version: 1
-last-verified: 2026-04-29T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -367,6 +367,16 @@ The handoff packet must include:
 - Visual direction summary: density, grid, typography, color, data-viz, imagery, motion.
 - Design-system decision: reuse, extension pending, or deck-local exception.
 - Export requirements: PPTX only, PPTX + PDF, Google Drive target, speaker notes needed, editable charts needed.
+
+## Skills
+
+- `supervibe:presentation-deck` - build or review storyboard, slide preview, export, and deck handoff.
+- `supervibe:brandbook` - materialize durable brand and design-system direction before UI production.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
 
 ## Project Context
 

@@ -29,6 +29,9 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:test-strategy'
+  - 'supervibe:experiment'
+  - 'supervibe:pre-pr-check'
 verification:
   - before-after-benchmark
   - profiler-output
@@ -43,8 +46,8 @@ anti-patterns:
   - fix-without-measurement
   - single-percentile
   - no-regression-guard
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -241,6 +244,9 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 - `supervibe:code-search` — locate hot paths, existing benchmarks, profiler hooks
 - `supervibe:verification` — capture profiler output and benchmark deltas as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before recommending merge
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:experiment` - define measurable experiment hypotheses, metrics, cohorts, and analysis plans.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

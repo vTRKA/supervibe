@@ -37,7 +37,7 @@ stacks: [<stack> | any]                   # required
 requires-stacks: []                       # required if stack-specific
 optional-stacks: []                       # required (use [] if none)
 tools: [Read, Grep, Glob, Bash, Edit, Write]  # required, scoped to role
-skills: [supervibe:<skill>, ...]             # required (≥1)
+skills: [supervibe:<skill>, ...]             # required (≥4; ≥2 foundational + ≥1 specialist)
 verification: [<command1>, ...]           # required (≥1)
 anti-patterns: [<pattern1>, ...]          # required (≥4)
 version: 1.0
@@ -125,7 +125,10 @@ The hook treats `N/A` as null and skips logging.
 
 Threshold: ≥9 to ship. Do not pad agents to hit a line count. Use
 `npm run validate:agent-content-quality` to prove the agent has the sections and
-evidence hooks that make it useful.
+evidence hooks that make it useful, `npm run validate:agent-skill-coverage`
+to prove the agent has operational skill routing instead of decorative tags, and
+`npm run validate:agent-empirical-hardening` to prove it has generated eval-pack,
+freshness, stack-scenario, Russian-regression, playbook, and heatmap coverage.
 
 ## Tool selection
 
@@ -137,10 +140,18 @@ Principle: smallest tool set that lets agent do its job.
 
 ## Skill attachment
 
-Every agent attaches:
-- `supervibe:confidence-scoring` (mandatory — final score)
-- Domain skill(s) — what it does
-- `supervibe:verification` (recommended — evidence-before-claim)
+Every agent attaches and explains in `## Skills`:
+- At least 4 skills total.
+- At least 2 foundational skills from memory/search/verification/review/confidence/TDD discipline.
+- At least 1 specialist skill that matches the agent's actual job.
+- `supervibe:confidence-scoring` for final score whenever the agent emits a scored artifact.
+- Domain skill(s) for what the agent actually does.
+- `supervibe:verification` for evidence-before-claim.
+
+Every skill under `skills/` must have at least one owning agent in frontmatter.
+Run `npm run validate:agent-skill-coverage` after changing any agent or skill.
+Run `npm run supervibe:agent-heatmap` when you need a per-agent quality score
+instead of a binary pass/fail result.
 
 ## Persona writing tips
 

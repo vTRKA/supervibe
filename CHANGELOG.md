@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.113] - 2026-05-09
+
+### Added
+
+- Added empirical agent hardening: generated per-agent eval packs, capability
+  heatmap scoring, freshness gates, stack-pack scenarios, Russian routing
+  regression corpus, and critical-agent playbooks.
+- Added `validate:agent-empirical-hardening` and `supervibe:agent-heatmap`,
+  both documented on host instruction surfaces and wired into `npm run check`.
+
+### Changed
+
+- Hardened fresh-context loop adapter capability contracts with explicit
+  headless mode, context-forking, permission-prompt bridge, spawn receipt, and
+  allow-spawn requirements.
+- Strengthened stack text detection and Russian command routing coverage for
+  plan/loop/audit/status/design/security workflows.
+
 ## [2.0.112] - 2026-05-09
 
 ### Added

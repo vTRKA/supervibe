@@ -21,7 +21,7 @@ If agent quality is judged only by file existence or persona wording, a weak
 agent can appear mature while missing retrieval, tool-use, verification,
 dialogue, safety, and confidence behavior.
 
-Concrete consequence of not following: a host can load 91 agents, but a fresh
+Concrete consequence of not following: a host can load dozens of agents, but a fresh
 agent still guesses current APIs, skips Code Graph before a rename, asks six
 questions at once, or claims specialist work without receipts.
 
@@ -40,6 +40,11 @@ surface.
 Every agent must keep:
 
 - 15+ year specialist persona in frontmatter and body.
+- Explicit frontmatter skill coverage: at least 4 skills, at least 2
+  foundational skills, at least 1 specialist skill, and a `## Skills`
+  explanation for every declared skill.
+- Skill ownership coverage: every skill under `skills/` must have at least one
+  owning agent.
 - Domain-specific anti-patterns and verification checks.
 - RAG + memory pre-flight when local context can change the answer.
 - CodeGraph caller/callee checks before public-contract, move, rename, delete,
@@ -117,6 +122,8 @@ checklist for new or strengthened agents.
 
 - `npm run validate:frontmatter`
 - `npm run validate:agent-footers`
+- `npm run validate:agent-skill-coverage`
+- `npm run validate:agent-tool-use-matrix`
 - `npm run validate:agent-section-order`
 - `tests/agent-rag-discipline.test.mjs`
 

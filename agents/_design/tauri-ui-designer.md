@@ -71,8 +71,8 @@ anti-patterns:
   - blocking-update-prompt
   - asking-multiple-questions-at-once
   - advancing-without-feedback-prompt
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -299,6 +299,7 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - `supervibe:ui-review-and-polish` — review the produced mockup across three webview engines
 - `supervibe:project-memory` — search prior cross-webview compat findings and bundle decisions
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context
 

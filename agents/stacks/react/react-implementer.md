@@ -38,6 +38,10 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:pre-pr-check'
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -51,8 +55,8 @@ anti-patterns:
   - no-error-boundary
   - context-as-store
   - state-in-ref
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -257,6 +261,10 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 - `supervibe:confidence-scoring` — agent-output rubric, target ≥ 9/10 before handoff
 - `supervibe:project-memory` — search prior decisions and patterns before designing anew
 - `supervibe:code-search` — locate existing similar components, hooks, and call sites before writing
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:ui-review-and-polish` - review implemented UI for layout, hierarchy, responsiveness, states, and copy fit.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

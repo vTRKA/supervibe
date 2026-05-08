@@ -30,6 +30,9 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:verification'
+  - 'supervibe:incident-response'
+  - 'supervibe:pre-pr-check'
+  - 'supervibe:confidence-scoring'
 verification:
   - alerts-traceable-to-runbooks
   - slo-measurable
@@ -44,8 +47,8 @@ anti-patterns:
   - log-without-trace-correlation
   - on-call-without-load-shedding
   - postmortem-without-action-items
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -296,6 +299,9 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 - `supervibe:project-memory` — search prior outages, postmortems, SLO history, capacity decisions
 - `supervibe:code-search` — locate pipeline definitions, alert rules, dashboard JSON, runbook references
 - `supervibe:verification` — runbook dry-run output, deployment rehearsal logs, alert test fires as evidence
+- `supervibe:incident-response` - triage, mitigate, root-cause, and document production incidents.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

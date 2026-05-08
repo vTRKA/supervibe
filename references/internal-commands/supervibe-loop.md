@@ -13,8 +13,9 @@ cancellable, policy-gated, and must not be used as hidden background automation.
 - Execution modes: `--dry-run`, `--guided`, `--manual`, `--fresh-context`.
   Default remains `dry-run`.
 - `--fresh-context --tool codex|claude|gemini|opencode` selects an adapter, but
-  external spawning still requires explicit adapter policy and allow-spawn
-  plumbing. Command docs must not imply hidden unattended execution.
+  external spawning still requires explicit adapter policy, allow-spawn
+  plumbing, permission-prompt bridge, context-forking task packets, and runtime
+  spawn receipts. Command docs must not imply hidden unattended execution.
 - `--provider-matrix` prints the shared host capability matrix. Unsupported
   fresh-context requests for package-only hosts must block readiness and
   degrade to guided/manual mode instead of silently falling back to a different

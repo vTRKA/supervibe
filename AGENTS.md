@@ -18,6 +18,12 @@ npm ci
 npm run supervibe:status
 npm run check
 npm run validate:agent-content-quality
+npm run validate:agent-skill-coverage
+npm run validate:agent-empirical-hardening
+npm run supervibe:agent-heatmap
+npm run validate:agent-section-order
+npm run validate:agent-tool-use-matrix
+npm run validate:skill-operational-contracts
 npm run validate:skill-content-quality
 node --test tests/<name>.test.mjs
 node scripts/build-code-index.mjs --root . --force --health --no-embeddings
@@ -37,6 +43,8 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 - A specialist question proposal receipt is not durable progress. It can unlock a wizard question; it cannot substitute for `direction.md`, tokens, styleboard, prototype, reviewer, or approval receipts.
 - Preserve user-owned sections in host instruction files. Supervibe managed blocks are updated through `scripts/lib/supervibe-context-migrator.mjs`.
 - Use host-neutral wording in shared agents, skills and rules. Do not assume any provider-specific folder, instruction file, or plugin root unless the artifact is explicitly adapter-specific.
+- When adding or changing agents/skills, preserve explicit skill coverage: every agent needs at least 4 skills, at least 2 foundational skills, at least 1 specialist skill, a `## Skills` explanation for each declared skill, and every skill under `skills/` needs at least one owning agent. Run `npm run validate:agent-skill-coverage`.
+- Agent quality is empirical, not pass/fail only: keep generated per-agent eval packs, capability heatmap rows, freshness gates, stack fixtures, Russian routing corpus, and critical-agent playbooks green via `npm run validate:agent-empirical-hardening` and inspect scores with `npm run supervibe:agent-heatmap`.
 - Keep generated project state under `.supervibe/memory/`.
 - Terminal/file I/O is governed by `rules/terminal-file-io.md`, `.editorconfig`, and `.gitattributes`: write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files. Use `Set-Content -Encoding utf8` only when PowerShell writes are unavoidable. Machine-readable approval evidence should use ASCII strings unless preserving exact user text is required.
 - Do not claim completion without a verification command.
@@ -44,8 +52,8 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 ## Agent And Artifact Map
 
-- Agents: 90 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality gate in `scripts/validate-agent-content-quality.mjs`.
-- Skills: 56 folders under `skills/`; content-quality gate in `scripts/validate-skill-content-quality.mjs`.
+- Agents: 92 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality, skill-coverage, empirical-hardening, section-order and tool-use gates in `scripts/validate-agent-content-quality.mjs`, `scripts/validate-agent-skill-coverage.mjs`, `scripts/validate-agent-empirical-hardening.mjs`, `scripts/validate-agent-section-order.mjs`, and `scripts/validate-agent-tool-use-matrix.mjs`.
+- Skills: 56 folders under `skills/`; every skill needs at least one agent owner; operational/content-quality gates in `scripts/validate-skill-operational-contracts.mjs` and `scripts/validate-skill-content-quality.mjs`.
 - Rules: 31 files under `rules/`.
 - Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.

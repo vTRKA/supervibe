@@ -31,6 +31,9 @@ tools:
 skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
 verification:
   - vendor-docs-cited
   - pattern-version-matched
@@ -49,8 +52,8 @@ anti-patterns:
   - scale-mismatch
   - no-cost-context
   - no-failure-mode
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -280,6 +283,10 @@ Do NOT produce: implementation plans (defer to devops-sre with research note as 
 ## Skills
 
 - `supervibe:confidence-scoring` — research-output ≥9
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:verification` - capture concrete command output before claiming complete.
 
 ## Project Context
 

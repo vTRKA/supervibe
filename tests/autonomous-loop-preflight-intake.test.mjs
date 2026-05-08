@@ -18,6 +18,9 @@ test("server deploy request requires full preflight and safe access references",
   assert.equal(preflight.contract_policy.block_readiness_below, 9);
   assert.equal(preflight.execution_policy.mode, "dry-run");
   assert.equal(preflight.execution_policy.default_spawns_external_tools, false);
+  assert.equal(preflight.execution_policy.provider.context_forking, "deterministic-test-packet");
+  assert.equal(preflight.execution_policy.provider.permission_prompt_bridge_required, false);
+  assert.equal(preflight.execution_policy.provider.spawn_receipt_required, false);
   assert.ok(preflight.tool_adapter_summary.available.includes("generic-shell-stub"));
   assert.equal(preflight.approval_lease.environment, "production");
   assert.equal(preflight.run_until, "goal-complete");
@@ -67,7 +70,31 @@ test("preflight degrades unsupported fresh-context providers before execution", 
 
   assert.equal(preflight.provider_capabilities.freshContextAdapter, false);
   assert.equal(preflight.provider_capabilities.recommendedMode, "guided");
+  assert.equal(preflight.execution_policy.provider.context_forking, "manual-guided-only");
+  assert.equal(preflight.execution_policy.provider.permission_prompt_bridge_required, false);
   assert.ok(preflight.missing_data.includes("cursor fresh-context adapter"));
   assert.ok(preflight.blocked_actions.includes("fresh-context execution"));
   assert.equal(preflight.confidence_score, 6);
+});
+
+test("preflight accepts explicit external fresh-context spawn with prompt bridge", () => {
+  const preflight = buildPreflight({
+    request: "finish epic",
+    options: {
+      executionMode: "fresh-context",
+      tool: "codex",
+      allowSpawn: true,
+      permissionPromptBridge: true,
+    },
+  });
+
+  assert.equal(preflight.provider_capabilities.freshContextAdapter, true);
+  assert.equal(preflight.execution_policy.provider.context_forking, "codex-goal-task-packet");
+  assert.equal(preflight.execution_policy.provider.permission_prompt_bridge_required, true);
+  assert.equal(preflight.execution_policy.provider.spawn_receipt_required, true);
+  assert.equal(preflight.execution_policy.provider.external_spawn_requires_allow_spawn, true);
+  assert.equal(preflight.provider_permission_audit.pass, true);
+  assert.equal(preflight.provider_permission_audit.status, "provider_policy_passed");
+  assert.deepEqual(preflight.blocked_actions, []);
+  assert.equal(preflight.confidence_score, 9);
 });

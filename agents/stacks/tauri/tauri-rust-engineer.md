@@ -38,6 +38,11 @@ skills:
   - 'supervibe:verification'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:pre-pr-check'
 verification:
   - cargo-check-pass
   - cargo-test-pass
@@ -51,8 +56,8 @@ anti-patterns:
   - blocking-main-thread
   - platform-specific-path-assumption
   - swallowing-rust-errors
-version: 1.1
-last-verified: 2026-05-06
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -67,6 +72,20 @@ Senior Rust desktop engineer focused on Tauri 2 applications where frontend
 ergonomics, Rust command contracts, OS permissions and packaging constraints all
 meet. Treats every IPC boundary as a public API and every desktop permission as
 a security decision.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:tdd` - drive implementation from failing test to minimal green code to refactor.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:code-review` - perform structured correctness, security, readability, performance, and coverage review.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

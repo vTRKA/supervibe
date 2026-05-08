@@ -223,18 +223,33 @@ Execution modes:
 /supervibe-loop --guided --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --manual --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --commit-per-task --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --provider-matrix
 ```
 
 The provider capability matrix is the single source of truth for loop
 execution across hosts. Claude, Codex, Gemini, and OpenCode currently expose
-fresh-context adapters. Cursor and Copilot are package/docs-supported but
+fresh-context adapters with explicit headless mode, context-forking strategy,
+permission-prompt bridge requirement, spawn receipt requirement, and
+allow-spawn requirement. Cursor and Copilot are package/docs-supported but
 degrade to guided or manual execution until portable fresh-context adapters
 exist. Codex can use native goal workflows when available, Claude can use
 Stop/SubagentStop/TeammateIdle hook continuations, and every host keeps the
 Supervibe state files, receipt gates, quality gates, and stop/resume/status
 commands as the portable baseline.
+
+Fresh-context execution from a provider CLI is opt-in and fail-closed. A true
+headless loop needs all of these at once: a configured provider CLI command
+(`codex`, `claude`, `gemini`, or `opencode`, or `--adapter-command <command>`),
+`--allow-spawn` to approve a visible external adapter process, and
+`--permission-prompt-bridge` so non-interactive execution preserves provider
+permission prompts instead of bypassing them. Each spawned worker must also
+emit runtime workflow receipts for the external adapter and any delegated
+agent/reviewer/validator output. Without those flags the command
+must stop with `external_adapter_spawn_requires_allow_spawn` or
+`permission_prompt_bridge_required` and print a status/resume artifact instead
+of pretending to run autonomously.
 
 ## Contract
 
@@ -318,6 +333,7 @@ Skipped or delegated decisions must be recorded in loop state, side-effect ledge
 ```bash
 npm run supervibe:loop -- --dry-run --request "validate integrations"
 npm run supervibe:loop -- --happy-path --plan .supervibe/artifacts/plans/example.md
+npm run supervibe:loop -- --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --request "validate integrations"
 npm run supervibe:loop -- --dry-run --request "validate integrations" --notify terminal,inbox
 npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
 npm run supervibe:loop -- --create-work-item --title "Fix checkout bug" --template bug --dry-run

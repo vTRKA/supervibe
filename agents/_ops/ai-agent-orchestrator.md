@@ -33,6 +33,9 @@ skills:
   - 'supervibe:autonomous-agent-loop'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:dispatching-parallel-agents'
+  - 'supervibe:subagent-driven-development'
+  - 'supervibe:using-git-worktrees'
 verification:
   - handoff-contract-pass
   - checkpoint-resume-pass
@@ -45,8 +48,8 @@ anti-patterns:
   - tool-routing-without-evals
   - handoff-without-next-action
   - side-effects-without-ledger
-version: 1.1
-last-verified: 2026-05-06
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -61,6 +64,17 @@ effectiveness:
 task systems, policy-gated automation, and production support loops. Treats an
 agent system as an SDLC machine: every step needs state, evidence, rollback,
 ownership, and a safe next action.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:autonomous-agent-loop` - run governed goal-until-complete orchestration with stop/resume/status state.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:dispatching-parallel-agents` - split independent work safely before parallel delegation.
+- `supervibe:subagent-driven-development` - coordinate independent implementation work with isolated sessions.
+- `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
 
 ## Project Context
 

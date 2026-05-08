@@ -34,6 +34,11 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:brainstorming'
   - 'supervibe:writing-plans'
+  - 'supervibe:prd'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:confidence-scoring'
+  - 'supervibe:verification'
+  - 'supervibe:new-feature'
 verification:
   - prd-with-success-metrics
   - prioritization-rationale
@@ -50,8 +55,8 @@ anti-patterns:
   - build-without-research
   - solution-in-search-of-problem
   - opinion-driven-prioritization
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -292,6 +297,11 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns �
 - `supervibe:project-memory` — search prior product decisions, killed features, research findings, baseline metrics
 - `supervibe:brainstorming` — explore solution space before locking PRD scope; pressure-test JTBD framing
 - `supervibe:writing-plans` — translate validated PRD into multi-step implementation plan before handoff
+- `supervibe:prd` - frame product problem, users, solution, success metrics, and out-of-scope decisions.
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
 
 ## Project Context
 

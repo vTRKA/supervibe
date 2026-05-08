@@ -32,6 +32,9 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:requirements-intake'
 verification:
   - openapi-diff
   - graphql-inspector-diff
@@ -47,8 +50,8 @@ anti-patterns:
   - version-bump-without-need
   - undocumented-breaking-change
   - no-changelog
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -257,6 +260,9 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
 - `supervibe:code-search` — locate spec files, consumers of changed endpoints, generated client code
 - `supervibe:verification` — diff outputs and tool exit codes as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before approving a breaking change
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
 
 ## Project Context
 

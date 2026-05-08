@@ -62,8 +62,8 @@ anti-patterns:
   - flaky-tolerance
   - test-coupling
   - coverage-without-meaning
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -283,6 +283,7 @@ Do NOT decide on: performance budgets (collaborate with performance-engineer; QA
 - `supervibe:verification` — test-runner output and coverage reports as evidence
 - `supervibe:code-search` — locate test files, fixtures, factory definitions across stacks
 - `supervibe:project-memory` — search prior flake postmortems, coverage decisions, suite-restructuring history
+- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
 
 ## Project Context
 

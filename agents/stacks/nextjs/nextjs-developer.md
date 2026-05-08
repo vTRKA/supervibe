@@ -36,6 +36,12 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:ui-review-and-polish'
+  - 'supervibe:pre-pr-check'
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -49,8 +55,8 @@ anti-patterns:
   - no-error-boundary
   - oversized-client-bundle
   - blocking-server-action
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -277,6 +283,12 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 - `supervibe:confidence-scoring` — agent-output rubric, target ≥9/10
 - `supervibe:project-memory` — pre-task search of prior decisions, ADRs, incident notes for this surface
 - `supervibe:code-search` — grep-driven discovery of similar patterns, callers, related routes before writing
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:ui-review-and-polish` - review implemented UI for layout, hierarchy, responsiveness, states, and copy fit.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

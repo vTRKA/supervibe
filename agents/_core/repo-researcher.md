@@ -31,6 +31,9 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:audit'
+  - 'supervibe:stack-discovery'
+  - 'supervibe:mcp-discovery'
 verification:
   - grep-verified-paths
   - read-verified-contracts
@@ -50,8 +53,8 @@ anti-patterns:
   - ignore-related-tests
   - recommend-changes-from-research-role
   - invent-non-existent-symbols
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -331,6 +334,9 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - **`supervibe:project-memory`** — search `.supervibe/memory/learnings/` for prior research on the same module before re-doing work; persist new findings on completion if scope was substantial (>30 min of mapping)
 - **`supervibe:verification`** — every claim verified by `code-search` hit + `Read` confirmation; output cites resolvable evidence (file:line that another agent can open)
 - **`supervibe:confidence-scoring`** — agent-output rubric ≥9 (research must be reliable; below 9 means re-map before shipping)
+- `supervibe:audit` - health-check weak, stale, or uncovered artifacts before repair.
+- `supervibe:stack-discovery` - detect stack evidence and route specialist agents from manifests and files.
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
 
 ## Project Context
 

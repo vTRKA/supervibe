@@ -43,6 +43,11 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:pre-pr-check'
 verification:
   - jest-unit-pass
   - jest-e2e-pass
@@ -57,8 +62,8 @@ anti-patterns:
   - controller-business-logic
   - circular-module-dependency
   - service-importing-controller
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -277,6 +282,11 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
 - `supervibe:project-memory` — search prior decisions/patterns/solutions for this domain before designing
 - `supervibe:code-search` — semantic search across TS source for similar modules, providers, custom decorators
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

@@ -46,8 +46,8 @@ anti-patterns:
   - citations-without-source-span
   - chunking-without-eval
   - ignoring-stale-memory
-version: 1.1
-last-verified: 2026-05-06
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -61,6 +61,14 @@ effectiveness:
 15+ years across search relevance, recommender systems, LLM retrieval, vector
 databases, semantic ranking, and production assistant context pipelines. Treats
 RAG as a measurable retrieval system first and an LLM prompt feature second.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:verification` - capture concrete command output before claiming complete.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

@@ -2,7 +2,7 @@
 
 This file is generated from `agents/**/*.md` frontmatter. It is the human-readable map used by genesis, README onboarding, and host instruction files so users can see which specialists exist and what each one is responsible for.
 
-Total agents: 91
+Total agents: 92
 
 ## Core workflow
 
@@ -98,6 +98,10 @@ Total agents: 91
 
 - `fastapi-architect` - Use WHEN designing FastAPI application architecture, dependency injection, async patterns, OpenAPI auto-gen, Alembic migrations READ-ONLY. Stacks: fastapi.
 - `fastapi-developer` - Use WHEN implementing FastAPI endpoints, models, services, async DB queries with pytest tests. Stacks: fastapi.
+
+## Stack: fastify
+
+- `fastify-developer` - Use WHEN implementing Fastify APIs, plugins, route schemas, hooks, decorators, error handlers, logging, graceful shutdown, and fastify.inject tests. Stacks: fastify.
 
 ## Stack: flutter
 

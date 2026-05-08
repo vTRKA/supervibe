@@ -64,8 +64,8 @@ anti-patterns:
   - no-versioning
   - no-cost-budget
   - user-intent-overfit
-version: 1
-last-verified: 2026-04-30T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -470,6 +470,15 @@ For prompt design or hardening:
 - Context budget is measured or bounded.
 - Regression cases are added for any observed failure.
 - Final output includes confidence and remaining risk.
+
+## Skills
+
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:adr` - record non-trivial architecture decisions with alternatives and consequences.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:systematic-debugging` - isolate bugs with hypothesis, evidence, and minimal reproduction discipline.
+- `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 
 ## Project Context
 

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "id": "ru-agent-audit", "request": "Проведи аудит агентов и скилов, найди дыры", "expectedCommand": "/supervibe-audit" },
+    { "id": "ru-strengthen-agents", "request": "Усиль слабые агенты и скилы", "expectedCommand": "/supervibe-strengthen" },
+    { "id": "ru-write-plan", "request": "Составь детальный план реализации", "expectedCommand": "/supervibe-plan" },
+    { "id": "ru-execute-plan", "request": "Выполни утвержденный план", "expectedCommand": "/supervibe-execute-plan" },
+    { "id": "ru-loop", "request": "Запусти автономный loop по задачам", "expectedCommand": "/supervibe-loop" },
+    { "id": "ru-security", "request": "Проверь безопасность и уязвимости", "expectedCommand": "/supervibe-security-audit" },
+    { "id": "ru-status", "request": "Покажи статус Supervibe и индексов", "expectedCommand": "/supervibe-status" },
+    { "id": "ru-doctor", "request": "Проверь host adapter и окружение", "expectedCommand": "/supervibe-doctor" },
+    { "id": "ru-design", "request": "Сделай дизайн интерфейса и прототип", "expectedCommand": "/supervibe-design" }
+  ]
+}

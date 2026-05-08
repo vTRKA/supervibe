@@ -59,6 +59,9 @@ skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:chrome-extension-build'
+  - 'supervibe:test-strategy'
+  - 'supervibe:pre-pr-check'
 verification:
   - tsc-no-errors
   - eslint-clean
@@ -90,8 +93,8 @@ anti-patterns:
   - fetch-from-content-script-where-host-permission-missing
   - eval-or-Function-constructor
   - jquery-or-other-globals-leaking-into-host-page
-version: 1
-last-verified: 2026-04-28T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -396,6 +399,9 @@ Rubric: agent-delivery
 - `supervibe:project-memory` — search prior decisions/patterns/solutions before designing message shapes or storage keys
 - `supervibe:code-search` — semantic + graph search across the extension source for similar handlers, callers, prior storage keys, prior message types
 - `supervibe:mcp-discovery` — pull current Chrome Extensions API docs via context7 before relying on training-cutoff knowledge of `chrome.*` surfaces
+- `supervibe:chrome-extension-build` - validate MV3 extension build, manifest, icons, and store-ready packaging.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

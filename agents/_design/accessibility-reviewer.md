@@ -59,8 +59,8 @@ anti-patterns:
   - no-skip-link
   - color-only-state
   - focus-removed
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -394,6 +394,8 @@ For each audit, the following evidence is required before sign-off:
 - `supervibe:project-memory` — search prior a11y findings, recurring patterns, component history
 - `supervibe:verification` — audit tool outputs, AT recordings, contrast measurements as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before sign-off
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
+- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
 
 ## Project Context
 

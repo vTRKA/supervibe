@@ -8,7 +8,7 @@ description: >-
 
 # /supervibe-test
 
-Advanced plugin-developer entry-point for the plugin's full quality-assurance suite. Wraps `npm run check` (320 tests + 10 validators + knip) with structured output, per-validator status, and the ability to re-run only failing subsets.
+Advanced plugin-developer entry-point for the plugin's full quality-assurance suite. Wraps `npm run check` (validator suite + 1400+ tests + knip) with structured output, per-validator status, and the ability to re-run only failing subsets.
 
 This command exists because `npm run check` is hidden in `package.json` and not always obvious to plugin maintainers. For an application's own test suite, use the project's native test command instead.
 
@@ -56,7 +56,7 @@ Useful before commit: did my change introduce a regression?
 
 ## What `npm run check` covers
 
-Auto-discovered from `package.json` — current composition (320 tests + 10 validators + knip):
+Auto-discovered from `package.json` — current composition (validator suite + 1400+ tests + knip):
 
 | Step | Source | Purpose |
 |---|---|---|
@@ -64,14 +64,18 @@ Auto-discovered from `package.json` — current composition (320 tests + 10 vali
 | 2 | `validate:frontmatter` | Every agent / skill / rule has required fields |
 | 3 | `lint:descriptions` | Trigger-clarity format on skills |
 | 4 | `validate:agent-footers` | Every agent's Output contract has Confidence + Rubric |
-| 5 | `validate:design-skills` | Design skill bodies have feedback prompt + anti-patterns |
-| 6 | `validate:question-discipline` | Interactive agents have dialogue discipline + anti-pattern |
-| 7 | `validate:spec-artifacts` | Specs in `.supervibe/artifacts/specs/` meet the 10/10 requirements artifact contract |
-| 8 | `validate:plan-artifacts` | Plans in `.supervibe/artifacts/plans/` meet the 10/10 execution-readiness contract |
-| 9 | `validate:no-deep-refs` | Reference files stay one level deep |
-| 10 | `validate:agent-section-order` | Agent files keep cache-friendly section ordering |
-| 11 | `lint:dead-code` | knip clean (no orphan exports/files) |
-| 12 | `test` | 320 tests in `tests/*.test.mjs` |
+| 5 | `validate:agent-skill-coverage` | Every agent has foundational + specialist skills, explains them, and every skill has an agent owner |
+| 6 | `validate:agent-empirical-hardening` | Per-agent eval packs, heatmap scores, freshness, stack scenarios, Russian corpus, and critical playbooks |
+| 7 | `validate:agent-tool-use-matrix` | Agents use declared tools through role-appropriate evidence discipline |
+| 8 | `validate:skill-operational-contracts` | Skills have executable operating contracts |
+| 9 | `validate:design-skills` | Design skill bodies have feedback prompt + anti-patterns |
+| 10 | `validate:question-discipline` | Interactive agents have dialogue discipline + anti-pattern |
+| 11 | `validate:spec-artifacts` | Specs in `.supervibe/artifacts/specs/` meet the 10/10 requirements artifact contract |
+| 12 | `validate:plan-artifacts` | Plans in `.supervibe/artifacts/plans/` meet the 10/10 execution-readiness contract |
+| 13 | `validate:no-deep-refs` | Reference files stay one level deep |
+| 14 | `validate:agent-section-order` | Agent files keep cache-friendly section ordering |
+| 15 | `lint:dead-code` | knip clean (no orphan exports/files) |
+| 16 | `test` | 1400+ tests in `tests/*.test.mjs` |
 
 If the user adds new validators (Phase 6 in token-economy plan etc.), this command auto-picks them up via package.json.
 

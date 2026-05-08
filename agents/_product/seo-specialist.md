@@ -39,6 +39,9 @@ skills:
   - 'supervibe:code-search'
   - 'supervibe:verification'
   - 'supervibe:confidence-scoring'
+  - 'supervibe:seo-audit'
+  - 'supervibe:pre-pr-check'
+  - 'supervibe:landing-page'
 verification:
   - googlebot-render-test
   - schema-validator-pass
@@ -54,8 +57,8 @@ anti-patterns:
   - sitemap-stale
   - robots-blocks-indexing
   - cwv-regressions-unmonitored
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -317,6 +320,9 @@ For each audit:
 - `supervibe:code-search` — locate render boundaries, schema emission points, sitemap generators, canonical exports
 - `supervibe:verification` — audit tool outputs (curl, Lighthouse, Rich Results Test) as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before sign-off
+- `supervibe:seo-audit` - verify technical and content SEO for public pages.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:landing-page` - produce or audit marketing page structure, SEO, accessibility, and conversion evidence.
 
 ## Project Context
 

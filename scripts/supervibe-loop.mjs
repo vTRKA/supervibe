@@ -115,6 +115,10 @@ function parseArgs(argv) {
     "accept-goals",
     "reject-goals",
     "fork-checkpoint",
+    "allow-spawn",
+    "permission-prompt-bridge",
+    "network-approved",
+    "mcp-approved",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -763,6 +767,16 @@ async function main() {
     executionMode: deriveExecutionMode(args),
     commitPerTask: Boolean(args["commit-per-task"]),
     adapterId: args.tool,
+    adapterCommand: args["adapter-command"],
+    adapterArgs: parseCsvArg(args["adapter-args"] || args["provider-args"]),
+    adapterConfig: buildAdapterConfig(args),
+    allowSpawn: Boolean(args["allow-spawn"]),
+    permissionPromptBridge: Boolean(args["permission-prompt-bridge"]),
+    networkApproved: Boolean(args["network-approved"]),
+    networkTargets: parseCsvArg(args["network-targets"] || args["network-allowlist"]),
+    mcpApproved: Boolean(args["mcp-approved"]),
+    mcpServers: parseCsvArg(args["mcp-servers"]),
+    mcpToolsAllowed: parseCsvArg(args["mcp-tools"]),
     worktreeSession,
     policyProfile,
     requireUserAcceptance: Boolean(args["require-user-acceptance"]),
@@ -905,6 +919,14 @@ function parseCsvArg(value) {
   return String(value).split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function buildAdapterConfig(args) {
+  const config = {};
+  if (args["adapter-command"]) config.command = args["adapter-command"];
+  const adapterArgs = parseCsvArg(args["adapter-args"] || args["provider-args"]);
+  if (adapterArgs.length > 0) config.args = adapterArgs;
+  return Object.keys(config).length > 0 ? config : undefined;
+}
+
 function createScopedWorktreeBranchName(epicId, options = {}) {
   const epicSlug = String(epicId).replace(/[^A-Za-z0-9_-]+/g, "-");
   const scope = options.sessionId || options.assignedTaskIds?.[0] || options.assignedWaveId || "";
@@ -988,6 +1010,8 @@ Execution modes:
   --guided
   --manual
   --fresh-context --tool codex|claude|gemini|opencode
+  --fresh-context --tool codex|claude|gemini|opencode --allow-spawn --permission-prompt-bridge
+  --adapter-command <command> [--adapter-args arg1,arg2]
   --provider-matrix
   --require-user-acceptance
   --accept-goals | --reject-goals --file <state.json>

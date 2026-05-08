@@ -51,8 +51,8 @@ anti-patterns:
   - jargon
   - lorem-ipsum-in-prod
   - brand-voice-violations
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -270,6 +270,7 @@ Do NOT decide on: pricing/plan-name strategy (defer to product-manager + marketi
 - `supervibe:project-memory` — search prior copy decisions, voice-doc revisions, A/B test winners
 - `supervibe:adapt` — adjust voice register based on detected product surface (marketing vs. settings vs. error)
 - `supervibe:confidence-scoring` — voice consistency in agent-output rubric ≥9
+- `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context
 

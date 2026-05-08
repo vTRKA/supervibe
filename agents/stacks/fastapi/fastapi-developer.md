@@ -39,6 +39,11 @@ skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:requirements-intake'
+  - 'supervibe:test-strategy'
+  - 'supervibe:error-envelope-design'
+  - 'supervibe:auth-flow-design'
+  - 'supervibe:pre-pr-check'
 verification:
   - pytest-pass
   - ruff-clean
@@ -53,8 +58,8 @@ anti-patterns:
   - no-dependency-injection
   - blocking-io-in-event-loop
   - no-pagination
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -262,6 +267,11 @@ Do NOT decide on: security trade-offs touching auth/secrets/data exposure (defer
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before handoff
 - `supervibe:project-memory` — search prior decisions/patterns for this domain
 - `supervibe:code-search` — locate existing routes, schemas, services, callers via the Supervibe code-search index
+- `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
+- `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
+- `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
+- `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
 ## Project Context
 

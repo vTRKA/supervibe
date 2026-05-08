@@ -30,6 +30,9 @@ tools:
 skills:
   - 'supervibe:confidence-scoring'
   - 'supervibe:mcp-discovery'
+  - 'supervibe:project-memory'
+  - 'supervibe:code-search'
+  - 'supervibe:verification'
 verification:
   - registry-snapshot
   - version-comparison
@@ -50,8 +53,8 @@ anti-patterns:
   - vendor-lock-warning-ignored
   - no-comparison-baseline
   - no-supply-chain-signal-check
-version: 1.1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -286,6 +289,10 @@ Do NOT run: dependency installation, build, or tests (defer to relevant operator
 ## Skills
 
 - `supervibe:confidence-scoring` — research-output rubric ≥9 required for any RECOMMEND verdict
+- `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
+- `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
+- `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:verification` - capture concrete command output before claiming complete.
 
 ## Project Context
 
