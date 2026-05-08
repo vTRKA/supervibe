@@ -4,6 +4,7 @@ description: >-
   session, or separate worktree TO perform provider-safe policy preflight,
   goal-bounded execution, status, resume, stop, side-effect ledger, and cleanup
   gates. Triggers: 'loop', 'epic', 'worktree', 'goal-complete', 'эпик'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-loop

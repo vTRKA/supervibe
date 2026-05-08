@@ -969,5 +969,120 @@
         "maxTokens": 1400
       }
     }
+  },
+  {
+    "id": "workflow-chain-maturity-audit",
+    "request": "audit /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop maturity out of 10",
+    "expected": {
+      "intent": "workflow_chain_audit",
+      "command": "/supervibe-audit --workflow-chain",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#workflow-chain-maturity-audit",
+          "scripts/lib/supervibe-command-catalog.mjs#workflow-chain-audit",
+          "scripts/lib/supervibe-trigger-router.mjs#workflow_chain_audit"
+        ],
+        "graphSymbols": [
+          "resolveCommandRequest",
+          "routeTriggerRequest"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#workflow-chain-maturity-audit",
+          "scripts/lib/supervibe-command-catalog.mjs#workflow-chain-audit",
+          "scripts/lib/supervibe-trigger-router.mjs#workflow_chain_audit"
+        ],
+        "graphSymbols": [
+          "resolveCommandRequest",
+          "routeTriggerRequest"
+        ],
+        "estimatedTokens": 860,
+        "citations": [
+          {
+            "id": "workflow-chain-audit-route",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-command-catalog.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "workflow-chain-route",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1400
+      }
+    }
+  },
+  {
+    "id": "multi-plugin-host-instruction-coexistence",
+    "request": "run host instruction migration in a project where multiple plugins share AGENTS.md and preserve other managed blocks",
+    "expected": {
+      "intent": "genesis_setup",
+      "command": "/supervibe-genesis",
+      "requiresDryRun": true,
+      "requiresPostDeliveryMenu": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#host-instruction-coexistence",
+          "scripts/lib/supervibe-context-migrator.mjs#planContextMigration",
+          "scripts/lib/supervibe-context-migrator.mjs#parseInstructionDocument"
+        ],
+        "graphSymbols": [
+          "planContextMigration",
+          "parseInstructionDocument"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-coverage"
+        ],
+        "sourceChunkIds": [
+          "docs/references/agent-system-coverage-matrix.md#host-instruction-coexistence",
+          "scripts/lib/supervibe-context-migrator.mjs#planContextMigration",
+          "scripts/lib/supervibe-context-migrator.mjs#parseInstructionDocument"
+        ],
+        "graphSymbols": [
+          "planContextMigration",
+          "parseInstructionDocument"
+        ],
+        "estimatedTokens": 820,
+        "citations": [
+          {
+            "id": "context-migrator-coexistence",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-context-migrator.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "external-managed-block-preserved",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
+    }
   }
 ]

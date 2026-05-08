@@ -1,5 +1,6 @@
 ---
 description: "Sync project-level host artifacts to upstream plugin changes or user-requested project-fit changes for agents, rules, and skills. Diff-driven, user-gated."
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-adapt

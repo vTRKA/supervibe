@@ -7,6 +7,7 @@ description: >-
   Supervibe workflow command without mutating first. Triggers: 'what next',
   'brainstorm', 'plan', 'review', 'security audit', 'брейншторм', 'план',
   'ревью', 'эпик', 'уязвимости'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe

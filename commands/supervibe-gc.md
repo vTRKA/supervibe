@@ -4,6 +4,7 @@ description: >-
   memory, low-confidence old learnings, stale receipt archives, runtime logs, or
   .supervibe clutter TO run the reversible Supervibe garbage-collection preview
   or apply flow.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-gc

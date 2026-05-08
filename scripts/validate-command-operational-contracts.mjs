@@ -17,6 +17,10 @@ const REQUIRED_SECTIONS = Object.freeze([
     pattern: /^---\s*[\s\S]*?\ndescription\s*:/im,
   },
   {
+    code: "last-verified-frontmatter",
+    pattern: /^---\s*[\s\S]*?\nlast-verified\s*:\s*(?:"[^"]+"|'[^']+'|\d{4}-\d{2}-\d{2})/im,
+  },
+  {
     code: "invocation",
     pattern: /^##\s+(Invocation|Invocation forms|Usage|Local CLI)\b/im,
   },

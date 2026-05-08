@@ -28,5 +28,8 @@ test("maturity dashboard summarizes coverage, source truth, visual, readiness an
   assert.match(formatted, /RAW_TASK_PREVENTION: pass/);
   assert.match(formatted, /UPDATE_SELF_HEAL: pass/);
   assert.match(formatted, /ROUTE_COVERAGE: pass/);
+  assert.match(formatted, /WORKFLOW_CHAIN_AUDIT: pass/);
+  assert.match(formatted, /HOST_INSTRUCTION_COEXISTENCE: pass/);
+  assert.match(formatted, /COMMAND_FRESHNESS: pass/);
   assert.match(formatted, /VERSION: \d+\.\d+\.\d+/);
 });

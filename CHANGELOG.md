@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.108] - 2026-05-08
+
+### Added
+
+- Added workflow-chain maturity audit routing through `/supervibe-audit --workflow-chain`
+  for `/supervibe-brainstorm`, `/supervibe-plan`, `/supervibe-execute-plan`, and
+  `/supervibe-loop`.
+- Added maturity dashboard checks for workflow-chain audits, command freshness,
+  and multi-plugin host instruction coexistence.
+
+### Changed
+
+- Command docs now require `last-verified` frontmatter through the command
+  operational contract.
+- Brainstorm command and skill handoffs now consistently use the
+  `YYYY-MM-DD-topic-slug-brainstorm.md` artifact shape and
+  `/supervibe-plan --from-brainstorm`.
+
+### Fixed
+
+- Context migration dry-runs now report preserved third-party managed blocks and
+  other Supervibe adapter blocks, so shared files such as `AGENTS.md` remain
+  append-only outside the target Supervibe managed block.
+
 ## [2.0.107] - 2026-05-08
 
 ### Added

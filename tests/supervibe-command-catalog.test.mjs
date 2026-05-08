@@ -173,6 +173,7 @@ test("command catalog routes Russian plugin and agent-system audit requests", ()
     "сделай аудит плагина",
     "хочу 10 из 10 аудит агентской системы",
     "audit agent system maturity",
+    "rate agent system maturity out of 10",
   ]) {
     const match = resolveCommandRequest(request, {
       pluginRoot: ROOT,
@@ -183,6 +184,25 @@ test("command catalog routes Russian plugin and agent-system audit requests", ()
     assert.equal(match.intent, "supervibe_audit", request);
     assert.equal(match.doNotSearchProject, true, request);
     assert.match(formatCommandMatch(match), /AGENT_STAGE_GATE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-agent-maturity\.mjs|AGENT_PLAN_COMMAND:/, request);
+  }
+});
+
+test("command catalog routes workflow-chain maturity audits before explicit slash preemption", () => {
+  for (const request of [
+    "audit /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop maturity",
+    "rate the brainstorm plan execute loop maturity out of 10",
+    "проверь насколько прокачана цепочка /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop",
+  ]) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.command, "/supervibe-audit --workflow-chain", request);
+    assert.equal(match.intent, "workflow_chain_audit", request);
+    assert.equal(match.doNotSearchProject, true, request);
+    assert.equal(match.commandId, "/supervibe-audit", request);
+    assert.equal(match.commandArgs, "--workflow-chain", request);
   }
 });
 

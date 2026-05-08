@@ -5,6 +5,7 @@ description: >-
   should be updated. Supports auto-detect, batch, dry-run, and override flow.
   Triggers: 'оцени', 'score', 'evaluate confidence', 'gap analysis',
   '/supervibe-score'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-score

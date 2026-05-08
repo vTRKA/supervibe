@@ -1,5 +1,6 @@
 ---
 description: "Bootstrap a host-aware Supervibe scaffold from a stack-pack matched to the detected project stack. Invokes the supervibe:genesis skill end-to-end."
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-genesis

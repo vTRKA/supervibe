@@ -93,11 +93,16 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
       "сделай аудит плагина",
       "проверь зрелость агентской системы",
       "audit agent system maturity",
+      "rate agent system maturity out of 10",
+      "score agent system maturity",
+      "оцени систему агентов на 10 из 10",
+      "насколько зрелая агентская система",
+      "на сколько зрелая агентская система",
       "run plugin audit",
     ],
     keywordGroups: [
-      ["audit", "check", "review", "проверь", "проведи", "сделай", "аудит"],
-      ["project", "health", "plugin", "agent system", "agents", "maturity", "качество", "проект", "здоровье", "плагин", "агент", "агенты", "агентской системы", "зрелость"],
+      ["audit", "check", "review", "rate", "score", "assess", "проверь", "проведи", "сделай", "оцени", "насколько", "на сколько", "аудит"],
+      ["project", "health", "plugin", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "плагин", "агент", "агенты", "агентской системы", "зрелость", "зрелая"],
     ],
   },
   {
@@ -321,6 +326,30 @@ const COMMAND_SHORTCUTS = Object.freeze([
     nextAction: "Run status first when the user asked to inspect rather than start indexing.",
   },
   {
+    id: "workflow-chain-audit",
+    intent: "workflow_chain_audit",
+    title: "Audit end-to-end Supervibe workflow maturity",
+    command: "/supervibe-audit --workflow-chain",
+    description: "Route maturity, 10/10, and pitfall-review requests for brainstorm, plan, execute-plan, and loop as one read-only workflow audit.",
+    aliases: [
+      "rate the brainstorm plan execute loop maturity out of 10",
+      "audit brainstorm plan execute loop maturity",
+      "audit supervibe workflow chain maturity",
+      "проверь насколько прокачана цепочка brainstorm plan execute loop",
+      "оцени цепочку brainstorm plan execute loop на 10 из 10",
+    ],
+    keywordGroups: [
+      ["audit", "check", "review", "rate", "score", "maturity", "10 out of 10", "out of 10", "проверь", "оцени", "насколько", "на сколько", "прокач", "зрел"],
+      ["brainstorm", "plan", "execute", "execute-plan", "loop", "/supervibe-brainstorm", "/supervibe-plan", "/supervibe-execute-plan", "/supervibe-loop", "цепочка", "workflow", "chain"],
+    ],
+    requiredGroupIndexes: [0, 1],
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-audit"),
+    mutationRisk: "none",
+    directRoute: true,
+    nextAction: "Run /supervibe-audit --workflow-chain as a read-only end-to-end maturity audit before proposing strengthen/adapt work.",
+  },
+  {
     id: "agent-provisioning",
     intent: "agent_provisioning",
     title: "Provision Supervibe agents and skills into the active host",
@@ -405,6 +434,41 @@ export function resolveCommandRequest(request, {
   const slashCommands = readSlashCommands(pluginRoot);
   const projectScripts = readNpmScripts(projectRoot, "project");
   const pluginScripts = readNpmScripts(pluginRoot, "plugin");
+  const workflowChainAudit = findWorkflowChainAuditShortcut(request, { shortcuts });
+  if (workflowChainAudit) {
+    const slashCommand = slashCommands.find((entry) => entry.id === "/supervibe-audit");
+    if (!slashCommand) {
+      return {
+        id: "missing-slash-command:supervibe-audit",
+        intent: "missing_slash_command",
+        title: "Slash command /supervibe-audit",
+        command: null,
+        commandId: "/supervibe-audit",
+        commandArgs: "--workflow-chain",
+        commandContext: String(request || "").trim(),
+        confidence: 1,
+        reason: "workflow-chain audit was requested, but /supervibe-audit is not published",
+        requestedCommand: "/supervibe-audit --workflow-chain",
+        slashCommandStatus: "missing",
+        doNotSearchProject: true,
+        hardStop: true,
+        agentContract: copyCommandAgentContract(),
+        agentProfile: getCommandAgentProfile("/supervibe-audit"),
+        directRoute: false,
+        mutationRisk: "none",
+        nextAction: "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
+      };
+    }
+    return {
+      ...workflowChainAudit,
+      commandId: "/supervibe-audit",
+      commandArgs: "--workflow-chain",
+      commandContext: String(request || "").trim(),
+      requestedCommand: "/supervibe-audit --workflow-chain",
+      slashCommandStatus: "present",
+      agentProfile: getCommandAgentProfile("/supervibe-audit"),
+    };
+  }
   const explicitSlash = parseExplicitSupervibeCommand(request);
 
   if (explicitSlash) {
@@ -711,6 +775,63 @@ function enrichMatch(shortcut, fields = {}) {
     doNotSearchProject: true,
     ...fields,
   };
+}
+
+function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS } = {}) {
+  const text = normalizeText(request);
+  if (!text) return null;
+  const chainShortcut = shortcuts.find((shortcut) => shortcut.id === "workflow-chain-audit");
+  if (!chainShortcut) return null;
+
+  const explicitWorkflowCommands = [
+    "/supervibe-brainstorm",
+    "/supervibe-plan",
+    "/supervibe-execute-plan",
+    "/supervibe-loop",
+  ].filter((command) => includesPhrase(text, command));
+  const namedWorkflowTerms = [
+    "brainstorm",
+    "plan",
+    "execute",
+    "execute plan",
+    "execute-plan",
+    "loop",
+    "workflow chain",
+    "цепочка",
+  ].filter((term) => includesPhrase(text, term));
+  const hasWorkflowChain = explicitWorkflowCommands.length >= 2 || namedWorkflowTerms.length >= 3;
+  const hasAuditOrMaturity = [
+    "audit",
+    "check",
+    "review",
+    "rate",
+    "score",
+    "maturity",
+    "10 out of 10",
+    "out of 10",
+    "best practices",
+    "pitfall",
+    "feature bloat",
+    "аудит",
+    "проверь",
+    "оцени",
+    "насколько",
+    "на сколько",
+    "прокач",
+    "зрел",
+    "10 из 10",
+    "подводные камни",
+    "переизбыток фич",
+  ].some((term) => includesPhrase(text, term));
+  if (!hasWorkflowChain || !hasAuditOrMaturity) return null;
+
+  return enrichMatch(copyShortcut(chainShortcut), {
+    confidence: explicitWorkflowCommands.length >= 2 ? 0.98 : 0.94,
+    reason: explicitWorkflowCommands.length >= 2
+      ? `workflow-chain audit phrase with commands: ${explicitWorkflowCommands.join(", ")}`
+      : `workflow-chain audit phrase with terms: ${namedWorkflowTerms.join(", ")}`,
+    matchedGroups: [hasAuditOrMaturity ? "audit-or-maturity" : "", hasWorkflowChain ? "workflow-chain" : ""].filter(Boolean),
+  });
 }
 
 function copyAgentProfile(profile) {

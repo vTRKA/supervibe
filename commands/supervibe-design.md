@@ -4,6 +4,7 @@ description: >-
   design-system → spec → native HTML/CSS/JS prototype → live preview → review
   → feedback loop → approval → ready-for-development handoff. Pure native,
   two viewports default (375 + 1440), one question at a time.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-design

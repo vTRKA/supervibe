@@ -5,6 +5,7 @@ description: >-
   Detects: avg-confidence <8.5 over last 10, override-rate ≥40% delta over 50/50
   split, repeated stale-context (≥2/10 invocations). Triggers: 'strengthen
   agent', 'усиль агента', '/supervibe-strengthen'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-strengthen

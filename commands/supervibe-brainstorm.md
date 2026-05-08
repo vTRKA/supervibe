@@ -4,6 +4,7 @@ description: >-
   approved brainstorm TO produce an approved spec and hand off with "Next:
   /supervibe-plan" instead of stopping. Triggers: 'brainstorm', 'next plan',
   'брейншторм', 'я сделал брейншторм', 'план'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-brainstorm
@@ -55,7 +56,7 @@ Treat the most recent user message as the topic.
    - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
-4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-design.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
+4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
 
 5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
@@ -85,7 +86,7 @@ Treat the most recent user message as the topic.
 ```
 === Supervibe Brainstorm ===
 Topic:     <one-line summary>
-Spec:      .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Spec:      .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Lines:     <count>
 Approaches: <count>  (chosen: <name>)
 Score:     <N>/10  Rubric: requirements
@@ -96,7 +97,7 @@ Evidence plan: memory/RAG/CodeGraph commands and citations present
 Visual explanation: diagram/table choice with accessible fallback present
 10/10 scorecard: present
 
-Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
 ```
 

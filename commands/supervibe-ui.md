@@ -3,6 +3,7 @@ description: >-
   Use WHEN the user wants to see or manage epics, work items, phases, loop
   state, context packs, blockers, GC previews, or local task actions visually
   TO launch the local Supervibe UI control plane.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-ui

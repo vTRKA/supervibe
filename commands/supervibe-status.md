@@ -4,6 +4,7 @@ description: >-
   tracker visibility, dashboard output, external integration readiness, saved
   views, structured queries, interactive status palette, or local work reports
   or eval reports TO show a read-only project status report.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-status

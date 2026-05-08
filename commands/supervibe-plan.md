@@ -4,6 +4,7 @@ description: >-
   require review loop, then atomic task split and epic handoff before execution.
   Triggers: 'plan', 'review plan', 'atomize', 'сделал план', 'план', 'ревью',
   'эпик'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-plan

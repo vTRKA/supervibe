@@ -1,5 +1,6 @@
 ---
 description: "Manage local preview servers for HTML/CSS/JS mockups (start / list / kill). Use after generating mockup files to view them at http://localhost:PORT with auto-reload."
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-preview

@@ -1,5 +1,6 @@
 ---
 description: "Create and iterate presentation decks with Supervibe designers: brief -> storyboard -> HTML slide preview -> feedback -> approved PPTX -> Google Drive handoff."
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-presentation

@@ -9,7 +9,9 @@ export function parseInstructionDocument(content = "") {
   const headings = [];
   const imports = [];
   const managedBlocks = [];
+  const externalManagedBlocks = [];
   let activeBlock = null;
+  let activeExternalBlock = null;
 
   lines.forEach((line, index) => {
     const heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
@@ -34,9 +36,28 @@ export function parseInstructionDocument(content = "") {
       });
       activeBlock = null;
     }
+    const externalBegin = line.match(/<!--\s*([A-Za-z0-9_-]+):BEGIN\s+managed-context(?:\s+([A-Za-z0-9_-]+))?\s*-->/i);
+    if (externalBegin && externalBegin[1].toUpperCase() !== "SUPERVIBE") {
+      activeExternalBlock = {
+        owner: externalBegin[1],
+        contextId: externalBegin[2] || null,
+        startLine: index + 1,
+        startIndex: index,
+      };
+    }
+    const externalEnd = line.match(/<!--\s*([A-Za-z0-9_-]+):END\s+managed-context(?:\s+([A-Za-z0-9_-]+))?\s*-->/i);
+    if (externalEnd && activeExternalBlock && externalEnd[1] === activeExternalBlock.owner) {
+      externalManagedBlocks.push({
+        ...activeExternalBlock,
+        endLine: index + 1,
+        endIndex: index,
+        content: lines.slice(activeExternalBlock.startIndex + 1, index).join("\n"),
+      });
+      activeExternalBlock = null;
+    }
   });
 
-  return { headings, imports, managedBlocks };
+  return { headings, imports, managedBlocks, externalManagedBlocks };
 }
 
 export function applyManagedContextBlock({ adapterId, currentContent = "", generatedContent = "" } = {}) {
@@ -57,6 +78,11 @@ export function planContextMigration({
   const migration = buildMigrationContent({ adapterId, currentContent: content, generatedContent });
   const parsed = parseInstructionDocument(content);
   const afterParsed = parseInstructionDocument(migration.afterContent);
+  const externalOwners = [...new Set(parsed.externalManagedBlocks.map((block) => block.owner))].sort();
+  const otherSupervibeBlocks = parsed.managedBlocks
+    .filter((block) => block.adapterId !== adapterId)
+    .map((block) => block.adapterId)
+    .sort();
 
   return {
     dryRun: true,
@@ -72,6 +98,16 @@ export function planContextMigration({
     operations: [
       { type: migration.replaced ? "replace-managed-block" : "append-managed-block", adapterId, path: targetPath },
       { type: "preserve-user-sections", headings: parsed.headings.map((heading) => heading.text) },
+      ...(externalOwners.length > 0 ? [{
+        type: "preserve-external-managed-blocks",
+        count: parsed.externalManagedBlocks.length,
+        owners: externalOwners,
+      }] : []),
+      ...(otherSupervibeBlocks.length > 0 ? [{
+        type: "preserve-other-supervibe-managed-blocks",
+        count: otherSupervibeBlocks.length,
+        adapterIds: otherSupervibeBlocks,
+      }] : []),
     ],
   };
 }

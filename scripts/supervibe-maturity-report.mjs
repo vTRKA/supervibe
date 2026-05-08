@@ -16,6 +16,8 @@ const REQUIRED_SCENARIOS = Object.freeze([
   "raw-task-prevention",
   "regulated-domain-evidence",
   "plugin-update-local-drift",
+  "workflow-chain-maturity-audit",
+  "multi-plugin-host-instruction-coexistence",
 ]);
 
 export async function buildMaturityDashboard({
@@ -35,6 +37,10 @@ export async function buildMaturityDashboard({
   const updateSh = readText(join(root, "update.sh"));
   const updatePs1 = readText(join(root, "update.ps1"));
   const router = readText(join(root, "scripts", "lib", "supervibe-trigger-router.mjs"));
+  const catalog = readText(join(root, "scripts", "lib", "supervibe-command-catalog.mjs"));
+  const migrator = readText(join(root, "scripts", "lib", "supervibe-context-migrator.mjs"));
+  const commandValidator = readText(join(root, "scripts", "validate-command-operational-contracts.mjs"));
+  const commandDocs = readCommandDocs(join(root, "commands"));
 
   const missingScenarios = REQUIRED_SCENARIOS.filter((id) => !scenarioIds.has(id));
   const sourceOfTruth = /Tier 1 sources are authoritative/.test(matrix)
@@ -59,7 +65,23 @@ export async function buildMaturityDashboard({
     "visual_explanation",
     "task_readiness_intake",
     "plugin_update_repair",
+    "workflow_chain_audit",
   ].every((intent) => router.includes(intent));
+  const workflowChainAudit = /Workflow-chain maturity audit/.test(matrix)
+    && scenarioIds.has("workflow-chain-maturity-audit")
+    && /workflow-chain-audit/.test(catalog)
+    && /workflow_chain_audit/.test(router)
+    && /\/supervibe-audit --workflow-chain/.test(catalog)
+    && /\/supervibe-audit --workflow-chain/.test(router);
+  const hostInstructionCoexistence = /Host Instruction Coexistence/.test(matrix)
+    && scenarioIds.has("multi-plugin-host-instruction-coexistence")
+    && /externalManagedBlocks/.test(migrator)
+    && /preserve-external-managed-blocks/.test(migrator)
+    && /preserve-other-supervibe-managed-blocks/.test(migrator);
+  const freshCommandDocs = commandDocs.filter((doc) => /^---\s*[\s\S]*?\nlast-verified\s*:/im.test(doc.text));
+  const commandFreshness = commandDocs.length > 0
+    && freshCommandDocs.length === commandDocs.length
+    && /last-verified-frontmatter/.test(commandValidator);
 
   const checks = [
     { id: "agent-system-maturity", pass: agentReport.pass === true, evidence: `${agentReport.score || 0}/${agentReport.maxScore || 10}` },
@@ -69,6 +91,9 @@ export async function buildMaturityDashboard({
     { id: "raw-task-prevention", pass: rawTaskPrevention, evidence: rawTaskPrevention ? "readiness 9/10 gate present" : "readiness gate incomplete" },
     { id: "update-self-heal", pass: updateSelfHeal, evidence: updateSelfHeal ? "managed checkout tracked drift restore wired" : "tracked drift restore incomplete" },
     { id: "route-coverage", pass: routeCoverage, evidence: routeCoverage ? "new audit/research/visual/update intents routed" : "route intents missing" },
+    { id: "workflow-chain-audit", pass: workflowChainAudit, evidence: workflowChainAudit ? "workflow chain audit route, matrix row, and scenario present" : "workflow chain audit coverage incomplete" },
+    { id: "host-instruction-coexistence", pass: hostInstructionCoexistence, evidence: hostInstructionCoexistence ? "external and other adapter managed blocks preserved" : "host instruction coexistence incomplete" },
+    { id: "command-freshness", pass: commandFreshness, evidence: commandFreshness ? `${freshCommandDocs.length}/${commandDocs.length} command docs last-verified` : `${freshCommandDocs.length}/${commandDocs.length} command docs last-verified` },
   ];
 
   return {
@@ -122,6 +147,16 @@ function readJson(path, fallback = {}) {
 
 function countMarkdownFiles(dir) {
   return countFiles(dir, /\.md$/);
+}
+
+function readCommandDocs(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => {
+      const path = join(dir, entry.name);
+      return { file: entry.name, text: readText(path) };
+    });
 }
 
 function countDirectories(dir) {

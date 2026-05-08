@@ -4,6 +4,7 @@ description: >-
   are ready TO execute the plan with explicit readiness and completion gates.
   Triggers: 'execute plan', 'сделай по плану', 'review passed', 'atomic tasks
   ready', 'epic ready', '/supervibe-execute-plan'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-execute-plan

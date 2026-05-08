@@ -84,9 +84,9 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
 8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
-9. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
+9. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
 10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
-11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. Fix every reported gap before scoring.
+11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
 13. **User review of written spec** — explicit approval required.
 14. **Handoff** to `supervibe:writing-plans`.
@@ -102,13 +102,13 @@ Every brainstorm artifact must include:
 
 ## Output contract
 
-Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md` with confidence score ≥9 and explicit user approval recorded in conversation.
+Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with confidence score ≥9 and explicit user approval recorded in conversation.
 
 After saving the spec, ALWAYS print a one-line hand-off so the user knows the next command:
 
 ```
-Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
-Next: /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
+Next: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Step 1/1: write the plan?
 ```
 
@@ -117,9 +117,9 @@ Also include the machine-readable handoff block:
 ```text
 NEXT_STEP_HANDOFF
 Current phase: brainstorm
-Artifact: .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Artifact: .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Next phase: plan
-Next command: /supervibe-plan .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-design.md
+Next command: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-plan
 Why: Brainstorm output must become a reviewed implementation plan before execution.

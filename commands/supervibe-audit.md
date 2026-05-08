@@ -1,5 +1,6 @@
 ---
 description: "Health-check across project's agents, rules, memory entries, indexes, design-intelligence evidence, and host instruction routing — surfaces stale artifacts and inconsistencies."
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-audit
@@ -8,11 +9,14 @@ Run a full plugin + project health check. No writes — only reports.
 
 Design audit mode uses the same command surface: `/supervibe-audit --design`. It reads design artifacts and reports missing memory preflight, missing design intelligence citations, token drift, brand/collateral asset drift, slide/deck quality gaps, chart accessibility gaps, and UI polish regressions.
 
+Workflow-chain audit mode uses `/supervibe-audit --workflow-chain`. It is read-only and evaluates `/supervibe-brainstorm`, `/supervibe-plan`, `/supervibe-execute-plan`, and `/supervibe-loop` as one idea-to-completion system: user-case coverage, agent handoffs, scope-bloat protection, pitfall review, validation gates, receipts, and end-to-end goal completion.
+
 ## Invocation
 
 ```bash
 /supervibe-audit
 /supervibe-audit --design
+/supervibe-audit --workflow-chain
 /supervibe-audit --json
 ```
 
@@ -42,7 +46,9 @@ Design audit mode uses the same command surface: `/supervibe-audit --design`. It
 
 10. **Design intelligence audit.** If design artifacts are in scope, verify that the agent output includes `Design Intelligence Evidence`, memory/code preflight, token compliance, brand asset audit, and the precedence hierarchy `approved design system > project memory > codebase patterns > accessibility law > external lookup`.
 
-11. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/supervibe-strengthen`, `/supervibe-adapt`, or "looks good").
+11. **Workflow-chain maturity audit.** If `--workflow-chain` is present, inspect command docs, skill handoffs, trigger routing, scenario fixtures, maturity dashboard checks, and receipt gates for `/supervibe-brainstorm -> /supervibe-plan -> /supervibe-execute-plan -> /supervibe-loop`. Report missing user cases, template drift, agent handoff gaps, validation gaps, excessive feature expansion risk, and unverified completion claims.
+
+12. **Summarize.** Print a one-page report grouped by severity (CRITICAL / WARN / INFO). End with the recommended next command (`/supervibe-strengthen`, `/supervibe-adapt`, `/supervibe-plan --intake`, or "looks good").
 
 ## Output contract
 

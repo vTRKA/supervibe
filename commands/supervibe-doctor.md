@@ -3,6 +3,7 @@ description: >-
   Use WHEN checking Codex, Cursor, Gemini, OpenCode, Copilot, Claude Code, IDE
   registration, plugin manifests, local CLI availability, or host compatibility
   TO produce a read-only multi-host doctor report with exact repair actions.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-doctor

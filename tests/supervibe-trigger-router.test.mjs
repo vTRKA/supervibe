@@ -91,6 +91,18 @@ describe("supervibe trigger router", () => {
     assert.equal(route.doNotSearchProject, true);
   });
 
+  it("routes workflow-chain maturity audits to the read-only audit mode", () => {
+    const route = routeTriggerRequest("проверь насколько прокачана цепочка /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop");
+
+    assert.equal(route.intent, "workflow_chain_audit");
+    assert.equal(route.command, "/supervibe-audit --workflow-chain");
+    assert.equal(route.skill, "supervibe:audit");
+    assert.equal(route.mutationRisk, "none");
+    assert.equal(route.requiredSafety.includes("read-only-audit"), true);
+    assert.equal(route.requiredSafety.includes("scope-bloat-check"), true);
+    assert.equal(route.doNotSearchProject, true);
+  });
+
   it("routes explicit slash and package commands through command catalog without repo search", () => {
     const slash = routeTriggerRequest("supervibe-status --capabilities");
     const packageScript = routeTriggerRequest("pnpm run supervibe:status -- --json");

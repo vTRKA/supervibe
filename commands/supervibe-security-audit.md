@@ -5,6 +5,7 @@ description: >-
   rank findings, then optionally plan, execute, and re-audit until the security
   gate reaches 10/10. Triggers: 'security audit', 'vulnerability scan', 'safe to
   ship', 'секьюрити аудит', 'проверка уязвимостей'.
+last-verified: "2026-05-08"
 ---
 
 # /supervibe-security-audit

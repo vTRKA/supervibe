@@ -102,3 +102,54 @@ test("parser reports headings, imports and managed blocks", () => {
   assert.deepEqual(parsed.imports.map((entry) => entry.target), ["./docs/context.md"]);
   assert.equal(parsed.managedBlocks.length, 1);
 });
+
+test("context migration preserves third-party managed blocks and reports them", () => {
+  const existing = [
+    "# AGENTS",
+    "",
+    "<!-- OTHERPLUGIN:BEGIN managed-context -->",
+    "third-party instructions",
+    "<!-- OTHERPLUGIN:END managed-context -->",
+    "",
+    "<!-- SUPERVIBE:BEGIN managed-context codex -->",
+    "old codex instructions",
+    "<!-- SUPERVIBE:END managed-context codex -->",
+  ].join("\n");
+
+  const plan = planContextMigration({
+    adapterId: "codex",
+    instructionPath: "AGENTS.md",
+    currentContent: existing,
+    generatedContent: "new codex instructions",
+  });
+
+  assert.ok(plan.afterContent.includes("third-party instructions"));
+  assert.ok(plan.afterContent.includes("new codex instructions"));
+  assert.ok(!plan.afterContent.includes("old codex instructions"));
+  assert.equal(plan.parsed.externalManagedBlocks.length, 1);
+  assert.equal(plan.parsed.externalManagedBlocks[0].owner, "OTHERPLUGIN");
+  assert.ok(plan.operations.some((operation) => operation.type === "preserve-external-managed-blocks" && operation.count === 1));
+});
+
+test("context migration appends one adapter block without replacing another Supervibe adapter", () => {
+  const existing = [
+    "# AGENTS",
+    "",
+    "<!-- SUPERVIBE:BEGIN managed-context opencode -->",
+    "opencode instructions",
+    "<!-- SUPERVIBE:END managed-context opencode -->",
+  ].join("\n");
+
+  const plan = planContextMigration({
+    adapterId: "codex",
+    instructionPath: "AGENTS.md",
+    currentContent: existing,
+    generatedContent: "codex instructions",
+  });
+
+  assert.ok(plan.afterContent.includes("opencode instructions"));
+  assert.ok(plan.afterContent.includes("codex instructions"));
+  assert.equal(plan.afterParsed.managedBlocks.length, 2);
+  assert.deepEqual(plan.afterParsed.managedBlocks.map((block) => block.adapterId).sort(), ["codex", "opencode"]);
+  assert.ok(plan.operations.some((operation) => operation.type === "preserve-other-supervibe-managed-blocks" && operation.count === 1));
+});

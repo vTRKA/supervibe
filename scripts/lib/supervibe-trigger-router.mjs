@@ -293,6 +293,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: audit docs for stale and internal development artifacts?",
     prerequisites: [],
   },
+  workflow_chain_audit: {
+    phase: "audit",
+    command: "/supervibe-audit --workflow-chain",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Шаг 1/1: провести read-only аудит зрелости цепочки brainstorm -> plan -> execute-plan -> loop на кейсы, риски и feature bloat?",
+    nextQuestionEn: "Step 1/1: run a read-only maturity audit of brainstorm -> plan -> execute-plan -> loop for cases, risks, and feature bloat?",
+    prerequisites: ["user-request"],
+  },
   source_truth_research: {
     phase: "research",
     command: "/supervibe-audit --source-of-truth",
@@ -941,6 +949,7 @@ function requiredSafetyFor(intent) {
   if (intent === "execute_plan") return [...base, "readiness-gate", "completion-gate"];
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
   if (intent === "source_truth_research") return [...base, "source-hierarchy", "freshness-check", "conflict-resolution-log"];
+  if (intent === "workflow_chain_audit") return [...base, "read-only-audit", "source-hierarchy", "workflow-chain-coverage", "scope-bloat-check", "pitfall-review", "end-to-end-goal-check"];
   if (intent === "visual_explanation") return [...base, "diagram-text-fallback", "no-unverified-implementation-claims"];
   if (intent === "task_readiness_intake") return [...base, "requirements-gate", "raw-task-block", "acceptance-criteria-required"];
   if (intent === "plugin_update_repair") return [...base, "managed-checkout-drift-restore", "mirror-clean-assertion"];
