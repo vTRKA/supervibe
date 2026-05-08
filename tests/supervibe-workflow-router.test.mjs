@@ -40,6 +40,9 @@ test("execution request after plan is forced through mandatory plan review", () 
   assert.equal(route.intent, "plan_review");
   assert.equal(route.command, "/supervibe-plan --review");
   assert.match(route.reason, /mandatory plan review/);
+  assert.ok(route.questionChoices.some((choice) => choice.id === "revise-scope"));
+  assert.ok(route.questionChoices.some((choice) => choice.id === "exclude-or-defer"));
+  assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "plan review route", minChoices: 5 }), []);
 });
 
 test("reviewed plan can be atomized into work items", () => {

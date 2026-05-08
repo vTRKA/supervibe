@@ -36,6 +36,8 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
   assert.equal(parsed.nextCommand, "/supervibe-plan --review");
   assert.equal(parsed.nextSkill, "supervibe:requesting-code-review");
   assert.match(output, /Choices:\n- Continue \.supervibe\/artifacts\/plans\/example\.md \(recommended\)/);
+  assert.match(output, /Revise scope for \.supervibe\/artifacts\/plans\/example\.md/);
+  assert.match(output, /Exclude or defer items from \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(output, /Inspect readiness for \.supervibe\/artifacts\/plans\/example\.md/);
 
   const assertion = assertNoSilentStop({

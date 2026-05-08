@@ -50,7 +50,7 @@ If the plan includes functionality not present in the approved spec, Scope Safet
 
 ## Continuation Contract
 
-Do not stop after individual plan phases, the first task list, or a draft review-gate section. Write the full plan before handoff unless the user explicitly stops/pauses, the spec is missing or unapproved, scope must be decomposed, or one blocking ambiguity prevents a production-safe plan.
+Do not stop after individual plan phases, the first task list, or a draft review-gate section. Show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before handoff unless the user explicitly stops/pauses, the spec is missing or unapproved, scope must be decomposed, or one blocking ambiguity prevents a production-safe plan.
 
 Internal phase review gates are instructions for executors later; they are not chat-level stop points for the planner. Use conservative assumptions for non-blocking gaps, document them, and continue through file mapping, critical path, tasks, rollback, verification, production readiness, final 10/10 acceptance, and the mandatory review handoff.
 
@@ -83,6 +83,8 @@ Per task: TDD applicable?
 ```
 
 ## Procedure
+
+Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact preview of proposed phases, task groups, files/modules, approved/deferred/rejected/excluded scope, risks, verification strategy, and what will not be implemented. Ask one `plan_delivery` question with approve plan for review, revise plan scope, exclude or defer items, audit plan deeper, and keep plan draft. Free-form answers such as "exclude analytics", "defer phase 3", or "split mobile into a later plan" must update the preview and be recorded in the Scope Safety Gate. Do not save the durable plan, atomize work items, or offer execution until this gate is answered.
 
 1. **File structure mapping** — list every file to Create/Modify, with one-line responsibility per file.
 2. **Phase decomposition** — group tasks into phases with clear goal + success criteria + prerequisites.

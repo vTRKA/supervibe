@@ -243,6 +243,64 @@ const POST_DELIVERY_CONTEXTS = Object.freeze({
       },
     },
   },
+  plan_delivery: {
+    en: {
+      prompt: 'Step 1/1: approve this implementation plan for review, or adjust scope first?',
+      recommendation: 'Recommended path: approve only when phases, file scope, risks, and deferred or rejected extras match the agreed scope.',
+      freeFormPath: 'You can answer in your own words, for example: "exclude analytics", "defer phase 3", or "split mobile into a later plan".',
+      stopCondition: 'Keep plan draft: I will not atomize, execute, or treat the plan as approved scope.',
+      actions: {
+        approve: {
+          label: 'Approve plan for review',
+          tradeoff: 'Keep this plan as candidate scope and start the mandatory review loop before atomization.',
+        },
+        refine: {
+          label: 'Revise plan scope',
+          tradeoff: 'Name phases, tasks, files, assumptions, or extras to remove, rewrite, split, or defer before review.',
+        },
+        alternative: {
+          label: 'Exclude or defer items',
+          tradeoff: 'List items to move out of current scope so they cannot become executable work silently.',
+        },
+        'deeper-review': {
+          label: 'Audit plan deeper',
+          tradeoff: 'Run extra coverage, dependency, risk, or readiness review before approval.',
+        },
+        stop: {
+          label: 'Keep plan draft',
+          tradeoff: 'Save the current draft state only; no review, atomization, or execution starts.',
+        },
+      },
+    },
+    ru: {
+      prompt: 'Шаг 1/1: утвердить план реализации для review или сначала изменить scope?',
+      recommendation: 'Рекомендуемый путь: утверждать только когда фазы, файлы, риски и deferred/rejected extras совпадают с согласованным scope.',
+      freeFormPath: 'Можно ответить своими словами, например: "исключи аналитику", "отложи фазу 3" или "вынеси mobile в отдельный план".',
+      stopCondition: 'Оставить план draft: я не буду атомизировать, исполнять или считать план утвержденным scope.',
+      actions: {
+        approve: {
+          label: 'Утвердить план для review',
+          tradeoff: 'Фиксирует этот план как candidate scope и запускает обязательный review loop перед атомизацией.',
+        },
+        refine: {
+          label: 'Изменить scope плана',
+          tradeoff: 'Назовите фазы, задачи, файлы, допущения или extras, которые нужно убрать, переписать, разделить или отложить.',
+        },
+        alternative: {
+          label: 'Исключить или отложить пункты',
+          tradeoff: 'Переносит пункты за пределы текущего scope, чтобы они не стали executable work молча.',
+        },
+        'deeper-review': {
+          label: 'Проверить план глубже',
+          tradeoff: 'Запускает дополнительную проверку покрытия, зависимостей, рисков или readiness перед approval.',
+        },
+        stop: {
+          label: 'Оставить план draft',
+          tradeoff: 'Сохраняет только текущий draft; review, атомизация и execution не начинаются.',
+        },
+      },
+    },
+  },
   adaptation_delivery: {
     en: {
       prompt: 'Step 1/1: apply the adaptation updates now, or inspect the plan first?',
@@ -459,6 +517,10 @@ const POST_DELIVERY_DEFAULT_SUBJECTS = Object.freeze({
     en: 'requirements package',
     ru: 'пакет требований',
   },
+  plan_delivery: {
+    en: 'implementation plan',
+    ru: 'план реализации',
+  },
   adaptation_delivery: {
     en: 'adaptation plan',
     ru: 'план адаптации',
@@ -477,6 +539,7 @@ const POST_DELIVERY_SPECIALISTS = Object.freeze({
   genesis_setup: 'supervibe-orchestrator',
   prototype_delivery: 'prototype-builder',
   requirements_delivery: 'product-strategist',
+  plan_delivery: 'architect-reviewer',
   adaptation_delivery: 'supervibe-orchestrator',
   strengthening_delivery: 'quality-gate-reviewer',
   design_delivery: 'ux-ui-designer',

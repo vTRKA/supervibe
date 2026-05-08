@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.112] - 2026-05-09
+
+### Added
+
+- Added a `plan_delivery` dialogue context so implementation plans can present
+  approve, revise scope, exclude or defer, deeper audit, and draft-stop choices
+  before review, atomization, or execution.
+- Added item-level work-item preview details and a plan-scope review command
+  palette action so users can see and adjust planned work before it becomes
+  executable.
+
+### Changed
+
+- Strengthened `/supervibe-plan`, `writing-plans`, workflow handoffs, and
+  continuation validation so plan workflows must expose a compact scope preview
+  and explicit scope-editing choices before durable plan handoff.
+
 ## [2.0.111] - 2026-05-09
 
 ### Added

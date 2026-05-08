@@ -401,6 +401,14 @@ function buildNextStepChoices({ locale = "en", artifact = "", command = "", skil
         recommended: true,
       },
       {
+        label: `Изменить scope для ${subject}`,
+        tradeoff: "Позволяет убрать, переписать, разделить или отложить пункты до следующего gate.",
+      },
+      {
+        label: `Исключить или отложить пункты из ${subject}`,
+        tradeoff: "Фиксирует, какие части не входят в текущий scope, чтобы они не попали в execution молча.",
+      },
+      {
         label: `Проверить readiness для ${subject}`,
         tradeoff: "Покажет prerequisites и blockers без мутаций.",
       },
@@ -415,6 +423,14 @@ function buildNextStepChoices({ locale = "en", artifact = "", command = "", skil
       label: `Continue ${subject}`,
       tradeoff: `Runs ${command} through ${skill}; gates remain active.`,
       recommended: true,
+    },
+    {
+      label: `Revise scope for ${subject}`,
+      tradeoff: "Remove, rewrite, split, or defer items before the next gate.",
+    },
+    {
+      label: `Exclude or defer items from ${subject}`,
+      tradeoff: "Record work outside the current scope so execution cannot include it silently.",
     },
     {
       label: `Inspect readiness for ${subject}`,

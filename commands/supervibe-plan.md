@@ -13,7 +13,7 @@ Direct trigger for the `supervibe:writing-plans` skill. Use after `/supervibe-br
 
 ## Continuation Contract
 
-Do not stop after individual plan phases, file-structure mapping, first task batch, or the first review-gate draft. A `/supervibe-plan` invocation should write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
+Do not stop after individual plan phases, file-structure mapping, first task batch, or the first review-gate draft. A `/supervibe-plan` invocation should show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
 
 Review gates inside the plan are execution-time gates for later workers; they are not reasons for the planning agent to stop before completing the full plan artifact.
 
@@ -54,6 +54,22 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    If gaps → ask user to confirm before planning incomplete requirements.
 
 3. **Search project memory** for similar past plans (`supervibe:project-memory --query <topic>`). If a near-identical implementation exists, propose adapting it instead of re-planning from scratch.
+
+3a. **Plan Scope Approval Gate.** Before saving the durable implementation plan, print a compact plan-scope preview:
+   - Proposed phases and task groups
+   - Files/modules expected to change
+   - Approved, deferred, rejected, and explicitly excluded scope
+   - Risks, production gates, and verification strategy
+   - What will not be implemented in this plan
+
+   Ask one `plan_delivery` question with these visible choices:
+   - **Approve plan for review** - write the durable plan and proceed only to the mandatory review loop.
+   - **Revise plan scope** - remove, rewrite, split, or defer named phases/tasks/files before writing.
+   - **Exclude or defer items** - record out-of-scope work so it cannot enter execution silently.
+   - **Audit plan deeper** - run more coverage/dependency/risk review before approval.
+   - **Keep plan draft** - stop without atomization, execution, or approved-scope claims.
+
+   Free-form answers such as "exclude analytics", "defer phase 3", or "split mobile into a later plan" must update the preview and be recorded in the Scope Safety Gate. Do not save the durable plan, atomize work items, or offer execution until this gate is answered.
 
 4. **Invoke `supervibe:writing-plans` skill.** It produces:
    - File structure (which files to create / modify, with paths)

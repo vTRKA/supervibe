@@ -99,6 +99,10 @@ const RULES = Object.freeze([
     label: "plan command",
     required: [
       /Do not stop after individual plan phases/i,
+      /compact plan-scope preview/i,
+      /approve\/revise\/exclude-or-defer\/stop choice/i,
+      /plan_delivery/i,
+      /Exclude or defer items/i,
       /write the full plan before the review handoff/i,
       /NEXT_STEP_HANDOFF/i,
       ...TOPIC_DRIFT_REQUIRED,
@@ -110,6 +114,10 @@ const RULES = Object.freeze([
     label: "writing-plans skill",
     required: [
       /Do not stop after individual plan phases/i,
+      /compact plan-scope preview/i,
+      /approve\/revise\/exclude-or-defer\/stop choice/i,
+      /plan_delivery/i,
+      /exclude or defer items/i,
       /write the full plan before handoff/i,
       /NEXT_STEP_HANDOFF/i,
       ...TOPIC_DRIFT_REQUIRED,

@@ -149,6 +149,40 @@ test('requirements post-delivery question uses requirements-specific actions', (
   assert.match(formatPostDeliveryQuestion(question), /Recommended option:\n- \*\*Approve requirements\*\* \(recommended\)/);
 });
 
+test('plan post-delivery question exposes approval and scope editing choices before review', () => {
+  const question = buildPostDeliveryQuestion({
+    intent: 'plan_delivery',
+    nextQuestion: 'Plan review',
+  });
+  const labels = question.choices.map((choice) => choice.label);
+  const formatted = formatPostDeliveryQuestion(question);
+
+  assert.equal(question.context, 'plan_delivery');
+  assert.equal(question.specialist, 'architect-reviewer');
+  assert.deepEqual(labels, [
+    'Approve plan for review',
+    'Revise plan scope',
+    'Exclude or defer items',
+    'Audit plan deeper',
+    'Keep plan draft',
+  ]);
+  assert.match(question.freeFormPath, /exclude analytics/);
+  assert.match(question.freeFormPath, /defer phase 3/);
+  assert.match(formatted, /Recommended option:\n- \*\*Approve plan for review\*\* \(recommended\)/);
+  assert.match(formatted, /Other options:[\s\S]*Exclude or defer items/);
+  assert.deepEqual(validateAgenticQuestion(question, { surface: 'plan delivery gate', minChoices: 5 }), []);
+
+  const localized = buildPostDeliveryQuestion({ intent: 'plan_delivery' }, { locale: 'ru' });
+  assert.deepEqual(localized.choices.map((choice) => choice.label), [
+    'Утвердить план для review',
+    'Изменить scope плана',
+    'Исключить или отложить пункты',
+    'Проверить план глубже',
+    'Оставить план draft',
+  ]);
+  assert.doesNotMatch(formatPostDeliveryQuestion(localized), /Approve plan for review/);
+});
+
 test('adaptation, strengthening and design post-delivery contexts localize visible labels', () => {
   const adaptation = buildPostDeliveryQuestion({ intent: 'adaptation_delivery' }, { locale: 'ru' });
   assert.equal(adaptation.context, 'adaptation_delivery');

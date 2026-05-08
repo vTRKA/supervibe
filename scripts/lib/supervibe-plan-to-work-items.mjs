@@ -359,6 +359,7 @@ export function createWorkItemPreview(graph, validation = validateWorkItemGraph(
   const items = graph.items ?? [];
   const tasks = items.filter((item) => item.type !== "epic");
   const ready = (graph.tasks ?? []).filter((task) => task.dependencies.length === 0);
+  const previewItems = tasks.slice(0, 20).map(formatPreviewItem);
   return [
     "SUPERVIBE_WORK_ITEMS_PREVIEW",
     `EPIC: ${graph.epicId} ${graph.title}`,
@@ -367,7 +368,26 @@ export function createWorkItemPreview(graph, validation = validateWorkItemGraph(
     `READY: ${ready.map((task) => task.id).join(",") || "none"}`,
     `VALID: ${validation.valid}`,
     validation.issues.length > 0 ? `ISSUES: ${validation.issues.map((item) => item.code).join(",")}` : "ISSUES: none",
+    "SCOPE_EDIT_HINT: Before approval, answer with item ids to exclude, defer, split, or reprioritize.",
+    "ITEMS_DETAIL:",
+    ...(previewItems.length > 0 ? previewItems : ["- none"]),
+    tasks.length > previewItems.length ? `ITEMS_DETAIL_TRUNCATED: ${tasks.length - previewItems.length} more` : "ITEMS_DETAIL_TRUNCATED: 0",
   ].join("\n");
+}
+
+function formatPreviewItem(item) {
+  const scope = (item.writeScope || [])
+    .slice(0, 3)
+    .map((entry) => `${entry.action || "touch"}:${entry.path || entry}`)
+    .join(",");
+  const blockedBy = (item.blockedBy || []).slice(0, 3).join(",");
+  const requiredGates = (item.requiredGates || []).slice(0, 3).join(",");
+  return [
+    `- ${safeInline(item.itemId || "unknown")}: [${item.type || "task"}] ${safeInline(item.title || "untitled")}`,
+    scope ? `scope=${safeInline(scope)}` : null,
+    blockedBy ? `blockedBy=${safeInline(blockedBy)}` : null,
+    requiredGates ? `gates=${safeInline(requiredGates)}` : null,
+  ].filter(Boolean).join(" | ");
 }
 
 function createChildItems(parsed, epicId, options = {}) {
@@ -669,6 +689,11 @@ function stableHash(value) {
 
 function uniqueStrings(values) {
   return [...new Set(values.map(String).filter(Boolean))];
+}
+
+function safeInline(value, maxLength = 120) {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
 }
 
 function issue(code, itemId, message, extra = {}) {

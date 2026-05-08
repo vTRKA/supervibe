@@ -11,6 +11,7 @@ import {
   atomizePlanToWorkItems,
   createWorkItemGraph,
   createNativeWorkItemAdapter,
+  createWorkItemPreview,
   parsePlanForWorkItems,
   validateWorkItemGraph,
   WORK_ITEM_REQUIRED_FIELDS,
@@ -107,6 +108,21 @@ test("work item graph converts into runner-compatible loop tasks", () => {
   assert.equal(apiTask.epicId, "epic-payment");
   assert.deepEqual(apiTask.dependencies, ["epic-payment-t1"]);
   assert.equal(apiTask.writeScope[0].path, "src/api.ts");
+});
+
+test("work item preview exposes editable scope details before approval", () => {
+  const graph = atomizePlanToWorkItems(PLAN, {
+    planPath: ".supervibe/artifacts/plans/payment.md",
+    epicId: "epic-payment",
+    planReviewPassed: true,
+  });
+  const preview = createWorkItemPreview(graph, graph.validation);
+
+  assert.match(preview, /SCOPE_EDIT_HINT: .*exclude, defer, split, or reprioritize/);
+  assert.match(preview, /ITEMS_DETAIL:/);
+  assert.match(preview, /epic-payment-t1: \[task\] Foundation schema/);
+  assert.match(preview, /scope=create:src\/schema\.ts/);
+  assert.match(preview, /epic-payment-gate-1: \[gate\] REVIEW GATE 1/);
 });
 
 test("validation rejects unknown blockers", () => {

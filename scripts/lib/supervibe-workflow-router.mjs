@@ -546,6 +546,16 @@ function buildWorkflowQuestionChoices({ locale = "en", kind = "workflow-step", p
         recommended: true,
       },
       {
+        id: "revise-scope",
+        label: `Изменить scope для ${subject}`,
+        tradeoff: "Позволяет убрать, переписать, разделить или отложить пункты перед следующим gate.",
+      },
+      {
+        id: "exclude-or-defer",
+        label: `Исключить или отложить пункты из ${subject}`,
+        tradeoff: "Фиксирует out-of-scope work, чтобы execution не включил его молча.",
+      },
+      {
         id: "inspect-readiness",
         label: `Сначала проверить готовность ${subject}`,
         tradeoff: "Покажет prerequisites, blockers и evidence без мутаций.",
@@ -563,6 +573,16 @@ function buildWorkflowQuestionChoices({ locale = "en", kind = "workflow-step", p
       label: `Continue ${subject}`,
       tradeoff: `Runs ${commandText} through ${skillText}; safety gates remain active.`,
       recommended: true,
+    },
+    {
+      id: "revise-scope",
+      label: `Revise scope for ${subject}`,
+      tradeoff: "Remove, rewrite, split, or defer items before the next gate.",
+    },
+    {
+      id: "exclude-or-defer",
+      label: `Exclude or defer items from ${subject}`,
+      tradeoff: "Records out-of-scope work so execution cannot include it silently.",
     },
     {
       id: "inspect-readiness",

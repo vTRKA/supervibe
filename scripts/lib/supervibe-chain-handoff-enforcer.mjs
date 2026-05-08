@@ -107,6 +107,16 @@ function buildHandoffChoices(handoff) {
       recommended: true,
     },
     {
+      id: "revise-scope",
+      label: `Изменить scope для ${handoff.artifact}`,
+      tradeoff: "Позволяет убрать, переписать, разделить или отложить пункты перед следующим этапом.",
+    },
+    {
+      id: "exclude-or-defer",
+      label: `Исключить или отложить пункты из ${handoff.artifact}`,
+      tradeoff: "Фиксирует out-of-scope work, чтобы дальнейшее выполнение не включило его молча.",
+    },
+    {
       id: "inspect-readiness",
       label: `Проверить готовность ${handoff.artifact}`,
       tradeoff: "Покажет prerequisites и blockers без скрытого продолжения.",

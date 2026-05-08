@@ -25,6 +25,8 @@ test("command palette exposes required actions and exact non-interactive command
   assert.match(formatCommandPalette(palette), /view-ready-work: ready -> \/supervibe-status --view ready-now/);
   assert.match(formatCommandPalette(palette), /index-rag-codegraph: ready -> node <resolved-supervibe-plugin-root>\/scripts\/build-code-index\.mjs --root \. --resume --source-only/);
   assert.match(palette.actions.find((action) => action.id === "atomize-plan").command, /--preview/);
+  assert.match(palette.actions.find((action) => action.id === "review-plan-scope").command, /--preview/);
+  assert.equal(palette.actions.find((action) => action.id === "review-plan-scope").mutates, false);
 });
 
 test("command palette explains blocked actions and requires confirmation for mutations", () => {
