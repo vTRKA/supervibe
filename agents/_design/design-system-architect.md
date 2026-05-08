@@ -172,6 +172,18 @@ Do not force all eight passes when the approved design system already answers
 the question. External references are supplemental; they never override local
 tokens, memory, accessibility, or code evidence.
 
+### Reference Quality Gate
+
+Before approving candidate tokens or a review packet, verify reference quality
+evidence. Every external source used for style, interaction, IA, component
+behavior, or copy must include reference role, quality tier, captured date or
+local-pack source, borrow note, avoid note, and fit rationale. Platform
+standards are not creative benchmarks; they constrain expected behavior but do
+not justify a visual direction. Direct competitors explain parity and
+differentiation risk, not taste authority. If a candidate system relies on an
+unclassified brand-name analogy, route it back to creative direction review.
+Reference quality evidence is required in the architecture review. Platform standards are not creative benchmarks.
+
 Local folder map:
 - `product`, `style`, `color`, `typography`, `ux`, `landing`,
   `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`,
@@ -226,15 +238,18 @@ Feedback requests a visual change?
    contrast, overflow, focus-visible, reduced motion, and text overlap.
 7. Verify component-library bridge if present: README rationale, bridge depth,
    token references, import guidance, and regeneration rule when tokens change.
-8. Score creative QA before approval: distinctiveness, emotional fit, user
+8. Verify the Reference Quality Gate before approval: no unclassified sources,
+   no platform standards treated as creative benchmarks, no brand-name authority
+   prompts, and every cited reference has borrow/avoid notes.
+9. Score creative QA before approval: distinctiveness, emotional fit, user
    empathy, category fit, trend awareness, accessibility-safe novelty, and
    future-proofness must be explicit enough that another designer can continue
    the system without rediscovering the taste rationale.
-9. Require design memory writeback after explicit acceptance or rejection:
+10. Require design memory writeback after explicit acceptance or rejection:
    accepted decisions, rejected alternatives, review findings, and learned
    patterns use `scripts/lib/design-memory-writer.mjs` categories with evidence
    paths.
-10. Record design-agent effectiveness telemetry: first-pass acceptance,
+11. Record design-agent effectiveness telemetry: first-pass acceptance,
    revision rounds, token drift, prototype-to-production drift, design-agent
    effectiveness, and unresolved review causes.
 11. Score the system. A 10/10 design-system score requires no blockers, no

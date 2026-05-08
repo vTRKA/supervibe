@@ -263,7 +263,7 @@ User responses that indicate hidden complexity:
 - **"Just like X but..."** — they want X with deviations they haven't articulated. Probe each "but".
 - **"Should be simple"** — usually isn't. List 3 reasons why it might not be, ask user to confirm none apply.
 - **"I'll know it when I see it"** — subjective bar. Document explicitly + add to risk register.
-- **"Make it like Stripe / Apple / Linear"** — surface-level analogy, deeper assumptions hidden. Ask: which specific behaviors? Why those products vs others?
+- **"Make it like a famous product"** — surface-level analogy, deeper assumptions hidden. Ask: which specific behaviors? Why that product vs others?
 - **"For now we just need..."** — flag the implied "later we'll need". Document as Phase 2 scope.
 
 ## Output formatting discipline

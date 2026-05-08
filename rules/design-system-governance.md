@@ -37,6 +37,19 @@ This rule does NOT apply when the user explicitly asks for a rebrand, major rese
 - Classify feedback as system-level or instance-level before changing tokens.
 - Do not stamp final tokens until visual approval of the selected prototype. If multiple prototypes compete, park/reject alternatives before finalizing.
 
+## Candidate workspace policy
+
+Before a design system is approved, avoid draft sprawl. Candidate work belongs
+in a candidate workspace such as
+`.supervibe/artifacts/prototypes/_design-system/.candidates/run-id/` or a
+diagnostic `.scratch/run-id/` directory. Only one active candidate may be
+promoted to the root `_design-system/` review packet at a time. If the user
+rejects or replaces that direction, archive rejected candidate files with a
+rationale under `.candidates/_archive/` or move them to `.alternatives/`; do
+not leave multiple current token sets, manifests, or styleboards competing in
+root paths. Candidate tokens do not unlock prototypes, and inactive candidates
+are evidence, not source of truth.
+
 ## Examples
 
 ### Bad

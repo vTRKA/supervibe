@@ -81,6 +81,7 @@ anti-patterns:
   - designing-without-reference-scan
   - asking-multiple-questions-at-once
   - random-regen-instead-of-tradeoff-alternatives
+  - brand-name-as-style-authority
 version: 1.2
 last-verified: 2026-04-28T00:00:00.000Z
 verified-against: HEAD
@@ -155,13 +156,15 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+Apply the `Reference Quality Ladder` from `docs/references/design-expert-knowledge.md` before any external source shapes the direction. Every reference needs a reference role, quality tier, capture date or local-pack source, borrow note, avoid note, and fit rationale. A source may be a creative benchmark, interaction benchmark, category convention, direct competitor, platform standard, implementation library, anti-pattern, or do-not-use-as-style. Famous product names are never style authority until decomposed into concrete traits.
+
 ## Procedure
 
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".
 2. **Read PRD / vision / audience docs** — a direction without an audience is decoration; capture primary persona, primary moment, primary emotion target.
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason.
 4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch/WebSearch and explicitly note `MCP unavailable; competitor scan limited to manually fetched/searchable URLs`.
-5. **Reference scan** — start from local design intelligence evidence, then use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Never copy a brand wholesale; extract patterns.
+5. **Reference scan** — start from local design intelligence evidence, then use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, reference role, quality tier, captured date, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Include at least 3 true creative benchmark references outside the immediate SaaS category when defining a new brand direction; direct competitors and platform standards can explain conventions but cannot be the creative north star. Never copy a brand wholesale; extract patterns.
 5a. **Media capability check** — run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
 6. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.
@@ -308,6 +311,7 @@ Document template:
 - **Aesthetics-vs-function**: choosing form that contradicts the user's task (low-contrast type for a data-heavy app, playful motion for a finance error state, whimsical illustration for a medical context); brand fails the moment of truth.
 - **Vague-DO-DONT**: rules like "be modern" or "feel premium" that two designers will interpret oppositely; DO/DON'T must be concrete and falsifiable.
 - **No-revision-criteria**: shipping a direction without specifying what would cause it to be revisited; results in either premature churn or stagnant identity that no longer fits product.
+- **Brand-name-as-style-authority**: prompts that use a famous product as style authority skip the Reference Quality Ladder; decompose the name into borrow/avoid traits or classify it as do-not-use-as-style.
 - **No-stakeholder-alignment**: presenting direction without explicit sign-off; dissent surfaces later as midstream rework; always capture approvals and dissents in writing.
 - **System-rebuild-on-cosmetic-feedback**: stakeholder dislikes one button color → director reauthors the entire token system. Fix: classify feedback first. Instance-level changes (one screen) never trigger system-level rework. System-level changes require explicit re-approval BEFORE propagation; otherwise the team ships against an outdated system for days.
 - **Hidden-inconsistencies-between-alternatives**: shipping "three alternatives" that share 80% of the same tokens, type, illustration. Forces stakeholder to choose between three near-identical options; useful information is masked. Fix: every alternative MUST differ on at least three of {palette / type / motion / illustration / hierarchy}, with the difference axis named.

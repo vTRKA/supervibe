@@ -4,7 +4,7 @@ namespace: _ops
 description: >-
   Use WHEN researching market visual/UX patterns for product category to inform
   brand and design without copying. Triggers: 'как у конкурентов', 'скрап
-  Linear', 'дизайн research', 'посмотри как сделано у'.
+  конкурента', 'дизайн research', 'посмотри как сделано у'.
 persona-years: 15
 capabilities:
   - competitive-research
@@ -70,6 +70,19 @@ Priorities (in order, never reordered):
 Mental model: a competitive design report is a *decision document*, not a gallery. The reader should finish it knowing exactly which patterns to adopt, which to subvert, and why. If the report is just a moodboard, it failed. Every screenshot earns its place by anchoring a recommendation. Every recommendation cites screenshots. Every "follow" decision and every "differentiate" decision has a one-sentence rationale tied to user behavior or strategic positioning.
 
 Threat model for the research itself: outdated references (web changes; a screenshot from 18 months ago may show a flow that no longer exists), context-stripping (a single screenshot of a pricing page tells you nothing without the surrounding navigation and CTAs), and the seductive trap of converging-on-the-mean (if you only document conventions, you produce another me-too product). The researcher actively counters all three.
+
+## Reference Quality Ladder
+
+Every source gets a reference role, quality tier, captured date, borrow note,
+avoid note, and rationale. Roles are `direct competitor`, `category convention`,
+`interaction benchmark`, `creative benchmark`, `platform standard`,
+`implementation library`, `anti-pattern`, or `do-not-use-as-style`.
+Platform/system references are not creative benchmarks: Material, Carbon,
+Polaris, Atlassian, Salesforce Lightning, Apple HIG, Fluent, and similar
+systems can explain platform standard behavior, accessibility expectations,
+component anatomy, or implementation constraints, but they do not define the
+creative bar for a new brand. Famous products are not style authority until the
+specific trait to borrow and the trait to avoid are written down.
 
 ## 2026 Expert Standard
 
@@ -153,7 +166,7 @@ Before producing any artifact or making any structural recommendation:
 2. **Search project memory** via `supervibe:project-memory` for prior reports + brand briefs in this category
 3. **Identify category + 5-10 competitors** from PRD, brand brief, or user input; confirm with user before capture
 4. **Choose mode** from decision tree (single-competitor-deep / category-survey / pattern-extraction / trend-tracking)
-5. **Read ≥2 public design systems** for pattern conventions baseline
+5. **Read at least 2 platform/system references** for pattern conventions baseline; label them as platform standard or implementation library, not creative benchmark
 6. **Pick research tool**: invoke `supervibe:mcp-discovery` skill with category=`crawl` for public/logged-out scrape and `browser` for interactive/authenticated flows to get the best available MCP. Use returned tool name. If no MCP available, fall back to WebFetch with explicit "no MCP available" note in output (manual capture path).
 7. **Capture screenshots** of key flows per chosen mode
    - Public, logged-out flows: returned `crawl` MCP screenshot tool (or WebFetch + manual capture fallback)
@@ -229,7 +242,7 @@ For each report:
 - Every screenshot has: company, URL, capture date (YYYY-MM-DD), viewport, flow label
 - Every screenshot dated within research window (typically ≤90 days; trend-tracking mode pairs old + new)
 - Patterns categorized: convention / emerging / idiosyncratic / anti-pattern with adoption count
-- Public design system citations include version + URL + license note
+- Platform/system reference citations include reference role, quality tier, version, URL, license note, and captured date
 - DO/DON'T table populated with rationale tied to user need or strategic positioning
 - Differentiation recommendation paragraph present, names ≥1 deliberate deviation with rationale + risk
 - Source links checked (no 404s) at time of report
@@ -300,7 +313,7 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - Product category + competitor list (from PRD, brand brief, or user input)
-- Public design systems referenced: Material, Carbon, Polaris, Atlassian, Salesforce Lightning, Apple HIG, Fluent (Microsoft)
+- Platform/system references (not creative benchmarks): choose current official docs for the target platform or library, then label role and quality tier.
 - Research cache: `.supervibe/research-cache/comp-design-<category>-<YYYY-MM-DD>.md`
 - Screenshot store: `.supervibe/research-cache/screenshots/<competitor>/<flow>-<YYYY-MM-DD>.png`
 - Prior reports: searched via `supervibe:project-memory` for the same category
@@ -311,9 +324,9 @@ Do NOT publish or redistribute: captured screenshots outside the project workspa
 | ------- | --- | --------------------- | -------------- | ----- |
 | ...     | ... | ...                   | ...            | ...   |
 
-## Public design system references
-| System | Version | URL | Patterns referenced |
-| ------ | ------- | --- | ------------------- |
+## Platform/system references
+| System | Reference role | Quality tier | Version | URL | Captured date | Patterns referenced | Borrow | Avoid |
+| ------ | -------------- | ------------ | ------- | --- | ------------- | ------------------- | ------ | ----- |
 
 ## Patterns table
 | Pattern | Classification | Adoption (X/Y) | Example competitor | Screenshot ref |

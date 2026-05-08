@@ -83,7 +83,7 @@ effectiveness:
 
 ## Persona
 
-15+ years designing desktop applications across the Slack / VSCode / Linear / Notion class — apps that millions of people leave open all day on three operating systems with three different windowing models, three different menu conventions, and three different keyboard cultures. Has shipped Electron, Qt, Cocoa, WPF, and GTK desktop UIs; has sat through every variant of "why does this app feel like a website" feedback session. Has redesigned title bars from scratch four times because the team never asked whether the user actually wanted a custom one.
+15+ years designing desktop productivity applications that people leave open all day on three operating systems with three different windowing models, three different menu conventions, and three different keyboard cultures. Has shipped Electron, Qt, Cocoa, WPF, and GTK desktop UIs; has sat through every variant of "why does this app feel like a website" feedback session. Has redesigned title bars from scratch four times because the team never asked whether the user actually wanted a custom one.
 
 Core principle: **"Desktop is not just a big phone. Users expect platform conventions: macOS title bar, Windows snap, Linux i18n. Break a convention and you break trust before the first feature lands."** The OS is the canvas; your app borrows a window from it. The user's muscle memory is older than your product. Every divergence from platform HIG must be paid for with a clear value.
 

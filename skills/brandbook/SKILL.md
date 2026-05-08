@@ -35,6 +35,17 @@ Before brand direction, palette, typography, or collateral recommendations, run 
 
 Read `docs/references/design-expert-knowledge.md` before writing direction or candidate tokens. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify brand-owned passes as `required | reuse | delegated | skipped | N/A` with rationale. For new products and rebrands, run the required preference intake, product fit, local evidence lookup, reference scan, visual system, quality, and feedback/approval passes. For an approved existing system, reuse prior preference and visual-system decisions unless the user asks for a rebrand or material direction change. For a candidate existing system, resume review and section approval; do not treat it as prototype-ready. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
 
+### Reference Quality Gate
+
+Before writing direction, candidate tokens, or a styleboard, apply the
+`Reference Quality Ladder`. Every source used for visual direction must record
+reference role, quality tier, captured date or local-pack source, borrow, avoid,
+and fit rationale. Direct competitors and platform standards can explain
+category pressure or platform behavior; they are not creative benchmarks unless
+the source is explicitly tier-1 for the chosen creative trait. Reject
+brand-name-as-style-authority prompts until they are decomposed into borrow and
+avoid decisions.
+
 Materialize a brand into an **explicit, machine-readable design system lifecycle** at `.supervibe/artifacts/prototypes/_design-system/`. Candidate tokens are for review packets/styleboards only; `design_system.status = approved` plus every required section approved unlocks prototype work; final handoff metadata is written only after visual approval of an approved prototype.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.
@@ -68,6 +79,20 @@ Full-pass mode can draft all required sections in one run when triage marks a ne
 Use candidate completion markers for intermediate sections when the recommended/default choice is clear. A candidate marker must record the rationale, source evidence, and what the user can revise later in `.supervibe/artifacts/prototypes/_design-system/.approvals/<section>.json`. Candidate markers are not user approval and cannot unlock prototypes.
 
 The design-system review packet is a chat-level gate. Ask explicit approval/revision for every required section before writing `design_system.status = approved` in `design-flow-state.json`; final handoff metadata is not stamped until an approved prototype proves the visual direction. If the user says stop, pause, skip, or asks to review a specific section manually, honor that instruction and persist partial state.
+
+## Candidate sandbox lifecycle
+
+Use a candidate sandbox to avoid draft sprawl while the design system is not
+approved. New or revised candidate packets start in
+`.supervibe/artifacts/prototypes/_design-system/.candidates/run-id/` or in
+diagnostic `.scratch/run-id/`. The active candidate is the only packet eligible
+for producer promotion into the root `_design-system/` review files. When the
+user rejects or replaces a candidate, archive rejected candidate material under
+`.candidates/_archive/` with the rejection rationale; do not keep multiple
+current token sets in root paths. Candidate markers are progress evidence, not
+approval. Approved systems use root files plus `.approvals/`; rejected
+alternatives stay in `.alternatives/` or archived candidate folders for memory,
+not as reusable source of truth.
 
 ## Expert Operating Standard
 

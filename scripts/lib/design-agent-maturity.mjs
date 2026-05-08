@@ -14,6 +14,9 @@ import {
   validateDesignFlowGates,
 } from "../validate-design-flow-gates.mjs";
 import {
+  validateDesignReferenceQuality,
+} from "../validate-design-reference-quality.mjs";
+import {
   validateDesignReadiness,
 } from "../validate-design-readiness.mjs";
 import {
@@ -50,6 +53,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
 
   const sourceCoverage = validateDesignSourceCoverage(rootDir);
   const expertKnowledge = validateDesignExpertKnowledge(rootDir);
+  const referenceQuality = validateDesignReferenceQuality(rootDir);
   const readiness = validateDesignReadiness(rootDir);
   const flowGates = validateDesignFlowGates(rootDir);
   const artifactWriteGates = validateDesignArtifactWriteGates(rootDir);
@@ -62,6 +66,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
     intelligence: {
       sourceCoverage,
       expertKnowledge,
+      referenceQuality,
       domains,
       rows,
       manifestHasPrecedence: Array.isArray(manifest.precedence)
@@ -135,6 +140,7 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
 
   const intelligencePass = checks.intelligence?.sourceCoverage?.pass === true
     && checks.intelligence?.expertKnowledge?.pass === true
+    && checks.intelligence?.referenceQuality?.pass === true
     && Number(checks.intelligence?.domains || 0) >= 44
     && Number(checks.intelligence?.rows || 0) >= 4165
     && checks.intelligence?.manifestHasPrecedence === true;
@@ -142,8 +148,8 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     "design-intelligence-resources",
     1.5,
     intelligencePass,
-    `sourceCoverage=${checks.intelligence?.sourceCoverage?.pass === true}, expertKnowledge=${checks.intelligence?.expertKnowledge?.pass === true}, domains=${checks.intelligence?.domains || 0}, rows=${checks.intelligence?.rows || 0}, precedence=${checks.intelligence?.manifestHasPrecedence === true}`,
-    "Restore the local design intelligence manifest, reference cards, and design expert knowledge coverage.",
+    `sourceCoverage=${checks.intelligence?.sourceCoverage?.pass === true}, expertKnowledge=${checks.intelligence?.expertKnowledge?.pass === true}, referenceQuality=${checks.intelligence?.referenceQuality?.pass === true}, domains=${checks.intelligence?.domains || 0}, rows=${checks.intelligence?.rows || 0}, precedence=${checks.intelligence?.manifestHasPrecedence === true}`,
+    "Restore the local design intelligence manifest, reference cards, design expert knowledge coverage, and reference-quality gate.",
   );
 
   const workflowPass = checks.workflow?.readiness?.pass === true

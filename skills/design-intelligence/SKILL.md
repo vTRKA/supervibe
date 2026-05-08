@@ -36,7 +36,8 @@ Before lookup, read the active design workflow state, approved design-system
 manifest if present, project memory, Code RAG hits for existing UI/tokens, and
 `docs/references/design-expert-knowledge.md`. For regulated-trust briefs, gather
 domain evidence before accepting palette, typography, copy-risk, or trust
-defaults.
+defaults. Apply the `Reference Quality Ladder` before allowing any external
+reference to influence a recommendation.
 
 ## Decision tree
 
@@ -74,7 +75,7 @@ Required preflight order:
 1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, or `rejected`.
 2. Code search: inspect existing tokens, components, prototypes, routes, stack conventions, and brand assets.
 3. Internal lookup: call `designContextPreflight()` or `searchDesignIntelligence()` for the relevant domains.
-4. Optional external references: use Figma/browser/search only when available and relevant. External references are supplemental; use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+4. Optional external references: use Figma/browser/search only when available and relevant. External references are supplemental; use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain. Classify every source with `referenceRole`, `qualityTier`, `capturedAt`, `borrow`, `avoid`, and `notAuthority=true` unless it is an approved project brand source.
 
 ## Local Expert Routine
 
@@ -111,9 +112,29 @@ Design Intelligence Evidence:
       score: 3.42
       recommendation: "retrieved row summary"
       conflict: "none | project memory wins | design system wins"
+  references:
+    - source: "https://example.com/path"
+      referenceRole: "creative benchmark | interaction benchmark | category convention | direct competitor | platform standard | implementation library | anti-pattern | do-not-use-as-style"
+      qualityTier: "tier-1 | tier-2 | tier-3"
+      capturedAt: "YYYY-MM-DD | local-pack"
+      borrow: "specific trait or pattern to reuse"
+      avoid: "specific trait, risk, or mimicry to avoid"
+      notAuthority: true
   acceptedStatus: "candidate | accepted | rejected | learned"
   fallbackReason: "no matching row | stack data unavailable | external lookup skipped"
 ```
+
+## Reference Quality Ladder
+
+Use the ladder from `docs/references/design-expert-knowledge.md` for all
+non-project references. A source can be a creative benchmark, interaction
+benchmark, category convention, direct competitor, platform standard,
+implementation library, anti-pattern, or do-not-use-as-style. Famous product
+names must be decomposed into borrow/avoid traits before use; they are not
+style authority.
+Tier-1 references need a current capture date or official version, direct fit,
+and explicit borrow/avoid notes. Tier-2 references are advisory. Tier-3
+references are historical context or anti-pattern material only.
 
 ## Precedence
 
@@ -177,6 +198,8 @@ Accepted decisions need artifact links or evidence ids. Rejected alternatives ne
 - memory-bypass
 - approved-system-overwrite
 - uncited-design-claim
+- brand-name-as-style-authority
+- unclassified-reference-source
 
 ## Output contract
 

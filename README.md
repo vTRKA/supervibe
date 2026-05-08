@@ -119,7 +119,7 @@ Use the one-line installer above. For Codex it registers the official plugin cac
 Restart your AI CLI. On the next session you should see:
 
 ```
-[supervibe] welcome  plugin v2.0.109 initialized for this project
+[supervibe] welcome  plugin v2.0.110 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -369,7 +369,7 @@ You can skip `/supervibe-brainstorm` if you already have an approved spec, or sk
 For any visual surface  web landing, in-product flow, browser extension, Electron / Tauri desktop, or mobile native.
 
 ```
-/supervibe-design landing in the style of Linear, focused on dev-tool buyers
+/supervibe-design landing for dev-tool buyers; named references require role, quality tier, and borrow/avoid notes
    Stage 0: target surface (web | chrome-extension | electron | tauri | mobile-native)
    creative-director: brand direction (mood-board, tokens, animation library, graphics medium)
    brandbook: target-aware baselines + Section 6.5 component library decision

@@ -17,6 +17,7 @@ const PASSING_CHECKS = Object.freeze({
   intelligence: {
     sourceCoverage: { pass: true },
     expertKnowledge: { pass: true },
+    referenceQuality: { pass: true },
     domains: 44,
     rows: 4165,
     manifestHasPrecedence: true,
@@ -90,6 +91,22 @@ test("design-agent maturity blocks 10/10 when the design-system owner is missing
   assert.equal(report.pass, false);
   assert.ok(report.score < 10);
   assert.ok(report.blockers.some((blocker) => blocker.id === "design-system-owner"));
+});
+
+test("design-agent maturity blocks 10/10 when reference quality is missing", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      intelligence: {
+        ...PASSING_CHECKS.intelligence,
+        referenceQuality: { pass: false },
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "design-intelligence-resources"));
 });
 
 test("current repository design-agent maturity is 10/10", () => {

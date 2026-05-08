@@ -58,6 +58,47 @@ references, market examples, official platform docs, live competitor pages, or
 fresh visual evidence that the local pack cannot know. Do not depend on a remote
 repository or external skill for baseline design expertise.
 
+## Reference Quality Ladder
+
+Every external reference must be evidence with a declared `reference role`, not
+an authority to imitate. A famous product name is never enough. Classify each
+source before it can influence direction, tokens, IA, interaction, or copy:
+
+| reference role | Allowed use | Not allowed |
+| --- | --- | --- |
+| `creative benchmark` | A current, high-craft source whose visual language, interaction polish, or narrative system teaches a specific move to borrow or avoid. | Copying the brand, palette, layout, motion, or voice wholesale. |
+| `interaction benchmark` | A proven treatment for one UX moment such as onboarding, search, empty states, billing recovery, command palettes, or chart drilldown. | Treating one flow as a full brand direction. |
+| `category convention` | A pattern users expect because many competitors do it similarly. | Calling the convention creative, unique, or differentiating. |
+| `direct competitor` | Market context, parity risk, and differentiation pressure. | Using the competitor as taste authority. |
+| `platform standard` | Official OS, browser, accessibility, or component-platform guidance. | Using platform defaults as a creative benchmark. |
+| `implementation library` | Engineering adapter constraints for shadcn/ui, MUI, Radix, SwiftUI, Flutter, Material, or similar. | Letting library defaults override approved tokens. |
+| `anti-pattern` | A current or historical example to avoid, with the failure mode named. | Quoting it as positive inspiration. |
+| `do-not-use-as-style` | A brand-name analogy that points at a famous product until decomposed into explicit borrow/avoid traits. | Any prompt that asks to copy a product's style instead of naming concrete traits. |
+
+Quality tiers:
+
+- `tier-1`: current, directly relevant, captured or cited with URL/date, role,
+  borrow, avoid, and fit rationale. Required for creative benchmark claims.
+- `tier-2`: useful local data, public pattern writeup, official platform docs,
+  or adjacent category evidence with clear constraints.
+- `tier-3`: old, undated, partial, unverified, or low-context inspiration.
+  Allowed only as historical context or anti-pattern evidence.
+
+Freshness and source packet requirements:
+
+- Live market references require capture date and recapture if older than 90
+  days. Trend-tracking can compare older screenshots only when they are labeled
+  historical.
+- Official platform standards can be reused when the cited version is current
+  for the target platform; otherwise verify before using.
+- A reference packet must include URL/source path, `reference role`, `quality
+  tier`, captured date or local source date, what to borrow, what to avoid, fit
+  rationale, and whether it is creative benchmark, interaction benchmark,
+  category convention, direct competitor, platform standard, implementation
+  library, anti-pattern, or do-not-use-as-style.
+- Do not accept `brand-name-as-style-authority`: decompose the product name into
+  concrete traits first, then decide whether each trait is worth borrowing.
+
 ## Eight-Pass Expert Routine
 
 This is an adaptive coverage routine, not a fixed eight-step user gauntlet.

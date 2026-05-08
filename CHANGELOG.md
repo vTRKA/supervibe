@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.110] - 2026-05-08
+
+### Added
+
+- Added `validate:design-reference-quality` and wired it into `npm run check`
+  and `supervibe:design-maturity`, so design maturity now requires explicit
+  reference roles, quality tiers, freshness, and borrow/avoid evidence.
+
+### Changed
+
+- Strengthened `/supervibe-design`, design agents, design intelligence, and
+  brandbook governance so famous-product references are decomposed instead of
+  treated as style authority.
+- Added candidate workspace guidance for unapproved design systems to keep
+  draft packets in one active candidate path and archive rejected candidates
+  instead of leaving competing root token sets.
+
 ## [2.0.109] - 2026-05-08
 
 ### Added
