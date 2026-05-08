@@ -48,6 +48,13 @@ handoffs so they know where the expertise lives:
   and mockup context evidence.
 - `skills/design-intelligence/references/`: compact local reference cards for
   brand, design system, UI styling, slide decks, collateral, and priority order.
+- `skills/design-intelligence/references/creative/`: curated creative
+  reference packs for editorial, luxury, experimental web, mobile-native,
+  data-product, AI-product, devtool, and regulated-trust directions. These are
+  local tier-2 packs, not brand-name style authorities.
+- `docs/references/creative-reference-taxonomy.md`: path selection, reference
+  role, quality tier, golden briefs, and output contract for creative reference
+  use.
 - `scripts/lib/design-intelligence-search.mjs`: local retrieval, domain
   inference, recommendation synthesis, evidence formatting, and checksum logic.
 - `references/design-intelligence-source-coverage.md`: local coverage map for
@@ -98,6 +105,48 @@ Freshness and source packet requirements:
   library, anti-pattern, or do-not-use-as-style.
 - Do not accept `brand-name-as-style-authority`: decompose the product name into
   concrete traits first, then decide whether each trait is worth borrowing.
+
+## Creative Reference Packs
+
+Use `docs/references/creative-reference-taxonomy.md` before selecting visual
+benchmarks. The taxonomy keeps creative work fast when reuse is enough and deep
+when a new system or rebrand needs a real point of view.
+
+Path selection:
+
+- Fast path: approved design system exists and the task is a narrow screen,
+  deck, or extension. Reuse the system and cite only the packs needed for the
+  missing capability.
+- Medium path: candidate or needs_revision system exists. Use one or two packs
+  to refine the candidate, but route back to section approval instead of
+  spawning a new system.
+- Full creative path: new product, rebrand, missing system, or material visual
+  change. Select two or three packs with different creative moves and produce
+  2-3 candidate directions that differ on palette, type, motion, imagery,
+  hierarchy, or density.
+
+Available local packs:
+
+- `creative-editorial.md`: narrative, type-led, campaign, and publication-like
+  surfaces.
+- `creative-luxury.md`: high-touch service, premium commerce, cultural, and
+  hospitality systems.
+- `creative-experimental-web.md`: immersive campaign, portfolio, launch, and
+  spatial web moments.
+- `creative-mobile-native.md`: gesture-first, haptic, touch-dense, or native
+  app experiences.
+- `creative-data-products.md`: analytics, operational dashboards, monitoring,
+  and dense decision surfaces.
+- `creative-ai-products.md`: AI assistants, copilots, model tooling, creative
+  generation, and review workflows.
+- `creative-devtools.md`: developer tools without famous-product style
+  imitation.
+- `creative-regulated-trust.md`: finance, legal, health, government, security,
+  and other high-trust contexts.
+
+Creative packs are local tier-2 evidence. They can supply moves to borrow and
+risks to avoid, but they do not override approved project memory, approved
+tokens, accessibility, current domain evidence, or explicit user feedback.
 
 ## Eight-Pass Expert Routine
 

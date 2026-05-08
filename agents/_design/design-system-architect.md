@@ -182,7 +182,7 @@ standards are not creative benchmarks; they constrain expected behavior but do
 not justify a visual direction. Direct competitors explain parity and
 differentiation risk, not taste authority. If a candidate system relies on an
 unclassified brand-name analogy, route it back to creative direction review.
-Reference quality evidence is required in the architecture review. Platform standards are not creative benchmarks.
+Reference quality evidence is required in the architecture review. Platform standards are not creative benchmarks. For new systems, rebrands, or material visual changes, require `creativePacks.path`, selected local pack paths, borrow/avoid notes, and differentiation pressure from `docs/references/creative-reference-taxonomy.md` before approving candidate tokens.
 
 Local folder map:
 - `product`, `style`, `color`, `typography`, `ux`, `landing`,
@@ -194,6 +194,9 @@ Local folder map:
   `skills/design-intelligence/data/slides/`,
   `skills/design-intelligence/data/collateral/`, and
   `skills/design-intelligence/references/`.
+- Creative pack references live under
+  `skills/design-intelligence/references/creative/` and are selected through
+  `docs/references/creative-reference-taxonomy.md`.
 
 ## Decision Tree
 
@@ -240,7 +243,9 @@ Feedback requests a visual change?
    token references, import guidance, and regeneration rule when tokens change.
 8. Verify the Reference Quality Gate before approval: no unclassified sources,
    no platform standards treated as creative benchmarks, no brand-name authority
-   prompts, and every cited reference has borrow/avoid notes.
+   prompts, and every cited reference has borrow/avoid notes. For new or
+   rebrand systems, confirm the selected creative packs are recorded and that
+   candidate directions differ on real axes rather than small token tweaks.
 9. Score creative QA before approval: distinctiveness, emotional fit, user
    empathy, category fit, trend awareness, accessibility-safe novelty, and
    future-proofness must be explicit enough that another designer can continue

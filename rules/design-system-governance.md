@@ -50,6 +50,12 @@ not leave multiple current token sets, manifests, or styleboards competing in
 root paths. Candidate tokens do not unlock prototypes, and inactive candidates
 are evidence, not source of truth.
 
+Run `node scripts/design-system-candidate-manager.mjs --archive-stale` before
+resuming or promoting a candidate design system. The command reports the active
+candidate, stale drafts, rejected candidates, and archive plan. `--apply` may
+archive stale or rejected candidates only when the active candidate is not in
+the plan.
+
 ## Examples
 
 ### Bad
@@ -73,6 +79,8 @@ Why this is good: the existing system stays stable, and the missing capability i
 
 - `/supervibe-design` Stage 0 checks whether `_design-system/design-flow-state.json` approves every required design-system section.
 - `supervibe:brandbook` has reuse/extension mode.
+- `scripts/design-system-candidate-manager.mjs` detects active candidate state
+  and stale/rejected candidate archive work.
 - `prototype-builder` must stop on missing, candidate, or needs_revision design-system state and request approval/extension instead of inventing values.
 - `ui-polish-reviewer` flags token bypass and component duplication.
 - `scripts/hooks/pre-write-prototype-guard.mjs` blocks prototype HTML/CSS/JS writes until design-flow state allows `prototype.requested`, then blocks raw colors and hardcoded layout pixel values in prototype surfaces.

@@ -36,9 +36,11 @@ const PASSING_CHECKS = Object.freeze({
     competitiveHasDifferentiation: true,
     regulatedTrustEvidence: true,
     creativeQaScore: true,
+    creativeReferencePacks: true,
   },
   system: {
     brandbookProducer: true,
+    candidateManager: true,
     componentBridge: true,
     tokensExport: true,
     governance: true,
@@ -107,6 +109,38 @@ test("design-agent maturity blocks 10/10 when reference quality is missing", () 
   assert.equal(report.pass, false);
   assert.ok(report.score < 10);
   assert.ok(report.blockers.some((blocker) => blocker.id === "design-intelligence-resources"));
+});
+
+test("design-agent maturity blocks 10/10 when creative reference packs are missing", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      creative: {
+        ...PASSING_CHECKS.creative,
+        creativeReferencePacks: false,
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "creative-empathy-and-trends"));
+});
+
+test("design-agent maturity blocks 10/10 when candidate manager is missing", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      system: {
+        ...PASSING_CHECKS.system,
+        candidateManager: false,
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "design-system-implementation"));
 });
 
 test("current repository design-agent maturity is 10/10", () => {

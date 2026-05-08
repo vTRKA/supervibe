@@ -37,7 +37,11 @@ manifest if present, project memory, Code RAG hits for existing UI/tokens, and
 `docs/references/design-expert-knowledge.md`. For regulated-trust briefs, gather
 domain evidence before accepting palette, typography, copy-risk, or trust
 defaults. Apply the `Reference Quality Ladder` before allowing any external
-reference to influence a recommendation.
+reference to influence a recommendation. For new products, rebrands, missing
+systems, material visual shifts, or weak category references, also read
+`docs/references/creative-reference-taxonomy.md` and the relevant local packs in
+`skills/design-intelligence/references/creative/` before recommending creative
+benchmarks.
 
 ## Decision tree
 
@@ -75,7 +79,12 @@ Required preflight order:
 1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, or `rejected`.
 2. Code search: inspect existing tokens, components, prototypes, routes, stack conventions, and brand assets.
 3. Internal lookup: call `designContextPreflight()` or `searchDesignIntelligence()` for the relevant domains.
-4. Optional external references: use Figma/browser/search only when available and relevant. External references are supplemental; use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain. Classify every source with `referenceRole`, `qualityTier`, `capturedAt`, `borrow`, `avoid`, and `notAuthority=true` unless it is an approved project brand source.
+4. Creative pack lookup: when creative direction matters, choose fast path,
+medium path, or full creative path from
+`docs/references/creative-reference-taxonomy.md`, then select 1-3 local packs
+from `skills/design-intelligence/references/creative/`. Use packs to produce
+borrow/avoid moves and differentiation pressure, not brand imitation.
+5. Optional external references: use Figma/browser/search only when available and relevant. External references are supplemental; use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain. Classify every source with `referenceRole`, `qualityTier`, `capturedAt`, `borrow`, `avoid`, and `notAuthority=true` unless it is an approved project brand source.
 
 ## Local Expert Routine
 
@@ -120,6 +129,12 @@ Design Intelligence Evidence:
       borrow: "specific trait or pattern to reuse"
       avoid: "specific trait, risk, or mimicry to avoid"
       notAuthority: true
+  creativePacks:
+    path: "fast path | medium path | full creative path"
+    selected:
+      - "skills/design-intelligence/references/creative/creative-data-products.md"
+    borrow: "specific pack moves used"
+    avoid: "specific pack risks rejected"
   acceptedStatus: "candidate | accepted | rejected | learned"
   fallbackReason: "no matching row | stack data unavailable | external lookup skipped"
 ```
@@ -135,6 +150,10 @@ style authority.
 Tier-1 references need a current capture date or official version, direct fit,
 and explicit borrow/avoid notes. Tier-2 references are advisory. Tier-3
 references are historical context or anti-pattern material only.
+Local creative reference packs are tier-2 evidence. For a full creative path,
+select multiple packs with genuinely different moves so the owning agent can
+generate distinct candidate directions instead of small variations of the same
+style.
 
 ## Precedence
 
@@ -159,6 +178,9 @@ Generic retrieved guidance is advisory. It cannot override approved tokens, prio
 - `stack:*`: implementation guidance for React, Next.js, Vue, Svelte, Angular, Flutter, SwiftUI, Shadcn, Tailwind, Three.js, and related stacks.
 - `slides:*`: presentation strategy, layout, copy, chart, typography, color, and background guidance.
 - `collateral:*`: logo, icon, CIP, brand asset, and mockup context guidance.
+- `creative packs`: local tier-2 pack cards in
+  `skills/design-intelligence/references/creative/` selected through
+  `docs/references/creative-reference-taxonomy.md`.
 
 Domain aliases `stack`, `slides`, and `collateral` expand to the corresponding
 prefixed local domain families during lookup.

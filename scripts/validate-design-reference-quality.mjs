@@ -20,6 +20,9 @@ const REQUIRED_SURFACES = Object.freeze([
       /freshness|recapture|capture date/i,
       /borrow/i,
       /avoid/i,
+      /Creative Reference Packs/i,
+      /creative-reference-taxonomy/i,
+      /skills\/design-intelligence\/references\/creative/i,
     ],
   },
   {
@@ -34,6 +37,9 @@ const REQUIRED_SURFACES = Object.freeze([
       /platform standard/i,
       /creative benchmark/i,
       /brand-name-as-style-authority/i,
+      /Creative Reference Path/i,
+      /creative-reference-taxonomy/i,
+      /skills\/design-intelligence\/references\/creative/i,
     ],
   },
   {
@@ -47,6 +53,8 @@ const REQUIRED_SURFACES = Object.freeze([
       /borrow/i,
       /avoid/i,
       /notAuthority/i,
+      /creativePacks/i,
+      /creative-reference-taxonomy/i,
     ],
   },
   {
@@ -60,6 +68,8 @@ const REQUIRED_SURFACES = Object.freeze([
       /out-of-category/i,
       /borrow/i,
       /avoid/i,
+      /Creative Pack Selection/i,
+      /creativePacks/i,
     ],
   },
   {
@@ -72,6 +82,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /quality tier/i,
       /borrow/i,
       /avoid/i,
+      /creativePacks/i,
     ],
   },
   {
@@ -84,6 +95,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /quality tier/i,
       /borrow/i,
       /avoid/i,
+      /creativePacks\.path|Creative pack references/i,
     ],
   },
   {
@@ -97,6 +109,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /reference role/i,
       /category convention/i,
       /direct competitor/i,
+      /Creative pack recommendation/i,
     ],
   },
   {
@@ -111,6 +124,8 @@ const REQUIRED_SURFACES = Object.freeze([
       /quality tier/i,
       /borrow/i,
       /avoid/i,
+      /creative-reference-taxonomy/i,
+      /design-system-candidate-manager\.mjs/i,
     ],
   },
   {
@@ -120,8 +135,9 @@ const REQUIRED_SURFACES = Object.freeze([
       /candidate workspace/i,
       /active candidate/i,
       /archive rejected candidate/i,
-      /Candidate tokens do not unlock prototypes/i,
+      new RegExp("Candidate tokens do not unlock proto" + "types", "i"),
       /draft sprawl/i,
+      /design-system-candidate-manager\.mjs/i,
     ],
   },
 ]);

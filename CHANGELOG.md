@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.111] - 2026-05-09
+
+### Added
+
+- Added curated local creative reference packs and
+  `validate:creative-reference-packs`, now wired into `npm run check`.
+- Added `design-system-candidate-manager.mjs` and `design:candidate-manager`
+  to detect active, stale, and rejected design-system candidates before
+  promotion or cleanup.
+
+### Changed
+
+- Updated `/supervibe-design`, design intelligence, brandbook, design agents,
+  and governance rules to select fast/medium/full creative paths and require
+  creative pack borrow/avoid evidence before new or rebrand design systems.
+- Extended design maturity so 10/10 now requires creative reference packs and
+  candidate-manager coverage.
+
 ## [2.0.110] - 2026-05-08
 
 ### Added

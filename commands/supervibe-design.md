@@ -94,6 +94,17 @@ Platform standard references are constraints, not creative benchmarks.
 brand-name-as-style-authority prompts that use a famous product as style
 authority are invalid until decomposed into explicit borrow and avoid traits.
 
+Creative Reference Path: before Stage 1 direction or Stage 2 candidate tokens,
+read `docs/references/creative-reference-taxonomy.md` and choose `fast path`,
+`medium path`, or `full creative path`. Fast path reuses an approved system and
+only cites packs for missing capabilities. Medium path sharpens an existing
+candidate or needs_revision system and returns to section approval. Full
+creative path selects 2-3 packs from
+`skills/design-intelligence/references/creative/` and requires 2-3 candidate
+directions with genuinely different axes, not small token tweaks. Record the
+selected pack paths, borrow/avoid moves, and differentiation pressure in
+Design Intelligence Evidence.
+
 Wizard answer writes must go through `node scripts/design-wizard-answer.mjs`.
 That command owns the slug-level state mutex at
 `.supervibe/memory/locks/design-wizard/<slug>.lock`, rejects concurrent writes by
@@ -111,6 +122,12 @@ Target resolution is mandatory before durable artifacts. A multilingual legal/fi
 Execution visibility is mandatory. `config.json.executionMode` must be one of `inline`, `real-agents`, or `hybrid`; `agent-required-blocked` is a hard-stop status when requested real/hybrid agents are unavailable. `config.json.missingAgents` lists unavailable specialists; `config.json.qualityImpact` explains what quality is blocked. If a required specialist is missing, ask one blocked-mode question before any approval: install missing agents with `scripts/provision-agents.mjs`, connect host-native agents, choose `hybrid` with real receipts for agent-owned outputs, save an `inline` draft without agent claims, or stop here. Manual emulation is not an allowed design workflow path and is never a completed agent stage.
 
 Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode!="real-agents"`, `plan.wizard.gates.viewportPolicyRecorded=false`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
+
+Candidate sprawl check: before resuming, replacing, or promoting a candidate
+design system, run `node scripts/design-system-candidate-manager.mjs
+--archive-stale`. It reports the active candidate and any stale or rejected
+candidate archive plan. Do not continue if the active candidate is missing or
+if multiple root-level token/styleboard candidates compete as source of truth.
 
 Approval promotion must be automated. After explicit approval, run `node scripts/promote-design-approval.mjs --slug <slug> --approved-by "<user>" --feedback-hash "<hash>"` so `manifest.json`, `design-flow-state.json`, `.approvals/*.json`, `config.json`, `.approval.json`, component docs, status comments, and `designer-package.json` move from candidate/draft to approved together. The designer package points to `direction.md`, `tokens.css`, `styleboard.html`, `spec.md`, screenshots, rejected alternatives, approval state, and known risks.
 

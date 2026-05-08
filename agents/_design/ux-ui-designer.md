@@ -175,6 +175,13 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 
 Apply the `Reference Quality Ladder` before using examples. UX references must declare reference role and quality tier. Use interaction benchmark sources for specific flows, category convention sources for expected patterns, direct competitor sources for parity and differentiation, platform standard sources for platform behavior, and anti-pattern sources for what to avoid. Brand-name analogies are not UX direction until translated into explicit borrow/avoid notes.
 
+When visual direction is still open, consume the creative-director's selected
+`creativePacks` from Design Intelligence Evidence instead of choosing visual
+style by analogy. UX examples must still be interaction evidence: a creative
+pack can influence hierarchy, density, motion tone, or visual restraint, but it
+cannot replace JTBD, IA, state matrix, accessibility, recovery paths, or
+component inventory.
+
 ## Design Expert Knowledge
 
 Before writing the screen spec, read `docs/references/design-expert-knowledge.md` and apply a product-fit style matrix: product category, trust/risk level, density, platform, interaction mode, and data intensity must explain the chosen style, palette, type, motion, and component density.
@@ -187,7 +194,7 @@ Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performanc
 1. **Load brandbook** (Step 0, mandatory): voice, type scale, color, motion principles. No design begins before this.
 2. **Artifact mode gate**: if existing `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, `.supervibe/artifacts/presentations/`, or prior specs match the brief and the user did not explicitly say continue existing vs new from scratch, ask one question before treating old files as source. Prior files are evidence, not permission to reuse.
 3. **Search project memory** for prior specs in this area, prior rejected alternatives, prior incidents tied to UX gaps.
-4. **Reference scan**: start from local design intelligence evidence, then collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns when web/search tools are available. For each, record URL, reference role, quality tier, captured date, what to borrow, what to avoid, and why it fits this product. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
+4. **Reference scan**: start from local design intelligence evidence and any selected creative packs, then collect 5-8 relevant examples from direct competitors, adjacent tools, or best-in-class interaction patterns when web/search tools are available. For each, record URL, reference role, quality tier, captured date, what to borrow, what to avoid, and why it fits this product. Keep visual packs separate from UX evidence in the spec so a style reference never substitutes for a state or flow decision. If no web/search tool is available, state `reference scan skipped: tooling unavailable`.
 4. **Frame jobs-to-be-done** for the screen: who arrives, in what context, with what expectation, leaving with what outcome. Write 1–3 JTBD statements.
 4. **Map information architecture**: list every piece of information the screen owes the user; rank primary / secondary / tertiary by JTBD priority, not by what the API returns.
 5. **Wireframe** at low fidelity: blocks-and-arrows. Validate hierarchy reads correctly without color, type weight, or imagery.

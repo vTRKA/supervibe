@@ -19,6 +19,7 @@ deferred.
 | Search and reasoning scripts | adapted | `scripts/lib/design-intelligence-search.mjs` | Algorithmic value ported to Node-only runtime: CSV parsing, search, domain inference, recommendation synthesis, evidence formatting, and stable checksums. |
 | Brand scripts | adapted | `scripts/lib/design-brand-asset-auditor.mjs` | Asset validation, palette comparison, and brand-to-token sync checks adapted for Supervibe artifacts. |
 | Brand, design-system, UI styling, slides references | adapted | `skills/design-intelligence/references/*.md` | Curated into compact Supervibe reference cards, not copied as command surfaces. |
+| Creative reference packs | adapted | `skills/design-intelligence/references/creative/*.md` | Curated local tier-2 creative packs plus `docs/references/creative-reference-taxonomy.md`; used to choose borrow/avoid moves without treating famous products as style authority. |
 | Base and platform templates | adapted | `skills/design-intelligence/references/ui-styling-reference.md` | Used as template-structure and platform-scope guidance only. |
 
 ## Local Data Domains
@@ -87,6 +88,19 @@ Reference cards under `skills/design-intelligence/references/`:
 - `professional-ui-priority-reference.md`
 - `slide-deck-reference.md`
 - `ui-styling-reference.md`
+
+Creative reference packs under `skills/design-intelligence/references/creative/`:
+
+- `creative-editorial.md`
+- `creative-luxury.md`
+- `creative-experimental-web.md`
+- `creative-mobile-native.md`
+- `creative-data-products.md`
+- `creative-ai-products.md`
+- `creative-devtools.md`
+- `creative-regulated-trust.md`
+
+Taxonomy: `docs/references/creative-reference-taxonomy.md`.
 
 ## Skipped Or Deferred Families
 

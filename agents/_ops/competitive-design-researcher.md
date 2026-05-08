@@ -84,6 +84,13 @@ component anatomy, or implementation constraints, but they do not define the
 creative bar for a new brand. Famous products are not style authority until the
 specific trait to borrow and the trait to avoid are written down.
 
+When the report feeds creative direction, add a `Creative pack recommendation`
+section. Use `docs/references/creative-reference-taxonomy.md` to map category
+sea-of-sameness, whitespace, and risk into 1-3 local packs under
+`skills/design-intelligence/references/creative/`. The recommendation should
+name what each pack helps the creative-director borrow, what it warns against,
+and which competitor conventions must remain only category pressure.
+
 ## 2026 Expert Standard
 
 Operate as a current 2026 senior specialist, not as a generic helper. Apply
@@ -177,6 +184,9 @@ Before producing any artifact or making any structural recommendation:
 9. **Classify patterns** (convention / emerging / idiosyncratic / anti-pattern) — count adoption across competitors
 10. **Draft DO/DON'T table** with rationale tied to user need or strategic positioning
 11. **Write differentiation recommendation** — one paragraph naming where our product *deliberately* deviates and why
+11a. **Recommend creative packs** — map the convention gaps to local creative
+    packs and state the borrow/avoid move for each pack; do not name a
+    competitor or platform system as the creative north star.
 12. **Cite all sources** with URL + capture date + license note where applicable
 13. **Cache report** with attribution per screenshot
 14. **Score** with `supervibe:confidence-scoring` research-output rubric (≥9 to ship)

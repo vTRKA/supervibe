@@ -158,13 +158,33 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 
 Apply the `Reference Quality Ladder` from `docs/references/design-expert-knowledge.md` before any external source shapes the direction. Every reference needs a reference role, quality tier, capture date or local-pack source, borrow note, avoid note, and fit rationale. A source may be a creative benchmark, interaction benchmark, category convention, direct competitor, platform standard, implementation library, anti-pattern, or do-not-use-as-style. Famous product names are never style authority until decomposed into concrete traits.
 
+### Creative Pack Selection
+
+Before the reference scan, read `docs/references/creative-reference-taxonomy.md`
+and choose the path:
+
+- Fast path: approved design system exists; use only the pack needed for a
+  missing extension or screen capability.
+- Medium path: candidate or needs_revision system exists; use one or two packs
+  to sharpen the candidate and route back to section approval.
+- Full creative path: new product, rebrand, missing system, or material visual
+  shift; select two or three local packs from
+  `skills/design-intelligence/references/creative/` and produce 2-3 candidate
+  directions with different palette, type, motion, imagery, hierarchy, or
+  density axes.
+
+Always include `creativePacks.path`, selected pack paths, borrow notes, avoid
+notes, and differentiation pressure in Design Intelligence Evidence. A direct
+competitor or famous product can be category pressure, not a creative north
+star.
+
 ## Procedure
 
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".
 2. **Read PRD / vision / audience docs** — a direction without an audience is decoration; capture primary persona, primary moment, primary emotion target.
 3. **Brand audit** (if existing brand) — inventory current palette, type, motion, voice, surfaces; tag each as KEEP / FLEX / RETIRE with reason.
 4. **Discover research/asset MCPs** — invoke `supervibe:mcp-discovery` with categories `[design-assets, web-crawl, search]`. Use returned tool names for Figma asset reads + competitor scrape. If none available → fall back to WebFetch/WebSearch and explicitly note `MCP unavailable; competitor scan limited to manually fetched/searchable URLs`.
-5. **Reference scan** — start from local design intelligence evidence, then use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, reference role, quality tier, captured date, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Include at least 3 true creative benchmark references outside the immediate SaaS category when defining a new brand direction; direct competitors and platform standards can explain conventions but cannot be the creative north star. Never copy a brand wholesale; extract patterns.
+5. **Reference scan** — start from local design intelligence evidence and local creative packs, then use Firecrawl/WebSearch/WebFetch where available to collect 8-12 direct, adjacent, and out-of-category references. For each reference, record URL, reference role, quality tier, captured date, what to borrow, what to avoid, and whether the idea is visual language, interaction, information architecture, motion, or copy. Include at least 3 true creative benchmark references outside the immediate SaaS category when defining a new brand direction; direct competitors and platform standards can explain conventions but cannot be the creative north star. Never copy a brand wholesale; extract patterns.
 5a. **Media capability check** — run `node "<resolved-supervibe-plugin-root>/scripts/detect-media-capabilities.mjs" --json` before proposing video, GIF, or rendered motion deliverables. If `video=false`, choose CSS/WAAPI live motion, static storyboard frames, SVG/Lottie spec from existing assets, or poster-frame treatment instead.
 6. **Competitor scan** — identify 5-8 direct + 2-3 adjacent competitors; capture their palette, type, voice, distinctive moves; identify category sea-of-sameness to avoid; identify ownable whitespace.
 6. **Define brand personality** through a structured one-question-at-a-time dialogue (see "User dialogue style" below). Aim for 3-5 adjectives with negative-space pairs ("trustworthy not stiff", "warm not soft", "precise not cold"); these are the constraint anchors for every later choice.

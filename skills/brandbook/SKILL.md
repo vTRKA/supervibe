@@ -46,6 +46,12 @@ the source is explicitly tier-1 for the chosen creative trait. Reject
 brand-name-as-style-authority prompts until they are decomposed into borrow and
 avoid decisions.
 
+For new products, rebrands, missing systems, or material visual shifts, use
+`docs/references/creative-reference-taxonomy.md` and 1-3 packs from
+`skills/design-intelligence/references/creative/` before writing direction or
+candidate tokens. Record selected pack paths, creative path, borrow/avoid moves,
+and differentiation pressure in the review packet.
+
 Materialize a brand into an **explicit, machine-readable design system lifecycle** at `.supervibe/artifacts/prototypes/_design-system/`. Candidate tokens are for review packets/styleboards only; `design_system.status = approved` plus every required section approved unlocks prototype work; final handoff metadata is written only after visual approval of an approved prototype.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.
@@ -93,6 +99,12 @@ current token sets in root paths. Candidate markers are progress evidence, not
 approval. Approved systems use root files plus `.approvals/`; rejected
 alternatives stay in `.alternatives/` or archived candidate folders for memory,
 not as reusable source of truth.
+
+Before resuming a candidate run or promoting a review packet, run
+`node scripts/design-system-candidate-manager.mjs --archive-stale` to inspect
+active, stale, and rejected candidates. Use `--apply` only when the plan shows
+the active candidate will not be moved. Do not hand-edit `.candidates/active.json`
+as a substitute for the candidate manager status.
 
 ## Expert Operating Standard
 
@@ -455,6 +467,8 @@ Rubric:     brandbook
 - `.supervibe/artifacts/prototypes/_design-system/tokens.css` parses (no syntax errors)
 - `.supervibe/artifacts/prototypes/_design-system/manifest.json` valid JSON
 - `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` valid JSON and blocks prototype until every required section is approved
+- `npm run design:candidate-manager -- --archive-stale` reports the active
+  candidate and stale/rejected archive plan without moving active work
 - Every component in `components/` has the 4 required sections (anatomy, states, variants, tokens)
 - Contrast check on every text-on-bg pair in palette: WCAG AA passing
 - `prefers-reduced-motion` strategy documented

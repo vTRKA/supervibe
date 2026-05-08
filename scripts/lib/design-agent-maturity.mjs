@@ -28,6 +28,9 @@ import {
 import {
   validateDynamicQuestionSystems,
 } from "../validate-dynamic-question-systems.mjs";
+import {
+  validateCreativeReferencePacks,
+} from "../validate-creative-reference-packs.mjs";
 
 export const DESIGN_AGENT_MATURITY_DIMENSIONS = Object.freeze([
   { id: "design-system-owner", max: 1.5 },
@@ -60,6 +63,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
   const styleboardQa = validateDesignStyleboardQa(rootDir);
   const dynamicQuestions = validateDynamicQuestionSystems();
   const agentContent = validateAgentContentQuality(rootDir);
+  const creativeReferencePacks = validateCreativeReferencePacks(rootDir);
 
   return {
     owner: inspectDesignSystemOwner(rootDir),
@@ -86,9 +90,13 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
       competitiveHasDifferentiation: /differentiation|convention|emerging|idiosyncratic|anti-pattern/i.test(designFiles.competitiveResearcher),
       regulatedTrustEvidence: /Regulated Trust Domains|evidence before creative\s+defaults|Domain evidence/i.test(designFiles.designExpertKnowledge),
       creativeQaScore: /distinctiveness|emotional fit|user empathy|category fit|trend awareness|future-proof/i.test(designFiles.designSystemArchitect),
+      creativeReferencePacks: creativeReferencePacks.pass === true,
     },
     system: {
       brandbookProducer: /brandbook-producer\.mjs run|Executable producer boundary/i.test(designFiles.brandbook),
+      candidateManager: existsSync(join(rootDir, "scripts", "design-system-candidate-manager.mjs"))
+        && Boolean(packageJson.scripts?.["design:candidate-manager"])
+        && /design-system-candidate-manager\.mjs/i.test(`${designFiles.brandbook}\n${designFiles.designSystemGovernance}`),
       componentBridge: /componentLibrary|bridgeDepth|library-bridge|token references/i.test(designFiles.componentLibraryIntegration),
       tokensExport: /Tailwind|MUI|CSS vars|Style Dictionary|tokens/i.test(designFiles.tokensExport),
       governance: /Design System Governance|Candidate tokens do not unlock prototypes|pre-write-prototype-guard/i.test(designFiles.designSystemGovernance),
@@ -170,8 +178,8 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     "creative-empathy-and-trends",
     1.5,
     creativePass,
-    `emotion=${checks.creative?.creativeDirectorHasEmotion === true}, distinctiveness=${checks.creative?.creativeDirectorHasDistinctiveness === true}, trendRefresh=${checks.creative?.competitiveHasTrendRefresh === true}, differentiation=${checks.creative?.competitiveHasDifferentiation === true}, regulatedTrust=${checks.creative?.regulatedTrustEvidence === true}, creativeQa=${checks.creative?.creativeQaScore === true}`,
-    "Strengthen creative director, competitive design research, regulated-trust evidence, and creative QA scoring.",
+    `emotion=${checks.creative?.creativeDirectorHasEmotion === true}, distinctiveness=${checks.creative?.creativeDirectorHasDistinctiveness === true}, trendRefresh=${checks.creative?.competitiveHasTrendRefresh === true}, differentiation=${checks.creative?.competitiveHasDifferentiation === true}, regulatedTrust=${checks.creative?.regulatedTrustEvidence === true}, creativeQa=${checks.creative?.creativeQaScore === true}, creativePacks=${checks.creative?.creativeReferencePacks === true}`,
+    "Strengthen creative director, competitive design research, regulated-trust evidence, creative reference packs, and creative QA scoring.",
   );
 
   const systemPass = Object.values(checks.system || {}).every(Boolean);
@@ -179,8 +187,8 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     "design-system-implementation",
     1.5,
     systemPass,
-    `producer=${checks.system?.brandbookProducer === true}, bridge=${checks.system?.componentBridge === true}, tokensExport=${checks.system?.tokensExport === true}, governance=${checks.system?.governance === true}, transfer=${checks.system?.prototypeTransfer === true}, componentCoverage=${checks.system?.componentCoverage === true}, tokenLeakage=${checks.system?.tokenLeakageChecks === true}, visualGate=${checks.system?.visualRegressionGate === true}`,
-    "Complete token/component coverage, library bridge, governance, visual QA, and drift checks.",
+    `producer=${checks.system?.brandbookProducer === true}, candidateManager=${checks.system?.candidateManager === true}, bridge=${checks.system?.componentBridge === true}, tokensExport=${checks.system?.tokensExport === true}, governance=${checks.system?.governance === true}, transfer=${checks.system?.prototypeTransfer === true}, componentCoverage=${checks.system?.componentCoverage === true}, tokenLeakage=${checks.system?.tokenLeakageChecks === true}, visualGate=${checks.system?.visualRegressionGate === true}`,
+    "Complete candidate manager, token/component coverage, library bridge, governance, visual QA, and drift checks.",
   );
 
   const memoryPass = Object.values(checks.memory || {}).every(Boolean);
