@@ -65,6 +65,21 @@ test("query answers ready, blocked, owner, changed, next, and summary questions"
   assert.equal(groupWorkItemsByStatus(index).ready.length >= 1, true);
 });
 
+test("dependencies unblock when blocker task is terminal", () => {
+  const workGraph = graph();
+  const blockerId = "epic-query-t1";
+  const dependentId = "epic-query-t2";
+  workGraph.items = workGraph.items.map((item) => item.itemId === blockerId ? { ...item, status: "complete" } : item);
+  workGraph.tasks = workGraph.tasks.map((task) => task.id === blockerId ? { ...task, status: "complete" } : task);
+
+  const index = createWorkItemIndex({ graph: workGraph, now: "2026-05-09T00:00:00.000Z" });
+  const dependent = index.find((item) => item.itemId === dependentId);
+
+  assert.equal(dependent.task.dependencies.includes(blockerId), true);
+  assert.equal(dependent.effectiveStatus, "ready");
+  assert.match(queryWorkItems("what is ready?", { index }).answer, /epic-query-t2/);
+});
+
 test("query helpers detect duplicates, stale claims, orphan evidence, drift, and multi-repo filters", () => {
   const workGraph = graph();
   const index = createWorkItemIndex({

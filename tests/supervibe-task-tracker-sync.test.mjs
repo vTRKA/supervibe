@@ -99,6 +99,25 @@ test("ready, claim, close, and status reconciliation use native mapping", async 
   assert.equal(reconciled[0].trackerReady, true);
 });
 
+test("tracker ready front unblocks dependents after blocker closes", async () => {
+  const graph = sampleGraph();
+  const adapter = createMemoryTaskTrackerAdapter();
+  const pushed = await syncPush(graph, adapter, { dryRun: true });
+  const blocker = graph.tasks.find((candidate) => candidate.id.endsWith("-t1"));
+  const dependent = graph.tasks.find((candidate) => candidate.id.endsWith("-t2"));
+
+  assert.equal((await syncClose({ task: blocker, adapter, mapping: pushed.mapping, evidence: ["node --test"] })).ok, true);
+  const nativeClosedGraph = {
+    ...graph,
+    tasks: graph.tasks.map((task) => task.id === blocker.id ? { ...task, status: "complete" } : task),
+  };
+  const ready = await syncReadyFront(nativeClosedGraph, adapter, pushed.mapping);
+
+  assert.ok(ready.nativeReady.some((item) => item.id === dependent.id));
+  assert.ok(ready.reconciledReady.some((item) => item.id === dependent.id));
+  assert.equal(ready.blockedByTracker.some((item) => item.id === dependent.id), false);
+});
+
 test("worktree visibility validates shared tracker mapping", async () => {
   const graph = sampleGraph();
   const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });

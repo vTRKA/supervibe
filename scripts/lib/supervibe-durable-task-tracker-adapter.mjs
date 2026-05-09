@@ -9,6 +9,8 @@ export const TASK_TRACKER_CAPABILITY_STATES = Object.freeze([
   "blocked",
 ]);
 
+const TERMINAL_TRACKER_STATUSES = new Set(["complete", "completed", "closed", "done", "cancelled", "policy_stopped", "budget_stopped"]);
+
 export const TASK_TRACKER_METHODS = Object.freeze([
   "detect",
   "version",
@@ -146,11 +148,17 @@ export function createMemoryTaskTrackerAdapter(options = {}) {
       return { ok: true, adapterId, record };
     },
     async ready() {
-      const blocked = new Set(state.dependencies.map((dependency) => dependency.toExternalId));
+      const blocked = new Set(state.dependencies
+        .filter((dependency) => dependency.type !== "related")
+        .filter((dependency) => {
+          const blocker = state.tasks.get(dependency.fromExternalId) || state.epics.get(dependency.fromExternalId);
+          return !isTerminalTrackerStatus(blocker?.status);
+        })
+        .map((dependency) => dependency.toExternalId));
       return {
         ok: true,
         adapterId,
-        tasks: [...state.tasks.values()].filter((task) => !blocked.has(task.externalId) && !["complete", "closed"].includes(task.status)),
+        tasks: [...state.tasks.values()].filter((task) => !blocked.has(task.externalId) && !isTerminalTrackerStatus(task.status)),
       };
     },
     async claim({ externalId, owner, sessionId, worktreePath } = {}) {
@@ -283,6 +291,10 @@ function unavailableResult(reason) {
     reason,
     remediation: ["continue with native JSON graph", "configure a CLI or MCP tracker before enabling sync"],
   };
+}
+
+function isTerminalTrackerStatus(status) {
+  return TERMINAL_TRACKER_STATUSES.has(String(status || "").toLowerCase());
 }
 
 function exportMemoryState(state, adapterId) {

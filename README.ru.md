@@ -6,7 +6,7 @@ Supervibe превращает Claude Code, Codex, Gemini, Cursor и OpenCode в
 
 Работает локально. Docker не нужен. Windows, macOS и Linux.
 
-**v2.0** - текущий плагин `v2.0.120` - MIT - 1417 тестов
+**v2.0** - текущий плагин `v2.0.121` - MIT - 1417 тестов
 
 > **Compliance notice:** Supervibe предназначен только для помощи в разработке. Используя его, вы отвечаете за соблюдение Terms of Service (ToS) и Acceptable Use Policy (AUP) всех сервисов, включая Anthropic. Неразрешенная автоматизация, злоупотребление OAuth-токенами или нарушение правил сторонних сервисов остаются ответственностью пользователя.
 
@@ -92,7 +92,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 После перезапуска вы должны увидеть примерно такое:
 
 ```text
-[supervibe] welcome  plugin v2.0.120 initialized for this project
+[supervibe] welcome  plugin v2.0.121 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```

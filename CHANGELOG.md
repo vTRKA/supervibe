@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.121] - 2026-05-09
+
+### Fixed
+
+- Fixed work-item dependency readiness so dependent tasks become ready after
+  their blocker tasks reach a terminal status.
+- Fixed memory tracker ready-front reconciliation so closed blockers no longer
+  keep downstream tasks hidden from ready work.
+- Added locked local graph mutation with structured audit events for claim,
+  duplicate-claim, defer, close, complete, and reopen actions.
+
 ## [2.0.120] - 2026-05-09
 
 ### Added

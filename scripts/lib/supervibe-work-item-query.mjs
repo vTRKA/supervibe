@@ -24,6 +24,8 @@ export const WORK_ITEM_QUERY_INTENTS = Object.freeze([
   "unknown",
 ]);
 
+const TERMINAL_STATUSES = new Set(["done", "complete", "completed", "closed", "cancelled", "policy_stopped", "budget_stopped"]);
+
 export function classifyWorkItemQuestion(question = "") {
   const text = String(question).toLowerCase();
   if (/ready|готов|готово к работе|что.*работе|what.*ready/.test(text)) return "ready";
@@ -62,6 +64,7 @@ export function createWorkItemIndex({
   const gatesByTask = groupBy(gates, (gate) => gate.taskId);
   const delegatedByItem = groupBy(delegatedMessages, (message) => message.workItemId);
   const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const itemById = new Map(items.map((item) => [item.itemId, item]));
   return items.map((item) => {
     const task = taskById.get(item.itemId) || null;
     const itemComments = commentsByItem.get(item.itemId) || [];
@@ -83,7 +86,7 @@ export function createWorkItemIndex({
       deferred: item.deferred || task?.deferred || null,
       deferredUntil: item.deferredUntil || item.defer_until || task?.deferredUntil || task?.defer_until || null,
       verificationState: item.verificationState || item.verification_state || item.verification?.status || null,
-      effectiveStatus: effectiveStatus(item, task, itemClaims, itemGates, now, itemDelegated),
+      effectiveStatus: effectiveStatus(item, task, itemClaims, itemGates, now, itemDelegated, { taskById, itemById }),
     };
   });
 }
@@ -266,9 +269,9 @@ export function workItemStorageMode({ branch = "", protectedBranches = ["main", 
   };
 }
 
-function effectiveStatus(item, task, claims, gates, now, delegatedMessages = []) {
+function effectiveStatus(item, task, claims, gates, now, delegatedMessages = [], dependencyContext = {}) {
   if (item.type === "epic") return "summary";
-  if (task?.status === "complete" || item.status === "complete") return "done";
+  if (isTerminalStatus(task?.status) || isTerminalStatus(item.status)) return "done";
   if (isWorkItemDeferred({ ...item, task, claims }, { now })) return "deferred";
   if (task?.status === "blocked" || item.status === "blocked") return "blocked";
   if (gates.some((gate) => ["open", "waiting", "blocked"].includes(gate.status))) return "gate";
@@ -277,9 +280,22 @@ function effectiveStatus(item, task, claims, gates, now, delegatedMessages = [])
     const stale = detectStaleWorkItems([{ ...item, claims }], { now }).length > 0;
     return stale ? "stale" : "claimed";
   }
-  if ((task?.dependencies || []).length > 0) return "blocked";
+  if (dependencyBlockers(task, dependencyContext).length > 0) return "blocked";
   if (item.type === "followup") return "deferred";
   return "ready";
+}
+
+function dependencyBlockers(task, { taskById = new Map(), itemById = new Map() } = {}) {
+  return (task?.dependencies || []).filter((dependencyId) => {
+    const dependencyTask = taskById.get(dependencyId);
+    const dependencyItem = itemById.get(dependencyId);
+    if (!dependencyTask && !dependencyItem) return true;
+    return !isTerminalStatus(dependencyTask?.status) && !isTerminalStatus(dependencyItem?.status);
+  });
+}
+
+function isTerminalStatus(status) {
+  return TERMINAL_STATUSES.has(String(status || "").toLowerCase());
 }
 
 function blockReason(item) {
