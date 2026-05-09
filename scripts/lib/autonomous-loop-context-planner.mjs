@@ -45,7 +45,7 @@ export function buildWorkflowSignal(task = {}, options = {}) {
   return {
     schemaVersion: 1,
     signalSource: options.signalSource || "autonomous-loop",
-    projectId: options.projectId || options.graphId || options.runId || null,
+    workGraphId: options.workGraphId || options.graphId || options.projectId || options.runId || null,
     epicId: options.epicId || options.graphId || task.epicId || task.graphId || null,
     runId: options.runId || null,
     taskId,

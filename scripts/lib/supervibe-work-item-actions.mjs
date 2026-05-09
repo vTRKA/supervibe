@@ -1,9 +1,11 @@
 import { copyFile, mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { deferWorkItemInGraph } from "./supervibe-work-item-scheduler.mjs";
+import { inferRootDirFromGraphPath, updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
 
 const DONE_STATUSES = new Set(["done", "complete", "completed", "closed", "skipped", "cancelled", "canceled"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["active", "claimed", "in_progress"]);
+const CREATABLE_WORK_ITEM_TYPES = new Set(["epic", "task", "subtask", "bug", "chore", "review", "gate", "followup"]);
 const DEFAULT_CLAIM_TTL_MINUTES = 240;
 const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
 const DEFAULT_LOCK_RETRY_DELAY_MS = 25;
@@ -26,6 +28,12 @@ export async function mutateWorkItemGraphFile(graphPath, action = {}) {
       // If the source is missing, the write below will surface the real error.
     }
     await writeFile(graphPath, `${JSON.stringify(result.graph, null, 2)}\n`, "utf8");
+    await updateActiveWorkItemGraph({
+      rootDir: action.rootDir || inferRootDirFromGraphPath(graphPath),
+      graphPath,
+      graph: result.graph,
+      reason: `mutation:${result.action || action.type || "unknown"}`,
+    });
     result.backupPath = backupPath;
     return { ...result, dryRun: false };
   });
@@ -47,6 +55,7 @@ export function mutateWorkItemGraph(graph = {}, action = {}) {
     return appendAuditEvent(result, action, type);
   }
   if (type === "close") result = updateStatus(graph, action, "closed");
+  else if (type === "create" || type === "create-work-item") result = createWorkItem(graph, action);
   else if (type === "complete") result = updateStatus(graph, action, "complete");
   else if (type === "skip") result = updateStatus(graph, action, "skipped");
   else if (type === "cancel" || type === "cancelled" || type === "canceled") result = updateStatus(graph, action, "cancelled");
@@ -222,6 +231,61 @@ function deleteWorkItem(graph, action) {
     action: "delete",
     changed: true,
     dependentsRemoved: action.force ? dependents : [],
+  };
+}
+
+function createWorkItem(graph, action) {
+  const now = action.now || new Date().toISOString();
+  const source = action.item || action;
+  const itemType = source.workItemType || source.itemType || source.formType || "task";
+  const normalizedType = normalizeCreatedItemType(itemType);
+  const title = String(source.title || source.goal || "").trim();
+  if (!title) throw new Error("create requires title");
+  const ids = new Set((graph.items || []).map((entry) => entry.itemId || entry.id));
+  const parentId = source.parentId ?? source.parent ?? (normalizedType === "epic" ? null : graph.epicId || graph.graph_id || null);
+  if (parentId && !ids.has(parentId)) throw new Error(`parent work item not found: ${parentId}`);
+  const itemId = uniqueWorkItemId(ids, source.itemId || source.id || `${graph.epicId || graph.graph_id || "work"}-${slugify(title)}`);
+  const item = {
+    itemId,
+    epicId: source.epicId || graph.epicId || graph.graph_id || itemId,
+    parentId,
+    type: normalizedType,
+    title,
+    status: source.status || "open",
+    priority: source.priority ?? 0,
+    owner: source.owner || source.assignee || null,
+    assignee: source.assignee || null,
+    labels: normalizeStringList(source.labels),
+    blocks: normalizeStringList(source.blocks),
+    blockedBy: normalizeStringList(source.blockedBy || source.dependencies),
+    related: normalizeStringList(source.related),
+    acceptanceCriteria: normalizeStringList(source.acceptanceCriteria || source.acceptance),
+    verificationCommands: normalizeStringList(source.verificationCommands || source.verification || source.verificationHints),
+    writeScope: Array.isArray(source.writeScope) ? source.writeScope : [],
+    createdAt: now,
+    createdBy: action.actor || source.owner || "user",
+    updatedAt: now,
+  };
+  const task = item.type === "epic" ? null : itemToTask(item);
+  const dependencyEdges = [
+    ...(graph.dependencyEdges || []),
+    ...(parentId ? [{ from: parentId, to: itemId, type: "parent-child" }] : []),
+    ...item.blockedBy.map((from) => ({ from, to: itemId, type: "blocks" })),
+    ...item.blocks.map((to) => ({ from: itemId, to, type: "blocks" })),
+    ...item.related.map((to) => ({ from: itemId, to, type: "related" })),
+  ];
+  return {
+    graph: {
+      ...graph,
+      updatedAt: now,
+      items: [...(graph.items || []), item],
+      tasks: task ? [...(graph.tasks || []), task] : (graph.tasks || []),
+      dependencyEdges,
+    },
+    itemId,
+    action: "create",
+    changed: true,
+    createdItems: [itemId],
   };
 }
 
@@ -599,7 +663,7 @@ function itemToTask(item) {
     category: "implementation",
     status: item.status || "open",
     priority: item.priority || "medium",
-    dependencies: [],
+    dependencies: uniqueStrings([...(item.dependencies || []), ...(item.blockedBy || [])]),
     parentId: item.parentId,
     epicId: item.epicId,
     acceptanceCriteria: item.acceptanceCriteria || [],
@@ -633,6 +697,35 @@ function sameEdge(left, right) {
 
 function uniqueStrings(values) {
   return [...new Set((values || []).map(String).filter(Boolean))];
+}
+
+function normalizeStringList(value) {
+  if (Array.isArray(value)) return uniqueStrings(value.map((item) => String(item).trim()).filter(Boolean));
+  return uniqueStrings(String(value || "").split(/\s*(?:,|\n|;)\s*/).map((item) => item.trim()).filter(Boolean));
+}
+
+function uniqueWorkItemId(existingIds, candidate) {
+  const base = slugify(candidate || "work-item") || "work-item";
+  if (!existingIds.has(base)) return base;
+  let index = 2;
+  while (existingIds.has(`${base}-${index}`)) index += 1;
+  return `${base}-${index}`;
+}
+
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function normalizeCreatedItemType(value) {
+  const type = String(value || "task").toLowerCase().replace(/_/g, "-");
+  if (type === "review-request") return "review";
+  if (type === "blocker") return "gate";
+  if (CREATABLE_WORK_ITEM_TYPES.has(type)) return type;
+  return "task";
 }
 
 function delay(ms) {

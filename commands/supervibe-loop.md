@@ -21,10 +21,11 @@ gate, rollback, support owner, and post-release learning.
 Primary path:
 
 ```bash
-/supervibe-loop --plan .supervibe/artifacts/plans/payment-integration.md
-/supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --plan-review-passed
 /supervibe-loop --from-plan .supervibe/artifacts/plans/payment-integration.md --atomize --dry-run
+/supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json --guided
+/supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
 /supervibe-loop --happy-path --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --request "finish onboarding design and wire it into app" --max-loops 20
@@ -45,6 +46,7 @@ Primary path:
 /supervibe-loop --reparent task-123 --parent <epic-or-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --dep-add task-123 --to task-456 --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --delete task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
+/supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --create-work-item --interactive
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
 /supervibe-loop --import-tasks .supervibe/artifacts/plans/example.md --dry-run
@@ -84,6 +86,7 @@ Advanced diagnostics:
 ```bash
 /supervibe-loop --readiness --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --preview
+/supervibe-loop --plan .supervibe/artifacts/plans/payment-integration.md --allow-flat-plan --dry-run
 /supervibe-loop --graph --file .supervibe/memory/loops/<run-id>/state.json --format text
 /supervibe-loop graph --file .supervibe/memory/loops/<run-id>/state.json --format mermaid
 /supervibe-loop doctor --file .supervibe/memory/loops/<run-id>/state.json
@@ -248,13 +251,13 @@ Execution modes:
 
 ```bash
 /supervibe-loop --dry-run --request "validate integrations"
-/supervibe-loop --guided --plan .supervibe/artifacts/plans/payment-integration.md
-/supervibe-loop --manual --plan .supervibe/artifacts/plans/payment-integration.md
-/supervibe-loop --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
-/supervibe-loop --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --plan .supervibe/artifacts/plans/payment-integration.md
-/supervibe-loop --commit-per-task --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --guided --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --manual --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --fresh-context --tool codex --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --commit-per-task --fresh-context --tool codex --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --dry-run --tracker memory --request "validate integrations"
-/supervibe-loop --fresh-context --tool codex --tracker cli --tracker-command supervibe-task --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --fresh-context --tool codex --tracker cli --tracker-command supervibe-task --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --provider-matrix
 ```
 
@@ -283,7 +286,7 @@ of pretending to run autonomously.
 
 ## Contract
 
-- Build a task queue from a plan or request.
+- Build a task queue from a reviewed work-item graph or request. Direct plan execution is legacy diagnostic-only; reviewed plans must atomize into a graph before guided, manual, fresh-context, or worktree execution.
 - Run preflight for scope, autonomy, optional explicit budgets, environment, MCP/tool permissions,
   access needs, and approval boundaries.
 - Apply Scope Safety Gate before atomization or execution: each task must map

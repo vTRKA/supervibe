@@ -158,6 +158,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-loop",
     title: "Run autonomous loop or work-item control",
+    priorityPhrases: ["worktree", "sessions", "plan"],
     aliases: ["запусти автономный loop", "run autonomous loop", "запусти эпик в worktree", "run 10 sessions on the plan"],
     keywordGroups: [["loop", "autonomous", "epic", "worktree", "sessions", "автоном", "эпик", "сессии"], ["run", "start", "запусти", "запуск"]],
   },
@@ -741,6 +742,7 @@ function createSlashShortcut(profile) {
     description: `Route to ${profile.command} from natural-language English/Russian command requests.`,
     aliases: profile.aliases || [],
     keywordGroups: profile.keywordGroups || [],
+    priorityPhrases: profile.priorityPhrases || [],
     agentContract: copyCommandAgentContract(),
     agentProfile: getCommandAgentProfile(profile.command),
     mutationRisk: "delegates-to-slash-command",
@@ -772,7 +774,8 @@ function scoreShortcut(shortcut, text) {
     ? shortcut.requiredGroupIndexes.length
     : shortcut.requiredGroupCount ?? Math.min(2, groups.length);
   if (matchedGroups.length < requiredGroupCount) return null;
-  const confidence = Math.min(0.97, 0.78 + matchedGroups.length * 0.06);
+  const priorityBoost = (shortcut.priorityPhrases || []).filter((phrase) => includesPhrase(text, phrase)).length * 0.03;
+  const confidence = Math.min(0.97, 0.78 + matchedGroups.length * 0.06 + priorityBoost);
   return enrichMatch(copyShortcut(shortcut), {
     confidence: Number(confidence.toFixed(2)),
     reason: `shortcut keyword groups: ${matchedGroups.join(", ")}`,

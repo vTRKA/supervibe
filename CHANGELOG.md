@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.126] - 2026-05-10
+
+### Added
+
+- Added an active native work-item graph registry so plan atomization, status,
+  UI, task tracker prime, and loop execution can resolve the current epic graph
+  without requiring repeated file paths.
+- Added production-aware epic completion validation for graph files and
+  `/supervibe-loop --validate-completion`, including dependency, evidence,
+  skipped-work, and dry-run evidence checks.
+
+### Changed
+
+- Made reviewed-plan execution graph-first: direct plan execution is blocked
+  until atomization writes an epic/task/subtask graph, and worktree requests
+  route through atomization when work items do not exist.
+- Expanded Supervibe UI and loop CLI parity for create, edit, split, reparent,
+  dependency, delete, skip/cancel, active-graph loading, and completion gate
+  checks.
+- Marked dry-run loop completion as preview-only rather than production-ready,
+  and renamed native tracker fallback status to canonical native-ready mode.
+
 ## [2.0.125] - 2026-05-10
 
 ### Added

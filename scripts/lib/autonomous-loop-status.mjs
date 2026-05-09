@@ -82,6 +82,8 @@ export function formatStatus(state) {
     `STALE_CLAIMS: ${staleClaims}`,
     `OPEN_GATES: ${openGates}`,
     `EXECUTION_MODE: ${state.execution_mode || "dry-run"}`,
+    `COMPLETION_SEMANTICS: ${state.completion_semantics?.status || "unknown"}`,
+    `PRODUCTION_READY: ${state.completion_semantics?.productionReady === true}`,
     `CONTINUATION_MODE: ${providerCapabilities?.nativeContinuation || "unknown"}`,
     `PROVIDER_RECOMMENDED_MODE: ${providerCapabilities?.recommendedMode || "unknown"}`,
     `PROVIDER_STABILITY: ${providerCapabilities?.stabilityScore ?? "unknown"}`,

@@ -22,6 +22,8 @@ test("runner executes dry-run request and writes loop state", async () => {
   assert.equal(result.status, "COMPLETE");
   assert.ok(result.finalScore >= 9);
   assert.equal(result.state.final_acceptance.pass, true);
+  assert.equal(result.state.completion_semantics.status, "dry-run-preview-complete");
+  assert.equal(result.state.completion_semantics.productionReady, false);
   assert.equal(result.state.plugin_version, "0.0.0");
   assert.match(result.reportPath, /final-report\.md$/);
 });
@@ -66,6 +68,7 @@ test("runner pins dry-run artifact contract for validate integrations", async ()
   assert.equal(state.claim_summary.completed, state.tasks.length);
   assert.equal(state.progress_summary.completed, state.tasks.length);
   assert.equal(state.execution_mode, "dry-run");
+  assert.equal(state.completion_semantics.productionReady, false);
   assert.equal(state.commit_per_task, false);
   assert.equal(state.attempts.length, state.tasks.length);
   assert.ok(state.tool_adapter_summary.available.includes("generic-shell-stub"));

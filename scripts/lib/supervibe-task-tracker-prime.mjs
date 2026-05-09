@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import { calculateReadyFront } from "./autonomous-loop-ready-front.mjs";
 import { createTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { defaultTrackerMappingPath, readTrackerMapping, summarizeTrackerMappingForBundle } from "./supervibe-task-tracker-sync.mjs";
+import { findWorkItemGraphPaths, readWorkItemRegistry, defaultWorkItemRegistryPath } from "./supervibe-work-item-registry.mjs";
 
 const READY_STATUSES = new Set(["open", "ready"]);
 const CLAIMED_STATUSES = new Set(["claimed", "in_progress", "running"]);
@@ -11,7 +10,7 @@ const BLOCKED_STATUSES = new Set(["blocked", "waiting", "policy_stopped", "budge
 const DONE_STATUSES = new Set(["complete", "completed", "done", "closed", "skipped", "cancelled", "canceled"]);
 
 export async function createTaskTrackerPrimeSummary({ rootDir = process.cwd(), limit = 5 } = {}) {
-  const graphPaths = await findWorkItemGraphs(rootDir);
+  const graphPaths = await findWorkItemGraphPaths(rootDir);
   const graphs = [];
   for (const graphPath of graphPaths) {
     try {
@@ -22,6 +21,7 @@ export async function createTaskTrackerPrimeSummary({ rootDir = process.cwd(), l
   }
 
   const mapping = await safeReadMapping(rootDir);
+  const registry = await safeReadRegistry(rootDir);
   const epics = graphs.map(({ path, graph }) => summarizeGraph({ graph, path, limit })).filter(Boolean);
   const totals = epics.reduce((acc, epic) => {
     acc.ready += epic.ready.length;
@@ -37,6 +37,7 @@ export async function createTaskTrackerPrimeSummary({ rootDir = process.cwd(), l
     graphCount: epics.length,
     totals,
     epics,
+    registry: registry.activeEpicId ? { activeEpicId: registry.activeEpicId, activeGraphPath: registry.activeGraphPath } : null,
     mapping: mapping ? summarizeTrackerMappingForBundle(mapping) : null,
     nextAction: nextActionFor({ epics, totals, mapping }),
   };
@@ -49,6 +50,9 @@ export function formatTaskTrackerPrimeReminder(summary = {}) {
     "[supervibe] task tracker prime: active work context is available.",
     `Graphs: ${summary.graphCount}; ready=${summary.totals.ready}; claimed=${summary.totals.claimed}; blocked=${summary.totals.blocked}; done=${summary.totals.done}/${summary.totals.total}.`,
   ];
+  if (summary.registry) {
+    lines.push(`Active graph: ${summary.registry.activeEpicId} at ${summary.registry.activeGraphPath}.`);
+  }
   if (summary.mapping) {
     lines.push(`Tracker mapping: ${summary.mapping.status || "unknown"} via ${summary.mapping.adapterId || "native-json"}; mapped=${summary.mapping.mapped}; unmapped=${summary.mapping.unmapped}.`);
   }
@@ -74,33 +78,19 @@ export function formatTaskTrackerPrimeHookOutput(summary = {}) {
   };
 }
 
-async function findWorkItemGraphs(rootDir) {
-  const base = join(rootDir, ".supervibe", "memory", "work-items");
-  const out = [];
-  if (!existsSync(base)) return out;
-  async function walk(dir, depth = 0) {
-    if (depth > 4) return;
-    let entries = [];
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) await walk(full, depth + 1);
-      else if (entry.name === "graph.json") out.push(full);
-    }
-  }
-  await walk(base);
-  return out;
-}
-
 async function safeReadMapping(rootDir) {
   try {
     return await readTrackerMapping(defaultTrackerMappingPath(rootDir));
   } catch {
     return null;
+  }
+}
+
+async function safeReadRegistry(rootDir) {
+  try {
+    return await readWorkItemRegistry(defaultWorkItemRegistryPath(rootDir));
+  } catch {
+    return {};
   }
 }
 

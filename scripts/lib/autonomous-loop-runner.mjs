@@ -388,8 +388,8 @@ export async function runAutonomousLoop(options = {}) {
       workflowFlow,
       runId,
       graphId: taskGraph.graph_id,
+      workGraphId: taskGraph.graph_id,
       epicId: taskGraph.graph_id,
-      projectId: taskGraph.graph_id,
       claims,
       claim: activeClaim,
       gates,
@@ -808,6 +808,12 @@ export async function runAutonomousLoop(options = {}) {
     state.next_action = "fix_final_acceptance_gaps";
     state.run_score = Math.min(state.run_score, finalAcceptance.score);
   }
+  state.completion_semantics = createCompletionSemantics({
+    executionMode,
+    state,
+    finalAcceptance,
+    stopReason,
+  });
 
   await writeState(join(loopDir, "state.json"), state);
   await writeFile(join(loopDir, "tasks.jsonl"), `${tasks.map((task) => JSON.stringify(versionEnvelope(task))).join("\n")}\n`, "utf8");
@@ -915,6 +921,12 @@ export async function recordUserGoalAcceptance(statePath, {
     state.run_score = Math.min(state.run_score ?? state.final_acceptance.score, state.final_acceptance.score);
   }
 
+  state.completion_semantics = createCompletionSemantics({
+    executionMode: state.execution_mode || "dry-run",
+    state,
+    finalAcceptance: state.final_acceptance,
+    stopReason: state.stop_reason,
+  });
   await writeState(statePath, state);
   return state;
 }
@@ -959,6 +971,22 @@ export async function forkAutonomousLoopCheckpoint(statePath, {
   return { state: forkState, path: target };
 }
 
+function createCompletionSemantics({ executionMode, state, finalAcceptance, stopReason }) {
+  const dryRun = executionMode === "dry-run";
+  const complete = state.status === "COMPLETE" && finalAcceptance?.pass === true && !stopReason;
+  return {
+    status: dryRun && complete ? "dry-run-preview-complete" : complete ? "production-complete" : "not-complete",
+    productionReady: !dryRun && complete,
+    evidenceMode: dryRun ? "dry-run" : "runtime",
+    closeSignalAllowed: !dryRun && complete,
+    nextAction: dryRun && complete
+      ? "review preview evidence, then run the approved work graph in guided or fresh-context mode before production closure"
+      : complete
+        ? "archive or release handoff"
+        : state.next_action || "fix blockers",
+  };
+}
+
 function finalReport({ runId, state, runScore, preflight, finalAcceptance, provenance }) {
   return `# Autonomous Loop Report
 
@@ -980,6 +1008,7 @@ Environment: ${preflight.environment_target}
 - System acceptance: ${state.system_acceptance?.pass ? "pass" : "fail"} (${state.system_acceptance?.score ?? "unknown"}/10)
 - Final acceptance: ${finalAcceptance.pass ? "pass" : "fail"}
 - Final acceptance score: ${finalAcceptance.score}/10
+- Completion semantics: ${state.completion_semantics?.status || "unknown"} (productionReady=${state.completion_semantics?.productionReady === true})
 - User goal acceptance: ${state.user_goal_acceptance?.status || "unknown"} (required=${state.user_goal_acceptance?.required === true})
 - User goal next action: ${state.user_goal_acceptance?.next_action || "none"}
 - Scope accepted: ${(state.scope_value_guard?.accepted || []).join("; ") || "none"}

@@ -47,10 +47,10 @@ export function createUnavailableTaskTrackerAdapter(reason = "no external tracke
       };
     },
     version() {
-      return { ok: true, adapterId: "native-json", version: "native-fallback" };
+      return { ok: true, adapterId: "native-json", version: "native-ready" };
     },
     async init() {
-      return { ok: true, mode: "native-fallback", reason };
+      return { ok: true, mode: "native-ready", reason };
     },
     async createEpic() {
       return unavailableResult(reason);
@@ -62,7 +62,7 @@ export function createUnavailableTaskTrackerAdapter(reason = "no external tracke
       return unavailableResult(reason);
     },
     async ready() {
-      return { ok: true, tasks: [], mode: "native-fallback" };
+      return { ok: true, tasks: [], mode: "native-ready" };
     },
     async claim() {
       return unavailableResult(reason);
@@ -77,19 +77,19 @@ export function createUnavailableTaskTrackerAdapter(reason = "no external tracke
       return unavailableResult(reason);
     },
     async export() {
-      return { ok: true, epics: [], tasks: [], dependencies: [], claims: [], mode: "native-fallback" };
+      return { ok: true, epics: [], tasks: [], dependencies: [], claims: [], mode: "native-ready" };
     },
     async import(payload = {}) {
-      return { ok: true, payload, mode: "native-fallback" };
+      return { ok: true, payload, mode: "native-ready" };
     },
     async doctor() {
-      return { ok: true, issues: [], mode: "native-fallback" };
+      return { ok: true, issues: [], mode: "native-ready" };
     },
     async syncPush() {
       return unavailableResult(reason);
     },
     async syncPull() {
-      return { ok: true, epics: [], tasks: [], dependencies: [], claims: [], mode: "native-fallback" };
+      return { ok: true, epics: [], tasks: [], dependencies: [], claims: [], mode: "native-ready" };
     },
   };
 }
@@ -244,7 +244,7 @@ export function detectTaskTrackerCapability({
       dependencySupport,
       syncSupport,
     }),
-    reason: available ? "task tracker capability detected" : "native JSON graph fallback is active",
+    reason: available ? "task tracker capability detected" : "native JSON graph is canonical",
   };
 }
 
@@ -287,7 +287,7 @@ function nativeCapabilities({
 function unavailableResult(reason) {
   return {
     ok: false,
-    mode: "native-fallback",
+    mode: "native-ready",
     status: "tracker_unavailable",
     reason,
     remediation: ["continue with native JSON graph", "configure a CLI or MCP tracker before enabling sync"],

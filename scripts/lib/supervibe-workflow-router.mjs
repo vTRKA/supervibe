@@ -357,6 +357,25 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
   }
 
   if (containsAny(text, WORKTREE_PHRASES)) {
+    if (artifacts.plan && !artifacts.planReviewPassed) {
+      return fromWorkflowStep("plan", {
+        intent: "plan_review",
+        locale,
+        confidence: 0.93,
+        reason: "Worktree execution is blocked until mandatory plan review passes.",
+        source: "plan-review-gate",
+      });
+    }
+    if (artifacts.planReviewPassed && !artifacts.workItemsReady && !artifacts.epicId && !artifacts.epic) {
+      return fromWorkflowStep("plan-review", {
+        intent: "atomize_plan",
+        locale,
+        confidence: 0.91,
+        reason: "Worktree execution requires a reviewed plan to be atomized into an epic and work-item graph first.",
+        source: "atomization-gate",
+        artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
+      });
+    }
     return fromWorkflowStep("worktree-setup", {
       intent: "worktree_autonomous_run",
       locale,

@@ -30,6 +30,7 @@ import { createFederatedSyncBundle, importFederatedSyncBundle, writeFederatedSyn
 import { formatNotificationRouteResult, routeNotificationEvent } from "./lib/supervibe-notification-router.mjs";
 import { deferWorkItemFile } from "./lib/supervibe-work-item-scheduler.mjs";
 import { mutateWorkItemGraphFile } from "./lib/supervibe-work-item-actions.mjs";
+import { resolveActiveWorkItemGraphPath } from "./lib/supervibe-work-item-registry.mjs";
 import { createGuidedWorkItemDraft, importGuidedWorkItemFromText, saveGuidedWorkItemDraft } from "./lib/supervibe-guided-work-item-forms.mjs";
 import { createDryRunPreview, runInteractiveCli } from "./lib/supervibe-interactive-cli.mjs";
 import { formatEvalHarnessReport, runAutonomousLoopEvals } from "./lib/autonomous-loop-eval-harness.mjs";
@@ -42,6 +43,7 @@ import { buildSemanticAnchorIndex, formatSemanticAnchorReport, parseSemanticAnch
 import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explainer.mjs";
 import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
+import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
 import { checkpointDiagnostics, formatCheckpointDiagnostics, readAgentCheckpoint, resumeAgentCheckpoint } from "./lib/supervibe-agent-checkpoints.mjs";
 import {
@@ -123,6 +125,13 @@ function parseArgs(argv) {
     "permission-prompt-bridge",
     "network-approved",
     "mcp-approved",
+    "allow-flat-plan",
+    "validate-completion",
+    "completion-status",
+    "allow-dry-run-evidence",
+    "allow-open-epic",
+    "no-evidence-required",
+    "non-production",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -410,6 +419,33 @@ async function main() {
         dueAt: args.until || args.due,
         risk: args.risk,
       });
+    if (args.file && (args.yes || args.preview || args["dry-run"])) {
+      if (!draft.validation.valid && !args.force) {
+        throw new Error(`create-work-item draft is invalid: ${draft.validation.issues.map((issue) => `${issue.field}:${issue.code}`).join(",")}`);
+      }
+      const graphPath = resolve(rootDir, args.file);
+      const result = await mutateWorkItemGraphFile(graphPath, {
+        type: "create",
+        item: {
+          ...draft.item,
+          parentId: args.parent || args.parentId || draft.item.parentId,
+          itemType: draft.item.type,
+        },
+        actor: args.actor || args.owner || "user",
+        reason: args.reason || "created from /supervibe-loop --create-work-item",
+        dryRun: Boolean(args.preview || args["dry-run"]),
+        rootDir,
+      });
+      console.log("SUPERVIBE_WORK_ITEM_ACTION");
+      console.log(`ACTION: ${result.action}`);
+      console.log(`ITEM: ${result.itemId}`);
+      console.log(`CHANGED: ${result.changed}`);
+      console.log(`DRY_RUN: ${result.dryRun}`);
+      if (result.createdItems?.length) console.log(`CREATED_ITEMS: ${result.createdItems.join(",")}`);
+      console.log(`GRAPH: ${graphPath}`);
+      if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+      return;
+    }
     if (args.out) await saveGuidedWorkItemDraft(resolve(rootDir, args.out), draft);
     if (args.json) console.log(JSON.stringify(draft, null, 2));
     else console.log(draft.preview);
@@ -432,6 +468,7 @@ async function main() {
       reason: args.reason || null,
       dryRun,
       force: Boolean(args.force),
+      rootDir,
     });
     if (args.preview) {
       console.log(createDryRunPreview({
@@ -565,17 +602,7 @@ async function main() {
         const graphPath = resolve(rootDir, args.file);
         const graph = JSON.parse(await readFile(graphPath, "utf8"));
         if (graph.kind === "supervibe-work-item-graph" || Array.isArray(graph.items)) {
-          const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
-          console.log("SUPERVIBE_EPIC_STATUS");
-          console.log(`EPIC: ${graph.epicId || graph.graph_id || "unknown"}`);
-          console.log(`READY: ${grouped.ready.length}`);
-          console.log(`BLOCKED: ${grouped.blocked.length}`);
-          console.log(`CLAIMED: ${grouped.claimed.length}`);
-          console.log(`DEFERRED: ${grouped.deferred.length}`);
-          console.log(`REVIEW: ${grouped.review.length}`);
-          console.log(`DONE: ${grouped.done.length}`);
-          console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
-          console.log(`GRAPH: ${graphPath}`);
+          printEpicStatus({ graph, graphPath });
           return;
         }
       } catch (error) {
@@ -586,17 +613,7 @@ async function main() {
       const graphPath = join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
       try {
         const graph = JSON.parse(await readFile(graphPath, "utf8"));
-        const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
-        console.log("SUPERVIBE_EPIC_STATUS");
-        console.log(`EPIC: ${args.epic}`);
-        console.log(`READY: ${grouped.ready.length}`);
-        console.log(`BLOCKED: ${grouped.blocked.length}`);
-        console.log(`CLAIMED: ${grouped.claimed.length}`);
-        console.log(`DEFERRED: ${grouped.deferred.length}`);
-        console.log(`REVIEW: ${grouped.review.length}`);
-        console.log(`DONE: ${grouped.done.length}`);
-        console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
-        console.log(`GRAPH: ${graphPath}`);
+        printEpicStatus({ graph, graphPath, epicId: args.epic });
         return;
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
@@ -604,6 +621,14 @@ async function main() {
         console.log(`EPIC: ${args.epic}`);
         console.log("STATUS: missing graph");
         console.log(`NEXT_ACTION: run /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed`);
+        return;
+      }
+    }
+    if (!args.loop) {
+      const activeGraphPath = await resolveActiveWorkItemGraphPath({ rootDir });
+      if (activeGraphPath) {
+        const graph = JSON.parse(await readFile(activeGraphPath, "utf8"));
+        printEpicStatus({ graph, graphPath: activeGraphPath, source: "active-registry" });
         return;
       }
     }
@@ -704,6 +729,21 @@ async function main() {
     const result = await repairTaskTracker({ graph, mappingPath, fix: Boolean(args.fix) });
     console.log(formatTaskTrackerDoctorReport(result.diagnosis));
     if (result.changed) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
+  if (args["validate-completion"] || args["completion-status"]) {
+    const graphPath = await resolveCompletionGraphPath({ rootDir, args });
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const report = validateEpicCompletion(graph, {
+      production: !args["non-production"],
+      requireEvidence: !args["no-evidence-required"],
+      allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
+      requireEpicClosed: !args["allow-open-epic"],
+    });
+    console.log(formatEpicCompletionReport(report));
+    console.log(`GRAPH: ${graphPath}`);
+    if (!report.pass) process.exitCode = 1;
     return;
   }
 
@@ -832,6 +872,12 @@ async function main() {
 
   const positionalRequest = args.request || args._.join(" ");
   const sourcePlan = args.plan || args["from-prd"];
+  const executionSource = await resolveLoopExecutionSource({
+    rootDir,
+    args,
+    sourcePlan,
+    positionalRequest,
+  });
   const worktreeSession = await maybePrepareWorktreeSession(args, rootDir);
   const policyProfile = await maybeLoadPolicyProfile(rootDir, args);
   const taskTrackerAdapter = shouldUseTaskTrackerAdapter(args)
@@ -839,8 +885,8 @@ async function main() {
     : null;
   const result = await runAutonomousLoop({
     rootDir,
-    plan: sourcePlan,
-    request: sourcePlan ? positionalRequest || undefined : positionalRequest || "validate integrations",
+    plan: executionSource.plan,
+    request: executionSource.request,
     dryRun: Boolean(args["dry-run"]),
     fixture: args.fixture,
     maxLoops: args["max-loops"],
@@ -872,6 +918,7 @@ async function main() {
   console.log(`CONFIDENCE: ${result.finalScore}`);
   console.log(`STOP_REASON: ${result.stopReason || "none"}`);
   console.log(`REPORT: ${result.reportPath}`);
+  console.log(`TASK_SOURCE: ${executionSource.source}`);
   if (policyProfile) console.log(`POLICY_PROFILE: ${policyProfile.name}`);
   if (args.notify) {
     const notification = routeNotificationEvent({
@@ -895,6 +942,101 @@ async function maybeLoadPolicyProfile(rootDir, args) {
     profileName: args["policy-profile"],
     filePath: args["policy-file"] || null,
   });
+}
+
+async function resolveLoopExecutionSource({ rootDir, args, sourcePlan = null, positionalRequest = "" } = {}) {
+  const explicitGraphPath = args.file || args["work-item-graph"] || null;
+  if (explicitGraphPath) {
+    return {
+      plan: resolve(rootDir, explicitGraphPath),
+      request: sourcePlan ? positionalRequest || `execute work graph for ${sourcePlan}` : positionalRequest || undefined,
+      source: "explicit-work-graph",
+    };
+  }
+
+  if (args.epic) {
+    const graphPath = join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
+    if (!await pathExists(graphPath)) {
+      if (sourcePlan && !args["allow-flat-plan"]) {
+        throw new Error([
+          "PLAN_EXECUTION_REQUIRES_WORK_GRAPH",
+          `EPIC: ${args.epic}`,
+          `PLAN: ${sourcePlan}`,
+          `NEXT_ACTION: run /supervibe-loop --atomize-plan ${sourcePlan} --plan-review-passed`,
+        ].join("\n"));
+      }
+      return {
+        plan: sourcePlan ? resolve(rootDir, sourcePlan) : null,
+        request: sourcePlan ? positionalRequest || undefined : positionalRequest || `validate epic ${args.epic}`,
+        source: sourcePlan ? "legacy-flat-plan" : "epic-without-graph-request",
+      };
+    }
+    return {
+      plan: graphPath,
+      request: sourcePlan ? positionalRequest || `execute epic ${args.epic} for ${sourcePlan}` : positionalRequest || undefined,
+      source: "epic-work-graph",
+    };
+  }
+
+  if (sourcePlan && !args["allow-flat-plan"]) {
+    const atomizeCommand = `/supervibe-loop --atomize-plan ${sourcePlan} --plan-review-passed`;
+    throw new Error([
+      "PLAN_EXECUTION_REQUIRES_WORK_GRAPH",
+      `PLAN: ${sourcePlan}`,
+      `NEXT_ACTION: run ${atomizeCommand}`,
+      "THEN: run /supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json --guided",
+      "DETAIL: direct flat-plan execution is legacy-only; use --allow-flat-plan only for diagnostic previews.",
+    ].join("\n"));
+  }
+
+  if (!sourcePlan && !positionalRequest) {
+    const activeGraphPath = await resolveActiveWorkItemGraphPath({ rootDir });
+    if (activeGraphPath) {
+      return {
+        plan: activeGraphPath,
+        request: undefined,
+        source: "active-work-graph",
+      };
+    }
+  }
+
+  return {
+    plan: sourcePlan ? resolve(rootDir, sourcePlan) : null,
+    request: sourcePlan ? positionalRequest || undefined : positionalRequest || "validate integrations",
+    source: sourcePlan ? "legacy-flat-plan" : "request",
+  };
+}
+
+async function pathExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveCompletionGraphPath({ rootDir, args } = {}) {
+  if (args.file || args["work-item-graph"]) return resolve(rootDir, args.file || args["work-item-graph"]);
+  if (args.epic) return join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
+  const activeGraphPath = await resolveActiveWorkItemGraphPath({ rootDir });
+  if (!activeGraphPath) throw new Error("completion validation requires --file <graph.json>, --epic <epic-id>, or an active work graph");
+  return activeGraphPath;
+}
+
+function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" }) {
+  const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
+  console.log("SUPERVIBE_EPIC_STATUS");
+  console.log(`EPIC: ${epicId || graph.epicId || graph.graph_id || "unknown"}`);
+  console.log(`SOURCE: ${source}`);
+  console.log(`READY: ${grouped.ready.length}`);
+  console.log(`BLOCKED: ${grouped.blocked.length}`);
+  console.log(`CLAIMED: ${grouped.claimed.length}`);
+  console.log(`DEFERRED: ${grouped.deferred.length}`);
+  console.log(`REVIEW: ${grouped.review.length}`);
+  console.log(`DONE: ${grouped.done.length}`);
+  console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
+  console.log(`GRAPH: ${graphPath}`);
 }
 
 function resolveWorkItemAction(args) {
@@ -953,15 +1095,6 @@ function resolveWorkItemAction(args) {
     };
   }
   return null;
-}
-
-async function pathExists(path) {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function findGraphContainingItem(rootDir, itemId) {
@@ -1123,6 +1256,7 @@ Primary:
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --split <task-id> --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
   supervibe-loop --reparent <task-id> --parent <epic-or-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -1189,7 +1323,8 @@ Execution modes:
   --worktree --epic <epic-id> [--max-duration 3h]
   --worktree --epic <epic-id> --assigned-task T1 --assigned-write-set src/file.ts
   --worktree-existing .worktrees/<session>
-  --resume-session <session-id>`);
+  --resume-session <session-id>
+  --allow-flat-plan (legacy diagnostic only; reviewed plans should be atomized first)`);
 }
 
 main().catch((err) => {

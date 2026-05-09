@@ -59,7 +59,7 @@ test("sync push materializes epic, child tasks, dependencies, and writes mapping
   assert.ok(Object.values(mapping.items).every((item) => item.externalId));
 });
 
-test("unavailable adapter falls back to native graph without failing planning", async () => {
+test("unavailable external adapter keeps canonical native graph without failing planning", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-tracker-fallback-"));
   const result = await materializeEpicAndTasks(sampleGraph(), createUnavailableTaskTrackerAdapter(), {
     rootDir,
@@ -67,7 +67,7 @@ test("unavailable adapter falls back to native graph without failing planning", 
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.status, "native-fallback");
+  assert.equal(result.status, "native-ready");
   assert.equal(result.nativeGraphPreserved, true);
 });
 

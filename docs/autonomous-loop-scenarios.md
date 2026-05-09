@@ -82,4 +82,4 @@ Reviewed plans can be atomized into one epic plus child work items under
 external tracker sync writes `.supervibe/memory/loops/task-tracker-map.json` and
 must preserve ready, blocked, claimed, stale, orphan, drift, review, and done
 states in local status/query output. Tracker unavailability is a degraded
-native-fallback state, not a planning failure.
+native-ready state, not a planning failure.

@@ -14,6 +14,8 @@ import { buildExecutionWaves } from "./supervibe-wave-controller.mjs";
 import { buildRunDashboardModel } from "./supervibe-run-dashboard.mjs";
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown } from "./supervibe-work-item-sla-reports.mjs";
 import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
+import { resolveActiveWorkItemGraphPath } from "./supervibe-work-item-registry.mjs";
+import { formatEpicCompletionReport, validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
 
 export { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
@@ -33,7 +35,7 @@ export function createSupervibeUiServer({
         return sendJson(res, await buildIndexStatus({ rootDir }));
       }
       if (url.pathname === "/api/graph") {
-        const file = resolveSafe(rootDir, url.searchParams.get("file") || graphPath);
+        const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
         const graph = await readJsonFile(file);
         const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
         const grouped = groupWorkItemsByStatus(index);
@@ -42,7 +44,7 @@ export function createSupervibeUiServer({
         return sendJson(res, { graphPath: file, graphId: graph.graph_id || graph.graphId || graph.epicId, title: graph.title, grouped, items: index, kanban, flow });
       }
       if (url.pathname === "/api/context-pack") {
-        const file = resolveSafe(rootDir, url.searchParams.get("file") || graphPath);
+        const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
         const pack = await buildContextPack({ rootDir, graphPath: file, itemId: url.searchParams.get("item") || null });
         return sendJson(res, pack);
       }
@@ -87,7 +89,7 @@ export function createSupervibeUiServer({
         });
       }
       if (url.pathname === "/api/report") {
-        const file = resolveSafe(rootDir, url.searchParams.get("file") || graphPath);
+        const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
         const type = url.searchParams.get("type") || "sla";
         const graph = await readJsonFile(file);
         const index = createWorkItemIndex({
@@ -102,6 +104,17 @@ export function createSupervibeUiServer({
           : createRecurringWorkReport(index, { type, releaseGates: graph.releaseGates || graph.release_gates || [] });
         return sendJson(res, { report, markdown: renderWorkReportMarkdown(report) });
       }
+      if (url.pathname === "/api/completion") {
+        const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
+        const graph = await readJsonFile(file);
+        const report = validateEpicCompletion(graph, {
+          production: url.searchParams.get("production") !== "false",
+          requireEvidence: url.searchParams.get("requireEvidence") !== "false",
+          allowDryRunEvidence: url.searchParams.get("allowDryRunEvidence") === "true",
+          requireEpicClosed: url.searchParams.get("requireEpicClosed") !== "false",
+        });
+        return sendJson(res, { graphPath: file, report, markdown: formatEpicCompletionReport(report) });
+      }
       if (url.pathname === "/api/gc") {
         const scan = await scanWorkItemGc({ rootDir });
         return sendJson(res, scan);
@@ -111,8 +124,8 @@ export function createSupervibeUiServer({
         if (body.apply === true && body.confirm !== "apply-local") {
           throw new Error("apply requires confirm=apply-local after preview");
         }
-        const file = resolveSafe(rootDir, body.file || graphPath);
-        const result = await mutateWorkItemGraphFile(file, { ...body, dryRun: body.apply !== true });
+        const file = await resolveGraphPath({ rootDir, requested: body.file || graphPath });
+        const result = await mutateWorkItemGraphFile(file, { ...body, rootDir, dryRun: body.apply !== true });
         return sendJson(res, result);
       }
       return sendJson(res, { error: "not found" }, 404);
@@ -244,7 +257,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
 </head>
 <body>
   <header class="topbar">
-    <div><h1>Supervibe UI</h1><small>Local control plane for work, loops, and project intelligence</small></div>
+    <div><h1>Supervibe UI</h1><small>Local control plane for epics, tasks, subtasks, and loops</small></div>
     <div class="topbar-meta"><span class="pill" id="overallPill">Index status: checking</span><span class="pill">Bind: 127.0.0.1</span><span class="pill">Auth: local only</span></div>
   </header>
   <main>
@@ -252,11 +265,11 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     <section class="panel">
       <h2>Start</h2>
       <label for="graphPath">Work graph</label>
-      <input id="graphPath" value="${escapeHtml(graphPath || "")}" placeholder=".supervibe/memory/work-items/<epic>/graph.json">
+      <input id="graphPath" value="${escapeHtml(graphPath || "")}" placeholder="blank = active work graph">
       <div class="button-row"><button class="primary" id="loadGraphBtn">Load graph</button><button class="ghost" id="refreshStatusBtn">Refresh indexes</button></div>
       <label for="statePath">Loop state</label>
       <input id="statePath" placeholder=".supervibe/memory/loops/<run-id>/state.json">
-      <div class="button-row"><button id="loadRunBtn">Load run</button><button id="loadReportBtn">SLA report</button><button id="loadGcBtn">GC preview</button></div>
+      <div class="button-row"><button id="loadRunBtn">Load run</button><button id="loadReportBtn">SLA report</button><button id="loadCompletionBtn">Completion gate</button><button id="loadGcBtn">GC preview</button></div>
     </section>
     <section class="panel">
       <h2>Selected item</h2>
@@ -266,7 +279,13 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     <section class="panel">
       <h2>Local action</h2>
       <input id="actionItem" placeholder="item id">
-      <select id="actionType"><option>claim</option><option>defer</option><option>close</option><option>reopen</option></select>
+      <select id="actionType"><option>claim</option><option>defer</option><option>close</option><option>reopen</option><option>skip</option><option>cancel</option><option>create</option><option>edit</option><option>split</option><option>reparent</option><option>dep-add</option><option>dep-remove</option><option>delete</option></select>
+      <input id="actionTitle" placeholder="title or split subtask titles">
+      <input id="actionParent" placeholder="parent id for reparent">
+      <input id="actionTo" placeholder="target id for dependency">
+      <input id="actionStatus" placeholder="status for edit/reopen">
+      <input id="actionAcceptance" placeholder="acceptance criteria">
+      <input id="actionVerification" placeholder="verification command">
       <input id="actionUntil" placeholder="until ISO for defer">
       <textarea id="actionReason" placeholder="reason"></textarea>
       <div class="button-row"><button id="previewActionBtn">Preview</button><button class="primary" id="applyActionBtn" disabled>Apply local</button></div>
@@ -308,12 +327,13 @@ document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
 document.getElementById('refreshStatusBtn').addEventListener('click', loadIndexStatus);
 document.getElementById('loadRunBtn').addEventListener('click', loadRun);
 document.getElementById('loadReportBtn').addEventListener('click', loadReport);
+document.getElementById('loadCompletionBtn').addEventListener('click', loadCompletion);
 document.getElementById('loadGcBtn').addEventListener('click', loadGc);
 document.getElementById('loadContextBtn').addEventListener('click', loadContext);
 document.getElementById('previewActionBtn').addEventListener('click', function(){ sendAction(false); });
 document.getElementById('applyActionBtn').addEventListener('click', function(){ sendAction(true); });
 setFlow(defaultFlowModel());
-loadIndexStatus().then(function(){ if (graphFile()) loadGraph(); });
+loadIndexStatus().then(function(){ loadGraph(); });
 
 function graphFile(){ return document.getElementById('graphPath').value.trim(); }
 function setTab(name){
@@ -342,9 +362,10 @@ async function loadIndexStatus(){
 }
 async function loadGraph(){
   try {
-    if (!graphFile()) throw new Error('Graph file is required');
-    const data = await requestJson('/api/graph?file=' + encodeURIComponent(graphFile()));
+    const url = graphFile() ? '/api/graph?file=' + encodeURIComponent(graphFile()) : '/api/graph';
+    const data = await requestJson(url);
     state.graph = data;
+    if (data.graphPath) document.getElementById('graphPath').value = data.graphPath;
     setRaw(data);
     setFlow(data.flow);
     renderGraph(data);
@@ -354,7 +375,8 @@ async function loadGraph(){
 async function loadContext(){
   try {
     const item = document.getElementById('contextItem').value.trim();
-    const data = await requestJson('/api/context-pack?file=' + encodeURIComponent(graphFile()) + '&item=' + encodeURIComponent(item));
+    const fileParam = graphFile() ? 'file=' + encodeURIComponent(graphFile()) + '&' : '';
+    const data = await requestJson('/api/context-pack?' + fileParam + 'item=' + encodeURIComponent(item));
     setRaw(data.markdown || data);
     setTab('raw');
   } catch (err) { setRaw({ error: err.message }); }
@@ -381,9 +403,18 @@ async function loadRun(){
 }
 async function loadReport(){
   try {
-    if (!graphFile()) throw new Error('Graph file is required');
-    const data = await requestJson('/api/report?file=' + encodeURIComponent(graphFile()) + '&type=sla');
+    const fileParam = graphFile() ? 'file=' + encodeURIComponent(graphFile()) + '&' : '';
+    const data = await requestJson('/api/report?' + fileParam + 'type=sla');
     setRaw(data.markdown || data);
+    setTab('raw');
+  } catch (err) { setRaw({ error: err.message }); }
+}
+async function loadCompletion(){
+  try {
+    const fileParam = graphFile() ? '?file=' + encodeURIComponent(graphFile()) : '';
+    const data = await requestJson('/api/completion' + fileParam);
+    setRaw(data.markdown || data);
+    setBanner(data.report && data.report.pass ? 'ok' : 'warn', data.report && data.report.pass ? 'Epic completion gate passed' : 'Epic completion gate has blockers');
     setTab('raw');
   } catch (err) { setRaw({ error: err.message }); }
 }
@@ -411,18 +442,33 @@ async function sendAction(apply){
   } catch (err) { setRaw({ error: err.message }); }
 }
 function actionBody(apply){
-  return {
+  const type = document.getElementById('actionType').value;
+  const title = document.getElementById('actionTitle').value.trim();
+  const parent = document.getElementById('actionParent').value.trim();
+  const target = document.getElementById('actionTo').value.trim();
+  const status = document.getElementById('actionStatus').value.trim();
+  const acceptance = document.getElementById('actionAcceptance').value.trim();
+  const verification = document.getElementById('actionVerification').value.trim();
+  const body = {
     file: graphFile(),
     itemId: document.getElementById('actionItem').value.trim(),
-    type: document.getElementById('actionType').value,
+    type: type,
     until: document.getElementById('actionUntil').value.trim(),
     reason: document.getElementById('actionReason').value.trim(),
     actor: 'ui-user',
     apply: apply,
     confirm: apply ? 'apply-local' : undefined
   };
+  if (title && type === 'split') body.titles = title;
+  else if (title) body.title = title;
+  if (type === 'reparent') body.parentId = parent || null;
+  if (target) body.to = target;
+  if (status) body.status = status;
+  if (acceptance) body.acceptanceCriteria = acceptance;
+  if (verification) body.verificationCommands = verification;
+  return body;
 }
-function actionKey(body){ return [body.file, body.itemId, body.type, body.until, body.reason].join('|'); }
+function actionKey(body){ return [body.file, body.itemId, body.type, body.title, body.parentId, body.to, body.status, body.acceptanceCriteria, body.verificationCommands, body.until, body.reason].join('|'); }
 function renderGraph(data){
   const grouped = data.grouped || {};
   state.kanban = data.kanban || null;
@@ -438,7 +484,7 @@ function renderKanban(model){
   const el = document.getElementById('kanban');
   if (!el) return;
   if (!model || !model.columns) { el.innerHTML = empty('No kanban data loaded'); return; }
-  const project = model.project || {};
+  const graphSummary = model.graphSummary || model.project || {};
   const epicChips = (model.epics || []).map(function(epic){
     return '<span class="tag">'+escapeHtmlJs(truncateLabel(epic.title || epic.id, 32))+' <span class="muted">ID '+escapeHtmlJs(epic.id)+'</span></span>';
   }).join('');
@@ -449,7 +495,7 @@ function renderKanban(model){
     const cards = column.items.length ? column.items.map(renderKanbanCard).join('') : empty('No tasks');
     return '<section class="kanban-column"><div class="kanban-column-head"><strong>'+escapeHtmlJs(column.label)+'</strong><span class="tag '+toneClass(column.id)+'">'+escapeHtmlJs(column.items.length)+'</span></div><div class="kanban-cards">'+cards+'</div></section>';
   }).join('');
-  el.innerHTML = '<div class="kanban-shell"><div class="kanban-toolbar"><div><div class="kanban-title"><strong>'+escapeHtmlJs(project.title || 'Work board')+'</strong><span class="pill">'+escapeHtmlJs(project.graphId || 'graph')+'</span><span class="pill">'+escapeHtmlJs(project.totalTasks || 0)+' task(s)</span></div><div class="kanban-meta" style="margin-top:8px">'+(epicChips || '<span class="tag">no epic</span>')+'</div></div><div class="kanban-meta">'+(agentChips || '<span class="tag">unassigned</span>')+'</div></div><div class="kanban-board">'+columns+'</div></div>';
+  el.innerHTML = '<div class="kanban-shell"><div class="kanban-toolbar"><div><div class="kanban-title"><strong>'+escapeHtmlJs(graphSummary.title || 'Work board')+'</strong><span class="pill">'+escapeHtmlJs(graphSummary.graphId || 'graph')+'</span><span class="pill">'+escapeHtmlJs(graphSummary.totalTasks || 0)+' task(s)</span></div><div class="kanban-meta" style="margin-top:8px">'+(epicChips || '<span class="tag">no epic</span>')+'</div></div><div class="kanban-meta">'+(agentChips || '<span class="tag">unassigned</span>')+'</div></div><div class="kanban-board">'+columns+'</div></div>';
 }
 function renderKanbanCard(card){
   const blockerLabels = card.blockedByLabels || card.blockedBy || [];
@@ -716,13 +762,14 @@ export function createKanbanModel({ graph = {}, index = [] } = {}) {
     .map(([agent, count]) => ({ agent, count }))
     .sort((a, b) => b.count - a.count || a.agent.localeCompare(b.agent));
 
-  return {
-    project: {
+  const graphSummary = {
       graphId,
       title: graph.title || fallbackEpic.title || graphId,
       source: graph.source?.path || graph.sourcePath || null,
       totalTasks: taskCards.length,
-    },
+    };
+  return {
+    graphSummary,
     epics: [...epicById.values()].map((epic) => ({
       id: epic.itemId || epic.id,
       title: epic.title || epic.goal || epic.itemId || epic.id,
@@ -1060,6 +1107,13 @@ function resolveSafe(rootDir, file) {
   const full = resolve(rootDir, file);
   if (!full.startsWith(root)) throw new Error("path escapes project root");
   return full;
+}
+
+async function resolveGraphPath({ rootDir, requested }) {
+  if (requested) return resolveSafe(rootDir, requested);
+  const active = await resolveActiveWorkItemGraphPath({ rootDir });
+  if (!active) throw new Error("graph file is required; no active work graph found");
+  return active;
 }
 
 function normalizeStateGraph(state = {}) {

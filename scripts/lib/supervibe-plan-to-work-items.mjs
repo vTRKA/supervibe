@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { LOOP_SCHEMA_VERSION } from "./autonomous-loop-constants.mjs";
 import { materializeEpicAndTasks } from "./supervibe-task-tracker-sync.mjs";
+import { updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
 import { applyTemplateToWorkItem, inferWorkItemTemplate } from "./supervibe-work-item-template-catalog.mjs";
 
 export const WORK_ITEM_TYPES = Object.freeze(["epic", "task", "subtask", "bug", "chore", "review", "gate", "followup"]);
@@ -246,10 +247,10 @@ export function validateWorkItemGraph(graph = {}) {
     if (item.parentId && !ids.has(item.parentId)) {
       issues.push(issue("unknown-parent", item.itemId, `${item.itemId} has unknown parent ${item.parentId}.`, { parentId: item.parentId }));
     }
-    if (!["epic", "gate", "followup"].includes(item.type) && item.acceptanceCriteria.length === 0) {
+    if (!["epic", "gate", "followup"].includes(item.type) && (!Array.isArray(item.acceptanceCriteria) || item.acceptanceCriteria.length === 0)) {
       issues.push(issue("missing-acceptance", item.itemId, `${item.itemId} needs acceptance criteria.`));
     }
-    if (!["epic", "gate", "followup"].includes(item.type) && item.verificationCommands.length === 0) {
+    if (!["epic", "gate", "followup"].includes(item.type) && (!Array.isArray(item.verificationCommands) || item.verificationCommands.length === 0)) {
       issues.push(issue("missing-verification", item.itemId, `${item.itemId} needs verification commands.`));
     }
   }
@@ -331,6 +332,12 @@ export async function writeWorkItemGraph(graph, options = {}) {
   const previewPath = join(outDir, "preview.txt");
   await writeFile(graphPath, `${JSON.stringify(stripParsedFields(graph), null, 2)}\n`);
   await writeFile(previewPath, `${createWorkItemPreview(graph, graph.validation ?? validateWorkItemGraph(graph))}\n`);
+  await updateActiveWorkItemGraph({
+    rootDir,
+    graphPath,
+    graph,
+    reason: options.registryReason || "graph-write",
+  });
   return { outDir, graphPath, previewPath };
 }
 

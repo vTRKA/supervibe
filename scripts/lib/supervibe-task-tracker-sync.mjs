@@ -54,21 +54,21 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
   let mapping = createTrackerMapping({ graph, adapterId, existingMapping: existing });
 
   if (!detection.available) {
-    mapping.status = "native-fallback";
+    mapping.status = "native-ready";
     mapping.lastSync = {
       direction: "push",
-      status: "native-fallback",
+      status: "native-ready",
       reason: detection.reason || "tracker unavailable",
       at: new Date().toISOString(),
     };
     if (!options.dryRun) await writeTrackerMapping(mappingPath, mapping);
     return {
       ok: true,
-      status: "native-fallback",
+      status: "native-ready",
       nativeGraphPreserved: true,
       mapping,
       detection,
-      remediation: ["continue with native JSON graph", "configure tracker adapter before external sync"],
+      remediation: ["continue with canonical native JSON graph", "configure tracker adapter only when external sync is required"],
     };
   }
 

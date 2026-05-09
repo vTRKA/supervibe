@@ -97,6 +97,17 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
 });
 
+test("worktree plan loop request resolves to loop command, not flat plan execution", () => {
+  const match = resolveCommandRequest("запусти loop по плану в worktree", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "supervibe_loop");
+  assert.equal(match.command, "/supervibe-loop");
+  assert.ok(match.confidence > 0.9);
+});
+
 test("slash command parser keeps command id separate from free-form context", () => {
   const match = resolveCommandRequest("/supervibe-genesis т.к мы будем использовать React Next Vite TypeScript Tailwind Laravel PostgreSQL", {
     pluginRoot: ROOT,

@@ -92,6 +92,40 @@ test("worktree request routes to isolated session preflight and adds dirty-state
   assert.ok(route.safetyBlockers.includes("dirty-main-worktree-needs-isolated-session-plan"));
 });
 
+test("reviewed plan worktree request requires atomization before worktree run", () => {
+  const route = routeWorkflowIntent({
+    userPhrase: "run the reviewed plan in a worktree",
+    dirtyGitState: "clean",
+    artifacts: {
+      plan: true,
+      planReviewPassed: true,
+      planPath: ".supervibe/artifacts/plans/example.md",
+    },
+  });
+
+  assert.equal(route.intent, "atomize_plan");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed");
+  assert.equal(route.source, "atomization-gate");
+  assert.match(route.reason, /atomized into an epic and work-item graph/i);
+});
+
+test("worktree epic request can run after atomization", () => {
+  const route = routeWorkflowIntent({
+    userPhrase: "run the reviewed plan in a worktree",
+    dirtyGitState: "clean",
+    artifacts: {
+      plan: true,
+      planReviewPassed: true,
+      workItemsReady: true,
+      epicId: "EPIC-1",
+    },
+  });
+
+  assert.equal(route.intent, "worktree_autonomous_run");
+  assert.equal(route.command, "/supervibe-loop --epic --worktree");
+  assert.equal(route.source, "worktree-rule");
+});
+
 test("single-session execution does not force worktree orchestration", () => {
   const route = routeWorkflowIntent({
     userPhrase: "run it",

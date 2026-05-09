@@ -39,6 +39,12 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.match(html, /Auth: local only/);
     assert.doesNotMatch(html, /x-supervibe-ui-token|\?token=|TOKEN:/);
     assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /api\/action/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /create/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /dep-add/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /reparent/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /actionAcceptance/);
+    assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /loadCompletionBtn/);
+    assert.doesNotMatch(renderSupervibeUiHtml({ graphPath: graphRel }), /project intelligence/);
 
     const indexStatus = await (await fetch(`${baseUrl}/api/index-status`)).json();
     assert.equal(indexStatus.overall.total, 3);
@@ -53,7 +59,8 @@ test("UI server renders local control plane and keeps actions preview-first", as
     const graph = await (await fetch(`${baseUrl}/api/graph?file=${encodeURIComponent(graphRel)}`)).json();
     assert.equal(graph.graphId, "epic-ui");
     assert.equal(graph.grouped.ready.length, 1);
-    assert.equal(graph.kanban.project.graphId, "epic-ui");
+    assert.equal(graph.kanban.graphSummary.graphId, "epic-ui");
+    assert.equal("project" in graph.kanban, false);
     assert.equal(graph.kanban.epics[0].id, "epic-ui");
     assert.equal(graph.flow.activeId, "execute");
     assert.equal(graph.flow.steps.find((step) => step.id === "atomize").state, "complete");
@@ -75,6 +82,11 @@ test("UI server renders local control plane and keeps actions preview-first", as
 
     const report = await (await fetch(`${baseUrl}/api/report?file=${encodeURIComponent(graphRel)}&type=sla`)).json();
     assert.match(report.markdown, /Supervibe Sla Report/);
+
+    const completion = await (await fetch(`${baseUrl}/api/completion?file=${encodeURIComponent(graphRel)}`)).json();
+    assert.match(completion.markdown, /SUPERVIBE_EPIC_COMPLETION/);
+    assert.equal(completion.report.pass, false);
+    assert.ok(completion.report.issues.length > 0);
 
     const rejected = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
@@ -119,6 +131,23 @@ async function writeGraph(graphPath) {
   await writeFile(graphPath, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
 }
 
+test("UI server resolves active work graph when no file is provided", async () => {
+  const root = await makeTempRoot("supervibe-ui-active-");
+  const graphRel = ".supervibe/memory/work-items/epic-ui/graph.json";
+  await writeGraph(join(root, graphRel));
+  const { server } = createSupervibeUiServer({ rootDir: root });
+  await listen(server);
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    const graph = await (await fetch(`${baseUrl}/api/graph`)).json();
+    assert.equal(graph.graphId, "epic-ui");
+    assert.match(graph.graphPath, /epic-ui[\\/]graph\.json$/);
+  } finally {
+    await close(server);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("kanban model keeps tasks tied to epics and agents", () => {
   const longTaskTitle = "Audit router failover behavior with an extremely long unbroken diagnostic identifier SUPERLONGNETWORKROUTERFAILOVERDIAGNOSTICIDENTIFIERWITHOUTSPACES";
   const model = createKanbanModel({
@@ -130,7 +159,8 @@ test("kanban model keeps tasks tied to epics and agents", () => {
     ],
   });
 
-  assert.equal(model.project.totalTasks, 2);
+  assert.equal(model.graphSummary.totalTasks, 2);
+  assert.equal("project" in model, false);
   assert.equal(model.epics[0].title, "UI Epic With Long Visibility Requirements");
   assert.deepEqual(model.agents[0], { agent: "agent-1", count: 1 });
   assert.equal(model.columns.find((column) => column.id === "claimed").items[0].epicId, "epic-ui");

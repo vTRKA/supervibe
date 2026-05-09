@@ -7,7 +7,7 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-**v2.0** - current plugin `v2.0.125` - MIT - 1479 tests
+**v2.0** - current plugin `v2.0.126` - MIT - 1494 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -95,7 +95,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.0.125 initialized for this project
+[supervibe] welcome  plugin v2.0.126 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -178,8 +178,9 @@ Copy-paste example:
 /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
 /supervibe-plan --review .supervibe/artifacts/plans/example.md
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
-/supervibe-loop --guided
+/supervibe-loop --guided --file .supervibe/memory/work-items/example-epic/graph.json
 /supervibe-loop --epic example-epic --worktree
+/supervibe-loop --validate-completion --epic example-epic
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
 /supervibe-loop --stop example-run
@@ -324,7 +325,7 @@ Run these in the AI CLI chat.
 | `/supervibe-brainstorm <topic>` | Turn an idea into an approved spec |
 | `/supervibe-plan [<spec-path>]` | Turn a spec into an implementation plan |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with gates |
-| `/supervibe-loop --request/--plan/--from-prd` | Visible goal-until-complete loop with status, resume, and stop |
+| `/supervibe-loop --request/--file/--epic` | Visible goal-until-complete loop over native work graphs with status, resume, stop, and completion gates |
 | `/supervibe-design <brief>` | Design pipeline from direction to prototype and handoff |
 | `/supervibe-security-audit` | Read-only security audit first |
 | `/supervibe-ui` | Local browser control plane |
