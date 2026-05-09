@@ -59,6 +59,7 @@ anti-patterns:
   - no-skip-link
   - color-only-state
   - focus-removed
+  - advanced-visual-without-fallback
 version: 1.2
 last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
@@ -206,6 +207,8 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+For advanced prototype modes, read `decisions/prototype-capability-plan.md` when it exists. Canvas, SVG, WebGL/Three.js, PixiJS, Lottie/Rive, charts, maps, code editors, and data-viz dependencies need a semantic fallback, keyboard path, text alternative or adjacent DOM equivalent, reduced-motion branch, and static fallback for users or devices that cannot run the effect. If the plan is missing for `bundled-dependency`, `framework-sandbox`, or `handoff-only`, block sign-off.
+
 ## Procedure
 
 12+ steps, executed top-to-bottom for any audit:
@@ -253,8 +256,9 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
     - Autocomplete tokens for known fields (WCAG 1.3.5)
 14. **Target size & spacing** (WCAG 2.5.8) — interactive targets ≥ 24×24 CSS px (AA) / 44×44 (AAA preference)
 15. **Page-level checks** — `<html lang>` declared, page `<title>` unique and descriptive, single `<main>`, landmarks present
-16. **Output findings** — per WCAG criterion, severity, fix steps, evidence (axe JSON snippet, AT recording, contrast number)
-17. **Score** with `supervibe:confidence-scoring` — refuse sign-off below 9
+16. **Advanced visual fallback checks** — for Canvas/SVG/WebGL/Lottie/Rive/charts/maps/code editors/data-viz, verify the Prototype Capability Plan, semantic DOM fallback, keyboard/touch alternative, reduced-motion behavior, static fallback, and no color-only meaning.
+17. **Output findings** — per WCAG criterion, severity, fix steps, evidence (axe JSON snippet, AT recording, contrast number)
+18. **Score** with `supervibe:confidence-scoring` — refuse sign-off below 9
 
 ## Output contract
 
@@ -288,6 +292,7 @@ Rubric: agent-delivery
 - **no-skip-link** — multi-region pages without a "Skip to main content" link force keyboard users to Tab through the entire nav on every page (WCAG 2.4.1)
 - **color-only-state** — error states marked only by red border, success only by green check; must add icon + text for color-blind users (WCAG 1.4.1)
 - **focus-removed** — `outline: none` without a visible replacement is a 2.4.7 fail; focus must always be visible somewhere
+- **advanced-visual-without-fallback** — Canvas/WebGL/Lottie/Rive/chart/map/code-editor output without semantic fallback, keyboard route, reduced-motion branch, and Prototype Capability Plan.
 
 ## User dialogue discipline
 

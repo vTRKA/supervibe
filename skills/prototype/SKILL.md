@@ -3,8 +3,8 @@ name: prototype
 namespace: process
 description: >-
   Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in
-  framework to produce 1:1 native-HTML prototype in /prototypes for brand
-  approval, feedback iteration, and frame­work-agnostic 1:1 transfer. Triggers:
+  framework to produce 1:1 capability-aware HTML/CSS/JS prototype in /prototypes
+  for brand approval, feedback iteration, and framework-agnostic 1:1 transfer. Triggers:
   'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI', 'нужен прототип',
   'сделай макет'.
 allowed-tools:
@@ -47,7 +47,7 @@ NOT for:
 
 ## Hard constraints
 
-1. **Native only.** No React, Vue, Svelte, Next.js, Nuxt, Astro, Tailwind preprocessor, npm dependencies. Pure HTML + CSS + JS. The output must work by opening `index.html` in any browser without a build step.
+1. **Capability-aware prototype output.** Default to `native-static` or `enhanced-native` HTML/CSS/JS, but do not block quality when the brief needs stronger media. Allowed modes are `native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`, and `handoff-only`. Any `bundled-dependency`, `framework-sandbox`, or `handoff-only` decision requires `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` before implementation, with purpose, libraries, artifact scope, license/security posture, bundle/performance budget, accessibility fallback, reduced-motion fallback, and verification commands.
 2. **Design system is source of truth.** Every color, spacing, type ramp, radius, motion timing comes from `.supervibe/artifacts/prototypes/_design-system/tokens.css`. Raw hex values, magic pixel numbers, ad-hoc cubic-beziers are forbidden. If the system doesn't have it, ask user to extend the system FIRST.
 3. **Two viewports by default** — `375px` (mobile) and `1440px` (desktop). The user may request more (e.g. `768px` tablet, `1920px` wide-screen) but the default is exactly these two. Ask user upfront before building.
 4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with a dynamic progress indicator (`Step N/M`), where `M` is the count of required questions after triage.
@@ -56,6 +56,7 @@ NOT for:
 7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 8. **Data-fed mocks are contract-backed.** If interaction depth is `data-fed`, run `supervibe:mock-data-contract` and create `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` before claiming frontend-before-backend readiness.
 9. **Design Diversity Benchmark for alternatives.** A distinct alternative must differ on at least three of palette, typography, motion, imagery, hierarchy, density, composition, and interaction. Same shell, new paint is a failed alternative even when the screenshot looks cleaner.
+10. **Dependencies are approved tools, not defaults.** Use native CSS/WAAPI, Canvas, SVG, and local assets first. Escalate to Motion, GSAP, Lottie/lottie-web, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre GL, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror, or a stack-specific chart library only when the plan proves the library unlocks a materially better prototype.
 
 ## Expert Operating Standard
 
@@ -170,12 +171,24 @@ Use default 375px mobile and 1440px desktop?
 
 Wait for explicit answer. Then next question. Never combine.
 
+### Stage 2a — Prototype Capability Plan
+
+Before Stage 3, classify the prototype mode:
+
+- `native-static` - semantic HTML/CSS/JS is enough.
+- `enhanced-native` - CSS/WAAPI, Canvas, SVG, local assets, or browser APIs are needed.
+- `bundled-dependency` - an approved local bundle is needed for charts, 3D, advanced motion, maps, code editing, physics, or data visualization.
+- `framework-sandbox` - a temporary framework/build sandbox is needed to prove a framework-specific behavior.
+- `handoff-only` - the effect cannot be responsibly rendered in the prototype environment, so ship a static/storyboard preview plus exact implementation notes.
+
+If the mode is not `native-static`, write `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` from `templates/design-decisions/prototype-capability-plan.md.tpl` before implementation. The plan must name the library or browser API, why it is necessary, what native-only alternative was rejected, artifact scope, license/security posture, bundle/performance budget, accessibility fallback, reduced-motion fallback, and verification commands.
+
 ### Stage 3 — Build
 
 1. Build the chosen viewports as separate breakpoint blocks in `styles/pages.css` using container queries OR a single `@media (min-width)` cascade. Pick one and keep consistent.
 2. Compose components by reading `.supervibe/artifacts/prototypes/_design-system/components/<name>.md` for each — NEVER invent component patterns; if the design system doesn't have what you need, STOP and ask user to extend the system.
 3. Animations come from `.supervibe/artifacts/prototypes/_design-system/motion.css` (named keyframes + named easings + named durations) — apply, don't author new motion in the prototype.
-4. **No framework imports.** Verify `<script src=>` and `<link href=>` reference only relative files. No CDN, no `import` from npm. Greppable: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css))' .supervibe/artifacts/prototypes/<slug>/` must return zero results.
+4. **Dependency boundary.** Verify `<script src=>` and `<link href=>` reference only relative files unless the approved `Prototype Capability Plan` explicitly documents a reviewed exception. No blind CDN, no unplanned `import` from npm, and no `node_modules/` runtime path inside the prototype. Greppable default: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css)|node_modules)' .supervibe/artifacts/prototypes/<slug>/` must return zero hits unless each hit is listed in the capability plan and reviewer notes.
 5. **Data-fed state matrix.** For `data-fed` prototypes, every local `fetch()` target must be listed in `mocks/mock-contract.json`, every UI state must map to a scenario in `mocks/mock-scenarios.json`, and every scenario must have a synthetic fixture in `mocks/api-fixtures/`.
 
 ### Stage 4 — Live preview
@@ -202,7 +215,7 @@ What should happen next?
 - **Stop** - keep as draft and resume later
 ```
 
-Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side. Every distinct alternative must record Design Diversity Benchmark fields: changed axes, `differsBecause`, `gains`, `givesUp`, reference packet, screenshot plan, and token notes.
+Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side. Every distinct alternative must record Design Diversity Benchmark fields: changed axes, `differsBecause`, `gains`, `givesUp`, reference packet, screenshot plan, token notes, `domLayoutSignature`, `cssTokenSignature`, `screenshotViewportPlan`, and `interactionMotionSignature`.
 
 ### Stage 6 — Approval marker
 
@@ -252,7 +265,7 @@ Rubric:     prototype
 
 ## Guard rails
 
-- DO NOT install any npm package or import any framework. Native only.
+- DO NOT install, import, or bundle any dependency without a written `Prototype Capability Plan` and a verification note explaining why native CSS/WAAPI, Canvas, SVG, or local assets are insufficient.
 - DO NOT exceed 2 viewports unless user explicitly asked for more.
 - DO NOT proceed past delivery without explicit feedback choice.
 - DO NOT reuse or edit an old design artifact without the artifact-mode question when the brief is ambiguous.
@@ -269,7 +282,7 @@ Rubric:     prototype
 ## Verification
 
 - `find .supervibe/artifacts/prototypes/<slug>/ -name '*.html'` shows expected structure
-- `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits
+- `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits, or every hit is documented in `decisions/prototype-capability-plan.md` with approved scope and local bundle strategy
 - `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
 - Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
 - If interaction is `data-fed`, `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` exist and map every local fetch to a scenario fixture
@@ -280,7 +293,7 @@ Rubric:     prototype
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
-- `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
+- `unapproved-dependency-coupling` — emitting `import from`, `require()`, `<script src="...cdn...">`, `<script src="...unpkg...">`, or any `node_modules/` reference without a `Prototype Capability Plan`, local bundle strategy, and reviewer-approved scope.
 - `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
 - `same-shell-new-paint` — presenting a color/type refresh as a distinct alternative without changed composition, hierarchy, density, or interaction.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.

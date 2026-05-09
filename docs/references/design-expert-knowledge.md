@@ -65,6 +65,14 @@ references, market examples, official platform docs, live competitor pages, or
 fresh visual evidence that the local pack cannot know. Do not depend on a remote
 repository or external skill for baseline design expertise.
 
+Design agents must treat the local pack as broad by default, not scarce. Before
+claiming "no data available", check all relevant domains: product, style, color,
+typography, UX, landing, app-interface, charts, icons, google-fonts,
+react-performance, ui-reasoning, stack, slides, collateral, and creative packs.
+For creative or WOW requests, combine these local domains with current
+references and a Prototype Capability Plan so the agent can choose stronger
+tools without bypassing security, accessibility, or performance gates.
+
 ## Reference Quality Ladder
 
 Every external reference must be evidence with a declared `reference role`, not
@@ -158,10 +166,13 @@ or card-to-card spacing do not count when the product structure, information
 priority, and interaction story stay the same.
 
 For every multi-direction proposal, record `differsBecause`, `gains`,
-`givesUp`, selected reference packet, screenshot plan, and token notes. The
-reviewer must be able to answer: what is newly possible for the user, what got
-harder, and why this direction fits the product better than the rejected ones.
-If a direction cannot name that tradeoff, it is a variation, not an alternative.
+`givesUp`, selected reference packet, screenshot plan, token notes, and
+artifact-level evidence: `domLayoutSignature`, `cssTokenSignature`,
+`screenshotViewportPlan`, and `interactionMotionSignature`. The reviewer must
+be able to answer: what is newly possible for the user, what got harder, and why
+this direction fits the product better than the rejected ones. If a direction
+cannot name that tradeoff or prove a different layout/motion/interaction
+signature, it is a variation, not an alternative.
 
 ## Eight-Pass Expert Routine
 

@@ -182,6 +182,15 @@ interaction need explicit rationale when a new direction or alternative is
 claimed. Same-shell-new-paint approvals are blocked until the reviewer can name
 at least three changed axes, the user value gained, and the tradeoff accepted.
 
+### Capability And Library Bridge QA
+
+The system must say how advanced visuals remain token-governed. For charts,
+3D, maps, code editors, animation libraries, Canvas/SVG/WebGL, Lottie/Rive, or
+data-viz dependencies, require a bridge note that maps the library output back
+to approved tokens, component states, motion tiers, focus treatment,
+reduced-motion behavior, and accessibility fallback. A library default theme is
+not a design system.
+
 ### Reference Quality Gate
 
 Before approving candidate tokens or a review packet, verify reference quality
@@ -251,16 +260,20 @@ Feedback requests a visual change?
    contrast, overflow, focus-visible, reduced motion, and text overlap.
 7. Verify component-library bridge if present: README rationale, bridge depth,
    token references, import guidance, and regeneration rule when tokens change.
-8. Verify the Reference Quality Gate before approval: no unclassified sources,
+8. Verify Prototype Capability Plan bridge if present: advanced library output
+   uses approved tokens, never overrides motion/accessibility rules, and records
+   fallback behavior for `native-static`, `enhanced-native`,
+   `bundled-dependency`, `framework-sandbox`, or `handoff-only` prototype modes.
+9. Verify the Reference Quality Gate before approval: no unclassified sources,
    no platform standards treated as creative benchmarks, no brand-name authority
    prompts, and every cited reference has borrow/avoid notes. For new or
    rebrand systems, confirm the selected creative packs are recorded and that
    candidate directions differ on real axes rather than small token tweaks.
-9. Score creative-diversity QA before approval: distinctiveness, emotional fit, user
+10. Score creative-diversity QA before approval: distinctiveness, emotional fit, user
    empathy, category fit, trend awareness, accessibility-safe novelty, and
    future-proofness must be explicit enough that another designer can continue
    the system without rediscovering the taste rationale.
-10. Require design memory writeback after explicit acceptance or rejection:
+11. Require design memory writeback after explicit acceptance or rejection:
    accepted decisions, rejected alternatives, review findings, and learned
    patterns use `scripts/lib/design-memory-writer.mjs` categories with evidence
    paths.

@@ -26,6 +26,13 @@ const REQUIRED_EVIDENCE_FIELDS = Object.freeze([
   "tokenNotes",
 ]);
 
+const REQUIRED_ARTIFACT_EVIDENCE_FIELDS = Object.freeze([
+  "domLayoutSignature",
+  "cssTokenSignature",
+  "screenshotViewportPlan",
+  "interactionMotionSignature",
+]);
+
 const DEFAULT_OPTIONS = Object.freeze({
   minCases: 5,
   minVariantsPerCase: 3,
@@ -142,6 +149,12 @@ function validateVariant(caseId, variant = {}, variantIndex, issues) {
   for (const field of REQUIRED_EVIDENCE_FIELDS) {
     if (!strongText(variant.evidence?.[field])) {
       issues.push(issue(variantId, "missing-evidence-field", `variant evidence must provide ${field}`));
+    }
+  }
+
+  for (const field of REQUIRED_ARTIFACT_EVIDENCE_FIELDS) {
+    if (!strongText(variant.evidence?.[field])) {
+      issues.push(issue(variantId, "missing-artifact-evidence-field", `variant artifact evidence must provide ${field}`));
     }
   }
 }

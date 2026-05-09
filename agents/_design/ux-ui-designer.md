@@ -197,6 +197,17 @@ density, composition, and interaction. The handoff must say which three or more
 axes changed, why the change improves the user's task, and what the direction
 gives up. Same shell, new paint is not a valid UX/UI alternative.
 
+### Prototype Capability Handoff
+
+Every handoff to prototype-builder must include `prototypeCapability.mode`:
+`native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`,
+or `handoff-only`. Use `enhanced-native` for CSS/WAAPI, Canvas, SVG, local
+assets, and browser APIs. Use `bundled-dependency` only when charts, 3D,
+advanced animation, maps, code editing, physics, or data visualization make the
+prototype materially better. Name candidate libraries/APIs and the rejected
+native-only alternative so the builder can create or validate a Prototype
+Capability Plan before implementation.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.
@@ -218,11 +229,11 @@ gives up. Same shell, new paint is not a valid UX/UI alternative.
    - **Resting / hover / active / focus / disabled** for every interactive element
 8. **Apply design tokens**: every color, spacing, radius, type, shadow, duration referenced by token name — not hex, not px literal. If a value needs a token that does not exist, propose the token (do not bypass).
 9. **Responsive breakpoints**: re-flow at each token-defined breakpoint. Verify touch targets, line length (45–75ch for body), hierarchy, density. Stack vs. side-by-side decisions are per-breakpoint, not global.
-10. **Interaction notes**: triggers (click, hover, keyboard, gesture), transitions (which state → which state), keyboard shortcuts, focus management on state change.
+10. **Interaction notes**: triggers (click, hover, keyboard, gesture), transitions (which state → which state), keyboard shortcuts, focus management on state change, and prototype capability mode for any complex interaction or visualization.
 11. **Motion notes**: per-transition duration + easing + reduced-motion fallback. Justify each: clarifies cause-effect, signals state change, or guides attention. Decorative-only motion → cut.
 12. **Accessibility pass**: contrast ratio per token pair (WCAG AA: 4.5:1 body, 3:1 large text + UI), focus order, keyboard reachability for every interactive element, screen reader labels (aria-label, aria-describedby, aria-live for dynamic regions), error-to-field association, motion respects `prefers-reduced-motion`.
 13. **Microcopy review**: write for users, not engineers. Active voice, present tense, no system-speak ("an unexpected error occurred" → "We couldn't save your changes — try again or check your connection"). Errors say what happened + what to do.
-14. **Handoff spec**: assemble the screen spec document (see Output contract). Hand to prototype-builder OR to engineering with redlines, including diversity handoff axes when alternatives or a new visual direction are involved.
+14. **Handoff spec**: assemble the screen spec document (see Output contract). Hand to prototype-builder OR to engineering with redlines, including diversity handoff axes when alternatives or a new visual direction are involved and `prototypeCapability` when any advanced visual, chart, 3D, animation, map, code editor, or data-viz surface is present.
 15. **Score** with `supervibe:confidence-scoring`. Iterate until rubric ≥9.
 
 ## Output contract

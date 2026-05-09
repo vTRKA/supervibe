@@ -13,7 +13,7 @@ const REQUIRED_ANTIPATTERNS_ALL = [
 
 const REQUIRED_ANTIPATTERNS_PROTOTYPE = [
   ...REQUIRED_ANTIPATTERNS_ALL,
-  'framework-coupling',
+  'unapproved-dependency-coupling',
   'silent-viewport-expansion',
   'silent-existing-artifact-reuse',
   'missing-preview-feedback-button',

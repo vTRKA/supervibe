@@ -17,6 +17,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /Design Diversity Benchmark/i,
       /same shell, new paint/i,
       /palette.*typography.*motion.*imagery.*hierarchy/i,
+      /domLayoutSignature[\s\S]*cssTokenSignature[\s\S]*screenshotViewportPlan[\s\S]*interactionMotionSignature/i,
     ],
   },
   {
@@ -27,6 +28,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /same shell, new paint/i,
       /three changed axes|3 changed axes|3\+ axes/i,
       /palette.*typography.*motion.*imagery.*hierarchy/i,
+      /domLayoutSignature[\s\S]*cssTokenSignature[\s\S]*screenshotViewportPlan[\s\S]*interactionMotionSignature/i,
     ],
   },
   {
@@ -45,6 +47,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /same shell, new paint/i,
       /Design Diversity Benchmark/i,
       /first-screen novelty/i,
+      /domLayoutSignature[\s\S]*cssTokenSignature[\s\S]*screenshotViewportPlan[\s\S]*interactionMotionSignature/i,
     ],
   },
   {
@@ -63,6 +66,7 @@ const REQUIRED_SURFACES = Object.freeze([
       /Design Diversity Benchmark/i,
       /distinct alternative/i,
       /same shell, new paint/i,
+      /domLayoutSignature[\s\S]*cssTokenSignature[\s\S]*screenshotViewportPlan[\s\S]*interactionMotionSignature/i,
     ],
   },
   {

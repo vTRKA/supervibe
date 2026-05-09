@@ -543,17 +543,10 @@ Decision criteria:
 
 When designer hands you JSON exported from After Effects via Bodymovin plugin. Player: `lottie-web` (~70kb gzip). Best for: one-shot delight moments, complex vector animations that would take days to recreate in CSS.
 
-```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-<div id="success-anim" style="width:200px;height:200px"></div>
-<script>
-  lottie.loadAnimation({
-    container: document.getElementById('success-anim'),
-    renderer: 'svg', loop: false, autoplay: true,
-    path: '/anims/success-burst.json',
-  });
-</script>
-```
+Do not paste a CDN player into a Supervibe prototype. If Lottie is needed,
+record it in `decisions/prototype-capability-plan.md`, bundle or vendor the
+approved runtime locally, lazy-load below the fold, provide a static poster, and
+pause or replace the animation under `prefers-reduced-motion: reduce`.
 
 ### Custom shaders (GLSL fragment shader)
 
@@ -634,7 +627,7 @@ Use `<picture>` for format negotiation:
 | Pre-rendered designer JSON | Lottie-web | Direct After Effects export pipeline |
 | Scroll-driven animations with fallback | GSAP ScrollTrigger | Robust polyfill where native scroll-timeline unavailable |
 
-But for Supervibe prototypes default to **native CSS + Web Animations API + Intersection Observer**. Adding a library is escalation that requires justification: "we need spring physics", "we have 50+ choreographed steps", "designer already exported Lottie JSON". Do not pull GSAP for a fade-in.
+But for Supervibe prototypes default to **native CSS + Web Animations API + Intersection Observer**. Adding a library is escalation that requires a Prototype Capability Plan: "we need spring physics", "we have 50+ choreographed steps", "designer already exported Lottie JSON", "this chart needs interactive zoom", or "this 3D scene is the product proof." Do not pull GSAP for a fade-in, and do not use remote CDN runtime imports unless the plan explicitly marks the work handoff-only or documents a reviewed exception.
 
 ## WOW-effect catalog (use sparingly — max 1-2 per product)
 

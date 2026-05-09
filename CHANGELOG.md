@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.122] - 2026-05-09
+
+### Added
+
+- Added a Prototype Capability Plan contract for design prototypes so agents can
+  use approved animation, chart, 3D, map, data-viz, code-editor, and media
+  tooling when it materially improves the result.
+- Added `validate:design-capability-plan` plus fixture coverage to prevent
+  design instructions from regressing to blanket native-only limits.
+
+### Changed
+
+- Reworked design command, prototype/landing skills, and design agents around
+  explicit capability modes: `native-static`, `enhanced-native`,
+  `bundled-dependency`, `framework-sandbox`, and `handoff-only`.
+- Strengthened the Design Diversity Benchmark with DOM layout, CSS token,
+  screenshot viewport, and interaction/motion evidence so alternatives must
+  differ structurally, not only by palette.
+- Expanded design-intelligence guidance so agents see the full local dataset
+  map and current advanced prototype library families before claiming limited
+  evidence.
+
+### Fixed
+
+- Removed conflicting design instructions that allowed advanced creative
+  libraries in one agent while forbidding all npm/framework usage in prototype
+  skills.
+- Updated dependency health by overriding vulnerable `fast-uri` to `3.1.2` and
+  refreshing `yaml` and `knip`.
+
 ## [2.0.121] - 2026-05-09
 
 ### Fixed

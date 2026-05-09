@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-Package: supervibe-framework v2.0.68
+Package: supervibe-framework v2.0.122
 Source: package-lock.json
 Scope: direct runtime and development dependencies plus lockfile license counts.
 
@@ -15,8 +15,8 @@ Scope: direct runtime and development dependencies plus lockfile license counts.
 | ajv | devDependencies | 8.20.0 | MIT | yes |
 | gray-matter | devDependencies | 4.0.3 | MIT | yes |
 | husky | devDependencies | 9.1.7 | MIT | yes |
-| knip | devDependencies | 5.88.1 | ISC | yes |
-| yaml | devDependencies | 2.8.3 | ISC | yes |
+| knip | devDependencies | 6.12.2 | ISC | yes |
+| yaml | devDependencies | 2.8.4 | ISC | yes |
 
 ## Bundled Design Intelligence Data
 
@@ -34,15 +34,15 @@ The data pack is documented in `docs/third-party-design-intelligence.md`. Origin
 | (MIT OR CC0-1.0) | 1 |
 | (MIT OR GPL-3.0-or-later) | 1 |
 | 0BSD | 1 |
-| Apache-2.0 | 17 |
+| Apache-2.0 | 16 |
 | Apache-2.0 AND LGPL-3.0-or-later | 3 |
 | Apache-2.0 AND LGPL-3.0-or-later AND MIT | 1 |
 | BSD-2-Clause | 1 |
 | BSD-3-Clause | 15 |
-| ISC | 11 |
+| ISC | 8 |
 | LGPL-3.0-or-later | 10 |
-| MIT | 101 |
+| MIT | 111 |
 
 ## Release Rule
 
-Direct dependencies and bundled release artifacts with unknown, missing, GPL-family, AGPL-family, LGPL-family, or proprietary licenses block release unless a reviewed exception with owner, expiry, rationale, and mitigation is recorded in the release-security evidence. Transitive copyleft counts stay visible here for review before any redistribution or bundling change.
+Unknown, missing, GPL-family, AGPL-family, LGPL-family, or proprietary licenses block release unless a reviewed exception with owner, expiry, rationale, and mitigation is recorded in the release-security evidence. Transitive copyleft counts stay visible here for review before any redistribution or bundling change.

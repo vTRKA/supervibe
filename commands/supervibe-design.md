@@ -1,9 +1,10 @@
 ---
 description: >-
   End-to-end design pipeline with memory/code/design-intelligence preflight:
-  design-system → spec → native HTML/CSS/JS prototype → live preview → review
-  → feedback loop → approval → ready-for-development handoff. Pure native,
-  two viewports default (375 + 1440), one question at a time.
+  design-system → spec → capability-aware HTML/CSS/JS prototype → live preview
+  → review → feedback loop → approval → ready-for-development handoff. Native by
+  default, approved dependencies when they materially improve the result, two
+  viewports default (375 + 1440), one question at a time.
 last-verified: "2026-05-08"
 ---
 
@@ -294,7 +295,13 @@ Run a product-fit style matrix before committing to a visual direction: product 
 
 ## Hard rules (the user feedback that drives this command)
 
-1. **Native HTML/CSS/JS only** for prototypes. No React, Vue, Svelte, Next.js, Nuxt. Pure web platform. Frameworks come AFTER approval, in the handoff-to-stack step.
+1. **Prototype capability is explicit, not artificially capped.** Default to lightweight HTML/CSS/JS, but choose the smallest capability mode that can prove the requested experience:
+   - `native-static` - semantic HTML/CSS/JS with no build step when the product can be proven without advanced runtime effects.
+   - `enhanced-native` - native CSS/WAAPI, Canvas, SVG, IntersectionObserver, ScrollTimeline, local assets, or local JSON fixtures when that creates materially better fidelity without a dependency.
+   - `bundled-dependency` - an approved npm dependency compiled or vendored into the prototype artifact when charts, 3D, advanced animation, maps, code editing, physics, or data visualization materially improve the result.
+   - `framework-sandbox` - a temporary framework/build sandbox only when the brief asks for framework-specific proof or a library cannot be demonstrated responsibly in vanilla output.
+   - `handoff-only` - document the exact production implementation and static fallback when a requested effect requires unavailable media tools, licensed assets, or production-only integration.
+   Any non-native mode requires a `Prototype Capability Plan` with purpose, library names, artifact scope, license/security posture, bundle/performance budget, accessibility fallback, reduced-motion fallback, and verification commands. Unapproved CDN/runtime imports remain forbidden.
 2. **Viewport target is platform-specific.** Web defaults to `375px` mobile + `1440px` desktop. Desktop/Tauri/Electron defaults to an actual 1:1 window when available; otherwise use `1280x800` main window plus `800x600` minimum window and record `exactWindow`, `deviceScaleFactor`, `mainWindow`, `secondaryWindow`, and `largeWindow` metadata. Ask user upfront if they want different, but never silently expand.
 3. **One question at a time** in markdown with progress indicator. Never dump 5 questions at once.
 4. **Design system lifecycle is explicit.** Start with candidate tokens for design-system review only, approve required sections explicitly, then unlock prototypes only when `design_system.status = approved`. Every visual decision references the current approved system instead of inventing one-off values.
@@ -540,7 +547,7 @@ Output: `.supervibe/artifacts/prototypes/<slug>/content/copy.md` — every visib
 
 **Feedback gate:** approve copy / refine / stop.
 
-### Stage 5 — Prototype build (native HTML/CSS/JS)
+### Stage 5 — Prototype build (capability-aware HTML/CSS/JS)
 
 Before dispatching any builder, evaluate `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`. If `prototype.requested = BLOCKED`, fail fast with the missing design-system sections and return the user to Stage 2 review. Candidate design-system artifacts never unlock this stage.
 
@@ -549,7 +556,9 @@ Dispatch `prototype-builder` agent and run `workflow-receipt.mjs issue --command
 - In-product flow → `supervibe:prototype`
 
 Both skills enforce:
-- Pure native (no frameworks, no npm)
+- Default `native-static` or `enhanced-native` output unless the approved `Prototype Capability Plan` selects `bundled-dependency`, `framework-sandbox`, or `handoff-only`.
+- No unapproved dependency, framework, CDN, or remote runtime import. Every dependency must be listed in `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` with purpose, library, scope, license/security, bundle/performance, accessibility, reduced-motion, and verification evidence.
+- Advanced visuals are expected when they fit the brief: charts, 3D, animation, Canvas/SVG/WebGL, Lottie/Rive specs, maps, code editors, and data-viz libraries are allowed through the capability plan instead of being blocked by a blanket native-only rule.
 - Viewports come from `plan.viewportPolicy`: web defaults to `[375, 1440]`; desktop/Tauri/Electron uses actual 1:1 window metadata or `[1280x800, 800x600]` fallback and asks once if user wants different
 - `design_system.status = approved` and every required section approved before writing prototype HTML/CSS/JS
 - All visuals through `.supervibe/artifacts/prototypes/_design-system/tokens.css` (no raw hex / magic px)

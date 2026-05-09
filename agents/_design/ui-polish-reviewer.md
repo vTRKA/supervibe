@@ -59,6 +59,7 @@ anti-patterns:
   - vague-feedback
   - cosmetic-only
   - no-baseline-screenshots
+  - unreviewed-wow-dependency
 version: 1.3
 last-verified: 2026-05-09T00:00:00.000Z
 verified-against: HEAD
@@ -135,6 +136,8 @@ Use `docs/references/design-expert-knowledge.md` as the review coverage checklis
 
 Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as blocking dimensions when the surface includes interactive UI. For Charts & Data, verify legends, tooltips, non-color-only encoding, empty/error states, scale behavior, and accessible fallback.
 
+For advanced visuals, read `decisions/prototype-capability-plan.md` when it exists. Treat missing or stale capability plans as blocking for `bundled-dependency`, `framework-sandbox`, or `handoff-only` prototypes. Verify the dependency actually improves the artifact instead of adding a generic effect: compare it against hierarchy, scan path, state clarity, responsive behavior, and performance. For 3D/WebGL/Canvas/SVG/Lottie/Rive/charts/maps/code editors, check static fallback, reduced-motion fallback, keyboard/touch path, and text overlap at every declared viewport.
+
 ## Procedure
 
 1. **Search project memory** for prior reviews on this surface and any token-policy decisions
@@ -151,8 +154,9 @@ Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as b
 11. **Responsive sweep — match `config.json` viewports**: read `.supervibe/artifacts/prototypes/<feature>/config.json` for the EXACT viewport list the user approved (default `[375, 1440]`). `browser_resize` to each declared viewport ONLY (do not test extras the prototype wasn't built for). Screenshot each; verify no horizontal scroll at smallest declared viewport; verify touch targets ≥44×44 at mobile-tier viewports (≤768); verify content reflows readably between consecutive viewports.
 12. **Copy precision**: read every visible string aloud; check for Lorem Ipsum, Latin filler, "TODO", placeholder names; verify CTA verbs match action; verify error messages are actionable not "Something went wrong"
 13. **DS token compliance**: Grep component source for `#[0-9a-fA-F]{3,8}` (raw hex), `\d+px` outside token files, inline styles bypassing tokens; cross-reference allowed token list
-14. **Visual regression**: diff current screenshots against baselines in `tests/visual/`; flag unintended changes
-15. **Score** with `supervibe:confidence-scoring`; **emit** review report
+14. **Capability-plan review**: if the prototype uses `bundled-dependency`, `framework-sandbox`, or `handoff-only`, verify the plan lists mode, libraries/APIs, rejected native alternative, artifact scope, license/security, bundle/performance, accessibility fallback, reduced-motion fallback, and verification commands; fail if the runtime import is remote/CDN-only without approved scope.
+15. **Visual regression**: diff current screenshots against baselines in `tests/visual/`; flag unintended changes
+16. **Score** with `supervibe:confidence-scoring`; **emit** review report
 
 ## Output contract
 
@@ -183,6 +187,7 @@ Rubric: agent-delivery
 - **vague-feedback** — "looks off" / "could be better" / "improve this." Every finding needs file:line + observed value + suggested value + rationale.
 - **cosmetic-only** — fixating on a 1px shadow while a 200ms layout shift is shipping. Always weight by user impact: a11y > correctness > consistency > polish-of-polish.
 - **no-baseline-screenshots** — approving polish changes without before/after diff. Without baselines, regressions ship invisibly.
+- **unreviewed-wow-dependency** — accepting 3D, chart, animation, map, code-editor, or data-viz dependency output without a Prototype Capability Plan and fallback review.
 
 ## User dialogue discipline
 

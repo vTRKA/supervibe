@@ -42,6 +42,10 @@ function variant(id, overrides = {}) {
       referencePacket: `${id} reference packet`,
       screenshotPlan: `${id} screenshot plan`,
       tokenNotes: `${id} token notes`,
+      domLayoutSignature: `${id} DOM layout signature`,
+      cssTokenSignature: `${id} CSS token signature`,
+      screenshotViewportPlan: `${id} screenshot viewport plan`,
+      interactionMotionSignature: `${id} interaction motion signature`,
     },
   };
 }

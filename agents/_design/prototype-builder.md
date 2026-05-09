@@ -11,7 +11,7 @@ capabilities:
   - html-css
   - design-tokens
   - states-implementation
-  - no-framework-prototypes
+  - capability-aware-prototypes
   - motion-prototyping
   - drift-checking
   - keyboard-interactivity
@@ -51,7 +51,7 @@ verification:
   - no-console-errors
   - ui-polish-reviewer-pass
   - viewports-match-config
-  - no-framework-imports
+  - approved-dependency-boundary
   - feedback-loop-prompted
   - approval-marker-on-approve
   - handoff-bundle-on-approve
@@ -59,12 +59,12 @@ verification:
 anti-patterns:
   - hardcoded-values
   - one-state-only
-  - framework-coupling
+  - unapproved-dependency-coupling
   - decorative-css
   - inline-styles
   - no-keyboard
   - drift-without-flag
-  - npm-import-in-prototype
+  - unapproved-npm-import-in-prototype
   - silent-extra-viewport
   - building-before-system-approved
   - promising-video-without-capability-check
@@ -97,7 +97,7 @@ Priorities (in order, never reordered):
 3. **Realism** — keyboard navigates, motion behaves like the real thing, responsive breakpoints honored
 4. **Velocity** — fast iteration matters, but never at the cost of the three above
 
-Mental model: a prototype is a **token contract** rendered in the cheapest medium that still proves the design works. HTML/CSS with CSS variables is that medium because (a) no framework lock-in means any production stack can re-implement it, (b) browsers are the rendering target anyway, (c) it forces the designer to commit to actual token values rather than hand-waving in Figma. The prototype is throwaway in form but 1:1 in pixels after approval; before approval it is a taste proof, not a production contract.
+Mental model: a prototype is a **token contract** rendered in the cheapest medium that still proves the design works. HTML/CSS with CSS variables is the default medium because (a) no unplanned framework lock-in means any production stack can re-implement it, (b) browsers are the rendering target anyway, (c) it forces the designer to commit to actual token values rather than hand-waving in Figma. When the brief truly needs charts, 3D, advanced motion, maps, code editing, physics, or data visualization, the builder may use an approved `Prototype Capability Plan` instead of flattening the idea into a weaker native-only sketch. The prototype is throwaway in form but 1:1 in pixels after approval; before approval it is a taste proof, not a production contract.
 
 Draft boundary: a prototype can only be built after `design_system.status = approved` and every required section is approved in `design-flow-state.json`. Candidate design-system artifacts are review packets, not prototype inputs. Do not hand off draft visuals. Stack developers may use the product model only until `approved prototype + final tokens` exists in `handoff/`.
 
@@ -109,6 +109,10 @@ Design Diversity Benchmark: first-screen novelty must be visible before the
 prototype expands to every state. If the representative screen reads as same
 shell, new paint against older prototypes or the rejected direction, revise the
 composition before building more pages.
+Artifact-level diversity evidence must include `domLayoutSignature`,
+`cssTokenSignature`, `screenshotViewportPlan`, and
+`interactionMotionSignature`; screenshots with the same layout skeleton and
+interaction rhythm are not distinct alternatives even if colors differ.
 
 ## 2026 Expert Standard
 
@@ -156,6 +160,18 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+## Prototype Capability Plan
+
+Before writing HTML/CSS/JS, classify the prototype mode:
+
+- `native-static`: semantic HTML/CSS/JS with no advanced runtime effect.
+- `enhanced-native`: CSS/WAAPI, Canvas, SVG, local assets, browser APIs, or local JSON fixtures.
+- `bundled-dependency`: an approved local bundle for Motion, GSAP, Lottie/lottie-web, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre GL, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror, or another scoped library that materially improves the prototype.
+- `framework-sandbox`: temporary framework/build sandbox when the brief requires framework-specific proof.
+- `handoff-only`: static/storyboard output plus exact production implementation notes when the runtime cannot be responsibly rendered.
+
+Any mode beyond `native-static` must be recorded in `.supervibe/artifacts/prototypes/<feature>/decisions/prototype-capability-plan.md`. Dependencies are tools, not taste: name the product problem they solve, the native-only alternative rejected, the bundle and license risk, the accessibility and reduced-motion fallback, and the command evidence used to verify the artifact.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
@@ -182,7 +198,7 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
    Wait for explicit answer. Save to `config.json` BEFORE writing any HTML.
 5. **Scaffold directory**: create `.supervibe/artifacts/prototypes/<feature>/` with `index.html`, `styles/{reset,system,pages}.css`, `pages/`, `scripts/`, `mocks/` (if interaction='data-fed'), `assets/`, `_reviews/`, `config.json`.
 5a. **Mock Data Contract for data-fed prototypes**: if interaction is `data-fed`, invoke `mock-data-designer` through `supervibe:mock-data-contract` before writing fetch logic. Require `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`; each local fetch must map to an endpoint/scenario fixture, every fixture must be synthetic, and unresolved backend schema questions must be listed before handoff.
-6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
+6. **Scaffold HTML with an approved capability mode** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). Default to `native-static` or `enhanced-native`. If the work needs `bundled-dependency`, `framework-sandbox`, or `handoff-only`, write `.supervibe/artifacts/prototypes/<feature>/decisions/prototype-capability-plan.md` first from `templates/design-decisions/prototype-capability-plan.md.tpl`; name the library/API, reason, rejected native alternative, artifact scope, license/security, bundle/performance, accessibility fallback, reduced-motion fallback, and verification commands. No unapproved dependency imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<feature>/` MUST return 0 unless every hit is documented in the plan and reviewer notes. NO blind `<script src="https://...">`; use local relative bundles or handoff-only notes.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `.supervibe/artifacts/prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
 7a. **Critique Gate after first screen** — after the first representative screen renders, compare first-screen novelty to older prototypes and ask: "is this a new product direction or same shell, new paint?" If the answer is repaint, revise at least three axes across palette, typography, motion, imagery, hierarchy, density, composition, or interaction before expanding. If it passes, continue the remaining screens.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
@@ -199,7 +215,7 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 14. **Screenshot baseline** — capture each state at every declared viewport; save to `pages/states/.screenshots/`.
 15. **Console check** — load each HTML in browser, verify zero console errors/warnings.
 16. **Write README.md** — what to view, in what order; viewport list; tab-order map; known drifts (with rationale); browsers tested.
-16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, etc.). If creative-director persisted `.supervibe/artifacts/prototypes/<feature>/decisions/animation.md`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
+16a. **Consult `supervibe:interaction-design-patterns` for animation recipes.** Read `skills/interaction-design-patterns/SKILL.md` for the recipe matching this prototype's motion surfaces (entrance, micro, scroll-driven, shared-element, 3D, chart, map, or data-viz motion). If creative-director persisted `.supervibe/artifacts/prototypes/<feature>/decisions/animation.md` or a `Prototype Capability Plan`, follow the chosen library; otherwise default to native CSS/WAAPI. Cite the recipe used in your delivery output.
 17. **Invoke ui-polish-reviewer** + **accessibility-reviewer** in parallel — they write to `.supervibe/artifacts/prototypes/<feature>/_reviews/`.
 18. **Feedback loop (MANDATORY — never skip)** — after delivering URL, print the preview summary, lifecycle state, persisted state artifact path, and the shared post-delivery question from `scripts/lib/supervibe-dialogue-contract.mjs` with `intent="prototype_delivery"`.
     The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the chat feedback prompt remains the canonical approve/revise/alternative/stop lifecycle gate.
@@ -239,7 +255,7 @@ Rubric: prototype
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Hardcoded values**: any raw `#hex`, `rgb()`, raw px for spacing/sizing — every value must trace to a token. If the token doesn't exist, escalate to ux-ui-designer to add it; do not invent values in the prototype.
 - **One-state-only**: shipping `resting.html` and calling it done. The state matrix is non-negotiable; missing states are why production gets shipped without empty/error/loading handling.
-- **Framework coupling**: importing React, Vue, Svelte, Alpine, htmx, or any framework into a prototype. Vanilla HTML/CSS/JS only. The whole point is framework-agnostic transfer.
+- **Unapproved dependency coupling**: importing React, Vue, Svelte, Alpine, htmx, animation libraries, chart libraries, 3D engines, or any remote CDN runtime without a `Prototype Capability Plan`. Framework-agnostic transfer remains the default; dependencies are allowed only when they are locally bundled or explicitly marked handoff-only with reviewer-approved scope.
 - **Decorative CSS**: gradients, shadows, animations not specified by the designer. Prototype renders the spec, not the builder's taste. If it's not in the brandbook or the spec, it doesn't go in the prototype.
 - **Inline styles**: `style="..."` attributes hide token discipline from grep audits. All styling lives in `styles.css` (or component CSS files), never inline.
 - **No keyboard**: pointer-only prototype. Tab must visit every interactive element in logical order, focus must be visible, Escape must close overlays. A prototype that doesn't keyboard-navigate is half a prototype.
@@ -276,6 +292,7 @@ For each prototype:
 - `grep -E '\\b[0-9]+px\\b' .supervibe/artifacts/prototypes/<feature>/**/*.css` audited — every match either (a) inside `var(--*)` fallback, (b) literal 1px border, or (c) flagged DRIFT
 - All N states present in `.supervibe/artifacts/prototypes/<feature>/states/` per state matrix
 - Each state HTML loads with zero console errors/warnings (devtools check)
+- Dependency grep returns 0 hits, or every hit is covered by `decisions/prototype-capability-plan.md` with local bundle/handoff scope
 - Tab through index.html: every interactive element reachable, focus ring visible, logical order
 - Resize to 360px width: no horizontal scroll, no clipped content
 - `prefers-reduced-motion: reduce` set in devtools: non-essential motion disabled
@@ -387,10 +404,11 @@ interactive-flow prototype:
   - use to prove an interaction pattern before locking framework
 
 motion prototype:
-  - HTML + CSS with CSS animations / transitions ONLY (no JS animation libs)
+  - HTML + CSS with tokenized CSS/WAAPI by default
+  - optional library only when the Prototype Capability Plan approves Motion, GSAP, Lottie, Rive, Three.js, PixiJS, or another scoped runtime for a specific effect
   - reduced-motion media query MUST short-circuit non-essential motion
   - states/ includes motion-pause.html showing the resting target
-  - use to prove easing curves, durations, choreography
+  - use to prove easing curves, durations, choreography, 3D, chart, or interactive motion
 
 data-driven mock:
   - HTML with realistic-but-fake data (lorem-style but contextual)

@@ -27,7 +27,11 @@
           "evidence": {
             "referencePacket": "creative-regulated-trust plus direct competitor convention map",
             "screenshotPlan": "desktop queue, mobile case detail, error state",
-            "tokenNotes": "semantic risk colors limited to status and decision chips"
+            "tokenNotes": "semantic risk colors limited to status and decision chips",
+            "domLayoutSignature": "quiet-ledger layout skeleton and information priority",
+            "cssTokenSignature": "quiet-ledger token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "quiet-ledger mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "quiet-ledger interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -49,7 +53,11 @@
           "evidence": {
             "referencePacket": "creative-data-products plus regulated-trust constraints",
             "screenshotPlan": "desktop cockpit, compact mobile alerts, loading state",
-            "tokenNotes": "signal colors reserve saturation for active risk only"
+            "tokenNotes": "signal colors reserve saturation for active risk only",
+            "domLayoutSignature": "command-center layout skeleton and information priority",
+            "cssTokenSignature": "command-center token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "command-center mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "command-center interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -71,7 +79,11 @@
           "evidence": {
             "referencePacket": "creative-editorial plus regulated-trust accessibility checks",
             "screenshotPlan": "timeline, annotation modal, empty state",
-            "tokenNotes": "burgundy appears only for material risk and never body text"
+            "tokenNotes": "burgundy appears only for material risk and never body text",
+            "domLayoutSignature": "review-room layout skeleton and information priority",
+            "cssTokenSignature": "review-room token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "review-room mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "review-room interaction rhythm, motion tier, and fallback behavior"
           }
         }
       ]
@@ -101,7 +113,11 @@
           "evidence": {
             "referencePacket": "creative-editorial plus creative-ai-products",
             "screenshotPlan": "desktop hero, mobile board stack, comparison state",
-            "tokenNotes": "vermilion accent used for generation action only"
+            "tokenNotes": "vermilion accent used for generation action only",
+            "domLayoutSignature": "studio-wall layout skeleton and information priority",
+            "cssTokenSignature": "studio-wall token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "studio-wall mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "studio-wall interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -123,7 +139,11 @@
           "evidence": {
             "referencePacket": "creative-ai-products plus devtools interaction benchmark",
             "screenshotPlan": "desktop lab, mobile prompt stack, loading trace",
-            "tokenNotes": "phosphor is interaction state, not decorative glow"
+            "tokenNotes": "phosphor is interaction state, not decorative glow",
+            "domLayoutSignature": "signal-lab layout skeleton and information priority",
+            "cssTokenSignature": "signal-lab token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "signal-lab mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "signal-lab interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -145,7 +165,11 @@
           "evidence": {
             "referencePacket": "creative-luxury plus creative-experimental-web",
             "screenshotPlan": "desktop stage, mobile scene selector, reduced-motion frame",
-            "tokenNotes": "gold appears as light behavior and CTA focus, not a full palette wash"
+            "tokenNotes": "gold appears as light behavior and CTA focus, not a full palette wash",
+            "domLayoutSignature": "campaign-stage layout skeleton and information priority",
+            "cssTokenSignature": "campaign-stage token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "campaign-stage mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "campaign-stage interaction rhythm, motion tier, and fallback behavior"
           }
         }
       ]
@@ -175,7 +199,11 @@
           "evidence": {
             "referencePacket": "creative-devtools plus app-interface data grid guidance",
             "screenshotPlan": "trace canvas, inspector, error state",
-            "tokenNotes": "blue is reserved for active trace path"
+            "tokenNotes": "blue is reserved for active trace path",
+            "domLayoutSignature": "trace-map layout skeleton and information priority",
+            "cssTokenSignature": "trace-map token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "trace-map mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "trace-map interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -197,7 +225,11 @@
           "evidence": {
             "referencePacket": "creative-data-products plus regulated-trust evidence",
             "screenshotPlan": "job table, retry drawer, bulk action focus state",
-            "tokenNotes": "rust only marks destructive or failed retries"
+            "tokenNotes": "rust only marks destructive or failed retries",
+            "domLayoutSignature": "job-ledger layout skeleton and information priority",
+            "cssTokenSignature": "job-ledger token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "job-ledger mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "job-ledger interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -219,7 +251,11 @@
           "evidence": {
             "referencePacket": "creative-devtools plus interaction benchmark",
             "screenshotPlan": "terminal wall, command palette, reduced-motion stream",
-            "tokenNotes": "terminal green is functional active state, not decorative matrix effect"
+            "tokenNotes": "terminal green is functional active state, not decorative matrix effect",
+            "domLayoutSignature": "terminal-room layout skeleton and information priority",
+            "cssTokenSignature": "terminal-room token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "terminal-room mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "terminal-room interaction rhythm, motion tier, and fallback behavior"
           }
         }
       ]
@@ -249,7 +285,11 @@
           "evidence": {
             "referencePacket": "creative-mobile-native plus regulated-trust",
             "screenshotPlan": "iOS home, Android check-in, empty state",
-            "tokenNotes": "sage indicates care progress, not medical status severity"
+            "tokenNotes": "sage indicates care progress, not medical status severity",
+            "domLayoutSignature": "care-journal layout skeleton and information priority",
+            "cssTokenSignature": "care-journal token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "care-journal mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "care-journal interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -271,7 +311,11 @@
           "evidence": {
             "referencePacket": "regulated-trust plus mobile-native platform standards",
             "screenshotPlan": "task dashboard, reminder settings, warning state",
-            "tokenNotes": "coral only for care escalation and never success"
+            "tokenNotes": "coral only for care escalation and never success",
+            "domLayoutSignature": "clinical-companion layout skeleton and information priority",
+            "cssTokenSignature": "clinical-companion token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "clinical-companion mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "clinical-companion interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -293,7 +337,11 @@
           "evidence": {
             "referencePacket": "creative-mobile-native plus healthcare evidence",
             "screenshotPlan": "journey path, habit detail, error recovery",
-            "tokenNotes": "green shows completion only with text and icon support"
+            "tokenNotes": "green shows completion only with text and icon support",
+            "domLayoutSignature": "recovery-path layout skeleton and information priority",
+            "cssTokenSignature": "recovery-path token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "recovery-path mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "recovery-path interaction rhythm, motion tier, and fallback behavior"
           }
         }
       ]
@@ -323,7 +371,11 @@
           "evidence": {
             "referencePacket": "creative-data-products plus landing patterns",
             "screenshotPlan": "hero, hover stage, mobile proof stack",
-            "tokenNotes": "orange marks pipeline action and not general decoration"
+            "tokenNotes": "orange marks pipeline action and not general decoration",
+            "domLayoutSignature": "warehouse-cutaway layout skeleton and information priority",
+            "cssTokenSignature": "warehouse-cutaway token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "warehouse-cutaway mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "warehouse-cutaway interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -345,7 +397,11 @@
           "evidence": {
             "referencePacket": "creative-editorial plus data-product references",
             "screenshotPlan": "front page, metric source drawer, empty report",
-            "tokenNotes": "magenta is chart callout only and has accessible text fallback"
+            "tokenNotes": "magenta is chart callout only and has accessible text fallback",
+            "domLayoutSignature": "growth-newsroom layout skeleton and information priority",
+            "cssTokenSignature": "growth-newsroom token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "growth-newsroom mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "growth-newsroom interaction rhythm, motion tier, and fallback behavior"
           }
         },
         {
@@ -367,7 +423,11 @@
           "evidence": {
             "referencePacket": "creative-data-products plus app-interface guidance",
             "screenshotPlan": "desktop cockpit, mobile compressed UI, loading skeleton",
-            "tokenNotes": "cyan only for active data focus and keyboard ring"
+            "tokenNotes": "cyan only for active data focus and keyboard ring",
+            "domLayoutSignature": "control-plane layout skeleton and information priority",
+            "cssTokenSignature": "control-plane token roles, type rhythm, density, and surface treatment",
+            "screenshotViewportPlan": "control-plane mobile and desktop screenshots with state coverage",
+            "interactionMotionSignature": "control-plane interaction rhythm, motion tier, and fallback behavior"
           }
         }
       ]

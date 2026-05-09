@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "plans": [
+    {
+      "mode": "enhanced-native",
+      "purpose": "Prove scroll-linked product storytelling without external runtime code.",
+      "libraries": ["CSS ScrollTimeline", "Web Animations API", "IntersectionObserver"],
+      "artifactScope": "Landing hero and proof sections only.",
+      "rejectedNativeAlternative": "Static sections alone would not prove cause-effect between scroll and product state.",
+      "licenseSecurity": "Browser APIs only; no dependency or remote runtime.",
+      "bundlePerformance": "No added bundle; compositor-only transform and opacity animation.",
+      "accessibilityFallback": "Static section order, visible headings, and no content hidden behind animation.",
+      "reducedMotionFallback": "Disable scroll-linked movement and show final resting composition.",
+      "verificationCommands": ["npm run validate:design-capability-plan"]
+    },
+    {
+      "mode": "bundled-dependency",
+      "purpose": "Prove an interactive operational graph that would be misleading as static cards.",
+      "libraries": ["Three.js"],
+      "artifactScope": "Prototype graph canvas plus adjacent semantic inspector.",
+      "rejectedNativeAlternative": "SVG became unreadable at the target node count and did not show depth or selection state clearly.",
+      "licenseSecurity": "Dependency is locked, reviewed, and bundled locally; no CDN runtime.",
+      "bundlePerformance": "Lazy-load graph scene after primary content; static fallback for low-capability devices.",
+      "accessibilityFallback": "Adjacent DOM table exposes every node, edge, selection state, and keyboard action.",
+      "reducedMotionFallback": "Disable camera drift and particles; keep static graph pose.",
+      "verificationCommands": ["npm run validate:design-capability-plan", "npm run validate:design-diversity-benchmark"]
+    },
+    {
+      "mode": "handoff-only",
+      "purpose": "Document a rendered product video because local video tooling is unavailable.",
+      "libraries": ["ffmpeg production pipeline"],
+      "artifactScope": "Storyboard frames and implementation notes; no prototype runtime dependency.",
+      "rejectedNativeAlternative": "CSS animation could not represent the requested exported video deliverable.",
+      "licenseSecurity": "No dependency in prototype; production owner must review media pipeline.",
+      "bundlePerformance": "Static poster in prototype; production WebM/MP4 budget documented for handoff.",
+      "accessibilityFallback": "Poster image, transcript, and non-autoplay policy.",
+      "reducedMotionFallback": "Poster-only by default for reduced motion.",
+      "verificationCommands": ["node scripts/detect-media-capabilities.mjs --json"]
+    }
+  ]
+}

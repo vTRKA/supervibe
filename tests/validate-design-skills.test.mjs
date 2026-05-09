@@ -14,10 +14,10 @@ test('validator flags missing single-question anti-pattern', () => {
   assert.ok(issues.some(i => i.code === 'missing-single-question-anti-pattern'));
 });
 
-test('validator flags missing framework-coupling for prototype/landing-page', () => {
+test('validator flags missing unapproved-dependency-coupling for prototype/landing-page', () => {
   const body = '## Anti-patterns\n- asking-multiple-questions-at-once\n- advancing-without-feedback-prompt\n';
   const issues = validateDesignSkill('prototype', body);
-  assert.ok(issues.some(i => i.code === 'missing-framework-coupling-anti-pattern'));
+  assert.ok(issues.some(i => i.code === 'missing-unapproved-dependency-coupling-anti-pattern'));
 });
 
 test('validator passes for fully-compliant body', () => {
@@ -34,7 +34,7 @@ Step N: Print this exact prompt:
 ## Anti-patterns
 - asking-multiple-questions-at-once
 - advancing-without-feedback-prompt
-- framework-coupling
+- unapproved-dependency-coupling
 - silent-viewport-expansion
 - silent-existing-artifact-reuse
 - missing-preview-feedback-button

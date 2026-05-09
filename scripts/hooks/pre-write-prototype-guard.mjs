@@ -10,7 +10,7 @@ import {
 import { evaluatePrototypeTransition } from '../lib/design-flow-state.mjs';
 
 const FRAMEWORK_PATTERNS = [
-  /\bimport\s+.+\s+from\s+['"]/,
+  /\bimport\s+.+\s+from\s+['"](?!(?:\.{0,2}\/|\/|#))/,
   /\brequire\s*\(/,
   /<script\s+[^>]*src=["'][^"']*(?:unpkg|cdn|jsdelivr|node_modules)/i,
   /\bfrom\s+['"](?:react|vue|svelte|next|nuxt|astro|@angular)/,
@@ -70,6 +70,21 @@ function detectDesignTokenBypass(content) {
   return null;
 }
 
+function hasApprovedPrototypeCapabilityPlan(projectRoot, slug) {
+  const planPath = resolve(artifactRoot(projectRoot, 'prototypes'), slug, 'decisions', 'prototype-capability-plan.md');
+  if (!existsSync(planPath)) return false;
+  const text = readFileSync(planPath, 'utf8');
+  return /Prototype Capability Plan/i.test(text) &&
+    /Mode:\s*(bundled-dependency|framework-sandbox|handoff-only)/i.test(text) &&
+    /Libraries \/ APIs/i.test(text) &&
+    /Rejected Native Alternative/i.test(text) &&
+    /License \/ Security/i.test(text) &&
+    /Bundle \/ Performance/i.test(text) &&
+    /Accessibility Fallback/i.test(text) &&
+    /Reduced-Motion Fallback/i.test(text) &&
+    /Verification Commands/i.test(text);
+}
+
 const event = await readEvent();
 const tool = event.tool_name;
 if (tool !== 'Write' && tool !== 'Edit') emit('allow');
@@ -103,10 +118,11 @@ if (!existsSync(configPath) && !isWritingConfig) {
   emit('block', `.supervibe/artifacts/prototypes/${slug}/config.json must exist before writing other files. The viewport question must be asked and config persisted FIRST. See skills/prototype/SKILL.md Step 2. To migrate existing prototypes, run: npm run migrate:prototype-configs.`);
 }
 
-// Item 6 — framework gate
+// Item 6 - dependency boundary gate
 for (const pat of FRAMEWORK_PATTERNS) {
   if (pat.test(content)) {
-    emit('block', `Framework coupling detected in prototype write (${pat}). Prototypes must be native HTML/CSS/JS only. See skills/prototype/SKILL.md anti-pattern 'framework-coupling'.`);
+    if (hasApprovedPrototypeCapabilityPlan(projectRoot, slug)) continue;
+    emit('block', `Unapproved dependency coupling detected in prototype write (${pat}). Add .supervibe/artifacts/prototypes/${slug}/decisions/prototype-capability-plan.md with mode, libraries, rejected native alternative, license/security, bundle/performance, accessibility fallback, reduced-motion fallback, and verification commands before using dependency imports. See skills/prototype/SKILL.md anti-pattern 'unapproved-dependency-coupling'.`);
   }
 }
 

@@ -102,6 +102,26 @@ Creative reference packs under `skills/design-intelligence/references/creative/`
 
 Taxonomy: `docs/references/creative-reference-taxonomy.md`.
 
+## Advanced Prototype Tool Families
+
+The local design intelligence pack is allowed to inform, but not automatically
+approve, advanced prototype tooling. Agents may consider these external
+libraries through the Prototype Capability Plan when the brief warrants them:
+
+- Motion, GSAP, Lottie/lottie-web, and Rive for motion or designer-authored
+  animation.
+- Three.js, PixiJS, Canvas, SVG, WebGL/WebGPU, and Theatre.js for 3D,
+  generative visuals, particle systems, spatial scenes, or orchestrated
+  timelines.
+- D3, Observable Plot, ECharts, Visx, Recharts, and MapLibre GL for charts,
+  dense data visualization, and maps.
+- Rough.js, Matter.js, Monaco, and CodeMirror for sketch-like visuals, physics,
+  and code-editor prototypes.
+
+These libraries remain external runtime choices. A prototype may use them only
+when the capability plan records purpose, artifact scope, license/security,
+bundle/performance, accessibility, reduced-motion fallback, and verification.
+
 ## Skipped Or Deferred Families
 
 | Family | Status | Rationale |

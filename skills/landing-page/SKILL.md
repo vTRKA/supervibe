@@ -46,7 +46,7 @@ NOT for:
 
 ## Hard constraints (same as `supervibe:prototype`)
 
-1. **Native only.** No frameworks, no build step, no npm. Pure HTML + CSS + JS.
+1. **Capability-aware page output.** Default to `native-static` or `enhanced-native` HTML/CSS/JS. Use `bundled-dependency`, `framework-sandbox`, or `handoff-only` only when a written `Prototype Capability Plan` proves the dependency or sandbox materially improves charts, 3D, advanced animation, maps, code editors, data visualization, or media fidelity. No unapproved CDN/runtime imports.
 2. **Design system is source of truth.** All visuals come through approved `.supervibe/artifacts/prototypes/_design-system/tokens.css`.
 3. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user before adding more.
 4. **One question at a time** in markdown with progress.
@@ -59,6 +59,7 @@ Plus landing-specific:
 8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
 9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifacts exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
 10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
+11. **Landing WOW effects are planned.** Motion, 3D, Lottie/Rive, Canvas/WebGL, charts, maps, generated imagery, or heavy media require `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` with library/API, reason, rejected native alternative, artifact scope, license/security, bundle/performance, accessibility, reduced-motion, and verification evidence.
 
 ## Expert Operating Standard
 
@@ -109,6 +110,10 @@ ASK: "What structure is needed?" - multiple choice in markdown
 5. **Single question on competitor references** (zero, one, or up-to-three URLs).
 
 Each question waits for explicit answer. Save all to `.supervibe/artifacts/prototypes/landing-<topic>/config.json`.
+
+### Stage 1a — Prototype Capability Plan
+
+Classify the landing prototype mode before file creation: `native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`, or `handoff-only`. If the page needs a dependency or production-only effect, copy `templates/design-decisions/prototype-capability-plan.md.tpl` to `.supervibe/artifacts/prototypes/landing-<topic>/decisions/prototype-capability-plan.md` and fill purpose, library/API, artifact scope, license/security, bundle/performance, accessibility fallback, reduced-motion fallback, and verification commands.
 
 ### Stage 2 — File layout
 
@@ -245,7 +250,7 @@ Same as `supervibe:prototype`, plus:
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
-- `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
+- `unapproved-dependency-coupling` — emitting `import from`, `require()`, `<script src="...cdn...">`, `<script src="...unpkg...">`, or any `node_modules/` reference without a `Prototype Capability Plan`, local bundle strategy, and reviewer-approved scope.
 - `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
 - `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
 - `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.

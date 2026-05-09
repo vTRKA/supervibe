@@ -185,6 +185,23 @@ Generic retrieved guidance is advisory. It cannot override approved tokens, prio
 Domain aliases `stack`, `slides`, and `collateral` expand to the corresponding
 prefixed local domain families during lookup.
 
+### Required Dataset Breadth For Design Agents
+
+When a design-facing agent handles a product, prototype, landing, deck, or
+collateral request, it must consider every relevant local dataset family before
+claiming that evidence is unavailable: product, style, color, typography, UX,
+landing, app-interface, charts, icons, google-fonts, react-performance,
+ui-reasoning, stack, slides, collateral, and creative packs. If a family is not
+relevant, mark it `N/A` with rationale; do not omit it silently.
+
+For advanced visual work, pair local evidence with a Prototype Capability Plan.
+Library families agents may consider include native CSS/WAAPI, Motion, GSAP,
+Lottie/lottie-web, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts,
+MapLibre GL, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror, and
+stack-specific chart wrappers such as Visx or Recharts for handoff. The local
+pack helps select fit and risk; it does not grant permission to import a
+dependency without the prototype capability gate.
+
 Use the local knowledge pack first. Do not instruct design agents to fetch a
 remote repository or remote skill for baseline expertise.
 

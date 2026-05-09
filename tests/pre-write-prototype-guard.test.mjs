@@ -15,10 +15,33 @@ async function fixture({
   flowStatus = status,
   approvedSections = REQUIRED_DESIGN_SYSTEM_SECTIONS,
   writeFlowState = true,
+  capabilityPlan = false,
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), "supervibe-prototype-guard-"));
   await mkdir(join(root, ".supervibe", "artifacts", "prototypes", "checkout"), { recursive: true });
   await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", "config.json"), "{}");
+  if (capabilityPlan) {
+    const decisionsDir = join(root, ".supervibe", "artifacts", "prototypes", "checkout", "decisions");
+    await mkdir(decisionsDir, { recursive: true });
+    await writeFile(join(decisionsDir, "prototype-capability-plan.md"), [
+      "# Prototype Capability Plan",
+      "Mode: bundled-dependency",
+      "## Libraries / APIs",
+      "- Three.js",
+      "## Rejected Native Alternative",
+      "SVG could not prove the 3D interaction.",
+      "## License / Security",
+      "Local bundle only; no CDN.",
+      "## Bundle / Performance",
+      "Lazy-load scene.",
+      "## Accessibility Fallback",
+      "Adjacent semantic DOM table.",
+      "## Reduced-Motion Fallback",
+      "Static scene pose.",
+      "## Verification Commands",
+      "npm run validate:design-capability-plan",
+    ].join("\n"));
+  }
   if (approved) {
     const systemDir = join(root, ".supervibe", "artifacts", "prototypes", "_design-system");
     await mkdir(systemDir, { recursive: true });
@@ -165,6 +188,43 @@ test("prototype guard allows prototype requested after all design-system section
       tool_input: {
         file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
         content: "<style>.btn{color:var(--color-primary-500);padding:var(--space-4)}</style>",
+      },
+    });
+
+    assert.equal(result.code, 0);
+    assert.match(result.stdout, /"allow"/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype guard blocks dependency imports without capability plan", async () => {
+  const root = await fixture();
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "scripts", "scene.js"),
+        content: "import * as THREE from 'three';\nconsole.log(THREE);",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /Unapproved dependency coupling detected/);
+    assert.match(result.stdout, /prototype-capability-plan\.md/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype guard allows dependency imports with capability plan", async () => {
+  const root = await fixture({ capabilityPlan: true });
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "scripts", "scene.js"),
+        content: "import * as THREE from 'three';\nconsole.log(THREE);",
       },
     });
 
