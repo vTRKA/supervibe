@@ -86,8 +86,17 @@ const REFERENCE_SCOPE_DECISION_PATTERNS = Object.freeze([
     patterns: [
       /\binformation architecture only\b/i,
       /\bnavigation only\b/i,
+      /\bsame (?:site |page |homepage |landing )?structure\b/i,
+      /\b(?:use|borrow|match|follow|mirror|keep|preserve|copy) (?:the )?(?:same )?(?:information architecture|ia|structure|section order|page structure|homepage structure|landing structure)\b/i,
+      /\bstructure (?:like|from|of) (?:the )?(?:reference|site|homepage|landing|page)\b/i,
       /только структуру/i,
       /только навигацию/i,
+      /по структуре\s+(?:так\s*же|также|аналогично|как)/i,
+      /сделай\s+по\s+структуре/i,
+      /такую\s+же\s+структуру/i,
+      /аналогичн\w+\s+структур/i,
+      /структур[ауы]\s+как\s+(?:на\s+)?(?:референсе|сайте|главной|главной странице|странице)/i,
+      /(?:взять|сохранить|повторить|заимствовать)\s+структур[уы]/i,
     ],
   },
   {

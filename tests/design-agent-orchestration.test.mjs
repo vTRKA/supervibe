@@ -11,6 +11,9 @@ import {
   DESIGN_WIZARD_AXES,
 } from "../scripts/lib/design-wizard-catalog.mjs";
 import {
+  evaluateDesignArtifactIntake,
+} from "../scripts/lib/design-artifact-intake.mjs";
+import {
   buildSpecialistQuestionProposal,
 } from "../scripts/lib/specialist-question-contract.mjs";
 import {
@@ -434,6 +437,36 @@ test("design agent plan inserts functional reference inventory before creative d
   assert.equal(plan.referenceInventory.path, ".supervibe/artifacts/prototypes/agent-chat-desktop/reference-inventory.md");
   assert.deepEqual(plan.referenceInventory.requiredSections, ["flows", "states", "capabilities", "explicit-avoid-list"]);
   assert.match(plan.referenceInventory.sources[0], /old-agent-chat|old prototypes/);
+});
+
+test("design agent plan treats same-structure website brief as IA reference inventory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-reference-structure-"));
+  try {
+    const brief = "посмотри на главную страницу - https://dune-imperium.ru/. Сделай по структуре также, только 5 разных вариантов дизайна прототипа, совершенно разных по стилю";
+    const intake = await evaluateDesignArtifactIntake({ projectRoot: root, brief });
+    const plan = buildDesignAgentPlan({
+      brief,
+      target: "web",
+      flowType: "landing",
+      slug: "dune-home-variants",
+      mode: "full-prototype-pipeline",
+      rootDir: root,
+      intake,
+      referenceSources: intake.referenceSources,
+    });
+
+    assert.equal(intake.needsQuestion, false);
+    assert.equal(intake.referenceScopeDecision.choiceId, "ia-only");
+    assert.equal(plan.referenceInventory.scope, "ia-only");
+    assert.deepEqual(plan.referenceInventory.sources, ["website: https://dune-imperium.ru/"]);
+    assert.equal(plan.wizard.decisions.creative_alternatives.choiceId, "five-style-variants");
+    assert.equal(plan.wizard.decisions.creative_alternatives.variantCount, 5);
+    assert.ok(plan.stages.some((stage) => stage.id === "stage-0-reference-website"));
+    assert.ok(plan.stages.some((stage) => stage.id === "stage-0-reference-inventory"));
+    assert.ok(!plan.writeGate.blockedReasons.some((reason) => reason.code === "intake-question-open"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {

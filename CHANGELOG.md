@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.114] - 2026-05-09
+
+### Added
+
+- Added regression coverage for external design references that ask agents to
+  follow the same page structure while generating five style-distinct prototype
+  variants.
+- Added a durable memory learning and scenario-eval fixture for the
+  `dune-imperium.ru` reference-intent failure mode.
+
+### Changed
+
+- Hardened `/supervibe-design`, design intake, design wizard, landing-page, and
+  creative-director guidance so "same structure" is treated as IA borrow, not
+  visual copying, and explicit variant counts are preserved.
+
 ## [2.0.113] - 2026-05-09
 
 ### Added

@@ -440,6 +440,15 @@ If the result reports `needsReferenceSourceScopeQuestion=true`, ask one **Refere
 - Ignore this reference — do not read it.
 - Stop here — make no hidden progress.
 
+If the brief already says to use a referenced page "by the same structure",
+"follow the structure", "borrow the section order", or an equivalent
+same-structure phrase in another language, record
+`reference_borrow_avoid = ia-only` and do not ask this scope question. That
+means the source must be opened or crawled for section order, navigation,
+content hierarchy, CTA placement, and state/capability inventory, while visual
+style, palette, typography, imagery, motion, and copy voice remain new unless
+the user explicitly allows visual inspiration.
+
 Save the answer into the `reference borrow/avoid` preference axis and `config.json.referenceSources`. Websites go through `supervibe:mcp-discovery` for web-crawl capability; PDFs/images are parsed or inspected only after source scope is approved; Figma still follows Stage 0e; old prototypes follow Old artifact reference scope first. Any source that survives scope approval still needs reference role, quality tier, captured date, borrow, avoid, and fit rationale before it can shape direction or tokens.
 
 **Stage 0f — Preference Coverage Matrix Gate (required before brand direction or design-system writes).**

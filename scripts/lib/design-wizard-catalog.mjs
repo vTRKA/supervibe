@@ -26,6 +26,7 @@ export const DESIGN_WIZARD_AXES = Object.freeze([
     defaultChoiceId: "three-directions",
     choices: [
       choice("three-directions", "3 distinct directions", "Best for new products; takes longer but prevents a single safe default from becoming the brand."),
+      choice("five-style-variants", "5 style-distinct variants", "Honors explicit multi-variant prototype briefs; requires a stronger compare matrix and real style separation."),
       choice("two-directions", "2 focused directions", "Faster comparison for narrower briefs; less coverage of unusual options."),
       choice("single-locked-direction", "One locked direction", "Use only when the user already supplied a clear approved direction and evidence."),
     ],
@@ -1112,6 +1113,21 @@ function aliasesFor(id, label) {
   const base = [id, label, label.replace(/\s+/g, "-")];
   const extra = {
     "three-directions": ["3 directions", "three directions", "2-3 alternatives", "2-3 variants"],
+    "five-style-variants": [
+      "5 directions",
+      "five directions",
+      "5 variants",
+      "five variants",
+      "5 design variants",
+      "5 style variants",
+      "5 different variants",
+      "5 different styles",
+      "5 разных вариантов",
+      "пять разных вариантов",
+      "5 вариантов дизайна",
+      "пять вариантов дизайна",
+      "5 разных дизайнов",
+    ],
     "two-directions": ["2 directions", "two directions", "two variants"],
     "single-locked-direction": ["approved direction", "locked direction"],
     "system-native-locked": ["system native locked", "strict native"],
@@ -1147,7 +1163,31 @@ function aliasesFor(id, label) {
       "не копировать скелет",
       "не брать визуал",
     ],
-    "ia-only": ["information architecture", "navigation only"],
+    "ia-only": [
+      "information architecture",
+      "navigation only",
+      "same structure",
+      "same page structure",
+      "same homepage structure",
+      "borrow structure",
+      "use the structure",
+      "follow the structure",
+      "match the structure",
+      "section order",
+      "page structure",
+      "homepage structure",
+      "только структуру",
+      "только навигацию",
+      "по структуре так же",
+      "по структуре также",
+      "сделай по структуре",
+      "такую же структуру",
+      "аналогичную структуру",
+      "структуру как",
+      "взять структуру",
+      "сохранить структуру",
+      "повторить структуру",
+    ],
     "authoritative-brand": ["brand guide", "design source of truth"],
   };
   return [...new Set([...base, ...(extra[id] || [])])];
@@ -1189,7 +1229,7 @@ function localizedChoice(choiceDef, locale = "en", scope = "") {
 
 function decisionFromMatch(axisDef, match, text) {
   const option = axisDef.choices.find((item) => item.id === match.choiceId);
-  return {
+  const decision = {
     axis: axisDef.id,
     answer: option?.label || match.label,
     choiceId: match.choiceId,
@@ -1200,6 +1240,16 @@ function decisionFromMatch(axisDef, match, text) {
     decisionUnlocked: axisDef.decisionUnlocked,
     timestamp: DEFAULT_TIMESTAMP,
   };
+  if (axisDef.id === "creative_alternatives" && match.choiceId === "five-style-variants") {
+    decision.variantCount = 5;
+    decision.styleDifferentiationRequired = hasStyleDifferentiationSignal(text);
+    decision.variantDifferentiationAxes = ["palette", "typography", "motion", "imagery", "layout hierarchy"];
+  }
+  return decision;
+}
+
+function hasStyleDifferentiationSignal(text = "") {
+  return /different styles|style[-\s]?distinct|distinct styles|совершенно разных по стилю|разн\w+\s+по\s+стилю|стилистически\s+разн/i.test(String(text || ""));
 }
 
 function explicitDefaultDecision(axisDef, timestamp) {
@@ -1280,7 +1330,7 @@ function designQuestionSignals(text = "", target = "web") {
     brandLaunch: hasAny(haystack, ["landing", "marketing", "launch", "homepage", "hero", "conversion", "campaign", "waitlist", "portfolio", "brand page", "лендинг", "маркетинг", "запуск", "главная", "конверси", "посадоч"]),
     regulatedTrust: hasAny(haystack, ["compliance", "audit", "bank", "finance", "fintech", "medical", "healthcare", "security", "soc2", "privacy", "risk", "regulated", "legal", "law firm", "lawyer", "attorney", "комплаенс", "аудит", "банк", "финанс", "медицин", "безопасн", "приват", "риск", "юрид", "адвокат", "закон", "правов"]),
     developerTool: hasAny(haystack, ["developer", "code", "codex", "agent", "api", "cli", "sdk", "terminal", "prompt", "devtool", "debug", "разработ", "код", "агент", "api", "cli", "терминал", "промпт", "дебаг"]),
-    referenceRefresh: hasAny(haystack, ["old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
+    referenceRefresh: hasAny(haystack, ["http://", "https://", "url", "website reference", "old prototype", "previous prototype", "existing prototype", "old shell", "screenshot", "figma", "reference", "redesign", "rework", "сайт-референс", "старый прототип", "старые прототипы", "старый shell", "скриншот", "референс", "редизайн", "переработ"]),
     agentChat: hasAny(haystack, ["agent chat", "agentic chat", "chat system", "conversation workspace", "агентск", "агентская система чатов", "чат", "чаты", "диалог"]),
   };
 }
@@ -1563,6 +1613,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
     if (agentChat) {
       const map = {
         "three-directions": ["Сравнить cockpit, editorial workspace и command center", `Три реально разных подхода для ${subject}: рабочая консоль, выразительный чат и системный центр управления.`],
+        "five-style-variants": ["Собрать 5 стилевых вариантов", `Только когда пользователь явно просит пять вариантов для ${subject}; каждый должен отличаться по палитре, типографике, motion, imagery или иерархии.`],
         "two-directions": ["Сравнить консоль и редакторский чат", `Быстрее для ${subject}, но меньше шанс найти неожиданный агентский UX.`],
         "single-locked-direction": ["Зафиксировать выбранный agent-chat cockpit", `Только если направление ${subject} уже принято пользователем и не требует creative-director сравнения.`],
       };
@@ -1571,6 +1622,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
     if (profile === "brandLaunch") {
       const map = {
         "three-directions": ["Сравнить premium launch, proof-led и product-first", `Три разных launch-рамки для ${subject}: эмоция, доверие и демонстрация продукта.`],
+        "five-style-variants": ["Собрать 5 стилевых launch-вариантов", `Выполняет явный запрос на пять разных вариантов для ${subject}; требует side-by-side сравнения и avoid-list против копирования референса.`],
         "two-directions": ["Сравнить brand-led и conversion-led", `Быстрее для ${subject}, но меньше пространства для неожиданного первого экрана.`],
         "single-locked-direction": ["Зафиксировать выбранную launch-рамку", `Только если позиционирование ${subject} уже утверждено.`],
       };
@@ -1578,6 +1630,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
     }
     const map = {
       "three-directions": [`Сравнить три разные рамки для ${subject}`, "Больше творческого покрытия; снижает риск одного безопасного дефолта."],
+      "five-style-variants": [`Собрать 5 стилевых вариантов для ${subject}`, "Выполняет явный count из brief; требует доказать различие по реальным осям, а не токен-твикам."],
       "two-directions": [`Сравнить два сфокусированных пути для ${subject}`, "Быстрее, но меньше проверяет необычные решения."],
       "single-locked-direction": [`Зафиксировать уже выбранный путь для ${subject}`, "Только если направление уже ясно и подтверждено."],
     };
@@ -1587,6 +1640,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
   if (agentChat) {
     const map = {
       "three-directions": ["Compare cockpit, editorial workspace, and command center", `Three genuinely different frames for ${subject}: operating console, expressive chat, and system control.`],
+      "five-style-variants": ["Produce 5 style-distinct variants", `Only when the user explicitly asks for five ${subject} variants; each must differ by palette, typography, motion, imagery, or hierarchy.`],
       "two-directions": ["Compare console and editorial chat", `Faster for ${subject}, but leaves less room for a surprising agentic UX.`],
       "single-locked-direction": ["Lock the chosen agent-chat cockpit", `Only if the ${subject} direction is already approved and does not need creative-director comparison.`],
     };
@@ -1595,6 +1649,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
   if (profile === "brandLaunch") {
     const map = {
       "three-directions": ["Compare premium launch, proof-led, and product-first", `Three launch frames for ${subject}: emotion, trust, and product demonstration.`],
+      "five-style-variants": ["Produce 5 launch style variants", `Honors an explicit five-variant request for ${subject}; requires side-by-side comparison and a no-copy avoid list.`],
       "two-directions": ["Compare brand-led and conversion-led", `Faster for ${subject}, with less room for an unexpected first impression.`],
       "single-locked-direction": ["Lock the chosen launch frame", `Only if ${subject} positioning is already approved.`],
     };
@@ -1602,6 +1657,7 @@ function contextualCreativeAlternativeChoice(choiceId, baseChoice, locale = "en"
   }
   const map = {
     "three-directions": [`Compare three distinct frames for ${subject}`, "Broader creative coverage; reduces one safe default becoming the design."],
+    "five-style-variants": [`Produce 5 style-distinct variants for ${subject}`, "Honors an explicit count in the brief; must prove difference on real axes, not small token tweaks."],
     "two-directions": [`Compare two focused paths for ${subject}`, "Faster, but explores fewer unusual moves."],
     "single-locked-direction": [`Lock the already chosen path for ${subject}`, "Only when direction is already clear and approved."],
   };

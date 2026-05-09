@@ -312,6 +312,7 @@ test("wizard renders context-specific choice labels instead of reusable template
     creative.choices.map((choiceItem) => choiceItem.label),
     [
       "Сравнить cockpit, editorial workspace и command center",
+      "Собрать 5 стилевых вариантов",
       "Сравнить консоль и редакторский чат",
       "Зафиксировать выбранный agent-chat cockpit",
     ],
@@ -461,6 +462,30 @@ test("multilingual functional-only reference scope closes only the borrow/avoid 
   assert.equal(state.gates.tokensUnlocked, false);
   assert.ok(state.questionQueue.some((question) => question.axis === "visual_direction_tone"));
   assert.ok(!state.questionQueue.some((question) => question.axis === "reference_borrow_avoid"));
+});
+
+test("multilingual website structure brief records IA scope and five style variants", () => {
+  const brief = "посмотри на главную страницу - https://dune-imperium.ru/. Сделай по структуре также, только 5 разных вариантов дизайна прототипа, совершенно разных по стилю";
+  const parsed = parseDesignBriefPreferences(brief);
+
+  assert.equal(parsed.decisions.reference_borrow_avoid.choiceId, "ia-only");
+  assert.equal(parsed.decisions.creative_alternatives.choiceId, "five-style-variants");
+  assert.equal(parsed.decisions.creative_alternatives.variantCount, 5);
+  assert.equal(parsed.decisions.creative_alternatives.styleDifferentiationRequired, true);
+  assert.ok(parsed.coveredAxes.includes("reference_borrow_avoid"));
+  assert.ok(parsed.coveredAxes.includes("creative_alternatives"));
+
+  const state = buildDesignWizardState({
+    brief,
+    target: "web",
+    mode: "full-prototype-pipeline",
+  });
+
+  assert.equal(state.questionStrategy.profile, "referenceRefresh");
+  assert.equal(state.decisions.reference_borrow_avoid.choiceId, "ia-only");
+  assert.equal(state.decisions.creative_alternatives.choiceId, "five-style-variants");
+  assert.ok(!state.questionQueue.some((question) => question.axis === "reference_borrow_avoid"));
+  assert.ok(!state.questionQueue.some((question) => question.axis === "creative_alternatives"));
 });
 
 test("explicit defaults create editable guided checklist instead of silent collapse", () => {

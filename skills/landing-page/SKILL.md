@@ -70,7 +70,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 2. **Brand direction check** — `.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
 3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
 4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
-5. **Competitive reference** — if brief named a competitor, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference. Extract: hero structure, section count, CTA placement, social proof shape. Do NOT clone — extract patterns, then apply through OUR design system.
+5. **Competitive/reference page** — if brief named a competitor or external page, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference when available. Extract: hero structure, section count, navigation, CTA placement, proof blocks, content hierarchy, state/capability inventory, and explicit avoid-list. If the user says to follow the same structure, treat it as IA borrow only: keep section order and hierarchy evidence, but do not copy visual style, palette, typography, imagery, motion, or copy voice unless visual inspiration was explicitly approved. Do NOT clone — extract patterns, then apply through OUR design system.
 
 ## Decision tree — landing structure
 

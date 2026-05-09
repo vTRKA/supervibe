@@ -166,6 +166,28 @@ test("website references ask for source scope before reading or artifact writes"
   }
 });
 
+test("website same-structure brief closes reference scope as IA without visual copying", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
+  try {
+    const intake = await evaluateDesignArtifactIntake({
+      projectRoot: root,
+      brief: "посмотри на главную страницу - https://dune-imperium.ru/. Сделай по структуре также, только 5 разных вариантов дизайна прототипа, совершенно разных по стилю",
+    });
+
+    assert.equal(intake.mode, "reference-scope-explicit");
+    assert.equal(intake.needsQuestion, false);
+    assert.equal(intake.needsReferenceSourceScopeQuestion, false);
+    assert.equal(intake.reason, "reference-source-scope-explicit");
+    assert.deepEqual(intake.referenceSources, [
+      { kind: "website", value: "https://dune-imperium.ru/" },
+    ]);
+    assert.equal(intake.referenceScopeDecision.choiceId, "ia-only");
+    assert.match(intake.referenceScopeDecision.quote, /по структуре также/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("pdf and image references are classified before design-system generation", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-intake-empty-"));
   try {
