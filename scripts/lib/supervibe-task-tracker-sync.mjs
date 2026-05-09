@@ -31,7 +31,7 @@ export function createTrackerMapping({ graph = {}, adapterId = "native-json", ex
   mapping.adapterId = adapterId;
   mapping.graphId = graph.graph_id || graph.epicId || mapping.graphId || "graph";
   mapping.updatedAt = new Date().toISOString();
-  for (const item of graph.items || []) {
+  for (const item of trackerItemsForGraph(graph)) {
     const existing = mapping.items[item.itemId];
     mapping.items[item.itemId] = existing || {
       nativeId: item.itemId,
@@ -77,7 +77,8 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
     detection = adapter.detect ? await adapter.detect() : { ...detection, status: "available-ready", initialized: true };
   }
 
-  const epic = (graph.items || []).find((item) => item.type === "epic");
+  const trackerItems = trackerItemsForGraph(graph);
+  const epic = trackerItems.find((item) => item.type === "epic");
   const created = { epic: null, tasks: [], dependencies: [] };
   if (epic) {
     const mapped = mapping.items[epic.itemId];
@@ -89,7 +90,7 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
     }
   }
 
-  for (const item of (graph.items || []).filter((candidate) => candidate.type !== "epic")) {
+  for (const item of trackerItems.filter((candidate) => candidate.type !== "epic")) {
     const mapped = mapping.items[item.itemId];
     if (!mapped.externalId) {
       const result = await adapter.createTask({
@@ -104,7 +105,7 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
     }
   }
 
-  for (const item of graph.items || []) {
+  for (const item of trackerItems) {
     if (item.type === "epic") continue;
     const fromExternalId = mapping.items[item.itemId]?.externalId;
     for (const blocked of item.blocks || []) {
@@ -117,6 +118,18 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
       const toExternalId = mapping.items[related]?.externalId;
       if (!fromExternalId || !toExternalId) continue;
       const result = await adapter.addDependency({ fromExternalId, toExternalId, type: "related", nativeFromId: item.itemId, nativeToId: related });
+      created.dependencies.push(result);
+    }
+    for (const dependency of item.dependencies || []) {
+      const dependencyExternalId = mapping.items[dependency]?.externalId;
+      if (!dependencyExternalId || !fromExternalId) continue;
+      const result = await adapter.addDependency({
+        fromExternalId: dependencyExternalId,
+        toExternalId: fromExternalId,
+        type: "blocks",
+        nativeFromId: dependency,
+        nativeToId: item.itemId,
+      });
       created.dependencies.push(result);
     }
   }
@@ -148,8 +161,8 @@ export async function syncReadyFront(graph, adapter, mapping, options = {}) {
   };
 }
 
-export async function syncClaim({ claims = [], task, adapter, mapping, agentId, attemptId, session = null, approvalLease = null } = {}) {
-  const native = claimTask({ claims, task, agentId, attemptId, approvalLease });
+export async function syncClaim({ claims = [], task, adapter, mapping, agentId, attemptId, session = null, approvalLease = null, ttlMinutes = null } = {}) {
+  const native = claimTask({ claims, task, agentId, attemptId, approvalLease, ttlMinutes });
   if (!native.ok) return { ok: false, source: "native", ...native };
   const externalId = mapping?.items?.[task.id]?.externalId;
   if (adapter?.claim && externalId) {
@@ -244,4 +257,22 @@ function hashWorkItem(item) {
     verificationCommands: item.verificationCommands || [],
     writeScope: item.writeScope || [],
   })).digest("hex");
+}
+
+function trackerItemsForGraph(graph = {}) {
+  if (Array.isArray(graph.items) && graph.items.length > 0) return graph.items;
+  return (graph.tasks || []).map((task, index) => ({
+    itemId: task.itemId || task.id,
+    type: task.type || "task",
+    title: task.title || task.goal || task.id,
+    status: task.status || "open",
+    parentId: task.parentId || graph.epicId || null,
+    dependencies: task.dependencies || [],
+    blocks: task.blocks || [],
+    related: task.related || [],
+    acceptanceCriteria: task.acceptanceCriteria || [],
+    verificationCommands: task.verificationCommands || [],
+    writeScope: task.writeScope || task.files || [],
+    sourceOrder: task.sourceOrder ?? index,
+  }));
 }

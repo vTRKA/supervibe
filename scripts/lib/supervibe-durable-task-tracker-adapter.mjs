@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+export { createCliTaskTrackerAdapter, redactTrackerPayload } from "./supervibe-task-tracker-cli-adapter.mjs";
 
 export const TASK_TRACKER_TRANSPORTS = Object.freeze(["native", "cli", "mcp"]);
 export const TASK_TRACKER_CAPABILITY_STATES = Object.freeze([

@@ -12,6 +12,7 @@ import {
   runAutonomousLoop,
 } from "../scripts/lib/autonomous-loop-runner.mjs";
 import { createShellStubAdapter } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
+import { createMemoryTaskTrackerAdapter } from "../scripts/lib/supervibe-durable-task-tracker-adapter.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -86,6 +87,27 @@ test("runner pins dry-run artifact contract for validate integrations", async ()
   assert.ok(handoffs.every((entry) => entry.schema_version === 1));
   assert.equal(events[0].type, "run_started");
   assert.equal(sideEffects[0].expectedSideEffect, "dry-run-no-mutation");
+});
+
+test("runner syncs ready, claim, and close through a task tracker adapter", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-tracker-"));
+  const adapter = createMemoryTaskTrackerAdapter();
+  const result = await runAutonomousLoop({
+    rootDir,
+    runId: "tracker-sync-loop",
+    request: "validate integrations",
+    dryRun: true,
+    taskTrackerAdapter: adapter,
+  });
+
+  assert.equal(result.status, "COMPLETE");
+  assert.equal(result.state.tracker_sync.status, "synced");
+  assert.equal(result.state.tracker_sync.readyReconciliations > 0, true);
+  assert.equal(result.state.tracker_sync.claims.external + result.state.tracker_sync.claims.both > 0, true);
+  assert.equal(result.state.tracker_sync.closes.external + result.state.tracker_sync.closes.both > 0, true);
+  assert.ok(result.state.scheduler.snapshots.every((snapshot) => snapshot.tracker));
+  assert.ok(result.state.handoffs.every((handoff) => handoff.contextPack.workflowSignal.tracker));
+  assert.ok([...adapter._state.tasks.values()].every((task) => task.status === "complete"));
 });
 
 test("runner can require user goal acceptance before final completion", async () => {

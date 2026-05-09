@@ -36,6 +36,7 @@ Primary path:
 /supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --quickstart
 /supervibe-loop --onboard
+/supervibe-loop --tracker-prime
 /supervibe-loop --completion bash
 /supervibe-loop --create-work-item --interactive
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
@@ -84,8 +85,10 @@ Advanced diagnostics:
 /supervibe-loop export --file .supervibe/memory/loops/<run-id>/state.json --out .supervibe/memory/bundles/<run-id>
 /supervibe-loop import --file .supervibe/memory/bundles/<run-id> --out .
 /supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-sync-push --tracker memory --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --tracker-sync-pull --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --tracker-doctor --file .supervibe/memory/work-items/<epic-id>/graph.json --fix
+/supervibe-loop --tracker-prime --json
 /supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id> --out .supervibe/memory/bundles/<run-id>-sync
 /supervibe-loop --import-sync-bundle .supervibe/memory/bundles/<run-id>-sync --dry-run
 /supervibe-loop --eval --case plan-review-loop --out .supervibe/audits/autonomous-loop-evals/latest-report.json
@@ -116,13 +119,20 @@ Durable tracker sync:
 
 ```bash
 /supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-sync-push --tracker cli --tracker-command supervibe-task --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --tracker-sync-pull --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --tracker-doctor --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --tracker-prime
 ```
 
-The native graph remains canonical. External CLI or MCP trackers are optional;
-if no adapter is available, sync falls back to the native JSON graph and writes
-a reversible mapping at `.supervibe/memory/loops/task-tracker-map.json`.
+The native graph remains canonical. External CLI or MCP trackers are optional,
+but when an adapter is configured the loop reconciles ready work with the
+tracker, mirrors claims, includes tracker state in `contextPack.workflowSignal`,
+and closes mapped work only with verification evidence. If no adapter is
+available, sync falls back to the native JSON graph and writes a reversible
+mapping at `.supervibe/memory/loops/task-tracker-map.json`. `--tracker-prime`
+prints the compact ready, claimed, blocked, and next-action context used by
+session and prompt hooks.
 
 External ecosystem integration stays provider-safe by default. `--notify` can
 route completion and failure events to terminal and delegated inbox targets.
@@ -232,6 +242,8 @@ Execution modes:
 /supervibe-loop --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --commit-per-task --fresh-context --tool codex --plan .supervibe/artifacts/plans/payment-integration.md
+/supervibe-loop --dry-run --tracker memory --request "validate integrations"
+/supervibe-loop --fresh-context --tool codex --tracker cli --tracker-command supervibe-task --plan .supervibe/artifacts/plans/payment-integration.md
 /supervibe-loop --provider-matrix
 ```
 
@@ -275,6 +287,9 @@ of pretending to run autonomously.
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
   so the worker and reviewer see the current project/epic/task phase, claim,
   gate, and next action before acting.
+- When a tracker adapter is configured, include `contextPack.workflowSignal.tracker`
+  so workers see reconciled ready counts, mapping status, claim source, and
+  tracker-blocked work before editing.
 - Include Retrieval Quality and Graph Quality Gates in fresh-context handoffs
   so workers see source citations, rerank/fallback status, semantic anchors,
   graph warnings, symbol coverage, and edge-resolution caveats before editing.
@@ -349,6 +364,8 @@ npm run supervibe:eval -- --case plan-review-loop
 npm run supervibe:loop -- graph --file .supervibe/memory/loops/<run-id>/state.json --format dot
 npm run supervibe:loop -- doctor --file .supervibe/memory/loops/<run-id>/state.json
 npm run supervibe:loop -- prime --file .supervibe/memory/loops/<run-id>/state.json
+npm run supervibe:loop -- --tracker-prime
+npm run supervibe:loop -- --dry-run --tracker memory --request "validate integrations"
 npm run supervibe:loop -- --accept-goals --file .supervibe/memory/loops/<run-id>/state.json --accepted-by <name>
 npm run supervibe:loop -- --reject-goals --file .supervibe/memory/loops/<run-id>/state.json --feedback "what is missing"
 npm run supervibe:loop -- --fork-checkpoint --file .supervibe/memory/loops/<run-id>/state.json

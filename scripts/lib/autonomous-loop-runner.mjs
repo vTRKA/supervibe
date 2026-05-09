@@ -35,6 +35,13 @@ import { runFreshContextAttempt } from "./autonomous-loop-fresh-context-executor
 import { createToolAdapter, normalizeExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
+import {
+  materializeEpicAndTasks,
+  summarizeTrackerMappingForBundle,
+  syncClaim,
+  syncClose,
+  syncReadyFront,
+} from "./supervibe-task-tracker-sync.mjs";
 
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
@@ -100,6 +107,34 @@ export async function runAutonomousLoop(options = {}) {
     evidence_link_required: true,
     raw_secret_storage: false,
   };
+  const taskTrackerAdapter = options.taskTrackerAdapter || options.trackerAdapter || null;
+  let trackerMapping = null;
+  let trackerMaterialization = null;
+  const trackerMetrics = {
+    enabled: Boolean(taskTrackerAdapter),
+    status: taskTrackerAdapter ? "pending" : "native-only",
+    readyReconciliations: 0,
+    blockedByTracker: 0,
+    claims: { native: 0, external: 0, both: 0, failed: 0 },
+    closes: { native: 0, external: 0, both: 0, failed: 0 },
+    mapping: null,
+    lastError: null,
+  };
+  if (taskTrackerAdapter) {
+    trackerMaterialization = await materializeEpicAndTasks({
+      graph_id: taskGraph.graph_id,
+      source: taskGraph.source,
+      tasks,
+    }, taskTrackerAdapter, {
+      rootDir,
+      mappingPath: options.taskTrackerMappingPath,
+      dryRun: Boolean(options.dryRun),
+    });
+    trackerMapping = trackerMaterialization.mapping || null;
+    trackerMetrics.status = trackerMaterialization.status || "unknown";
+    trackerMetrics.mapping = trackerMapping ? summarizeTrackerMappingForBundle(trackerMapping) : null;
+    if (!trackerMaterialization.ok) trackerMetrics.lastError = trackerMaterialization.status || "tracker_materialization_failed";
+  }
 
   let loopCount = 0;
   let stopReason = null;
@@ -136,7 +171,7 @@ export async function runAutonomousLoop(options = {}) {
   }
 
   while (!stopScheduler) {
-    const readyFront = calculateReadyFront({
+    const nativeReadyFront = calculateReadyFront({
       graph_id: taskGraph.graph_id,
       source: taskGraph.source,
       tasks,
@@ -145,6 +180,34 @@ export async function runAutonomousLoop(options = {}) {
       maxPolicyRiskLevel: "high",
       reviewersAvailable: true,
     });
+    let readyFront = nativeReadyFront;
+    let trackerReady = null;
+    if (taskTrackerAdapter && trackerMapping && nativeReadyFront.valid) {
+      trackerReady = await syncReadyFront({
+        graph_id: taskGraph.graph_id,
+        source: taskGraph.source,
+        tasks,
+      }, taskTrackerAdapter, trackerMapping, {
+        maxConcurrentAgents: preflight.max_concurrent_agents,
+        maxPolicyRiskLevel: "high",
+        reviewersAvailable: true,
+      });
+      trackerMetrics.readyReconciliations += 1;
+      trackerMetrics.blockedByTracker += trackerReady.blockedByTracker?.length || 0;
+      const reconciledIds = new Set((trackerReady.reconciledReady || []).map((task) => task.id));
+      readyFront = {
+        ...nativeReadyFront,
+        ready: nativeReadyFront.ready.filter((task) => reconciledIds.has(task.id)),
+        parallel: nativeReadyFront.parallel.filter((task) => reconciledIds.has(task.id)),
+        tracker: {
+          status: trackerMetrics.status,
+          nativeReady: trackerReady.nativeReady?.length || 0,
+          externalReady: trackerReady.externalReady?.length || 0,
+          reconciledReady: trackerReady.reconciledReady?.length || 0,
+          blockedByTracker: trackerReady.blockedByTracker?.map((task) => task.id) || [],
+        },
+      };
+    }
     schedulerSnapshots.push(summarizeReadyFront(readyFront));
 
     if (!readyFront.valid) {
@@ -175,15 +238,24 @@ export async function runAutonomousLoop(options = {}) {
     const dispatch = dispatchTask(task, { availableAgents });
     dispatches.push(dispatch);
     const attemptId = `${task.id}-attempt-${loopCount}`;
-    const claimResult = claimTask({
+    const claimInput = {
       claims,
       task,
       agentId: dispatch.primaryAgentId,
       attemptId,
       approvalLease: options.approvalLease || preflight.approval_lease,
       ttlMinutes: preflight.approval_lease?.budget?.max_runtime_minutes || preflight.max_runtime_minutes,
-    });
+    };
+    const claimResult = taskTrackerAdapter && trackerMapping
+      ? await syncClaim({
+        ...claimInput,
+        adapter: taskTrackerAdapter,
+        mapping: trackerMapping,
+        session: options.worktreeSession || null,
+      })
+      : claimTask(claimInput);
     claims = claimResult.claims;
+    recordTrackerClaimMetric(trackerMetrics, claimResult);
     if (!claimResult.ok) {
       const gate = claimResult.reason === "exact_approval_lease_required"
         ? createPolicyGate({
@@ -322,6 +394,7 @@ export async function runAutonomousLoop(options = {}) {
       claim: activeClaim,
       gates,
       dispatch,
+      trackerSignal: createTrackerSignal({ trackerMetrics, trackerReady, claimResult, trackerMapping }),
       nextAction: task.resumeNotes?.nextAction,
       triggerSignal: {
         source: taskGraph.source?.type || null,
@@ -391,6 +464,37 @@ export async function runAutonomousLoop(options = {}) {
         continue;
       }
 
+      const trackerClose = await closeTrackerTask({
+        task,
+        adapter: taskTrackerAdapter,
+        mapping: trackerMapping,
+        evidence: freshAttempt.verificationEvidence || [],
+        reason: "completed",
+      });
+      recordTrackerCloseMetric(trackerMetrics, trackerClose);
+      if (!trackerClose.ok) {
+        task.status = "blocked";
+        stopReason = trackerClose.status || trackerClose.reason || "tracker_close_failed";
+        claims = releaseClaim(claims, activeClaim.claimId, "failed");
+        task.resumeNotes = createResumeNotes({
+          task,
+          claim: activeClaim,
+          nextAction: "repair tracker close evidence or mapping",
+          blocker: stopReason,
+          evidencePaths: freshAttempt.verificationEvidence || [],
+        });
+        progressEntries.push(createProgressEntry({
+          taskId: task.id,
+          attemptId,
+          section: "BLOCKERS",
+          summary: `Tracker close blocked: ${stopReason}`,
+          nextAction: task.resumeNotes.nextAction,
+          evidencePaths: freshAttempt.verificationEvidence || [],
+          blocker: stopReason,
+        }));
+        continue;
+      }
+
       task.status = "complete";
       task.verificationMatrix = verificationMatrix.filter((entry) => entry.taskId === task.id);
       claims = releaseClaim(claims, activeClaim.claimId, "completed");
@@ -434,13 +538,55 @@ export async function runAutonomousLoop(options = {}) {
       status: "verified",
     });
 
+    const verificationEvidence = renderedCommands.length > 0
+      ? renderedCommands.map((command) => command.renderedCommand)
+      : ["dry-run verification evidence"];
+    const trackerClose = await closeTrackerTask({
+      task,
+      adapter: taskTrackerAdapter,
+      mapping: trackerMapping,
+      evidence: verificationEvidence,
+      reason: "completed",
+    });
+    recordTrackerCloseMetric(trackerMetrics, trackerClose);
+    if (!trackerClose.ok) {
+      task.status = "blocked";
+      stopReason = trackerClose.status || trackerClose.reason || "tracker_close_failed";
+      scores.push({ taskId: task.id, finalScore: 0, status: task.status, reason: stopReason });
+      attempts.push(createRunnerAttempt({
+        task,
+        attemptId,
+        executionMode,
+        status: "blocked",
+        verificationEvidence,
+        score: scores.at(-1),
+        sideEffectId: sideEffect.actionId,
+      }));
+      claims = releaseClaim(claims, activeClaim.claimId, "failed");
+      task.resumeNotes = createResumeNotes({
+        task,
+        claim: activeClaim,
+        nextAction: "repair tracker close evidence or mapping",
+        blocker: stopReason,
+        evidencePaths: verificationEvidence,
+      });
+      progressEntries.push(createProgressEntry({
+        taskId: task.id,
+        attemptId,
+        section: "BLOCKERS",
+        summary: `Tracker close blocked: ${stopReason}`,
+        nextAction: task.resumeNotes.nextAction,
+        evidencePaths: verificationEvidence,
+        blocker: stopReason,
+      }));
+      continue;
+    }
+
     task.status = "complete";
     task.verificationMatrix = verificationMatrix.filter((entry) => entry.taskId === task.id);
     const score = evaluateTask(task, {
       verificationRan: true,
-      verificationEvidence: renderedCommands.length > 0
-        ? renderedCommands.map((command) => command.renderedCommand)
-        : ["dry-run verification evidence"],
+      verificationEvidence,
       verificationMatrix: validateEvidenceCoverage({ tasks: [task], matrix: task.verificationMatrix, gates }),
       testsPassed: true,
       integrationWorks: true,
@@ -457,9 +603,7 @@ export async function runAutonomousLoop(options = {}) {
       attemptId,
       executionMode,
       status: "completed",
-      verificationEvidence: renderedCommands.length > 0
-        ? renderedCommands.map((command) => command.renderedCommand)
-        : ["dry-run verification evidence"],
+      verificationEvidence,
       score,
       sideEffectId: sideEffect.actionId,
     }));
@@ -468,9 +612,7 @@ export async function runAutonomousLoop(options = {}) {
       task,
       claim: activeClaim,
       nextAction: "task completed; continue to next ready task",
-      evidencePaths: renderedCommands.length > 0
-        ? renderedCommands.map((command) => command.renderedCommand)
-        : ["dry-run verification evidence"],
+      evidencePaths: verificationEvidence,
     });
     handoffs.push({
       taskId: task.id,
@@ -480,9 +622,7 @@ export async function runAutonomousLoop(options = {}) {
       confidenceScore: score.finalScore,
       contextPack,
       sideEffectId: sideEffect.actionId,
-      verificationEvidence: renderedCommands.length > 0
-        ? renderedCommands.map((command) => command.renderedCommand)
-        : ["dry-run verification evidence"],
+      verificationEvidence,
       reviewerEvidence: createReviewerEvidence(dispatch, task, renderedCommands.length > 0
         ? renderedCommands.map((command) => command.renderedCommand)
         : ["dry-run verification evidence"]),
@@ -571,6 +711,20 @@ export async function runAutonomousLoop(options = {}) {
   };
   state.execution_mode = executionMode;
   state.commit_per_task = commitPerTask;
+  state.tracker_sync = {
+    ...trackerMetrics,
+    materialization: trackerMaterialization ? {
+      ok: trackerMaterialization.ok,
+      status: trackerMaterialization.status,
+      nativeGraphPreserved: trackerMaterialization.nativeGraphPreserved,
+      detection: trackerMaterialization.detection ? {
+        status: trackerMaterialization.detection.status,
+        available: trackerMaterialization.detection.available,
+        adapterId: trackerMaterialization.detection.adapterId,
+      } : null,
+    } : null,
+    mapping: trackerMapping ? summarizeTrackerMappingForBundle(trackerMapping) : trackerMetrics.mapping,
+  };
   state.tool_adapters = preflight.tool_adapters;
   state.tool_adapter_summary = preflight.tool_adapter_summary;
   state.provider_capabilities = preflight.provider_capabilities;
@@ -954,6 +1108,7 @@ function summarizeReadyFront(front) {
     blocked: front.blocked?.map((task) => task.id) || [],
     parallel: front.parallel?.map((task) => task.id) || [],
     issues: front.issues || [],
+    tracker: front.tracker || null,
   };
 }
 
@@ -1029,6 +1184,52 @@ function createReviewerEvidence(dispatch, task, evidencePaths = []) {
     independent: dispatch.reviewerAgentId !== dispatch.primaryAgentId,
     required: requiresIndependentReview(task),
     evidencePaths,
+  };
+}
+
+async function closeTrackerTask({ task, adapter, mapping, evidence = [], reason = "completed" } = {}) {
+  if (!adapter || !mapping) return { ok: true, source: "native", reason: "no tracker adapter" };
+  const result = await syncClose({ task, adapter, mapping, evidence, reason });
+  return {
+    source: result.source || "external",
+    ...result,
+  };
+}
+
+function recordTrackerClaimMetric(metrics, result = {}) {
+  if (!metrics.enabled) return;
+  if (!result.ok) {
+    metrics.claims.failed += 1;
+    metrics.lastError = result.reason || result.status || "claim_failed";
+    return;
+  }
+  const source = result.source === "both" ? "both" : result.source === "external" ? "external" : "native";
+  metrics.claims[source] += 1;
+}
+
+function recordTrackerCloseMetric(metrics, result = {}) {
+  if (!metrics.enabled) return;
+  if (!result.ok) {
+    metrics.closes.failed += 1;
+    metrics.lastError = result.reason || result.status || "close_failed";
+    return;
+  }
+  const source = result.source === "both" ? "both" : result.source === "native" ? "native" : "external";
+  metrics.closes[source] += 1;
+}
+
+function createTrackerSignal({ trackerMetrics, trackerReady, claimResult, trackerMapping }) {
+  if (!trackerMetrics.enabled) return null;
+  return {
+    status: trackerMetrics.status,
+    mapping: trackerMapping ? summarizeTrackerMappingForBundle(trackerMapping) : null,
+    ready: trackerReady ? {
+      native: trackerReady.nativeReady?.length || 0,
+      external: trackerReady.externalReady?.length || 0,
+      reconciled: trackerReady.reconciledReady?.length || 0,
+      blockedByTracker: trackerReady.blockedByTracker?.map((task) => task.id) || [],
+    } : null,
+    claimSource: claimResult?.source || "native",
   };
 }
 

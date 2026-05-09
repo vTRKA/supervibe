@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.123] - 2026-05-10
+
+### Added
+
+- Added a host-neutral external CLI task-tracker adapter with JSON output,
+  dependency, ready, claim, close, sync, and redaction support.
+- Added task-tracker prime hooks so active ready, claimed, blocked, mapping,
+  and next-action context is surfaced at session and prompt boundaries.
+
+### Changed
+
+- Wired autonomous loop scheduling through tracker reconciliation when an
+  adapter is configured, including ready-front filtering, mirrored claims,
+  evidence-bound close, and `contextPack.workflowSignal.tracker`.
+- Updated plan and loop command docs so post-atomization tracker sync is part
+  of the default flow when an adapter is available, while native JSON remains
+  the canonical fallback.
+
 ## [2.0.122] - 2026-05-09
 
 ### Added

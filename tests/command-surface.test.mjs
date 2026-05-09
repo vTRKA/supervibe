@@ -232,6 +232,9 @@ test("loop command documents graph inspection surface", async () => {
   assert.match(content, /--plan-waves \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(content, /--assign-ready --explain/);
   assert.match(content, /--setup-worker-presets/);
+  assert.match(content, /--tracker-prime/);
+  assert.match(content, /--tracker cli --tracker-command/);
+  assert.match(content, /workflowSignal\.tracker/);
   assert.match(content, /npm run supervibe:loop -- graph/);
 });
 
@@ -286,6 +289,8 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
   assert.match(stdout, /--fresh-context --tool codex\|claude\|gemini\|opencode/);
   assert.match(stdout, /--allow-spawn --permission-prompt-bridge/);
   assert.match(stdout, /--adapter-command <command>/);
+  assert.match(stdout, /--tracker-prime/);
+  assert.match(stdout, /--tracker memory\|cli/);
   assert.match(stdout, /--provider-matrix/);
   assert.match(stdout, /--happy-path --plan \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(stdout, /--assigned-task T1 --assigned-write-set src\/file\.ts/);

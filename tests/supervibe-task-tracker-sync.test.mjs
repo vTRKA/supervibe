@@ -118,6 +118,54 @@ test("tracker ready front unblocks dependents after blocker closes", async () =>
   assert.equal(ready.blockedByTracker.some((item) => item.id === dependent.id), false);
 });
 
+test("task graph only materialization creates mapping and dependency edges", async () => {
+  const graph = {
+    graph_id: "loop-run-1",
+    source: { type: "request", request: "validate integrations" },
+    tasks: [
+      {
+        id: "task-a",
+        goal: "Build foundation",
+        status: "open",
+        dependencies: [],
+        verificationCommands: ["npm test"],
+      },
+      {
+        id: "task-b",
+        goal: "Verify dependent",
+        status: "open",
+        dependencies: ["task-a"],
+        verificationCommands: ["npm test"],
+      },
+    ],
+  };
+  const adapter = createMemoryTaskTrackerAdapter();
+  const result = await syncPush(graph, adapter, { dryRun: true });
+
+  assert.equal(result.status, "synced");
+  assert.ok(result.mapping.items["task-a"].externalId);
+  assert.ok(result.mapping.items["task-b"].externalId);
+  assert.equal(result.created.tasks.length, 2);
+  assert.equal(result.created.dependencies.length, 1);
+
+  const ready = await syncReadyFront(graph, adapter, result.mapping);
+  assert.deepEqual(ready.reconciledReady.map((item) => item.id), ["task-a"]);
+
+  assert.equal((await syncClose({
+    task: graph.tasks[0],
+    adapter,
+    mapping: result.mapping,
+    evidence: ["node --test"],
+  })).ok, true);
+
+  const closedGraph = {
+    ...graph,
+    tasks: graph.tasks.map((task) => task.id === "task-a" ? { ...task, status: "complete" } : task),
+  };
+  const afterClose = await syncReadyFront(closedGraph, adapter, result.mapping);
+  assert.deepEqual(afterClose.reconciledReady.map((item) => item.id), ["task-b"]);
+});
+
 test("worktree visibility validates shared tracker mapping", async () => {
   const graph = sampleGraph();
   const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });

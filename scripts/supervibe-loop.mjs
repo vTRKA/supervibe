@@ -16,9 +16,10 @@ import { exportGraph, loadStateForGraphExport } from "./lib/autonomous-loop-grap
 import { formatDoctorReport, primeLoopRun, repairLoopRun } from "./lib/autonomous-loop-doctor.mjs";
 import { archiveLoopRun, exportLoopBundle, importLoopBundle } from "./lib/autonomous-loop-archive.mjs";
 import { atomizePlanFile, createWorkItemPreview, writeWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
-import { createMemoryTaskTrackerAdapter, createUnavailableTaskTrackerAdapter } from "./lib/supervibe-durable-task-tracker-adapter.mjs";
+import { createCliTaskTrackerAdapter, createMemoryTaskTrackerAdapter, createUnavailableTaskTrackerAdapter } from "./lib/supervibe-durable-task-tracker-adapter.mjs";
 import { formatTaskTrackerDoctorReport, repairTaskTracker } from "./lib/supervibe-task-tracker-doctor.mjs";
 import { defaultTrackerMappingPath, materializeEpicAndTasks, readTrackerMapping, syncPull } from "./lib/supervibe-task-tracker-sync.mjs";
+import { createTaskTrackerPrimeSummary, formatTaskTrackerPrimeReminder } from "./lib/supervibe-task-tracker-prime.mjs";
 import { createWorkItemIndex, groupWorkItemsByStatus } from "./lib/supervibe-work-item-query.mjs";
 import { defaultWorkItemDaemonPath, createWorkItemWatchRecord, formatWorkItemWatchStatus, readWorkItemDaemonState, stopWorkItemWatch, upsertWorkItemWatch, writeWorkItemDaemonState } from "./lib/supervibe-work-item-daemon.mjs";
 import { defaultDelegatedInboxPath, formatDelegatedInbox, readDelegatedInbox } from "./lib/supervibe-work-item-message-delegation.mjs";
@@ -90,6 +91,7 @@ function parseArgs(argv) {
     "tracker-sync-push",
     "tracker-sync-pull",
     "tracker-doctor",
+    "tracker-prime",
     "interactive",
     "preview",
     "yes",
@@ -351,6 +353,13 @@ async function main() {
     return;
   }
 
+  if (args["tracker-prime"]) {
+    const summary = await createTaskTrackerPrimeSummary({ rootDir });
+    if (args.json) console.log(JSON.stringify(summary, null, 2));
+    else console.log(formatTaskTrackerPrimeReminder(summary) || "SUPERVIBE_TASK_TRACKER_PRIME\nSTATUS: no active work graph\nNEXT_ACTION: atomize a reviewed plan or continue native loop setup");
+    return;
+  }
+
   if (args["stop-watch"]) {
     const daemonPath = args.file || defaultWorkItemDaemonPath(rootDir);
     const state = await readWorkItemDaemonState(daemonPath);
@@ -600,9 +609,9 @@ async function main() {
     if (!graphPath) throw new Error("tracker command requires --file <work-item-graph.json>");
     const graph = JSON.parse(await readFile(resolve(rootDir, graphPath), "utf8"));
     const mappingPath = args["mapping-file"] ? resolve(rootDir, args["mapping-file"]) : defaultTrackerMappingPath(rootDir);
-    const adapter = args.tracker === "memory"
-      ? createMemoryTaskTrackerAdapter()
-      : createUnavailableTaskTrackerAdapter("no external tracker selected; use --tracker memory for local smoke tests");
+    const adapter = createTaskTrackerAdapterFromArgs(args, {
+      fallbackReason: "no external tracker selected; use --tracker memory for local smoke tests or --tracker cli --tracker-command <command>",
+    });
 
     if (args["tracker-sync-push"]) {
       const result = await materializeEpicAndTasks(graph, adapter, { rootDir, mappingPath, dryRun: Boolean(args["dry-run"]) });
@@ -755,6 +764,9 @@ async function main() {
   const sourcePlan = args.plan || args["from-prd"];
   const worktreeSession = await maybePrepareWorktreeSession(args, rootDir);
   const policyProfile = await maybeLoadPolicyProfile(rootDir, args);
+  const taskTrackerAdapter = shouldUseTaskTrackerAdapter(args)
+    ? createTaskTrackerAdapterFromArgs(args)
+    : null;
   const result = await runAutonomousLoop({
     rootDir,
     plan: sourcePlan,
@@ -780,6 +792,8 @@ async function main() {
     worktreeSession,
     policyProfile,
     requireUserAcceptance: Boolean(args["require-user-acceptance"]),
+    taskTrackerAdapter,
+    taskTrackerMappingPath: args["mapping-file"],
   });
 
   console.log("SUPERVIBE_LOOP_STATUS");
@@ -927,6 +941,22 @@ function buildAdapterConfig(args) {
   return Object.keys(config).length > 0 ? config : undefined;
 }
 
+function shouldUseTaskTrackerAdapter(args) {
+  return Boolean(args.tracker || args["tracker-command"] || process.env.SUPERVIBE_TASK_TRACKER_COMMAND);
+}
+
+function createTaskTrackerAdapterFromArgs(args, options = {}) {
+  if (args.tracker === "memory") return createMemoryTaskTrackerAdapter();
+  if (args.tracker === "cli" || args["tracker-command"] || process.env.SUPERVIBE_TASK_TRACKER_COMMAND) {
+    return createCliTaskTrackerAdapter({
+      command: args["tracker-command"] || process.env.SUPERVIBE_TASK_TRACKER_COMMAND,
+      baseArgs: parseCsvArg(args["tracker-base-args"]),
+      timeoutMs: args["tracker-timeout-ms"],
+    });
+  }
+  return createUnavailableTaskTrackerAdapter(options.fallbackReason || "no external tracker configured");
+}
+
 function createScopedWorktreeBranchName(epicId, options = {}) {
   const epicSlug = String(epicId).replace(/[^A-Za-z0-9_-]+/g, "-");
   const scope = options.sessionId || options.assignedTaskIds?.[0] || options.assignedWaveId || "";
@@ -967,6 +997,7 @@ Primary:
   supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
   supervibe-loop --quickstart
   supervibe-loop --onboard
+  supervibe-loop --tracker-prime
   supervibe-loop --completion bash|zsh|powershell
   supervibe-loop --worktree-status
   supervibe-loop --eval
@@ -1002,6 +1033,8 @@ Advanced:
   supervibe-loop --notify terminal,inbox --request "validate integrations"
   supervibe-loop --export-sync-bundle .supervibe/memory/loops/<run-id>
   supervibe-loop --import-sync-bundle path/to/sync-bundle --dry-run
+  supervibe-loop --tracker-sync-push --tracker memory --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --tracker-prime --json
   supervibe-loop export --file .supervibe/memory/loops/<run-id>/state.json --out <bundle-dir>
   supervibe-loop import --file <bundle-dir> --out <target-root>
 
@@ -1012,6 +1045,7 @@ Execution modes:
   --fresh-context --tool codex|claude|gemini|opencode
   --fresh-context --tool codex|claude|gemini|opencode --allow-spawn --permission-prompt-bridge
   --adapter-command <command> [--adapter-args arg1,arg2]
+  --tracker memory|cli [--tracker-command <command>] [--tracker-base-args arg1,arg2]
   --provider-matrix
   --require-user-acceptance
   --accept-goals | --reject-goals --file <state.json>

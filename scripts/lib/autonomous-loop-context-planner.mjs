@@ -81,6 +81,7 @@ export function buildWorkflowSignal(task = {}, options = {}) {
     } : null,
     gates,
     blockers,
+    tracker: options.trackerSignal || options.tracker || null,
   };
 }
 
