@@ -585,7 +585,7 @@ async function main() {
   console.log();
   const trackerMapPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'loops', 'task-tracker-map.json');
   if (!existsSync(trackerMapPath)) {
-    console.log(color('Task tracker sync: native graph only (no mapping yet)', 'dim'));
+    console.log(color('Task tracker sync: native graph only (no external mapping yet; not full tracker sync)', 'dim'));
   } else {
     try {
       const mapping = JSON.parse(readFileSync(trackerMapPath, 'utf8'));

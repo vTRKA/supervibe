@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "kind": "supervibe-work-item-graph",
+  "graph_id": "epic-agent-readiness",
+  "epicId": "epic-agent-readiness",
+  "title": "Agent Readiness Gates",
+  "source": {
+    "type": "fixture",
+    "path": "tests/fixtures/artifacts/work-item-graphs/agent-readiness.work-item-graph.json"
+  },
+  "metadata": {
+    "planReviewPassed": true,
+    "createdFrom": "fixture"
+  },
+  "items": [
+    {
+      "epicId": "epic-agent-readiness",
+      "itemId": "epic-agent-readiness",
+      "title": "Agent Readiness Gates",
+      "type": "epic",
+      "priority": "critical",
+      "parentId": null,
+      "blocks": [
+        "epic-agent-readiness-t1"
+      ],
+      "related": [],
+      "discoveredFrom": {
+        "type": "fixture",
+        "path": "tests/fixtures/artifacts/work-item-graphs/agent-readiness.work-item-graph.json"
+      },
+      "acceptanceCriteria": [
+        "All readiness gates have explicit verification evidence."
+      ],
+      "verificationCommands": [
+        "npm run validate:work-item-graphs"
+      ],
+      "writeScope": [],
+      "scopeSafetyChecklist": [
+        "Do not fabricate host-agent telemetry."
+      ],
+      "estimatedSize": "small",
+      "parallelGroup": null,
+      "executionHints": {
+        "requiredAgentCapability": "quality-gate-reviewer",
+        "confidenceRubricId": "autonomous-loop",
+        "policyRiskLevel": "low"
+      }
+    },
+    {
+      "epicId": "epic-agent-readiness",
+      "itemId": "epic-agent-readiness-t1",
+      "title": "Validate readiness artifact gates",
+      "type": "task",
+      "priority": "high",
+      "parentId": "epic-agent-readiness",
+      "blocks": [],
+      "related": [],
+      "discoveredFrom": {
+        "type": "fixture",
+        "path": "tests/fixtures/artifacts/work-item-graphs/agent-readiness.work-item-graph.json",
+        "line": 1,
+        "taskRef": "T1"
+      },
+      "acceptanceCriteria": [
+        "Decision brief, API contract, and work-item graph validators pass."
+      ],
+      "verificationCommands": [
+        "npm run validate:decision-briefs",
+        "npm run validate:api-contracts",
+        "npm run validate:work-item-graphs"
+      ],
+      "writeScope": [
+        {
+          "action": "modify",
+          "path": "scripts/supervibe-maturity-report.mjs"
+        }
+      ],
+      "scopeSafetyChecklist": [
+        "No external tracker vendor coupling is introduced."
+      ],
+      "estimatedSize": "small",
+      "parallelGroup": null,
+      "executionHints": {
+        "requiredAgentCapability": "quality-gate-reviewer",
+        "confidenceRubricId": "autonomous-loop",
+        "policyRiskLevel": "low",
+        "stopConditions": [
+          "verification_failed"
+        ]
+      }
+    }
+  ],
+  "dependencyEdges": [
+    {
+      "from": "epic-agent-readiness",
+      "to": "epic-agent-readiness-t1",
+      "type": "parent-child"
+    },
+    {
+      "from": "epic-agent-readiness",
+      "to": "epic-agent-readiness-t1",
+      "type": "blocks"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "epic-agent-readiness-t1",
+      "title": "Validate readiness artifact gates",
+      "goal": "Validate readiness artifact gates",
+      "category": "implementation",
+      "status": "open",
+      "priority": "high",
+      "dependencies": [],
+      "parentId": "epic-agent-readiness",
+      "epicId": "epic-agent-readiness",
+      "acceptanceCriteria": [
+        "Decision brief, API contract, and work-item graph validators pass."
+      ],
+      "verificationCommands": [
+        "npm run validate:decision-briefs",
+        "npm run validate:api-contracts",
+        "npm run validate:work-item-graphs"
+      ],
+      "policyRiskLevel": "low",
+      "stopConditions": [
+        "verification_failed"
+      ],
+      "requiredAgentCapability": "quality-gate-reviewer",
+      "confidenceRubricId": "autonomous-loop",
+      "writeScope": [
+        {
+          "action": "modify",
+          "path": "scripts/supervibe-maturity-report.mjs"
+        }
+      ],
+      "labels": [],
+      "requiredGates": [],
+      "verificationHints": [],
+      "contractChecklist": [],
+      "scopeSafetyChecklist": [
+        "No external tracker vendor coupling is introduced."
+      ],
+      "productionReadinessChecklist": [],
+      "tenOfTenChecklist": [],
+      "estimatedSize": "small",
+      "parallelGroup": null,
+      "sourceOrder": 1,
+      "source": {
+        "type": "work-item",
+        "planPath": "tests/fixtures/artifacts/work-item-graphs/agent-readiness.work-item-graph.json",
+        "itemId": "epic-agent-readiness-t1",
+        "epicId": "epic-agent-readiness"
+      }
+    }
+  ]
+}

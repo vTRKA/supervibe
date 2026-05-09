@@ -34,7 +34,9 @@ export async function atomizePlanFile(planPath, options = {}) {
 
 export function atomizePlanToWorkItems(markdown, options = {}) {
   const planPath = normalizePath(options.planPath ?? ".supervibe/artifacts/plans/plan.md");
-  const parsed = parsePlanForWorkItems(markdown, planPath);
+  const parsed = parsePlanForWorkItems(markdown, planPath, {
+    requireTasks: Boolean(options.requireTasks || options.planReviewPassed),
+  });
   const epicId = options.epicId || createEpicId(parsed.title, planPath);
   const childItems = createChildItems(parsed, epicId, options);
   const gateItems = createGateItems(parsed, epicId, childItems, options);
@@ -88,7 +90,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   };
 }
 
-export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts/plans/plan.md") {
+export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts/plans/plan.md", options = {}) {
   const lines = String(markdown ?? "").split(/\r?\n/);
   const title = lines.find((line) => /^#\s+/.test(line))?.replace(/^#\s+/, "").trim()
     || planPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "")
@@ -183,7 +185,11 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
   return {
     title,
     planPath,
-    tasks: tasks.length > 0 ? tasks : [createParsedTask({ ref: "T1", title: `Execute ${title}`, line: 1, planPath })],
+    tasks: tasks.length > 0 || options.requireTasks
+      ? tasks
+      : [createParsedTask({ ref: "T1", title: `Execute ${title}`, line: 1, planPath })],
+    taskParseRequired: Boolean(options.requireTasks),
+    taskParseFallbackUsed: tasks.length === 0 && !options.requireTasks,
     reviewGates,
     criticalPath: parseCriticalPath(markdown),
     parallelGroups: parseParallelGroups(markdown),
@@ -227,6 +233,11 @@ export function validateWorkItemGraph(graph = {}) {
 
   const epics = items.filter((item) => item.type === "epic");
   if (epics.length !== 1) issues.push(issue("bad-epic-count", graph.epicId ?? null, `Expected exactly one epic, got ${epics.length}.`));
+
+  const implementationItems = items.filter((item) => !["epic", "gate", "followup"].includes(item.type));
+  if (implementationItems.length === 0) {
+    issues.push(issue("missing-child-task", graph.epicId ?? null, "Reviewed plans must contain at least one parseable implementation task."));
+  }
 
   for (const item of items) {
     for (const blocked of item.blocks ?? []) {

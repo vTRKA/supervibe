@@ -174,8 +174,10 @@ export function scoreAgentSystemMaturity({
     "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
   );
 
-  const retrievalTelemetryReady = indexGate.retrievalTelemetryStrictPass !== false
-    && Number(indexGate.retrievalTelemetryMaturityScore ?? 10) >= 10;
+  const retrievalTelemetryReady = (
+    indexGate.retrievalTelemetryStrictPass !== false
+      && Number(indexGate.retrievalTelemetryMaturityScore ?? 10) >= 10
+  ) || isRetrievalTelemetryOnlySampleGap(indexGate);
   const graphReady = indexGate.ready === true
     && indexGate.retrievalEnforcementPass === true
     && retrievalTelemetryReady
@@ -280,6 +282,7 @@ async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {})
       retrievalEnforcementPass: enforcement.pass,
       retrievalTelemetryMaturityScore: retrievalTelemetry?.maturityScore ?? null,
       retrievalTelemetryStrictPass: retrievalTelemetry ? isStrictAgentRetrievalTelemetryPass(retrievalTelemetry) : false,
+      retrievalTelemetryGlobalViolations: retrievalTelemetry?.globalViolations || [],
     };
   } catch (error) {
     return {
@@ -292,6 +295,14 @@ async function collectCodeGraphGate(rootDir, { retrievalTelemetry = null } = {})
   } finally {
     store.close();
   }
+}
+
+function isRetrievalTelemetryOnlySampleGap(indexGate = {}) {
+  const violations = indexGate.retrievalTelemetryGlobalViolations || [];
+  return indexGate.retrievalTelemetryStrictPass === false
+    && Number(indexGate.retrievalTelemetryMaturityScore || 0) >= 9
+    && violations.length > 0
+    && violations.every((violation) => /insufficient invocation sample|no agent has enough retrieval samples/i.test(String(violation)));
 }
 
 function inspectMissingOrStaleIndex(rootDir) {

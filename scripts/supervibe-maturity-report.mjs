@@ -7,6 +7,9 @@ import {
   buildAgentSystemMaturityReport,
   formatAgentSystemMaturityReport,
 } from "./lib/agent-system-maturity.mjs";
+import { validateWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
+import { validateApiContract } from "./validate-api-contracts.mjs";
+import { validateDecisionBrief } from "./validate-decision-briefs.mjs";
 
 const REQUIRED_SCENARIOS = Object.freeze([
   "internal-application-audit",
@@ -41,6 +44,7 @@ export async function buildMaturityDashboard({
   const migrator = readText(join(root, "scripts", "lib", "supervibe-context-migrator.mjs"));
   const commandValidator = readText(join(root, "scripts", "validate-command-operational-contracts.mjs"));
   const commandDocs = readCommandDocs(join(root, "commands"));
+  const artifactReadiness = inspectArtifactReadiness(root);
 
   const missingScenarios = REQUIRED_SCENARIOS.filter((id) => !scenarioIds.has(id));
   const sourceOfTruth = /Tier 1 sources are authoritative/.test(matrix)
@@ -93,6 +97,7 @@ export async function buildMaturityDashboard({
     { id: "route-coverage", pass: routeCoverage, evidence: routeCoverage ? "new audit/research/visual/update intents routed" : "route intents missing" },
     { id: "workflow-chain-audit", pass: workflowChainAudit, evidence: workflowChainAudit ? "workflow chain audit route, matrix row, and scenario present" : "workflow chain audit coverage incomplete" },
     { id: "host-instruction-coexistence", pass: hostInstructionCoexistence, evidence: hostInstructionCoexistence ? "external and other adapter managed blocks preserved" : "host instruction coexistence incomplete" },
+    { id: "artifact-readiness", pass: artifactReadiness.pass, evidence: artifactReadiness.evidence },
     { id: "command-freshness", pass: commandFreshness, evidence: commandFreshness ? `${freshCommandDocs.length}/${commandDocs.length} command docs last-verified` : `${freshCommandDocs.length}/${commandDocs.length} command docs last-verified` },
   ];
 
@@ -157,6 +162,73 @@ function readCommandDocs(dir) {
       const path = join(dir, entry.name);
       return { file: entry.name, text: readText(path) };
     });
+}
+
+function inspectArtifactReadiness(root) {
+  const requiredFiles = [
+    "docs/templates/decision-brief-template.md",
+    "docs/templates/api-contract-template.md",
+    "scripts/validate-decision-briefs.mjs",
+    "scripts/validate-api-contracts.mjs",
+    "scripts/validate-work-item-graphs.mjs",
+  ];
+  const missing = requiredFiles.filter((file) => !existsSync(join(root, file)));
+  const decisionFixtures = readMarkdownFiles(join(root, "tests", "fixtures", "artifacts", "decision-briefs"));
+  const apiFixtures = readMarkdownFiles(join(root, "tests", "fixtures", "artifacts", "api-contracts"));
+  const workItemFixtures = readJsonFiles(join(root, "tests", "fixtures", "artifacts", "work-item-graphs"));
+  const decisionFailures = decisionFixtures
+    .map((file) => ({ file, issues: validateDecisionBrief(readText(file)) }))
+    .filter((item) => item.issues.length > 0);
+  const apiFailures = apiFixtures
+    .map((file) => ({ file, issues: validateApiContract(readText(file)) }))
+    .filter((item) => item.issues.length > 0);
+  const workItemFailures = workItemFixtures
+    .map((file) => ({ file, validation: validateWorkItemGraph(readJson(file, {})) }))
+    .filter((item) => !item.validation.valid);
+  const pass = missing.length === 0
+    && decisionFixtures.length > 0
+    && apiFixtures.length > 0
+    && workItemFixtures.length > 0
+    && decisionFailures.length === 0
+    && apiFailures.length === 0
+    && workItemFailures.length === 0;
+  const problems = [
+    missing.length ? `missing=${missing.join(",")}` : null,
+    decisionFixtures.length === 0 ? "decisionFixtures=0" : null,
+    apiFixtures.length === 0 ? "apiContractFixtures=0" : null,
+    workItemFixtures.length === 0 ? "workItemGraphFixtures=0" : null,
+    decisionFailures.length ? `decisionFailures=${decisionFailures.length}` : null,
+    apiFailures.length ? `apiFailures=${apiFailures.length}` : null,
+    workItemFailures.length ? `workItemGraphFailures=${workItemFailures.length}` : null,
+  ].filter(Boolean);
+  return {
+    pass,
+    evidence: pass
+      ? `decisionBriefFixtures=${decisionFixtures.length}, apiContractFixtures=${apiFixtures.length}, workItemGraphFixtures=${workItemFixtures.length}, validators=3`
+      : problems.join("; "),
+  };
+}
+
+function readMarkdownFiles(dir) {
+  if (!existsSync(dir)) return [];
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...readMarkdownFiles(path));
+    else if (entry.name.endsWith(".md")) out.push(path);
+  }
+  return out;
+}
+
+function readJsonFiles(dir) {
+  if (!existsSync(dir)) return [];
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...readJsonFiles(path));
+    else if (entry.name.endsWith(".json")) out.push(path);
+  }
+  return out;
 }
 
 function countDirectories(dir) {

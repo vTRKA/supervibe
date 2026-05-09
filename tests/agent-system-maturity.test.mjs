@@ -191,6 +191,46 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
   assert.match(formatAgentSystemMaturityReport(report), /retrievalTelemetry=8\/10/);
 });
 
+test("agent-system maturity does not double-count retrieval sample gap as CodeGraph failure", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 92,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 287,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      agentReceipts: {
+        pass: false,
+        hostAgentReceipts: 2,
+        agentInvocations: 2,
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 9,
+      retrievalTelemetryStrictPass: false,
+      retrievalTelemetryGlobalViolations: ["insufficient invocation sample 2 < 5"],
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=9/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "host-agent-telemetry"));
+  assert.equal(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"), false);
+});
+
 test("agent-system maturity blocks 10/10 when list-missing reports stale graph rows", () => {
   const report = scoreAgentSystemMaturity({
     roster: {

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.125] - 2026-05-10
+
+### Added
+
+- Added decision brief and API contract templates with validators and golden
+  fixtures so brainstorm and plan outputs can produce user-facing summaries,
+  API contracts, frontend integration states, and mock scenario evidence.
+- Added a work-item graph validator and fixture-backed release gate so plan
+  atomization can be checked independently from active local task state.
+
+### Changed
+
+- Hardened maturity reporting with artifact-readiness evidence and clearer
+  native-only task tracker status output.
+- Tightened reviewed-plan atomization so plans without parseable tasks are
+  reported as invalid instead of silently becoming one vague fallback task.
+- Avoided double-counting insufficient real host-agent telemetry as CodeGraph
+  failure while still keeping host telemetry as an explicit readiness blocker.
+
 ## [2.0.124] - 2026-05-10
 
 ### Added
