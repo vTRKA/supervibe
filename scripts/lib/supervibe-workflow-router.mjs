@@ -8,6 +8,7 @@ import {
   getNextWorkflowStep,
   normalizeWorkflowPhase,
   parseNextStepBlock,
+  resolveWorkflowCommand,
   WORKFLOW_EDGES,
 } from "./supervibe-skill-chain.mjs";
 
@@ -83,6 +84,45 @@ const WORKTREE_PHRASES = [
   "отдельном worktree",
   "изолированн",
   "отдельная сесс",
+];
+
+const PLAN_REVISION_PHRASES = [
+  "change plan",
+  "revise plan",
+  "edit plan",
+  "update plan",
+  "modify plan",
+  "change scope",
+  "revise scope",
+  "поменяй план",
+  "поменять план",
+  "измени план",
+  "изменить план",
+  "переделай план",
+  "перепиши план",
+  "обнови план",
+  "исправь план",
+  "измени scope",
+  "изменить scope",
+];
+
+const PLAN_CONTINUATION_WITHOUT_REVIEW_PHRASES = [
+  "loop",
+  "supervibe-loop",
+  "/supervibe-loop",
+  "continue to loop",
+  "start loop",
+  "go to loop",
+  "next stage",
+  "следующий этап",
+  "дальше к loop",
+  "запусти loop",
+  "запусти луп",
+  "луп",
+  "цикл",
+  ...PLAN_EXECUTION_PHRASES,
+  ...ATOMIZE_PHRASES,
+  ...WORKTREE_PHRASES,
 ];
 
 export function routeWorkflowIntent(input, options = {}) {
@@ -279,6 +319,33 @@ function routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale
 function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts }) {
   const phase = normalizeWorkflowPhase(lastCompletedPhase);
   const affirmative = containsAffirmativePhrase(text);
+
+  if (phase === "plan" && containsAny(text, PLAN_REVISION_PHRASES)) {
+    return fromWorkflowStep("plan", {
+      intent: "plan_revision",
+      locale,
+      confidence: 0.92,
+      reason: "User asked to revise the implementation plan before review or execution.",
+      source: "plan-revision-gate",
+      command: "/supervibe-plan",
+      skill: "supervibe:writing-plans",
+      stopCondition: "ask-before-plan-revision",
+      question: locale === "ru"
+        ? "Шаг 1/1: изменить план перед обязательным review loop?"
+        : "Step 1/1: revise the plan before the mandatory review loop?",
+    });
+  }
+
+  if (phase === "plan" && !artifacts.planReviewPassed && containsAny(text, PLAN_CONTINUATION_WITHOUT_REVIEW_PHRASES)) {
+    return fromWorkflowStep("plan", {
+      intent: "plan_review",
+      locale,
+      confidence: 0.93,
+      reason: "Plan continuation, loop, atomization, worktree, or execution is blocked until mandatory plan review passes.",
+      source: "plan-review-gate",
+    });
+  }
+
   if (phase && affirmative && WORKFLOW_EDGES[phase]) {
     return fromWorkflowStep(phase, {
       intent: `continue_${WORKFLOW_EDGES[phase].nextPhase}`,
@@ -322,6 +389,7 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
         confidence: 0.9,
         reason: "Execution request has a reviewed plan but no atomic work items or epic.",
         source: "atomization-gate",
+        artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
       });
     }
     return fromWorkflowStep("work-item-atomization", {
@@ -349,6 +417,7 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       confidence: 0.9,
       reason: "Reviewed plan can be atomized into durable work items.",
       source: "atomize-rule",
+      artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
     });
   }
 
@@ -419,7 +488,7 @@ function fromWorkflowStep(phase, options = {}) {
   const edge = getNextWorkflowStep(phase);
   const locale = options.locale === "ru" ? "ru" : "en";
   const nextPromptText = options.question ?? (locale === "ru" ? edge.questionRu : edge.questionEn);
-  const command = options.command ?? edge.command;
+  const command = resolveWorkflowCommand(options.command ?? edge.command, options.artifactOverride ?? edge.artifactKind);
   const agentProfile = commandAgentProfileFor(command);
   const artifact = options.artifactOverride ?? edge.artifactKind;
   const questionChoices = buildWorkflowQuestionChoices({
@@ -441,7 +510,7 @@ function fromWorkflowStep(phase, options = {}) {
     reason: options.reason ?? edge.why,
     nextPromptText,
     nextQuestion: nextPromptText,
-    stopCondition: edge.stopCondition,
+    stopCondition: options.stopCondition ?? edge.stopCondition,
     requiredSafety: safetyForCommand(command),
     missingArtifacts: [],
     safetyBlockers: [],
@@ -462,6 +531,7 @@ function fromWorkflowStep(phase, options = {}) {
       locale,
       command,
       skill: options.skill ?? edge.skill,
+      stopCondition: options.stopCondition,
       question: nextPromptText,
       why: options.reason ?? edge.why,
     }),

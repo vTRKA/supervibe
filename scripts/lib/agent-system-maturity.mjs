@@ -35,6 +35,11 @@ import {
   buildAgentRetrievalTelemetryReportFromProject,
   isStrictAgentRetrievalTelemetryPass,
 } from "./supervibe-agent-retrieval-telemetry.mjs";
+import {
+  evaluateCommandRouteMatrix,
+  evaluateSemanticIntentMatrix,
+  evaluateTriggerMatrix,
+} from "./supervibe-trigger-evaluator.mjs";
 
 export const AGENT_SYSTEM_MATURITY_DIMENSIONS = Object.freeze([
   { id: "roster-coverage", max: 1.0 },
@@ -65,7 +70,11 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
   });
   const retrievalTelemetry = await collectRetrievalTelemetryGate(rootDir);
   const indexGate = await collectCodeGraphGate(rootDir, { retrievalTelemetry });
-  const docs = inspectBacklogAndDocs(rootDir);
+  const routeReplay = collectRouteReplayGate(rootDir);
+  const docs = {
+    ...inspectBacklogAndDocs(rootDir),
+    ...routeReplay,
+  };
 
   return scoreAgentSystemMaturity({
     roster,
@@ -182,9 +191,9 @@ export function scoreAgentSystemMaturity({
   add(
     "eval-coverage",
     1.0,
-    roster.testFiles >= 250 && docs.hasNegativeQuestionEval ? 1.0 : 0.65,
-    `${roster.testFiles || 0} test files, negative specialist-question eval=${docs.hasNegativeQuestionEval === true}`,
-    "Add negative fixtures for weak specialist questions, receipt drift, and stage recovery.",
+    roster.testFiles >= 250 && docs.hasNegativeQuestionEval && docs.routeReplayPass !== false ? 1.0 : 0.65,
+    `${roster.testFiles || 0} test files, negative specialist-question eval=${docs.hasNegativeQuestionEval === true}, route replay=${docs.routeReplayEvidence ?? (docs.routeReplayPass !== false)}`,
+    "Add negative fixtures for weak specialist questions, receipt drift, stage recovery, and command/trigger route regressions.",
   );
   add(
     "backlog-and-docs",
@@ -340,6 +349,21 @@ function inspectRetrievalEnforcement(rootDir) {
       && /retrieval-policy/.test(cli)
       && /evidence-ledger\.jsonl/.test(cli)
       && /isRetrievalTelemetryScoredInvocation/.test(telemetry),
+  };
+}
+
+function collectRouteReplayGate(rootDir) {
+  const workflow = evaluateTriggerMatrix(undefined, { pluginRoot: rootDir, projectRoot: rootDir });
+  const semantic = evaluateSemanticIntentMatrix(undefined, { pluginRoot: rootDir, projectRoot: rootDir });
+  const commandRoutes = evaluateCommandRouteMatrix(undefined, { pluginRoot: rootDir, projectRoot: rootDir });
+  const failed = [
+    ...workflow.failed.map((item) => `workflow:${item.id}`),
+    ...semantic.failed.map((item) => `semantic:${item.id}`),
+    ...commandRoutes.failed.map((item) => `command:${item.id}`),
+  ];
+  return {
+    routeReplayPass: workflow.pass && semantic.pass && commandRoutes.pass,
+    routeReplayEvidence: `workflow=${workflow.passed}/${workflow.total}, semantic=${semantic.passed}/${semantic.total}, command=${commandRoutes.passed}/${commandRoutes.total}${failed.length ? `, failed=${failed.join(",")}` : ""}`,
   };
 }
 

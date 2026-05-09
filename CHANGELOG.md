@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.119] - 2026-05-09
+
+### Fixed
+
+- Routed natural-language plan review requests such as "review plan with
+  specialist agents" and "ревью плана спец агентами" to
+  `/supervibe-plan --review` instead of audit or execution routes.
+- Hardened the plan-review to atomization handoff so work-item writes require
+  both the reviewed plan path and `--plan-review-passed`.
+
+### Changed
+
+- Added mandatory `NEXT_USER_ACTIONS[]` choice gates after brainstorm, plan,
+  and reviewed-plan results so users must explicitly approve, revise, review,
+  defer, or stop before the workflow advances.
+- Added command-route replay fixtures to maturity scoring so routing regressions
+  can block a 10/10 agent-system maturity result.
+
 ## [2.0.118] - 2026-05-09
 
 ### Added

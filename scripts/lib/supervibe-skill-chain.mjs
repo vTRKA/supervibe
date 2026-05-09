@@ -47,7 +47,7 @@ export const WORKFLOW_EDGES = Object.freeze({
   "plan-review": {
     phase: "plan-review",
     nextPhase: "work-item-atomization",
-    command: "/supervibe-loop --atomize-plan",
+    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
     skill: "supervibe:writing-plans",
     artifactKind: "reviewed-plan",
     stopCondition: "ask-before-work-item-atomization",
@@ -163,10 +163,11 @@ export function formatNextStepBlock(options = {}) {
   const locale = options.locale === "ru" ? "ru" : "en";
   const question = locale === "ru" ? edge.questionRu : edge.questionEn;
   const artifact = options.artifactPath ?? edge.artifactKind;
+  const nextCommand = resolveWorkflowCommand(options.command ?? edge.command, artifact);
   const choices = options.questionChoices ?? buildNextStepChoices({
     locale,
     artifact,
-    command: options.command ?? edge.command,
+    command: nextCommand,
     skill: options.skill ?? edge.skill,
   });
 
@@ -175,7 +176,7 @@ export function formatNextStepBlock(options = {}) {
     `Current phase: ${edge.phase}`,
     `Artifact: ${artifact}`,
     `Next phase: ${edge.nextPhase}`,
-    `Next command: ${options.command ?? edge.command}`,
+    `Next command: ${nextCommand}`,
     `Next skill: ${options.skill ?? edge.skill}`,
     `Stop condition: ${edge.stopCondition}`,
     `Why: ${options.why ?? edge.why}`,
@@ -210,11 +211,12 @@ export function assertNoSilentStop(options = {}) {
   const text = String(options.output ?? "");
   const expectedArtifact = options.artifactPath ?? edge.artifactKind;
   const question = options.locale === "ru" ? edge.questionRu : edge.questionEn;
+  const expectedCommand = resolveWorkflowCommand(options.command ?? edge.command, expectedArtifact);
   const required = [
     { code: "handoff-marker", value: "NEXT_STEP_HANDOFF" },
     { code: "artifact", value: expectedArtifact },
     { code: "next-phase", value: edge.nextPhase },
-    { code: "command", value: edge.command },
+    { code: "command", value: expectedCommand },
     { code: "skill", value: edge.skill },
     { code: "stop-condition", value: edge.stopCondition },
     { code: "question", value: options.question ?? question },
@@ -385,6 +387,16 @@ function intersect(left, right) {
 
 function hasText(value) {
   return typeof value === "string" && value.trim() !== "";
+}
+
+export function resolveWorkflowCommand(command, artifact) {
+  const raw = String(command ?? "");
+  if (!raw.includes("<plan-path>")) return raw;
+  const candidate = String(artifact ?? "").trim();
+  const planPath = candidate && (candidate.endsWith(".md") || /[\\/]/.test(candidate))
+    ? candidate
+    : "<plan-path>";
+  return raw.replaceAll("<plan-path>", planPath);
 }
 
 function cloneEdge(edge) {

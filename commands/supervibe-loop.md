@@ -105,6 +105,13 @@ Production-oriented plans also generate release, observability, rollback,
 security/privacy, and post-release learning work items so the loop does not
 stop after a code-only slice.
 
+After atomization or a dry-run preview, print `NEXT_USER_ACTIONS[]` and wait for one choice before execution:
+- **Inspect generated epic/work items** - show graph status, blockers, owners, and verification gates.
+- **Revise atomization** - change task boundaries, dependencies, labels, or excluded scope before execution.
+- **Run another review** - send the reviewed plan or generated work graph back through specialist review.
+- **Start guided execution** - run `/supervibe-loop --guided` only after review and atomization evidence is accepted.
+- **Keep work graph and stop** - save the result without starting execution.
+
 Durable tracker sync:
 
 ```bash

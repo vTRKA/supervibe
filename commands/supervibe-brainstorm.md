@@ -56,11 +56,18 @@ Treat the most recent user message as the topic.
    - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
-4. **Save the spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. The path is deterministic — no "shall we save it?" round-trip; the user already opted in by running this command.
+4. **Save the candidate spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. The path is deterministic, but the saved file is not approval to continue. Moving to planning requires the explicit user choice below.
 
 5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
-5a. **Machine-readable handoff.** Include:
+5a. **Mandatory next user actions.** After showing the brainstorm result, print `NEXT_USER_ACTIONS[]` with these visible choices and wait for one choice before moving on:
+   - **Approve spec and write plan** - run `/supervibe-plan --from-brainstorm <spec-path>`.
+   - **Revise idea/spec** - update goals, references, assumptions, scope, or acceptance criteria before planning.
+   - **Compare or research deeper** - run additional alternatives, references, risks, or specialist checks before approval.
+   - **Exclude or defer items** - record out-of-scope work so it cannot enter the plan silently.
+   - **Keep spec draft and stop** - save the candidate spec without planning, review, atomization, or execution.
+
+5b. **Machine-readable handoff.** Include:
 
    ```text
    NEXT_STEP_HANDOFF
@@ -72,6 +79,12 @@ Treat the most recent user message as the topic.
    Stop condition: ask-before-plan
    Why: Brainstorm output must become a reviewed implementation plan before execution.
    Question: Step N/M: writing the implementation plan?
+   Choices:
+   - Approve spec and write plan - run `/supervibe-plan --from-brainstorm <spec-path>`.
+   - Revise idea/spec - change requirements before planning.
+   - Compare or research deeper - gather more evidence before approval.
+   - Exclude or defer items - keep them out of the next plan.
+   - Keep spec draft and stop - no next workflow stage runs.
    END_NEXT_STEP_HANDOFF
    ```
 
@@ -98,6 +111,7 @@ Visual explanation: diagram/table choice with accessible fallback present
 10/10 scorecard: present
 
 Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
+NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude or defer items | keep spec draft and stop
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
 ```
 

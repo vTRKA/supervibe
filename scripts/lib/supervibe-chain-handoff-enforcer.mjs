@@ -18,7 +18,7 @@ const HANDOFFS = {
   plan_review_passed: {
     phase: "plan_review_passed",
     nextPhase: "atomize",
-    command: "/supervibe-loop --atomize-plan",
+    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
     skill: "supervibe:writing-plans",
     artifact: "reviewed-plan",
     nextQuestion: "Шаг 1/1: разбить reviewed plan на атомарные work items и epic?",

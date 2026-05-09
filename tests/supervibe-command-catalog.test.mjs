@@ -206,6 +206,27 @@ test("command catalog routes workflow-chain maturity audits before explicit slas
   }
 });
 
+test("command catalog routes plan-review complaints to mandatory review instead of audit or execute", () => {
+  for (const request of [
+    "запусти ревью плана спец агентами",
+    "review plan with specialist agents",
+    "запусти review loop по плану",
+  ]) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.command, "/supervibe-plan --review", request);
+    assert.equal(match.intent, "plan_review", request);
+    assert.equal(match.commandId, "/supervibe-plan", request);
+    assert.equal(match.commandArgs, "--review", request);
+    assert.notEqual(match.command, "/supervibe-audit --workflow-chain", request);
+    assert.notEqual(match.command, "/supervibe-execute-plan", request);
+    assert.equal(match.doNotSearchProject, true, request);
+  }
+});
+
 test("every slash command has a mandatory real-agents profile", () => {
   const commandIds = readdirSync(join(ROOT, "commands"))
     .filter((file) => file.endsWith(".md"))

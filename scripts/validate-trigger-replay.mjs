@@ -3,7 +3,9 @@ import { getTriggerIntentCorpus } from "./lib/supervibe-trigger-intent-corpus.mj
 import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
 import {
   evaluateSemanticIntentMatrix,
+  evaluateCommandRouteMatrix,
   evaluateTriggerMatrix,
+  formatCommandRouteEvaluation,
   formatSemanticIntentEvaluation,
   formatTriggerEvaluation,
 } from "./lib/supervibe-trigger-evaluator.mjs";
@@ -46,5 +48,11 @@ if (!workflowEvaluation.pass) {
 const semanticEvaluation = evaluateSemanticIntentMatrix();
 console.log(formatSemanticIntentEvaluation(semanticEvaluation));
 if (!semanticEvaluation.pass) {
+  process.exitCode = 1;
+}
+
+const commandRouteEvaluation = evaluateCommandRouteMatrix();
+console.log(formatCommandRouteEvaluation(commandRouteEvaluation));
+if (!commandRouteEvaluation.pass) {
   process.exitCode = 1;
 }

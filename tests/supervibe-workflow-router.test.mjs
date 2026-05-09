@@ -51,7 +51,34 @@ test("reviewed plan can be atomized into work items", () => {
     artifacts: { plan: true, planReviewPassed: true },
   });
   assert.equal(route.intent, "atomize_plan");
-  assert.equal(route.command, "/supervibe-loop --atomize-plan");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed");
+});
+
+test("plan-phase loop request cannot bypass mandatory review", () => {
+  const route = routeWorkflowIntent({
+    userPhrase: "запусти loop по плану",
+    lastCompletedPhase: "plan",
+    artifacts: { plan: true },
+  });
+
+  assert.equal(route.intent, "plan_review");
+  assert.equal(route.command, "/supervibe-plan --review");
+  assert.equal(route.source, "plan-review-gate");
+  assert.match(route.reason, /blocked until mandatory plan review passes/);
+});
+
+test("plan-phase revision request routes to plan repair before review", () => {
+  const route = routeWorkflowIntent({
+    userPhrase: "хочу поменять план перед ревью",
+    lastCompletedPhase: "plan",
+    artifacts: { plan: true },
+  });
+
+  assert.equal(route.intent, "plan_revision");
+  assert.equal(route.command, "/supervibe-plan");
+  assert.equal(route.skill, "supervibe:writing-plans");
+  assert.equal(route.stopCondition, "ask-before-plan-revision");
+  assert.ok(route.questionChoices.some((choice) => choice.id === "revise-scope"));
 });
 
 test("worktree request routes to isolated session preflight and adds dirty-state blocker", () => {

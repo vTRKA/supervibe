@@ -38,6 +38,10 @@ Examples:
 - `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md`
 - `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-mocks-preview-server-design.md`
 
+### `/supervibe-plan --review <plan-path>`
+
+Canonical mandatory review loop after a durable plan is written. This review must pass before `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` can write work items, epic state, or execution handoff artifacts.
+
 ### `/supervibe-plan` (no args)
 
 Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If none, fall back to:
@@ -109,6 +113,12 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    Stop condition: ask-before-plan-review
    Why: Execution and atomization are blocked until plan review passes.
    Question: Step N/M: the plan review loop?
+   Choices:
+   - Run plan review - invoke `/supervibe-plan --review <plan-path>` with specialist reviewers.
+   - Revise plan first - reopen `/supervibe-plan <plan-path>` and update scope/tasks/risks.
+   - Audit plan deeper - add coverage/dependency/risk review before the review loop.
+   - Exclude or defer items - record out-of-scope work before review.
+   - Keep plan draft and stop - no review, atomization, or execution starts.
    END_NEXT_STEP_HANDOFF
    ```
 
@@ -139,6 +149,7 @@ Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS
 
 Next:        review loop -> atomic work items -> epic -> provider-safe execution preflight
+NEXT_USER_ACTIONS[]: run plan review | revise plan first | audit plan deeper | exclude or defer items | keep plan draft and stop
 Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>`
 Source mode: `--from-brainstorm` when the plan came from a brainstorm spec
 ```

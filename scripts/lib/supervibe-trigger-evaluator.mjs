@@ -1,5 +1,6 @@
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
 import { routeWorkflowIntent } from "./supervibe-workflow-router.mjs";
+import { resolveCommandRequest } from "./supervibe-command-catalog.mjs";
 
 export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
   {
@@ -30,7 +31,7 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
     id: "reviewed-plan-atomize-ru",
     phrase: "разбей план на атомарные задачи",
     context: { artifacts: { plan: true, planReviewPassed: true } },
-    expected: { intent: "atomize_plan", command: "/supervibe-loop --atomize-plan", minConfidence: 0.88 },
+    expected: { intent: "atomize_plan", command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed", minConfidence: 0.88 },
   },
   {
     id: "worktree-run-en",
@@ -198,6 +199,42 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
   },
 ]);
 
+export const DEFAULT_COMMAND_ROUTE_FIXTURES = Object.freeze([
+  {
+    id: "ru-plan-review-specialist-agents",
+    phrase: "запусти ревью плана спец агентами",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["workflow_chain_audit", "supervibe_audit", "supervibe_execute_plan"],
+      notCommand: ["/supervibe-audit --workflow-chain", "/supervibe-audit", "/supervibe-execute-plan"],
+    },
+  },
+  {
+    id: "en-plan-review-specialist-agents",
+    phrase: "review plan with specialist agents",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["workflow_chain_audit", "supervibe_audit", "supervibe_execute_plan"],
+      notCommand: ["/supervibe-audit --workflow-chain", "/supervibe-audit", "/supervibe-execute-plan"],
+    },
+  },
+  {
+    id: "ru-review-loop-plan",
+    phrase: "запусти review loop по плану",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["workflow_chain_audit", "supervibe_audit", "supervibe_execute_plan"],
+      notCommand: ["/supervibe-audit --workflow-chain", "/supervibe-audit", "/supervibe-execute-plan"],
+    },
+  },
+]);
+
 export function evaluateTriggerMatrix(fixtures = DEFAULT_WORKFLOW_TRIGGER_FIXTURES, options = {}) {
   const results = fixtures.map((fixture) => {
     const route = routeWorkflowIntent({
@@ -314,9 +351,65 @@ export function evaluateSemanticIntentMatrix(fixtures = DEFAULT_SEMANTIC_TRIGGER
   };
 }
 
+export function evaluateCommandRouteMatrix(fixtures = DEFAULT_COMMAND_ROUTE_FIXTURES, options = {}) {
+  const pluginRoot = options.pluginRoot ?? process.cwd();
+  const projectRoot = options.projectRoot ?? pluginRoot;
+  const results = fixtures.map((fixture) => {
+    const route = resolveCommandRequest(fixture.phrase, {
+      pluginRoot,
+      projectRoot,
+      shortcuts: options.shortcuts,
+    });
+    const expected = fixture.expected ?? {};
+    const failures = [];
+
+    if (expected.intent && route.intent !== expected.intent) {
+      failures.push(`expected intent ${expected.intent}, got ${route.intent}`);
+    }
+    if (expected.command && route.command !== expected.command) {
+      failures.push(`expected command ${expected.command}, got ${route.command}`);
+    }
+    if (typeof expected.minConfidence === "number" && route.confidence < expected.minConfidence) {
+      failures.push(`expected confidence >= ${expected.minConfidence}, got ${route.confidence}`);
+    }
+    for (const intent of normalizeList(expected.notIntent)) {
+      if (route.intent === intent) failures.push(`forbidden intent ${intent}`);
+    }
+    for (const command of normalizeList(expected.notCommand)) {
+      if (route.command === command) failures.push(`forbidden command ${command}`);
+    }
+
+    return {
+      id: fixture.id,
+      phrase: fixture.phrase,
+      expected,
+      pass: failures.length === 0,
+      failures,
+      route,
+    };
+  });
+
+  return {
+    pass: results.every((result) => result.pass),
+    total: results.length,
+    passed: results.filter((result) => result.pass).length,
+    failed: results.filter((result) => !result.pass),
+    results,
+  };
+}
+
 export function formatTriggerEvaluation(evaluation) {
   const header = `Trigger evaluation: ${evaluation.passed}/${evaluation.total} passed`;
   if (evaluation.pass) return `${header}\nAll workflow trigger fixtures passed.`;
+  const failures = evaluation.failed
+    .map((result) => `- ${result.id}: ${result.failures.join("; ")}`)
+    .join("\n");
+  return `${header}\n${failures}\n${formatIntentConfusionMatrix(evaluation)}`;
+}
+
+export function formatCommandRouteEvaluation(evaluation) {
+  const header = `Command route evaluation: ${evaluation.passed}/${evaluation.total} passed`;
+  if (evaluation.pass) return `${header}\nAll command route fixtures passed.`;
   const failures = evaluation.failed
     .map((result) => `- ${result.id}: ${result.failures.join("; ")}`)
     .join("\n");

@@ -31,6 +31,7 @@ describe("supervibe chain handoff enforcer", () => {
     const result = assertRequiredHandoff("plan_review_passed", output);
 
     assert.equal(result.pass, true);
+    assert.match(output, /Next command: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
   });
 
   it("keeps the full chain in the expected order", () => {

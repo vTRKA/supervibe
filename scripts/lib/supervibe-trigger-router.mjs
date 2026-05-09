@@ -71,7 +71,7 @@ const ROUTES = {
   },
   atomize_plan: {
     phase: "plan_reviewed",
-    command: "/supervibe-loop --atomize-plan",
+    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
     skill: "supervibe:writing-plans",
     nextQuestionRu: "Шаг 1/1: разбить план на атомарные work items и epic?",
     nextQuestionEn: "Step 1/1: split the plan into atomic work items and an epic?",

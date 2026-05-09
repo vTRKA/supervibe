@@ -102,6 +102,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
+11b. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop.
 12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
@@ -121,6 +122,12 @@ Next skill: supervibe:requesting-code-review
 Stop condition: ask-before-plan-review
 Why: Execution and atomization are blocked until plan review passes.
 Question: Step 1/1: the plan review loop?
+Choices:
+- Run plan review - invoke `/supervibe-plan --review .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md`.
+- Revise plan first - update scope, tasks, risks, or verification before review.
+- Audit plan deeper - expand dependency, coverage, or risk review before approval.
+- Exclude/defer items - keep unapproved scope out of atomization and execution.
+- Keep plan draft and stop - no review, atomization, or execution starts.
 END_NEXT_STEP_HANDOFF
 ```
 
@@ -132,6 +139,7 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: call types/functions not defined elsewhere in the plan
 - DO NOT: offer `/supervibe-execute-plan` before review passes and atomic work items exist
 - DO NOT: finish without `NEXT_STEP_HANDOFF`
+- DO NOT: continue from plan to review until the user chooses one `NEXT_USER_ACTIONS[]` item
 - DO NOT: add tasks that implement unapproved extras, speculative framework parity, protocol work, or polish without a Scope Safety tradeoff
 - ALWAYS: show exact code for code steps (engineer reads tasks out of order)
 - ALWAYS: include rollback safety (commit per task or per green test)

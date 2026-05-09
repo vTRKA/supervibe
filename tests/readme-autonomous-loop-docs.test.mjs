@@ -9,7 +9,7 @@ test("README documents autonomous loop end-to-end path and copy-paste commands",
   for (const snippet of [
     "/supervibe-brainstorm \"idea\"",
     "/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md",
-    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md",
+    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed",
     "/supervibe-loop --epic example-epic --worktree",
     "/supervibe-loop --status --epic example-epic",
     "/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json",

@@ -90,6 +90,8 @@ For workflow handoffs, ask the concrete next-step question instead of stopping a
 - Epic run requested: `Step N/M: run provider-safe preflight before worktree/autonomous run?`
 - Work status question: route "what is ready?", "what is blocked?", "who owns this?", "what changed?", and "what should I run next?" to the work-item query layer.
 
+Every producer result must also expose `NEXT_USER_ACTIONS[]` before progressing: approve/continue, revise, exclude/defer, run or rerun specialist review, inspect readiness, or stop and keep the artifact. Natural-language plan review and review-loop requests route to `/supervibe-plan --review`, not audit, execution, or atomization.
+
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.
 
 ## How it works

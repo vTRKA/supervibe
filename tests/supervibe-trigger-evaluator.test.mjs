@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_COMMAND_ROUTE_FIXTURES,
   DEFAULT_SEMANTIC_TRIGGER_FIXTURES,
   DEFAULT_WORKFLOW_TRIGGER_FIXTURES,
   buildIntentConfusionMatrix,
+  evaluateCommandRouteMatrix,
   evaluateSemanticIntentMatrix,
   evaluateTriggerMatrix,
+  formatCommandRouteEvaluation,
   formatIntentConfusionMatrix,
   formatSemanticIntentEvaluation,
   formatTriggerEvaluation,
@@ -38,6 +41,12 @@ test("semantic paraphrase trigger matrix passes implicit user needs", () => {
   assert.equal(evaluation.pass, true, formatSemanticIntentEvaluation(evaluation));
   assert.equal(evaluation.total, DEFAULT_SEMANTIC_TRIGGER_FIXTURES.length);
   assert.ok(evaluation.total >= 20);
+});
+
+test("command route matrix keeps plan-review complaints out of audit and execute", () => {
+  const evaluation = evaluateCommandRouteMatrix();
+  assert.equal(evaluation.pass, true, formatCommandRouteEvaluation(evaluation));
+  assert.equal(evaluation.total, DEFAULT_COMMAND_ROUTE_FIXTURES.length);
 });
 
 test("semantic evaluation tracks hard negatives in the confusion matrix", () => {

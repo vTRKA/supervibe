@@ -19,7 +19,7 @@ test("workflow phase graph forces brainstorm to plan to review to atomization", 
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("provider-policy"));
   assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan --from-brainstorm");
   assert.equal(getNextWorkflowStep("plan").command, "/supervibe-plan --review");
-  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --atomize-plan");
+  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed");
   assert.equal(getNextWorkflowStep("work-item-atomization").command, "/supervibe-loop --guided");
   assert.equal(getNextWorkflowStep("worktree-setup").command, "/supervibe-loop --epic --worktree");
   assert.match(getNextWorkflowStep("worktree-setup").why, /explicit timeboxes are optional/);
@@ -42,6 +42,27 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
 
   const assertion = assertNoSilentStop({
     phase: "plan",
+    output,
+    artifactPath: ".supervibe/artifacts/plans/example.md",
+    locale: "en",
+  });
+  assert.equal(assertion.pass, true);
+});
+
+test("plan review handoff resolves atomization command with reviewed plan path and proof flag", () => {
+  const output = formatNextStepBlock({
+    phase: "plan-review",
+    artifactPath: ".supervibe/artifacts/plans/example.md",
+    locale: "en",
+  });
+
+  const parsed = parseNextStepBlock(output);
+  assert.equal(parsed.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed");
+  assert.match(output, /Continue \.supervibe\/artifacts\/plans\/example\.md \(recommended\)/);
+  assert.match(output, /--plan-review-passed/);
+
+  const assertion = assertNoSilentStop({
+    phase: "plan-review",
     output,
     artifactPath: ".supervibe/artifacts/plans/example.md",
     locale: "en",

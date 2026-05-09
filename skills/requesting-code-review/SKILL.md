@@ -99,13 +99,20 @@ NEXT_STEP_HANDOFF
 Current phase: plan-review
 Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next phase: work-item-atomization
-Next command: /supervibe-loop --from-plan --atomize .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
+Next command: /supervibe-loop --atomize-plan .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md --plan-review-passed
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-work-item-atomization
 Why: A reviewed plan can become durable atomic work items and an epic.
 Question: Step 1/1: atomizing the plan into an epic and child work items?
+Choices:
+- Continue to atomization - uses the reviewed plan path and `--plan-review-passed`; no execution starts yet.
+- Revise the reviewed plan first - returns to `/supervibe-plan <plan-path>` with the review findings.
+- Ask for another specialist review - reruns review for the unresolved risk area before atomization.
+- Keep reviewed plan and stop - records the passed review without creating work items.
 END_NEXT_STEP_HANDOFF
 ```
+
+Also print `NEXT_USER_ACTIONS[]`: continue to atomization, revise reviewed plan first, ask for another specialist review, inspect readiness/blockers, or keep reviewed plan and stop. Do not atomize, create an epic, or execute until the user chooses one action.
 
 If the plan fails review, do not atomize or execute. Return findings and route back to `/supervibe-plan <plan-path>` for repair.
 

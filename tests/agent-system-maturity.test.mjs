@@ -224,6 +224,40 @@ test("agent-system maturity blocks 10/10 when list-missing reports stale graph r
   assert.match(formatAgentSystemMaturityReport(report), /--list-missing reports MISSING_OR_STALE: 0/);
 });
 
+test("agent-system maturity blocks 10/10 when route replay has command regressions", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 92,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 287,
+    },
+    validators: PASSING_VALIDATORS,
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+      routeReplayPass: false,
+      routeReplayEvidence: "workflow=8/8, semantic=30/30, command=2/3, failed=command:ru-review-loop-plan",
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "eval-coverage"));
+  assert.match(formatAgentSystemMaturityReport(report), /command=2\/3/);
+});
+
 test("agent-system maturity blocks 10/10 when rules rely on filler content", () => {
   const report = scoreAgentSystemMaturity({
     roster: {

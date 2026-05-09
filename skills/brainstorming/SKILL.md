@@ -88,7 +88,8 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
 11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
-13. **User review of written spec** — explicit approval required.
+13. **User review of written spec** — explicit approval required. Saving the candidate spec is not approval to continue.
+13a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop.
 14. **Handoff** to `supervibe:writing-plans`.
 15. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
 
@@ -110,6 +111,7 @@ After saving the spec, ALWAYS print a one-line hand-off so the user knows the ne
 Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Next: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Step 1/1: write the plan?
+NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude/defer items | keep spec draft and stop
 ```
 
 Also include the machine-readable handoff block:
@@ -124,6 +126,12 @@ Next skill: supervibe:writing-plans
 Stop condition: ask-before-plan
 Why: Brainstorm output must become a reviewed implementation plan before execution.
 Question: Step 1/1: writing the implementation plan?
+Choices:
+- Approve spec and write plan - run `/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md`.
+- Revise idea/spec - update requirements before planning.
+- Compare or research deeper - gather more evidence before approval.
+- Exclude/defer items - prevent unapproved scope from entering the plan.
+- Keep spec draft and stop - no next workflow stage runs.
 END_NEXT_STEP_HANDOFF
 ```
 
@@ -132,6 +140,7 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: implement, scaffold, write code before design approved
 - DO NOT: offer direct implementation after brainstorm unless the user explicitly cancels planning
 - DO NOT: finish without `NEXT_STEP_HANDOFF`
+- DO NOT: continue from brainstorm to planning until the user chooses one `NEXT_USER_ACTIONS[]` item
 - DO NOT: ask multi-part questions (one at a time)
 - DO NOT: surface raw `questionnaires/*.yaml` prompts, fallback seeds, or catalog option lists as visible questions; the active agent must compose the question from current context.
 - DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
