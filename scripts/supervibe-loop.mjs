@@ -29,6 +29,7 @@ import { createOnboardingReport, createQuickstartPlan, formatOnboarding, formatQ
 import { createFederatedSyncBundle, importFederatedSyncBundle, writeFederatedSyncBundle } from "./lib/supervibe-federated-sync-bundle.mjs";
 import { formatNotificationRouteResult, routeNotificationEvent } from "./lib/supervibe-notification-router.mjs";
 import { deferWorkItemFile } from "./lib/supervibe-work-item-scheduler.mjs";
+import { mutateWorkItemGraphFile } from "./lib/supervibe-work-item-actions.mjs";
 import { createGuidedWorkItemDraft, importGuidedWorkItemFromText, saveGuidedWorkItemDraft } from "./lib/supervibe-guided-work-item-forms.mjs";
 import { createDryRunPreview, runInteractiveCli } from "./lib/supervibe-interactive-cli.mjs";
 import { formatEvalHarnessReport, runAutonomousLoopEvals } from "./lib/autonomous-loop-eval-harness.mjs";
@@ -95,6 +96,7 @@ function parseArgs(argv) {
     "interactive",
     "preview",
     "yes",
+    "force",
     "create-work-item",
     "eval",
     "eval-live",
@@ -415,6 +417,50 @@ async function main() {
     return;
   }
 
+  const workItemAction = resolveWorkItemAction(args);
+  if (workItemAction) {
+    const graphPath = args.file
+      ? resolve(rootDir, args.file)
+      : await findGraphContainingItem(rootDir, workItemAction.itemId || workItemAction.from || workItemAction.to);
+    const dryRun = Boolean(args["dry-run"] || args.preview);
+    if (workItemAction.type === "delete" && !dryRun && !args.yes && !args.force) {
+      throw new Error("delete requires --preview, --dry-run, --yes, or --force");
+    }
+    const result = await mutateWorkItemGraphFile(graphPath, {
+      ...workItemAction,
+      actor: args.actor || args.owner || "user",
+      reason: args.reason || null,
+      dryRun,
+      force: Boolean(args.force),
+    });
+    if (args.preview) {
+      console.log(createDryRunPreview({
+        action: workItemAction.type,
+        before: { itemId: workItemAction.itemId || workItemAction.from },
+        after: {
+          changed: result.changed,
+          action: result.action,
+          itemId: result.itemId,
+          dependency: result.dependency || null,
+          createdItems: result.createdItems || [],
+        },
+        risk: workItemAction.type === "delete" ? "high" : "medium",
+        command: `/supervibe-loop --${workItemAction.type} ${workItemAction.itemId || workItemAction.from || ""} --file ${graphPath}`,
+      }).output);
+    }
+    console.log("SUPERVIBE_WORK_ITEM_ACTION");
+    console.log(`ACTION: ${result.action || workItemAction.type}`);
+    console.log(`ITEM: ${result.itemId || workItemAction.itemId || workItemAction.from || "graph"}`);
+    console.log(`CHANGED: ${result.changed}`);
+    console.log(`DRY_RUN: ${result.dryRun}`);
+    if (result.conflict) console.log(`CONFLICT: ${result.conflict.reason}`);
+    if (result.createdItems?.length) console.log(`CREATED_ITEMS: ${result.createdItems.join(",")}`);
+    if (result.dependency) console.log(`DEPENDENCY: ${result.dependency.from}->${result.dependency.to}:${result.dependency.type}`);
+    console.log(`GRAPH: ${graphPath}`);
+    if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
   if (args.defer) {
     const graphPath = args.file
       ? resolve(rootDir, args.file)
@@ -514,6 +560,28 @@ async function main() {
   }
 
   if (args.status) {
+    if (args.file) {
+      try {
+        const graphPath = resolve(rootDir, args.file);
+        const graph = JSON.parse(await readFile(graphPath, "utf8"));
+        if (graph.kind === "supervibe-work-item-graph" || Array.isArray(graph.items)) {
+          const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
+          console.log("SUPERVIBE_EPIC_STATUS");
+          console.log(`EPIC: ${graph.epicId || graph.graph_id || "unknown"}`);
+          console.log(`READY: ${grouped.ready.length}`);
+          console.log(`BLOCKED: ${grouped.blocked.length}`);
+          console.log(`CLAIMED: ${grouped.claimed.length}`);
+          console.log(`DEFERRED: ${grouped.deferred.length}`);
+          console.log(`REVIEW: ${grouped.review.length}`);
+          console.log(`DONE: ${grouped.done.length}`);
+          console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
+          console.log(`GRAPH: ${graphPath}`);
+          return;
+        }
+      } catch (error) {
+        if (error.code !== "ENOENT" && error.name !== "SyntaxError") throw error;
+      }
+    }
     if (args.epic && !args.file) {
       const graphPath = join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
       try {
@@ -524,8 +592,10 @@ async function main() {
         console.log(`READY: ${grouped.ready.length}`);
         console.log(`BLOCKED: ${grouped.blocked.length}`);
         console.log(`CLAIMED: ${grouped.claimed.length}`);
+        console.log(`DEFERRED: ${grouped.deferred.length}`);
         console.log(`REVIEW: ${grouped.review.length}`);
         console.log(`DONE: ${grouped.done.length}`);
+        console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
         console.log(`GRAPH: ${graphPath}`);
         return;
       } catch (error) {
@@ -827,6 +897,64 @@ async function maybeLoadPolicyProfile(rootDir, args) {
   });
 }
 
+function resolveWorkItemAction(args) {
+  const actionKeys = ["claim", "close", "complete", "reopen", "delete", "skip", "cancel", "edit", "split"];
+  for (const key of actionKeys) {
+    if (!args[key]) continue;
+    const itemId = String(args[key]);
+    if (key === "edit") {
+      return {
+        type: "edit",
+        itemId,
+        patch: {
+          title: args.title,
+          description: args.description,
+          status: args["set-status"] || args.statusValue,
+          priority: args.priority,
+          owner: args.owner,
+          assignee: args.assignee,
+          labels: args.labels,
+          acceptanceCriteria: args.acceptance || args["acceptance-criteria"],
+          verificationCommands: args.verification || args["verification-commands"],
+          dueAt: args.until || args.due,
+        },
+      };
+    }
+    if (key === "split") {
+      return {
+        type: "split",
+        itemId,
+        titles: parseCsvArg(args.titles || args.subtasks || args.title),
+      };
+    }
+    return { type: key, itemId, status: args["set-status"] };
+  }
+  if (args["dep-add"] || args["dependency-add"]) {
+    return {
+      type: "dep-add",
+      from: args["dep-add"] || args["dependency-add"] || args.from,
+      to: args.to || args.blocks || args.dependsOn,
+      depType: args["dep-type"] || args.dependencyType || "blocks",
+    };
+  }
+  if (args["dep-remove"] || args["dependency-remove"]) {
+    return {
+      type: "dep-remove",
+      from: args["dep-remove"] || args["dependency-remove"] || args.from,
+      to: args.to || args.blocks || args.dependsOn,
+      depType: args["dep-type"] || args.dependencyType || "blocks",
+    };
+  }
+  if (args.reparent) {
+    return {
+      type: "reparent",
+      itemId: args.reparent,
+      parentId: args.parent || args.parentId || null,
+    };
+  }
+  return null;
+}
+
 async function pathExists(path) {
   try {
     await access(path);
@@ -993,6 +1121,13 @@ Primary:
   supervibe-loop --status --epic <epic-id>
   supervibe-loop --stop <run-id>
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --split <task-id> --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
+  supervibe-loop --reparent <task-id> --parent <epic-or-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --dep-add <from-task-id> --to <to-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --delete <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
   supervibe-loop --create-work-item --interactive
   supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
   supervibe-loop --quickstart

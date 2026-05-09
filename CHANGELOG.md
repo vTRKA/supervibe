@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.124] - 2026-05-10
+
+### Added
+
+- Added first-class native work-item CLI actions for claim, close, complete,
+  reopen, edit, split, reparent, dependency add/remove, skip, cancel, and
+  preview-first delete against epic graph files.
+- Added subtask creation from task splitting so plans and loops can track
+  nested execution without introducing a separate project layer.
+
+### Changed
+
+- Updated loop status, help, command palette, and command docs to expose the
+  implemented epic/task/subtask control surface.
+- Expanded release/version surfaces for the 2.0.124 package release.
+
 ## [2.0.123] - 2026-05-10
 
 ### Added

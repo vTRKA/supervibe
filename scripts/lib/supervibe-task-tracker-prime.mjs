@@ -8,7 +8,7 @@ import { defaultTrackerMappingPath, readTrackerMapping, summarizeTrackerMappingF
 const READY_STATUSES = new Set(["open", "ready"]);
 const CLAIMED_STATUSES = new Set(["claimed", "in_progress", "running"]);
 const BLOCKED_STATUSES = new Set(["blocked", "waiting", "policy_stopped", "budget_stopped", "command_adapter_required"]);
-const DONE_STATUSES = new Set(["complete", "completed", "done", "closed", "cancelled"]);
+const DONE_STATUSES = new Set(["complete", "completed", "done", "closed", "skipped", "cancelled", "canceled"]);
 
 export async function createTaskTrackerPrimeSummary({ rootDir = process.cwd(), limit = 5 } = {}) {
   const graphPaths = await findWorkItemGraphs(rootDir);

@@ -6,7 +6,7 @@ import { LOOP_SCHEMA_VERSION } from "./autonomous-loop-constants.mjs";
 import { materializeEpicAndTasks } from "./supervibe-task-tracker-sync.mjs";
 import { applyTemplateToWorkItem, inferWorkItemTemplate } from "./supervibe-work-item-template-catalog.mjs";
 
-export const WORK_ITEM_TYPES = Object.freeze(["epic", "task", "bug", "chore", "review", "gate", "followup"]);
+export const WORK_ITEM_TYPES = Object.freeze(["epic", "task", "subtask", "bug", "chore", "review", "gate", "followup"]);
 
 export const WORK_ITEM_REQUIRED_FIELDS = Object.freeze([
   "epicId",
@@ -201,6 +201,7 @@ export function createWorkItemGraph({ epicId, planPath, title, items, metadata =
     source: { type: "plan", path: normalizePath(planPath) },
     metadata,
     items,
+    dependencyEdges: createDependencyEdges(items),
     tasks: workItemsToLoopTasks(items),
   };
 }
@@ -266,13 +267,13 @@ export function workItemsToLoopTasks(items = []) {
   }
 
   return items
-    .filter((item) => item.type !== "epic" && item.type !== "followup")
+    .filter((item) => !["epic", "followup"].includes(item.type))
     .map((item, index) => ({
       id: item.itemId,
       title: item.title,
       goal: item.title,
       category: categoryForWorkItemType(item.type),
-      status: "open",
+      status: item.status || "open",
       priority: item.priority,
       dependencies: [...new Set([...(reverseBlocks.get(item.itemId) ?? []), ...(item.blockedBy ?? [])])],
       parentId: item.parentId,
@@ -498,6 +499,7 @@ function createFollowupItems(parsed, epicId, childItems) {
 function createWorkItem(item) {
   return {
     ...item,
+    status: item.status ?? "open",
     blocks: uniqueStrings(item.blocks ?? []),
     related: uniqueStrings(item.related ?? []),
     blockedBy: uniqueStrings(item.blockedBy ?? []),
@@ -605,6 +607,27 @@ function createEpicId(title, planPath) {
   return `epic-${slug(title)}-${stableHash(planPath).slice(0, 6)}`;
 }
 
+function createDependencyEdges(items = []) {
+  const edges = [];
+  const add = (from, to, type) => {
+    if (!from || !to) return;
+    edges.push({ from, to, type });
+  };
+  for (const item of items) {
+    if (item.parentId) add(item.parentId, item.itemId, "parent-child");
+    for (const blocked of item.blocks || []) add(item.itemId, blocked, "blocks");
+    for (const related of item.related || []) add(item.itemId, related, "related");
+    if (item.discoveredFrom?.itemId) add(item.discoveredFrom.itemId, item.itemId, "discovered-from");
+  }
+  const seen = new Set();
+  return edges.filter((edge) => {
+    const key = `${edge.from}\u0000${edge.to}\u0000${edge.type}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function findByTaskRef(items, taskRef) {
   const normalized = normalizeTaskRef(taskRef, 0);
   return items.find((item) => item.executionHints.sourceTaskRef === normalized || item.itemId.endsWith(`-${normalized.toLowerCase()}`));
@@ -636,6 +659,7 @@ function categoryForWorkItemType(type) {
   if (type === "review" || type === "gate") return "review";
   if (type === "bug") return "debugging";
   if (type === "chore") return "documentation";
+  if (type === "subtask") return "implementation";
   return "implementation";
 }
 

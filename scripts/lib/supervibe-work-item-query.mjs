@@ -24,7 +24,8 @@ export const WORK_ITEM_QUERY_INTENTS = Object.freeze([
   "unknown",
 ]);
 
-const TERMINAL_STATUSES = new Set(["done", "complete", "completed", "closed", "cancelled", "policy_stopped", "budget_stopped"]);
+const TERMINAL_STATUSES = new Set(["done", "complete", "completed", "closed", "skipped", "cancelled", "canceled", "policy_stopped", "budget_stopped"]);
+const CLAIMED_STATUSES = new Set(["claimed", "in_progress", "running"]);
 
 export function classifyWorkItemQuestion(question = "") {
   const text = String(question).toLowerCase();
@@ -60,7 +61,8 @@ export function createWorkItemIndex({
   const items = graph.items || [];
   const tasks = graph.tasks || [];
   const commentsByItem = groupBy(comments, (comment) => comment.workItemId);
-  const claimsByTask = groupBy(claims, (claim) => claim.taskId);
+  const graphClaims = claims.length > 0 ? claims : graph.claims || [];
+  const claimsByTask = groupBy(graphClaims, (claim) => claim.taskId);
   const gatesByTask = groupBy(gates, (gate) => gate.taskId);
   const delegatedByItem = groupBy(delegatedMessages, (message) => message.workItemId);
   const taskById = new Map(tasks.map((task) => [task.id, task]));
@@ -274,9 +276,10 @@ function effectiveStatus(item, task, claims, gates, now, delegatedMessages = [],
   if (isTerminalStatus(task?.status) || isTerminalStatus(item.status)) return "done";
   if (isWorkItemDeferred({ ...item, task, claims }, { now })) return "deferred";
   if (task?.status === "blocked" || item.status === "blocked") return "blocked";
+  if (CLAIMED_STATUSES.has(String(task?.status || item.status || "").toLowerCase())) return "claimed";
   if (gates.some((gate) => ["open", "waiting", "blocked"].includes(gate.status))) return "gate";
   if (delegatedMessages.some((message) => message.status === "open" && message.type === "blocker-request")) return "delegated";
-  if (claims.some((claim) => claim.status === "active")) {
+  if (claims.some((claim) => ["active", "claimed"].includes(claim.status))) {
     const stale = detectStaleWorkItems([{ ...item, claims }], { now }).length > 0;
     return stale ? "stale" : "claimed";
   }

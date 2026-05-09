@@ -50,6 +50,9 @@ test("sync push materializes epic, child tasks, dependencies, and writes mapping
   const result = await materializeEpicAndTasks(graph, adapter, { rootDir, mappingPath });
   const mapping = await readTrackerMapping(mappingPath);
 
+  assert.equal(graph.graph_id, graph.epicId);
+  assert.equal(graph.items[0].type, "epic");
+  assert.equal(graph.items[0].parentId, null);
   assert.equal(result.status, "synced");
   assert.equal(result.nativeGraphPreserved, true);
   assert.equal(result.created.tasks.length, graph.items.length - 1);

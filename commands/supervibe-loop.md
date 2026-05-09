@@ -38,6 +38,13 @@ Primary path:
 /supervibe-loop --onboard
 /supervibe-loop --tracker-prime
 /supervibe-loop --completion bash
+/supervibe-loop --claim task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --close task-123 --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --edit task-123 --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --split task-123 --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
+/supervibe-loop --reparent task-123 --parent <epic-or-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --dep-add task-123 --to task-456 --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --delete task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
 /supervibe-loop --create-work-item --interactive
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
 /supervibe-loop --import-tasks .supervibe/artifacts/plans/example.md --dry-run
@@ -142,12 +149,15 @@ status, comments, evidence, tracker mapping, and checksums into a portable local
 directory; import currently supports `--dry-run` validation and conflict
 reporting without mutating remote systems.
 
-Saved views and reports are handled by `/supervibe-status`. Deferred work is
-handled locally with `/supervibe-loop --defer <item> --until <timestamp> --file
-<graph.json>`. Deferral writes only the native graph, creates a backup, and
-remains visible in status, dashboard, query results, and SLA reports. No
-background daemon is required; due work is re-evaluated deterministically when a
-status, dashboard, report, or scheduler check runs.
+Saved views and reports are handled by `/supervibe-status`. Local task control
+is handled by `/supervibe-loop --claim|--close|--complete|--reopen|--edit|--split|--reparent|--dep-add|--dep-remove|--skip|--cancel|--delete`
+against the native `graph.json`. Destructive delete requires preview, dry-run,
+`--yes`, or `--force`; every mutation writes an audit event, and non-dry writes
+create a graph backup. Deferred work uses `/supervibe-loop --defer <item>
+--until <timestamp> --file <graph.json>` and remains visible in status,
+dashboard, query results, and SLA reports. No background daemon is required; due
+work is re-evaluated deterministically when a status, dashboard, report, or
+scheduler check runs.
 
 For visual inspection, `/supervibe-ui` can open the same `graph.json` and loop
 `state.json` in a localhost control plane. It previews context packs, waves,
@@ -160,8 +170,9 @@ uses guided terminal forms when a real TTY exists; otherwise it prints a
 forms validate template, title, owner, priority, labels, acceptance criteria,
 verification hints, dependencies, due date, and risk before any write. `--preview`
 and `--dry-run` show redacted before/after state for create, import, atomize,
-defer, claim, and close-style actions. `--yes` is limited to safe local actions
-and cannot approve provider, network, production, webhook, or risky operations.
+defer, claim, close, edit, split, reparent, dependency, skip, cancel, and delete
+actions. `--yes` is limited to safe local actions and cannot approve provider,
+network, production, webhook, or risky operations.
 
 Autonomous evals are local by default. `/supervibe-loop --eval` replays the
 benchmark corpus from `tests/fixtures/autonomous-loop-evals/benchmark-corpus.json`
@@ -285,7 +296,7 @@ of pretending to run autonomously.
 - Keep structured handoffs, scores, audit events, side-effect ledger entries,
   and a final report under `.supervibe/memory/loops/<run-id>/`.
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
-  so the worker and reviewer see the current project/epic/task phase, claim,
+  so the worker and reviewer see the current epic/task phase, claim,
   gate, and next action before acting.
 - When a tracker adapter is configured, include `contextPack.workflowSignal.tracker`
   so workers see reconciled ready counts, mapping status, claim source, and
@@ -357,6 +368,8 @@ npm run supervibe:loop -- --dry-run --request "validate integrations"
 npm run supervibe:loop -- --happy-path --plan .supervibe/artifacts/plans/example.md
 npm run supervibe:loop -- --fresh-context --tool codex --allow-spawn --permission-prompt-bridge --request "validate integrations"
 npm run supervibe:loop -- --dry-run --request "validate integrations" --notify terminal,inbox
+npm run supervibe:loop -- --claim task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json
+npm run supervibe:loop -- --split task-123 --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
 npm run supervibe:loop -- --defer task-123 --until 2026-05-01T09:00:00Z --file .supervibe/memory/work-items/<epic-id>/graph.json
 npm run supervibe:loop -- --create-work-item --title "Fix checkout bug" --template bug --dry-run
 npm run supervibe:loop -- --atomize-plan .supervibe/artifacts/plans/example.md --preview

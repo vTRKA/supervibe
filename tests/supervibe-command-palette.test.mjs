@@ -26,6 +26,9 @@ test("command palette exposes required actions and exact non-interactive command
   assert.match(formatCommandPalette(palette), /index-rag-codegraph: ready -> node <resolved-supervibe-plugin-root>\/scripts\/build-code-index\.mjs --root \. --resume --source-only/);
   assert.match(palette.actions.find((action) => action.id === "atomize-plan").command, /--preview/);
   assert.match(palette.actions.find((action) => action.id === "review-plan-scope").command, /--preview/);
+  assert.match(palette.actions.find((action) => action.id === "close-selected-task").command, /--close ready-1/);
+  assert.match(palette.actions.find((action) => action.id === "split-selected-task").command, /--split ready-1/);
+  assert.match(palette.actions.find((action) => action.id === "delete-selected-task").command, /--delete ready-1/);
   assert.equal(palette.actions.find((action) => action.id === "review-plan-scope").mutates, false);
 });
 
