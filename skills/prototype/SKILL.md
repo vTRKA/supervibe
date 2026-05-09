@@ -55,6 +55,7 @@ NOT for:
 6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
 7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
 8. **Data-fed mocks are contract-backed.** If interaction depth is `data-fed`, run `supervibe:mock-data-contract` and create `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` before claiming frontend-before-backend readiness.
+9. **Design Diversity Benchmark for alternatives.** A distinct alternative must differ on at least three of palette, typography, motion, imagery, hierarchy, density, composition, and interaction. Same shell, new paint is a failed alternative even when the screenshot looks cleaner.
 
 ## Expert Operating Standard
 
@@ -201,7 +202,7 @@ What should happen next?
 - **Stop** - keep as draft and resume later
 ```
 
-Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side.
+Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side. Every distinct alternative must record Design Diversity Benchmark fields: changed axes, `differsBecause`, `gains`, `givesUp`, reference packet, screenshot plan, and token notes.
 
 ### Stage 6 — Approval marker
 
@@ -263,6 +264,7 @@ Rubric:     prototype
 - DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
 - DO NOT ask >1 question per message.
 - DO NOT use raw hex / magic px / ad-hoc cubic-bezier — everything from tokens.
+- DO NOT present a distinct alternative that is same shell, new paint; it must change at least three benchmark axes.
 
 ## Verification
 
@@ -280,6 +282,7 @@ Rubric:     prototype
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `framework-coupling` — emitting `import … from`, `require()`, `<script src="…cdn…">`, `<script src="…unpkg…">`, or any `node_modules/` reference inside the prototype directory.
 - `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
+- `same-shell-new-paint` — presenting a color/type refresh as a distinct alternative without changed composition, hierarchy, density, or interaction.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
 - `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
 - `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.

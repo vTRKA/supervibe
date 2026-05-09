@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 1,
+  "description": "Static benchmark scenarios that prove design alternatives differ on real axes before they are presented as distinct directions.",
+  "cases": [
+    {
+      "id": "trust-ops-dashboard",
+      "target": "web",
+      "intent": "regulated-trust operational dashboard that must feel calm without becoming generic SaaS",
+      "brief": "A compliance operations dashboard for legal and finance teams reviewing high-risk cases.",
+      "variants": [
+        {
+          "id": "quiet-ledger",
+          "label": "Quiet ledger",
+          "axes": {
+            "palette": "warm grayscale with restrained mineral green",
+            "typography": "humanist serif display with neutral sans body",
+            "motion": "near-static with instant state confirmation",
+            "imagery": "document texture and audit stamp motifs",
+            "hierarchy": "case-first dense tables with calm evidence rails",
+            "density": "high density with generous row rhythm",
+            "composition": "split review desk with persistent decision column",
+            "interaction": "keyboard-first queue triage and inline evidence expansion"
+          },
+          "differsBecause": "prioritizes legal review calm and document credibility",
+          "givesUp": "less expressive brand energy",
+          "gains": "higher perceived auditability and trust",
+          "evidence": {
+            "referencePacket": "creative-regulated-trust plus direct competitor convention map",
+            "screenshotPlan": "desktop queue, mobile case detail, error state",
+            "tokenNotes": "semantic risk colors limited to status and decision chips"
+          }
+        },
+        {
+          "id": "command-center",
+          "label": "Command center",
+          "axes": {
+            "palette": "deep neutral shell with amber and cyan operational signals",
+            "typography": "condensed grotesk headings with tabular sans body",
+            "motion": "measured panel reveals and alert acknowledgement",
+            "imagery": "network topology and evidence graph motifs",
+            "hierarchy": "alert-first dashboard with active incident lane",
+            "density": "very high density with compact modules",
+            "composition": "three-column cockpit with live activity rail",
+            "interaction": "command palette and keyboard shortcuts for review actions"
+          },
+          "differsBecause": "frames compliance review as real-time operations",
+          "givesUp": "some warmth and document familiarity",
+          "gains": "faster scanning and stronger command posture",
+          "evidence": {
+            "referencePacket": "creative-data-products plus regulated-trust constraints",
+            "screenshotPlan": "desktop cockpit, compact mobile alerts, loading state",
+            "tokenNotes": "signal colors reserve saturation for active risk only"
+          }
+        },
+        {
+          "id": "review-room",
+          "label": "Review room",
+          "axes": {
+            "palette": "soft paper background with ink blue and muted burgundy",
+            "typography": "editorial serif headings with readable legal sans",
+            "motion": "page-turn micro transitions and quiet focus shifts",
+            "imagery": "case folder, margin note, and witness board cues",
+            "hierarchy": "narrative case timeline before metrics",
+            "density": "medium density with larger reading zones",
+            "composition": "timeline spine with contextual evidence drawers",
+            "interaction": "annotated reading flow and guided decision checkpoints"
+          },
+          "differsBecause": "turns the task into a deliberation room instead of a dashboard",
+          "givesUp": "raw operations speed",
+          "gains": "better comprehension for complex case narratives",
+          "evidence": {
+            "referencePacket": "creative-editorial plus regulated-trust accessibility checks",
+            "screenshotPlan": "timeline, annotation modal, empty state",
+            "tokenNotes": "burgundy appears only for material risk and never body text"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ai-creative-launch",
+      "target": "web",
+      "intent": "high-memorability AI product launch without purple-gradient sameness",
+      "brief": "A launch page for an AI tool that generates campaign concepts for brand teams.",
+      "variants": [
+        {
+          "id": "studio-wall",
+          "label": "Studio wall",
+          "axes": {
+            "palette": "gallery white, charcoal ink, vermilion accent",
+            "typography": "large editorial serif with compact grotesk controls",
+            "motion": "pinboard cards settle into place",
+            "imagery": "campaign tear sheets and studio wall references",
+            "hierarchy": "hero as live concept board",
+            "density": "medium density with oversized artifact previews",
+            "composition": "asymmetric editorial spread",
+            "interaction": "drag-to-compare concept boards"
+          },
+          "differsBecause": "positions AI as a creative studio assistant",
+          "givesUp": "techy futurism",
+          "gains": "more ownable art-direction memory",
+          "evidence": {
+            "referencePacket": "creative-editorial plus creative-ai-products",
+            "screenshotPlan": "desktop hero, mobile board stack, comparison state",
+            "tokenNotes": "vermilion accent used for generation action only"
+          }
+        },
+        {
+          "id": "signal-lab",
+          "label": "Signal lab",
+          "axes": {
+            "palette": "soft black, phosphor green, pale lilac neutrals",
+            "typography": "mono-inflected display with geometric sans body",
+            "motion": "signal scanlines and progressive prompt refinement",
+            "imagery": "waveforms, prompt traces, and lab instrument panels",
+            "hierarchy": "input-output loop before marketing claims",
+            "density": "high density in workbench modules",
+            "composition": "lab bench with stacked diagnostic panels",
+            "interaction": "prompt tuning sliders and live result deltas"
+          },
+          "differsBecause": "leans into experimentation and prompt instrumentation",
+          "givesUp": "broad consumer warmth",
+          "gains": "stronger product-credibility for expert teams",
+          "evidence": {
+            "referencePacket": "creative-ai-products plus devtools interaction benchmark",
+            "screenshotPlan": "desktop lab, mobile prompt stack, loading trace",
+            "tokenNotes": "phosphor is interaction state, not decorative glow"
+          }
+        },
+        {
+          "id": "campaign-stage",
+          "label": "Campaign stage",
+          "axes": {
+            "palette": "midnight blue, warm spotlight gold, porcelain surfaces",
+            "typography": "cinematic display sans with high-contrast body",
+            "motion": "spotlight reveal and scene-change transitions",
+            "imagery": "stage, cue cards, and campaign scene framing",
+            "hierarchy": "storytelling narrative before feature grid",
+            "density": "low density with dramatic sections",
+            "composition": "full-bleed stage scenes with anchored controls",
+            "interaction": "scenario selector that changes the full visual scene"
+          },
+          "differsBecause": "sells campaign imagination through theatrical framing",
+          "givesUp": "dense product proof above the fold",
+          "gains": "stronger emotional launch moment",
+          "evidence": {
+            "referencePacket": "creative-luxury plus creative-experimental-web",
+            "screenshotPlan": "desktop stage, mobile scene selector, reduced-motion frame",
+            "tokenNotes": "gold appears as light behavior and CTA focus, not a full palette wash"
+          }
+        }
+      ]
+    },
+    {
+      "id": "developer-observability",
+      "target": "web",
+      "intent": "developer tool that avoids famous-product mimicry",
+      "brief": "An observability product for backend teams debugging distributed jobs.",
+      "variants": [
+        {
+          "id": "trace-map",
+          "label": "Trace map",
+          "axes": {
+            "palette": "graphite, cool white, electric blue trace accents",
+            "typography": "technical grotesk with tabular metric numerals",
+            "motion": "trace paths animate only on focus",
+            "imagery": "service maps and dependency paths",
+            "hierarchy": "graph first, logs second",
+            "density": "high density with expandable panels",
+            "composition": "map canvas with inspector sidecar",
+            "interaction": "click path to isolate logs and metrics"
+          },
+          "differsBecause": "makes system topology the core mental model",
+          "givesUp": "simple list-based familiarity",
+          "gains": "faster causal debugging",
+          "evidence": {
+            "referencePacket": "creative-devtools plus app-interface data grid guidance",
+            "screenshotPlan": "trace canvas, inspector, error state",
+            "tokenNotes": "blue is reserved for active trace path"
+          }
+        },
+        {
+          "id": "job-ledger",
+          "label": "Job ledger",
+          "axes": {
+            "palette": "ink navy, ledger paper, severity rust",
+            "typography": "monospace labels with bookish serif section markers",
+            "motion": "row state changes snap without flourish",
+            "imagery": "ledger rows and audit trail markers",
+            "hierarchy": "job list and retry history first",
+            "density": "very high density",
+            "composition": "ledger table with pinned filters",
+            "interaction": "bulk command review with confirmation rails"
+          },
+          "differsBecause": "treats jobs as auditable financial-style records",
+          "givesUp": "visual graph drama",
+          "gains": "confidence in retry and recovery decisions",
+          "evidence": {
+            "referencePacket": "creative-data-products plus regulated-trust evidence",
+            "screenshotPlan": "job table, retry drawer, bulk action focus state",
+            "tokenNotes": "rust only marks destructive or failed retries"
+          }
+        },
+        {
+          "id": "terminal-room",
+          "label": "Terminal room",
+          "axes": {
+            "palette": "near-black, warm terminal green, desaturated slate",
+            "typography": "terminal mono with plain sans explanatory copy",
+            "motion": "streaming logs with reduced-motion freeze mode",
+            "imagery": "terminal panes and runbook snippets",
+            "hierarchy": "live stream and command response first",
+            "density": "high density with compact command zones",
+            "composition": "terminal wall with contextual runbook cards",
+            "interaction": "command palette, log filters, and runbook pinning"
+          },
+          "differsBecause": "centers the command-line debugging ritual",
+          "givesUp": "non-technical approachability",
+          "gains": "deep resonance with on-call engineers",
+          "evidence": {
+            "referencePacket": "creative-devtools plus interaction benchmark",
+            "screenshotPlan": "terminal wall, command palette, reduced-motion stream",
+            "tokenNotes": "terminal green is functional active state, not decorative matrix effect"
+          }
+        }
+      ]
+    },
+    {
+      "id": "mobile-health-coach",
+      "target": "mobile-native",
+      "intent": "health app with warmth but regulated trust restraint",
+      "brief": "A mobile-native coaching app for patients tracking recovery habits after treatment.",
+      "variants": [
+        {
+          "id": "care-journal",
+          "label": "Care journal",
+          "axes": {
+            "palette": "warm ivory, sage, calm ink",
+            "typography": "rounded humanist sans with gentle serif quotes",
+            "motion": "soft check-in transitions with reduced-motion stills",
+            "imagery": "journal cards and care note motifs",
+            "hierarchy": "daily reflection before metrics",
+            "density": "low density with large touch targets",
+            "composition": "stacked cards with breathing room",
+            "interaction": "guided check-in and reassuring progress review"
+          },
+          "differsBecause": "prioritizes emotional safety and reflection",
+          "givesUp": "clinical data density",
+          "gains": "higher patient comfort",
+          "evidence": {
+            "referencePacket": "creative-mobile-native plus regulated-trust",
+            "screenshotPlan": "iOS home, Android check-in, empty state",
+            "tokenNotes": "sage indicates care progress, not medical status severity"
+          }
+        },
+        {
+          "id": "clinical-companion",
+          "label": "Clinical companion",
+          "axes": {
+            "palette": "clear white, medical blue, restrained coral warning",
+            "typography": "legible system sans with numeric clarity",
+            "motion": "minimal segmented-control transitions",
+            "imagery": "plain clinical icons and care-plan structure",
+            "hierarchy": "care tasks and adherence first",
+            "density": "medium density",
+            "composition": "task dashboard with clinician note panel",
+            "interaction": "checklist, reminders, and escalation prompts"
+          },
+          "differsBecause": "keeps the experience closer to clinical plan compliance",
+          "givesUp": "personal journal warmth",
+          "gains": "stronger medical clarity",
+          "evidence": {
+            "referencePacket": "regulated-trust plus mobile-native platform standards",
+            "screenshotPlan": "task dashboard, reminder settings, warning state",
+            "tokenNotes": "coral only for care escalation and never success"
+          }
+        },
+        {
+          "id": "recovery-path",
+          "label": "Recovery path",
+          "axes": {
+            "palette": "mist blue, leaf green, stone neutrals",
+            "typography": "friendly geometric sans with large numeric milestones",
+            "motion": "path progress fills and haptic-like micro confirmation",
+            "imagery": "path, milestone, and gentle environment cues",
+            "hierarchy": "weekly milestone path before daily checklist",
+            "density": "medium-low density",
+            "composition": "vertical journey path with habit modules",
+            "interaction": "milestone reveal and habit streak repair"
+          },
+          "differsBecause": "makes recovery feel like guided progress",
+          "givesUp": "strict clinical dashboard clarity",
+          "gains": "more motivation and continuity",
+          "evidence": {
+            "referencePacket": "creative-mobile-native plus healthcare evidence",
+            "screenshotPlan": "journey path, habit detail, error recovery",
+            "tokenNotes": "green shows completion only with text and icon support"
+          }
+        }
+      ]
+    },
+    {
+      "id": "data-product-landing",
+      "target": "web",
+      "intent": "analytics landing page that shows real product state rather than abstract gradient SaaS",
+      "brief": "A public page for a customer analytics warehouse tool used by growth teams.",
+      "variants": [
+        {
+          "id": "warehouse-cutaway",
+          "label": "Warehouse cutaway",
+          "axes": {
+            "palette": "industrial off-white, graphite, safety orange",
+            "typography": "engineered slab headings with readable sans body",
+            "motion": "data crates route through pipeline cutaway",
+            "imagery": "warehouse cutaway and pipeline diagram",
+            "hierarchy": "pipeline proof before claims",
+            "density": "medium density",
+            "composition": "diagram-led hero with proof blocks",
+            "interaction": "pipeline stage hover reveals metric meaning"
+          },
+          "differsBecause": "uses a memorable physical metaphor for data movement",
+          "givesUp": "minimal executive polish",
+          "gains": "clearer product comprehension",
+          "evidence": {
+            "referencePacket": "creative-data-products plus landing patterns",
+            "screenshotPlan": "hero, hover stage, mobile proof stack",
+            "tokenNotes": "orange marks pipeline action and not general decoration"
+          }
+        },
+        {
+          "id": "growth-newsroom",
+          "label": "Growth newsroom",
+          "axes": {
+            "palette": "newsprint white, deep ink, bright chart magenta",
+            "typography": "editorial headline face with compact chart labels",
+            "motion": "headline ticker changes and chart reveals",
+            "imagery": "newsroom dashboards and campaign reports",
+            "hierarchy": "insight headlines before platform architecture",
+            "density": "medium-high density",
+            "composition": "editorial front page with data panels",
+            "interaction": "switch campaign story and inspect metric source"
+          },
+          "differsBecause": "frames analytics as publishable growth stories",
+          "givesUp": "pure infrastructure seriousness",
+          "gains": "stronger growth-team emotional fit",
+          "evidence": {
+            "referencePacket": "creative-editorial plus data-product references",
+            "screenshotPlan": "front page, metric source drawer, empty report",
+            "tokenNotes": "magenta is chart callout only and has accessible text fallback"
+          }
+        },
+        {
+          "id": "control-plane",
+          "label": "Control plane",
+          "axes": {
+            "palette": "dark graphite, pale cyan, white data surfaces",
+            "typography": "precise grotesk with tabular dashboard numerals",
+            "motion": "panels dock and undock with restrained easing",
+            "imagery": "actual dashboard states and schema map",
+            "hierarchy": "live interface preview before narrative copy",
+            "density": "high density",
+            "composition": "full-bleed product cockpit",
+            "interaction": "filter preview updates product screenshot state"
+          },
+          "differsBecause": "makes the product UI the first-viewport signal",
+          "givesUp": "brand metaphor originality",
+          "gains": "more enterprise buyer confidence",
+          "evidence": {
+            "referencePacket": "creative-data-products plus app-interface guidance",
+            "screenshotPlan": "desktop cockpit, mobile compressed UI, loading skeleton",
+            "tokenNotes": "cyan only for active data focus and keyboard ring"
+          }
+        }
+      ]
+    }
+  ]
+}

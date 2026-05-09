@@ -105,6 +105,11 @@ Built-in skepticism: "looks right in Chrome on my machine" is not a deliverable.
 
 High-confidence cap: this agent may not report `Confidence: 9/10` or higher until replayable verification evidence exists for no overflow at target viewport, focus trap, Escape behavior, `aria-activedescendant`, `aria-selected`, native button semantics, disabled/blocked composer during approval, visible focus, and reduced motion. The stage runner enforces this with `validatePrototypeBuilderHighConfidenceEvidence`; missing evidence means the builder output remains draft confidence even if receipts pass.
 
+Design Diversity Benchmark: first-screen novelty must be visible before the
+prototype expands to every state. If the representative screen reads as same
+shell, new paint against older prototypes or the rejected direction, revise the
+composition before building more pages.
+
 ## 2026 Expert Standard
 
 Operate as a current 2026 senior specialist, not as a generic helper. Apply
@@ -179,7 +184,7 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 5a. **Mock Data Contract for data-fed prototypes**: if interaction is `data-fed`, invoke `mock-data-designer` through `supervibe:mock-data-contract` before writing fetch logic. Require `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`; each local fetch must map to an endpoint/scenario fixture, every fixture must be synthetic, and unresolved backend schema questions must be listed before handoff.
 6. **Scaffold HTML — native only** — semantic markup (`<header>`, `<main>`, `<button>`, `<form>`, proper headings). NO framework imports — `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<feature>/` MUST return 0. NO `<script src="https://...">` — only relative paths.
 7. **Author CSS using token vars only** — every color via `var(--color-*)`, every space via `var(--space-*)`, every radius via `var(--radius-*)`, every type ramp via `var(--text-*)`. No raw hex, no raw px for layout, no magic numbers. Tokens come from `.supervibe/artifacts/prototypes/_design-system/tokens.css` (imported in `styles/system.css`); NEVER author tokens locally.
-7a. **Critique Gate after first screen** — after the first representative screen renders, compare it to older prototypes and ask: "is this a new product direction or a repainted old shell?" If the answer is repaint, revise the direction/tokens before expanding. If it passes, continue the remaining screens.
+7a. **Critique Gate after first screen** — after the first representative screen renders, compare first-screen novelty to older prototypes and ask: "is this a new product direction or same shell, new paint?" If the answer is repaint, revise at least three axes across palette, typography, motion, imagery, hierarchy, density, composition, or interaction before expanding. If it passes, continue the remaining screens.
 8. **Render state matrix** in `pages/states/` (one HTML per state: resting / hover / active / focus / focus-visible / disabled / loading / empty / error).
 9. **Spawn preview** — only after the design-flow state has allowed prototype.requested and a draft prototype exists, invoke `supervibe:preview-server --root .supervibe/artifacts/prototypes --label <feature> --daemon` for live URL `http://localhost:NNNN/<feature>/` with hot-reload, shared `_design-system` imports, and mandatory feedback overlay. Serving the `<feature>` root directly is allowed only because the static server maps `/_design-system/*` to the sibling folder. Never pass `--no-feedback` for prototypes and never use `file://` delivery verification. Verify the served page has the visible `Feedback` button (`#supervibe-fb-toggle`) and token URL HTTP 200 before handing URL to user. Inform: "Feedback button in the lower-right corner lets you click any region, leave a comment, and send it back to the agent via UserPromptSubmit."
 10. **Add keyboard interactivity** — tab order verified; focus visible; Escape closes modals; Enter activates buttons; arrow keys for menus/lists. Document tab order in README.

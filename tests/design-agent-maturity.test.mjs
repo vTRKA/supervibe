@@ -37,6 +37,7 @@ const PASSING_CHECKS = Object.freeze({
     regulatedTrustEvidence: true,
     creativeQaScore: true,
     creativeReferencePacks: true,
+    diversityBenchmark: true,
   },
   system: {
     brandbookProducer: true,
@@ -118,6 +119,22 @@ test("design-agent maturity blocks 10/10 when creative reference packs are missi
       creative: {
         ...PASSING_CHECKS.creative,
         creativeReferencePacks: false,
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "creative-empathy-and-trends"));
+});
+
+test("design-agent maturity blocks 10/10 when design diversity benchmark is missing", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      creative: {
+        ...PASSING_CHECKS.creative,
+        diversityBenchmark: false,
       },
     },
   });

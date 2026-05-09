@@ -52,6 +52,14 @@ For new products, rebrands, missing systems, or material visual shifts, use
 candidate tokens. Record selected pack paths, creative path, borrow/avoid moves,
 and differentiation pressure in the review packet.
 
+### Design Diversity Benchmark
+
+Before writing candidate tokens or alternatives, apply the Design Diversity
+Benchmark. A system direction must differ on at least three axes across palette,
+typography, motion, imagery, hierarchy, density, composition, and interaction.
+Record palette and type rationale, what the direction gains, what it gives up,
+and why it is not same shell, new paint.
+
 Materialize a brand into an **explicit, machine-readable design system lifecycle** at `.supervibe/artifacts/prototypes/_design-system/`. Candidate tokens are for review packets/styleboards only; `design_system.status = approved` plus every required section approved unlocks prototype work; final handoff metadata is written only after visual approval of an approved prototype.
 
 The design system is a **long-lived project asset**. Full-pass mode is for the first run or an explicit rebrand. Subsequent `/supervibe-design` runs reuse the approved system and add only narrow, approved extensions. Never make users re-approve palette, typography, spacing, motion, and components just because they asked for a new mockup.
@@ -422,6 +430,7 @@ When user rejects a direction, this skill produces 2 explicit alternatives, each
 - What changed vs the rejected option
 - Why this might fit better
 - Tradeoff cost (e.g. "softer palette → less category distinctiveness; gain: warmth")
+- Design Diversity Benchmark axes changed and why the direction is not same shell, new paint
 
 Output each alternative to `.supervibe/artifacts/prototypes/_design-system/.alternatives/<section>-<variant-name>.css` so user can compare side-by-side without losing the rejected one.
 
@@ -460,6 +469,7 @@ Rubric:     brandbook
 - DO NOT mark approved without `design-flow-state.json`, `manifest.json`, per-section markers in `.approvals/`, `approved_by`, `approved_at`, `approved_sections`, and feedback evidence.
 - DO NOT accept bulk approval unless the user has already seen a full review packet/styleboard with all required section summaries and explicit choices.
 - DO NOT delete rejected alternatives — keep them in `.alternatives/` for future reference.
+- DO NOT accept same shell, new paint as a design-system alternative.
 
 ## Verification
 
@@ -472,6 +482,7 @@ Rubric:     brandbook
 - Every component in `components/` has the 4 required sections (anatomy, states, variants, tokens)
 - Contrast check on every text-on-bg pair in palette: WCAG AA passing
 - `prefers-reduced-motion` strategy documented
+- `npm run validate:design-diversity-benchmark` passes
 - ≥1 alternative documented for any rejected primary direction (no silent regen)
 
 ## Anti-patterns (skill-level — fail conditions)
@@ -479,6 +490,7 @@ Rubric:     brandbook
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
 - `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
+- `same-shell-new-paint` — treating token tweaks as a new direction without real differences in hierarchy, density, composition, or interaction.
 
 ## Related
 

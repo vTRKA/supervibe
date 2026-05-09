@@ -148,6 +148,21 @@ Creative packs are local tier-2 evidence. They can supply moves to borrow and
 risks to avoid, but they do not override approved project memory, approved
 tokens, accessibility, current domain evidence, or explicit user feedback.
 
+## Design Diversity Benchmark
+
+The Design Diversity Benchmark blocks same shell, new paint output. A direction
+or alternative is not meaningfully different unless it changes at least three
+design axes: palette, typography, motion, imagery, hierarchy, density,
+composition, and interaction. Small swaps such as blue-to-purple, Inter-to-SF,
+or card-to-card spacing do not count when the product structure, information
+priority, and interaction story stay the same.
+
+For every multi-direction proposal, record `differsBecause`, `gains`,
+`givesUp`, selected reference packet, screenshot plan, and token notes. The
+reviewer must be able to answer: what is newly possible for the user, what got
+harder, and why this direction fits the product better than the rejected ones.
+If a direction cannot name that tradeoff, it is a variation, not an alternative.
+
 ## Eight-Pass Expert Routine
 
 This is an adaptive coverage routine, not a fixed eight-step user gauntlet.

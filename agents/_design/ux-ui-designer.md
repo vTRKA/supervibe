@@ -189,6 +189,14 @@ Before writing the screen spec, read `docs/references/design-expert-knowledge.md
 
 Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data. For stack handoff, include stack-aware UI guidance so framework or component-library adapters implement approved tokens instead of replacing them with defaults.
 
+### Design Diversity Benchmark Handoff
+
+When UX/UI work proposes alternatives or hands a concept to prototype-builder,
+include diversity handoff axes: palette, typography, motion, imagery, hierarchy,
+density, composition, and interaction. The handoff must say which three or more
+axes changed, why the change improves the user's task, and what the direction
+gives up. Same shell, new paint is not a valid UX/UI alternative.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.
@@ -214,7 +222,7 @@ Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performanc
 11. **Motion notes**: per-transition duration + easing + reduced-motion fallback. Justify each: clarifies cause-effect, signals state change, or guides attention. Decorative-only motion → cut.
 12. **Accessibility pass**: contrast ratio per token pair (WCAG AA: 4.5:1 body, 3:1 large text + UI), focus order, keyboard reachability for every interactive element, screen reader labels (aria-label, aria-describedby, aria-live for dynamic regions), error-to-field association, motion respects `prefers-reduced-motion`.
 13. **Microcopy review**: write for users, not engineers. Active voice, present tense, no system-speak ("an unexpected error occurred" → "We couldn't save your changes — try again or check your connection"). Errors say what happened + what to do.
-14. **Handoff spec**: assemble the screen spec document (see Output contract). Hand to prototype-builder OR to engineering with redlines.
+14. **Handoff spec**: assemble the screen spec document (see Output contract). Hand to prototype-builder OR to engineering with redlines, including diversity handoff axes when alternatives or a new visual direction are involved.
 15. **Score** with `supervibe:confidence-scoring`. Iterate until rubric ≥9.
 
 ## Output contract
@@ -245,6 +253,7 @@ Rubric: agent-delivery
 - **Decorative-motion**: motion that does not clarify cause-effect, signal state change, or guide attention is noise. Cut it. Bonus: it disrespects `prefers-reduced-motion` users.
 - **Token-bypass**: hardcoding a hex or px value because "the token doesn't quite match." Fix the token or propose a new one. One-off values fragment the system and leak into every future screen.
 - **Vague-handoff**: "make it look like the mock" is not a spec. Engineers need states, tokens, breakpoints, motion, a11y notes — explicit, not implied.
+- **Same-shell-new-paint**: changing color, font, or accent treatment while keeping the same layout, density, hierarchy, and interaction model. Treat it as an iteration, not an alternative.
 
 ## User dialogue discipline
 

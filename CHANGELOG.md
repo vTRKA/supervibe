@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.116] - 2026-05-09
+
+### Added
+
+- Added a Design Diversity Benchmark gate with fixture-backed regression tests
+  so designer alternatives must differ across real axes instead of producing
+  same-shell recolors.
+- Added a release check for the design diversity benchmark and wired it into
+  the agent-system maturity model.
+
+### Changed
+
+- Strengthened creative-director, UX/UI, prototype-builder,
+  design-system-architect, brandbook, and prototype guidance with explicit
+  palette, typography, motion, imagery, hierarchy, density, composition, and
+  interaction diversity contracts.
+
 ## [2.0.115] - 2026-05-09
 
 ### Added

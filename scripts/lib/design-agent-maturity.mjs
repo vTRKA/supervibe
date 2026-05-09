@@ -17,6 +17,9 @@ import {
   validateDesignReferenceQuality,
 } from "../validate-design-reference-quality.mjs";
 import {
+  validateDesignDiversityBenchmark,
+} from "../validate-design-diversity-benchmark.mjs";
+import {
   validateDesignReadiness,
 } from "../validate-design-readiness.mjs";
 import {
@@ -57,6 +60,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
   const sourceCoverage = validateDesignSourceCoverage(rootDir);
   const expertKnowledge = validateDesignExpertKnowledge(rootDir);
   const referenceQuality = validateDesignReferenceQuality(rootDir);
+  const diversityBenchmark = validateDesignDiversityBenchmark(rootDir);
   const readiness = validateDesignReadiness(rootDir);
   const flowGates = validateDesignFlowGates(rootDir);
   const artifactWriteGates = validateDesignArtifactWriteGates(rootDir);
@@ -91,6 +95,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
       regulatedTrustEvidence: /Regulated Trust Domains|evidence before creative\s+defaults|Domain evidence/i.test(designFiles.designExpertKnowledge),
       creativeQaScore: /distinctiveness|emotional fit|user empathy|category fit|trend awareness|future-proof/i.test(designFiles.designSystemArchitect),
       creativeReferencePacks: creativeReferencePacks.pass === true,
+      diversityBenchmark: diversityBenchmark.pass === true,
     },
     system: {
       brandbookProducer: /brandbook-producer\.mjs run|Executable producer boundary/i.test(designFiles.brandbook),
@@ -178,8 +183,8 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     "creative-empathy-and-trends",
     1.5,
     creativePass,
-    `emotion=${checks.creative?.creativeDirectorHasEmotion === true}, distinctiveness=${checks.creative?.creativeDirectorHasDistinctiveness === true}, trendRefresh=${checks.creative?.competitiveHasTrendRefresh === true}, differentiation=${checks.creative?.competitiveHasDifferentiation === true}, regulatedTrust=${checks.creative?.regulatedTrustEvidence === true}, creativeQa=${checks.creative?.creativeQaScore === true}, creativePacks=${checks.creative?.creativeReferencePacks === true}`,
-    "Strengthen creative director, competitive design research, regulated-trust evidence, creative reference packs, and creative QA scoring.",
+    `emotion=${checks.creative?.creativeDirectorHasEmotion === true}, distinctiveness=${checks.creative?.creativeDirectorHasDistinctiveness === true}, trendRefresh=${checks.creative?.competitiveHasTrendRefresh === true}, differentiation=${checks.creative?.competitiveHasDifferentiation === true}, regulatedTrust=${checks.creative?.regulatedTrustEvidence === true}, creativeQa=${checks.creative?.creativeQaScore === true}, creativePacks=${checks.creative?.creativeReferencePacks === true}, diversityBenchmark=${checks.creative?.diversityBenchmark === true}`,
+    "Strengthen creative director, competitive design research, regulated-trust evidence, creative reference packs, design diversity benchmark, and creative QA scoring.",
   );
 
   const systemPass = Object.values(checks.system || {}).every(Boolean);

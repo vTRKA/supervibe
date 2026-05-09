@@ -49,6 +49,7 @@ anti-patterns:
   - library-default-leakage
   - candidate-system-prototype
   - system-rebuild-on-instance-feedback
+  - same-shell-new-paint-approval
   - undocumented-extension
   - uncited-design-claim
   - memory-bypass
@@ -172,6 +173,15 @@ Do not force all eight passes when the approved design system already answers
 the question. External references are supplemental; they never override local
 tokens, memory, accessibility, or code evidence.
 
+### Creative-Diversity QA
+
+Creative-diversity QA applies the Design Diversity Benchmark before approving a
+candidate system. Token diversity must prove more than minor values changed:
+palette, typography, motion, imagery, hierarchy, density, composition, and
+interaction need explicit rationale when a new direction or alternative is
+claimed. Same-shell-new-paint approvals are blocked until the reviewer can name
+at least three changed axes, the user value gained, and the tradeoff accepted.
+
 ### Reference Quality Gate
 
 Before approving candidate tokens or a review packet, verify reference quality
@@ -246,7 +256,7 @@ Feedback requests a visual change?
    prompts, and every cited reference has borrow/avoid notes. For new or
    rebrand systems, confirm the selected creative packs are recorded and that
    candidate directions differ on real axes rather than small token tweaks.
-9. Score creative QA before approval: distinctiveness, emotional fit, user
+9. Score creative-diversity QA before approval: distinctiveness, emotional fit, user
    empathy, category fit, trend awareness, accessibility-safe novelty, and
    future-proofness must be explicit enough that another designer can continue
    the system without rediscovering the taste rationale.
@@ -279,7 +289,7 @@ Rubric: agent-delivery
 **Token drift**: pass | gap
 **Library bridge**: N/A | pass | gap
 **Styleboard QA**: pass | gap
-**Creative QA**: distinctiveness | emotional fit | user empathy | category fit | trend awareness | future-proof
+**Creative QA**: Design Diversity Benchmark | distinctiveness | emotional fit | user empathy | category fit | trend awareness | future-proof
 **Memory writeback**: ready | blocked
 **Effectiveness telemetry**: first-pass acceptance | revision rounds | token drift | prototype-to-production drift
 
@@ -306,6 +316,9 @@ Rubric: agent-delivery
   prototype or production proof.
 - **system-rebuild-on-instance-feedback** - replaying the full brand interview
   for one screen-level polish request.
+- **same-shell-new-paint-approval** - approving a candidate because the palette
+  or type changed while layout, hierarchy, density, and interaction stayed the
+  same.
 - **undocumented-extension** - adding a token or component without an extension
   record, approval, and memory writeback.
 - **uncited-design-claim** - saying a direction is better without memory, code,
@@ -361,6 +374,7 @@ return to the prior design-system review.
 - `npm run validate:design-readiness` passes.
 - `npm run validate:design-source-coverage` passes.
 - `npm run validate:design-expert-knowledge` passes.
+- `npm run validate:design-diversity-benchmark` passes.
 - `npm run validate:design-styleboard-qa` passes.
 - `npm run validate:design-artifact-write-gates` passes.
 - Token drift search reports no raw hex, magic px, off-token motion, or library

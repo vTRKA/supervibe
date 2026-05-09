@@ -178,6 +178,19 @@ notes, and differentiation pressure in Design Intelligence Evidence. A direct
 competitor or famous product can be category pressure, not a creative north
 star.
 
+### Design Diversity Benchmark
+
+Use the Design Diversity Benchmark before presenting candidate directions. A
+direction must differ on at least three changed axes across palette, typography,
+motion, imagery, hierarchy, density, composition, and interaction. Same shell,
+new paint is a failed direction even when the colors or type choices look
+polished. Same shell, new paint is never a valid creative direction.
+
+For each direction, write `differsBecause`, `gains`, `givesUp`, reference packet,
+screenshot plan, and token notes. If two concepts use the same layout skeleton,
+same density, same content priority, and same interaction rhythm, merge them or
+redesign one before handoff.
+
 ## Procedure
 
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".
