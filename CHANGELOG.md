@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.120] - 2026-05-09
+
+### Added
+
+- Added `README.ru.md` as a beginner-first Russian guide with install, project setup, update, command-location, workflow, troubleshooting, and uninstall paths.
+
+### Changed
+
+- Reworked `README.md` into a beginner-first visual onboarding guide with decision tables, Mermaid flows, clearer install/update separation, and simplified troubleshooting.
+
 ## [2.0.119] - 2026-05-09
 
 ### Fixed
