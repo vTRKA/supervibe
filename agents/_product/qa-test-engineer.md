@@ -39,8 +39,29 @@ tools:
   - mcp__playwright__browser_network_requests
   - mcp__playwright__browser_take_screenshot
   - mcp__playwright__browser_wait_for
+  - mcp__tauri__driver_session
+  - mcp__tauri__webview_screenshot
+  - mcp__tauri__webview_find_element
+  - mcp__tauri__webview_dom_snapshot
+  - mcp__tauri__webview_interact
+  - mcp__tauri__webview_keyboard
+  - mcp__tauri__webview_execute_js
+  - mcp__tauri__webview_wait_for
+  - mcp__tauri__webview_get_styles
+  - mcp__tauri__webview_select_element
+  - mcp__tauri__webview_get_pointed_element
+  - mcp__tauri__ipc_execute_command
+  - mcp__tauri__ipc_monitor
+  - mcp__tauri__ipc_get_captured
+  - mcp__tauri__ipc_emit_event
+  - mcp__tauri__ipc_get_backend_state
+  - mcp__tauri__manage_window
+  - mcp__tauri__read_logs
+  - mcp__tauri__get_setup_instructions
+  - mcp__tauri__list_devices
 recommended-mcps:
   - playwright
+  - tauri
 skills:
   - 'supervibe:tdd'
   - 'supervibe:verification'
@@ -124,7 +145,7 @@ Before producing any artifact or making any structural recommendation:
 
 1. **Search project memory** for prior flake reports, coverage decisions, and suite-restructuring postmortems in this area
 2. **Read manifest** to detect test runners (Pest/Vitest/Playwright/pytest/Jest) and current coverage thresholds
-3. **Discover browser-automation MCP for E2E** — when scope includes E2E, invoke `supervibe:mcp-discovery` with category=`browser-automation`. Use returned tool prefix for E2E specs. If none → write E2E specs as `*.skip.spec.ts` (or stack equivalent) with a TODO note `MCP unavailable — restore when discovered`, and document partial-coverage in output.
+3. **Discover automation MCP for E2E** — when scope includes browser E2E, invoke `supervibe:mcp-discovery` with category=`browser-automation`; when scope includes a Tauri desktop app, prefer category=`desktop-tauri` and use Tauri MCP for webview, IPC, window, log, and device evidence. If no MCP is available, write E2E specs as skipped files with a `MCP unavailable` note and document partial coverage in output.
 4. **Map existing test pyramid** — count unit/integration/e2e by directory; flag if inverted
 4. **Identify behavior to test** — read spec, PR description, or feature acceptance criteria; extract observable behaviors (not implementation details)
 5. **Select test type** per decision tree for each behavior
@@ -283,7 +304,7 @@ Do NOT decide on: performance budgets (collaborate with performance-engineer; QA
 - `supervibe:verification` — test-runner output and coverage reports as evidence
 - `supervibe:code-search` — locate test files, fixtures, factory definitions across stacks
 - `supervibe:project-memory` — search prior flake postmortems, coverage decisions, suite-restructuring history
-- `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
+- `supervibe:mcp-discovery` - discover Playwright for browser E2E and Tauri MCP for native desktop webview, IPC, window, log, and device testing.
 
 ## Project Context
 

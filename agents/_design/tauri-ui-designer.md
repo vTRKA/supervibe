@@ -35,9 +35,19 @@ tools:
   - mcp__mcp-server-figma__download_figma_images
   - mcp__playwright__browser_navigate
   - mcp__playwright__browser_take_screenshot
+  - mcp__tauri__driver_session
   - mcp__tauri__webview_screenshot
+  - mcp__tauri__webview_find_element
+  - mcp__tauri__webview_dom_snapshot
+  - mcp__tauri__webview_interact
+  - mcp__tauri__webview_keyboard
+  - mcp__tauri__webview_execute_js
+  - mcp__tauri__webview_wait_for
   - mcp__tauri__webview_get_styles
+  - mcp__tauri__webview_select_element
+  - mcp__tauri__webview_get_pointed_element
   - mcp__tauri__manage_window
+  - mcp__tauri__read_logs
 recommended-mcps:
   - figma
   - playwright
@@ -49,6 +59,7 @@ skills:
   - 'supervibe:ui-review-and-polish'
   - 'supervibe:project-memory'
   - 'supervibe:design-intelligence'
+  - 'supervibe:mcp-discovery'
   - 'supervibe:confidence-scoring'
 verification:
   - target-surfaces-declared
@@ -147,23 +158,24 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 
 1. **Read tauri.conf.json** — open `src-tauri/tauri.conf.json`; capture `app.windows[*]` (width / height / titleBarStyle / resizable / fullscreen / decorations), `bundle.targets`, `app.security.csp`, `plugins.updater`. Capture `tauri.conf.json > app > minimumSystemVersion` per-platform if set. If config absent, defer to a tauri-engineer for skeleton.
 2. **Search project memory** for prior cross-webview findings (e.g., "WebKitGTK 2.40 doesn't render `:has()`") with tags `tauri`, `webview`, `wkwebview`, `webkitgtk`, `webview2`.
-3. **Pull brand tokens** from brandbook; flag any token that depends on `color-mix()`, `oklch()`, or other modern CSS — they need fallbacks per-engine.
-4. **Declare target surfaces** — explicit yes/no for {main-window, secondary windows, tray}. Rationale per surface.
-5. **Cross-webview compatibility audit** of every CSS feature in the design:
+3. **Discover Tauri MCP** when a live desktop app is running. Prefer `webview_dom_snapshot`, `webview_get_styles`, `webview_screenshot`, and `manage_window` for native webview evidence; use Playwright only for browser-hosted prototypes.
+4. **Pull brand tokens** from brandbook; flag any token that depends on `color-mix()`, `oklch()`, or other modern CSS — they need fallbacks per-engine.
+5. **Declare target surfaces** — explicit yes/no for {main-window, secondary windows, tray}. Rationale per surface.
+6. **Cross-webview compatibility audit** of every CSS feature in the design:
     - Generate a feature inventory (Grep brandbook tokens.css + project styles)
     - Mark each as ✓ universal / ⚠ needs `@supports` fallback / ✗ avoid
     - Author `docs/webview-compat.md` row-per-feature with engine versions
-6. **Load viewport preset** `templates/viewport-presets/tauri.json`; canvas at 1280×800 main / 800×600 secondary.
-7. **Per-window mockup** in `.supervibe/artifacts/prototypes/<feature>/tauri/<window>/index.html` with linked `tokens.css` and explicit `@supports` fallbacks.
-8. **State coverage** per interactive element + cross-webview-specific notes ("focus ring renders with 1px difference on WebKitGTK; spec accepts").
-9. **Tray design** (if present) — same pattern as Electron designer's tray (right-click menu, left-click behavior per OS, template image macOS, 16+32 PNG Win+Linux).
-10. **Auto-update prompt UX** — in-app non-blocking notification design; install-on-quit pattern; changelog modal before confirm; progress during download.
-11. **Permission rationale UX** — for any capability beyond defaults (filesystem write outside app dir, shell.open, http to non-allowlisted host), design an in-app rationale screen BEFORE the `invoke()` call.
-12. **Bundle budget** — list every font, icon set, image dependency; calculate combined size; target <2MB total non-binary assets; flag overruns.
-13. **Motion spec** — desktop-tempo (window 200ms, menus 100ms, modal 250ms); reduced-motion fallback; transform/opacity only.
-14. **HiDPI assets** — `.icns` macOS, `.ico` Windows, multiple PNG sizes Linux; tray template image macOS.
-15. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
-16. **Handoff bundle** — mockups + cross-webview audit + bundle-budget summary + tray spec + auto-update UX + permission rationale + motion spec.
+7. **Load viewport preset** `templates/viewport-presets/tauri.json`; canvas at 1280×800 main / 800×600 secondary.
+8. **Per-window mockup** in `.supervibe/artifacts/prototypes/<feature>/tauri/<window>/index.html` with linked `tokens.css` and explicit `@supports` fallbacks.
+9. **State coverage** per interactive element + cross-webview-specific notes ("focus ring renders with 1px difference on WebKitGTK; spec accepts").
+10. **Tray design** (if present) — same pattern as Electron designer's tray (right-click menu, left-click behavior per OS, template image macOS, 16+32 PNG Win+Linux).
+11. **Auto-update prompt UX** — in-app non-blocking notification design; install-on-quit pattern; changelog modal before confirm; progress during download.
+12. **Permission rationale UX** — for any capability beyond defaults (filesystem write outside app dir, shell.open, http to non-allowlisted host), design an in-app rationale screen BEFORE the `invoke()` call.
+13. **Bundle budget** — list every font, icon set, image dependency; calculate combined size; target <2MB total non-binary assets; flag overruns.
+14. **Motion spec** — desktop-tempo (window 200ms, menus 100ms, modal 250ms); reduced-motion fallback; transform/opacity only.
+15. **HiDPI assets** — `.icns` macOS, `.ico` Windows, multiple PNG sizes Linux; tray template image macOS.
+16. **Score** with `supervibe:confidence-scoring` rubric `agent-delivery` ≥9.
+17. **Handoff bundle** — mockups + cross-webview audit + bundle-budget summary + tray spec + auto-update UX + permission rationale + motion spec.
 
 ## Output contract
 
@@ -298,6 +310,7 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - `supervibe:interaction-design-patterns` — canonical state matrices, with cross-webview footnotes (e.g., `:has()` not yet on WebKitGTK 2.40)
 - `supervibe:ui-review-and-polish` — review the produced mockup across three webview engines
 - `supervibe:project-memory` — search prior cross-webview compat findings and bundle decisions
+- `supervibe:mcp-discovery` — select Tauri MCP when a live desktop webview is available, otherwise fall back to prototype screenshots.
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
 - `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 

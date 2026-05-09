@@ -20,12 +20,35 @@ function defaultConfigCandidates() {
 }
 
 // Tool name patterns — canonical mapping from MCP name → tool prefix it exposes.
+const TAURI_MCP_TOOLS = [
+  'mcp__tauri__driver_session',
+  'mcp__tauri__webview_screenshot',
+  'mcp__tauri__webview_find_element',
+  'mcp__tauri__webview_dom_snapshot',
+  'mcp__tauri__webview_interact',
+  'mcp__tauri__webview_keyboard',
+  'mcp__tauri__webview_execute_js',
+  'mcp__tauri__webview_wait_for',
+  'mcp__tauri__webview_get_styles',
+  'mcp__tauri__webview_select_element',
+  'mcp__tauri__webview_get_pointed_element',
+  'mcp__tauri__ipc_execute_command',
+  'mcp__tauri__ipc_monitor',
+  'mcp__tauri__ipc_get_captured',
+  'mcp__tauri__ipc_emit_event',
+  'mcp__tauri__ipc_get_backend_state',
+  'mcp__tauri__manage_window',
+  'mcp__tauri__read_logs',
+  'mcp__tauri__get_setup_instructions',
+  'mcp__tauri__list_devices',
+];
+
 const KNOWN_MCP_TOOLS = {
   context7: ['mcp__mcp-server-context7__resolve-library-id', 'mcp__mcp-server-context7__query-docs'],
   playwright: ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_take_screenshot', 'mcp__playwright__browser_snapshot'],
   figma: ['mcp__mcp-server-figma__get_figma_data', 'mcp__mcp-server-figma__download_figma_images'],
   firecrawl: ['mcp__mcp-server-firecrawl__firecrawl_scrape', 'mcp__mcp-server-firecrawl__firecrawl_crawl', 'mcp__mcp-server-firecrawl__firecrawl_search'],
-  tauri: ['mcp__tauri__webview_screenshot'],
+  tauri: TAURI_MCP_TOOLS,
 };
 
 const MCP_CAPABILITY_META = {
@@ -33,7 +56,7 @@ const MCP_CAPABILITY_META = {
   playwright: { capabilities: ['browser', 'qa', 'visual'], riskClass: 'interactive' },
   figma: { capabilities: ['design', 'assets'], riskClass: 'read' },
   firecrawl: { capabilities: ['research', 'web'], riskClass: 'read' },
-  tauri: { capabilities: ['desktop', 'visual'], riskClass: 'interactive' },
+  tauri: { capabilities: ['desktop', 'visual', 'qa', 'ipc'], riskClass: 'interactive' },
 };
 
 /**

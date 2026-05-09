@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.115] - 2026-05-09
+
+### Added
+
+- Added the full Tauri MCP desktop testing catalog to MCP discovery so
+  configured Tauri servers expose driver session, webview, IPC, window, logs,
+  setup, and device tools instead of screenshot-only coverage.
+- Added regression coverage that locks the Tauri MCP catalog and verifies
+  agents and skills do not reference unregistered Tauri MCP tools.
+
+### Changed
+
+- Updated Tauri, IPC, design, and QA agents to select role-appropriate Tauri
+  MCP tools for native desktop, webview, IPC, window, log, and device evidence.
+- Strengthened `supervibe:mcp-discovery` guidance so Tauri desktop testing uses
+  Tauri MCP while Playwright remains the browser-preview fallback.
+
 ## [2.0.114] - 2026-05-09
 
 ### Added

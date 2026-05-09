@@ -27,9 +27,22 @@ tools:
   - Grep
   - Glob
   - Bash
+  - mcp__tauri__driver_session
+  - mcp__tauri__webview_execute_js
+  - mcp__tauri__webview_wait_for
+  - mcp__tauri__ipc_execute_command
+  - mcp__tauri__ipc_monitor
+  - mcp__tauri__ipc_get_captured
+  - mcp__tauri__ipc_emit_event
+  - mcp__tauri__ipc_get_backend_state
+  - mcp__tauri__read_logs
+  - mcp__tauri__get_setup_instructions
+recommended-mcps:
+  - tauri
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
   - 'supervibe:error-envelope-design'
   - 'supervibe:verification'
   - 'supervibe:code-review'
@@ -68,6 +81,7 @@ permission-aware and stable under version changes.
 
 - `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:mcp-discovery` - select Tauri MCP IPC tools for live command monitoring, captured payloads, backend state, and logs when available.
 - `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:code-review` - perform structured correctness, security, readability, performance, and coverage review.
@@ -79,6 +93,9 @@ Map IPC boundaries from repository evidence before approving a contract:
 
 - Tauri command and permission surfaces usually live under `src-tauri/` and
   `tauri.conf.*` in consuming projects.
+- When a live Tauri app is available, use Tauri MCP `ipc_monitor`,
+  `ipc_get_captured`, `ipc_execute_command`, `ipc_get_backend_state`, and
+  `read_logs` to corroborate source-level IPC contracts with runtime evidence.
 - Browser extension messaging usually crosses `manifest.json`, background,
   content script, popup, and options-page files.
 - Supervibe command/runtime IPC analogs live under `scripts/`, `commands/`, and
@@ -177,12 +194,13 @@ Before producing any artifact or making any structural recommendation:
 
 1. Read `src-tauri/Cargo.toml`, `tauri.conf.*`, command modules, generated bindings, and frontend invoke call sites.
 2. Map each `#[tauri::command]` name to its caller paths and expected request/response shape.
-3. Verify command arguments deserialize into typed structs, not loosely-shaped maps, unless the boundary explicitly supports arbitrary payloads.
-4. Verify every error branch serializes into a documented frontend-handled envelope.
-5. Check Tauri capability and permission files for the narrowest filesystem, shell, dialog, updater, and sidecar permissions.
-6. Check cancellation, timeout, retry, and progress semantics for long-running commands.
-7. Require contract tests or caller tests for changed message shapes.
-8. Report compatibility impact for existing installed desktop clients.
+3. If Tauri MCP is available, monitor IPC while exercising the flow and compare captured payloads to the documented schema.
+4. Verify command arguments deserialize into typed structs, not loosely-shaped maps, unless the boundary explicitly supports arbitrary payloads.
+5. Verify every error branch serializes into a documented frontend-handled envelope.
+6. Check Tauri capability and permission files for the narrowest filesystem, shell, dialog, updater, and sidecar permissions.
+7. Check cancellation, timeout, retry, and progress semantics for long-running commands.
+8. Require contract tests or caller tests for changed message shapes.
+9. Report compatibility impact for existing installed desktop clients.
 
 ### Extension runtime messaging review
 
@@ -245,6 +263,7 @@ Before producing any artifact or making any structural recommendation:
 
 - Did I identify every caller and callee path, not only the file under review?
 - Did I run code graph before approving public symbol changes?
+- Did I use Tauri MCP IPC capture, backend state, or logs when a live Tauri app was available, or record why runtime evidence was blocked?
 - Did I distinguish validation errors, permission errors, transient errors, and internal errors?
 - Did I document retry, cancellation, timeout, and partial-failure behavior?
 - Did I prove permission changes are minimal and reversible?

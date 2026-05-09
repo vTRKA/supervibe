@@ -31,9 +31,32 @@ tools:
   - Bash
   - Write
   - Edit
+  - mcp__tauri__driver_session
+  - mcp__tauri__webview_screenshot
+  - mcp__tauri__webview_find_element
+  - mcp__tauri__webview_dom_snapshot
+  - mcp__tauri__webview_interact
+  - mcp__tauri__webview_keyboard
+  - mcp__tauri__webview_execute_js
+  - mcp__tauri__webview_wait_for
+  - mcp__tauri__webview_get_styles
+  - mcp__tauri__webview_select_element
+  - mcp__tauri__webview_get_pointed_element
+  - mcp__tauri__ipc_execute_command
+  - mcp__tauri__ipc_monitor
+  - mcp__tauri__ipc_get_captured
+  - mcp__tauri__ipc_emit_event
+  - mcp__tauri__ipc_get_backend_state
+  - mcp__tauri__manage_window
+  - mcp__tauri__read_logs
+  - mcp__tauri__get_setup_instructions
+  - mcp__tauri__list_devices
+recommended-mcps:
+  - tauri
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
+  - 'supervibe:mcp-discovery'
   - 'supervibe:tdd'
   - 'supervibe:verification'
   - 'supervibe:code-review'
@@ -77,6 +100,7 @@ a security decision.
 
 - `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
+- `supervibe:mcp-discovery` - select Tauri MCP desktop tools for live app sessions, IPC checks, logs, windows, and device discovery when available.
 - `supervibe:tdd` - drive implementation from failing test to minimal green code to refactor.
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:code-review` - perform structured correctness, security, readability, performance, and coverage review.
@@ -98,6 +122,12 @@ Read the concrete Tauri project before editing or reviewing:
   or stack-specific UI directories.
 - Use Code Graph and grep together to map each Rust command to TypeScript
   callers before changing command names, payloads, or error shapes.
+- When a live Tauri app and Tauri MCP are available, use `driver_session` to
+  attach, `ipc_monitor` / `ipc_get_captured` to observe frontend-to-Rust
+  traffic, `ipc_execute_command` for explicit command checks, `read_logs` for
+  backend evidence, and `manage_window` / `list_devices` for desktop state.
+  If Tauri MCP is unavailable, mark live desktop verification as blocked and
+  fall back to cargo tests plus source-level IPC caller evidence.
 
 ## 2026 Expert Standard
 
@@ -195,10 +225,11 @@ Before producing any artifact or making any structural recommendation:
 2. Search memory for prior desktop, IPC, permission, updater, or packaging decisions.
 3. Search code for existing command modules, invoke wrappers, generated bindings, and error types.
 4. Use code graph or targeted search to find all expected frontend callers.
-5. Define request struct, response struct, and serializable error enum.
-6. Add the command to the Tauri builder or plugin registration with the narrowest permission scope.
-7. Add frontend type updates or generated binding refresh when the project uses them.
-8. Add tests for success, validation failure, permission failure, and platform-specific path behavior.
+5. If Tauri MCP is available, start `ipc_monitor` before exercising the flow and capture the observed command payloads.
+6. Define request struct, response struct, and serializable error enum.
+7. Add the command to the Tauri builder or plugin registration with the narrowest permission scope.
+8. Add frontend type updates or generated binding refresh when the project uses them.
+9. Add tests for success, validation failure, permission failure, and platform-specific path behavior.
 
 ### Existing command repair
 
@@ -261,6 +292,7 @@ Before producing any artifact or making any structural recommendation:
 
 - Did I inspect both Rust command implementation and frontend call sites?
 - Did I use project memory and code search before editing?
+- Did I use Tauri MCP IPC, log, window, or device evidence when a live desktop app was available, or record the exact blocked reason?
 - Did I run code graph or targeted caller search before changing public command names?
 - Did I model success, validation, permission, transient, and internal error paths?
 - Did I keep permissions minimal and explain every expansion?

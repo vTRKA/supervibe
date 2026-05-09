@@ -24,7 +24,7 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 ## When to invoke
 
-BEFORE picking a tool for current-docs research / browser automation / design extraction / web crawling. Don't hardcode `mcp__context7__*` in agent procedures — invoke this skill to find the best available tool for the task.
+BEFORE picking a tool for current-docs research / browser automation / Tauri desktop testing / design extraction / web crawling. Don't hardcode `mcp__context7__*` in agent procedures — invoke this skill to find the best available tool for the task.
 
 ## Expert Operating Standard
 
@@ -41,7 +41,9 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 Need current docs / library API?
   Preference order: context7 > ref > WebFetch
 Need browser automation / screenshots?
-  Preference order: playwright > tauri (desktop) > skip
+  Preference order: playwright > skip
+Need Tauri desktop app testing, native webview state, IPC, windows, logs, or devices?
+  Preference order: tauri > playwright (frontend preview only) > skip
 Need to extract design from Figma?
   Preference order: figma → if absent, ask user for screenshots
 Need to crawl a website?
@@ -56,6 +58,7 @@ Need general web search?
 |------|---------------|----------|-------------|
 | Current library docs | context7 | official docs via web | library id and version if known |
 | Browser interaction | playwright | static scrape or manual instructions | URL, viewport, screenshot path when used |
+| Tauri desktop testing | tauri | Playwright only for browser-hosted frontend preview | session target, available webview/ipc/window/log/device tool groups |
 | Figma/design extraction | figma | screenshot or exported assets | file key, node id, downloaded assets |
 | Web crawl | firecrawl | targeted scrape/search | URL set and extraction format |
 | Search/news | firecrawl-search | web search | recency and source links |
@@ -77,12 +80,13 @@ Always include:
 - selected MCP or `none`,
 - fallback reason if no MCP was used,
 - exact tool family used,
+- for Tauri, available tool groups (`webview`, `ipc`, `window`, `logs`, `devices`),
 - whether the result is current or cached,
 - any limitation that affects confidence.
 
 ## Procedure
 
-1. Identify the task category (current-docs / browser / figma / crawl / search)
+1. Identify the task category (current-docs / browser / desktop-tauri / figma / crawl / search)
 2. Look up preference list for that category
 3. Call `pickMcp(preferenceList)` from `scripts/lib/mcp-registry.mjs` — returns first available, or `null`
 4. If MCP available: use its canonical tools (e.g. `mcp__mcp-server-context7__query-docs`)
@@ -98,6 +102,8 @@ Returns:
 ## Anti-patterns
 
 - **Hardcoding `tools: [mcp__context7__*]` in agent frontmatter** → breaks when user lacks context7
+- **Assuming Tauri MCP is screenshot-only** → misses driver session, webview DOM, IPC monitoring, backend state, logs, windows, setup, and device tools when available
+- **Using Playwright for native Tauri IPC/window/log verification** → only validates a browser preview, not the Rust desktop shell
 - **Calling MCP tool without checking availability** → cryptic error
 - **Not surfacing fallback choice** → user can't tell why agent took longer / had less detail
 - **Falling back silently** → user thinks MCP was used; can't diagnose
