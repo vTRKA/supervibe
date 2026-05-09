@@ -39,6 +39,19 @@ export const DEFAULT_WORKFLOW_TRIGGER_FIXTURES = Object.freeze([
     expected: { intent: "worktree_autonomous_run", command: "/supervibe-loop --epic --worktree", minConfidence: 0.88 },
   },
   {
+    id: "agent-system-audit-en",
+    phrase: "audit agent system maturity intent routing receipts skills semantic rag and codegraph coverage",
+    context: { artifacts: { userRequest: true } },
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["agent_strengthen", "prompt_ai_engineering"],
+      requiredSafety: ["read-only-audit", "receipt-provenance-check"],
+      forbiddenSafetyBlockers: ["needs-explicit-user-confirmation"],
+    },
+  },
+  {
     id: "handoff-affirmation",
     phrase: "yes",
     context: {
@@ -139,6 +152,50 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
     phrase: "плагин не понимает намерение и выбирает не ту команду проверь триггер",
     expected: { intent: "trigger_diagnostics", command: "/supervibe --diagnose-trigger", minConfidence: 0.9 },
   },
+  {
+    id: "agent-system-audit-en",
+    phrase: "users ask for agent maturity, intent routing, semantic RAG coverage and receipts audit",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["agent_strengthen", "prompt_ai_engineering"],
+      requiredSafety: ["read-only-audit", "semantic-route-coverage"],
+      forbiddenSafetyBlockers: ["needs-explicit-user-confirmation"],
+    },
+  },
+  {
+    id: "agent-system-audit-ru",
+    phrase: "оцени агентскую систему интенты receipts skills rag codegraph на 10 из 10",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["agent_strengthen", "prompt_ai_engineering"],
+      requiredSafety: ["read-only-audit"],
+    },
+  },
+  {
+    id: "no-overdispatch-small-question-en",
+    phrase: "do not call agents for this tiny question, just explain the route",
+    expected: {
+      intent: "trigger_diagnostics",
+      command: "/supervibe --diagnose-trigger",
+      minConfidence: 0.9,
+      notIntent: ["agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "supervibe_audit"],
+      forbiddenSafetyBlockers: ["needs-explicit-user-confirmation"],
+    },
+  },
+  {
+    id: "plan-review-before-start-en",
+    phrase: "plan is ready, start implementation but run review and atomize first",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.88,
+      notIntent: ["execute_plan"],
+    },
+  },
 ]);
 
 export function evaluateTriggerMatrix(fixtures = DEFAULT_WORKFLOW_TRIGGER_FIXTURES, options = {}) {
@@ -162,6 +219,21 @@ export function evaluateTriggerMatrix(fixtures = DEFAULT_WORKFLOW_TRIGGER_FIXTUR
     if (expected.skill && route.skill !== expected.skill) {
       failures.push(`expected skill ${expected.skill}, got ${route.skill}`);
     }
+    for (const intent of normalizeList(expected.notIntent)) {
+      if (route.intent === intent) failures.push(`forbidden intent ${intent}`);
+    }
+    for (const command of normalizeList(expected.notCommand)) {
+      if (route.command === command) failures.push(`forbidden command ${command}`);
+    }
+    if (expected.source && route.source !== expected.source) {
+      failures.push(`expected source ${expected.source}, got ${route.source}`);
+    }
+    for (const safety of normalizeList(expected.requiredSafety)) {
+      if (!route.requiredSafety?.includes(safety)) failures.push(`expected required safety ${safety}`);
+    }
+    for (const blocker of normalizeList(expected.forbiddenSafetyBlockers)) {
+      if (route.safetyBlockers?.includes(blocker)) failures.push(`forbidden safety blocker ${blocker}`);
+    }
     if (Array.isArray(expected.safetyBlockers)) {
       for (const blocker of expected.safetyBlockers) {
         if (!route.safetyBlockers.includes(blocker)) {
@@ -173,6 +245,7 @@ export function evaluateTriggerMatrix(fixtures = DEFAULT_WORKFLOW_TRIGGER_FIXTUR
     return {
       id: fixture.id,
       phrase: fixture.phrase,
+      expected,
       pass: failures.length === 0,
       failures,
       route,
@@ -209,10 +282,23 @@ export function evaluateSemanticIntentMatrix(fixtures = DEFAULT_SEMANTIC_TRIGGER
     if (expected.source && route.source !== expected.source) {
       failures.push(`expected source ${expected.source}, got ${route.source}`);
     }
+    for (const intent of normalizeList(expected.notIntent)) {
+      if (route.intent === intent) failures.push(`forbidden intent ${intent}`);
+    }
+    for (const command of normalizeList(expected.notCommand)) {
+      if (route.command === command) failures.push(`forbidden command ${command}`);
+    }
+    for (const safety of normalizeList(expected.requiredSafety)) {
+      if (!route.requiredSafety?.includes(safety)) failures.push(`expected required safety ${safety}`);
+    }
+    for (const blocker of normalizeList(expected.forbiddenSafetyBlockers)) {
+      if (route.safetyBlockers?.includes(blocker)) failures.push(`forbidden safety blocker ${blocker}`);
+    }
 
     return {
       id: fixture.id,
       phrase: fixture.phrase,
+      expected,
       pass: failures.length === 0,
       failures,
       route,
@@ -234,7 +320,7 @@ export function formatTriggerEvaluation(evaluation) {
   const failures = evaluation.failed
     .map((result) => `- ${result.id}: ${result.failures.join("; ")}`)
     .join("\n");
-  return `${header}\n${failures}`;
+  return `${header}\n${failures}\n${formatIntentConfusionMatrix(evaluation)}`;
 }
 
 export function formatSemanticIntentEvaluation(evaluation) {
@@ -243,5 +329,40 @@ export function formatSemanticIntentEvaluation(evaluation) {
   const failures = evaluation.failed
     .map((result) => `- ${result.id}: ${result.failures.join("; ")}`)
     .join("\n");
-  return `${header}\n${failures}`;
+  return `${header}\n${failures}\n${formatIntentConfusionMatrix(evaluation)}`;
+}
+
+export function buildIntentConfusionMatrix(results = []) {
+  const cells = new Map();
+  for (const result of results || []) {
+    const expectedIntent = result.expected?.intent || formatForbiddenExpectedIntent(result.expected) || "unspecified";
+    const actualIntent = result.route?.intent || "unknown";
+    const key = `${expectedIntent}\u0000${actualIntent}`;
+    cells.set(key, (cells.get(key) || 0) + 1);
+  }
+  return [...cells.entries()]
+    .map(([key, count]) => {
+      const [expectedIntent, actualIntent] = key.split("\u0000");
+      return { expectedIntent, actualIntent, count };
+    })
+    .sort((left, right) => left.expectedIntent.localeCompare(right.expectedIntent) || left.actualIntent.localeCompare(right.actualIntent));
+}
+
+export function formatIntentConfusionMatrix(evaluation = {}) {
+  const rows = buildIntentConfusionMatrix(evaluation.results || []);
+  if (rows.length === 0) return "Intent confusion matrix: empty";
+  return [
+    "Intent confusion matrix:",
+    ...rows.map((row) => `- expected=${row.expectedIntent} actual=${row.actualIntent} count=${row.count}`),
+  ].join("\n");
+}
+
+function formatForbiddenExpectedIntent(expected = {}) {
+  const forbidden = normalizeList(expected.notIntent);
+  return forbidden.length ? `not:${forbidden.join("|")}` : null;
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
 }

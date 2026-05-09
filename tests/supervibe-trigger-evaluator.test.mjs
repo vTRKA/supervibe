@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   DEFAULT_SEMANTIC_TRIGGER_FIXTURES,
   DEFAULT_WORKFLOW_TRIGGER_FIXTURES,
+  buildIntentConfusionMatrix,
   evaluateSemanticIntentMatrix,
   evaluateTriggerMatrix,
+  formatIntentConfusionMatrix,
   formatSemanticIntentEvaluation,
   formatTriggerEvaluation,
 } from "../scripts/lib/supervibe-trigger-evaluator.mjs";
@@ -28,11 +30,32 @@ test("trigger evaluation reports route failures", () => {
   assert.equal(evaluation.pass, false);
   assert.equal(evaluation.failed.length, 1);
   assert.match(formatTriggerEvaluation(evaluation), /bad-fixture/);
+  assert.match(formatIntentConfusionMatrix(evaluation), /expected=execute_plan actual=feature_brainstorm count=1/);
 });
 
 test("semantic paraphrase trigger matrix passes implicit user needs", () => {
   const evaluation = evaluateSemanticIntentMatrix();
   assert.equal(evaluation.pass, true, formatSemanticIntentEvaluation(evaluation));
   assert.equal(evaluation.total, DEFAULT_SEMANTIC_TRIGGER_FIXTURES.length);
-  assert.ok(evaluation.total >= 16);
+  assert.ok(evaluation.total >= 20);
+});
+
+test("semantic evaluation tracks hard negatives in the confusion matrix", () => {
+  const evaluation = evaluateSemanticIntentMatrix([
+    {
+      id: "overdispatch-negative",
+      phrase: "do not call agents for this tiny question, just explain the route",
+      expected: {
+        intent: "trigger_diagnostics",
+        command: "/supervibe --diagnose-trigger",
+        minConfidence: 0.9,
+        notIntent: ["agent_strengthen", "supervibe_audit"],
+      },
+    },
+  ]);
+
+  assert.equal(evaluation.pass, true, formatSemanticIntentEvaluation(evaluation));
+  assert.deepEqual(buildIntentConfusionMatrix(evaluation.results), [
+    { expectedIntent: "trigger_diagnostics", actualIntent: "trigger_diagnostics", count: 1 },
+  ]);
 });

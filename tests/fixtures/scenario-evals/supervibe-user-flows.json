@@ -1028,6 +1028,75 @@
     }
   },
   {
+    "id": "agent-system-intent-receipt-audit",
+    "request": "audit agent system maturity, intent routing, semantic RAG, CodeGraph, receipts, and agent-skill coverage",
+    "expected": {
+      "intent": "supervibe_audit",
+      "command": "/supervibe-audit",
+      "requiresHealthGate": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-trigger-router.mjs#supervibe_audit",
+          "scripts/lib/supervibe-trigger-evaluator.mjs#confusion-matrix",
+          "scripts/lib/agent-system-maturity.mjs#score"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "evaluateSemanticIntentMatrix",
+          "scoreAgentSystemMaturity"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-trigger-router.mjs#supervibe_audit",
+          "scripts/lib/supervibe-trigger-evaluator.mjs#confusion-matrix",
+          "scripts/lib/agent-system-maturity.mjs#score"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "evaluateSemanticIntentMatrix",
+          "scoreAgentSystemMaturity"
+        ],
+        "estimatedTokens": 1180,
+        "citations": [
+          {
+            "id": "agent-system-audit-route",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-trigger-router.mjs",
+            "redacted": true
+          },
+          {
+            "id": "agent-system-maturity-memory",
+            "source": "memory",
+            "path": ".supervibe/memory/decisions/agent-system-10-10-release-hardening.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "agent-system-audit-route",
+            "stale": false
+          },
+          {
+            "id": "confusion-matrix-hard-negatives",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1600
+      }
+    }
+  },
+  {
     "id": "multi-plugin-host-instruction-coexistence",
     "request": "run host instruction migration in a project where multiple plugins share AGENTS.md and preserve other managed blocks",
     "expected": {

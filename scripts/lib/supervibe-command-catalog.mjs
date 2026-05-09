@@ -84,6 +84,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-audit",
     title: "Audit project health",
+    directRoute: true,
     aliases: [
       "проведи аудит проекта",
       "run project audit",
@@ -102,7 +103,8 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     ],
     keywordGroups: [
       ["audit", "check", "review", "rate", "score", "assess", "проверь", "проведи", "сделай", "оцени", "насколько", "на сколько", "аудит"],
-      ["project", "health", "plugin", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "плагин", "агент", "агенты", "агентской системы", "зрелость", "зрелая"],
+      ["project", "health", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "агент", "агенты", "агентской системы", "зрелость", "зрелая"],
+      ["intent", "routing", "router", "receipt", "receipts", "skills", "semantic", "rag", "codegraph", "coverage", "emulation", "invoked", "really invoked", "интент", "роут", "маршрут", "рецепт", "скил", "семантичес", "покрытие", "вызываются", "эмулируются"],
     ],
   },
   {
@@ -348,6 +350,30 @@ const COMMAND_SHORTCUTS = Object.freeze([
     mutationRisk: "none",
     directRoute: true,
     nextAction: "Run /supervibe-audit --workflow-chain as a read-only end-to-end maturity audit before proposing strengthen/adapt work.",
+  },
+  {
+    id: "docs-audit",
+    intent: "docs_audit",
+    title: "Audit internal docs and project-memory cleanup candidates",
+    command: "/supervibe-audit --docs",
+    description: "Route documentation, internal file, stale docs, and project-memory audit requests to the docs audit mode.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-audit"),
+    aliases: [
+      "audit internal application docs",
+      "audit internal docs and project memory",
+      "review stale docs and internal files",
+      "check docs folder garbage",
+    ],
+    keywordGroups: [
+      ["audit", "check", "review", "remove", "cleanup", "what can we remove", "проверь", "аудит", "удалить", "очист"],
+      ["docs", "documentation", "readme", "internal files", "доки", "документация", "ридми", "внутренние файлы"],
+      ["stale", "old", "todo", "garbage", "internal", "private", "cleanup", "мусор", "старые", "туду", "внутрен"],
+    ],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "none",
+    directRoute: true,
+    nextAction: "Run /supervibe-audit --docs as a read-only documentation and project-memory audit before proposing removals.",
   },
   {
     id: "agent-provisioning",

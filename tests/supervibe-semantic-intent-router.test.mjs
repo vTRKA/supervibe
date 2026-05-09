@@ -47,3 +47,13 @@ test("semantic router returns alternatives for ambiguous pain statements", () =>
   assert.ok(new Set(ranked.map((entry) => entry.intent)).has("agent_strengthen"));
   assert.ok(new Set(ranked.map((entry) => entry.intent)).has("memory_audit"));
 });
+
+test("semantic profiles distinguish full agent-system audits from agent strengthening", () => {
+  const ranked = rankSemanticIntents("audit agent system maturity receipts skills semantic rag codegraph coverage", { limit: 5 });
+  const top = routeSemanticIntent("audit agent system maturity receipts skills semantic rag codegraph coverage");
+
+  assert.equal(top.intent, "supervibe_audit");
+  assert.equal(ranked[0].intent, "supervibe_audit");
+  assert.ok(ranked.some((entry) => entry.intent === "agent_strengthen"));
+  assert.ok(ranked[0].confidence > ranked.find((entry) => entry.intent === "agent_strengthen").confidence);
+});

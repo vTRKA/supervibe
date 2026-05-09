@@ -57,6 +57,18 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     pain: ["without losing quality", "token waste", "без потери качества", "без рисков отупления"],
   },
   {
+    intent: "supervibe_audit",
+    baseConfidence: 0.89,
+    minGroups: 2,
+    requiredGroups: [0, 1],
+    concepts: [
+      ["audit", "check", "review", "score", "rate", "maturity", "10/10", "out of 10", "аудит", "проверь", "оцени", "зрелость", "10 из 10"],
+      ["agent system", "agents", "agentic system", "specialists", "агентская система", "агентской системы", "агенты", "агентов", "специалисты"],
+      ["intent", "router", "routing", "receipts", "skills", "semantic", "rag", "codegraph", "user cases", "coverage", "интент", "роутер", "маршрут", "скилы", "семантичес", "покрытие"],
+    ],
+    pain: ["agents are not invoked", "agent emulation risk", "system does not call agents", "wrong agent selected", "агенты не вызываются", "эмуляция агентов", "не того агента"],
+  },
+  {
     intent: "agent_provisioning",
     baseConfidence: 0.9,
     minGroups: 2,

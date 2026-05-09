@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.118] - 2026-05-09
+
+### Added
+
+- Added an explicit agent-system audit intent route for maturity, intent
+  routing, receipts, skills, semantic RAG, and CodeGraph coverage requests.
+- Added replay, golden-router, context-quality, retrieval, and evaluator
+  fixtures for agent-system audits and no-overdispatch routing questions.
+
+### Changed
+
+- Hardened `/supervibe-audit` natural-language routing so receipt/emulation
+  audit requests beat agent-provisioning while small route explanations stay on
+  trigger diagnostics.
+- Extended trigger evaluator assertions with forbidden intents/commands,
+  required safety checks, forbidden blockers, and an intent confusion matrix.
+
 ## [2.0.117] - 2026-05-09
 
 ### Fixed

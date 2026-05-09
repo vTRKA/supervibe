@@ -103,6 +103,30 @@ describe("supervibe trigger router", () => {
     assert.equal(route.doNotSearchProject, true);
   });
 
+  it("routes agent-system intent and receipt audits to the read-only audit mode", () => {
+    const route = routeTriggerRequest("audit agent system maturity intent routing receipts skills semantic rag and codegraph coverage");
+
+    assert.equal(route.intent, "supervibe_audit");
+    assert.equal(route.command, "/supervibe-audit");
+    assert.equal(route.skill, "supervibe:audit");
+    assert.equal(route.mutationRisk, "none");
+    assert.equal(route.requiredSafety.includes("read-only-audit"), true);
+    assert.equal(route.requiredSafety.includes("agent-system-coverage"), true);
+    assert.equal(route.requiredSafety.includes("receipt-provenance-check"), true);
+    assert.equal(route.requiredSafety.includes("semantic-route-coverage"), true);
+    assert.deepEqual(route.safetyBlockers, []);
+  });
+
+  it("keeps small routing questions on diagnostics instead of dispatching agent audits", () => {
+    const route = routeTriggerRequest("do not call agents for this tiny question, just explain the route");
+
+    assert.equal(route.intent, "trigger_diagnostics");
+    assert.equal(route.command, "/supervibe --diagnose-trigger");
+    assert.notEqual(route.intent, "supervibe_audit");
+    assert.notEqual(route.intent, "agent_strengthen");
+    assert.deepEqual(route.safetyBlockers, []);
+  });
+
   it("routes explicit slash and package commands through command catalog without repo search", () => {
     const slash = routeTriggerRequest("supervibe-status --capabilities");
     const packageScript = routeTriggerRequest("pnpm run supervibe:status -- --json");

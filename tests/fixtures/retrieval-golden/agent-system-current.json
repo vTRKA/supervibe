@@ -49,6 +49,58 @@
       }
     },
     {
+      "id": "intent-router-confusion-agent-audit-retrieval",
+      "expected": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-trigger-router.mjs",
+          "scripts/lib/supervibe-trigger-evaluator.mjs",
+          "scripts/lib/supervibe-semantic-intent-router.mjs"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "evaluateSemanticIntentMatrix",
+          "buildIntentConfusionMatrix"
+        ],
+        "requiredStages": [
+          "rewrite",
+          "fts",
+          "embedding",
+          "graph-neighbor",
+          "rerank"
+        ],
+        "maxEstimatedTokens": 2600
+      },
+      "actual": {
+        "memoryIds": [
+          "agent-system-10-10-release-hardening"
+        ],
+        "ragPaths": [
+          "scripts/lib/supervibe-trigger-router.mjs",
+          "scripts/lib/supervibe-trigger-evaluator.mjs",
+          "scripts/lib/supervibe-semantic-intent-router.mjs"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "evaluateSemanticIntentMatrix",
+          "buildIntentConfusionMatrix"
+        ],
+        "retrievalStages": [
+          "rewrite",
+          "exact-symbol",
+          "fts",
+          "embedding",
+          "repo-map",
+          "graph-neighbor",
+          "dedupe",
+          "rerank"
+        ],
+        "estimatedTokens": 1300
+      }
+    },
+    {
       "id": "memory-health-token-slo-retrieval",
       "expected": {
         "memoryIds": [

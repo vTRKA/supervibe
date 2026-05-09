@@ -57,6 +57,7 @@
         "work_control_ui",
         "cleanup_stale_work",
         "agent_strengthen",
+        "supervibe_audit",
         "memory_audit",
         "docs_audit",
         "security_audit",

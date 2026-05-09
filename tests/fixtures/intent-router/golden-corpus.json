@@ -96,6 +96,25 @@
     }
   },
   {
+    "id": "agent-system-audit-natural",
+    "phrase": "audit agent system maturity intent routing receipts skills semantic rag and codegraph coverage",
+    "expected": {
+      "intent": "supervibe_audit",
+      "command": "/supervibe-audit",
+      "minConfidence": 0.9
+    }
+  },
+  {
+    "id": "hard-negative-no-agent-overdispatch",
+    "phrase": "do not call agents for this tiny question, just explain the route",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "notIntent": "supervibe_audit",
+      "minConfidence": 0.9
+    }
+  },
+  {
     "id": "desktop-design-slash",
     "phrase": "build a design system for a desktop app in /supervibe-design",
     "expected": {

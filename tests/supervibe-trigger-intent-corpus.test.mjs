@@ -34,4 +34,16 @@ describe("supervibe trigger intent corpus", () => {
       assert.equal(phrases.has(phrase), true, phrase);
     }
   });
+
+  it("covers agent-system audit and anti-emulation phrases", () => {
+    const phrases = new Set(getTriggerIntentCorpus().map((entry) => entry.phrase));
+    for (const phrase of [
+      "audit agent system maturity and intent routing",
+      "check whether agents are really invoked with receipts instead of emulation",
+      "оцени агентскую систему интенты receipts skills rag codegraph на 10 из 10",
+      "проверь что агенты реально вызываются а не эмулируются",
+    ]) {
+      assert.equal(phrases.has(phrase), true, phrase);
+    }
+  });
 });

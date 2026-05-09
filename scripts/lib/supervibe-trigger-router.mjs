@@ -269,6 +269,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: inspect weak agents from telemetry and propose strengthening through a user gate?",
     prerequisites: [],
   },
+  supervibe_audit: {
+    phase: "audit",
+    command: "/supervibe-audit",
+    skill: "supervibe:audit",
+    nextQuestionRu: "Шаг 1/1: провести read-only аудит агентской системы, интентов, receipts, skills, RAG и CodeGraph?",
+    nextQuestionEn: "Step 1/1: run a read-only audit of the agent system, intents, receipts, skills, RAG, and CodeGraph?",
+    prerequisites: ["user-request"],
+  },
   agent_provisioning: {
     phase: "setup",
     command: "node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs",
@@ -429,6 +437,13 @@ const RULES = [
     intent: "readme_update",
     confidence: 0.84,
     test: (text) => hasAny(text, ["readme", "ридми"]) && hasAny(text, ["обнови", "update", "sync"]),
+  },
+  {
+    intent: "supervibe_audit",
+    confidence: 0.93,
+    test: (text) => hasAny(text, ["agent system", "agents", "агентская система", "агентской системы", "агенты"]) &&
+      hasAny(text, ["audit", "check", "review", "score", "maturity", "out of 10", "10 из 10", "аудит", "проверь", "оцени", "зрелость"]) &&
+      hasAny(text, ["intent", "routing", "router", "receipts", "skills", "rag", "codegraph", "semantic", "интент", "роут", "маршрут", "скил", "рецепт", "семантичес"]),
   },
   {
     intent: "security_audit",
@@ -942,6 +957,7 @@ function mutationRiskForResolvedCommand(resolvedCommand) {
 function requiredSafetyFor(intent) {
   const base = ["no-provider-bypass", "no-hidden-background-work", "confirm-before-mutation"];
   if (intent === "code_index_build") return [...base, "bounded-index-run", "single-run-lock", "generated-state-only"];
+  if (intent === "supervibe_audit") return [...base, "read-only-audit", "agent-system-coverage", "receipt-provenance-check", "semantic-route-coverage"];
   if (intent === "genesis_setup") return [...base, "dry-run-before-host-file-write", "preserve-existing-host-files"];
   if (["autonomous_epic_run", "worktree_autonomous_run"].includes(intent)) {
     return [...base, "goal-stop-condition", "stop-command", intent === "worktree_autonomous_run" ? "worktree-cleanup" : "side-effect-ledger"];
