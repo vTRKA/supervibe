@@ -12,6 +12,11 @@ import {
 } from "./question-surface-contract.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
 
+const NO_SLASH_COMMAND_PREEMPT_IDS = new Set([
+  "/supervibe-adapt",
+  "/supervibe-update",
+]);
+
 const ROUTES = {
   genesis_setup: {
     phase: "setup",
@@ -594,7 +599,7 @@ export function routeTriggerRequest(input, options = {}) {
     );
   }
 
-  if (resolvedCommand?.doNotSearchProject && shouldPreemptTriggerRouting(resolvedCommand)) {
+  if (resolvedCommand?.doNotSearchProject && shouldPreemptTriggerRouting(resolvedCommand, text)) {
     if (resolvedCommand.directRoute !== false && ROUTES[resolvedCommand.intent]) {
       return routeResolvedKnownCommand(resolvedCommand, artifacts, locale);
     }
@@ -855,12 +860,23 @@ function routeForResolvedSlashCommand(resolvedCommand = {}) {
   return Object.values(ROUTES).find((route) => slashCommandId(route.command) === commandId) || null;
 }
 
-function shouldPreemptTriggerRouting(resolvedCommand) {
+function shouldPreemptTriggerRouting(resolvedCommand, text = "") {
   if (resolvedCommand.semanticScriptMatch) return false;
   if (resolvedCommand.requestedCommand) return true;
   if (resolvedCommand.intent === "code_index_build") return true;
   if (resolvedCommand.command === "/supervibe-genesis") return true;
+  if (NO_SLASH_COMMAND_PREEMPT_IDS.has(slashCommandId(resolvedCommand.command || ""))) {
+    if (slashCommandId(resolvedCommand.command || "") === "/supervibe-update" && isPluginDriftRepairRequest(text)) {
+      return false;
+    }
+    return true;
+  }
   return ["slash_command", "missing_slash_command", "project_npm_script", "plugin_npm_script", "missing_npm_script"].includes(resolvedCommand.intent);
+}
+
+function isPluginDriftRepairRequest(text = "") {
+  return hasAny(text, ["update plugin", "upgrade plugin", "plugin update", "supervibe upgrade", "обнови плагин", "обновление плагина"]) &&
+    hasAny(text, ["local drift", "local changes", "tracked drift", "replace with upstream", "upstream files", "локальн", "изменен", "замен"]);
 }
 
 function commandCatalogOptions(options = {}) {
@@ -949,6 +965,7 @@ function mutationRiskFor(intent) {
 function mutationRiskForResolvedCommand(resolvedCommand) {
   if (!resolvedCommand.command) return "none";
   if (resolvedCommand.mutationRisk === "writes-generated-index") return "writes-generated-index";
+  if (resolvedCommand.mutationRisk === "delegates-to-slash-command") return "delegates-to-command";
   if (["slash_command", "plugin_npm_script"].includes(resolvedCommand.intent)) return "delegates-to-command";
   if (resolvedCommand.intent === "project_npm_script") return "explicit-user-command";
   return resolvedCommand.mutationRisk || "explicit-user-command";

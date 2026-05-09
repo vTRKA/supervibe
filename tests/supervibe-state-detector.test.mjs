@@ -27,6 +27,17 @@ async function makeProject(name, opts = {}) {
       opts.versionSeen,
     );
   }
+  if (opts.pendingAdapt) {
+    await writeFile(
+      join(root, ".supervibe", "memory", ".supervibe-adapt-pending.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        status: "pending",
+        nextAction: "/supervibe-adapt",
+        ...opts.pendingAdapt,
+      }, null, 2),
+    );
+  }
   if (opts.invocations) {
     const lines =
       opts.invocations.map((e) => JSON.stringify(e)).join("\n") + "\n";
@@ -115,6 +126,24 @@ test("detector: version-bump-unacked fires when project saw older plugin version
   const r = await detectNextPhase(project, plugin);
   assert.strictEqual(r.proposed.command, "/supervibe-adapt");
   assert.match(r.proposed.reason, /1\.6\.0.*1\.7\.0|1\.7\.0/);
+});
+
+test("detector: pending adapt state survives notification without marking project adapted", async () => {
+  const project = await makeProject("p-pending-adapt", {
+    scaffolded: true,
+    versionSeen: "1.7.0",
+    pendingAdapt: {
+      fromVersion: "1.6.0",
+      toVersion: "1.7.0",
+      reason: "session-start-plugin-version-bump",
+    },
+  });
+  const plugin = await makePlugin("plugin-pending-adapt", { version: "1.7.0" });
+  const r = await detectNextPhase(project, plugin);
+
+  assert.strictEqual(r.proposed.command, "/supervibe-adapt");
+  assert.strictEqual(r.proposed.signal, "version-bump-unacked");
+  assert.match(r.proposed.reason, /adapt pending/);
 });
 
 test("detector: stale-artifacts fires only when ≥3 stale files exist", async () => {

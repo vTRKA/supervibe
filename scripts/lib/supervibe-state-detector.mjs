@@ -50,16 +50,36 @@ async function checkVersionBumpUnacked(projectRoot, pluginRoot) {
       "memory",
       ".supervibe-version",
     );
+    const manifestPath = join(pluginRoot, ".claude-plugin", "plugin.json");
+    if (!existsSync(manifestPath))
+      return { triggered: false, error: "plugin manifest missing" };
+    const current = JSON.parse(await readFile(manifestPath, "utf8")).version;
+    const pendingPath = join(
+      projectRoot,
+      ".supervibe",
+      "memory",
+      ".supervibe-adapt-pending.json",
+    );
+    if (existsSync(pendingPath)) {
+      try {
+        const pending = JSON.parse(await readFile(pendingPath, "utf8"));
+        if (pending?.status === "pending" && (!pending.toVersion || pending.toVersion === current)) {
+          return {
+            triggered: true,
+            evidence: `adapt pending for plugin ${pending.fromVersion || "unknown"} -> ${pending.toVersion || current}`,
+            lastSeen: pending.fromVersion || null,
+            current,
+            pending,
+          };
+        }
+      } catch {}
+    }
     if (!existsSync(versionPath))
       return {
         triggered: false,
         evidence: "project has not seen any plugin version yet",
       };
     const lastSeen = (await readFile(versionPath, "utf8")).trim();
-    const manifestPath = join(pluginRoot, ".claude-plugin", "plugin.json");
-    if (!existsSync(manifestPath))
-      return { triggered: false, error: "plugin manifest missing" };
-    const current = JSON.parse(await readFile(manifestPath, "utf8")).version;
     if (lastSeen && lastSeen !== current) {
       return {
         triggered: true,

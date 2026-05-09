@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.129] - 2026-05-10
+
+### Added
+
+- Added Windows terminal shim generation and installer/update refresh for
+  `supervibe`, `supervibe-adapt`, `supervibe-update`, and package bin aliases.
+- Added regression coverage for no-slash update/adapt prompts, typo aliases,
+  safe update modes, Windows shims, and pending project adaptation state.
+
+### Changed
+
+- Hardened command routing so `supervibe-adapt`, `supervibe adapt`, `adapt`,
+  `supervibe-update`, `supervibe update`, and Russian update phrasing route as
+  command invocations instead of falling through to project search.
+- Made update notifications persist a pending adapt state until
+  `/supervibe-adapt` actually applies or resolves the project adaptation.
+- Expanded `supervibe-update` with `--help`, `--check`, `--dry-run`,
+  `--rollback`, and `--to <ref>` behavior plus a preserved rollback anchor.
+
 ## [2.0.128] - 2026-05-10
 
 ### Added

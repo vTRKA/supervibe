@@ -72,6 +72,7 @@ const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
   "supervibe-loop",
   "supervibe-preview",
   "supervibe-stage",
+  "supervibe-update",
   "supervibe-ui",
 ]));
 
@@ -184,7 +185,7 @@ function formatHelp() {
     "",
     "Notes:",
     "  Slash workflow commands still run inside Claude Code, Codex, Gemini, Cursor, or OpenCode.",
-    "  Terminal aliases exist so macOS/Linux users do not hit command-not-found.",
+  "  Terminal aliases exist so Windows/macOS/Linux users do not hit command-not-found.",
   ].join("\n");
 }
 

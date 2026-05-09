@@ -17,7 +17,7 @@ Update the installed Supervibe plugin to the latest commit. Wraps `npm run super
 
 Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.
 
-Both are slash commands inside an AI CLI session. Use the one-line `curl`/PowerShell updater in zsh, bash, or PowerShell; send `/supervibe-update` and `/supervibe-adapt` inside the AI chat/session. On macOS/Linux installs, no-slash terminal aliases such as `supervibe-update` and `supervibe-adapt` are also linked for users who prefer terminal workflows.
+Both are slash commands inside an AI CLI session. Use the one-line `curl`/PowerShell updater in zsh, bash, or PowerShell; send `/supervibe-update` and `/supervibe-adapt` inside the AI chat/session. Windows/macOS/Linux installs also link no-slash terminal aliases such as `supervibe-update` and `supervibe-adapt` for users who prefer terminal workflows.
 
 ## Invocation forms
 
@@ -47,7 +47,7 @@ After pin: same install + test cycle. Use to test a specific candidate before ad
 
 ### `/supervibe-update --dry-run` — show what would happen
 
-Print: current version, target version, changelog summary between them, breaking changes if any. No modification.
+Print: plugin root, current version, HEAD, branch, dirty-line count, target ref, cached upstream-behind count, and the exact update steps that would run. No git pull, npm install, checkout, or file mutation.
 
 ## Procedure
 
@@ -64,7 +64,7 @@ Print: current version, target version, changelog summary between them, breaking
    ```json
    { "preSha": "<sha>", "preVersion": "<ver>", "startedAt": "<ISO>" }
    ```
-   This file is the rollback anchor. Cleaned up only on successful upgrade.
+This file is the rollback anchor. The updater writes it before mutating the checkout, preserves it through `git clean`, and cleans it up only on successful upgrade or successful rollback.
 
 3. **Refuse user-owned tracked local edits; clean stale leftovers.**
    - Run `git -C <resolved-supervibe-plugin-root> status --porcelain`.
@@ -170,8 +170,9 @@ Rollback anchor: cleaned up (no longer needed)
 
 Next:
   1. Restart your AI CLI
-   2. Read changelog: `CHANGELOG.md`
+  2. Read changelog: `CHANGELOG.md`
   3. (if project has overrides) /supervibe-adapt
+  4. Terminal aliases refreshed: supervibe-update, supervibe-adapt
 ```
 
 Failed upgrade with rollback:
@@ -202,15 +203,15 @@ Dry-run:
 
 ```
 === Supervibe Update — DRY RUN ===
-Current:        vX.Y.Z
-Latest:         v2.0.11
-Changelog summary: [from CHANGELOG.md since vX.Y.Z]
-
-Breaking changes detected: 2
-  - Removed: supervibe:legacy-prompt-quality
-  - Schema change: confidence-rubrics gates field
-
-Run `/supervibe-update` to apply.
+PLUGIN_ROOT: /path/to/marketplace
+CURRENT_VERSION: vX.Y.Z
+HEAD: abc1234
+BRANCH: main
+DIRTY_LINES: 0
+TARGET_REF: tracked-upstream
+UPSTREAM_CACHE_BEHIND: 2
+WOULD_RUN: restore managed drift -> git clean -> fetch -> pull/checkout -> ensure ONNX -> npm ci -> registry:build -> terminal shim refresh -> install doctor
+MUTATES: false
 ```
 
 ## When NOT to invoke

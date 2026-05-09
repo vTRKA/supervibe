@@ -188,6 +188,35 @@ function Ensure-NodeRuntime {
   Install-NodeRuntime
 }
 
+function Install-WindowsTerminalCommands {
+  param([string]$Path)
+  $binRoot = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HOME 'AppData\Local' }
+  $binDir = Join-Path $binRoot 'Supervibe\bin'
+  Say "refreshing Windows terminal commands in $binDir"
+  Push-Location $Path
+  try {
+    $report = (& node (Join-Path 'scripts' 'install-windows-bin-shims.mjs') --plugin-root $Path --bin-dir $binDir) -join "`n"
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host $report
+      Die 'Windows terminal command shim refresh failed.'
+    }
+  } finally {
+    Pop-Location
+  }
+  if ($report -match 'PATH_READY: false') {
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $entries = @($userPath -split ';' | Where-Object { $_ })
+    if (-not ($entries | Where-Object { $_.TrimEnd('\') -ieq $binDir.TrimEnd('\') })) {
+      $newUserPath = if ($userPath) { "$userPath;$binDir" } else { $binDir }
+      [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
+      Refresh-PathFromRegistry
+    }
+    Warn "terminal commands were refreshed under $binDir; restart PowerShell if Get-Command supervibe-update still cannot see them."
+  } else {
+    Ok "terminal commands refreshed (supervibe, supervibe-adapt, supervibe-update)"
+  }
+}
+
 # ---- locate install ----
 
 Assert-SafePluginPath $PluginRoot
@@ -230,6 +259,8 @@ try {
   Pop-Location
 }
 Test-CheckoutIntegrity
+Install-WindowsTerminalCommands $PluginRoot
 
 Ok 'done. Restart your AI CLI to pick up the new plugin code.'
-Ok 'if any project has selected host adapter overrides, open that project in your AI CLI session and send /supervibe-adapt there (not in PowerShell or another terminal shell).'
+Ok 'terminal aliases supervibe-update and supervibe-adapt are available in PowerShell after PATH refresh; /supervibe-adapt is not a PowerShell slash command.'
+Ok 'if any project has selected host adapter overrides, open that project in your AI CLI session and send /supervibe-adapt there.'

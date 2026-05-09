@@ -26,6 +26,23 @@ const PACKAGE_SCRIPT_GENERIC_TOKENS = new Set([
   "run", "start", "stop", "restart", "test", "dev", "build", "watch", "check", "validate", "audit", "status", "script", "scripts", "npm", "pnpm", "yarn", "bun", "supervibe",
 ]);
 
+const SUPERVIBE_SUBCOMMAND_ALIASES = Object.freeze({
+  adapt: "/supervibe-adapt",
+  adpat: "/supervibe-adapt",
+  update: "/supervibe-update",
+  upgrade: "/supervibe-update",
+  updat: "/supervibe-update",
+});
+
+const EXACT_BARE_SUPERVIBE_COMMANDS = Object.freeze({
+  adapt: "/supervibe-adapt",
+});
+
+const COMMON_SUPERVIBE_COMMAND_TYPOS = Object.freeze({
+  "supervibe-adpat": "/supervibe-adapt",
+  "supervibe-updat": "/supervibe-update",
+});
+
 const PACKAGE_SCRIPT_TOKEN_ALIASES = Object.freeze({
   agent: ["agent", "agents", "агент", "агенты"],
   artifact: ["artifact", "artifacts", "артефакт", "артефакты"],
@@ -78,8 +95,8 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-adapt",
     title: "Adapt project artifacts after a plugin update",
-    aliases: ["адаптируй проект после обновления", "adapt project artifacts after update", "обнови agents rules skills в проекте", "sync project artifacts"],
-    keywordGroups: [["adapt", "sync", "update", "адаптируй", "синхронизируй", "обнови"], ["artifacts", "agents", "rules", "skills", "project", "артефакты", "агенты", "правила", "скиллы", "проект"]],
+    aliases: ["адаптируй проект после обновления", "adapt project artifacts after update", "обнови agents rules skills в проекте", "sync project artifacts", "обнолвление проекта", "обнолви проект"],
+    keywordGroups: [["adapt", "sync", "update", "адаптируй", "синхронизируй", "обнови", "обнолви", "обнолвление"], ["artifacts", "agents", "rules", "skills", "project", "артефакты", "агенты", "правила", "скиллы", "проект"]],
   },
   {
     command: "/supervibe-audit",
@@ -225,8 +242,8 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-update",
     title: "Update the plugin",
-    aliases: ["обнови плагин", "update the plugin", "обнови supervibe", "pull latest supervibe"],
-    keywordGroups: [["update", "upgrade", "pull", "latest", "обнови", "апдейт"], ["plugin", "supervibe", "плагин"]],
+    aliases: ["обнови плагин", "update the plugin", "обнови supervibe", "pull latest supervibe", "обнолви плагин", "обнолви supervibe"],
+    keywordGroups: [["update", "upgrade", "pull", "latest", "обнови", "обнолви", "апдейт"], ["plugin", "supervibe", "плагин"]],
   },
 ].map(createSlashShortcut));
 
@@ -546,34 +563,20 @@ export function resolveCommandRequest(request, {
       agentProfile: getCommandAgentProfile("/supervibe-audit"),
     };
   }
-  const explicitSlash = parseExplicitSupervibeCommand(request);
+  const explicitSlash = parseExplicitSupervibeSlashCommand(request);
 
   if (explicitSlash) {
-    const slashCommand = slashCommands.find((entry) => entry.id === explicitSlash.name);
-    return {
-      id: slashCommand ? `slash-command:${explicitSlash.name.slice(1)}` : `missing-slash-command:${explicitSlash.name.slice(1)}`,
-      intent: slashCommand ? "slash_command" : "missing_slash_command",
-      title: slashCommand?.description || `Slash command ${explicitSlash.name}`,
-      command: slashCommand ? explicitSlash.command : null,
-      commandId: explicitSlash.name,
-      commandArgs: explicitSlash.args,
-      commandContext: explicitSlash.context,
-      confidence: 1,
-      reason: slashCommand
-        ? `explicit Supervibe slash command exists: ${explicitSlash.name}`
-        : `explicit Supervibe slash command is not published: ${explicitSlash.name}`,
-      requestedCommand: explicitSlash.requestedCommand,
-      slashCommandStatus: slashCommand ? "present" : "missing",
-      doNotSearchProject: true,
-      hardStop: !slashCommand,
-      agentContract: copyCommandAgentContract(),
-      agentProfile: getCommandAgentProfile(explicitSlash.name),
-      directRoute: false,
-      mutationRisk: "delegates-to-slash-command",
-      nextAction: slashCommand
-        ? "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
-        : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
-    };
+    return resolveSlashCommandMatch(explicitSlash, slashCommands, {
+      reasonPrefix: "explicit Supervibe slash command",
+    });
+  }
+
+  const terminalSupervibeCommand = parseTerminalSupervibeCommand(request);
+  if (terminalSupervibeCommand) {
+    return resolveSlashCommandMatch(terminalSupervibeCommand, slashCommands, {
+      reasonPrefix: "terminal-style Supervibe command",
+      confidence: terminalSupervibeCommand.confidence || 1,
+    });
   }
 
   const explicit = parseExplicitNpmRun(request)
@@ -1007,14 +1010,70 @@ function isBareScriptReferenceAllowed(script) {
   return value.includes(":") || value.startsWith("supervibe-");
 }
 
-function parseExplicitSupervibeCommand(request) {
+function resolveSlashCommandMatch(explicitSlash, slashCommands, { reasonPrefix = "explicit Supervibe slash command", confidence = 1 } = {}) {
+  const slashCommand = slashCommands.find((entry) => entry.id === explicitSlash.name);
+  return {
+    id: slashCommand ? `slash-command:${explicitSlash.name.slice(1)}` : `missing-slash-command:${explicitSlash.name.slice(1)}`,
+    intent: slashCommand ? "slash_command" : "missing_slash_command",
+    title: slashCommand?.description || `Slash command ${explicitSlash.name}`,
+    command: slashCommand ? explicitSlash.command : null,
+    commandId: explicitSlash.name,
+    commandArgs: explicitSlash.args,
+    commandContext: explicitSlash.context,
+    confidence,
+    reason: slashCommand
+      ? `${reasonPrefix} exists: ${explicitSlash.name}`
+      : `${reasonPrefix} is not published: ${explicitSlash.name}`,
+    requestedCommand: explicitSlash.requestedCommand,
+    slashCommandStatus: slashCommand ? "present" : "missing",
+    doNotSearchProject: true,
+    hardStop: !slashCommand,
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile(explicitSlash.name),
+    directRoute: false,
+    mutationRisk: "delegates-to-slash-command",
+    nextAction: slashCommand
+      ? "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
+      : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
+  };
+}
+
+function parseExplicitSupervibeSlashCommand(request) {
   const text = String(request || "");
-  const match = text.match(/(?:^|[\s`"'(])(?<raw>\/supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i)
-    || text.match(/(?:^|[\s`"'(])(?<raw>supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
+  const match = text.match(/(?:^|[\s`"'(])(?<raw>\/supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
   if (!match?.groups?.raw) return null;
-  const raw = match.groups.raw;
-  const name = raw.startsWith("/") ? raw : `/${raw}`;
-  const rest = String(match.groups.args || "").trim();
+  return parsedSupervibeCommand(match.groups.raw, match.groups.args);
+}
+
+function parseTerminalSupervibeCommand(request) {
+  const text = String(request || "").trim();
+  if (!text) return null;
+  const normalized = normalizeText(text);
+  const firstToken = normalized.split(" ")[0] || "";
+  const typoTarget = COMMON_SUPERVIBE_COMMAND_TYPOS[firstToken];
+  if (typoTarget) {
+    const rest = text.slice(text.match(/^\S+/)?.[0]?.length || 0).trim();
+    return parsedSupervibeCommand(typoTarget, rest, { confidence: 0.96 });
+  }
+
+  const exactBare = EXACT_BARE_SUPERVIBE_COMMANDS[normalized];
+  if (exactBare) return parsedSupervibeCommand(exactBare, "", { confidence: 0.95 });
+
+  const subcommandMatch = text.match(/^supervibe\s+(?<subcommand>[a-z0-9-]+)(?=$|[\s`"')])(?<args>[^\n]*)/i);
+  const target = SUPERVIBE_SUBCOMMAND_ALIASES[subcommandMatch?.groups?.subcommand?.toLowerCase()];
+  if (target) return parsedSupervibeCommand(target, subcommandMatch.groups.args);
+
+  const dashMatch = text.match(/^(?<raw>supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
+  if (dashMatch?.groups?.raw) return parsedSupervibeCommand(dashMatch.groups.raw, dashMatch.groups.args);
+
+  return null;
+}
+
+function parsedSupervibeCommand(rawInput, rawRest = "", { confidence = 1 } = {}) {
+  const raw = String(rawInput || "");
+  const mapped = raw.startsWith("/") ? raw : `/${raw}`;
+  const name = mapped.replace(/^\/supervibe\s+/i, "/supervibe-");
+  const rest = String(rawRest || "").trim();
   if (!raw.startsWith("/") && raw.toLowerCase() === "supervibe" && rest && !rest.startsWith("--")) return null;
   const { args, context } = splitSlashCommandRest(rest);
   const commandArgs = raw.startsWith("/") || args.startsWith("--") ? args : "";
@@ -1025,6 +1084,7 @@ function parseExplicitSupervibeCommand(request) {
     args: commandArgs,
     context,
     requestedCommand: context ? `${command} ${context}` : command,
+    confidence,
   };
 }
 

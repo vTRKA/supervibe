@@ -15,7 +15,7 @@
 
 import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { partitionTrackedPorcelainLines } from './lib/installer-managed-checkout.mjs';
 import { isManagedInstallPath } from './lib/supervibe-auto-update.mjs';
@@ -27,6 +27,8 @@ import {
 } from './lib/node-runtime-requirements.mjs';
 
 const PLUGIN_ROOT = resolveSupervibePluginRoot();
+const UPDATE_STATE_PATH = join(PLUGIN_ROOT, '.supervibe', 'memory', '.supervibe-update-state.json');
+const args = parseArgs(process.argv.slice(2));
 
 function envFlag(value) {
   return /^(1|true|yes|y|on)$/i.test(String(value || '').trim());
@@ -47,6 +49,26 @@ function commandInvocation(cmd, args) {
     };
   }
   return { command: cmd, args, display: `${cmd} ${args.join(' ')}` };
+}
+
+function parseArgs(argv) {
+  const parsed = { help: false, check: false, dryRun: false, rollback: false, to: '' };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') parsed.help = true;
+    else if (arg === '--check') parsed.check = true;
+    else if (arg === '--dry-run') parsed.dryRun = true;
+    else if (arg === '--rollback') parsed.rollback = true;
+    else if (arg === '--to') {
+      parsed.to = argv[i + 1] || '';
+      i += 1;
+    } else if (arg.startsWith('--to=')) {
+      parsed.to = arg.slice('--to='.length);
+    } else {
+      parsed.unknown = arg;
+    }
+  }
+  return parsed;
 }
 
 function run(cmd, args, opts = {}) {
@@ -78,7 +100,9 @@ function statusLines(stdout) {
 }
 
 function isAllowedAutoUpdateStateLine(line) {
-  return /^\?\? \.claude-plugin\/\.auto-update\.(json|lock)$/.test(String(line || "").trimEnd());
+  const value = String(line || "").trimEnd();
+  return /^\?\? \.claude-plugin\/\.auto-update\.(json|lock)$/.test(value)
+    || value === '?? .supervibe/memory/.supervibe-update-state.json';
 }
 
 function readDirtyState(stage) {
@@ -117,6 +141,140 @@ function fail(msg) {
   process.exit(1);
 }
 
+function formatUpgradeHelp() {
+  return [
+    'SUPERVIBE_UPDATE_HELP',
+    'Usage:',
+    '  supervibe-update',
+    '  supervibe-update --check',
+    '  supervibe-update --dry-run',
+    '  supervibe-update --rollback',
+    '  supervibe-update --to <git-ref>',
+    '',
+    'Modes:',
+    '  --check     Fetch upstream metadata and report whether the plugin is behind.',
+    '  --dry-run   Print the planned update steps without git pull, npm ci, or file mutation.',
+    '  --rollback  Restore the pre-upgrade git ref recorded in .supervibe-update-state.json.',
+    '  --to        Checkout a specific git ref, then run the same install/audit cycle.',
+    '',
+    'Next after a successful update:',
+    '  Restart the AI CLI, then run /supervibe-adapt inside each project that has overrides.',
+  ].join('\n');
+}
+
+function writeUpgradeState(state) {
+  mkdirSync(join(PLUGIN_ROOT, '.supervibe', 'memory'), { recursive: true });
+  writeFileSync(UPDATE_STATE_PATH, JSON.stringify(state, null, 2) + '\n', 'utf8');
+}
+
+function readUpgradeState() {
+  if (!existsSync(UPDATE_STATE_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(UPDATE_STATE_PATH, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function clearUpgradeState() {
+  rmSync(UPDATE_STATE_PATH, { force: true });
+}
+
+function currentHeadSha() {
+  const head = runQuiet('git', ['rev-parse', 'HEAD']);
+  return head.ok ? head.stdout : null;
+}
+
+function printDryRun() {
+  const current = manifestVersion(PLUGIN_ROOT);
+  const head = currentHeadSha();
+  const branch = runQuiet('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const status = runQuiet('git', ['status', '--porcelain', '--untracked-files=all']);
+  const cachePath = join(PLUGIN_ROOT, '.claude-plugin', '.upgrade-check.json');
+  let cache = null;
+  if (existsSync(cachePath)) {
+    try { cache = JSON.parse(readFileSync(cachePath, 'utf8')); } catch {}
+  }
+  console.log('SUPERVIBE_UPDATE_DRY_RUN');
+  console.log(`PLUGIN_ROOT: ${PLUGIN_ROOT}`);
+  console.log(`CURRENT_VERSION: ${current || 'unknown'}`);
+  console.log(`HEAD: ${head || 'unknown'}`);
+  console.log(`BRANCH: ${branch.ok ? branch.stdout : 'unknown'}`);
+  console.log(`DIRTY_LINES: ${status.ok && status.stdout ? statusLines(status.stdout).length : 0}`);
+  console.log(`TARGET_REF: ${args.to || 'tracked-upstream'}`);
+  console.log(`UPSTREAM_CACHE_BEHIND: ${cache?.behind ?? 'unknown'}`);
+  console.log('WOULD_RUN: restore managed drift -> git clean -> fetch -> pull/checkout -> ensure ONNX -> npm ci -> registry:build -> terminal shim refresh -> install doctor');
+  console.log('MUTATES: false');
+}
+
+async function runCheckMode() {
+  console.log(`[supervibe:upgrade] plugin root: ${PLUGIN_ROOT}`);
+  const { performUpstreamCheck } = await import('./lib/upgrade-check.mjs');
+  const result = await performUpstreamCheck(PLUGIN_ROOT);
+  if (result.error) {
+    console.log(`[supervibe:upgrade] check failed: ${result.error}`);
+    process.exit(1);
+  }
+  const tag = result.latestTag ? ` (latest tag: ${result.latestTag})` : '';
+  if (result.behind > 0) {
+    console.log(`[supervibe:upgrade] ${result.behind} commit(s) behind upstream${tag}`);
+  } else {
+    console.log('[supervibe:upgrade] up to date with upstream');
+  }
+}
+
+function runInstallCycleAfterCheckout(label) {
+  console.log(`[supervibe:upgrade] ${label}: ensuring required ONNX embedding model ...`);
+  if (!run('node', ['scripts/ensure-onnx-model.mjs'])) fail('required ONNX model setup failed - install cannot be considered complete without the embedding model.');
+  console.log(`[supervibe:upgrade] ${label}: npm ci ...`);
+  if (!run('npm', ['ci', '--no-audit', '--no-fund'])) fail('npm ci failed');
+  console.log(`[supervibe:upgrade] ${label}: npm run registry:build ...`);
+  if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
+  refreshTerminalCommands();
+  console.log(`[supervibe:upgrade] ${label}: npm run supervibe:install-doctor ...`);
+  if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');
+}
+
+function refreshTerminalCommands() {
+  if (process.platform === 'win32') {
+    console.log('[supervibe:upgrade] refreshing Windows terminal commands ...');
+    if (!run('node', ['scripts/install-windows-bin-shims.mjs', '--plugin-root', PLUGIN_ROOT])) {
+      fail('Windows terminal command shim refresh failed - run node scripts/install-windows-bin-shims.mjs for details.');
+    }
+    return;
+  }
+  console.log('[supervibe:upgrade] refreshing macOS/Linux terminal commands ...');
+  if (!run('node', ['scripts/install-unix-bin-links.mjs', '--plugin-root', PLUGIN_ROOT])) {
+    fail('terminal command link refresh failed - run npm run supervibe:install-bins for details.');
+  }
+}
+
+function rollbackFromState() {
+  const state = readUpgradeState();
+  if (!state?.preSha) fail('No rollback anchor found at .supervibe/memory/.supervibe-update-state.json.');
+  console.log(`[supervibe:upgrade] rollback to ${state.preSha} (was v${state.preVersion || 'unknown'}) ...`);
+  if (!run('git', ['reset', '--hard', state.preSha])) fail('git reset --hard rollback failed');
+  runInstallCycleAfterCheckout('rollback');
+  clearUpgradeState();
+  console.log(`[supervibe:upgrade] rollback complete; plugin restored to ${state.preSha}.`);
+}
+
+if (args.help) {
+  console.log(formatUpgradeHelp());
+  process.exit(0);
+}
+if (args.unknown) fail(`Unknown option: ${args.unknown}. Run supervibe-update --help.`);
+if (args.check) await runCheckMode();
+if (args.check) process.exit(0);
+if (args.dryRun) {
+  printDryRun();
+  process.exit(0);
+}
+if (args.rollback) {
+  rollbackFromState();
+  process.exit(0);
+}
+
 console.log(`[supervibe:upgrade] plugin root: ${PLUGIN_ROOT}`);
 
 const nodeCapability = getNodeRuntimeCapability();
@@ -130,6 +288,14 @@ if (!existsSync(join(PLUGIN_ROOT, '.git'))) {
 
 const before = manifestVersion(PLUGIN_ROOT);
 console.log(`[supervibe:upgrade] current version: ${before || 'unknown'}`);
+const preSha = currentHeadSha();
+writeUpgradeState({
+  schemaVersion: 1,
+  preSha,
+  preVersion: before,
+  targetRef: args.to || null,
+  startedAt: new Date().toISOString(),
+});
 
 const restoreAllTrackedDrift =
   isManagedInstallPath(PLUGIN_ROOT) || envFlag(process.env.SUPERVIBE_RESTORE_PLUGIN_DRIFT);
@@ -163,13 +329,20 @@ if (!run('git', [
   '.claude-plugin/.auto-update.lock',
   '-e',
   MODEL_RELATIVE_PATH,
+  '-e',
+  '.supervibe/memory/.supervibe-update-state.json',
 ])) fail('git clean failed');
 assertMirrorCheckoutClean('pre-pull cleanup');
 
 console.log('[supervibe:upgrade] git fetch + pull --ff-only ...');
 if (!run('git', ['fetch', '--tags', '--prune'])) fail('git fetch failed');
-if (!run('git', ['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
-assertMirrorCheckoutClean('git pull --ff-only');
+if (args.to) {
+  if (!run('git', ['checkout', '--quiet', args.to])) fail(`git checkout ${args.to} failed`);
+  assertMirrorCheckoutClean(`git checkout ${args.to}`);
+} else {
+  if (!run('git', ['pull', '--ff-only'])) fail('git pull --ff-only failed (local diverged from upstream)');
+  assertMirrorCheckoutClean('git pull --ff-only');
+}
 
 console.log('[supervibe:upgrade] ensuring required ONNX embedding model ...');
 if (!run('node', ['scripts/ensure-onnx-model.mjs'])) {
@@ -182,12 +355,7 @@ if (!run('npm', ['ci', '--no-audit', '--no-fund'])) fail('npm ci failed');
 console.log('[supervibe:upgrade] npm run registry:build ...');
 if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
 
-if (process.platform !== 'win32') {
-  console.log('[supervibe:upgrade] refreshing macOS/Linux terminal commands ...');
-  if (!run('node', ['scripts/install-unix-bin-links.mjs', '--plugin-root', PLUGIN_ROOT])) {
-    fail('terminal command link refresh failed - run npm run supervibe:install-bins for details.');
-  }
-}
+refreshTerminalCommands();
 
 console.log('[supervibe:upgrade] npm run supervibe:install-doctor ...');
 if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');
@@ -199,6 +367,7 @@ try {
   const { performUpstreamCheck } = await import('./lib/upgrade-check.mjs');
   await performUpstreamCheck(PLUGIN_ROOT);
 } catch { /* non-fatal */ }
+clearUpgradeState();
 
 console.log('\n=================================================');
 if (before === after) {
@@ -206,8 +375,8 @@ if (before === after) {
 } else {
   console.log(`[supervibe:upgrade] upgraded ${before} -> ${after}`);
   console.log(`[supervibe:upgrade] restart your AI CLI to pick up the new plugin code.`);
-  console.log(`[supervibe:upgrade] Each project will see [supervibe]  on its next session start.`);
-  console.log(`[supervibe:upgrade] To refresh project overrides, send /supervibe-adapt inside that project's AI CLI session, not in the terminal shell.`);
+  console.log(`[supervibe:upgrade] Next: restart your AI CLI, then run /supervibe-adapt inside each project that has overrides.`);
+  console.log(`[supervibe:upgrade] Terminal aliases are refreshed for this OS: supervibe-update and supervibe-adapt.`);
 }
 console.log('=================================================');
 

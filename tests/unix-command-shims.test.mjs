@@ -90,11 +90,10 @@ test("terminal dispatcher does not execute mutating commands for --help", async 
     "--help",
   ], { cwd: ROOT });
 
-  assert.match(stdout, /SUPERVIBE_TERMINAL_COMMAND/);
-  assert.match(stdout, /COMMAND: supervibe-update/);
-  assert.match(stdout, /RUNNABLE: true/);
-  assert.match(stdout, /HELP_FORWARDED: false/);
-  assert.doesNotMatch(stdout, /git fetch|npm ci|supervibe:upgrade/);
+  assert.match(stdout, /SUPERVIBE_UPDATE_HELP/);
+  assert.match(stdout, /supervibe-update --check/);
+  assert.match(stdout, /supervibe-update --dry-run/);
+  assert.doesNotMatch(stdout, /\[supervibe:upgrade\] git fetch|\[supervibe:upgrade\] npm ci|npm run supervibe:upgrade/);
 });
 
 test("every macOS/Linux terminal alias has a non-destructive help path", async () => {

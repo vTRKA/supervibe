@@ -66,10 +66,28 @@ test("supervibe-upgrade preserves auto-update lock and state during git clean", 
   assert.match(source, /'-e',\s*MODEL_RELATIVE_PATH/s);
 });
 
+test("supervibe-upgrade implements documented safe modes and rollback anchor", async () => {
+  const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+
+  assert.match(source, /SUPERVIBE_UPDATE_HELP/);
+  assert.match(source, /--check/);
+  assert.match(source, /--dry-run/);
+  assert.match(source, /--rollback/);
+  assert.match(source, /--to <git-ref>/);
+  assert.match(source, /performUpstreamCheck/);
+  assert.match(source, /SUPERVIBE_UPDATE_DRY_RUN/);
+  assert.match(source, /\.supervibe-update-state\.json/);
+  assert.match(source, /writeUpgradeState/);
+  assert.match(source, /rollbackFromState/);
+  assert.match(source, /git', \['checkout', '--quiet', args\.to\]/);
+  assert.match(source, /install-windows-bin-shims\.mjs/);
+  assert.match(source, /install-unix-bin-links\.mjs/);
+});
+
 test("supervibe-upgrade uses plain git before required ONNX setup", async () => {
   const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
   const fetch = source.indexOf("run('git', ['fetch'");
-  const modelSetup = source.indexOf("scripts/ensure-onnx-model.mjs");
+  const modelSetup = source.indexOf("[supervibe:upgrade] ensuring required ONNX embedding model");
 
   assert.notEqual(fetch, -1, "upgrade should fetch through the normal git path");
   assert.notEqual(modelSetup, -1, "upgrade should run required ONNX model setup");

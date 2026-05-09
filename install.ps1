@@ -352,6 +352,39 @@ Ok 'install preparation passed'
 
 $InstalledVersion = (Get-Content (Join-Path $Target '.claude-plugin\plugin.json') -Raw | ConvertFrom-Json).version
 
+function Install-WindowsTerminalCommands {
+  param([string]$Path)
+  $binRoot = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HOME 'AppData\Local' }
+  $binDir = Join-Path $binRoot 'Supervibe\bin'
+  $log = Join-Path $LogDir 'windows-bin-shims.log'
+  Say "linking Windows terminal commands into $binDir"
+  Push-Location $Path
+  try {
+    & node (Join-Path 'scripts' 'install-windows-bin-shims.mjs') --plugin-root $Path --bin-dir $binDir *>&1 | Tee-Object -FilePath $log | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      Get-Content $log -Tail 40 | Write-Host
+      Die "Windows terminal command shim install failed. Full log: $log"
+    }
+  } finally {
+    Pop-Location
+  }
+  $report = Get-Content $log -Raw
+  if ($report -match 'PATH_READY: false') {
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $entries = @($userPath -split ';' | Where-Object { $_ })
+    if (-not ($entries | Where-Object { $_.TrimEnd('\') -ieq $binDir.TrimEnd('\') })) {
+      $newUserPath = if ($userPath) { "$userPath;$binDir" } else { $binDir }
+      [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
+      Refresh-PathFromRegistry
+    }
+    Warn "terminal commands were linked under $binDir; restart PowerShell if Get-Command supervibe-adapt still cannot see them."
+  } else {
+    Ok "terminal commands linked (supervibe, supervibe-adapt, supervibe-update)"
+  }
+}
+
+Install-WindowsTerminalCommands $Target
+
 # ---- register with each detected CLI ----
 
 function Register-Claude {
@@ -598,6 +631,7 @@ Write-Host '    1. Restart your AI CLI so it picks up the plugin'
 Write-Host '    2. Open any project - you should see [supervibe] banner lines on session start'
 Write-Host '    3. /supervibe-genesis (in Claude Code) for first-time project scaffolding'
 Write-Host "    4. npm run supervibe:status (from $Target) for index health any time"
+Write-Host '    5. Terminal aliases: supervibe, supervibe-adapt, supervibe-update'
 Write-Host ''
 Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'
 Write-Host "  Manual:      cd '$Target'; npm run supervibe:upgrade"

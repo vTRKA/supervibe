@@ -148,20 +148,36 @@ async function reportVersionBump() {
   try {
     const pluginRoot = resolveExplicitSupervibePluginRoot();
     if (!pluginRoot) return;
-    const { checkVersionBump, setLastSeenVersion } =
+    const {
+      checkVersionBump,
+      markAdaptPending,
+      setLastNotifiedVersion,
+      setLastSeenVersion,
+    } =
       await import("./lib/version-tracker.mjs");
     const r = await checkVersionBump(PROJECT_ROOT, pluginRoot);
     if (!r.bumped) return;
     if (r.firstTime) {
-      console.log(
-        `[supervibe] welcome — plugin v${r.current} initialized for this project`,
-      );
+      if (r.notificationPending) {
+        console.log(
+          `[supervibe] welcome — plugin v${r.current} initialized for this project`,
+        );
+      }
+      await setLastSeenVersion(PROJECT_ROOT, r.current);
+      await setLastNotifiedVersion(PROJECT_ROOT, r.current);
     } else {
-      console.log(
-        `[supervibe] ⬆ plugin upgraded ${r.lastSeen} → ${r.current}. See CHANGELOG.md for what's new.`,
-      );
+      await markAdaptPending(PROJECT_ROOT, {
+        fromVersion: r.lastSeen,
+        toVersion: r.current,
+        reason: "session-start-plugin-version-bump",
+      });
+      if (r.notificationPending) {
+        console.log(
+          `[supervibe] ⬆ plugin upgraded ${r.lastSeen} → ${r.current}. See CHANGELOG.md for what's new. Run /supervibe-adapt in this project to refresh selected overrides.`,
+        );
+        await setLastNotifiedVersion(PROJECT_ROOT, r.current);
+      }
     }
-    await setLastSeenVersion(PROJECT_ROOT, r.current);
   } catch {
     // Non-fatal
   }

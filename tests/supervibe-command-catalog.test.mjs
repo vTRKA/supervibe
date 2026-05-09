@@ -72,6 +72,38 @@ test("command resolver resolves every published slash command explicitly without
   }
 });
 
+test("command resolver treats no-slash update/adapt requests as command invocations", () => {
+  const cases = [
+    ["supervibe-adapt", "/supervibe-adapt"],
+    ["supervibe-adapt --dry-run", "/supervibe-adapt --dry-run"],
+    ["supervibe adapt", "/supervibe-adapt"],
+    ["adapt", "/supervibe-adapt"],
+    ["supervibe-adpat", "/supervibe-adapt"],
+    ["supervibe-update", "/supervibe-update"],
+    ["supervibe update", "/supervibe-update"],
+    ["supervibe upgrade", "/supervibe-update"],
+    ["supervibe-updat", "/supervibe-update"],
+    ["update supervibe", "/supervibe-update"],
+    ["pull latest supervibe", "/supervibe-update"],
+    ["обнови supervibe", "/supervibe-update"],
+    ["обнолви плагин", "/supervibe-update"],
+    ["обнолвление проекта", "/supervibe-adapt"],
+    ["sync project artifacts", "/supervibe-adapt"],
+    ["update project artifacts", "/supervibe-adapt"],
+  ];
+
+  for (const [request, expectedCommand] of cases) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.ok(match, request);
+    assert.equal(match.command, expectedCommand, request);
+    assert.equal(match.doNotSearchProject, true, request);
+  }
+});
+
 test("command matches expose the real-agent orchestration contract", () => {
   const match = resolveCommandRequest("/supervibe-design build prototype", {
     pluginRoot: ROOT,

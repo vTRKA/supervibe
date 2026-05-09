@@ -5,7 +5,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   getCurrentPluginVersion,
+  getAdaptPending,
   getLastSeenVersion,
+  markAdaptPending,
+  clearAdaptPending,
+  getLastNotifiedVersion,
+  setLastNotifiedVersion,
   setLastSeenVersion,
   checkVersionBump,
 } from '../scripts/lib/version-tracker.mjs';
@@ -62,4 +67,28 @@ test('checkVersionBump: bumped=true after plugin update', async () => {
   assert.strictEqual(r.current, '1.7.0');
   assert.strictEqual(r.bumped, true);
   assert.strictEqual(r.firstTime, false);
+  assert.strictEqual(r.notificationPending, true);
+});
+
+test('notified version and pending adapt state do not mark project adapted', async () => {
+  await setLastSeenVersion(projectRoot, '1.6.0');
+  await setLastNotifiedVersion(projectRoot, '1.7.0');
+  await markAdaptPending(projectRoot, {
+    fromVersion: '1.6.0',
+    toVersion: '1.7.0',
+    reason: 'test-version-bump',
+  });
+
+  const pending = await getAdaptPending(projectRoot);
+  const r = await checkVersionBump(projectRoot, pluginRoot);
+
+  assert.strictEqual(await getLastNotifiedVersion(projectRoot), '1.7.0');
+  assert.strictEqual(pending.status, 'pending');
+  assert.strictEqual(pending.nextAction, '/supervibe-adapt');
+  assert.strictEqual(r.bumped, true);
+  assert.strictEqual(r.notificationPending, false);
+
+  assert.strictEqual(await clearAdaptPending(projectRoot, '1.6.0'), false);
+  assert.strictEqual(await clearAdaptPending(projectRoot, '1.7.0'), true);
+  assert.strictEqual(await getAdaptPending(projectRoot), null);
 });

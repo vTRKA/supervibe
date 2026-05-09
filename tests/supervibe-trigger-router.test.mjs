@@ -155,6 +155,41 @@ describe("supervibe trigger router", () => {
     assert.deepEqual(missing.safetyBlockers, []);
   });
 
+  it("routes no-slash update/adapt shortcuts through command catalog without falling through to unknown", () => {
+    const cases = [
+      ["supervibe-adapt", "/supervibe-adapt"],
+      ["supervibe adapt", "/supervibe-adapt"],
+      ["adapt", "/supervibe-adapt"],
+      ["supervibe-adpat", "/supervibe-adapt"],
+      ["sync project artifacts", "/supervibe-adapt"],
+      ["обнолвление проекта", "/supervibe-adapt"],
+      ["supervibe-update", "/supervibe-update"],
+      ["supervibe update", "/supervibe-update"],
+      ["update supervibe", "/supervibe-update"],
+      ["pull latest supervibe", "/supervibe-update"],
+      ["обнови supervibe", "/supervibe-update"],
+      ["обнолви плагин", "/supervibe-update"],
+    ];
+
+    for (const [request, command] of cases) {
+      const route = routeTriggerRequest(request);
+
+      assert.equal(route.command, command, request);
+      assert.equal(route.source, "command-catalog", request);
+      assert.equal(route.doNotSearchProject, true, request);
+      assert.deepEqual(route.safetyBlockers, [], request);
+    }
+  });
+
+  it("keeps plugin drift repair intent ahead of generic no-slash update shortcuts", () => {
+    const request = "update plugin should replace local plugin drift with upstream files";
+    const route = routeTriggerRequest(request, { artifacts: { request, userRequest: request } });
+
+    assert.equal(route.intent, "plugin_update_repair");
+    assert.equal(route.command, "npm run supervibe:upgrade");
+    assert.notEqual(route.source, "command-catalog");
+  });
+
   it("does not manually emulate the published supervibe-design slash command from a mixed-language request", () => {
     const route = routeTriggerRequest("запусти команду /supervibe-design на создание новой дизайн системы десктопного приложения");
 

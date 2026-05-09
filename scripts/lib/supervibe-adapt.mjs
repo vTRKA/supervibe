@@ -11,7 +11,7 @@ import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 import { collectIndexHealthFromStore, evaluateIndexHealthGate } from "./supervibe-index-health.mjs";
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
 import { SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
-import { getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
+import { clearAdaptPending, getCurrentPluginVersion, getLastSeenVersion, setLastSeenVersion } from "./version-tracker.mjs";
 import { validateArtifactLinks } from "../validate-artifact-links.mjs";
 import { validateAgentProducerReceipts } from "./agent-producer-contract.mjs";
 import {
@@ -178,6 +178,7 @@ export async function applyAdaptPlan(plan, {
     const baselinePath = await writeBaseline(plan, baselineItems);
     mutatedPaths.push(baselinePath);
     await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
+    await clearAdaptPending(plan.projectRoot, plan.currentVersion);
     mutatedPaths.push(".supervibe/memory/.supervibe-version");
   }
 
@@ -458,6 +459,7 @@ export async function resolveAdaptPlanItems(plan, paths = []) {
     baselineUpdated = true;
     if (plan.currentVersion) {
       await setLastSeenVersion(plan.projectRoot, plan.currentVersion);
+      await clearAdaptPending(plan.projectRoot, plan.currentVersion);
       mutatedPaths.push(".supervibe/memory/.supervibe-version");
     }
   }

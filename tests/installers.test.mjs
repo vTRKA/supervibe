@@ -163,6 +163,19 @@ test('macOS/Linux installer and updater refresh terminal command shims', () => {
   assert.match(sh, /\.local\/bin/, 'bash installer must use a user-writable Unix bin dir');
 });
 
+test('Windows installer and updater refresh terminal command shims', () => {
+  const ps1 = readFileSync(PS1, 'utf8');
+  const updatePs1 = readFileSync(UPD_PS1, 'utf8');
+  const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+
+  assert.equal(packageJson.bin['supervibe-update'], 'bin/supervibe.mjs');
+  assert.match(ps1, /install-windows-bin-shims\.mjs/, 'PowerShell installer must create terminal shims');
+  assert.match(updatePs1, /install-windows-bin-shims\.mjs/, 'PowerShell updater must refresh terminal shims');
+  assert.match(ps1, /Supervibe\\bin/, 'PowerShell installer must use a user-writable Windows bin dir');
+  assert.match(updatePs1, /Supervibe\\bin/, 'PowerShell updater must use a user-writable Windows bin dir');
+  assert.match(`${ps1}\n${updatePs1}`, /SetEnvironmentVariable\('Path'/, 'PowerShell scripts must repair user PATH for terminal aliases');
+});
+
 test('installers require Node 22.5+ and offer consent-based bootstrap before registration', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
