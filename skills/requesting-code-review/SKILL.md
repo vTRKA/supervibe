@@ -83,6 +83,14 @@ What's the review surface?
 
 When the input artifact is a plan, produce a review package with:
 - Spec coverage and unresolved questions
+- MVP value, anti-bloat check, and explicit approved/deferred/rejected scope
+- Architecture fit, ADR need, and unresolved architecture decisions
+- Risk-triggered specialist coverage for database, cache, queue, security, API, infrastructure, and frontend areas
+- Data storage topology, migration safety, backup, restore, and scaling posture when database risk is triggered
+- Cache and queue topology, retry, idempotency, and dead-letter behavior when cache or queue risk is triggered
+- API contract readiness, error envelope, compatibility, and idempotency when API risk is triggered
+- Security and privacy review for threat model, PII, secrets, permission model, and audit logging
+- Observability, release, support, rollback, and incident visibility
 - Dependency graph and critical-path sanity
 - Task size and atomicity
 - Verification coverage, including UI/browser evidence where applicable
@@ -91,6 +99,8 @@ When the input artifact is a plan, produce a review package with:
 - Worktree suitability for long autonomous runs
 - Capability assignment, reviewer independence, and wave serialization/blocker reasons
 - Provider-policy safety: no bypass defaults, no hidden background automation, explicit stop/resume/status
+
+Plan-review mode must write a durable artifact using `docs/templates/plan-review-template.md`, validate it with `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`, and score against `confidence-rubrics/plan-review.yaml`. Inline notes are diagnostic only. The loop can stop with pass only when the Convergence Ledger shows at least one iteration, zero open critical findings, zero open major findings, an explicit stop reason, and a Next User Decision.
 
 If the plan passes, print:
 

@@ -1,0 +1,46 @@
+artifact: plan-review-package
+max-score: 10
+dimensions:
+  - id: spec-coverage
+    weight: 1
+    question: "Does the review prove the plan links to an approved spec or coverage matrix?"
+    evidence-required: "Plan path plus spec path or coverage matrix"
+  - id: mvp-scope-safety
+    weight: 1
+    question: "Does the review protect MVP value and scope boundaries?"
+    evidence-required: "Smallest production-safe slice, value hypothesis, approved scope, deferred scope, and rejected scope"
+  - id: architecture-fit
+    weight: 1
+    question: "Does the review validate architecture fit before execution?"
+    evidence-required: "Architecture boundaries, ADR decision, and unresolved decision status"
+  - id: topology-readiness
+    weight: 1
+    question: "Does the review cover database, cache, and queue topology when triggered?"
+    evidence-required: "Storage topology, migration safety, backup, restore, cache posture, queue retry, idempotency, and dead-letter posture when triggered"
+  - id: api-contract-readiness
+    weight: 1
+    question: "Does the review cover API contract readiness when API risk is triggered?"
+    evidence-required: "Request, response, error envelope, compatibility, and idempotency contract when triggered"
+  - id: security-privacy
+    weight: 1
+    question: "Does the review cover security and privacy before execution?"
+    evidence-required: "Threat model, PII boundary, secrets policy, permission model, and audit logging"
+  - id: observability-release-support
+    weight: 1
+    question: "Does the review cover operations and release readiness?"
+    evidence-required: "Logs, metrics, alerts, rollback, support, release, and incident visibility"
+  - id: task-execution-readiness
+    weight: 1
+    question: "Are task graph, size, verification, and rollback ready for execution?"
+    evidence-required: "Acyclic dependencies, atomic tasks, verification commands, and rollback paths"
+  - id: parallel-provider-safety
+    weight: 1
+    question: "Are parallel execution and provider policy safe?"
+    evidence-required: "No overlapping parallel write sets, explicit isolation decision, no permission bypass, and no hidden background automation"
+  - id: convergence-decision
+    weight: 1
+    question: "Does the review loop have a safe stopping point?"
+    evidence-required: "Review iterations, zero open critical or major findings, stop reason, and next user decision"
+gates:
+  block-below: 9
+  warn-below: 10

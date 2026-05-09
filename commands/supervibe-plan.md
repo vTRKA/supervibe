@@ -42,6 +42,15 @@ Examples:
 
 Canonical mandatory review loop after a durable plan is written. This review must pass before `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` can write work items, epic state, or execution handoff artifacts.
 
+The review loop must produce a durable plan-review artifact, not only inline notes. The artifact follows `docs/templates/plan-review-template.md` and must pass `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`. It records:
+- Review Summary with verdict, score, and stop reason
+- Reviewer Coverage with the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`
+- Risk Trigger Matrix for database, cache, queue, security, API, infrastructure, and frontend risk
+- Plan Review Scorecard against `confidence-rubrics/plan-review.yaml`
+- Findings, Convergence Ledger, Residual Risks, Next User Decision, and Evidence
+
+The loop can stop with pass only when there are zero open critical findings, zero open major findings, a stop reason, and one explicit next user decision. If database, cache, queue, API, security, infrastructure, or frontend risks are present, the corresponding specialist reviewer set must be selected and represented in the coverage section. MVP anti-bloat, scope safety, architecture fit, topology, security/privacy, observability, release, rollback, provider policy, and verification coverage are blocking dimensions.
+
 ### `/supervibe-plan` (no args)
 
 Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If none, fall back to:
@@ -93,7 +102,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 6. **Machine-validate the plan.** Run `node scripts/validate-plan-artifacts.mjs --file <plan>`. Any failure blocks execution handoff.
 
-7. **Score against `plan.yaml` rubric.** Gate ≥9. <9 → iterate.
+7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
 
 8. **Mandatory review handoff before execution.** Print:
    ```

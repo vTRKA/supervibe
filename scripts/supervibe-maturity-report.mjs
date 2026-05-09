@@ -10,6 +10,7 @@ import {
 import { validateWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
 import { validateApiContract } from "./validate-api-contracts.mjs";
 import { validateDecisionBrief } from "./validate-decision-briefs.mjs";
+import { validatePlanReviewArtifact } from "./validate-plan-review-artifacts.mjs";
 
 const REQUIRED_SCENARIOS = Object.freeze([
   "internal-application-audit",
@@ -168,13 +169,16 @@ function inspectArtifactReadiness(root) {
   const requiredFiles = [
     "docs/templates/decision-brief-template.md",
     "docs/templates/api-contract-template.md",
+    "docs/templates/plan-review-template.md",
     "scripts/validate-decision-briefs.mjs",
     "scripts/validate-api-contracts.mjs",
+    "scripts/validate-plan-review-artifacts.mjs",
     "scripts/validate-work-item-graphs.mjs",
   ];
   const missing = requiredFiles.filter((file) => !existsSync(join(root, file)));
   const decisionFixtures = readMarkdownFiles(join(root, "tests", "fixtures", "artifacts", "decision-briefs"));
   const apiFixtures = readMarkdownFiles(join(root, "tests", "fixtures", "artifacts", "api-contracts"));
+  const planReviewFixtures = readMarkdownFiles(join(root, "tests", "fixtures", "artifacts", "plan-reviews"));
   const workItemFixtures = readJsonFiles(join(root, "tests", "fixtures", "artifacts", "work-item-graphs"));
   const decisionFailures = decisionFixtures
     .map((file) => ({ file, issues: validateDecisionBrief(readText(file)) }))
@@ -182,29 +186,36 @@ function inspectArtifactReadiness(root) {
   const apiFailures = apiFixtures
     .map((file) => ({ file, issues: validateApiContract(readText(file)) }))
     .filter((item) => item.issues.length > 0);
+  const planReviewFailures = planReviewFixtures
+    .map((file) => ({ file, issues: validatePlanReviewArtifact(readText(file)) }))
+    .filter((item) => item.issues.length > 0);
   const workItemFailures = workItemFixtures
     .map((file) => ({ file, validation: validateWorkItemGraph(readJson(file, {})) }))
     .filter((item) => !item.validation.valid);
   const pass = missing.length === 0
     && decisionFixtures.length > 0
     && apiFixtures.length > 0
+    && planReviewFixtures.length > 0
     && workItemFixtures.length > 0
     && decisionFailures.length === 0
     && apiFailures.length === 0
+    && planReviewFailures.length === 0
     && workItemFailures.length === 0;
   const problems = [
     missing.length ? `missing=${missing.join(",")}` : null,
     decisionFixtures.length === 0 ? "decisionFixtures=0" : null,
     apiFixtures.length === 0 ? "apiContractFixtures=0" : null,
+    planReviewFixtures.length === 0 ? "planReviewFixtures=0" : null,
     workItemFixtures.length === 0 ? "workItemGraphFixtures=0" : null,
     decisionFailures.length ? `decisionFailures=${decisionFailures.length}` : null,
     apiFailures.length ? `apiFailures=${apiFailures.length}` : null,
+    planReviewFailures.length ? `planReviewFailures=${planReviewFailures.length}` : null,
     workItemFailures.length ? `workItemGraphFailures=${workItemFailures.length}` : null,
   ].filter(Boolean);
   return {
     pass,
     evidence: pass
-      ? `decisionBriefFixtures=${decisionFixtures.length}, apiContractFixtures=${apiFixtures.length}, workItemGraphFixtures=${workItemFixtures.length}, validators=3`
+      ? `decisionBriefFixtures=${decisionFixtures.length}, apiContractFixtures=${apiFixtures.length}, planReviewFixtures=${planReviewFixtures.length}, workItemGraphFixtures=${workItemFixtures.length}, validators=4`
       : problems.join("; "),
   };
 }

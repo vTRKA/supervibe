@@ -202,6 +202,9 @@ test("command catalog routes workflow-chain maturity audits before explicit slas
   for (const request of [
     "audit /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop maturity",
     "rate the brainstorm plan execute loop maturity out of 10",
+    "audit review-loop plan readiness out of 10",
+    "Проведи аудит review-loop системы планов на 10 из 10",
+    "оцени зрелость review-loop для планов из 10",
     "проверь насколько прокачана цепочка /supervibe-brainstorm /supervibe-plan /supervibe-execute-plan /supervibe-loop",
   ]) {
     const match = resolveCommandRequest(request, {
@@ -221,6 +224,7 @@ test("command catalog routes plan-review complaints to mandatory review instead 
   for (const request of [
     "запусти ревью плана спец агентами",
     "review plan with specialist agents",
+    "запусти review loop по плану спец агентами",
     "запусти review loop по плану",
   ]) {
     const match = resolveCommandRequest(request, {

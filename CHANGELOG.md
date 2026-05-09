@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.128] - 2026-05-10
+
+### Added
+
+- Added a durable plan-review artifact contract with template, validator, fixture,
+  confidence rubric, maturity-report coverage, and `npm run check` integration.
+- Added risk-triggered plan-review specialist selection and score dimensions for
+  MVP value, scope safety, architecture fit, storage topology, cache and queue
+  topology, API contracts, security/privacy, release readiness, and convergence.
+
+### Changed
+
+- Tightened review-loop routing so maturity audits route to
+  `/supervibe-audit --workflow-chain`, while imperative review-loop requests
+  still route to `/supervibe-plan --review`.
+
 ## [2.0.127] - 2026-05-10
 
 ### Added

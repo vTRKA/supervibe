@@ -871,6 +871,10 @@ function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS
   const namedWorkflowTerms = [
     "brainstorm",
     "plan",
+    "plan review",
+    "plan-review",
+    "review loop",
+    "review-loop",
     "execute",
     "execute plan",
     "execute-plan",
@@ -878,15 +882,36 @@ function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS
     "workflow chain",
     "цепочка",
   ].filter((term) => includesPhrase(text, term));
-  const hasWorkflowChain = explicitWorkflowCommands.length >= 2 || namedWorkflowTerms.length >= 3;
-  const hasAuditOrMaturity = [
+  const hasPlanReviewLoop = ["plan review", "plan-review", "review loop", "review-loop"].some((term) => includesPhrase(text, term));
+  const hasPlanReviewLoopAuditSignal = [
     "audit",
-    "check",
-    "review",
     "rate",
     "score",
     "maturity",
+    "readiness",
+    "10",
+    "10/10",
     "10 out of 10",
+    "out of 10",
+    "best practices",
+    "pitfall",
+    "feature bloat",
+    "\u0430\u0443\u0434\u0438\u0442",
+    "\u043e\u0446\u0435\u043d\u0438",
+    "\u043d\u0430\u0441\u043a\u043e\u043b\u044c\u043a\u043e",
+    "\u043f\u0440\u043e\u043a\u0430\u0447",
+    "\u0437\u0440\u0435\u043b",
+    "\u0433\u043e\u0442\u043e\u0432",
+  ].some((term) => includesPhrase(text, term));
+  const hasStrongAuditOrMaturity = [
+    "audit",
+    "check",
+    "rate",
+    "score",
+    "maturity",
+    "readiness",
+    "10 out of 10",
+    "10/10",
     "out of 10",
     "best practices",
     "pitfall",
@@ -901,7 +926,12 @@ function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS
     "10 из 10",
     "подводные камни",
     "переизбыток фич",
-  ].some((term) => includesPhrase(text, term));
+  ].some((term) => includesPhrase(text, term)) || hasPlanReviewLoopAuditSignal;
+  const hasAuditOrMaturity = hasStrongAuditOrMaturity
+    || (explicitWorkflowCommands.length >= 2 && includesPhrase(text, "review"));
+  const hasWorkflowChain = explicitWorkflowCommands.length >= 2
+    || (namedWorkflowTerms.length >= 3 && hasStrongAuditOrMaturity)
+    || (hasPlanReviewLoop && hasPlanReviewLoopAuditSignal);
   if (!hasWorkflowChain || !hasAuditOrMaturity) return null;
 
   return enrichMatch(copyShortcut(chainShortcut), {

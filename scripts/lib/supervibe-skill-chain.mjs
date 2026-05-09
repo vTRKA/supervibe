@@ -126,6 +126,14 @@ export const PHASE_ALIASES = Object.freeze({
 
 export const PLAN_REVIEW_DIMENSIONS = Object.freeze([
   "spec-coverage",
+  "mvp-value",
+  "scope-safety",
+  "architecture-fit",
+  "data-storage-topology",
+  "cache-queue-topology",
+  "api-contract-readiness",
+  "security-privacy",
+  "observability-release-support",
   "dependency-graph",
   "task-size",
   "verification-coverage",
@@ -133,7 +141,35 @@ export const PLAN_REVIEW_DIMENSIONS = Object.freeze([
   "parallel-safety",
   "worktree-suitability",
   "provider-policy",
+  "convergence-decision",
 ]);
+
+const BASE_PLAN_REVIEWERS = Object.freeze([
+  "supervibe-orchestrator",
+  "systems-analyst",
+  "architect-reviewer",
+  "quality-gate-reviewer",
+]);
+
+export const PLAN_REVIEW_RISK_SPECIALISTS = Object.freeze({
+  database: Object.freeze(["db-reviewer", "data-modeler"]),
+  cache: Object.freeze(["redis-architect"]),
+  queue: Object.freeze(["queue-worker-architect", "job-scheduler-architect"]),
+  security: Object.freeze(["security-auditor", "auth-architect"]),
+  api: Object.freeze(["api-contract-reviewer", "api-designer"]),
+  infrastructure: Object.freeze(["infrastructure-architect", "devops-sre", "observability-architect"]),
+  frontend: Object.freeze(["accessibility-reviewer", "ui-polish-reviewer"]),
+});
+
+const PLAN_REVIEW_RISK_KEYWORDS = Object.freeze({
+  database: Object.freeze(["database", "db", "postgres", "mysql", "sqlite", "mongo", "schema", "migration", "replication", "sharding", "partition"]),
+  cache: Object.freeze(["cache", "redis", "session", "lock", "sentinel", "cache cluster"]),
+  queue: Object.freeze(["queue", "job", "worker", "webhook", "kafka", "rabbit", "bull", "retry", "dead-letter", "dlq", "idempotency"]),
+  security: Object.freeze(["security", "auth", "oauth", "jwt", "session", "permission", "pii", "secret", "token"]),
+  api: Object.freeze(["api", "graphql", "rpc", "openapi", "webhook", "error envelope", "contract", "idempotency"]),
+  infrastructure: Object.freeze(["infrastructure", "infra", "deploy", "release", "slo", "cluster", "replica", "cdn", "kubernetes", "observability"]),
+  frontend: Object.freeze(["frontend", "ui", "browser", "mobile", "accessibility", "figma", "screen"]),
+});
 
 export function normalizeWorkflowPhase(phase) {
   const raw = String(phase ?? "").trim();
@@ -235,6 +271,19 @@ export function assertNoSilentStop(options = {}) {
 export function createPlanReviewPackage(options = {}) {
   const tasks = Array.isArray(options.tasks) ? options.tasks : [];
   const checks = options.checks ?? {};
+  const specialistPlan = selectPlanReviewSpecialists({
+    text: options.reviewText ?? [
+      options.planPath,
+      options.specPath,
+      ...(Array.isArray(options.risks) ? options.risks : []),
+    ].filter(Boolean).join(" "),
+    tags: options.riskTags ?? [],
+    explicit: options.reviewers ?? [],
+  });
+  const riskTriggers = {
+    ...Object.fromEntries(specialistPlan.riskTriggers.map((trigger) => [trigger, true])),
+    ...(options.riskTriggers ?? {}),
+  };
   const context = {
     planPath: options.planPath,
     specPath: options.specPath,
@@ -243,6 +292,16 @@ export function createPlanReviewPackage(options = {}) {
     risks: Array.isArray(options.risks) ? options.risks : [],
     policy: options.policy ?? {},
     worktree: options.worktree ?? {},
+    mvp: options.mvp ?? {},
+    scope: options.scope ?? {},
+    architecture: options.architecture ?? {},
+    data: options.data ?? {},
+    cacheQueue: options.cacheQueue ?? {},
+    api: options.api ?? {},
+    securityPrivacy: options.securityPrivacy ?? {},
+    observabilityRelease: options.observabilityRelease ?? {},
+    convergence: options.convergence ?? {},
+    riskTriggers,
     checks,
   };
   const dimensions = PLAN_REVIEW_DIMENSIONS.map((id) => evaluatePlanReviewDimension(id, context));
@@ -253,8 +312,35 @@ export function createPlanReviewPackage(options = {}) {
     specPath: options.specPath ?? null,
     tasks,
     risks: context.risks,
+    reviewers: specialistPlan.reviewers,
+    riskTriggers: specialistPlan.riskTriggers,
     dimensions,
     nextHandoff: getNextWorkflowStep("plan-review"),
+  };
+}
+
+export function selectPlanReviewSpecialists(options = {}) {
+  const text = [
+    options.text,
+    ...(Array.isArray(options.tags) ? options.tags : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const explicit = Array.isArray(options.explicit) ? options.explicit : [];
+  const riskTriggers = [];
+  const reviewers = [...BASE_PLAN_REVIEWERS];
+
+  for (const [risk, keywords] of Object.entries(PLAN_REVIEW_RISK_KEYWORDS)) {
+    const tagged = Array.isArray(options.tags) && options.tags.some((tag) => String(tag).toLowerCase() === risk);
+    if (tagged || keywords.some((keyword) => text.includes(keyword))) {
+      riskTriggers.push(risk);
+      reviewers.push(...(PLAN_REVIEW_RISK_SPECIALISTS[risk] ?? []));
+    }
+  }
+
+  reviewers.push(...explicit.filter(hasText));
+  return {
+    baseReviewers: [...BASE_PLAN_REVIEWERS],
+    riskTriggers: [...new Set(riskTriggers)],
+    reviewers: [...new Set(reviewers)],
   };
 }
 
@@ -284,6 +370,89 @@ function evaluatePlanReviewDimension(id, context) {
         id,
         Boolean(context.planPath) && Boolean(context.specPath || context.coverageMatrix),
         "Plan links to a spec or coverage matrix.",
+      );
+    case "mvp-value":
+      return dimension(
+        id,
+        context.mvp.smallestProductionSafeSlice === true
+          && hasText(context.mvp.valueHypothesis)
+          && context.tasks.every((task) => task.niceToHave !== true && task.optionalValue !== false),
+        "Plan keeps the smallest production-safe slice and defers non-MVP work.",
+      );
+    case "scope-safety":
+      return dimension(
+        id,
+        Array.isArray(context.scope.approved)
+          && context.scope.approved.length > 0
+          && Array.isArray(context.scope.deferred)
+          && Array.isArray(context.scope.rejected)
+          && context.tasks.every((task) => task.unapprovedScope !== true),
+        "Approved, deferred, and rejected scope are explicit.",
+      );
+    case "architecture-fit":
+      return dimension(
+        id,
+        hasText(context.architecture.style)
+          && Array.isArray(context.architecture.boundaries)
+          && context.architecture.boundaries.length > 0
+          && context.architecture.unresolvedDecision !== true
+          && (context.architecture.adrRequired !== true || context.architecture.adrPresent === true),
+        "Architecture style, boundaries, and ADR need are reviewed.",
+      );
+    case "data-storage-topology":
+      if (!isRiskTriggered(context, ["database"])) {
+        return dimension(id, true, "No database or storage topology trigger.");
+      }
+      return dimension(
+        id,
+        context.data.topologyReviewed === true
+          && context.data.migrationSafety !== false
+          && context.data.backupRestore !== false,
+        "Database topology, migration safety, backup, and restore posture are reviewed.",
+      );
+    case "cache-queue-topology":
+      if (!isRiskTriggered(context, ["cache", "queue"])) {
+        return dimension(id, true, "No cache or queue topology trigger.");
+      }
+      return dimension(
+        id,
+        context.cacheQueue.topologyReviewed === true
+          && context.cacheQueue.retryPolicy !== false
+          && context.cacheQueue.idempotency !== false
+          && context.cacheQueue.deadLetter !== false,
+        "Cache and queue topology, retry, idempotency, and dead-letter posture are reviewed.",
+      );
+    case "api-contract-readiness":
+      if (!isRiskTriggered(context, ["api"])) {
+        return dimension(id, true, "No API contract trigger.");
+      }
+      return dimension(
+        id,
+        context.api.contractReviewed === true
+          && context.api.errorEnvelope !== false
+          && context.api.compatibility !== false
+          && context.api.idempotency !== false,
+        "API contract, error envelope, compatibility, and idempotency are reviewed.",
+      );
+    case "security-privacy":
+      return dimension(
+        id,
+        context.securityPrivacy.threatModelReviewed === true
+          && context.securityPrivacy.piiBoundary !== false
+          && context.securityPrivacy.secretsPolicy !== false
+          && context.securityPrivacy.auditLogging !== false,
+        "Threat model, PII boundary, secrets policy, and audit logging are reviewed.",
+      );
+    case "observability-release-support":
+      return dimension(
+        id,
+        context.observabilityRelease.logs === true
+          && context.observabilityRelease.metrics === true
+          && context.observabilityRelease.alerts === true
+          && context.observabilityRelease.rollback === true
+          && context.observabilityRelease.release === true
+          && context.observabilityRelease.support === true,
+        "Logs, metrics, alerts, rollback, release, and support posture are reviewed.",
       );
     case "dependency-graph":
       return dimension(
@@ -326,6 +495,16 @@ function evaluatePlanReviewDimension(id, context) {
         id,
         context.policy.providerSafe !== false && context.tasks.every((task) => task.permissionBypass !== true),
         "Provider bypass flags and hidden background automation are not allowed.",
+      );
+    case "convergence-decision":
+      return dimension(
+        id,
+        Number(context.convergence.iterations ?? 0) >= 1
+          && Number(context.convergence.openCritical ?? 0) === 0
+          && Number(context.convergence.openMajor ?? 0) === 0
+          && hasText(context.convergence.stopReason)
+          && hasText(context.convergence.nextUserDecision),
+        "Review loop has a stop reason, no open critical or major findings, and an explicit next user decision.",
       );
     default:
       return dimension(id, false, "Unknown dimension.");
@@ -387,6 +566,18 @@ function intersect(left, right) {
 
 function hasText(value) {
   return typeof value === "string" && value.trim() !== "";
+}
+
+function isRiskTriggered(context, risks) {
+  if (risks.some((risk) => context.riskTriggers?.[risk] === true)) return true;
+  const text = context.risks
+    .map((risk) => typeof risk === "string" ? risk : Object.values(risk ?? {}).join(" "))
+    .join(" ")
+    .toLowerCase();
+  return risks.some((risk) => {
+    if (text.includes(risk)) return true;
+    return (PLAN_REVIEW_RISK_KEYWORDS[risk] ?? []).some((keyword) => text.includes(keyword));
+  });
 }
 
 export function resolveWorkflowCommand(command, artifact) {

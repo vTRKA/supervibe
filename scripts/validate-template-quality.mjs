@@ -49,6 +49,33 @@ const TEMPLATE_RULES = [
     ],
   },
   {
+    file: "docs/templates/plan-review-template.md",
+    label: "plan review template",
+    requiredSections: [
+      "Review Summary",
+      "Reviewer Coverage",
+      "Risk Trigger Matrix",
+      "Plan Review Scorecard",
+      "Findings",
+      "Convergence Ledger",
+      "Residual Risks",
+      "Next User Decision",
+      "Evidence",
+    ],
+    requiredTerms: [
+      "supervibe-orchestrator",
+      "systems-analyst",
+      "architect-reviewer",
+      "quality-gate-reviewer",
+      "mvp-value",
+      "architecture-fit",
+      "cache-queue-topology",
+      "convergence-decision",
+      "workflow receipt",
+      "plan-review-passed",
+    ],
+  },
+  {
     file: "docs/templates/decision-brief-template.md",
     label: "decision brief template",
     requiredSections: [
