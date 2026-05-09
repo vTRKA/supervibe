@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.117] - 2026-05-09
+
+### Fixed
+
+- Suppressed Node experimental warnings during `node:sqlite` runtime probes in
+  `install.sh`, `install.ps1`, `update.sh`, and `update.ps1` so PowerShell
+  `$ErrorActionPreference = 'Stop'` does not misclassify a successful Node
+  check as missing SQLite support.
+
 ## [2.0.116] - 2026-05-09
 
 ### Added

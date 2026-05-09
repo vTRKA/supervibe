@@ -189,6 +189,23 @@ test('installers require Node 22.5+ and offer consent-based bootstrap before reg
   assert.match(ps1, /Run-NpmStep 'npm ci' @\('ci', '--no-audit', '--no-fund'\)/, 'PowerShell installer must not dirty package-lock.json');
 });
 
+test('installers suppress Node SQLite experimental warnings during runtime probes', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+  const updateSh = readFileSync(UPD_SH, 'utf8');
+  const updatePs1 = readFileSync(UPD_PS1, 'utf8');
+
+  for (const [name, src] of [['install.sh', sh], ['update.sh', updateSh]]) {
+    assert.match(src, /NODE_NO_WARNINGS=1 node -e 'import\("node:sqlite"\)/, `${name} must suppress Node warnings for the SQLite probe`);
+  }
+  for (const [name, src] of [['install.ps1', ps1], ['update.ps1', updatePs1]]) {
+    assert.match(src, /function Test-NodeSqliteImport/, `${name} must isolate the SQLite import probe`);
+    assert.match(src, /\$env:NODE_NO_WARNINGS\s*=\s*'1'/, `${name} must suppress Node warnings for the SQLite probe`);
+    assert.match(src, /Remove-Item Env:NODE_NO_WARNINGS/, `${name} must restore missing NODE_NO_WARNINGS after the probe`);
+    assert.match(src, /\$env:NODE_NO_WARNINGS\s*=\s*\$previousNodeNoWarnings/, `${name} must preserve caller NODE_NO_WARNINGS after the probe`);
+  }
+});
+
 test('install and update scripts self-heal managed checkout tracked drift before update', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');

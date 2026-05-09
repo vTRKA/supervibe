@@ -81,10 +81,24 @@ function Test-NodeRuntime {
   try {
     $nodeVersionText = (node -p 'process.versions.node') -join ''
     if ([version]$nodeVersionText -lt $MinNodeVersion) { return $false }
-    node -e "import('node:sqlite').then((m)=>process.exit(m.DatabaseSync?0:1)).catch(()=>process.exit(1))" *> $null
-    return ($LASTEXITCODE -eq 0)
+    return (Test-NodeSqliteImport)
   } catch {
     return $false
+  }
+}
+
+function Test-NodeSqliteImport {
+  $previousNodeNoWarnings = $env:NODE_NO_WARNINGS
+  try {
+    $env:NODE_NO_WARNINGS = '1'
+    node -e "import('node:sqlite').then((m)=>process.exit(m.DatabaseSync?0:1)).catch(()=>process.exit(1))" *> $null
+    return ($LASTEXITCODE -eq 0)
+  } finally {
+    if ($null -eq $previousNodeNoWarnings) {
+      Remove-Item Env:NODE_NO_WARNINGS -ErrorAction SilentlyContinue
+    } else {
+      $env:NODE_NO_WARNINGS = $previousNodeNoWarnings
+    }
   }
 }
 

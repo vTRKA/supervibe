@@ -202,7 +202,7 @@ node_version_ge() {
 has_required_node_runtime() {
   command -v node >/dev/null 2>&1 || return 1
   node_version_ge "$MIN_NODE_VERSION" || return 1
-  node -e 'import("node:sqlite").then((m) => process.exit(m.DatabaseSync ? 0 : 1)).catch(() => process.exit(1))' >/dev/null 2>&1
+  NODE_NO_WARNINGS=1 node -e 'import("node:sqlite").then((m) => process.exit(m.DatabaseSync ? 0 : 1)).catch(() => process.exit(1))' >/dev/null 2>&1
 }
 
 confirm_node_install() {
