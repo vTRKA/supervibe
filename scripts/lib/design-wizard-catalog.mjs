@@ -1122,11 +1122,20 @@ function aliasesFor(id, label) {
       "5 style variants",
       "5 different variants",
       "5 different styles",
+      "5 creative variants",
+      "5 creative directions",
+      "5 creative and different variants",
       "5 разных вариантов",
       "пять разных вариантов",
       "5 вариантов дизайна",
       "пять вариантов дизайна",
       "5 разных дизайнов",
+      "5 креативных вариантов",
+      "пять креативных вариантов",
+      "5 креативных и разных вариантов",
+      "5 разных креативных вариантов",
+      "пять креативных и разных вариантов",
+      "разные креативные варианты",
     ],
     "two-directions": ["2 directions", "two directions", "two variants"],
     "single-locked-direction": ["approved direction", "locked direction"],
@@ -1243,13 +1252,14 @@ function decisionFromMatch(axisDef, match, text) {
   if (axisDef.id === "creative_alternatives" && match.choiceId === "five-style-variants") {
     decision.variantCount = 5;
     decision.styleDifferentiationRequired = hasStyleDifferentiationSignal(text);
-    decision.variantDifferentiationAxes = ["palette", "typography", "motion", "imagery", "layout hierarchy"];
+    decision.structuralDifferentiationRequired = decision.styleDifferentiationRequired;
+    decision.variantDifferentiationAxes = ["palette", "typography", "motion", "imagery", "layout hierarchy", "density", "composition", "interaction model"];
   }
   return decision;
 }
 
 function hasStyleDifferentiationSignal(text = "") {
-  return /different styles|style[-\s]?distinct|distinct styles|совершенно разных по стилю|разн\w+\s+по\s+стилю|стилистически\s+разн/i.test(String(text || ""));
+  return /different styles|different variants|creative and different variants|style[-\s]?distinct|distinct styles|совершенно разных по стилю|разн[\p{L}\p{N}_-]*\s+по\s+стилю|стилистически\s+разн[\p{L}\p{N}_-]*|креативн[\p{L}\p{N}_-]*(?:\s+\S+){0,3}\s+разн[\p{L}\p{N}_-]*\s+вариант|разн[\p{L}\p{N}_-]*(?:\s+\S+){0,3}\s+креативн[\p{L}\p{N}_-]*\s+вариант|разн[\p{L}\p{N}_-]*(?:\s+\S+){0,2}\s+вариант|совершенно\s+нов[\p{L}\p{N}_-]*\s+формат[\p{L}\p{N}_-]*\s+креатив|уникальн[\p{L}\p{N}_-]*\s+подход/iu.test(String(text || ""));
 }
 
 function explicitDefaultDecision(axisDef, timestamp) {

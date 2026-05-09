@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.0.126",
+  "version": "2.0.127",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",

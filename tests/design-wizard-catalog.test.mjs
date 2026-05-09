@@ -488,6 +488,43 @@ test("multilingual website structure brief records IA scope and five style varia
   assert.ok(!state.questionQueue.some((question) => question.axis === "creative_alternatives"));
 });
 
+test("creative feedback overlay brief records five structurally different variants without explicit design word", () => {
+  const brief = "Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.";
+  const parsed = parseDesignBriefPreferences(brief);
+
+  assert.equal(parsed.decisions.creative_alternatives.choiceId, "five-style-variants");
+  assert.equal(parsed.decisions.creative_alternatives.variantCount, 5);
+  assert.equal(parsed.decisions.creative_alternatives.styleDifferentiationRequired, true);
+  assert.equal(parsed.decisions.creative_alternatives.structuralDifferentiationRequired, true);
+  assert.ok(parsed.decisions.creative_alternatives.variantDifferentiationAxes.includes("composition"));
+  assert.ok(parsed.coveredAxes.includes("creative_alternatives"));
+
+  const state = buildDesignWizardState({
+    brief,
+    target: "web",
+    mode: "full-prototype-pipeline",
+  });
+
+  assert.equal(state.decisions.creative_alternatives.choiceId, "five-style-variants");
+  assert.equal(state.decisions.creative_alternatives.structuralDifferentiationRequired, true);
+  assert.ok(!state.questionQueue.some((question) => question.axis === "creative_alternatives"));
+});
+
+test("old prototype chat brief preserves five-variant creative intent", () => {
+  const brief = [
+    "изучи старые прототипы D:\\product-docs\\old prototypes и сами экраны чата file:///D:/product-docs/old%20prototypes/screen-chat.html",
+    "для создания совершенно нового формата креативности и уникальности подходов к агентскому приложению, используй агента кретивный директора.",
+    "Уменьшить UI шум. Больше воздуха. Навигацию спрятать под кнопку. Пользоваться парящими дроверами.",
+    "Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.",
+  ].join(" ");
+  const parsed = parseDesignBriefPreferences(brief);
+
+  assert.equal(parsed.decisions.creative_alternatives.choiceId, "five-style-variants");
+  assert.equal(parsed.decisions.creative_alternatives.variantCount, 5);
+  assert.equal(parsed.decisions.creative_alternatives.structuralDifferentiationRequired, true);
+  assert.ok(parsed.coveredAxes.includes("creative_alternatives"));
+});
+
 test("explicit defaults create editable guided checklist instead of silent collapse", () => {
   const state = buildDesignWizardState({
     brief: "Use safe defaults for a new design system.",

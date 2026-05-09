@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.127] - 2026-05-10
+
+### Added
+
+- Added routing coverage for creative multi-variant design prompts with feedback overlay language, old prototype references, and chat/app screen context.
+- Added a structural diversity gate so five design variants must differ in hierarchy, density, composition, or interaction model, not only visual styling.
+
+### Changed
+
+- Expanded design intent, semantic routing, wizard extraction, scenario replay, and trigger evaluation fixtures for Russian creative-direction requests.
+
 ## [2.0.126] - 2026-05-10
 
 ### Added

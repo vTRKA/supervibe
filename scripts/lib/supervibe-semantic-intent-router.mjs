@@ -139,11 +139,11 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     baseConfidence: 0.83,
     minGroups: 2,
     concepts: [
-      ["ui", "design", "visual", "screen", "layout", "interface", "дизайн", "визуал", "экран", "интерфейс"],
-      ["cheap", "amateur", "ugly", "premium", "professional", "polish", "дорого", "дешево", "любитель", "премиум", "профессионал", "полиш"],
-      ["improve", "make", "fix", "сделай", "улучши", "исправь"],
+      ["ui", "design", "visual", "screen", "layout", "interface", "prototype", "mockup", "variant", "variants", "creative variant", "feedback overlay", "old prototypes", "chat screen", "agentic app", "дизайн", "визуал", "экран", "интерфейс", "прототип", "макет", "вариант", "варианты", "креатив", "фидбек оверлей", "старые прототипы", "экран чата", "агентское приложение"],
+      ["cheap", "amateur", "ugly", "premium", "professional", "polish", "creative", "different", "unique", "new format", "less noise", "more air", "drawer", "floating drawer", "дорого", "дешево", "любитель", "премиум", "профессионал", "полиш", "креатив", "разные", "уникальн", "новый формат", "меньше шума", "больше воздуха", "дровер", "парящий"],
+      ["improve", "make", "fix", "create", "build", "redesign", "explore", "study", "use", "сделай", "создай", "улучши", "исправь", "изучи", "используй", "проработай", "подготовь"],
     ],
-    pain: ["looks amateur", "does not look professional", "выглядит слабо", "выглядит дешево"],
+    pain: ["looks amateur", "does not look professional", "same variants", "same shell", "not different", "выглядит слабо", "выглядит дешево", "одинаковые варианты", "не разные", "один и тот же шаблон"],
   },
   {
     intent: "trigger_diagnostics",

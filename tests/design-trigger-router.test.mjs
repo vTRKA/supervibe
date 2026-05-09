@@ -48,6 +48,22 @@ test("routes Russian and English design intents without adding lookup commands",
   assert.equal(englishDesign.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.match(englishDesign.nextQuestion, /creative direction.*brandbook.*prototype/i);
 
+  const creativeVariants = routeTriggerRequest("Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.", {
+    artifacts: { request: true, confirmedMutation: true },
+  });
+  assert.equal(creativeVariants.intent, "design_new");
+  assert.equal(creativeVariants.command, "/supervibe-design");
+  assert.equal(creativeVariants.skill, "supervibe:brandbook");
+  assert.ok(creativeVariants.agentProfile.requiredAgentIds.includes("creative-director"));
+  assert.equal(creativeVariants.requiredSafety.includes("creative-direction-first"), true);
+
+  const oldPrototypeChat = routeTriggerRequest("изучи старые прототипы D:\\product-docs\\old prototypes и screen-chat.html, сделай 5 креативных и разных вариантов агентского приложения с feedback overlay", {
+    artifacts: { request: true, confirmedMutation: true },
+  });
+  assert.equal(oldPrototypeChat.intent, "design_new");
+  assert.equal(oldPrototypeChat.command, "/supervibe-design");
+  assert.equal(oldPrototypeChat.skill, "supervibe:brandbook");
+
   const audit = routeTriggerRequest("run a design audit", {
     artifacts: { designArtifact: ".supervibe/artifacts/prototypes/app/index.html" },
   });

@@ -57,3 +57,11 @@ test("semantic profiles distinguish full agent-system audits from agent strength
   assert.ok(ranked.some((entry) => entry.intent === "agent_strengthen"));
   assert.ok(ranked[0].confidence > ranked.find((entry) => entry.intent === "agent_strengthen").confidence);
 });
+
+test("semantic router recognizes creative variant feedback overlay design prompts", () => {
+  const top = routeSemanticIntent("Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.");
+
+  assert.equal(top.intent, "design_new");
+  assert.ok(top.confidence >= 0.9);
+  assert.ok(top.matchedGroups.length >= 2);
+});

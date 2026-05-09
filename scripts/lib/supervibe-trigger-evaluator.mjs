@@ -144,6 +144,11 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
     expected: { intent: "design_new", command: "/supervibe-design", minConfidence: 0.9 },
   },
   {
+    id: "design-creative-variants-feedback-overlay-ru",
+    phrase: "Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина",
+    expected: { intent: "design_new", command: "/supervibe-design", minConfidence: 0.9 },
+  },
+  {
     id: "trigger-misread-en",
     phrase: "the router misunderstood my intent and picked the wrong command, diagnose why",
     expected: { intent: "trigger_diagnostics", command: "/supervibe --diagnose-trigger", minConfidence: 0.9 },

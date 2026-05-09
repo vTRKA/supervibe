@@ -259,6 +259,30 @@ describe("supervibe trigger router", () => {
     assert.ok(route.questionChoices.some((choice) => /design workflow|brief/i.test(choice.label)));
   });
 
+  it("routes creative variant feedback overlay prompts into the design pipeline", () => {
+    const shortPrompt = routeTriggerRequest("Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.", {
+      artifacts: { designBrief: true },
+    });
+
+    assert.equal(shortPrompt.intent, "design_new");
+    assert.equal(shortPrompt.command, "/supervibe-design");
+    assert.equal(shortPrompt.skill, "supervibe:brandbook");
+    assert.equal(shortPrompt.requiredSafety.includes("creative-direction-first"), true);
+
+    const longPrompt = routeTriggerRequest([
+      "изучи старые прототипы D:\\product-docs\\old prototypes и сами экраны чата file:///D:/product-docs/old%20prototypes/screen-chat.html",
+      "для создания совершенно нового формата креативности и уникальности подходов к агентскому приложению, используй агента кретивный директора",
+      "Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина.",
+    ].join(" "), {
+      artifacts: { designBrief: true },
+    });
+
+    assert.equal(longPrompt.intent, "design_new");
+    assert.equal(longPrompt.command, "/supervibe-design");
+    assert.equal(longPrompt.skill, "supervibe:brandbook");
+    assert.ok(longPrompt.agentProfile.requiredAgentIds.includes("creative-director"));
+  });
+
   it("hard-stops unpublished explicit slash commands before static route matching", async () => {
     const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-trigger-plugin-"));
     const commandPath = join(pluginRoot, "commands", "supervibe-status.md");

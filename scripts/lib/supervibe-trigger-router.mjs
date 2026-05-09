@@ -533,7 +533,7 @@ const RULES = [
   {
     intent: "design_new",
     confidence: 0.85,
-    test: (text) => hasDesignSurface(text) && hasAny(text, ["make", "build", "create", "сделай", "создай", "нарисуй", "улучши"]),
+    test: (text) => hasDesignSurface(text) && hasAny(text, ["make", "build", "create", "redesign", "explore", "сделай", "создай", "создани", "нарисуй", "улучши", "изучи", "используй", "проработай", "подготовь"]),
   },
 ];
 
@@ -1207,7 +1207,17 @@ function slashCommandId(command = "") {
 }
 
 function hasDesignSurface(text) {
-  return hasAny(text, ["design", "mockup", "prototype", "user interface", "дизайн", "макет", "мокап", "прототип"]) ||
+  const creativeVariantSurface = hasAny(text, ["creative", "креатив"]) &&
+    hasAny(text, ["variant", "variants", "direction", "directions", "format", "вариант", "варианты", "направлен", "формат"]);
+  const feedbackOverlaySurface = hasAny(text, ["feedback overlay", "feedback-over", "фидбек оверлей", "фидбек overlay", "оверлей", "overlay"]) &&
+    hasAny(text, ["variant", "variants", "prototype", "mockup", "plugin", "вариант", "варианты", "прототип", "макет", "плагин"]);
+  const referencePrototypeSurface = hasAny(text, ["old prototype", "old prototypes", "screen-chat", "screen chat", "старые прототипы", "старых прототипов", "экраны чата", "агентское приложение"]) &&
+    hasAny(text, ["new format", "creative", "variant", "prototype", "chat", "новый формат", "креатив", "вариант", "прототип", "чат"]);
+
+  return hasAny(text, ["design", "mockup", "prototype", "user interface", "design variant", "creative variant", "feedback overlay", "app screen", "chat screen", "дизайн", "макет", "мокап", "прототип", "вариант дизайна", "креативный вариант", "фидбек оверлей", "экран чата"]) ||
+    creativeVariantSurface ||
+    feedbackOverlaySurface ||
+    referencePrototypeSurface ||
     /(^| )ui( |$)/.test(text) ||
     /(^| )(look|looks|visual|screen|layout|polish|professional)( |$)/.test(text);
 }

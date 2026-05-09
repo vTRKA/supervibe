@@ -1224,5 +1224,64 @@
         "maxTokens": 1600
       }
     }
+  },
+  {
+    "id": "design-creative-variants-feedback-overlay",
+    "request": "Сделай 5 креативных и РАЗНЫХ вариантов с фидбек оверлей системой от плагина",
+    "expected": {
+      "intent": "design_new",
+      "command": "/supervibe-design",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "design-reference-intent-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-trigger-router.mjs#design-new",
+          "scripts/lib/design-wizard-catalog.mjs#creative-alternatives",
+          "scripts/lib/design-diversity-benchmark.mjs#structural-diversity"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "parseDesignBriefPreferences",
+          "validateDesignDiversityFixture"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "design-reference-intent-hardening"
+        ],
+        "sourceChunkIds": [
+          "scripts/lib/supervibe-trigger-router.mjs#design-new",
+          "scripts/lib/design-wizard-catalog.mjs#creative-alternatives",
+          "scripts/lib/design-diversity-benchmark.mjs#structural-diversity"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest",
+          "parseDesignBriefPreferences",
+          "validateDesignDiversityFixture"
+        ],
+        "estimatedTokens": 900,
+        "citations": [
+          {
+            "id": "creative-variant-routing",
+            "source": "rag",
+            "path": "scripts/lib/supervibe-trigger-router.mjs",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "different-variants-require-structural-diversity",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1300
+      }
+    }
   }
 ]

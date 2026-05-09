@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   scoreVariantPair,
+  STRUCTURAL_DIVERSITY_AXES,
   validateDesignDiversityFixture,
 } from "../scripts/lib/design-diversity-benchmark.mjs";
 import {
@@ -51,6 +52,8 @@ function variant(id, overrides = {}) {
 }
 
 test("scoreVariantPair counts changed design axes", () => {
+  assert.deepEqual(STRUCTURAL_DIVERSITY_AXES, ["hierarchy", "density", "composition", "interaction"]);
+
   const pair = scoreVariantPair(
     variant("quiet", { axes: { palette: "warm", typography: "serif", motion: "slow" } }),
     variant("signal", { axes: { palette: "dark", typography: "mono", motion: "fast" } }),
@@ -60,6 +63,7 @@ test("scoreVariantPair counts changed design axes", () => {
   assert.ok(pair.changedAxes.includes("palette"));
   assert.ok(pair.changedAxes.includes("typography"));
   assert.ok(pair.changedAxes.includes("motion"));
+  assert.ok(pair.changedStructuralAxisCount >= 1);
 });
 
 test("design diversity fixture rejects same-shell variants", () => {
@@ -87,6 +91,36 @@ test("design diversity fixture rejects same-shell variants", () => {
 
   assert.equal(result.pass, false);
   assert.ok(result.issues.some((item) => item.code === "same-shell-variant-pair"));
+});
+
+test("design diversity fixture rejects token-only variants with the same structure", () => {
+  const base = variant("base");
+  const tokenOnly = variant("token-only", {
+    axes: {
+      ...base.axes,
+      palette: "different palette",
+      typography: "different typography",
+      motion: "different motion",
+      imagery: "different imagery",
+    },
+  });
+  const fixture = {
+    schemaVersion: 1,
+    cases: [
+      {
+        id: "token-only-case",
+        target: "web",
+        intent: "prove style-only alternatives fail",
+        brief: "Five variants must not reuse the same IA, density, composition, and interaction shell.",
+        variants: [base, tokenOnly, variant("third")],
+      },
+    ],
+  };
+
+  const result = validateDesignDiversityFixture(fixture, { minCases: 1 });
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((item) => item.code === "same-structure-variant-pair"));
 });
 
 test("current repository passes design diversity benchmark", () => {

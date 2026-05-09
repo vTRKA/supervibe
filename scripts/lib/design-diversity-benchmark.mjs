@@ -12,6 +12,13 @@ export const DESIGN_DIVERSITY_AXES = Object.freeze([
   "interaction",
 ]);
 
+export const STRUCTURAL_DIVERSITY_AXES = Object.freeze([
+  "hierarchy",
+  "density",
+  "composition",
+  "interaction",
+]);
+
 const REQUIRED_VARIANT_FIELDS = Object.freeze([
   "id",
   "label",
@@ -37,6 +44,7 @@ const DEFAULT_OPTIONS = Object.freeze({
   minCases: 5,
   minVariantsPerCase: 3,
   minChangedAxes: 3,
+  minChangedStructuralAxes: 1,
 });
 
 export function validateDesignDiversityFixture(fixture = {}, options = {}) {
@@ -70,11 +78,14 @@ export function scoreVariantPair(left = {}, right = {}, axes = DESIGN_DIVERSITY_
     const rightValue = normalizeAxisValue(right.axes?.[axis]);
     if (leftValue && rightValue && leftValue !== rightValue) changedAxes.push(axis);
   }
+  const changedStructuralAxes = changedAxes.filter((axis) => STRUCTURAL_DIVERSITY_AXES.includes(axis));
   return {
     left: left.id || "left",
     right: right.id || "right",
     changedAxes,
     changedAxisCount: changedAxes.length,
+    changedStructuralAxes,
+    changedStructuralAxisCount: changedStructuralAxes.length,
   };
 }
 
@@ -126,6 +137,13 @@ function validateCase(item = {}, caseIndex, settings, issues) {
           caseId,
           "same-shell-variant-pair",
           `${pair.left} vs ${pair.right} changes ${pair.changedAxisCount}/${settings.minChangedAxes} required axes (${pair.changedAxes.join(", ") || "none"})`,
+        ));
+      }
+      if (pair.changedStructuralAxisCount < settings.minChangedStructuralAxes) {
+        issues.push(issue(
+          caseId,
+          "same-structure-variant-pair",
+          `${pair.left} vs ${pair.right} changes ${pair.changedStructuralAxisCount}/${settings.minChangedStructuralAxes} required structural axes (${pair.changedStructuralAxes.join(", ") || "none"})`,
         ));
       }
     }
