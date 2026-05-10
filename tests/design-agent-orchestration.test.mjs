@@ -469,6 +469,38 @@ test("design agent plan treats same-structure website brief as IA reference inve
   }
 });
 
+test("design agent plan converts explicit five-variant request into separate prewrite artifacts", () => {
+  const brief = [
+    "study old prototypes C:/workspace/docs/old prototypes and file:///C:/workspace/docs/old%20prototypes/screen-chat.html",
+    "make 5 creative and different variants with feedback overlay system",
+    "hide navigation under a button, use floating drawers, one common chat, dark theme",
+    "1 to 1 app screen, chats in windows discouraged",
+  ].join(". ");
+  const plan = buildDesignAgentPlan({
+    brief,
+    target: "tauri",
+    slug: "agent-chat",
+    mode: "full-prototype-pipeline",
+    designSystemStatus: "approved",
+    pluginRoot: ROOT,
+    initialDecisions: completedWizardDecisions(),
+  });
+  const manifest = buildDesignPrewriteManifest(plan, { slug: "agent-chat" });
+  const report = formatDesignPrewriteManifest(manifest);
+  const variantHtml = manifest.files.filter((file) => /\/variants\/variant-\d\/index\.html$/.test(file.path));
+
+  assert.equal(plan.acceptanceContract.requestedVariantCount, 5);
+  assert.equal(plan.variantSet.active, true);
+  assert.equal(plan.variantSet.requestedVariantCount, 5);
+  assert.equal(plan.variantSet.primarySwitcherForbidden, true);
+  assert.equal(manifest.variantSet.active, true);
+  assert.equal(variantHtml.length, 5);
+  assert.ok(manifest.files.some((file) => file.path.endsWith("agent-chat/variant-manifest.json")));
+  assert.ok(!manifest.files.some((file) => file.path.endsWith("agent-chat/index.html")));
+  assert.ok(plan.executionStatus.runtimeProofRequirements.some((proof) => /\/variants\/variant-1\/index\.html$/.test(proof.outputArtifact)));
+  assert.match(report, /VARIANT_SET: active count=5/);
+});
+
 test("design write gate blocks durable artifacts when wizard or agent questions are open", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-write-gate-"));
   try {

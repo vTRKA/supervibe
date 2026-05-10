@@ -2,7 +2,7 @@
 // Auto-registers skills directory and injects bootstrap context.
 {
   name: "supervibe",
-  version: "2.1.0",
+  version: "2.1.1",
   description: "Specialist agents (97), trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, semantic RAG, project memory, confidence gates.",
   hooks: {
     config: async (context) => {

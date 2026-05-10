@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import {
@@ -17,6 +19,7 @@ test("workflow validation aggregates design workflow checks", () => {
   assert.equal(result.workflow, "/supervibe-design");
   assert.ok(result.checks.some((check) => check.id === "workflow-receipts"));
   assert.ok(result.checks.some((check) => check.id === "design-wizard"));
+  assert.ok(result.checks.some((check) => check.id === "design-variant-set"));
   assert.ok(result.checks.some((check) => check.id === "skill-source-report"));
   assert.match(report, /SUPERVIBE_WORKFLOW_VALIDATE/);
   assert.match(report, /WORKFLOW: \/supervibe-design/);
@@ -38,6 +41,33 @@ test("workflow validation CLI prints workflow and slug", () => {
   assert.match(out, /SUPERVIBE_WORKFLOW_VALIDATE/);
   assert.match(out, /SLUG: agent-chat/);
   assert.match(out, /CHECK: design-agent-receipts/);
+});
+
+test("workflow validation blocks invalid design variant set", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-workflow-variant-set-"));
+  try {
+    const manifest = join(root, ".supervibe", "artifacts", "prototypes", "agent-chat", "variant-manifest.json");
+    mkdirSync(dirname(manifest), { recursive: true });
+    writeFileSync(manifest, JSON.stringify({
+      schemaVersion: 1,
+      slug: "agent-chat",
+      requestedVariantCount: 2,
+      variants: [{ id: "variant-1" }],
+    }, null, 2), "utf8");
+
+    const result = validateWorkflow(root, {
+      workflow: "/supervibe-design",
+      slug: "agent-chat",
+      pluginRoot: ROOT,
+    });
+    const variantSet = result.checks.find((item) => item.id === "design-variant-set");
+
+    assert.equal(result.pass, false);
+    assert.equal(variantSet.pass, false);
+    assert.ok(result.issues.some((issue) => issue.check === "design-variant-set"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("workflow validation resolves design wizard docs from plugin root", () => {

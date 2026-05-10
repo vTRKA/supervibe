@@ -12,6 +12,7 @@ export function formatDesignAgentReceiptsReport(result) {
     `RECEIPTS: ${result.receipts}`,
     `EXECUTION_MODE: ${result.executionMode || "unknown"}`,
     `COVERAGE_STATUS: ${coverageStatus(result)}`,
+    `APPROVAL_READY: ${approvalReady(result)}`,
     `MISSING_AGENTS: ${(result.missingAgents || []).join(",") || "none"}`,
     `MISSING_SUBJECTS: ${(result.missingSubjects || []).join(",") || "none"}`,
     `QUALITY_IMPACT: ${result.qualityImpact || "none"}`,
@@ -25,6 +26,13 @@ export function formatDesignAgentReceiptsReport(result) {
     lines.push(`ISSUE: ${issue.code} ${issue.file} - ${issue.message}`);
   }
   return lines.join("\n");
+}
+
+function approvalReady(result = {}) {
+  return result.pass === true
+    && Number(result.checked || 0) > 0
+    && result.executionMode === "real-agents"
+    && (result.warnings || []).length === 0;
 }
 
 function coverageStatus(result = {}) {

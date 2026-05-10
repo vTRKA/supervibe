@@ -28,6 +28,8 @@ const PASSING_CHECKS = Object.freeze({
     artifactWriteGates: { pass: true },
     styleboardQa: { pass: true },
     dynamicQuestions: { pass: true },
+    variantSetValidator: true,
+    variantSetScript: true,
   },
   creative: {
     creativeDirectorHasEmotion: true,
@@ -110,6 +112,22 @@ test("design-agent maturity blocks 10/10 when reference quality is missing", () 
   assert.equal(report.pass, false);
   assert.ok(report.score < 10);
   assert.ok(report.blockers.some((blocker) => blocker.id === "design-intelligence-resources"));
+});
+
+test("design-agent maturity blocks 10/10 when variant-set validation is missing", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      workflow: {
+        ...PASSING_CHECKS.workflow,
+        variantSetValidator: false,
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "design-workflow-gates"));
 });
 
 test("design-agent maturity blocks 10/10 when creative reference packs are missing", () => {

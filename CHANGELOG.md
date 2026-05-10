@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-05-10
+
+### Added
+
+- Added validator-backed design variant-set orchestration for explicit
+  multi-variant prototype requests, including separate fullscreen artifacts,
+  per-variant feedback targets, old-prototype evidence checks, and workflow
+  quality-gate integration.
+
+### Changed
+
+- Hardened design agent, prototype, preview, receipt, and maturity contracts so
+  requested design alternatives cannot collapse into one tabbed comparison
+  shell without failing validation.
+
 ## [2.1.0] - 2026-05-10
 
 ### Added

@@ -160,6 +160,7 @@ test("receipt validators label zero-receipt runs as not started", () => {
     assert.match(workflow, /COVERAGE_STATUS: not-started-no-receipts/);
     assert.match(design, /PASS: true/);
     assert.match(design, /COVERAGE_STATUS: not-started-no-durable-design-outputs/);
+    assert.match(design, /APPROVAL_READY: false/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

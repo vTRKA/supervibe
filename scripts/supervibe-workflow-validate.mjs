@@ -8,6 +8,10 @@ import {
   validateDesignAgentInvocationReceipts,
 } from "./lib/design-agent-orchestration.mjs";
 import {
+  validateAllDesignVariantSets,
+  validateDesignVariantSet,
+} from "./lib/design-variant-set.mjs";
+import {
   buildSkillSourceReport,
 } from "./lib/skill-source-resolver.mjs";
 import {
@@ -62,6 +66,9 @@ export function validateWorkflow(rootDir = process.cwd(), {
   ];
   if (designWorkflow) {
     checks.push(check("design-wizard", validateDesignWizard(resolvedPluginRoot)));
+    checks.push(check("design-variant-set", slug
+      ? validateDesignVariantSet(rootDir, { slug })
+      : validateAllDesignVariantSets(rootDir)));
     checks.push(check("design-agent-receipts", validateDesignAgentInvocationReceipts(rootDir)));
   }
   const issues = checks.flatMap((item) => (item.result.issues || item.result.encodingIssues || []).map((issue) => ({

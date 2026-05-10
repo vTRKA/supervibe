@@ -208,6 +208,27 @@ screenshot plan, token notes, `domLayoutSignature`, `cssTokenSignature`,
 the same layout skeleton, same density, same content priority, and same
 interaction rhythm, merge them or redesign one before handoff.
 
+### Explicit Variant-Set Contract
+
+When the brief asks for a concrete number of different variants, especially
+five variants or "five creative variants", the direction output must include a
+variant-set contract instead of a comparison shell. The contract is durable
+only when runtime receipts bind the creative-director output to
+`.supervibe/artifacts/prototypes/<slug>/variant-manifest.json`.
+
+The manifest must define one record per variant with `id`, `label`,
+`artifactPath`, `feedbackTargetId`, `fullscreen`, `differsBecause`, `gains`,
+`givesUp`, diversity `axes`, and artifact evidence fields. Each variant must
+point at its own fullscreen artifact, usually
+`.supervibe/artifacts/prototypes/<slug>/variants/<variant-id>/index.html`.
+A primary tabbed switcher, carousel, or comparison shell is not a substitute
+for separate variants when the user asked for separate directions.
+
+If old prototypes are referenced as context, record functional evidence in each
+variant: tasks, approvals, memory, skills, and automations when present. The
+old artifact is evidence for product meaning and IA, not visual authority,
+unless the user explicitly asks to preserve visual style.
+
 ## Procedure
 
 1. **Search project memory** for prior brand decisions, critiques, stakeholder feedback, and abandoned directions in this product or related products. Cite at least 3 relevant prior entries or explicitly note "no prior direction found".

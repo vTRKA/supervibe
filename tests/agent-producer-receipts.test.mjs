@@ -143,6 +143,40 @@ test("agent producer validator accepts exact producer receipt with host invocati
   }
 });
 
+test("agent producer validator requires receipts for variant-set prototype artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-variants-"));
+  try {
+    const manifest = {
+      schemaVersion: 1,
+      slug: "agent-chat",
+      requestedVariantCount: 2,
+      variants: [
+        {
+          id: "variant-1",
+          artifactPath: ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html",
+          feedbackTargetId: "agent-chat:variant-1",
+        },
+        {
+          id: "variant-2",
+          artifactPath: ".supervibe/artifacts/prototypes/agent-chat/variants/variant-2/index.html",
+          feedbackTargetId: "agent-chat:variant-2",
+        },
+      ],
+    };
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html", "<main data-feedback-overlay data-supervibe-feedback-target=\"agent-chat:variant-1\"></main>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variants/variant-2/index.html", "<main data-feedback-overlay data-supervibe-feedback-target=\"agent-chat:variant-2\"></main>\n");
+
+    const result = validateAgentProducerReceipts(root);
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-agent-producer-receipt" && issue.file.endsWith("/variants/variant-1/index.html")));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-agent-producer-receipt" && issue.file.endsWith("/variants/variant-2/index.html")));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("agent invocation CLI can log host invocation and issue matching producer receipt", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-cli-"));
   try {

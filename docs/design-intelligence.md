@@ -35,4 +35,4 @@ without exact approval for the file, node/page, action, and timebox.
 
 ## Version
 
-This capability ships with Supervibe `2.1.0`; public docs may refer to it as Supervibe `2.0`.
+This capability ships with Supervibe `2.1.1`; public docs may refer to it as Supervibe `2.0`.

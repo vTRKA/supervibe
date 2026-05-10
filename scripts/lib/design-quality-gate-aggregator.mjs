@@ -4,6 +4,9 @@ import { join, relative, sep } from "node:path";
 import {
   artifactRoot,
 } from "./supervibe-artifact-roots.mjs";
+import {
+  validateDesignVariantSet,
+} from "./design-variant-set.mjs";
 
 const REQUIRED_DESIGN_REVIEW_FILES = Object.freeze(["polish.md", "a11y.md"]);
 const PROTOTYPE_HIGH_CONFIDENCE_CHECKS = Object.freeze([
@@ -29,6 +32,15 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
   const reviewFiles = listReviewFiles(reviewRoot);
   const reviews = reviewFiles.map((file) => parseReviewFile(rootDir, file));
   const issues = reviews.flatMap((review) => review.findings);
+  if (requireReviews && !prototypeWorkStarted(prototypeRoot)) {
+    issues.push({
+      code: "prototype-not-started",
+      severity: "blocker",
+      file: prototypeRoot ? rel(rootDir, prototypeRoot) : `.supervibe/artifacts/prototypes/${slug || "<slug>"}`,
+      line: 0,
+      message: "prototype artifacts must exist before approval can be evaluated",
+    });
+  }
   const missingRequiredReviews = requiredReviewFilesMissing(reviewRoot, { requireReviews });
   for (const fileName of missingRequiredReviews) {
     issues.push({
@@ -38,6 +50,18 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       line: 0,
       message: `${fileName}: required review is missing before prototype approval`,
     });
+  }
+  if (prototypeRoot && existsSync(join(prototypeRoot, "variant-manifest.json"))) {
+    const variantSet = validateDesignVariantSet(rootDir, { slug });
+    for (const variantIssue of variantSet.issues || []) {
+      issues.push({
+        code: "design-variant-set-invalid",
+        severity: "high",
+        file: variantIssue.file,
+        line: 0,
+        message: `${variantIssue.code}: ${variantIssue.message}`,
+      });
+    }
   }
 
   const blockerCount = issues.filter((item) => item.severity === "blocker").length;
@@ -91,6 +115,7 @@ export function aggregateDesignConfidence({
   const blockers = qualityIssues.filter((item) => item.severity === "blocker");
   const highs = qualityIssues.filter((item) => item.severity === "high");
   if (blockers.length) caps.push({ score: 6, reason: "BLOCKER review finding" });
+  if (qualityIssues.some((item) => item.code === "prototype-not-started")) caps.push({ score: 0, reason: "prototype not started" });
   if (highs.length) caps.push({ score: 7, reason: "high severity review finding" });
   if (receiptValidation && receiptValidation.pass !== true) caps.push({ score: 7, reason: "receipt validation failed" });
   if (browserVerification && browserVerification.pass === false) caps.push({ score: 7, reason: "browser verification failed" });
@@ -215,6 +240,12 @@ function listReviewFiles(reviewRoot) {
 function requiredReviewFilesMissing(reviewRoot, { requireReviews = false } = {}) {
   if (!requireReviews) return [];
   return REQUIRED_DESIGN_REVIEW_FILES.filter((fileName) => !reviewRoot || !existsSync(join(reviewRoot, fileName)));
+}
+
+function prototypeWorkStarted(prototypeRoot) {
+  if (!prototypeRoot || !existsSync(prototypeRoot)) return false;
+  return existsSync(join(prototypeRoot, "index.html"))
+    || existsSync(join(prototypeRoot, "variant-manifest.json"));
 }
 
 function componentScore(name, value) {

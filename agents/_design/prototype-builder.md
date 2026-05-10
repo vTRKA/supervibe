@@ -114,6 +114,16 @@ Artifact-level diversity evidence must include `domLayoutSignature`,
 `interactionMotionSignature`; screenshots with the same layout skeleton and
 interaction rhythm are not distinct alternatives even if colors differ.
 
+Variant-set build contract: if `.supervibe/artifacts/prototypes/<slug>/variant-manifest.json`
+exists or the prewrite manifest lists `variantSet.active=true`, build every
+listed `variants/<variant-id>/index.html` as a separate fullscreen artifact.
+Do not collapse variants into one root `index.html` switcher. Each variant file
+must include the feedback overlay marker and its own
+`data-supervibe-feedback-target` value matching `feedbackTargetId`. Missing
+variant artifacts, duplicate feedback targets, missing old-prototype evidence,
+or same-shell variants must fail `node scripts/validate-design-variant-set.mjs
+--slug <slug>` before preview handoff.
+
 ## 2026 Expert Standard
 
 Operate as a current 2026 senior specialist, not as a generic helper. Apply

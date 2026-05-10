@@ -36,6 +36,53 @@ test("design quality gate blocks approval on blocker or high review findings", a
   }
 });
 
+test("design quality gate blocks approval when required prototype artifacts were not started", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-not-started-"));
+  try {
+    const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: true });
+
+    assert.equal(gate.pass, false);
+    assert.equal(gate.approvalAllowed, false);
+    assert.equal(gate.confidence.score, 0);
+    assert.ok(gate.issues.some((issue) => issue.code === "prototype-not-started"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design quality gate blocks approval on invalid variant-set manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-variants-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify({
+      schemaVersion: 1,
+      slug: "agent-chat",
+      requestedVariantCount: 2,
+      feedbackOverlayRequired: true,
+      variants: [
+        {
+          id: "variant-1",
+          label: "Variant 1",
+          artifactPath: ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html",
+          feedbackTargetId: "agent-chat:variant-1",
+          fullscreen: true,
+        },
+      ],
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html", "<main></main>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nBlockers: none\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nNo high issues\n");
+
+    const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: true });
+
+    assert.equal(gate.pass, false);
+    assert.equal(gate.approvalAllowed, false);
+    assert.ok(gate.issues.some((issue) => issue.code === "design-variant-set-invalid"));
+    assert.ok(gate.highCount > 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design confidence aggregation caps high severity runs below approval confidence", () => {
   const result = aggregateDesignConfidence({
     builderConfidence: 9.6,

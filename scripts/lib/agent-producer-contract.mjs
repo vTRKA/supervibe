@@ -298,6 +298,17 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/variant-manifest.json`, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/diversity-report.json`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+    for (const variant of listVariantArtifacts(rootDir, prototype)) {
+      add({ command: "/supervibe-design", outputArtifact: variant.artifactPath, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
+      if (variant.reviewArtifacts?.polish) {
+        add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.polish, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+      }
+      if (variant.reviewArtifacts?.a11y) {
+        add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.a11y, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+      }
+    }
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate" });
@@ -393,6 +404,26 @@ function listPrototypeDirs(rootDir) {
     .map((entry) => entry.name)
     .filter((name) => !name.startsWith("_"))
     .sort();
+}
+
+function listVariantArtifacts(rootDir, prototype) {
+  const relPath = `.supervibe/artifacts/prototypes/${prototype}/variant-manifest.json`;
+  const manifestPath = join(rootDir, ...relPath.split("/"));
+  if (!existsSync(manifestPath)) return [];
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    return (Array.isArray(manifest.variants) ? manifest.variants : [])
+      .map((variant) => ({
+        artifactPath: normalizeRelPath(variant.artifactPath),
+        reviewArtifacts: {
+          polish: normalizeRelPath(variant.reviewArtifacts?.polish),
+          a11y: normalizeRelPath(variant.reviewArtifacts?.a11y),
+        },
+      }))
+      .filter((variant) => variant.artifactPath);
+  } catch {
+    return [];
+  }
 }
 
 function sameArtifact(left, right) {

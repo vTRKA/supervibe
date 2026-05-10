@@ -33,6 +33,10 @@ import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 import {
   classifyDesignIntent,
 } from "./design-intent-classifier.mjs";
+import {
+  buildDesignAcceptanceContract,
+  buildDesignVariantSet,
+} from "./design-variant-set.mjs";
 
 const REQUIRED_RECEIPT_FIELDS = Object.freeze([
   "schemaVersion",
@@ -89,6 +93,17 @@ export function buildDesignAgentPlan({
     currentWindow: resolvedCurrentWindow,
     deviceScaleFactor: resolvedDeviceScaleFactor,
     initialDecisions: resolvedInitialDecisions,
+  });
+  const acceptanceContract = buildDesignAcceptanceContract({
+    brief: text,
+    slug,
+    target,
+    referenceSources: sources,
+    wizard,
+  });
+  const variantSet = buildDesignVariantSet({
+    slug: slug || "design-run",
+    acceptanceContract,
   });
 
   stages.push(stage({
@@ -214,6 +229,8 @@ export function buildDesignAgentPlan({
       }),
       metricsSource: hostWindowMetrics?.source || null,
     },
+    acceptanceContract,
+    variantSet,
     writeGate: null,
     stages: dedupeStages(stages),
   };
@@ -305,14 +322,35 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
   const gate = plan.writeGate || buildDesignWriteGate({ plan });
   const protectedArtifacts = gate.protectedArtifacts || [];
   const prototypeSlug = slug || "<prototype-slug>";
+  const variantSet = plan.variantSet?.active
+    ? buildDesignVariantSet({
+      slug: prototypeSlug,
+      acceptanceContract: plan.acceptanceContract || plan.variantSet,
+    })
+    : null;
+  const prototypeArtifacts = variantSet?.active
+    ? [
+      { path: variantSet.manifestPath, writeClass: "durable-design-artifacts" },
+      { path: variantSet.previewManifestPath, writeClass: "durable-design-artifacts" },
+      { path: variantSet.diversityReportPath, writeClass: "review-styleboard" },
+      ...variantSet.variants.flatMap((variant) => [
+        { path: variant.artifactPath, writeClass: "prototype" },
+        { path: variant.reviewArtifacts.polish, writeClass: "review-styleboard" },
+        { path: variant.reviewArtifacts.a11y, writeClass: "review-styleboard" },
+      ]),
+      { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/quality-gate.json`, writeClass: "review-styleboard" },
+    ]
+    : [
+      { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/index.html`, writeClass: "prototype" },
+      { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/polish.md`, writeClass: "review-styleboard" },
+      { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/a11y.md`, writeClass: "review-styleboard" },
+      { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/quality-gate.json`, writeClass: "review-styleboard" },
+    ];
   const planned = [
     ...protectedArtifacts.map((path) => ({ path, writeClass: writeClassForDesignArtifact(path) })),
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/spec.md`, writeClass: "durable-design-artifacts" },
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/content/copy.md`, writeClass: "durable-design-artifacts" },
-    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/index.html`, writeClass: "prototype" },
-    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/polish.md`, writeClass: "review-styleboard" },
-    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/a11y.md`, writeClass: "review-styleboard" },
-    { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/_reviews/quality-gate.json`, writeClass: "review-styleboard" },
+    ...prototypeArtifacts,
   ];
   const allowed = new Set(gate.allowedWriteClasses || []);
   const producerProofs = producerProofsByArtifact(plan);
@@ -336,6 +374,14 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
     nextQuestion: nextQuestion?.reason || null,
     nextQuestionSource: nextQuestion?.source || null,
     nextQuestionAxis: nextQuestion?.question?.axis || null,
+    variantSet: variantSet?.active
+      ? {
+        active: true,
+        requestedVariantCount: variantSet.requestedVariantCount,
+        manifestPath: variantSet.manifestPath,
+        primarySwitcherForbidden: variantSet.primarySwitcherForbidden,
+      }
+      : { active: false, requestedVariantCount: 1 },
     files,
   };
 }
@@ -351,6 +397,7 @@ export function formatDesignPrewriteManifest(manifest = {}) {
     `NEXT_QUESTION_SOURCE: ${manifest.nextQuestionSource || "none"}`,
     `NEXT_QUESTION_AXIS: ${manifest.nextQuestionAxis || "none"}`,
     `PREWRITE_NEXT_QUESTION: ${manifest.nextQuestion || "none"}`,
+    `VARIANT_SET: ${manifest.variantSet?.active === true ? `active count=${manifest.variantSet.requestedVariantCount} manifest=${manifest.variantSet.manifestPath}` : "inactive"}`,
     "FILES:",
   ];
   for (const file of manifest.files || []) {
@@ -720,11 +767,27 @@ function designReceiptRequirementsForPlan(plan = {}) {
 
   if (plan.mode !== "design-system-only") {
     const slug = plan.slug || "<prototype-slug>";
+    const variantSet = plan.variantSet?.active
+      ? buildDesignVariantSet({
+        slug,
+        acceptanceContract: plan.acceptanceContract || plan.variantSet,
+      })
+      : null;
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
-    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
-    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
-    add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+    if (variantSet?.active) {
+      add({ command: "/supervibe-design", outputArtifact: variantSet.manifestPath, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
+      add({ command: "/supervibe-design", outputArtifact: variantSet.diversityReportPath, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+      for (const variant of variantSet.variants) {
+        add({ command: "/supervibe-design", outputArtifact: variant.artifactPath, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
+        add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.polish, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+        add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.a11y, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+      }
+    } else {
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
+    }
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate" });
   }
   return requirements;

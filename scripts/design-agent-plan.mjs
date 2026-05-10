@@ -107,6 +107,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
+    console.log(`VARIANT_SET: ${plan.variantSet?.active === true ? `active count=${plan.variantSet.requestedVariantCount} manifest=${plan.variantSet.manifestPath}` : "inactive"}`);
+    console.log(`ACCEPTANCE_CRITERIA: ${(plan.acceptanceContract?.acceptanceCriteria || []).join(",") || "none"}`);
     console.log(formatIndexHealthPreflight(indexPreflight));
     console.log(`NEXT_ACTION: ${continuation.nextAction}`);
     console.log(`NEXT_QUESTION: ${continuation.nextQuestion}`);

@@ -86,6 +86,9 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
       artifactWriteGates,
       styleboardQa,
       dynamicQuestions,
+      variantSetValidator: existsSync(join(rootDir, "scripts", "validate-design-variant-set.mjs"))
+        && existsSync(join(rootDir, "scripts", "lib", "design-variant-set.mjs")),
+      variantSetScript: Boolean(packageJson.scripts?.["validate:design-variant-set"]),
     },
     creative: {
       creativeDirectorHasEmotion: /emotional anchors|feeling held in form|user's body/i.test(designFiles.creativeDirector),
@@ -169,13 +172,15 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     && checks.workflow?.flowGates?.pass === true
     && checks.workflow?.artifactWriteGates?.pass === true
     && checks.workflow?.styleboardQa?.pass === true
-    && checks.workflow?.dynamicQuestions?.pass === true;
+    && checks.workflow?.dynamicQuestions?.pass === true
+    && checks.workflow?.variantSetValidator === true
+    && checks.workflow?.variantSetScript === true;
   add(
     "design-workflow-gates",
     1.5,
     workflowPass,
-    `readiness=${checks.workflow?.readiness?.pass === true}, flow=${checks.workflow?.flowGates?.pass === true}, writeGates=${checks.workflow?.artifactWriteGates?.pass === true}, styleboardQa=${checks.workflow?.styleboardQa?.pass === true}, dynamicQuestions=${checks.workflow?.dynamicQuestions?.pass === true}`,
-    "Run and fix design readiness, flow, artifact write, styleboard QA, and dynamic question validators.",
+    `readiness=${checks.workflow?.readiness?.pass === true}, flow=${checks.workflow?.flowGates?.pass === true}, writeGates=${checks.workflow?.artifactWriteGates?.pass === true}, styleboardQa=${checks.workflow?.styleboardQa?.pass === true}, dynamicQuestions=${checks.workflow?.dynamicQuestions?.pass === true}, variantSetValidator=${checks.workflow?.variantSetValidator === true}, variantSetScript=${checks.workflow?.variantSetScript === true}`,
+    "Run and fix design readiness, flow, artifact write, styleboard QA, dynamic question, and variant-set validators.",
   );
 
   const creativePass = Object.values(checks.creative || {}).every(Boolean);

@@ -57,6 +57,8 @@ NOT for:
 8. **Data-fed mocks are contract-backed.** If interaction depth is `data-fed`, run `supervibe:mock-data-contract` and create `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` before claiming frontend-before-backend readiness.
 9. **Design Diversity Benchmark for alternatives.** A distinct alternative must differ on at least three of palette, typography, motion, imagery, hierarchy, density, composition, and interaction. Same shell, new paint is a failed alternative even when the screenshot looks cleaner.
 10. **Dependencies are approved tools, not defaults.** Use native CSS/WAAPI, Canvas, SVG, and local assets first. Escalate to Motion, GSAP, Lottie/lottie-web, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre GL, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror, or a stack-specific chart library only when the plan proves the library unlocks a materially better prototype.
+11. **Explicit multi-variant output is separate, not tabbed.** If the brief asks for a number of different variants, create `.supervibe/artifacts/prototypes/<slug>/variant-manifest.json` and one fullscreen artifact per variant at `variants/<variant-id>/index.html`. Do not deliver a root `index.html` tab switcher, carousel, or comparison shell as the primary artifact. Run `node scripts/validate-design-variant-set.mjs --slug <slug>` before preview.
+12. **Feedback target per variant.** Every listed variant must have a unique `feedbackTargetId`, the corresponding HTML must include the feedback overlay marker, and old-prototype functional evidence must be recorded per variant when old prototypes informed the brief.
 
 ## Expert Operating Standard
 
