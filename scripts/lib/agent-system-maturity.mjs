@@ -161,17 +161,24 @@ export function scoreAgentSystemMaturity({
   const minHostReceipts = thresholds.minHostAgentReceipts ?? 1;
   const minInvocations = thresholds.minAgentInvocations ?? 10;
   const agentReceiptTrustPass = validators.agentReceipts?.pass === true;
-  const telemetryScore = agentReceiptTrustPass && hostReceipts >= minHostReceipts && invocations >= minInvocations
+  const distribution = assessAgentInvocationDistribution(validators.agentReceipts);
+  const telemetryBaseScore = agentReceiptTrustPass && hostReceipts >= minHostReceipts && invocations >= minInvocations
     ? 1.25
     : hostReceipts > 0 || invocations > 0
       ? 0.55
       : 0.25;
+  const telemetryScore = distribution.blocking
+    ? Math.min(telemetryBaseScore, 0.55)
+    : telemetryBaseScore;
+  const distributionEvidence = distribution.evidence ? `, ${distribution.evidence}` : "";
   add(
     "host-agent-telemetry",
     1.25,
     telemetryScore,
-    `strictPass=${agentReceiptTrustPass}, trustedHostAgentReceipts=${hostReceipts}/${minHostReceipts}, receiptBoundAgentInvocations=${invocations}/${minInvocations}`,
-    "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
+    `strictPass=${agentReceiptTrustPass}, trustedHostAgentReceipts=${hostReceipts}/${minHostReceipts}, receiptBoundAgentInvocations=${invocations}/${minInvocations}${distributionEvidence}`,
+    distribution.blocking
+      ? "Agent invocation distribution is too concentrated while required specialist subjects are missing; run the missing specialists and issue scoped receipts."
+      : "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
   );
 
   const retrievalTelemetryReady = (
@@ -305,6 +312,31 @@ function isRetrievalTelemetryOnlySampleGap(indexGate = {}) {
     && violations.every((violation) => /insufficient invocation sample|no agent has enough retrieval samples/i.test(String(violation)));
 }
 
+function assessAgentInvocationDistribution(agentReceipts = {}) {
+  const byAgent = agentReceipts.invocationsByAgent || agentReceipts.agentInvocationsByAgent || agentReceipts.invocationDistribution || null;
+  if (!byAgent || typeof byAgent !== "object") return { blocking: false, evidence: "" };
+  const entries = Object.entries(byAgent)
+    .map(([agentId, count]) => [agentId, Number(count) || 0])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  if (total <= 0 || entries.length === 0) return { blocking: false, evidence: "" };
+  const [topAgentId, topCount] = entries[0];
+  const topShare = topCount / total;
+  const missingSubjects = unique([
+    ...(agentReceipts.missingSubjects || []),
+    ...(agentReceipts.missingAgents || []),
+    ...(agentReceipts.requiredMissingSubjects || []),
+  ]).filter((subject) => subject !== "supervibe-orchestrator");
+  const skewed = topShare >= 0.8 && total >= 5;
+  const blocking = skewed && missingSubjects.length > 0;
+  if (!skewed) return { blocking: false, evidence: "" };
+  return {
+    blocking,
+    evidence: `distributionWarning=${topAgentId}:${topCount}/${total}${missingSubjects.length ? ` missing=${missingSubjects.join("|")}` : ""}`,
+  };
+}
+
 function inspectMissingOrStaleIndex(rootDir) {
   const scriptPath = join(rootDir, "scripts", "build-code-index.mjs");
   if (!existsSync(scriptPath)) {
@@ -411,4 +443,8 @@ function countFiles(dir, pattern) {
     else if (pattern.test(entry.name)) count += 1;
   }
   return count;
+}
+
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean).map(String))];
 }

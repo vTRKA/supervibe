@@ -9,6 +9,7 @@ import {
 } from "./lib/command-agent-orchestration-contract.mjs";
 import {
   validateAgentProducerReceipts,
+  validateScopedAgentProducerReceipts,
 } from "./lib/agent-producer-contract.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 
@@ -33,6 +34,7 @@ function parseArgs(argv) {
       else if (key === "no-host-proof") options.enforceHostProof = false;
       else if (key === "installed-only") options.installedOnly = true;
       else if (key === "bootstrap-pre-agent") options.bootstrapPreAgent = true;
+      else if (key === "active") options.active = true;
       else if (key === "dry-run") options.dryRun = true;
       else if (key === "apply") options.apply = true;
       else if (key === "generate-apps") options.generateApps = true;
@@ -47,6 +49,9 @@ function parseArgs(argv) {
     else if (key === "plugin-root") options.pluginRoot = value;
     else if (key === "execution-mode") options.executionMode = value;
     else if (key === "host") options.host = value;
+    else if (key === "handoff" || key === "handoff-id") options.handoffId = value;
+    else if (key === "workflow-run-id") options.workflowRunId = value;
+    else if (key === "slug") options.slug = value;
     else if (key === "adds" || key === "updates" || key === "project-only" || key === "conflicts") options[key] = Number(value);
     else if (key === "memory-writes") options[key] = parseBoolean(value);
     else options[key] = value;
@@ -59,6 +64,7 @@ function usage() {
     "SUPERVIBE_COMMAND_AGENT_PLAN_HELP",
     "USAGE:",
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host claude",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-design --host codex --active --slug agent-chat --handoff-id run-123",
     "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --json",
     "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false",
     "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --low-risk",
@@ -66,7 +72,7 @@ function usage() {
     "",
     "NOTES:",
     "  Default execution mode is real-agents.",
-    "  Text output includes AGENT_SELECTION_MODE and REQUIRED_AGENT_SOURCES.",
+    "  Text output includes AGENT_SELECTION_MODE, REQUIRED_AGENT_SOURCES, CALLABLE_AGENT_SOURCES, CALLABLE_AGENTS_READY, SCOPED_RECEIPT_GATE, and MISSING_CALLABLE_AGENTS.",
     "  Unsupported or unverifiable host dispatch enters agent-required-blocked.",
     "  Workflow counts can select dynamic required roles, including low-risk fast paths.",
     "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
@@ -98,6 +104,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         apply: options.apply === true,
         generateApps: options.generateApps === true || options["generate-apps"] === true,
         verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
+        active: options.active === true,
+        slug: options.slug || null,
+        handoffId: options.handoffId || null,
+        workflowRunId: options.workflowRunId || null,
         adds: options.adds,
         updates: options.updates,
         projectOnly: options["project-only"],
@@ -114,6 +124,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`HOST_SELECTED: ${report.selectedHost}`);
       console.log(`HOST_CONFIDENCE: ${report.hostConfidence}`);
       console.log(`AVAILABLE_AGENTS: ${report.availableAgentCount}`);
+      console.log(`CALLABLE_AGENTS: ${report.callableAgentCount}`);
       console.log(`INSTALLED_ONLY: ${options.installedOnly}`);
     }
     process.exit(options.strictExit && !report.pass ? 3 : 0);
@@ -153,14 +164,41 @@ export function buildRuntimeCommandAgentPlan({
     hostAgentsFolder: hostSelection.adapter.agentsFolder,
     installedOnly,
   });
+  const callableAgentSources = listCallableAgentSources({
+    projectRoot: resolvedProjectRoot,
+    hostAgentsFolder: hostSelection.adapter.agentsFolder,
+  });
   const availableAgentIds = [...availableAgentSources.keys()];
+  const callableAgentIds = [...callableAgentSources.keys()];
+  const baseReceiptTrust = inspectReceiptTrust(resolvedProjectRoot);
+  const preliminaryPlan = buildCommandAgentPlan(command, {
+    requestedExecutionMode,
+    availableAgentIds,
+    availableAgentSources,
+    callableAgentIds,
+    callableAgentSources,
+    hostAdapterId: hostSelection.adapter.id,
+    enforceHostProof,
+    receiptTrust: baseReceiptTrust,
+    workflowContext: normalizedContext,
+  });
+  const scopedReceiptTrust = shouldInspectScopedReceiptTrust(normalizedContext)
+    ? inspectScopedReceiptTrust(resolvedProjectRoot, {
+      command,
+      workflowContext: normalizedContext,
+      requiredAgentIds: preliminaryPlan.requiredAgentIds,
+    })
+    : null;
   const plan = buildCommandAgentPlan(command, {
     requestedExecutionMode,
     availableAgentIds,
     availableAgentSources,
+    callableAgentIds,
+    callableAgentSources,
     hostAdapterId: hostSelection.adapter.id,
     enforceHostProof,
-    receiptTrust: inspectReceiptTrust(resolvedProjectRoot),
+    receiptTrust: baseReceiptTrust,
+    scopedReceiptTrust,
     workflowContext: normalizedContext,
   });
   return {
@@ -170,6 +208,7 @@ export function buildRuntimeCommandAgentPlan({
     selectedHost: hostSelection.selectedHost,
     hostConfidence: hostSelection.confidence,
     availableAgentCount: availableAgentIds.length,
+    callableAgentCount: callableAgentIds.length,
     installedOnly,
     plan,
   };
@@ -197,6 +236,15 @@ function listAvailableAgentSources({
   const sources = new Map();
   if (!installedOnly) addAgentSources(sources, join(pluginRoot, "agents"), "plugin-only");
   if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "project artifact");
+  return sources;
+}
+
+function listCallableAgentSources({
+  projectRoot,
+  hostAgentsFolder,
+}) {
+  const sources = new Map();
+  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable");
   return sources;
 }
 
@@ -238,6 +286,45 @@ function inspectReceiptTrust(projectRoot) {
       issues: [{ code: "receipt-trust-inspection-failed", message: error.message }],
     };
   }
+}
+
+function inspectScopedReceiptTrust(projectRoot, { command, workflowContext = {}, requiredAgentIds = [] } = {}) {
+  const minHostAgentReceipts = requiredAgentIds.length || 1;
+  const minAgentInvocations = requiredAgentIds.length || 1;
+  try {
+    return {
+      ...validateScopedAgentProducerReceipts(projectRoot, {
+        command,
+        handoffId: workflowContext.handoffId || workflowContext.handoff || null,
+        workflowRunId: workflowContext.workflowRunId || null,
+        requiredAgentIds,
+        minHostAgentReceipts,
+        minAgentInvocations,
+      }),
+      minHostAgentReceipts,
+      minAgentInvocations,
+    };
+  } catch (error) {
+    return {
+      pass: false,
+      trustedHostAgentReceipts: 0,
+      agentInvocations: 0,
+      loggedAgentInvocations: 0,
+      minHostAgentReceipts,
+      minAgentInvocations,
+      missingSubjects: requiredAgentIds,
+      issues: [{ code: "scoped-receipt-trust-inspection-failed", message: error.message }],
+    };
+  }
+}
+
+function shouldInspectScopedReceiptTrust(workflowContext = {}) {
+  return Boolean(
+    workflowContext.active === true
+    || workflowContext.handoffId
+    || workflowContext.workflowRunId
+    || workflowContext.slug
+  );
 }
 
 function parseBoolean(value) {

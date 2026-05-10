@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-05-10
+
+### Added
+
+- Added scoped current-run receipt enforcement and callable host-agent status
+  reporting for command agent plans.
+- Added active design receipt validation for slug/handoff scoped workflows.
+
+### Changed
+
+- Hardened agent maturity and command docs so old global receipts and
+  plugin-only agent definitions cannot unlock new agent-owned outputs.
+
 ## [2.1.2] - 2026-05-10
 
 ### Added

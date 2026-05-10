@@ -36,6 +36,9 @@ Concrete consequence of NOT following: a command can claim delegated expert work
 - Treat `PASS: true` with `COVERAGE_STATUS: not-started-*` as "nothing was
   available to validate", not as evidence that agents or receipts ran.
 - Match the receipt subject to the claimed producer. A command receipt proves the command ran; it does not prove a specialist agent, reviewer, worker, validator, skill, or external tool produced the artifact.
+- For active command or handoff claims, require scoped current-run receipts.
+  Old global receipts are diagnostic history only; they cannot unlock a new
+  command, new slug, or new handoff.
 - For `subjectType=agent`, `subjectType=worker`, or `subjectType=reviewer`, include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run (for example the Task hook entry in `.supervibe/memory/agent-invocations.jsonl` or a host trace file). Runtime receipt issue must fail when this proof is missing. The invocation logger also writes `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json` and `summary.md`; receipts should expose that stable evidence path when available.
 - Run `npm run validate:agent-producer-receipts` before claiming any agent, worker, or reviewer output. This validator maps durable outputs to exact producers and verifies that agent-like receipts point to real host invocation evidence.
 - Run any domain-specific receipt validator required by the workflow, such as `node scripts/validate-design-agent-receipts.mjs` for `/supervibe-design`, before claiming a delegated workflow is complete.

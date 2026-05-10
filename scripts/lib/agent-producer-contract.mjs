@@ -244,13 +244,127 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
   };
 }
 
+export function validateScopedAgentProducerReceipts(rootDir = process.cwd(), options = {}) {
+  const command = normalizeCommand(options.command);
+  const handoffId = normalizeOptional(options.handoffId || options.handoff);
+  const workflowRunId = normalizeOptional(options.workflowRunId || options.workflow_run_id);
+  const requiredSubjectIds = unique(options.requiredSubjectIds || options.requiredAgentIds || []);
+  const requiredSubjectTypes = new Set((options.requiredSubjectTypes || HOST_AGENT_SUBJECT_TYPES).map((item) => String(item).toLowerCase()));
+  const stageIds = new Set(unique(options.stageIds || options.stages || []));
+  const outputArtifacts = unique(options.outputArtifacts || []).map(normalizeRelPath);
+  const receipts = readWorkflowReceipts(rootDir).filter((receipt) => receiptMatchesScope(receipt, {
+    command,
+    handoffId,
+    workflowRunId,
+    requiredSubjectIds,
+    requiredSubjectTypes,
+    stageIds,
+    outputArtifacts,
+  }));
+  const invocationLog = options.agentInvocationLog || readAgentInvocationLog(rootDir);
+  const issues = [];
+  const trustedHostAgentReceiptIds = new Set();
+  const receiptBoundInvocationIds = new Set();
+  const trustedSubjects = new Set();
+
+  for (const receipt of receipts) {
+    if (receipt.__invalidJson) {
+      issues.push({
+        code: "invalid-scoped-agent-producer-receipt",
+        file: receipt.__file || "workflow receipt",
+        message: `${receipt.__file || "workflow receipt"}: invalid JSON in scoped producer receipt`,
+      });
+      continue;
+    }
+    if (!isProducerReceipt(receipt)) continue;
+
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
+    for (const message of trust.issues) {
+      issues.push({
+        code: /artifact link manifest missing|artifact link missing/i.test(message)
+          ? "missing-scoped-agent-producer-artifact-link"
+          : "untrusted-scoped-agent-producer-receipt",
+        file: receipt.__file,
+        message: `${receipt.__file}: ${message}`,
+      });
+    }
+
+    const hostIssues = isHostAgentReceipt(receipt)
+      ? validateHostInvocationProof(rootDir, receipt, { ...options, agentInvocationLog: invocationLog })
+      : [];
+    issues.push(...hostIssues);
+
+    if (receipt.status === "completed" && trust.issues.length === 0 && hostIssues.length === 0) {
+      const subjectId = receipt.subjectId || receipt.agentId || receipt.skillId;
+      if (subjectId) trustedSubjects.add(subjectId);
+      if (isHostAgentReceipt(receipt)) {
+        trustedHostAgentReceiptIds.add(receipt.receiptId || receipt.__file);
+        const proof = normalizeHostInvocationProof(rootDir, receipt.hostInvocation);
+        if (proof?.invocationId) receiptBoundInvocationIds.add(proof.invocationId);
+      }
+    }
+  }
+
+  for (const subjectId of requiredSubjectIds) {
+    if (trustedSubjects.has(subjectId)) continue;
+    issues.push({
+      code: "missing-scoped-agent-producer-receipt",
+      file: scopedReceiptFileHint({ command, handoffId, workflowRunId }),
+      expectedAgentId: subjectId,
+      message: `${subjectId}: missing trusted scoped runtime receipt for ${command || "requested command"}${handoffId ? ` handoff ${handoffId}` : ""}`,
+    });
+  }
+
+  const minHostAgentReceipts = numberOrZero(options.minHostAgentReceipts ?? (requiredSubjectIds.length || (options.requireHostAgentReceipts ? 1 : 0)));
+  const minAgentInvocations = numberOrZero(options.minAgentInvocations ?? (requiredSubjectIds.length || 0));
+  if (minHostAgentReceipts > 0 && trustedHostAgentReceiptIds.size < minHostAgentReceipts) {
+    issues.push({
+      code: "insufficient-scoped-host-agent-receipts",
+      file: scopedReceiptFileHint({ command, handoffId, workflowRunId }),
+      message: `trusted scoped host-agent receipt coverage ${trustedHostAgentReceiptIds.size}/${minHostAgentReceipts}; run the required host agents for this command/handoff and issue runtime receipts`,
+    });
+  }
+  if (minAgentInvocations > 0 && receiptBoundInvocationIds.size < minAgentInvocations) {
+    issues.push({
+      code: "insufficient-scoped-agent-telemetry",
+      file: AGENT_INVOCATION_LOG_RELATIVE_PATH,
+      message: `scoped receipt-bound agent invocation telemetry ${receiptBoundInvocationIds.size}/${minAgentInvocations}; every required agent must have hostInvocation proof for this command/handoff`,
+    });
+  }
+
+  return {
+    pass: issues.length === 0,
+    checked: receipts.length + requiredSubjectIds.length,
+    receipts: receipts.length,
+    producerReceipts: receipts.filter(isProducerReceipt).length,
+    hostAgentReceipts: receipts.filter(isHostAgentReceipt).length,
+    trustedHostAgentReceipts: trustedHostAgentReceiptIds.size,
+    agentReceipts: trustedHostAgentReceiptIds.size,
+    agentInvocations: receiptBoundInvocationIds.size,
+    loggedAgentInvocations: invocationLog.filter((entry) => !entry.__invalidJson).length,
+    minHostAgentReceipts,
+    minAgentInvocations,
+    requiredSubjects: requiredSubjectIds,
+    missingSubjects: requiredSubjectIds.filter((subjectId) => !trustedSubjects.has(subjectId)),
+    scope: {
+      command,
+      handoffId,
+      workflowRunId,
+      stageIds: [...stageIds],
+      outputArtifacts,
+    },
+    issues: dedupeIssues(issues),
+  };
+}
+
 function numberOrZero(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? Math.trunc(number) : 0;
 }
 
-export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd()) {
+export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(), options = {}) {
   const expected = [];
+  const prototypeSlug = normalizeOptional(options.prototypeSlug || options.slug);
   const add = ({ command, outputArtifact, subjectType, subjectId, stageId }) => {
     if (existsSync(join(rootDir, ...outputArtifact.split("/")))) {
       expected.push({ command, outputArtifact, subjectType, subjectId, stageId });
@@ -293,7 +407,7 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     stageId: "stage-2-design-system",
   });
 
-  for (const prototype of listPrototypeDirs(rootDir)) {
+  for (const prototype of listPrototypeDirs(rootDir).filter((name) => !prototypeSlug || name === prototypeSlug)) {
     const base = `.supervibe/artifacts/prototypes/${prototype}`;
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
@@ -436,6 +550,53 @@ function normalizeRelPath(path) {
   return String(path ?? "").split(sep).join("/").replace(/^\.\//, "");
 }
 
+function normalizeCommand(value) {
+  const normalized = normalizeOptional(value);
+  if (!normalized) return "";
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+function normalizeOptional(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized || "";
+}
+
+function receiptMatchesScope(receipt = {}, scope = {}) {
+  if (receipt.__invalidJson) return invalidReceiptPathMatchesScope(receipt, scope);
+  if (!isProducerReceipt(receipt)) return false;
+  if (scope.command && receipt.command !== scope.command) return false;
+  if (scope.handoffId && receipt.handoffId !== scope.handoffId) return false;
+  if (scope.workflowRunId && receipt.workflowRunId !== scope.workflowRunId && receipt.workflow_run_id !== scope.workflowRunId) return false;
+  if (scope.requiredSubjectIds?.length) {
+    const subjectId = receipt.subjectId || receipt.agentId || receipt.skillId;
+    if (!scope.requiredSubjectIds.includes(subjectId)) return false;
+  }
+  if (scope.requiredSubjectTypes?.size && !scope.requiredSubjectTypes.has(String(receipt.subjectType || "").toLowerCase())) return false;
+  if (scope.stageIds?.size && !scope.stageIds.has(receipt.stage)) return false;
+  if (scope.outputArtifacts?.length) {
+    const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];
+    if (!outputs.some((output) => scope.outputArtifacts.some((artifact) => sameArtifact(output, artifact)))) return false;
+  }
+  return true;
+}
+
+function invalidReceiptPathMatchesScope(receipt = {}, scope = {}) {
+  const file = normalizeRelPath(receipt.__file || "");
+  if (!file) return false;
+  const commandPath = normalizeCommand(scope.command).replace(/^\//, "");
+  if (commandPath && !file.includes(`_workflow-invocations/${commandPath}/`)) return false;
+  if (scope.handoffId && !file.includes(`/${scope.handoffId}/`)) return false;
+  if (scope.workflowRunId && !file.includes(`/${scope.workflowRunId}/`)) return false;
+  return true;
+}
+
+function scopedReceiptFileHint({ command = "", handoffId = "", workflowRunId = "" } = {}) {
+  const commandPath = normalizeCommand(command).replace(/^\//, "") || "workflow";
+  if (handoffId) return `.supervibe/artifacts/_workflow-invocations/${commandPath}/${handoffId}`;
+  if (workflowRunId) return `.supervibe/artifacts/_workflow-invocations/${commandPath}/${workflowRunId}`;
+  return `.supervibe/artifacts/_workflow-invocations/${commandPath}`;
+}
+
 function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
 }
@@ -450,4 +611,8 @@ function dedupeIssues(issues = []) {
     out.push(issue);
   }
   return out;
+}
+
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean).map(String))];
 }

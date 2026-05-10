@@ -420,10 +420,20 @@ export function assertDesignWriteAllowed(writeGate = {}, {
 }
 
 export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), options = {}) {
-  const receipts = readAllReceipts(rootDir);
-  const expected = expectedReceiptsForDurableOutputs(rootDir);
+  const scope = normalizeDesignReceiptScope(options);
+  const receipts = readAllReceipts(rootDir).filter((receipt) => receiptMatchesDesignScope(receipt, scope));
+  const expected = expectedReceiptsForDurableOutputs(rootDir, scope);
   const issues = [];
   const warnings = [];
+
+  if (scope.active && expected.length === 0) {
+    issues.push({
+      code: "active-design-receipt-scope-empty",
+      file: scopeFileHint(scope),
+      expectedAgentId: null,
+      message: "active /supervibe-design receipt validation found no scoped durable outputs to check; do not treat this as completed specialist work",
+    });
+  }
 
   for (const item of expected) {
     const matching = receipts.filter((receipt) => receiptMatches(receipt, item));
@@ -455,6 +465,7 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
     pass: issues.length === 0,
     checked: expected.length,
     receipts: receipts.length,
+    scope,
     executionMode: deriveDesignReceiptExecutionMode({ receipts, expected, issues }),
     missingAgents: missingAgentsForIssues(issues),
     missingSubjects: missingSubjectsForIssues(issues),
@@ -933,6 +944,7 @@ function formatProducerSummary(producer = null) {
 
 function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues = [] } = {}) {
   const designReceipts = receipts.filter((receipt) => receipt.command === "/supervibe-design" && !receipt.__invalidJson);
+  if (issues.some((issue) => issue.code === "active-design-receipt-scope-empty")) return "agent-required-blocked";
   if (expected.length === 0) return designReceipts.length > 0 ? "receipt-only" : "not-started";
   const agentReceipts = designReceipts.filter((receipt) => receipt.agentId || receipt.subjectType === "agent");
   const skillReceipts = designReceipts.filter((receipt) => receipt.skillId || receipt.subjectType === "skill");
@@ -1218,8 +1230,8 @@ function friendlyStageName(value = "") {
   return value || "current stage";
 }
 
-function expectedReceiptsForDurableOutputs(rootDir) {
-  return expectedProducerReceiptsForDurableOutputs(rootDir)
+function expectedReceiptsForDurableOutputs(rootDir, scope = {}) {
+  return expectedProducerReceiptsForDurableOutputs(rootDir, { prototypeSlug: scope.slug })
     .filter((expectation) => expectation.command === "/supervibe-design")
     .map((expectation) => ({
       outputArtifact: expectation.outputArtifact,
@@ -1245,6 +1257,9 @@ function missingSubjectsForIssues(issues) {
 }
 
 function qualityImpactForIssues(issues) {
+  if ((issues || []).some((issue) => issue.code === "active-design-receipt-scope-empty")) {
+    return "Active design workflow has no scoped durable-output receipt coverage. Invoke the required specialists and issue runtime receipts before claiming completion.";
+  }
   const missing = missingSubjectsForIssues(issues);
   if (missing.length === 0) return null;
   return `Durable design artifacts were found without completed specialist receipts for: ${missing.join(", ")}. Treat this run as degraded until real agent receipts are issued.`;
@@ -1314,7 +1329,35 @@ function unique(values) {
 }
 
 function readAllReceipts(rootDir) {
-  return readWorkflowReceipts(rootDir).filter((receipt) => receipt.command === "/supervibe-design");
+  return readWorkflowReceipts(rootDir).filter((receipt) => {
+    if (receipt.command === "/supervibe-design") return true;
+    return receipt.__invalidJson && normalizeRelPath(receipt.__file || "").includes("_workflow-invocations/supervibe-design/");
+  });
+}
+
+function normalizeDesignReceiptScope(options = {}) {
+  return {
+    active: options.active === true,
+    slug: normalizeOptional(options.slug || options.prototypeSlug),
+    handoffId: normalizeOptional(options.handoffId || options.handoff),
+    workflowRunId: normalizeOptional(options.workflowRunId || options.workflow_run_id),
+  };
+}
+
+function receiptMatchesDesignScope(receipt = {}, scope = {}) {
+  if (!scope.handoffId && !scope.workflowRunId) return true;
+  if (receipt.__invalidJson) return invalidReceiptPathMatchesDesignScope(receipt, scope);
+  if (scope.handoffId && receipt.handoffId !== scope.handoffId) return false;
+  if (scope.workflowRunId && receipt.workflowRunId !== scope.workflowRunId && receipt.workflow_run_id !== scope.workflowRunId) return false;
+  return true;
+}
+
+function invalidReceiptPathMatchesDesignScope(receipt = {}, scope = {}) {
+  const file = normalizeRelPath(receipt.__file || "");
+  if (!file) return false;
+  if (scope.handoffId && !file.includes(`/${scope.handoffId}/`)) return false;
+  if (scope.workflowRunId && !file.includes(`/${scope.workflowRunId}/`)) return false;
+  return true;
 }
 
 function receiptMatches(receipt, expected) {
@@ -1382,6 +1425,18 @@ function sameArtifact(left, right) {
 
 function normalizeRelPath(path) {
   return String(path ?? "").split(sep).join("/");
+}
+
+function normalizeOptional(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized || "";
+}
+
+function scopeFileHint(scope = {}) {
+  if (scope.handoffId) return `.supervibe/artifacts/_workflow-invocations/supervibe-design/${scope.handoffId}`;
+  if (scope.workflowRunId) return `.supervibe/artifacts/_workflow-invocations/supervibe-design/${scope.workflowRunId}`;
+  if (scope.slug) return `.supervibe/artifacts/prototypes/${scope.slug}`;
+  return ".supervibe/artifacts/_workflow-invocations/supervibe-design";
 }
 
 function sanitizePathPart(value = "") {

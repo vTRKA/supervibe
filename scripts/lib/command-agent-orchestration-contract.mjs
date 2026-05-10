@@ -260,10 +260,13 @@ export function buildCommandAgentPlan(commandId, {
   requestedExecutionMode,
   availableAgentIds,
   availableAgentSources = null,
+  callableAgentIds = null,
+  callableAgentSources = null,
   extraRequiredAgentIds = [],
   hostAdapterId = null,
   enforceHostProof = false,
   receiptTrust = null,
+  scopedReceiptTrust = null,
   workflowContext = {},
 } = {}) {
   const profile = getCommandAgentProfile(commandId);
@@ -298,7 +301,10 @@ export function buildCommandAgentPlan(commandId, {
   const bootstrapPreAgent = genesisBootstrapPhase;
   const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
   const receiptStatus = normalizeReceiptTrust(receiptTrust);
-  const runtimeReceiptsTrusted = receiptStatus.trusted === true;
+  const scopedReceiptStatus = normalizeReceiptTrust(scopedReceiptTrust);
+  const scopedReceiptGateActive = shouldUseScopedReceiptTrust(workflowContext);
+  const activeReceiptStatus = scopedReceiptGateActive ? scopedReceiptStatus : receiptStatus;
+  const runtimeReceiptsTrusted = activeReceiptStatus.trusted === true;
   const baseRequiredAgentIds = adaptBaselineOnlyApplyPhase
     ? (profile.baselineOnlyRequiredAgentIds || profile.lowRiskRequiredAgentIds || [])
     : [
@@ -315,6 +321,11 @@ export function buildCommandAgentPlan(commandId, {
   const missingAgents = available
     ? requiredAgentIds.filter((agentId) => !available.has(agentId))
     : [];
+  const callable = callableAgentIds ? new Set([...callableAgentIds].map(String)) : null;
+  const missingCallableAgents = callable
+    ? requiredAgentIds.filter((agentId) => !callable.has(agentId))
+    : [];
+  const callableAgentsReady = missingCallableAgents.length === 0;
   const hostDispatch = resolveHostAgentDispatcher(hostAdapterId);
   const hostProofBlocked = Boolean(
     enforceHostProof
@@ -322,11 +333,12 @@ export function buildCommandAgentPlan(commandId, {
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
+  const callableAgentsBlocked = callable !== null && !callableAgentsReady;
   const blocked = !bootstrapPreAgent
     && !adaptDryRunPhase
     && !adaptBaselineOnlyApplyPhase
     && requestedMode !== "inline"
-    && (missingAgents.length > 0 || hostProofBlocked);
+    && (missingAgents.length > 0 || callableAgentsBlocked || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
     : adaptDryRunPhase
@@ -343,12 +355,13 @@ export function buildCommandAgentPlan(commandId, {
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
   const dryRunAgentless = executionMode === "dry-run-no-agent";
   const baselineOnly = executionMode === "baseline-only-fast-path";
-  const receiptTrustApplies = runtimeReceiptsTrusted && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
+  const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
   const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex"
     && requestedMode !== "inline"
     && !bootstrapPreAgent
     && !dryRunAgentless
     && !baselineOnly
+    && callableAgentsReady
     && !receiptTrustApplies
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
     : [];
@@ -362,6 +375,7 @@ export function buildCommandAgentPlan(commandId, {
     defaultExecutionMode: profile.defaultExecutionMode,
     requiredAgentIds,
     requiredAgentSources: agentSourcesFor(requiredAgentIds, availableAgentSources),
+    callableAgentSources: agentSourcesFor(requiredAgentIds, callableAgentSources),
     immediateAgentIds,
     deferredAgentIds,
     stageGate: profile.stageGate || null,
@@ -369,10 +383,13 @@ export function buildCommandAgentPlan(commandId, {
     stageGateReason: profile.stageGateReason || null,
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     missingAgents,
+    missingCallableAgents,
     hostDispatch,
     hostProofRequired: requestedMode !== "inline",
     hostProofBlocked,
+    callableAgentsBlocked,
     agentsInstalled: missingAgents.length === 0,
+    callableAgentsReady,
     hostDispatchAvailable: hostDispatch?.status === "supported",
     agentInvocationsCompleted: receiptTrustApplies,
     agentReceiptsTrusted: receiptTrustApplies,
@@ -382,12 +399,19 @@ export function buildCommandAgentPlan(commandId, {
         ? "quality-gate-only-baseline-refresh"
       : bootstrapOnly
         ? "bootstrap-pre-agent-basic-scaffold"
+      : scopedReceiptGateActive && receiptTrustApplies
+        ? "trusted-scoped-runtime-agent-receipts"
       : receiptTrustApplies
         ? "trusted-runtime-agent-receipts"
+      : scopedReceiptGateActive && realAgentCapable
+        ? "pending-scoped-runtime-agent-receipts"
       : realAgentCapable
         ? "pending-runtime-agent-receipts"
         : "not-applicable",
     receiptTrust: receiptStatus,
+    scopedReceiptGateActive,
+    scopedReceiptTrust: scopedReceiptStatus,
+    activeReceiptTrust: activeReceiptStatus,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
     durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || receiptTrustApplies,
@@ -401,7 +425,7 @@ export function buildCommandAgentPlan(commandId, {
     qualityImpact: inlineOnly
       ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
       : receiptTrustApplies
-        ? `Runtime agent receipt gate is trusted (${receiptStatus.trustedHostAgentReceipts}/${receiptStatus.minHostAgentReceipts} host receipts, ${receiptStatus.agentInvocations}/${receiptStatus.minAgentInvocations} receipt-bound invocations).`
+        ? `${scopedReceiptGateActive ? "Scoped runtime agent receipt gate" : "Runtime agent receipt gate"} is trusted (${activeReceiptStatus.trustedHostAgentReceipts}/${activeReceiptStatus.minHostAgentReceipts} host receipts, ${activeReceiptStatus.agentInvocations}/${activeReceiptStatus.minAgentInvocations} receipt-bound invocations).`
       : dryRunAgentless
         ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
       : baselineOnly
@@ -410,8 +434,12 @@ export function buildCommandAgentPlan(commandId, {
         ? "Bootstrap-pre-agent mode may install base host scaffold and state only; specialist-owned output and completion claims still require runtime agent receipts after agents are installed."
       : hostProofBlocked
         ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
+      : callableAgentsBlocked
+        ? `Required agents are defined but not callable in the selected host registry: ${missingCallableAgents.join(", ")}.`
       : blocked
         ? `Missing required agents: ${missingAgents.join(", ")}.`
+      : scopedReceiptGateActive
+        ? "Agent definitions and host dispatch are available, but this active command/handoff has no trusted scoped runtime receipts yet."
         : lowRiskFastPath
           ? "Low-risk workflow context selected the owner plus quality gate fast path; durable outputs still require runtime receipts for any claimed producer."
           : "Agent definitions and host dispatch are available, but durable outputs remain blocked until runtime agent receipts are issued.",
@@ -419,6 +447,7 @@ export function buildCommandAgentPlan(commandId, {
       ? buildBlockedAgentQuestion({
         commandId: profile.commandId,
         missingAgents,
+        missingCallableAgents,
         hostDispatch,
         hostProofBlocked,
         requiredAgentIds,
@@ -433,12 +462,14 @@ export function buildCommandAgentPlan(commandId, {
 function buildBlockedAgentQuestion({
   commandId = "unknown",
   missingAgents = [],
+  missingCallableAgents = [],
   hostDispatch = null,
   hostProofBlocked = false,
   requiredAgentIds = [],
 } = {}) {
-  const agentSummary = missingAgents.length
-    ? missingAgents.join(", ")
+  const missingAgentLike = missingAgents.length ? missingAgents : missingCallableAgents;
+  const agentSummary = missingAgentLike.length
+    ? missingAgentLike.join(", ")
     : requiredAgentIds.length
       ? requiredAgentIds.join(", ")
       : "required specialists";
@@ -447,6 +478,8 @@ function buildBlockedAgentQuestion({
     : "host dispatch";
   const blocker = hostProofBlocked
     ? `${hostSummary} proof is missing`
+    : missingCallableAgents.length
+      ? `agents are not callable in ${hostSummary}: ${agentSummary}`
     : `missing agents: ${agentSummary}`;
 
   return {
@@ -455,15 +488,16 @@ function buildBlockedAgentQuestion({
     evidence: [
       `command=${commandId}`,
       `missingAgents=${missingAgents.join(",") || "none"}`,
+      `missingCallableAgents=${missingCallableAgents.join(",") || "none"}`,
       `hostDispatch=${hostDispatch?.status || "not-configured"}`,
     ],
     artifactImpact: "This answer decides whether durable command outputs remain blocked, agent provisioning runs, or the session stops without emulated specialist work.",
     choices: [
       {
         id: "provision-agents",
-        label: missingAgents.length ? `Install missing agents for ${commandId}` : `Refresh agent availability for ${commandId}`,
+        label: missingAgents.length || missingCallableAgents.length ? `Install missing agents for ${commandId}` : `Refresh agent availability for ${commandId}`,
         tradeoff: `Runs the provisioning path for ${agentSummary}; durable outputs stay blocked until receipts exist.`,
-        recommended: missingAgents.length > 0,
+        recommended: missingAgents.length > 0 || missingCallableAgents.length > 0,
       },
       {
         id: "connect-host-agents",
@@ -551,15 +585,18 @@ export function formatCommandAgentPlan(plan = {}) {
     `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
     `RECEIPT_GATE: ${plan.receiptGate || "unknown"}`,
     `AGENTS_INSTALLED: ${plan.agentsInstalled === true}`,
+    `CALLABLE_AGENTS_READY: ${plan.callableAgentsReady === true}`,
     `HOST_DISPATCH_AVAILABLE: ${plan.hostDispatchAvailable === true}`,
     `AGENT_INVOCATIONS_COMPLETED: ${plan.agentInvocationsCompleted === true}`,
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
+    `SCOPED_RECEIPT_GATE: ${plan.scopedReceiptGateActive === true}`,
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
     `BASELINE_ONLY_FAST_PATH_ALLOWED: ${plan.baselineOnlyFastPathAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
+    `CALLABLE_AGENT_SOURCES: ${formatAgentSources(plan.callableAgentSources)}`,
     `IMMEDIATE_AGENTS: ${(plan.immediateAgentIds || []).join(", ") || "none"}`,
     `DEFERRED_AGENTS: ${(plan.deferredAgentIds || []).join(", ") || "none"}`,
     `AGENT_STAGE_GATE: ${plan.stageGate || "none"}`,
@@ -567,6 +604,8 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_STAGE_GATE_REASON: ${plan.stageGateReason || "none"}`,
     `DYNAMIC_SELECTORS: ${(plan.dynamicAgentSelectors || []).join(", ") || "none"}`,
     `MISSING_AGENTS: ${(plan.missingAgents || []).join(", ") || "none"}`,
+    `MISSING_CALLABLE_AGENTS: ${(plan.missingCallableAgents || []).join(", ") || "none"}`,
+    `SCOPED_RECEIPTS_MISSING: ${(plan.scopedReceiptTrust?.missingSubjects || []).join(", ") || "none"}`,
     `HOST_DISPATCH: ${plan.hostDispatch?.hostAdapterId || "unspecified"}:${plan.hostDispatch?.status || "not-checked"}`,
     `HOST_TOOL: ${plan.hostDispatch?.nativeTool || "unspecified"}`,
     `HOST_PROOF: ${plan.hostDispatch?.invocationProof || "unspecified"}`,
@@ -774,6 +813,9 @@ function normalizeReceiptTrust(receiptTrust = null) {
     loggedAgentInvocations: Number(receiptTrust?.loggedAgentInvocations || 0),
     minHostAgentReceipts,
     minAgentInvocations,
+    requiredSubjects: [...(receiptTrust?.requiredSubjects || [])],
+    missingSubjects: [...(receiptTrust?.missingSubjects || [])],
+    scope: receiptTrust?.scope || null,
     issues: [...(receiptTrust?.issues || [])],
   };
 }
@@ -788,12 +830,13 @@ function normalizeBoolean(value, fallback = false) {
 }
 
 function agentSourcesFor(agentIds = [], availableAgentSources = null) {
+  const explicitSourceMap = availableAgentSources !== null && availableAgentSources !== undefined;
   const sourceMap = availableAgentSources instanceof Map
     ? availableAgentSources
     : new Map(Object.entries(availableAgentSources || {}));
   return agentIds.map((agentId) => ({
     agentId,
-    source: sourceMap.get(agentId) || "logical role",
+    source: sourceMap.get(agentId) || (explicitSourceMap ? "missing" : "logical role"),
   }));
 }
 
@@ -805,6 +848,7 @@ function formatAgentSources(sources = []) {
 function nextActionForPlan(plan = {}) {
   if (plan.executionMode === COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode) {
     if (plan.hostProofBlocked) return "Connect a host runtime that records invocation ids, or stop; do not emulate specialists.";
+    if (plan.missingCallableAgents?.length) return "Provision/connect the required agents in the selected host registry, then rebuild this plan; do not emulate specialists.";
     if (plan.missingAgents?.length) return "Provision/connect the missing agents, then rebuild this plan; do not emulate specialists.";
     return "Resolve the blocked agent plan before durable work.";
   }
@@ -819,10 +863,21 @@ function nextActionForPlan(plan = {}) {
   }
   if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
   if (plan.agentReceiptsTrusted) return "Runtime agent receipt gate is already trusted; proceed with the command-specific verified next action.";
+  if (plan.scopedReceiptGateActive) return "Invoke required host agents for this command/handoff, capture invocation ids, then issue scoped workflow receipts before durable writes or completion claims.";
   if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {
     return `Invoke immediate owner agent(s) now: ${plan.immediateAgentIds.join(", ")}. Then run ${plan.stageGateCommand || "the workflow gate"}; defer staged specialist agents (${plan.deferredAgentIds.join(", ")}) until the gate unlocks their stages.`;
   }
   return "Invoke required host agents, capture invocation ids, then issue workflow receipts before completion claims.";
+}
+
+function shouldUseScopedReceiptTrust(workflowContext = {}) {
+  return Boolean(
+    workflowContext.active === true
+    || workflowContext.handoffId
+    || workflowContext.handoff
+    || workflowContext.workflowRunId
+    || workflowContext.slug
+  );
 }
 
 function normalizeImmediateAgentIds(profile, requiredAgentIds) {

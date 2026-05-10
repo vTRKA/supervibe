@@ -70,6 +70,14 @@ Every published `/supervibe-*` command must have a profile with:
 - Print required role sources as `project artifact`, `plugin-only`, or
   `logical role` so users can tell whether an agent is installed in the
   project or supplied by the plugin profile.
+- Treat `REQUIRED_AGENT_SOURCES` as definition evidence and
+  `CALLABLE_AGENT_SOURCES` as host invocation evidence. A plugin-only
+  definition is not enough for `CALLABLE_AGENTS_READY=true`; missing callable
+  roles must print as `MISSING_CALLABLE_AGENTS` and keep durable output
+  blocked.
+- For active commands, build the plan with the current slug/handoff so
+  `SCOPED_RECEIPT_GATE` proves this run specifically. Old global receipts are
+  diagnostic only and do not authorize a new command/handoff.
 - Use the shared stage runner when a workflow provides it. A stage runner owns
   producer execution or host-invocation binding, receipt issue, validation,
   planner/state refresh, and post-stage continuation output for that stage.

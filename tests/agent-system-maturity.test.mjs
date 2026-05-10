@@ -130,6 +130,94 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
   assert.match(formatAgentSystemMaturityReport(report), /strictPass=false/);
 });
 
+test("agent-system maturity blocks 10/10 when invocation distribution hides missing specialists", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      agentReceipts: {
+        pass: true,
+        hostAgentReceipts: 12,
+        agentInvocations: 12,
+        invocationsByAgent: {
+          "supervibe-orchestrator": 11,
+          "creative-director": 1,
+        },
+        missingSubjects: ["prototype-builder", "accessibility-reviewer"],
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "host-agent-telemetry"));
+  assert.match(formatAgentSystemMaturityReport(report), /distributionWarning=supervibe-orchestrator:11\/12/);
+  assert.match(formatAgentSystemMaturityReport(report), /missing=prototype-builder\|accessibility-reviewer/);
+});
+
+test("agent-system maturity reports distribution skew without blocking when no specialists are missing", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      agentReceipts: {
+        pass: true,
+        hostAgentReceipts: 12,
+        agentInvocations: 12,
+        invocationsByAgent: {
+          "supervibe-orchestrator": 11,
+          "quality-gate-reviewer": 1,
+        },
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.score, 10);
+  assert.match(formatAgentSystemMaturityReport(report), /distributionWarning=supervibe-orchestrator:11\/12/);
+});
+
 test("agent-system maturity blocks 10/10 when retrieval enforcement hook is missing", () => {
   const report = scoreAgentSystemMaturity({
     roster: {

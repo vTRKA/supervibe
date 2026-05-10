@@ -25,6 +25,14 @@ const ROOT = process.cwd();
 const COMMANDS_SCRIPT = join(ROOT, "scripts", "supervibe-commands.mjs");
 const AGENT_PLAN_SCRIPT = join(ROOT, "scripts", "command-agent-plan.mjs");
 
+function installHostAgentFiles(projectRoot, hostFolder, agentIds) {
+  const dir = join(projectRoot, ...hostFolder.split("/"));
+  mkdirSync(dir, { recursive: true });
+  for (const agentId of agentIds) {
+    writeFileSync(join(dir, `${agentId}.md`), `# ${agentId}\n`, "utf8");
+  }
+}
+
 test("project command catalog exposes slash commands, npm scripts, and fast shortcuts", () => {
   const catalog = buildProjectCommandCatalog({ pluginRoot: ROOT, projectRoot: ROOT });
   const shortcut = catalog.shortcuts.find((entry) => entry.id === "index-rag-codegraph");
@@ -649,6 +657,54 @@ test("codex command agent plan emits fork-safe spawn payloads", () => {
   assert.match(report, /NEXT: Invoke immediate owner agent\(s\) now: supervibe-orchestrator/);
 });
 
+test("active command agent plan requires scoped receipts instead of unrelated global trust", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+  const globalReceiptTrust = {
+    pass: true,
+    trustedHostAgentReceipts: 12,
+    agentInvocations: 12,
+    minHostAgentReceipts: 1,
+    minAgentInvocations: 1,
+  };
+  const scopedReceiptTrust = {
+    pass: false,
+    trustedHostAgentReceipts: 0,
+    agentInvocations: 0,
+    minHostAgentReceipts: 9,
+    minAgentInvocations: 9,
+    missingSubjects: ["creative-director", "prototype-builder"],
+    issues: [{ code: "missing-scoped-agent-producer-receipt", message: "missing scoped receipts" }],
+  };
+
+  const plan = buildCommandAgentPlan("/supervibe-design", {
+    availableAgentIds,
+    callableAgentIds: availableAgentIds,
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    receiptTrust: globalReceiptTrust,
+    scopedReceiptTrust,
+    workflowContext: {
+      active: true,
+      slug: "new-agent-chat",
+      handoffId: "new-agent-chat-run",
+    },
+  });
+
+  assert.equal(plan.scopedReceiptGateActive, true);
+  assert.equal(plan.executionMode, "agent-dispatch-required");
+  assert.equal(plan.agentInvocationsCompleted, false);
+  assert.equal(plan.agentReceiptsTrusted, false);
+  assert.equal(plan.durableWritesAllowed, false);
+  assert.equal(plan.agentOwnedOutputRequiresReceipts, true);
+  assert.equal(plan.receiptGate, "pending-scoped-runtime-agent-receipts");
+  const report = formatCommandAgentPlan(plan);
+  assert.match(report, /SCOPED_RECEIPT_GATE: true/);
+  assert.match(report, /SCOPED_RECEIPTS_MISSING: creative-director, prototype-builder/);
+  assert.match(report, /RECEIPT_GATE: pending-scoped-runtime-agent-receipts/);
+});
+
 test("every slash command has codex-safe payloads for every required agent", () => {
   const commandIds = readdirSync(join(ROOT, "commands"))
     .filter((file) => file.endsWith(".md"))
@@ -749,6 +805,19 @@ test("every command stays agent-first across host providers and blocks inline cl
 test("command-agent-plan CLI prints runtime host plan", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-cli-"));
   try {
+    const designAgents = [
+      "supervibe-orchestrator",
+      "creative-director",
+      "design-system-architect",
+      "ux-ui-designer",
+      "copywriter",
+      "prototype-builder",
+      "accessibility-reviewer",
+      "ui-polish-reviewer",
+      "quality-gate-reviewer",
+    ];
+    installHostAgentFiles(projectRoot, ".claude/agents", designAgents);
+    installHostAgentFiles(projectRoot, ".codex/agents", designAgents);
     const baseArgs = ["--root", projectRoot];
     const claude = execFileSync(process.execPath, [
       AGENT_PLAN_SCRIPT,
@@ -806,9 +875,44 @@ test("command-agent-plan CLI prints runtime host plan", () => {
   }
 });
 
+test("command-agent-plan CLI separates plugin definitions from host-callable agents", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-callable-"));
+  try {
+    const out = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "codex",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(out, /EXECUTION_MODE: agent-required-blocked/);
+    assert.match(out, /AGENTS_INSTALLED: true/);
+    assert.match(out, /CALLABLE_AGENTS_READY: false/);
+    assert.match(out, /MISSING_CALLABLE_AGENTS: .*creative-director.*prototype-builder/);
+    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=missing/);
+    assert.doesNotMatch(out, /CODEX_SPAWN_PAYLOADS:/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("command-agent-plan CLI trusts runtime agent receipts when validators pass", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-trusted-"));
   try {
+    installHostAgentFiles(projectRoot, ".codex/agents", [
+      "supervibe-orchestrator",
+      "repo-researcher",
+      "rules-curator",
+      "memory-curator",
+      "quality-gate-reviewer",
+    ]);
     const outputRel = ".supervibe/artifacts/brandbook/direction.md";
     mkdirSync(join(projectRoot, ".supervibe", "artifacts", "brandbook"), { recursive: true });
     mkdirSync(join(projectRoot, ".supervibe", "memory"), { recursive: true });

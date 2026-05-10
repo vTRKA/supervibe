@@ -1045,6 +1045,109 @@ test("design agent receipt validator accepts runtime-issued receipts with host i
   }
 });
 
+test("active design receipt validator fails instead of passing checked-zero workflows", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-receipts-"));
+  try {
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      slug: "agent-chat",
+      handoffId: "agent-chat-run",
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.checked, 0);
+    assert.equal(result.executionMode, "agent-required-blocked");
+    assert.ok(result.issues.some((issue) => issue.code === "active-design-receipt-scope-empty"));
+    assert.match(result.qualityImpact, /Active design workflow has no scoped durable-output receipt coverage/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent receipt validator scopes active checks to the requested handoff", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-scoped-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    const hostInvocation = await writeAgentInvocation(root);
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      stage: "stage-1-brand-direction",
+      invocationReason: "brand direction required",
+      inputEvidence: [".supervibe/artifacts/brandbook/preferences.json"],
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "previous-design-run",
+      hostInvocation,
+      secret: "test-secret",
+    });
+
+    const unscoped = validateDesignAgentInvocationReceipts(root, { secret: "test-secret" });
+    const scoped = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      handoffId: "current-design-run",
+      secret: "test-secret",
+    });
+
+    assert.equal(unscoped.pass, true);
+    assert.equal(scoped.pass, false);
+    assert.ok(scoped.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "creative-director"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design agent receipt validator accepts runtime-issued scoped active receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-positive-scoped-receipts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
+    const hostInvocation = await writeAgentInvocation(root, {
+      invocationId: "agent-invocation-scoped-1",
+      agentId: "creative-director",
+      taskSummary: "scoped brand direction required",
+    });
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      stage: "stage-1-brand-direction",
+      invocationReason: "scoped brand direction required",
+      inputEvidence: [".supervibe/artifacts/brandbook/preferences.json"],
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "current-design-run",
+      hostInvocation,
+      secret: "test-secret",
+    });
+
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      handoffId: "current-design-run",
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, true);
+    assert.equal(result.scope.active, true);
+    assert.equal(result.scope.handoffId, "current-design-run");
+    assert.equal(result.executionMode, "real-agents");
+    assert.deepEqual(result.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent receipt validator rejects output artifact hash drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-agent-receipts-"));
   try {
