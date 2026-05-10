@@ -365,8 +365,9 @@ function numberOrZero(value) {
 export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(), options = {}) {
   const expected = [];
   const prototypeSlug = normalizeOptional(options.prototypeSlug || options.slug);
-  const add = ({ command, outputArtifact, subjectType, subjectId, stageId }) => {
-    if (existsSync(join(rootDir, ...outputArtifact.split("/")))) {
+  const requireDesignReviewStages = options.requireDesignReviewStages === true;
+  const add = ({ command, outputArtifact, subjectType, subjectId, stageId, required = false }) => {
+    if (required || existsSync(join(rootDir, ...outputArtifact.split("/")))) {
       expected.push({ command, outputArtifact, subjectType, subjectId, stageId });
     }
   };
@@ -409,6 +410,8 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
 
   for (const prototype of listPrototypeDirs(rootDir).filter((name) => !prototypeSlug || name === prototypeSlug)) {
     const base = `.supervibe/artifacts/prototypes/${prototype}`;
+    const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", "prototypes", prototype, "index.html"));
+    const requiredReviewStage = requireDesignReviewStages && prototypeIndexExists;
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
@@ -423,9 +426,9 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
         add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.a11y, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
       }
     }
-    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
-    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review" });
-    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/polish.md`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review", required: requiredReviewStage });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/a11y.md`, subjectType: "reviewer", subjectId: "accessibility-reviewer", stageId: "stage-6-a11y-review", required: requiredReviewStage });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/quality-gate.json`, subjectType: "reviewer", subjectId: "quality-gate-reviewer", stageId: "stage-7-quality-gate", required: requiredReviewStage });
     add({ command: "/supervibe-design", outputArtifact: `${base}/_reviews/seo.md`, subjectType: "reviewer", subjectId: "seo-specialist", stageId: "stage-6-seo-review" });
   }
 

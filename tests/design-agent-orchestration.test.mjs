@@ -1157,6 +1157,48 @@ test("active design receipt validator fails instead of passing checked-zero work
   }
 });
 
+test("active design receipt validator requires reviewer stage receipts after prototype output exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-reviewers-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      slug: "agent-chat",
+      handoffId: "agent-chat-run",
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "prototype-builder"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ui-polish-reviewer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "accessibility-reviewer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "quality-gate-reviewer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("baseline design receipt validator keeps reviewer stages conditional for draft prototypes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-baseline-reviewers-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+
+    const result = validateDesignAgentInvocationReceipts(root, {
+      slug: "agent-chat",
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "prototype-builder"));
+    assert.equal(result.issues.some((issue) => issue.expectedAgentId === "ui-polish-reviewer"), false);
+    assert.equal(result.issues.some((issue) => issue.expectedAgentId === "accessibility-reviewer"), false);
+    assert.equal(result.issues.some((issue) => issue.expectedAgentId === "quality-gate-reviewer"), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent receipt validator scopes active checks to the requested handoff", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-scoped-receipts-"));
   try {

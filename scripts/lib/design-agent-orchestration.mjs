@@ -1269,7 +1269,10 @@ function friendlyStageName(value = "") {
 }
 
 function expectedReceiptsForDurableOutputs(rootDir, scope = {}) {
-  return expectedProducerReceiptsForDurableOutputs(rootDir, { prototypeSlug: scope.slug })
+  return expectedProducerReceiptsForDurableOutputs(rootDir, {
+    prototypeSlug: scope.slug,
+    requireDesignReviewStages: scope.active === true,
+  })
     .filter((expectation) => expectation.command === "/supervibe-design")
     .map((expectation) => ({
       outputArtifact: expectation.outputArtifact,

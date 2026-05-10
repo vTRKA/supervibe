@@ -77,3 +77,36 @@ test("prototype-production regression flags production drift", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("prototype-production strict mode fails when the pair paths are missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-proto-prod-strict-missing-pair-"));
+  try {
+    const result = validatePrototypeProductionRegression(root, {
+      slug: "",
+      requirePair: true,
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.status, "missing-pair-path");
+    assert.ok(result.issues.some((issue) => issue.code === "missing-pair-path"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype-production strict mode fails when declared pair files are absent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-proto-prod-strict-absent-files-"));
+  try {
+    const result = validatePrototypeProductionRegression(root, {
+      prototypePath: ".supervibe/artifacts/prototypes/landing/index.html",
+      productionPath: "frontend/src/app/page.tsx",
+      requirePair: true,
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.status, "pair-not-found");
+    assert.ok(result.issues.some((issue) => issue.code === "pair-not-found"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -7,6 +8,8 @@ import test from "node:test";
 import {
   validateDesignPreviewDaemon,
 } from "../scripts/validate-design-preview-daemon.mjs";
+
+const ROOT = process.cwd();
 
 test("design preview daemon validator rejects foreground-prone design commands", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-preview-"));
@@ -42,4 +45,19 @@ test("current design preview contracts require daemon mode", () => {
 
   assert.deepEqual(result.issues, []);
   assert.equal(result.pass, true);
+});
+
+test("design preview daemon CLI validates plugin contracts from a consumer project cwd", async () => {
+  const consumerRoot = await mkdtemp(join(tmpdir(), "supervibe-design-preview-consumer-"));
+
+  const out = execFileSync(process.execPath, [
+    join(ROOT, "scripts", "validate-design-preview-daemon.mjs"),
+  ], {
+    cwd: consumerRoot,
+    encoding: "utf8",
+  });
+
+  assert.match(out, /SUPERVIBE_DESIGN_PREVIEW_DAEMON/);
+  assert.match(out, /PASS: true/);
+  assert.doesNotMatch(out, /missing-file/);
 });

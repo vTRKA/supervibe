@@ -40,6 +40,9 @@ import {
   evaluateSemanticIntentMatrix,
   evaluateTriggerMatrix,
 } from "./supervibe-trigger-evaluator.mjs";
+import {
+  buildRuntimeCommandAgentPlan,
+} from "../command-agent-plan.mjs";
 
 export const AGENT_SYSTEM_MATURITY_DIMENSIONS = Object.freeze([
   { id: "roster-coverage", max: 1.0 },
@@ -71,6 +74,16 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
   const retrievalTelemetry = await collectRetrievalTelemetryGate(rootDir);
   const indexGate = await collectCodeGraphGate(rootDir, { retrievalTelemetry });
   const routeReplay = collectRouteReplayGate(rootDir);
+  const activeCommandReadiness = options.activeCommand
+    ? collectActiveCommandReadiness(rootDir, {
+      command: options.activeCommand,
+      host: options.host,
+      slug: options.slug,
+      handoffId: options.handoffId,
+      workflowRunId: options.workflowRunId,
+      pluginRoot: options.pluginRoot,
+    })
+    : null;
   const docs = {
     ...inspectBacklogAndDocs(rootDir),
     ...routeReplay,
@@ -87,6 +100,7 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
       continuation,
       workflowReceipts,
       agentReceipts,
+      ...(activeCommandReadiness ? { activeCommandReadiness } : {}),
     },
     indexGate,
     docs,
@@ -127,9 +141,11 @@ export function scoreAgentSystemMaturity({
   add(
     "command-orchestration",
     1.0,
-    validators.commandContracts?.pass ? 1.0 : 0,
-    `command contracts pass=${validators.commandContracts?.pass === true}`,
-    "Run npm run validate:command-operational-contracts and fix missing real-agent routing rules.",
+    validators.commandContracts?.pass && validators.activeCommandReadiness?.pass !== false ? 1.0 : 0,
+    activeCommandEvidence(validators),
+    validators.activeCommandReadiness?.pass === false
+      ? "Fix active command readiness: provision/connect missing callable host agents and rerun command-agent-plan --active before claiming 10/10."
+      : "Run npm run validate:command-operational-contracts and fix missing real-agent routing rules.",
   );
   add(
     "specialist-questions",
@@ -408,6 +424,58 @@ function collectRouteReplayGate(rootDir) {
     routeReplayPass: workflow.pass && semantic.pass && commandRoutes.pass,
     routeReplayEvidence: `workflow=${workflow.passed}/${workflow.total}, semantic=${semantic.passed}/${semantic.total}, command=${commandRoutes.passed}/${commandRoutes.total}${failed.length ? `, failed=${failed.join(",")}` : ""}`,
   };
+}
+
+function collectActiveCommandReadiness(rootDir, {
+  command,
+  host = null,
+  slug = "",
+  handoffId = "",
+  workflowRunId = "",
+  pluginRoot = rootDir,
+} = {}) {
+  try {
+    const report = buildRuntimeCommandAgentPlan({
+      command,
+      projectRoot: rootDir,
+      pluginRoot,
+      host,
+      workflowContext: {
+        active: true,
+        slug,
+        handoffId,
+        workflowRunId,
+      },
+    });
+    const plan = report.plan || {};
+    return {
+      pass: report.pass === true,
+      command: plan.commandId || command,
+      executionMode: plan.executionMode,
+      callableAgentsReady: plan.callableAgentsReady === true,
+      missingCallableAgents: plan.missingCallableAgents || [],
+      missingAgents: plan.missingAgents || [],
+      qualityImpact: plan.qualityImpact || "",
+    };
+  } catch (error) {
+    return {
+      pass: false,
+      command,
+      executionMode: "inspection-error",
+      callableAgentsReady: false,
+      missingCallableAgents: [],
+      missingAgents: [],
+      qualityImpact: error.message,
+    };
+  }
+}
+
+function activeCommandEvidence(validators = {}) {
+  const base = `command contracts pass=${validators.commandContracts?.pass === true}`;
+  const active = validators.activeCommandReadiness;
+  if (!active) return base;
+  const missingCallable = (active.missingCallableAgents || []).join("|") || "none";
+  return `${base}, activeCommand=${active.command || "unknown"}, activePass=${active.pass === true}, executionMode=${active.executionMode || "unknown"}, callableAgentsReady=${active.callableAgentsReady === true}, missingCallable=${missingCallable}`;
 }
 
 function inspectBacklogAndDocs(rootDir) {

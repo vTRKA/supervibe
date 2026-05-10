@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   AGENT_SYSTEM_MATURITY_DIMENSIONS,
+  buildAgentSystemMaturityReport,
   formatAgentSystemMaturityReport,
   scoreAgentSystemMaturity,
 } from "../scripts/lib/agent-system-maturity.mjs";
+
+const ROOT = process.cwd();
 
 const PASSING_VALIDATORS = Object.freeze({
   commandContracts: { pass: true },
@@ -52,6 +58,102 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
   assert.equal(report.pass, true);
   assert.equal(report.score, 10);
   assert.equal(report.blockers.length, 0);
+});
+
+test("agent-system maturity blocks active 10/10 when command readiness is blocked", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      activeCommandReadiness: {
+        pass: false,
+        command: "/supervibe-design",
+        executionMode: "agent-required-blocked",
+        callableAgentsReady: false,
+        missingCallableAgents: ["creative-director", "prototype-builder"],
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.score < 10);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "command-orchestration"));
+  assert.match(formatAgentSystemMaturityReport(report), /activeCommand=\/supervibe-design/);
+  assert.match(formatAgentSystemMaturityReport(report), /missingCallable=creative-director\|prototype-builder/);
+});
+
+test("agent-system maturity keeps baseline 10/10 when active command readiness is not requested", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 56,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: PASSING_VALIDATORS,
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 10,
+      retrievalTelemetryStrictPass: true,
+      missingOrStale: 0,
+      evidence: "source=325/325, failed=none, warnings=none, retrievalEnforcement=true, retrievalTelemetry=10/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.score, 10);
+});
+
+test("agent-system active command readiness uses plugin root for consumer projects", async () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-agent-maturity-consumer-"));
+  try {
+    writeFileSync(join(root, "AGENTS.md"), "# Consumer host\n", "utf8");
+
+    const report = await buildAgentSystemMaturityReport(root, {
+      activeCommand: "/supervibe-design",
+      host: "codex",
+      slug: "agent-chat",
+      handoffId: "agent-chat-run",
+      pluginRoot: ROOT,
+    });
+    const commandOrchestration = report.dimensions.find((item) => item.id === "command-orchestration");
+
+    assert.equal(commandOrchestration.pass, false);
+    assert.match(commandOrchestration.evidence, /activeCommand=\/supervibe-design/);
+    assert.match(commandOrchestration.evidence, /missingCallable=.*creative-director/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("agent-system maturity score blocks 10/10 when host telemetry is missing", () => {

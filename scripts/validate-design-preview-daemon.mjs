@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
 const PREVIEW_CONTRACT_FILES = Object.freeze([
   "commands/supervibe-design.md",
@@ -24,7 +26,7 @@ function readProjectFile(rootDir, relPath) {
   return readFileSync(absPath, "utf8");
 }
 
-export function validateDesignPreviewDaemon(rootDir = process.cwd()) {
+export function validateDesignPreviewDaemon(rootDir = PLUGIN_ROOT) {
   const issues = [];
 
   for (const file of PREVIEW_CONTRACT_FILES) {
@@ -108,8 +110,27 @@ export function formatDesignPreviewDaemonReport(result) {
   return lines.join("\n");
 }
 
+function parseArgs(argv = process.argv) {
+  const options = {};
+  for (let index = 2; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (!item.startsWith("--")) continue;
+    const key = item.slice(2);
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      options[key] = true;
+      continue;
+    }
+    options[key] = value;
+    index += 1;
+  }
+  return options;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateDesignPreviewDaemon(process.cwd());
+  const options = parseArgs(process.argv);
+  const contractRoot = resolve(options["plugin-root"] || options.pluginRoot || options.root || PLUGIN_ROOT);
+  const result = validateDesignPreviewDaemon(contractRoot);
   console.log(formatDesignPreviewDaemonReport(result));
   process.exit(result.pass ? 0 : 1);
 }

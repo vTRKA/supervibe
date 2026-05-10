@@ -5,16 +5,17 @@ export function validatePrototypeProductionRegression(rootDir = process.cwd(), {
   prototypePath = "",
   productionPath = "",
   slug = "",
+  requirePair = false,
 } = {}) {
   const resolvedPrototype = prototypePath || (slug ? `.supervibe/artifacts/prototypes/${slug}/index.html` : "");
   const resolvedProduction = productionPath || defaultProductionPath(rootDir);
   if (!resolvedPrototype || !resolvedProduction) {
-    return skipped("missing-pair-path", resolvedPrototype, resolvedProduction);
+    return skipped("missing-pair-path", resolvedPrototype, resolvedProduction, { requirePair });
   }
   const prototypeAbs = join(rootDir, ...normalizeRelPath(resolvedPrototype).split("/"));
   const productionAbs = join(rootDir, ...normalizeRelPath(resolvedProduction).split("/"));
   if (!existsSync(prototypeAbs) || !existsSync(productionAbs)) {
-    return skipped("pair-not-found", resolvedPrototype, resolvedProduction);
+    return skipped("pair-not-found", resolvedPrototype, resolvedProduction, { requirePair });
   }
 
   const prototypeText = readFileSync(prototypeAbs, "utf8");
@@ -179,13 +180,18 @@ function defaultProductionPath(rootDir) {
   return candidates.find((item) => existsSync(join(rootDir, ...item.split("/")))) || "";
 }
 
-function skipped(status, prototypePath, productionPath) {
+function skipped(status, prototypePath, productionPath, { requirePair = false } = {}) {
+  const issues = requirePair
+    ? [issue(status, "high", status === "missing-pair-path"
+      ? "active prototype-production validation requires both prototype and production paths"
+      : "active prototype-production validation requires both prototype and production files to exist")]
+    : [];
   return {
-    pass: true,
+    pass: !requirePair,
     status,
     prototypePath: prototypePath || null,
     productionPath: productionPath || null,
-    issues: [],
+    issues,
   };
 }
 

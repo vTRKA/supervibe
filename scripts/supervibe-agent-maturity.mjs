@@ -29,6 +29,7 @@ function usage() {
     "SUPERVIBE_AGENT_MATURITY_HELP",
     "USAGE:",
     "  node scripts/supervibe-agent-maturity.mjs [--root .] [--json] [--min-agent-invocations 10] [--min-host-agent-receipts 1]",
+    "  node scripts/supervibe-agent-maturity.mjs --active-command /supervibe-design --host codex --slug <slug> --handoff-id <id> [--plugin-root <path>]",
     "",
     "Checks global agent-system maturity: command orchestration, specialist questions, continuation gates, receipts, host telemetry, Code Graph readiness, strict retrieval telemetry, eval coverage, and backlog/docs.",
   ].join("\n");
@@ -44,6 +45,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const report = await buildAgentSystemMaturityReport(rootDir, {
     minAgentInvocations: options["min-agent-invocations"],
     minHostAgentReceipts: options["min-host-agent-receipts"],
+    activeCommand: options["active-command"] || (options.active ? options.command : null),
+    host: options.host || null,
+    slug: options.slug || null,
+    handoffId: options["handoff-id"] || options.handoffId || null,
+    workflowRunId: options["workflow-run-id"] || options.workflowRunId || null,
+    pluginRoot: resolve(options["plugin-root"] || options.pluginRoot || fileURLToPath(new URL("../", import.meta.url))),
   });
   if (options.json) {
     console.log(JSON.stringify(report, null, 2));

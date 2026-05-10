@@ -16,6 +16,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     slug: arg("--slug", ""),
     prototypePath: arg("--prototype", ""),
     productionPath: arg("--production", ""),
+    requirePair: process.argv.includes("--require-pair") || process.argv.includes("--active"),
   });
   console.log(formatPrototypeProductionRegression(result));
   process.exit(result.pass ? 0 : 2);

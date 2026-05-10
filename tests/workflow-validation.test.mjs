@@ -81,3 +81,52 @@ test("workflow validation resolves design wizard docs from plugin root", () => {
   assert.equal(wizard.pass, true);
   assert.equal(wizard.blocking, true);
 });
+
+test("active workflow validation blocks when command agents are not callable", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-workflow-active-command-"));
+  try {
+    writeFileSync(join(root, "AGENTS.md"), "# Test host\n", "utf8");
+
+    const result = validateWorkflow(root, {
+      workflow: "/supervibe-design",
+      slug: "agent-chat",
+      pluginRoot: ROOT,
+      active: true,
+      host: "codex",
+      handoffId: "agent-chat-run",
+    });
+    const commandPlan = result.checks.find((item) => item.id === "command-agent-plan");
+
+    assert.equal(result.pass, false);
+    assert.equal(result.active, true);
+    assert.equal(commandPlan.pass, false);
+    assert.ok(result.issues.some((issue) => issue.check === "command-agent-plan" && issue.code === "agent-required-blocked"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("active workflow validation treats skipped critical production pair as blocking when required", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-workflow-active-production-"));
+  try {
+    writeFileSync(join(root, "AGENTS.md"), "# Test host\n", "utf8");
+
+    const result = validateWorkflow(root, {
+      workflow: "/supervibe-design",
+      slug: "agent-chat",
+      pluginRoot: ROOT,
+      active: true,
+      host: "codex",
+      handoffId: "agent-chat-run",
+      requireProductionPair: true,
+    });
+    const production = result.checks.find((item) => item.id === "prototype-production-regression");
+
+    assert.equal(result.pass, false);
+    assert.equal(production.pass, false);
+    assert.ok(result.skippedCritical >= 1);
+    assert.ok(result.issues.some((issue) => issue.check === "prototype-production-regression"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

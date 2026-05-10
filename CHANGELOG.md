@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.10] - 2026-05-10
+
+### Fixed
+
+- Added active workflow validation for host-callable command agents so agent-owned
+  Supervibe stages cannot look complete when required runtime specialists are not
+  actually callable.
+- Hardened design governance gates to require runtime producer receipts for
+  polish, accessibility, and quality-gate review artifacts once a prototype
+  exists in active mode.
+- Made the design preview daemon validator resolve plugin contracts from the
+  plugin root instead of the consumer project working directory.
+- Added strict prototype-to-production regression mode for active releases so
+  missing prototype/production pairs block completion instead of passing as a
+  neutral skip.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.10`.
+
 ## [2.1.9] - 2026-05-10
 
 ### Fixed
