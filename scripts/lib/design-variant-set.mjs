@@ -6,6 +6,17 @@ import {
   STRUCTURAL_DIVERSITY_AXES,
   scoreVariantPair,
 } from "./design-diversity-benchmark.mjs";
+import {
+  hasFeedbackOverlayMarker,
+  validateFeedbackPayloadBinding,
+} from "./design-feedback-payload-validator.mjs";
+import {
+  compareLayoutFingerprints,
+  extractDesignLayoutFingerprint,
+} from "./design-layout-fingerprint.mjs";
+import {
+  validateScreenshotSimilarityEvidence,
+} from "./design-screenshot-similarity.mjs";
 
 const DEFAULT_MIN_CHANGED_AXES = 3;
 const DEFAULT_MIN_STRUCTURAL_AXES = 1;
@@ -202,6 +213,7 @@ export function validateDesignVariantSet(rootDir = process.cwd(), {
 
   const artifactPaths = new Set();
   const feedbackTargets = new Set();
+  const computedFingerprints = [];
   for (const [index, variant] of variants.entries()) {
     const variantId = variant.id || `variant-${index + 1}`;
     validateVariantShape(variant, variantId, manifestRelPath, issues);
@@ -221,12 +233,22 @@ export function validateDesignVariantSet(rootDir = process.cwd(), {
         if (overlayRequired && !hasFeedbackOverlay(artifactText)) {
           issues.push(issue("missing-feedback-overlay", artifactPath, `${variantId}: feedback overlay marker is missing`));
         }
-        if (overlayRequired && variant.feedbackTargetId && !artifactText.includes(variant.feedbackTargetId)) {
-          issues.push(issue("feedback-target-not-bound", artifactPath, `${variantId}: feedback target id is not present in the artifact`));
+        if (overlayRequired && variant.feedbackTargetId) {
+          const payload = validateFeedbackPayloadBinding(artifactText, {
+            feedbackTargetId: variant.feedbackTargetId,
+            overlayRequired: true,
+          });
+          if (!payload.targetPresent) {
+            issues.push(issue("feedback-target-not-bound", artifactPath, `${variantId}: feedback target id is not present in the artifact`));
+          }
+          if (!payload.payloadBindsTarget || !payload.dispatchesPayload) {
+            issues.push(issue("feedback-payload-not-bound", artifactPath, `${variantId}: feedback overlay must dispatch a payload with feedbackTargetId`));
+          }
         }
         if (separateRequired && isPrimarySwitcherShell(artifactText)) {
           issues.push(issue("variant-is-switcher-shell", artifactPath, `${variantId}: variant artifact contains a switcher/comparison shell`));
         }
+        computedFingerprints.push(extractDesignLayoutFingerprint(artifactText, { file: artifactPath }));
       }
     }
 
@@ -265,6 +287,25 @@ export function validateDesignVariantSet(rootDir = process.cwd(), {
     }
   }
 
+  const layoutComparison = compareLayoutFingerprints(computedFingerprints);
+  if (expectedCount > 1 && computedFingerprints.length === variants.length) {
+    for (const group of layoutComparison.duplicateShellGroups) {
+      issues.push(issue(
+        "duplicate-computed-layout-shell",
+        manifestRelPath,
+        `computed DOM layout shell is shared by ${group.count} variants: ${group.files.join(", ")}`,
+      ));
+    }
+  }
+
+  const screenshotSimilarity = expectedCount > 1
+    ? validateScreenshotSimilarityEvidence(rootDir, { prototypeSlug: safeSlug })
+    : null;
+  if (screenshotSimilarity) {
+    issues.push(...screenshotSimilarity.issues);
+    warnings.push(...screenshotSimilarity.warnings);
+  }
+
   return result({
     slug: safeSlug,
     manifestPath: manifestRelPath,
@@ -273,6 +314,11 @@ export function validateDesignVariantSet(rootDir = process.cwd(), {
     issues,
     warnings,
     status: issues.length ? "failed" : "passed",
+    evidenceStatus: {
+      computedLayout: computedFingerprints.length === variants.length && variants.length > 0 ? "checked" : "partial",
+      computedLayoutUniqueShells: layoutComparison.uniqueShellCount,
+      screenshotSimilarity: screenshotSimilarity?.status || "not-required",
+    },
   });
 }
 
@@ -289,6 +335,9 @@ export function formatDesignVariantSetReport(result = {}) {
     `MANIFEST: ${result.manifestPath || "none"}`,
     `REQUESTED_VARIANTS: ${result.requestedVariantCount || 0}`,
     `CHECKED_VARIANTS: ${result.checkedVariants || 0}`,
+    `COMPUTED_LAYOUT_EVIDENCE: ${result.evidenceStatus?.computedLayout || "none"}`,
+    `COMPUTED_LAYOUT_UNIQUE_SHELLS: ${result.evidenceStatus?.computedLayoutUniqueShells ?? 0}`,
+    `SCREENSHOT_SIMILARITY_EVIDENCE: ${result.evidenceStatus?.screenshotSimilarity || "none"}`,
     `ISSUES: ${result.issues?.length || 0}`,
     `WARNINGS: ${result.warnings?.length || 0}`,
   ];
@@ -438,7 +487,7 @@ function hasOldPrototypeEvidence(variant = {}) {
 }
 
 function hasFeedbackOverlay(text = "") {
-  return /data-feedback-overlay|data-supervibe-feedback-target|HAS_FEEDBACK\s*=\s*true|feedback-overlay|supervibeFeedbackOverlay|feedbackTargetId/i.test(text);
+  return hasFeedbackOverlayMarker(text) || /HAS_FEEDBACK\s*=\s*true/i.test(text);
 }
 
 function isPrimarySwitcherShell(text = "") {
@@ -459,7 +508,7 @@ function listVariantManifestSlugs(rootDir) {
     .sort();
 }
 
-function result({ slug, manifestPath, requestedVariantCount, checkedVariants, issues, warnings, status }) {
+function result({ slug, manifestPath, requestedVariantCount, checkedVariants, issues, warnings, status, evidenceStatus = null }) {
   return {
     schemaVersion: 1,
     pass: issues.length === 0,
@@ -468,6 +517,7 @@ function result({ slug, manifestPath, requestedVariantCount, checkedVariants, is
     manifestPath: manifestPath || null,
     requestedVariantCount,
     checkedVariants,
+    evidenceStatus,
     issues,
     warnings,
   };

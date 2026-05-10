@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.15] - 2026-05-11
+
+### Fixed
+
+- Hardened multi-variant design validation with computed DOM layout
+  fingerprints, duplicate-shell rejection, dispatchable feedback payload
+  checks, optional screenshot similarity evidence, and active-run design
+  maturity caps.
+- Added creative exploration gates for old prototype semantic extraction,
+  five direction specs, explicit approval before prototype artifacts, and
+  prompt-role-only agent-run rejection.
+- Added a runtime cleanup registry and one-command cleanup surface for preview
+  and registered dev processes.
+
+### Validation
+
+- Added regression coverage for fake manifest-only diversity, marker-only
+  feedback overlays, old prototype semantic maps, creative exploration order,
+  active design maturity caps, agent-run proof, and runtime cleanup registry.
+
 ## [2.1.14] - 2026-05-11
 
 ### Changed

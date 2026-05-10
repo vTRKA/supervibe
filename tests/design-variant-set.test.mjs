@@ -86,6 +86,38 @@ function validVariantManifest() {
   };
 }
 
+function feedbackScript(targetId) {
+  return `<script>
+    window.supervibeFeedbackPayload = { feedbackTargetId: "${targetId}" };
+    function sendFeedback(note) {
+      navigator.sendBeacon("/feedback", JSON.stringify({ feedbackTargetId: "${targetId}", note }));
+    }
+  </script>`;
+}
+
+function variantHtml(variant, index) {
+  const target = variant.feedbackTargetId;
+  const shells = [
+    `<main class="command-canvas" data-feedback-overlay data-supervibe-feedback-target="${target}">
+      <section class="workspace-flow"><nav class="hidden-nav"></nav><article class="task-board"></article><aside class="floating-memory-drawer"></aside></section>
+      <form class="command-composer"><textarea></textarea></form>${feedbackScript(target)}
+    </main>`,
+    `<main class="timeline-shell" data-feedback-overlay data-supervibe-feedback-target="${target}">
+      <section class="activity-timeline"></section><aside class="approval-inspector"></aside><footer class="prompt-dock"></footer>${feedbackScript(target)}
+    </main>`,
+    `<main class="radial-agent-map" data-feedback-overlay data-supervibe-feedback-target="${target}">
+      <canvas class="agent-graph"></canvas><section class="skill-orbit"></section><form class="floating-command-editor"></form>${feedbackScript(target)}
+    </main>`,
+    `<main class="memory-first-console" data-feedback-overlay data-supervibe-feedback-target="${target}">
+      <aside class="memory-rail"></aside><section class="conversation-thread"></section><section class="automation-queue"></section>${feedbackScript(target)}
+    </main>`,
+    `<main class="approval-stage" data-feedback-overlay data-supervibe-feedback-target="${target}">
+      <header class="status-ribbon"></header><section class="approval-gate"></section><nav class="tool-palette"></nav><footer class="message-input"></footer>${feedbackScript(target)}
+    </main>`,
+  ];
+  return `${shells[index]}\n`;
+}
+
 test("acceptance contract captures explicit multi-variant designer-agent constraints", () => {
   const contract = buildDesignAcceptanceContract({
     brief: incidentBrief(),
@@ -172,8 +204,8 @@ test("variant validator passes five separate fullscreen variants with overlay an
   try {
     const manifest = validVariantManifest();
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
-    for (const variant of manifest.variants) {
-      await writeUtf8(root, variant.artifactPath, `<main data-feedback-overlay data-supervibe-feedback-target="${variant.feedbackTargetId}"></main>\n`);
+    for (const [index, variant] of manifest.variants.entries()) {
+      await writeUtf8(root, variant.artifactPath, variantHtml(variant, index));
     }
 
     const result = validateDesignVariantSet(root, {
@@ -184,6 +216,53 @@ test("variant validator passes five separate fullscreen variants with overlay an
     assert.equal(result.pass, true);
     assert.equal(result.checkedVariants, 5);
     assert.deepEqual(result.issues, []);
+    assert.equal(result.evidenceStatus.computedLayout, "checked");
+    assert.equal(result.evidenceStatus.computedLayoutUniqueShells, 5);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("variant validator rejects fake diversity when manifest axes differ but DOM shell is identical", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-variant-fake-diversity-"));
+  try {
+    const manifest = validVariantManifest();
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    for (const variant of manifest.variants) {
+      await writeUtf8(root, variant.artifactPath, `<main class="same-shell" data-feedback-overlay data-supervibe-feedback-target="${variant.feedbackTargetId}">
+        <header class="topbar"></header><section class="chat-center"></section><aside class="context-drawer"></aside><footer class="bottom-composer"></footer>${feedbackScript(variant.feedbackTargetId)}
+      </main>\n`);
+    }
+
+    const result = validateDesignVariantSet(root, {
+      slug: "agent-chat",
+      acceptanceContract: buildDesignAcceptanceContract({ brief: incidentBrief(), slug: "agent-chat" }),
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "duplicate-computed-layout-shell"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("variant validator rejects marker-only feedback overlays without a payload target", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-variant-marker-only-"));
+  try {
+    const manifest = validVariantManifest();
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    for (const [index, variant] of manifest.variants.entries()) {
+      const html = variantHtml(variant, index).replace(/<script>[\s\S]*<\/script>/, "");
+      await writeUtf8(root, variant.artifactPath, html);
+    }
+
+    const result = validateDesignVariantSet(root, {
+      slug: "agent-chat",
+      acceptanceContract: buildDesignAcceptanceContract({ brief: incidentBrief(), slug: "agent-chat" }),
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "feedback-payload-not-bound"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

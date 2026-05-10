@@ -37,6 +37,12 @@ import {
 import {
   validateCreativeReferencePacks,
 } from "../validate-creative-reference-packs.mjs";
+import {
+  validateDesignAgentInvocationReceipts,
+} from "./design-agent-orchestration.mjs";
+import {
+  validateDesignVariantSet,
+} from "./design-variant-set.mjs";
 
 export const DESIGN_AGENT_MATURITY_DIMENSIONS = Object.freeze([
   { id: "design-system-owner", max: 1.5 },
@@ -48,12 +54,12 @@ export const DESIGN_AGENT_MATURITY_DIMENSIONS = Object.freeze([
   { id: "design-regression-and-release", max: 1.5 },
 ]);
 
-export function buildDesignAgentMaturityReport(rootDir = process.cwd()) {
-  const checks = collectDesignAgentMaturityChecks(rootDir);
+export function buildDesignAgentMaturityReport(rootDir = process.cwd(), options = {}) {
+  const checks = collectDesignAgentMaturityChecks(rootDir, options);
   return scoreDesignAgentMaturity({ checks });
 }
 
-function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
+function collectDesignAgentMaturityChecks(rootDir = process.cwd(), options = {}) {
   const manifest = readJson(join(rootDir, "skills", "design-intelligence", "data", "manifest.json"), { domains: [] });
   const rows = (manifest.domains || []).reduce((sum, domain) => sum + Number(domain.rows || 0), 0);
   const domains = (manifest.domains || []).length;
@@ -73,7 +79,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
   const agentContent = validateAgentContentQuality(rootDir);
   const creativeReferencePacks = validateCreativeReferencePacks(rootDir);
 
-  return {
+  const checks = {
     owner: inspectDesignSystemOwner(rootDir),
     intelligence: {
       sourceCoverage,
@@ -134,6 +140,10 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
       changelogMentionsDesignMaturity: /design-agent maturity|design maturity|design-system architect/i.test(readText(join(rootDir, "CHANGELOG.md"))),
     },
   };
+  if (options.active === true || options.slug || options.handoffId || options.workflowRunId) {
+    checks.activeWorkflow = inspectActiveDesignWorkflow(rootDir, options);
+  }
+  return checks;
 }
 
 export function scoreDesignAgentMaturity({ checks = {} } = {}) {
@@ -231,19 +241,33 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
     "Add design maturity CLI/script, keep design tests above threshold, and document release hardening.",
   );
 
-  const score = Number(dimensions.reduce((sum, item) => sum + item.score, 0).toFixed(2));
+  let score = Number(dimensions.reduce((sum, item) => sum + item.score, 0).toFixed(2));
+  const activeWorkflow = checks.activeWorkflow || null;
+  const activeWorkflowPass = !activeWorkflow || activeWorkflow.pass === true;
+  if (!activeWorkflowPass) {
+    score = Math.min(score, 8.5);
+  }
+  const blockers = dimensions.filter((item) => !item.pass).map((item) => ({
+    id: item.id,
+    evidence: item.evidence,
+    nextAction: item.nextAction,
+  }));
+  if (!activeWorkflowPass) {
+    blockers.push({
+      id: "active-design-workflow-evidence",
+      evidence: activeWorkflow.evidence,
+      nextAction: "Run the active design receipt gate and variant-set validator for this slug/handoff; do not claim 10/10 for the active run until both pass.",
+    });
+  }
   return {
     schemaVersion: 1,
     score,
     maxScore: 10,
-    pass: score >= 10,
-    status: score >= 10 ? "design-10-of-10-ready" : score >= 9 ? "near-10-design-gaps" : "design-hardening-required",
+    pass: score >= 10 && activeWorkflowPass,
+    status: score >= 10 && activeWorkflowPass ? "design-10-of-10-ready" : score >= 9 ? "near-10-design-gaps" : "design-hardening-required",
     dimensions,
-    blockers: dimensions.filter((item) => !item.pass).map((item) => ({
-      id: item.id,
-      evidence: item.evidence,
-      nextAction: item.nextAction,
-    })),
+    activeWorkflow,
+    blockers,
   };
 }
 
@@ -253,6 +277,7 @@ export function formatDesignAgentMaturityReport(report = {}) {
     `PASS: ${report.pass === true}`,
     `SCORE: ${report.score || 0}/${report.maxScore || 10}`,
     `STATUS: ${report.status || "unknown"}`,
+    `ACTIVE_WORKFLOW: ${report.activeWorkflow ? report.activeWorkflow.status : "not-checked"}`,
     "DIMENSIONS:",
   ];
   for (const item of report.dimensions || []) {
@@ -264,6 +289,28 @@ export function formatDesignAgentMaturityReport(report = {}) {
     lines.push(`NEXT_ACTION: ${blocker.nextAction}`);
   }
   return lines.join("\n");
+}
+
+function inspectActiveDesignWorkflow(rootDir, options = {}) {
+  const receiptResult = validateDesignAgentInvocationReceipts(rootDir, {
+    active: true,
+    slug: options.slug || options.prototypeSlug || null,
+    handoffId: options.handoffId || options.handoff || null,
+    workflowRunId: options.workflowRunId || null,
+  });
+  const variantResult = options.slug || options.prototypeSlug
+    ? validateDesignVariantSet(rootDir, { slug: options.slug || options.prototypeSlug })
+    : { pass: true, status: "not-checked", issues: [] };
+  const pass = receiptResult.pass === true && variantResult.pass === true;
+  return {
+    pass,
+    status: pass ? "active-design-ready" : "active-design-blocked",
+    receiptPass: receiptResult.pass === true,
+    receiptIssues: receiptResult.issues?.length || 0,
+    variantPass: variantResult.pass === true,
+    variantIssues: variantResult.issues?.length || 0,
+    evidence: `receipts=${receiptResult.pass === true} issues=${receiptResult.issues?.length || 0}, variantSet=${variantResult.pass === true} issues=${variantResult.issues?.length || 0}`,
+  };
 }
 
 function inspectDesignSystemOwner(rootDir) {

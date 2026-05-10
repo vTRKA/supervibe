@@ -42,7 +42,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const rootDir = resolve(options.root || process.cwd());
-  const report = buildDesignAgentMaturityReport(rootDir);
+  const report = buildDesignAgentMaturityReport(rootDir, {
+    active: options.active === true,
+    slug: options.slug || options["prototype-slug"] || null,
+    handoffId: options.handoff || options["handoff-id"] || null,
+    workflowRunId: options["workflow-run-id"] || null,
+  });
   if (options.json) {
     console.log(JSON.stringify(report, null, 2));
   } else {

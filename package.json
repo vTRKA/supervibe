@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.14",
+  "version": "2.1.15",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -44,6 +44,7 @@
     "supervibe:status": "node scripts/supervibe-status.mjs",
     "supervibe:commands": "node scripts/supervibe-commands.mjs",
     "supervibe:agent-plan": "node scripts/command-agent-plan.mjs",
+    "supervibe:agent-run": "node scripts/supervibe-agent-run.mjs",
     "supervibe:adapt": "node scripts/supervibe-adapt.mjs",
     "supervibe:provision-agents": "node scripts/provision-agents.mjs",
     "supervibe:loop": "node scripts/supervibe-loop.mjs",
@@ -64,6 +65,7 @@
     "supervibe:ui": "node scripts/supervibe-ui.mjs",
     "supervibe:ide-bridge": "node scripts/supervibe-ide-bridge.mjs",
     "supervibe:gc": "node scripts/supervibe-gc.mjs",
+    "supervibe:cleanup": "node scripts/supervibe-runtime-cleanup.mjs --all",
     "supervibe:work-items-gc": "node scripts/supervibe-work-items-gc.mjs",
     "supervibe:memory-gc": "node scripts/supervibe-memory-gc.mjs",
     "supervibe:artifact-gc": "node scripts/supervibe-gc.mjs --artifacts",
@@ -122,6 +124,7 @@
     "validate:design-reference-quality": "node scripts/validate-design-reference-quality.mjs",
     "validate:creative-reference-packs": "node scripts/validate-creative-reference-packs.mjs",
     "validate:design-diversity-benchmark": "node scripts/validate-design-diversity-benchmark.mjs",
+    "validate:creative-exploration": "node scripts/validate-creative-exploration.mjs",
     "validate:design-variant-set": "node scripts/validate-design-variant-set.mjs --all",
     "validate:design-capability-plan": "node scripts/validate-design-capability-plan.mjs",
     "validate:design-preview-daemon": "node scripts/validate-design-preview-daemon.mjs",
@@ -132,6 +135,7 @@
     "validate:dynamic-question-systems": "node scripts/validate-dynamic-question-systems.mjs",
     "design:agent-plan": "node scripts/design-agent-plan.mjs",
     "design:wizard-answer": "node scripts/design-wizard-answer.mjs",
+    "design:old-prototype-extractor": "node scripts/old-prototype-extractor.mjs",
     "design:brandbook-producer": "node scripts/brandbook-producer.mjs",
     "design:candidate-manager": "node scripts/design-system-candidate-manager.mjs",
     "design:promote-approval": "node scripts/promote-design-approval.mjs",
@@ -183,7 +187,7 @@
     "rollout:rag-procedure": "node scripts/apply-rag-memory-procedure.mjs",
     "lint:dead-code": "node --import ./scripts/knip-disable-raw-transfer.mjs ./node_modules/knip/bin/knip.js --no-progress --no-config-hints",
     "supervibe:workflow-check": "npm run validate:design-workflow-state && node scripts/supervibe-workflow-validate.mjs && npm run feedback:status && node scripts/supervibe-status.mjs --index-health --strict-index-health --no-gc-hints --no-color",
-    "check": "npm run validate:plugin-json && npm run validate:text-encoding && npm run validate:terminal-file-policy && npm run validate:frontmatter && npm run validate:rule-content-quality && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:agent-content-quality && npm run validate:agent-skill-coverage && npm run validate:agent-empirical-hardening && npm run validate:agent-tool-use-matrix && npm run validate:skill-operational-contracts && npm run validate:skill-content-quality && npm run validate:command-operational-contracts && npm run validate:design-skills && npm run validate:design-readiness && npm run validate:mock-data-contracts && npm run validate:decision-briefs && npm run validate:api-contracts && npm run validate:work-item-graphs && npm run validate:epic-completion && npm run validate:design-expert-knowledge && npm run validate:design-source-coverage && npm run validate:design-reference-quality && npm run validate:creative-reference-packs && npm run validate:design-diversity-benchmark && npm run validate:design-variant-set && npm run validate:design-capability-plan && npm run validate:design-preview-daemon && npm run validate:design-wizard && npm run validate:design-workflow-state && npm run validate:prototype-production-regression && npm run validate:design-styleboard-qa && npm run validate:dynamic-question-systems && npm run validate:design-flow-gates && npm run validate:design-artifact-write-gates && npm run supervibe:design-maturity && npm run supervibe:agent-maturity && npm run validate:workflow-receipts && npm run validate:agent-producer-receipts && npm run validate:active-workflows && npm run validate:design-agent-receipts && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:workflow-continuation && npm run validate:multistage-user-gates && npm run validate:project-artifact-root && npm run validate:spec-artifacts && npm run validate:prd-artifacts && npm run validate:adr-artifacts && npm run validate:rfc-artifacts && npm run validate:plan-artifacts && npm run validate:plan-review-artifacts && npm run validate:template-quality && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:artifact-links && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run validate:agentic-security && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
+    "check": "npm run validate:plugin-json && npm run validate:text-encoding && npm run validate:terminal-file-policy && npm run validate:frontmatter && npm run validate:rule-content-quality && npm run lint:descriptions && npm run validate:agent-footers && npm run validate:agent-content-quality && npm run validate:agent-skill-coverage && npm run validate:agent-empirical-hardening && npm run validate:agent-tool-use-matrix && npm run validate:skill-operational-contracts && npm run validate:skill-content-quality && npm run validate:command-operational-contracts && npm run validate:design-skills && npm run validate:design-readiness && npm run validate:mock-data-contracts && npm run validate:decision-briefs && npm run validate:api-contracts && npm run validate:work-item-graphs && npm run validate:epic-completion && npm run validate:design-expert-knowledge && npm run validate:design-source-coverage && npm run validate:design-reference-quality && npm run validate:creative-reference-packs && npm run validate:design-diversity-benchmark && npm run validate:creative-exploration && npm run validate:design-variant-set && npm run validate:design-capability-plan && npm run validate:design-preview-daemon && npm run validate:design-wizard && npm run validate:design-workflow-state && npm run validate:prototype-production-regression && npm run validate:design-styleboard-qa && npm run validate:dynamic-question-systems && npm run validate:design-flow-gates && npm run validate:design-artifact-write-gates && npm run supervibe:design-maturity && npm run supervibe:agent-maturity && npm run validate:workflow-receipts && npm run validate:agent-producer-receipts && npm run validate:active-workflows && npm run validate:design-agent-receipts && npm run validate:question-discipline && npm run validate:dialogue-ux && npm run validate:workflow-continuation && npm run validate:multistage-user-gates && npm run validate:project-artifact-root && npm run validate:spec-artifacts && npm run validate:prd-artifacts && npm run validate:adr-artifacts && npm run validate:rfc-artifacts && npm run validate:plan-artifacts && npm run validate:plan-review-artifacts && npm run validate:template-quality && npm run validate:no-deep-refs && npm run validate:agent-section-order && npm run validate:artifact-links && npm run validate:trigger-metadata && npm run validate:trigger-replay && npm run validate:confidence-gates && npm run validate:agentic-security && npm run audit:plugin-package && npm run audit:release-security && npm run lint:dead-code && npm test",
     "prepare": "husky"
   },
   "devDependencies": {

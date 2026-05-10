@@ -171,6 +171,22 @@ test("design-agent maturity blocks 10/10 when design diversity benchmark is miss
   assert.ok(report.blockers.some((blocker) => blocker.id === "creative-empathy-and-trends"));
 });
 
+test("design-agent maturity caps score when active workflow evidence fails", () => {
+  const report = scoreDesignAgentMaturity({
+    checks: {
+      ...PASSING_CHECKS,
+      activeWorkflow: {
+        pass: false,
+        evidence: "receipts=false issues=1, variantSet=false issues=1",
+      },
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.equal(report.score, 8.5);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "active-design-workflow-evidence"));
+});
+
 test("design-agent maturity blocks 10/10 when candidate manager is missing", () => {
   const report = scoreDesignAgentMaturity({
     checks: {
