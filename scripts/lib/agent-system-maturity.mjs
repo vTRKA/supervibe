@@ -144,7 +144,7 @@ export function scoreAgentSystemMaturity({
     validators.commandContracts?.pass && validators.activeCommandReadiness?.pass !== false ? 1.0 : 0,
     activeCommandEvidence(validators),
     validators.activeCommandReadiness?.pass === false
-      ? "Fix active command readiness: provision/connect missing callable host agents and rerun command-agent-plan --active before claiming 10/10."
+      ? "Fix active command readiness: provision/connect missing callable host agents, run scoped specialists, issue runtime receipts, then rerun command-agent-plan --active before claiming 10/10."
       : "Run npm run validate:command-operational-contracts and fix missing real-agent routing rules.",
   );
   add(
@@ -448,11 +448,16 @@ function collectActiveCommandReadiness(rootDir, {
       },
     });
     const plan = report.plan || {};
+    const readyForActiveDurableWork = report.pass === true && plan.durableWritesAllowed === true;
     return {
-      pass: report.pass === true,
+      pass: readyForActiveDurableWork,
       command: plan.commandId || command,
       executionMode: plan.executionMode,
       callableAgentsReady: plan.callableAgentsReady === true,
+      durableWritesAllowed: plan.durableWritesAllowed === true,
+      receiptGate: plan.receiptGate || null,
+      scopedReceiptGateActive: plan.scopedReceiptGateActive === true,
+      missingScopedReceipts: plan.scopedReceiptTrust?.missingSubjects || [],
       missingCallableAgents: plan.missingCallableAgents || [],
       missingAgents: plan.missingAgents || [],
       qualityImpact: plan.qualityImpact || "",
@@ -475,7 +480,8 @@ function activeCommandEvidence(validators = {}) {
   const active = validators.activeCommandReadiness;
   if (!active) return base;
   const missingCallable = (active.missingCallableAgents || []).join("|") || "none";
-  return `${base}, activeCommand=${active.command || "unknown"}, activePass=${active.pass === true}, executionMode=${active.executionMode || "unknown"}, callableAgentsReady=${active.callableAgentsReady === true}, missingCallable=${missingCallable}`;
+  const missingScoped = (active.missingScopedReceipts || []).join("|") || "none";
+  return `${base}, activeCommand=${active.command || "unknown"}, activePass=${active.pass === true}, executionMode=${active.executionMode || "unknown"}, callableAgentsReady=${active.callableAgentsReady === true}, durableWritesAllowed=${active.durableWritesAllowed === true}, receiptGate=${active.receiptGate || "none"}, missingCallable=${missingCallable}, missingScoped=${missingScoped}`;
 }
 
 function inspectBacklogAndDocs(rootDir) {

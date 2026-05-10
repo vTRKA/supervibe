@@ -32,6 +32,18 @@ describe("supervibe trigger router", () => {
     assert.equal(route.nextQuestion, "Шаг 1/1: запустить review loop по плану?");
   });
 
+  it("routes plan then execute requests to planning without review-only hijack", () => {
+    const route = routeTriggerRequest("Давай все 40+ задач в детальный план, после этого начни работу по плану, сначала проверь что все задачи выполнены из плана", {
+      artifacts: { request: true },
+    });
+
+    assert.equal(route.intent, "plan_then_execute");
+    assert.equal(route.command, "/supervibe-plan");
+    assert.notEqual(route.command, "/supervibe-plan --review");
+    assert.ok(route.followUpCommands.includes("/supervibe-loop --atomize-plan <plan-path> --plan-review-passed"));
+    assert.ok(route.followUpCommands.includes("/supervibe-execute-plan <reviewed-plan-path>"));
+  });
+
   it("routes epic worktree runs to provider-safe preflight and exposes blockers", () => {
     const route = routeTriggerRequest("запусти эпик автономно в отдельном worktree", {
       artifacts: { epicId: "SV-1", worktreeClean: true, confirmedMutation: false },

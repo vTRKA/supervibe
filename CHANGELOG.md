@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.11] - 2026-05-11
+
+### Fixed
+
+- Routed natural-language plan-plus-task-plus-execute requests to `/supervibe-plan`
+  with explicit review, atomize, and execution follow-ups instead of hijacking
+  them as review-only requests.
+- Treated Codex `spawn_agent` as the callable logical-agent dispatch surface
+  while keeping scoped runtime receipt gates mandatory for active durable work.
+- Updated workflow and agent-system maturity checks so active commands block on
+  missing scoped specialist receipts rather than incorrectly reporting missing
+  Codex callable agents.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.11`.
+
 ## [2.1.10] - 2026-05-10
 
 ### Fixed

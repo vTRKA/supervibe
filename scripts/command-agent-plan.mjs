@@ -167,6 +167,8 @@ export function buildRuntimeCommandAgentPlan({
   const callableAgentSources = listCallableAgentSources({
     projectRoot: resolvedProjectRoot,
     hostAgentsFolder: hostSelection.adapter.agentsFolder,
+    hostAdapterId: hostSelection.adapter.id,
+    availableAgentSources,
   });
   const availableAgentIds = [...availableAgentSources.keys()];
   const callableAgentIds = [...callableAgentSources.keys()];
@@ -242,9 +244,16 @@ function listAvailableAgentSources({
 function listCallableAgentSources({
   projectRoot,
   hostAgentsFolder,
+  hostAdapterId = null,
+  availableAgentSources = new Map(),
 }) {
   const sources = new Map();
   if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable", { recursive: false });
+  if (hostAdapterId === "codex") {
+    for (const [agentId] of availableAgentSources.entries()) {
+      if (!sources.has(agentId)) sources.set(agentId, "codex-spawn-agent logical role");
+    }
+  }
   return sources;
 }
 

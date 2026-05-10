@@ -1054,6 +1054,7 @@ function shouldPreemptTriggerRouting(resolvedCommand, text = "") {
   if (resolvedCommand.semanticScriptMatch) return false;
   if (resolvedCommand.requestedCommand) return true;
   if (resolvedCommand.intent === "code_index_build") return true;
+  if (resolvedCommand.intent === "plan_then_execute") return true;
   if (resolvedCommand.command === "/supervibe-genesis") return true;
   if (NO_SLASH_COMMAND_PREEMPT_IDS.has(slashCommandId(resolvedCommand.command || ""))) {
     if (slashCommandId(resolvedCommand.command || "") === "/supervibe-update" && isPluginDriftRepairRequest(text)) {

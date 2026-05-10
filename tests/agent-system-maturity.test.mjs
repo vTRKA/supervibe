@@ -150,7 +150,11 @@ test("agent-system active command readiness uses plugin root for consumer projec
 
     assert.equal(commandOrchestration.pass, false);
     assert.match(commandOrchestration.evidence, /activeCommand=\/supervibe-design/);
-    assert.match(commandOrchestration.evidence, /missingCallable=.*creative-director/);
+    assert.match(commandOrchestration.evidence, /callableAgentsReady=true/);
+    assert.match(commandOrchestration.evidence, /durableWritesAllowed=false/);
+    assert.match(commandOrchestration.evidence, /receiptGate=pending-scoped-runtime-agent-receipts/);
+    assert.match(commandOrchestration.evidence, /missingCallable=none/);
+    assert.match(commandOrchestration.evidence, /missingScoped=.*creative-director/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

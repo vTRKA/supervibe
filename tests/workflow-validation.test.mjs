@@ -82,7 +82,7 @@ test("workflow validation resolves design wizard docs from plugin root", () => {
   assert.equal(wizard.blocking, true);
 });
 
-test("active workflow validation blocks when command agents are not callable", () => {
+test("active workflow validation blocks when scoped command receipts are missing", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-workflow-active-command-"));
   try {
     writeFileSync(join(root, "AGENTS.md"), "# Test host\n", "utf8");
@@ -100,7 +100,10 @@ test("active workflow validation blocks when command agents are not callable", (
     assert.equal(result.pass, false);
     assert.equal(result.active, true);
     assert.equal(commandPlan.pass, false);
-    assert.ok(result.issues.some((issue) => issue.check === "command-agent-plan" && issue.code === "agent-required-blocked"));
+    assert.equal(commandPlan.result.callableAgentsReady, true);
+    assert.equal(commandPlan.result.durableWritesAllowed, false);
+    assert.ok(commandPlan.result.missingScopedReceipts.includes("creative-director"));
+    assert.ok(result.issues.some((issue) => issue.check === "command-agent-plan" && issue.code === "pending-scoped-runtime-agent-receipts"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

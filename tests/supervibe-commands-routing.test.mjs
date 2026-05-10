@@ -31,6 +31,16 @@ test("routes plain planning workflow phrases to plan command", async () => {
   }
 });
 
+test("routes plan then execute requests to planning without review-only hijack", async () => {
+  const output = await matchCommand("Давай все 40+ задач в детальный план, после этого начни работу по плану, сначала проверь что все задачи выполнены из плана");
+
+  assert.match(output, /INTENT: plan_then_execute/);
+  assert.match(output, /COMMAND: \/supervibe-plan/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-plan --review/);
+  assert.match(output, /\/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+  assert.match(output, /\/supervibe-execute-plan <reviewed-plan-path>/);
+});
+
 test("routes plain brainstorm and new feature phrases to brainstorm command", async () => {
   for (const request of [
     "брейншторм",

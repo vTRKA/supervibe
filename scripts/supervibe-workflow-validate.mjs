@@ -205,15 +205,20 @@ function commandAgentPlanResult({
     },
   });
   const plan = report.plan || {};
-  const issues = report.pass ? [] : [{
-    code: plan.executionMode || "command-agent-plan-blocked",
+  const commandReady = report.pass === true && plan.durableWritesAllowed === true;
+  const issues = commandReady ? [] : [{
+    code: plan.receiptGate || plan.executionMode || "command-agent-plan-blocked",
     file: ".supervibe/artifacts/_workflow-invocations",
     message: plan.qualityImpact || `command agent plan blocked for ${workflow}`,
   }];
   return {
-    pass: report.pass === true,
+    pass: commandReady,
     executionMode: plan.executionMode,
     callableAgentsReady: plan.callableAgentsReady === true,
+    durableWritesAllowed: plan.durableWritesAllowed === true,
+    receiptGate: plan.receiptGate || null,
+    scopedReceiptGateActive: plan.scopedReceiptGateActive === true,
+    missingScopedReceipts: plan.scopedReceiptTrust?.missingSubjects || [],
     missingCallableAgents: plan.missingCallableAgents || [],
     issues,
   };

@@ -907,7 +907,7 @@ test("command-agent-plan CLI prints runtime host plan", () => {
   }
 });
 
-test("command-agent-plan CLI separates plugin definitions from host-callable agents", () => {
+test("command-agent-plan CLI treats Codex spawn_agent as logical-role callable", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-callable-"));
   try {
     const out = execFileSync(process.execPath, [
@@ -924,18 +924,18 @@ test("command-agent-plan CLI separates plugin definitions from host-callable age
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    assert.match(out, /EXECUTION_MODE: agent-required-blocked/);
+    assert.match(out, /EXECUTION_MODE: agent-dispatch-required/);
     assert.match(out, /AGENTS_INSTALLED: true/);
-    assert.match(out, /CALLABLE_AGENTS_READY: false/);
-    assert.match(out, /MISSING_CALLABLE_AGENTS: .*creative-director.*prototype-builder/);
-    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=missing/);
-    assert.doesNotMatch(out, /CODEX_SPAWN_PAYLOADS:/);
+    assert.match(out, /CALLABLE_AGENTS_READY: true/);
+    assert.match(out, /MISSING_CALLABLE_AGENTS: none/);
+    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=codex-spawn-agent logical role/);
+    assert.match(out, /CODEX_SPAWN_PAYLOADS:/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 
-test("command-agent-plan CLI does not treat namespaced host subfolders as callable agents", () => {
+test("command-agent-plan CLI keeps Codex logical-role dispatch independent from namespaced host subfolders", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-namespaced-host-"));
   try {
     const nestedDir = join(projectRoot, ".codex", "agents", "_design");
@@ -958,9 +958,10 @@ test("command-agent-plan CLI does not treat namespaced host subfolders as callab
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    assert.match(out, /EXECUTION_MODE: agent-required-blocked/);
-    assert.match(out, /CALLABLE_AGENTS: 0/);
-    assert.match(out, /MISSING_CALLABLE_AGENTS: .*creative-director.*prototype-builder/);
+    assert.match(out, /EXECUTION_MODE: agent-dispatch-required/);
+    assert.match(out, /CALLABLE_AGENTS_READY: true/);
+    assert.match(out, /MISSING_CALLABLE_AGENTS: none/);
+    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=codex-spawn-agent logical role/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
