@@ -62,6 +62,7 @@ async function main() {
       "no-evidence-required": { type: "boolean", default: false },
       "require-followups": { type: "boolean", default: false },
       "non-production": { type: "boolean", default: false },
+      "strict-coverage": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -90,8 +91,9 @@ dependencies must be terminal, the epic must be closed, and production completio
     console.log("SUPERVIBE_EPIC_COMPLETION_COVERAGE");
     console.log("STATUS: no work-item graph files found");
     console.log("NO_COVERAGE: true");
-    console.log("PASS: neutral");
+    console.log(`PASS: ${values["strict-coverage"] ? "false" : "neutral"}`);
     console.log("NEXT_ACTION: atomize a reviewed plan before production completion validation");
+    if (values["strict-coverage"]) process.exit(1);
     return;
   }
 

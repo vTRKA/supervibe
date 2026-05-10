@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import { CodeStore } from "./code-store.mjs";
 import { MemoryStore } from "./memory-store.mjs";
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from "./node-sqlite-runtime.mjs";
@@ -16,6 +16,7 @@ import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown } 
 import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { resolveActiveWorkItemGraphPath } from "./supervibe-work-item-registry.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
+import { defaultTrackerMappingPath, readTrackerMapping, summarizeTrackerMappingForBundle } from "./supervibe-task-tracker-sync.mjs";
 
 export { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 
@@ -35,7 +36,13 @@ export function createSupervibeUiServer({
         return sendJson(res, await buildIndexStatus({ rootDir }));
       }
       if (url.pathname === "/api/graph") {
-        const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
+        const requestedGraph = url.searchParams.get("file") || graphPath;
+        const file = requestedGraph
+          ? await resolveGraphPath({ rootDir, requested: requestedGraph })
+          : await resolveActiveWorkItemGraphPath({ rootDir });
+        if (!file) {
+          return sendJson(res, createNoActiveGraphModel({ rootDir }));
+        }
         const graph = await readJsonFile(file);
         const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
         const grouped = groupWorkItemsByStatus(index);
@@ -47,6 +54,7 @@ export function createSupervibeUiServer({
           allowDryRunEvidence: false,
           requireEpicClosed: url.searchParams.get("requireEpicClosed") !== "false",
         });
+        const tracker = await buildTrackerPanelModel({ rootDir });
         return sendJson(res, {
           graphPath: file,
           graphId: graph.graph_id || graph.graphId || graph.epicId,
@@ -55,6 +63,7 @@ export function createSupervibeUiServer({
           items: index,
           graphTree: createGraphTreeModel({ graph, index }),
           panels: createWorkItemPanelModel({ graph, index, grouped, completion }),
+          tracker,
           kanban,
           flow,
         });
@@ -150,6 +159,95 @@ export function createSupervibeUiServer({
     }
   });
   return { server };
+}
+
+function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
+  const planGlob = ".supervibe/artifacts/plans/*.md";
+  return {
+    status: "no-active-graph",
+    graphPath: null,
+    graphId: null,
+    title: "No active work graph",
+    grouped: { ready: [], blocked: [], claimed: [], review: [], done: [], deferred: [] },
+    items: [],
+    graphTree: {
+      roots: [],
+      orphans: [],
+      rollup: { epics: 0, tasks: 0, subtasks: 0, gates: 0, followups: 0, orphans: 0 },
+    },
+    panels: {
+      readyQueue: [],
+      blockers: [{
+        id: "no-active-graph",
+        title: "No active work graph",
+        status: "blocked",
+        reason: "a reviewed plan has not been atomized into epics and tasks",
+        nextAction: "run /supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+      }],
+      staleClaims: [],
+      completion: {
+        productionReady: false,
+        blockers: [{
+          code: "no-active-graph",
+          itemId: null,
+          reason: "completion validation needs a work-item graph",
+          nextAction: "atomize a reviewed plan before production completion validation",
+        }],
+        warnings: [],
+      },
+    },
+    tracker: {
+      status: "no-active-graph",
+      adapterId: "native-json",
+      mode: "native",
+      mappingPath: null,
+      mapped: 0,
+      unmapped: 0,
+      stale: 0,
+      lastSync: null,
+      nextAction: "atomize a reviewed plan before tracker sync",
+    },
+    kanban: {
+      graphSummary: { graphId: null, title: "No active work graph", path: null },
+      epics: [],
+      columns: [],
+    },
+    flow: createWorkflowFlowModel(),
+    nextAction: "atomize a reviewed plan into a work graph",
+    commands: {
+      atomizeReviewedPlan: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+      inspectPlans: `dir ${planGlob}`,
+    },
+  };
+}
+
+async function buildTrackerPanelModel({ rootDir = process.cwd() } = {}) {
+  const mappingPath = defaultTrackerMappingPath(rootDir);
+  if (!existsSync(mappingPath)) {
+    return {
+      status: "native-ready",
+      adapterId: "native-json",
+      mode: "native",
+      mappingPath: null,
+      mapped: 0,
+      unmapped: 0,
+      stale: 0,
+      lastSync: null,
+      nextAction: "optional: run /supervibe-loop --tracker-sync-push --file <graph.json>",
+    };
+  }
+  const mapping = await readTrackerMapping(mappingPath);
+  const summary = summarizeTrackerMappingForBundle(mapping);
+  return {
+    ...summary,
+    mode: summary.adapterId === "native-json" ? "native" : "external",
+    mappingPath: relative(rootDir, mappingPath).split(sep).join("/"),
+    nextAction: summary.stale > 0
+      ? "run /supervibe-loop --tracker-doctor --file <graph.json> --fix"
+      : summary.status === "partial-sync"
+        ? "repair the adapter failure and rerun tracker sync push"
+        : "tracker status is available to loop, UI, and context packs",
+  };
 }
 
 export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
@@ -304,6 +402,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
       <input id="actionVerification" placeholder="verification command">
       <input id="actionUntil" placeholder="until ISO for defer">
       <textarea id="actionReason" placeholder="reason"></textarea>
+      <textarea id="actionImpact" placeholder="skip or cancel impact"></textarea>
       <div class="button-row"><button id="previewActionBtn">Preview</button><button class="primary" id="applyActionBtn" disabled>Apply local</button></div>
       <p class="muted">Apply unlocks only after previewing the same action.</p>
     </section>
@@ -471,6 +570,7 @@ function actionBody(apply){
     type: type,
     until: document.getElementById('actionUntil').value.trim(),
     reason: document.getElementById('actionReason').value.trim(),
+    impact: document.getElementById('actionImpact').value.trim(),
     actor: 'ui-user',
     apply: apply,
     confirm: apply ? 'apply-local' : undefined
@@ -484,7 +584,7 @@ function actionBody(apply){
   if (verification) body.verificationCommands = verification;
   return body;
 }
-function actionKey(body){ return [body.file, body.itemId, body.type, body.title, body.parentId, body.to, body.status, body.acceptanceCriteria, body.verificationCommands, body.until, body.reason].join('|'); }
+function actionKey(body){ return [body.file, body.itemId, body.type, body.title, body.parentId, body.to, body.status, body.acceptanceCriteria, body.verificationCommands, body.until, body.reason, body.impact].join('|'); }
 function renderGraph(data){
   const grouped = data.grouped || {};
   state.kanban = data.kanban || null;

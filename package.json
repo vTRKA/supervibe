@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -138,6 +138,7 @@
     "workflow:agent-invocation": "node scripts/agent-invocation.mjs",
     "supervibe:stage": "node scripts/supervibe-stage.mjs",
     "supervibe:agent-maturity": "node scripts/supervibe-agent-maturity.mjs",
+    "supervibe:task-graph-maturity": "node scripts/supervibe-task-graph-maturity.mjs",
     "supervibe:design-maturity": "node scripts/supervibe-design-maturity.mjs",
     "supervibe:maturity-report": "node scripts/supervibe-maturity-report.mjs",
     "supervibe:skill-sources": "node scripts/skill-source-report.mjs",

@@ -779,6 +779,9 @@ async function main() {
       console.log(`STATUS: ${result.status}`);
       console.log(`MAPPING: ${mappingPath}`);
       console.log(`NATIVE_GRAPH_PRESERVED: ${result.nativeGraphPreserved}`);
+      if (result.recovery?.nextAction) console.log(`RECOVERY: ${result.recovery.nextAction}`);
+      if (result.issues?.length) console.log(`ISSUES: ${result.issues.length}`);
+      if (result.ok === false) process.exitCode = 1;
       return;
     }
 
@@ -1383,6 +1386,8 @@ Primary:
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --split <task-id> --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
+  supervibe-loop --skip <task-id> --reason "out of scope" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
+  supervibe-loop --block <task-id> --reason "needs clarification" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
   supervibe-loop --reparent <task-id> --parent <epic-or-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --dep-add <from-task-id> --to <to-task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --delete <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json --preview

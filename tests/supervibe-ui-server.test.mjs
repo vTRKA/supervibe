@@ -37,6 +37,7 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.match(html, /selectMapNode/);
     assert.match(html, /map-wrap/);
     assert.match(html, /Auth: local only/);
+    assert.match(html, /actionImpact/);
     assert.doesNotMatch(html, /x-supervibe-ui-token|\?token=|TOKEN:/);
     assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /api\/action/);
     assert.match(renderSupervibeUiHtml({ graphPath: graphRel }), /create/);
@@ -64,6 +65,9 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.equal(graph.panels.readyQueue[0].id, "design-kanban-cards");
     assert.equal(graph.panels.completion.productionReady, false);
     assert.ok(graph.panels.completion.blockers.length > 0);
+    assert.equal(graph.tracker.status, "native-ready");
+    assert.equal(graph.tracker.mode, "native");
+    assert.equal(graph.tracker.mapped, 0);
     assert.equal(graph.kanban.graphSummary.graphId, "epic-ui");
     assert.equal("project" in graph.kanban, false);
     assert.equal(graph.kanban.epics[0].id, "epic-ui");
@@ -147,6 +151,29 @@ test("UI server resolves active work graph when no file is provided", async () =
     const graph = await (await fetch(`${baseUrl}/api/graph`)).json();
     assert.equal(graph.graphId, "epic-ui");
     assert.match(graph.graphPath, /epic-ui[\\/]graph\.json$/);
+  } finally {
+    await close(server);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("UI server returns no-active-graph model instead of raw graph error", async () => {
+  const root = await makeTempRoot("supervibe-ui-no-active-");
+  const { server } = createSupervibeUiServer({ rootDir: root });
+  await listen(server);
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    const response = await fetch(`${baseUrl}/api/graph`);
+    const graph = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(graph.status, "no-active-graph");
+    assert.equal(graph.graphPath, null);
+    assert.equal(graph.panels.completion.productionReady, false);
+    assert.equal(graph.tracker.status, "no-active-graph");
+    assert.equal(graph.tracker.mappingPath, null);
+    assert.match(graph.nextAction, /atomize a reviewed plan/);
+    assert.match(graph.commands.atomizeReviewedPlan, /--atomize-plan <plan-path> --plan-review-passed/);
   } finally {
     await close(server);
     await rm(root, { recursive: true, force: true });

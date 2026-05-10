@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-05-10
+
+### Added
+
+- Added task graph maturity validation for routing, loop actions, UI controls,
+  tracker sync diagnostics, completion validators, tests, and graph fixtures.
+- Added tracker sync mapping validation, conflict diagnostics, partial-sync
+  recovery, and redacted sync diagnostics.
+
+### Changed
+
+- Hardened task graph routing, UI no-active-graph status, native tracker status,
+  and skip/cancel completion semantics so skipped work needs both reason and
+  impact evidence.
+
 ## [2.1.1] - 2026-05-10
 
 ### Added

@@ -45,6 +45,9 @@ export function validateEpicCompletion(graph = {}, options = {}) {
       if (!hasSkipReason(item)) {
         issues.push(completionIssue("missing-skip-reason", id, `${id} is skipped or cancelled without an explicit reason.`));
       }
+      if (!hasSkipImpact(item)) {
+        issues.push(completionIssue("missing-skip-impact", id, `${id} is skipped or cancelled without an explicit impact statement.`));
+      }
       continue;
     }
 
@@ -185,7 +188,11 @@ function normalizeStatus(status) {
 }
 
 function hasSkipReason(item = {}) {
-  return Boolean(item.skipReason || item.cancelReason || item.cancelledReason || item.closeReason || item.reason || item.decisionReason);
+  return Boolean(item.skipReason || item.cancelReason || item.cancelledReason || item.reason || item.decisionReason);
+}
+
+function hasSkipImpact(item = {}) {
+  return Boolean(item.skipImpact || item.cancelImpact || item.impact || item.scopeImpact || item.goalImpact || item.decisionImpact);
 }
 
 function isDryRunEvidence(evidence) {
@@ -204,6 +211,7 @@ function nextActionForIssue(code, itemId, details = {}) {
   if (code === "item-open") return `complete, skip with reason, or split blocker for ${id}`;
   if (code === "item-skipped") return `restore ${id} or provide an explicit completion override`;
   if (code === "missing-skip-reason") return `add skip/cancel reason to ${id}`;
+  if (code === "missing-skip-impact") return `add skipped-work impact to ${id}`;
   if (code === "missing-evidence") return `attach verification evidence to ${id}`;
   if (code === "dry-run-evidence") return `replace dry-run evidence on ${id} with production verification`;
   if (code === "unknown-dependency") return `repair dependency ${details.dependencyId || ""} for ${id}`;

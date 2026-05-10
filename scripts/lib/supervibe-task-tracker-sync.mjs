@@ -26,6 +26,149 @@ export async function writeTrackerMapping(filePath, mapping) {
   return normalized;
 }
 
+export function validateTrackerMapping({ graph = {}, mapping = createEmptyMapping(), requireComplete = false } = {}) {
+  const normalized = normalizeMapping(mapping);
+  const items = trackerItemsForGraph(graph);
+  const nativeIds = new Set(items.map((item) => item.itemId));
+  const externalIds = new Map();
+  const issues = [];
+  const graphId = graph.graph_id || graph.epicId || graph.graphId || null;
+
+  if (graphId && normalized.graphId && normalized.graphId !== graphId) {
+    issues.push({
+      code: "graph-id-mismatch",
+      itemId: normalized.graphId,
+      message: `Tracker mapping graphId ${normalized.graphId} does not match graph ${graphId}.`,
+      repair: "run supervibe-loop --tracker-doctor --fix with the target work graph",
+    });
+  }
+
+  for (const item of items) {
+    const record = normalized.items[item.itemId];
+    if (!record) {
+      issues.push({
+        code: "missing-mapping",
+        itemId: item.itemId,
+        message: `Tracker mapping is missing native item ${item.itemId}.`,
+        repair: "rerun tracker sync push to materialize missing mapping records",
+      });
+      continue;
+    }
+    if (record.externalId) {
+      const list = externalIds.get(record.externalId) || [];
+      list.push(item.itemId);
+      externalIds.set(record.externalId, list);
+    }
+  }
+
+  for (const [nativeId, record] of Object.entries(normalized.items || {})) {
+    if (!nativeIds.has(nativeId)) {
+      issues.push({
+        code: "orphan-mapping",
+        itemId: nativeId,
+        message: `Tracker mapping references native item not present in graph: ${nativeId}.`,
+        repair: "run supervibe-loop --tracker-doctor --fix to prune orphan mappings",
+      });
+    }
+    if (!record.nativeId || record.nativeId !== nativeId) {
+      issues.push({
+        code: "native-id-mismatch",
+        itemId: nativeId,
+        message: `Tracker mapping key ${nativeId} does not match record nativeId ${record.nativeId || "missing"}.`,
+        repair: "rebuild tracker mapping from the canonical work graph",
+      });
+    }
+    if (requireComplete && nativeIds.has(nativeId) && !record.itemHash) {
+      issues.push({
+        code: "missing-item-hash",
+        itemId: nativeId,
+        message: `Tracker mapping for ${nativeId} is missing an item hash.`,
+        repair: "rerun tracker sync push to refresh item hashes",
+      });
+    }
+  }
+
+  for (const [externalId, nativeIdList] of externalIds.entries()) {
+    if (nativeIdList.length > 1) {
+      issues.push({
+        code: "duplicate-external-task",
+        itemId: nativeIdList[0],
+        externalId,
+        nativeIds: nativeIdList,
+        message: `External task ${externalId} is mapped by multiple native items.`,
+        repair: "inspect the external tracker and split or remap duplicate task links manually",
+      });
+    }
+  }
+
+  return {
+    ok: issues.length === 0,
+    status: issues.length === 0 ? "valid" : "invalid",
+    issues,
+  };
+}
+
+export function diagnoseTrackerSyncConflicts({ graph = {}, mapping = createEmptyMapping(), externalState = {} } = {}) {
+  const normalized = normalizeMapping(mapping);
+  const externalById = new Map((externalState.tasks || [])
+    .concat(externalState.epics || [])
+    .filter((item) => item.externalId)
+    .map((item) => [item.externalId, item]));
+  const conflicts = [];
+
+  for (const item of trackerItemsForGraph(graph)) {
+    const record = normalized.items[item.itemId];
+    if (!record) continue;
+    const external = externalById.get(record.externalId);
+    const nativeChanged = Boolean(record.itemHash && record.itemHash !== hashWorkItem(item));
+    const externalHash = external?.itemHash || external?.hash || external?.sourceHash || null;
+    const externalChanged = Boolean(externalHash && record.externalItemHash && externalHash !== record.externalItemHash);
+    const nativeUpdatedAt = Date.parse(item.updatedAt || item.updated_at || item.modifiedAt || item.modified_at || 0);
+    const externalUpdatedAt = Date.parse(external?.updatedAt || external?.updated_at || external?.modifiedAt || external?.modified_at || 0);
+    const mappedAt = Date.parse(record.syncedAt || record.updatedAt || normalized.updatedAt || 0);
+    const nativeNewer = Number.isFinite(nativeUpdatedAt) && Number.isFinite(mappedAt) && nativeUpdatedAt > mappedAt;
+    const externalNewer = Number.isFinite(externalUpdatedAt) && Number.isFinite(mappedAt) && externalUpdatedAt > mappedAt;
+    const nativeDirty = nativeChanged || nativeNewer;
+    const externalDirty = externalChanged || externalNewer;
+
+    if (!nativeDirty && !externalDirty) continue;
+    conflicts.push({
+      itemId: item.itemId,
+      externalId: record.externalId || null,
+      status: nativeDirty && externalDirty ? "both-changed" : nativeDirty ? "native-newer" : "external-newer",
+      nativeChanged: nativeDirty,
+      externalChanged: externalDirty,
+      recommendation: nativeDirty && externalDirty
+        ? "manual review required before sync overwrite"
+        : nativeDirty
+          ? "push native graph update to tracker"
+          : "pull external tracker update into native graph review",
+    });
+  }
+
+  return {
+    ok: conflicts.length === 0,
+    status: conflicts.length === 0 ? "clean" : "conflicts-found",
+    conflicts,
+  };
+}
+
+export function redactTrackerSyncDiagnostics(value) {
+  if (Array.isArray(value)) return value.map((item) => redactTrackerSyncDiagnostics(item));
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, nested] of Object.entries(value)) {
+      out[key] = isSensitiveTrackerKey(key) ? "[REDACTED]" : redactTrackerSyncDiagnostics(nested);
+    }
+    return out;
+  }
+  if (typeof value !== "string") return value;
+  return value
+    .replace(/\b(?:sk|ghp|github_pat|xox[baprs])-?[A-Za-z0-9_=-]{12,}\b/g, "[REDACTED]")
+    .replace(/\b(?:token|secret|password|api[_-]?key)=\S+/gi, (match) => match.replace(/=.*/, "=[REDACTED]"))
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{12,}\b/gi, "Bearer [REDACTED]");
+}
+
 export function createTrackerMapping({ graph = {}, adapterId = "native-json", existingMapping = createEmptyMapping() } = {}) {
   const mapping = normalizeMapping(existingMapping);
   mapping.adapterId = adapterId;
@@ -52,6 +195,24 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
   let detection = adapter.detect ? await adapter.detect() : { available: false, status: "unavailable" };
   const adapterId = adapter.id || detection.adapterId || "native-json";
   let mapping = createTrackerMapping({ graph, adapterId, existingMapping: existing });
+  const validation = validateTrackerMapping({ graph, mapping, requireComplete: true });
+  if (!validation.ok) {
+    mapping.status = "invalid-mapping";
+    mapping.lastSync = {
+      direction: "push",
+      status: "invalid-mapping",
+      at: new Date().toISOString(),
+    };
+    return {
+      ok: false,
+      status: "invalid-mapping",
+      nativeGraphPreserved: true,
+      mapping,
+      detection: redactTrackerSyncDiagnostics(detection),
+      issues: validation.issues,
+      remediation: ["run supervibe-loop --tracker-doctor --fix", "rerun tracker sync push after mapping repair"],
+    };
+  }
 
   if (!detection.available) {
     mapping.status = "native-ready";
@@ -67,7 +228,7 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
       status: "native-ready",
       nativeGraphPreserved: true,
       mapping,
-      detection,
+      detection: redactTrackerSyncDiagnostics(detection),
       remediation: ["continue with canonical native JSON graph", "configure tracker adapter only when external sync is required"],
     };
   }
@@ -80,64 +241,91 @@ export async function materializeEpicAndTasks(graph, adapter = createUnavailable
   const trackerItems = trackerItemsForGraph(graph);
   const epic = trackerItems.find((item) => item.type === "epic");
   const created = { epic: null, tasks: [], dependencies: [] };
-  if (epic) {
-    const mapped = mapping.items[epic.itemId];
-    if (!mapped.externalId) {
-      const result = await adapter.createEpic(epic);
-      mapped.externalId = result.externalId;
-      mapped.status = "created";
-      created.epic = result;
+  try {
+    if (epic) {
+      const mapped = mapping.items[epic.itemId];
+      if (!mapped.externalId) {
+        const result = await adapter.createEpic(epic);
+        mapped.externalId = result.externalId;
+        mapped.status = "created";
+        mapped.syncedAt = new Date().toISOString();
+        created.epic = result;
+      }
     }
-  }
 
-  for (const item of trackerItems.filter((candidate) => candidate.type !== "epic")) {
-    const mapped = mapping.items[item.itemId];
-    if (!mapped.externalId) {
-      const result = await adapter.createTask({
-        ...item,
-        parentExternalId: item.parentId ? mapping.items[item.parentId]?.externalId : null,
-        sourcePlanPath: graph.source?.path || graph.planPath || null,
-        itemHash: mapped.itemHash,
-      });
-      mapped.externalId = result.externalId;
-      mapped.status = "created";
-      created.tasks.push(result);
+    for (const item of trackerItems.filter((candidate) => candidate.type !== "epic")) {
+      const mapped = mapping.items[item.itemId];
+      if (!mapped.externalId) {
+        const result = await adapter.createTask({
+          ...item,
+          parentExternalId: item.parentId ? mapping.items[item.parentId]?.externalId : null,
+          sourcePlanPath: graph.source?.path || graph.planPath || null,
+          itemHash: mapped.itemHash,
+        });
+        mapped.externalId = result.externalId;
+        mapped.status = "created";
+        mapped.syncedAt = new Date().toISOString();
+        created.tasks.push(result);
+      }
     }
-  }
 
-  for (const item of trackerItems) {
-    if (item.type === "epic") continue;
-    const fromExternalId = mapping.items[item.itemId]?.externalId;
-    for (const blocked of item.blocks || []) {
-      const toExternalId = mapping.items[blocked]?.externalId;
-      if (!fromExternalId || !toExternalId) continue;
-      const result = await adapter.addDependency({ fromExternalId, toExternalId, type: "blocks", nativeFromId: item.itemId, nativeToId: blocked });
-      created.dependencies.push(result);
+    for (const item of trackerItems) {
+      if (item.type === "epic") continue;
+      const fromExternalId = mapping.items[item.itemId]?.externalId;
+      for (const blocked of item.blocks || []) {
+        const toExternalId = mapping.items[blocked]?.externalId;
+        if (!fromExternalId || !toExternalId) continue;
+        const result = await adapter.addDependency({ fromExternalId, toExternalId, type: "blocks", nativeFromId: item.itemId, nativeToId: blocked });
+        created.dependencies.push(result);
+      }
+      for (const related of item.related || []) {
+        const toExternalId = mapping.items[related]?.externalId;
+        if (!fromExternalId || !toExternalId) continue;
+        const result = await adapter.addDependency({ fromExternalId, toExternalId, type: "related", nativeFromId: item.itemId, nativeToId: related });
+        created.dependencies.push(result);
+      }
+      for (const dependency of item.dependencies || []) {
+        const dependencyExternalId = mapping.items[dependency]?.externalId;
+        if (!dependencyExternalId || !fromExternalId) continue;
+        const result = await adapter.addDependency({
+          fromExternalId: dependencyExternalId,
+          toExternalId: fromExternalId,
+          type: "blocks",
+          nativeFromId: dependency,
+          nativeToId: item.itemId,
+        });
+        created.dependencies.push(result);
+      }
     }
-    for (const related of item.related || []) {
-      const toExternalId = mapping.items[related]?.externalId;
-      if (!fromExternalId || !toExternalId) continue;
-      const result = await adapter.addDependency({ fromExternalId, toExternalId, type: "related", nativeFromId: item.itemId, nativeToId: related });
-      created.dependencies.push(result);
-    }
-    for (const dependency of item.dependencies || []) {
-      const dependencyExternalId = mapping.items[dependency]?.externalId;
-      if (!dependencyExternalId || !fromExternalId) continue;
-      const result = await adapter.addDependency({
-        fromExternalId: dependencyExternalId,
-        toExternalId: fromExternalId,
-        type: "blocks",
-        nativeFromId: dependency,
-        nativeToId: item.itemId,
-      });
-      created.dependencies.push(result);
-    }
+  } catch (error) {
+    mapping.status = "partial-sync";
+    mapping.lastSync = {
+      direction: "push",
+      status: "partial-sync",
+      reason: redactTrackerSyncDiagnostics(error.message || String(error)),
+      at: new Date().toISOString(),
+    };
+    if (!options.dryRun) mapping = await writeTrackerMapping(mappingPath, mapping);
+    return {
+      ok: false,
+      status: "partial-sync",
+      nativeGraphPreserved: true,
+      detection: redactTrackerSyncDiagnostics(detection),
+      mapping,
+      created: redactTrackerSyncDiagnostics(created),
+      recovery: {
+        retrySafe: true,
+        mappingPath,
+        nextAction: "fix external tracker error, then rerun tracker sync push using the same mapping file",
+      },
+      error: redactTrackerSyncDiagnostics(error.message || String(error)),
+    };
   }
 
   mapping.status = "synced";
   mapping.lastSync = { direction: "push", status: "synced", at: new Date().toISOString() };
   if (!options.dryRun) mapping = await writeTrackerMapping(mappingPath, mapping);
-  return { ok: true, status: "synced", nativeGraphPreserved: true, detection, mapping, created };
+  return { ok: true, status: "synced", nativeGraphPreserved: true, detection: redactTrackerSyncDiagnostics(detection), mapping, created: redactTrackerSyncDiagnostics(created) };
 }
 
 export async function syncReadyFront(graph, adapter, mapping, options = {}) {
@@ -206,7 +394,7 @@ export async function syncPush(graph, adapter, options = {}) {
 
 export async function syncPull(adapter, mapping = createEmptyMapping()) {
   if (!adapter?.syncPull) return { ok: true, status: "native-only", mapping, external: null };
-  const external = await adapter.syncPull({ mapping });
+  const external = redactTrackerSyncDiagnostics(await adapter.syncPull({ mapping }));
   return { ok: true, status: "pulled", mapping, external };
 }
 
@@ -259,8 +447,22 @@ function hashWorkItem(item) {
   })).digest("hex");
 }
 
+function isSensitiveTrackerKey(key = "") {
+  return /token|secret|password|authorization|api[_-]?key|access[_-]?key/i.test(key);
+}
+
 function trackerItemsForGraph(graph = {}) {
-  if (Array.isArray(graph.items) && graph.items.length > 0) return graph.items;
+  if (Array.isArray(graph.items) && graph.items.length > 0) {
+    return graph.items.map((item, index) => ({
+      ...item,
+      itemId: item.itemId || item.id || `item-${index + 1}`,
+      title: item.title || item.goal || item.summary || item.itemId || item.id || `Item ${index + 1}`,
+      type: item.type || "task",
+      dependencies: item.dependencies || item.blockedBy || [],
+      blocks: item.blocks || [],
+      related: item.related || [],
+    }));
+  }
   return (graph.tasks || []).map((task, index) => ({
     itemId: task.itemId || task.id,
     type: task.type || "task",

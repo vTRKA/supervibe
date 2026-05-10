@@ -69,6 +69,41 @@ test("routes task graph creation, split, reparent, skip, defer, and block contro
   assert.match(blockOutput, /COMMAND: \/supervibe-loop --block <task-id> --preview/);
 });
 
+test("routes real Russian task graph complaint phrases", async () => {
+  const createOutput = await matchCommand("создай задачи и эпик из плана");
+  assert.match(createOutput, /INTENT: task_graph_create_from_plan/);
+  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+
+  const atomizeOutput = await matchCommand("атомизируй план");
+  assert.match(atomizeOutput, /INTENT: atomize_plan/);
+  assert.match(atomizeOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+
+  const createSubtasksOutput = await matchCommand("создай подзадачи");
+  assert.match(createSubtasksOutput, /INTENT: task_graph_split/);
+  assert.match(createSubtasksOutput, /COMMAND: \/supervibe-loop --split <task-id> --preview/);
+
+  const splitOutput = await matchCommand("разбей задачу на подзадачи");
+  assert.match(splitOutput, /INTENT: task_graph_split/);
+  assert.match(splitOutput, /COMMAND: \/supervibe-loop --split <task-id> --preview/);
+  assert.doesNotMatch(splitOutput, /INTENT: atomize_plan/);
+
+  const reparentOutput = await matchCommand("перенеси задачу в другой эпик");
+  assert.match(reparentOutput, /INTENT: task_graph_reparent/);
+  assert.match(reparentOutput, /COMMAND: \/supervibe-loop --reparent <task-id> --preview/);
+
+  const skipOutput = await matchCommand("пропусти задачу с причиной");
+  assert.match(skipOutput, /INTENT: task_graph_skip/);
+  assert.match(skipOutput, /COMMAND: \/supervibe-loop --skip <task-id> --preview/);
+
+  const blockOutput = await matchCommand("заблокируй задачу");
+  assert.match(blockOutput, /INTENT: task_graph_block/);
+  assert.match(blockOutput, /COMMAND: \/supervibe-loop --block <task-id> --preview/);
+
+  const readyOutput = await matchCommand("покажи готовые задачи");
+  assert.match(readyOutput, /INTENT: ready_query/);
+  assert.match(readyOutput, /COMMAND: \/supervibe-status --ready/);
+});
+
 test("routes stale and orphan task graph status queries", async () => {
   const staleOutput = await matchCommand("show stale claims for tasks");
   assert.match(staleOutput, /INTENT: task_graph_stale_query/);
@@ -77,4 +112,14 @@ test("routes stale and orphan task graph status queries", async () => {
   const orphanOutput = await matchCommand("show orphan tasks in graph");
   assert.match(orphanOutput, /INTENT: task_graph_orphan_query/);
   assert.match(orphanOutput, /COMMAND: \/supervibe-status --orphan/);
+});
+
+test("routes task graph maturity requests to the task-graph-specific gate", async () => {
+  const output = await matchCommand("task graph maturity");
+  assert.match(output, /INTENT: task_graph_maturity/);
+  assert.match(output, /COMMAND: npm run supervibe:task-graph-maturity/);
+
+  const russianOutput = await matchCommand("проверь task graph maturity");
+  assert.match(russianOutput, /INTENT: task_graph_maturity/);
+  assert.doesNotMatch(russianOutput, /COMMAND: \/supervibe-audit/);
 });

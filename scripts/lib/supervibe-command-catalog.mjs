@@ -338,6 +338,27 @@ const COMMAND_SHORTCUTS = Object.freeze([
     nextAction: "Run the COMMAND from the project root; it writes only generated index state under .supervibe/memory/. If the bounded batch times out, rerun the same COMMAND, then run the graph follow-up when source coverage is healthy.",
   },
   {
+    id: "task-graph-maturity",
+    intent: "task_graph_maturity",
+    title: "Check task graph maturity",
+    command: "npm run supervibe:task-graph-maturity",
+    description: "Score task graph integration across routing, loop actions, UI controls, sync, validators, tests, and graph fixtures.",
+    aliases: [
+      "task graph maturity",
+      "check task graph maturity",
+      "проверь task graph maturity",
+      "проверь зрелость task graph",
+      "оцени task graph на 10 из 10",
+    ],
+    keywordGroups: [
+      ["task graph", "work graph", "work-item graph"],
+      ["maturity", "10 из 10", "зрелость"],
+    ],
+    mutationRisk: "none",
+    directRoute: false,
+    nextAction: "Run npm run supervibe:task-graph-maturity for task-graph-specific readiness; use --require-active-graph only when the current project must already have an active graph.",
+  },
+  {
     id: "index-health",
     intent: "index_repair",
     title: "Show index health and repair command",

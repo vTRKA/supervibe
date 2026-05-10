@@ -89,6 +89,10 @@ function updateStatus(graph, action, status, options = {}) {
   if (["skipped", "cancelled"].includes(status) && !action.reason && !action.force) {
     throw new Error(`${status} requires reason`);
   }
+  const impact = action.impact || action.skipImpact || action.cancelImpact || action.scopeImpact || action.goalImpact;
+  if (["skipped", "cancelled"].includes(status) && !impact && !action.force) {
+    throw new Error(`${status} requires impact`);
+  }
   const now = action.now || new Date().toISOString();
   let changed = false;
   const update = (entry) => {
@@ -105,8 +109,14 @@ function updateStatus(graph, action, status, options = {}) {
       next.closedAt = now;
       next.closeReason = action.reason || (status === "complete" ? "completed by user" : "closed by user");
     }
-    if (status === "skipped") next.skipReason = action.reason || "skipped by user";
-    if (status === "cancelled") next.cancelReason = action.reason || "cancelled by user";
+    if (status === "skipped") {
+      next.skipReason = action.reason || "skipped by user";
+      next.skipImpact = impact || "impact accepted by user";
+    }
+    if (status === "cancelled") {
+      next.cancelReason = action.reason || "cancelled by user";
+      next.cancelImpact = impact || "impact accepted by user";
+    }
     if (options.clearTerminal) {
       delete next.closedAt;
       delete next.closeReason;
@@ -748,6 +758,9 @@ function appendAuditEvent(result, action, requestedType) {
   if (result.blocker) event.blocker = result.blocker;
   if (result.comment?.commentId) event.commentId = result.comment.commentId;
   if (result.handoff?.handoffId) event.handoffId = result.handoff.handoffId;
+  if (action.impact || action.skipImpact || action.cancelImpact || action.scopeImpact || action.goalImpact) {
+    event.impact = action.impact || action.skipImpact || action.cancelImpact || action.scopeImpact || action.goalImpact;
+  }
   if (result.tombstone) event.tombstone = { itemId: result.tombstone.itemId, deletedAt: result.tombstone.deletedAt };
   if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
   return {
@@ -781,6 +794,11 @@ function normalizeEditPatch(source = {}) {
     "parallelGroup",
     "dueAt",
     "reason",
+    "impact",
+    "skipImpact",
+    "cancelImpact",
+    "scopeImpact",
+    "goalImpact",
   ]);
   const ignored = new Set([
     "type",

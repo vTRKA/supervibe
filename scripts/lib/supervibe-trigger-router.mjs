@@ -500,12 +500,18 @@ const RULES = [
   {
     intent: "create_epic",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["создай эпик", "create epic", "epic"]) && hasAny(text, ["план", "plan", "child tasks"]),
+    test: (text) => hasAny(text, ["создай эпик", "создай задачи и эпик", "create epic", "epic"]) && hasAny(text, ["план", "plan", "child tasks"]),
+  },
+  {
+    intent: "task_graph_split",
+    confidence: 0.91,
+    test: (text) => hasAny(text, ["разбей задачу", "разбей подзадачу", "создай подзадачи", "split task", "split into subtasks", "break task into subtasks", "create subtasks"]) &&
+      hasAny(text, ["задач", "подзадач", "task", "subtask"]),
   },
   {
     intent: "atomize_plan",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["атомар", "atomic", "разбей", "break"]) && hasAny(text, ["план", "plan", "задач", "tasks"]),
+    test: (text) => hasAny(text, ["атомар", "атомиз", "atomic", "разбей план", "break plan"]) && hasAny(text, ["план", "plan"]),
   },
   {
     intent: "plan_review",
@@ -535,7 +541,7 @@ const RULES = [
   {
     intent: "ready_query",
     confidence: 0.84,
-    test: (text) => hasAny(text, ["что готово", "ready work", "ready tasks"]),
+    test: (text) => hasAny(text, ["что готово", "готовые задачи", "покажи готовые задачи", "ready work", "ready tasks"]),
   },
   {
     intent: "blocked_query",
@@ -557,8 +563,8 @@ const RULES = [
   {
     intent: "task_graph_create_from_plan",
     confidence: 0.94,
-    test: (text) => hasAny(text, ["create epic tasks from plan", "create tasks from plan", "atomize reviewed plan", "create subtasks from plan"]) &&
-      hasAny(text, ["plan", "reviewed", "epic", "tasks", "subtasks"]),
+    test: (text) => hasAny(text, ["создай задачи из плана", "создай задачи и эпик из плана", "создай эпик и задачи из плана", "создай work items из плана", "create epic tasks from plan", "create tasks from plan", "atomize reviewed plan", "create subtasks from plan", "create work items from plan"]) &&
+      hasAny(text, ["план", "plan", "reviewed", "epic", "tasks", "subtasks", "work items"]),
   },
   {
     intent: "task_graph_delete",
@@ -569,32 +575,32 @@ const RULES = [
   {
     intent: "task_graph_split",
     confidence: 0.89,
-    test: (text) => hasAny(text, ["split task", "split into subtasks", "break task into subtasks"]) &&
-      hasAny(text, ["task", "subtask"]),
+    test: (text) => hasAny(text, ["разбей задачу", "разбей подзадачу", "создай подзадачи", "split task", "split into subtasks", "break task into subtasks", "create subtasks"]) &&
+      hasAny(text, ["задач", "подзадач", "task", "subtask"]),
   },
   {
     intent: "task_graph_reparent",
     confidence: 0.89,
-    test: (text) => hasAny(text, ["move task", "reparent task", "change parent"]) &&
-      hasAny(text, ["task", "parent", "subtask"]),
+    test: (text) => hasAny(text, ["перенеси задачу", "перемести задачу", "перенеси подзадачу", "move task", "reparent task", "change parent"]) &&
+      hasAny(text, ["задач", "подзадач", "эпик", "task", "parent", "subtask", "epic"]),
   },
   {
     intent: "task_graph_skip",
     confidence: 0.88,
-    test: (text) => hasAny(text, ["skip task", "skip subtask"]) &&
-      hasAny(text, ["task", "reason", "subtask"]),
+    test: (text) => hasAny(text, ["пропусти задачу", "пропусти подзадачу", "skip task", "skip subtask"]) &&
+      hasAny(text, ["задач", "подзадач", "причин", "task", "reason", "subtask"]),
   },
   {
     intent: "task_graph_defer",
     confidence: 0.88,
-    test: (text) => hasAny(text, ["defer task", "postpone task"]) &&
-      hasAny(text, ["task", "until", "later"]),
+    test: (text) => hasAny(text, ["отложи задачу", "отложи подзадачу", "defer task", "postpone task"]) &&
+      hasAny(text, ["задач", "подзадач", "потом", "task", "until", "later"]),
   },
   {
     intent: "task_graph_block",
     confidence: 0.88,
-    test: (text) => hasAny(text, ["block task", "mark task blocked"]) &&
-      hasAny(text, ["task", "reason", "block"]),
+    test: (text) => hasAny(text, ["заблокируй задачу", "заблокируй подзадачу", "пометь задачу заблокированной", "block task", "mark task blocked"]) &&
+      hasAny(text, ["задач", "подзадач", "причин", "task", "reason", "block"]),
   },
   {
     intent: "task_graph_edit",

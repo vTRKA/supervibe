@@ -40,6 +40,7 @@ Primary path:
 /supervibe-loop --onboard
 /supervibe-loop --tracker-prime
 /supervibe-loop --completion bash
+npm run supervibe:task-graph-maturity
 /supervibe-loop --claim task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --close task-123 --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -133,6 +134,8 @@ Repair paths:
 - Invalid plan repair: when atomization cannot derive a valid epic/task/subtask graph, revise the reviewed plan or rerun `--atomize-plan <plan> --preview`; do not write `graph.json` until the plan has parseable work items and `--plan-review-passed`.
 - Graph drift repair: run `/supervibe-status --ready --blocked --stale --orphan --file <graph.json>`, then repair dependency cycles, stale claims, orphaned evidence, ownership gaps, or worktree assignment drift before continuing.
 - Completion blocker repair: run `/supervibe-loop --validate-completion --file <graph.json>` or `/supervibe-loop --close-eligible --file <graph.json>` to list blockers, attach production or dry-run evidence, then rerun close validation. `--allow-dry-run-evidence` and `--no-evidence-required` are explicit diagnostic overrides, not default completion.
+- Task graph maturity repair: run `npm run supervibe:task-graph-maturity` for capability maturity, or `node scripts/supervibe-task-graph-maturity.mjs --require-active-graph` when the current project must already have an active graph. The generic agent maturity gate does not replace this task-graph-specific score.
+- Tracker sync repair: if sync reports `invalid-mapping`, run `/supervibe-loop --tracker-doctor --file <graph.json> --fix`; if it reports `partial-sync`, keep the generated mapping file, repair the external adapter failure, and rerun the same sync push. Diagnostics redact token, secret, password, authorization, and API-key fields before printing or bundling.
 
 Durable tracker sync:
 
@@ -172,8 +175,9 @@ Saved views and reports are handled by `/supervibe-status`. Local task control
 is handled by `/supervibe-loop --claim-ready|--claim|--close|--complete|--reopen|--edit|--split|--reparent|--dep-add|--dep-remove|--skip|--cancel|--delete`
 against the native `graph.json`. Destructive delete requires preview, dry-run,
 `--yes`, or `--force`; every mutation writes an audit event, and non-dry writes
-create a graph backup. Deferred work uses `/supervibe-loop --defer <item>
---until <timestamp> --file <graph.json>` and remains visible in status,
+create a graph backup. Skip and cancel require both a reason and an impact so
+completion validation can prove the user goal still holds. Deferred work uses
+`/supervibe-loop --defer <item> --until <timestamp> --file <graph.json>` and remains visible in status,
 dashboard, query results, and SLA reports. No background daemon is required; due
 work is re-evaluated deterministically when a status, dashboard, report, or
 scheduler check runs.

@@ -142,15 +142,18 @@ test("work-item skip, cancel, reparent, and dependency mutations are audit logge
     type: "skip",
     itemId: "task-1",
     reason: "out of scope",
+    impact: "does not affect the accepted goal",
     now: "2026-05-07T00:00:00.000Z",
   });
   assert.equal(skipped.graph.items.find((item) => item.itemId === "task-1").status, "skipped");
   assert.equal(skipped.graph.items.find((item) => item.itemId === "task-1").skipReason, "out of scope");
+  assert.equal(skipped.graph.items.find((item) => item.itemId === "task-1").skipImpact, "does not affect the accepted goal");
 
   const cancelled = mutateWorkItemGraph(baseGraph(), {
     type: "cancel",
     itemId: "task-1",
     reason: "duplicate work",
+    impact: "duplicate is already covered by task-2",
     now: "2026-05-07T00:00:00.000Z",
   });
   assert.equal(cancelled.graph.items.find((item) => item.itemId === "task-1").status, "cancelled");

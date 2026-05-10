@@ -73,6 +73,26 @@ test("validateEpicCompletion rejects dry-run evidence for production completion"
   assert.equal(diagnostic.pass, true);
 });
 
+test("validateEpicCompletion requires skipped work to include reason and impact", () => {
+  const graph = completedGraph();
+  const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
+  task.status = "skipped";
+  task.verificationEvidence = [];
+  graph.tasks.find((item) => item.id === "epic-completion-t1").status = "skipped";
+
+  const missing = validateEpicCompletion(graph);
+  task.skipReason = "out of approved scope";
+  const missingImpact = validateEpicCompletion(graph);
+  task.skipImpact = "does not affect production readiness because the approved scope excludes this integration";
+  const accepted = validateEpicCompletion(graph);
+
+  assert.ok(missing.issues.some((issue) => issue.code === "missing-skip-reason"));
+  assert.ok(missing.issues.some((issue) => issue.code === "missing-skip-impact"));
+  assert.equal(missingImpact.issues.some((issue) => issue.code === "missing-skip-reason"), false);
+  assert.ok(missingImpact.issues.some((issue) => issue.code === "missing-skip-impact"));
+  assert.equal(accepted.pass, true);
+});
+
 test("validate-epic-completion CLI reports failed and passed completion", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-epic-completion-"));
   const passingFile = join(root, "passing.graph.json");
@@ -110,6 +130,28 @@ test("validate-epic-completion --all reports no graph coverage explicitly", asyn
   assert.match(stdout, /SUPERVIBE_EPIC_COMPLETION_COVERAGE/);
   assert.match(stdout, /NO_COVERAGE: true/);
   assert.match(stdout, /PASS: neutral/);
+});
+
+test("validate-epic-completion --strict-coverage fails when no graph coverage exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-no-strict-completion-graphs-"));
+
+  let error;
+  try {
+    execFileSync(process.execPath, [
+      join(ROOT, "scripts/validate-epic-completion.mjs"),
+      "--all",
+      "--strict-coverage",
+    ], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } catch (err) {
+    error = err;
+  }
+  assert.ok(error);
+  assert.match(error.stdout, /NO_COVERAGE: true/);
+  assert.match(error.stdout, /PASS: false/);
 });
 
 test("supervibe-loop exposes completion validation for current commands", async () => {
