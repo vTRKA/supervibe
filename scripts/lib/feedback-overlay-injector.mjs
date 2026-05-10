@@ -12,14 +12,19 @@ async function loadAsset(name) {
   return cache[name];
 }
 
-export async function injectOverlay(html, { prototypeSlug = 'unknown', viewport } = {}) {
+export async function injectOverlay(html, { prototypeSlug = 'unknown', viewport, feedbackTarget = null } = {}) {
   const js = await loadAsset('overlay.js');
   const css = await loadAsset('overlay.css');
   const slug = JSON.stringify(prototypeSlug);
+  const target = JSON.stringify({
+    prototypeSlug,
+    feedbackTargetId: feedbackTarget?.feedbackTargetId || `prototype:${prototypeSlug}`,
+    ...(feedbackTarget || {}),
+  });
   const vp = viewport ? `window.__supervibeViewport=${JSON.stringify(viewport)};` : '';
   const tag = `
 <style>${css}</style>
-<script>window.__supervibePrototypeSlug=${slug};${vp}</script>
+<script>window.__supervibePrototypeSlug=${slug};window.__supervibeFeedbackTarget=${target};${vp}</script>
 <script>${js}</script>
 `;
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, tag + '</body>');

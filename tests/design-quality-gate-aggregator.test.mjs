@@ -27,8 +27,9 @@ test("design quality gate blocks approval on blocker or high review findings", a
 
     assert.equal(gate.pass, false);
     assert.equal(gate.approvalAllowed, false);
-    assert.equal(gate.blockerCount, 1);
-    assert.equal(gate.highCount, 1);
+    assert.ok(gate.blockerCount >= 1);
+    assert.equal(gate.issues.some((issue) => issue.code === "blocker-review-finding"), true);
+    assert.equal(gate.issues.some((issue) => issue.code === "high-review-finding"), true);
     assert.equal(gate.confidence.cap, 6);
     assert.ok(gate.nextAllowedActions.includes("revise-prototype"));
   } finally {
@@ -98,7 +99,7 @@ test("design confidence aggregation caps high severity runs below approval confi
   assert.equal(result.capped, true);
 });
 
-test("design quality gate ignores explicit none/zero severity review summaries", async () => {
+test("design quality gate ignores explicit none/zero severity review summaries but still blocks missing provenance", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-negated-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
@@ -107,8 +108,10 @@ test("design quality gate ignores explicit none/zero severity review summaries",
 
     const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: true });
 
-    assert.equal(gate.pass, true);
-    assert.equal(gate.blockerCount, 0);
+    assert.equal(gate.pass, false);
+    assert.equal(gate.approvalAllowed, false);
+    assert.equal(gate.issues.some((issue) => issue.code === "blocker-review-finding"), false);
+    assert.equal(gate.issues.some((issue) => issue.code === "design-provenance-invalid"), true);
     assert.equal(gate.highCount, 0);
   } finally {
     await rm(root, { recursive: true, force: true });

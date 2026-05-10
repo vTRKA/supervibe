@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -930,6 +930,37 @@ test("command-agent-plan CLI treats Codex spawn_agent as logical-role callable",
     assert.match(out, /MISSING_CALLABLE_AGENTS: none/);
     assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=codex-spawn-agent logical role/);
     assert.match(out, /CODEX_SPAWN_PAYLOADS:/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("command-agent-plan --strict fails fast when active scoped receipts are missing", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-strict-active-"));
+  try {
+    const result = spawnSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-plan",
+      "--host",
+      "codex",
+      "--active",
+      "--handoff-id",
+      "plan-latency-guard",
+      "--strict",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.equal(result.status, 3);
+    assert.match(result.stdout, /DURABLE_WRITES_ALLOWED: false/);
+    assert.match(result.stdout, /RECEIPT_GATE: pending-scoped-runtime-agent-receipts/);
+    assert.match(result.stdout, /STRICT_READY: false/);
+    assert.match(result.stdout, /STRICT_BLOCK_REASON: missing scoped receipts/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

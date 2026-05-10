@@ -7,9 +7,11 @@ import test from "node:test";
 
 import {
   validateAgentProducerReceipts,
+  validateScopedAgentProducerReceipts,
 } from "../scripts/lib/agent-producer-contract.mjs";
 import {
   issueWorkflowInvocationReceipt,
+  reissueWorkflowInvocationReceipt,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const ROOT = process.cwd();
@@ -308,6 +310,73 @@ test("agent producer validator distinguishes trusted skill producers from host a
     assert.match(report, /HOST_AGENT_RECEIPTS: 0/);
     assert.match(report, /AGENT_INVOCATIONS: 0/);
     assert.match(report, /COVERAGE_STATUS: skill-producer-receipts-present/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("scoped agent producer validator rejects skill-only completion for required agents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-skill-only-scoped-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/_workflow-transactions/plan.md", "# Plan\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-plan",
+      subjectType: "skill",
+      subjectId: "supervibe:writing-plans",
+      skillId: "supervibe:writing-plans",
+      stage: "plan-draft",
+      invocationReason: "skill-only plan draft",
+      inputEvidence: [".supervibe/artifacts/_workflow-transactions/plan.md"],
+      outputArtifacts: [".supervibe/artifacts/_workflow-transactions/plan.md"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "plan-run",
+    });
+
+    const result = validateScopedAgentProducerReceipts(root, {
+      command: "/supervibe-plan",
+      handoffId: "plan-run",
+      requiredAgentIds: ["supervibe-orchestrator"],
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "skill-only-required-agent-workflow"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-scoped-agent-producer-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reissued recovery receipts do not count as producer proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-recovery-receipt-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/tokens.css", ":root { --color-primary: #123456; }\n");
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "brandbook skill produced candidate tokens",
+      inputEvidence: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+    });
+    await reissueWorkflowInvocationReceipt({
+      rootDir: root,
+      receiptPath: issued.receiptPath,
+      reason: "repair hash drift",
+    });
+
+    const result = validateAgentProducerReceipts(root);
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "recovery-receipt-not-producer-proof"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-agent-producer-receipt"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

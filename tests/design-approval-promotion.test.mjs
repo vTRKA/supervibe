@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,9 @@ import test from "node:test";
 import {
   promoteDesignApprovalState,
 } from "../scripts/lib/design-approval-promotion.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const REQUIRED_SECTIONS = [
   "palette",
@@ -28,6 +31,65 @@ async function writeUtf8(root, relPath, content) {
 
 async function readJson(root, relPath) {
   return JSON.parse(await readFile(join(root, ...relPath.split("/")), "utf8"));
+}
+
+async function writeAgentInvocation(root, {
+  invocationId,
+  agentId,
+  taskSummary,
+  ts = "2026-05-03T00:00:30.000Z",
+  confidenceScore = 9.5,
+}) {
+  const absPath = join(root, ".supervibe", "memory", "agent-invocations.jsonl");
+  await mkdir(dirname(absPath), { recursive: true });
+  await appendFile(absPath, `${JSON.stringify({
+    schemaVersion: 1,
+    invocation_id: invocationId,
+    ts,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: confidenceScore,
+  })}\n`, "utf8");
+  return {
+    source: "agent-invocations-jsonl",
+    invocationId,
+  };
+}
+
+async function issueDesignReceipt(root, {
+  subjectType,
+  subjectId,
+  stage,
+  outputArtifacts,
+  invocationReason,
+  handoffId = "agent-chat",
+  startedAt = "2026-05-03T00:00:00.000Z",
+  completedAt = "2026-05-03T00:01:00.000Z",
+}) {
+  const isHostAgent = ["agent", "worker", "reviewer"].includes(subjectType);
+  const hostInvocation = isHostAgent
+    ? await writeAgentInvocation(root, {
+        invocationId: `${subjectId}-${stage}-invocation`,
+        agentId: subjectId,
+        taskSummary: invocationReason,
+      })
+    : null;
+  await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-design",
+    subjectType,
+    subjectId,
+    agentId: isHostAgent ? subjectId : null,
+    skillId: subjectType === "skill" ? subjectId : null,
+    stage,
+    invocationReason,
+    inputEvidence: [outputArtifacts[0]],
+    outputArtifacts,
+    startedAt,
+    completedAt,
+    handoffId,
+    ...(hostInvocation ? { hostInvocation } : {}),
+  });
 }
 
 test("approval promotion moves design-system and prototype state from candidate to approved", async () => {
@@ -68,6 +130,66 @@ test("approval promotion moves design-system and prototype state from candidate 
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json", `${JSON.stringify({
+      pass: true,
+      confidence: 10,
+      generatedAt: "2026-05-03T12:00:00.000Z",
+    }, null, 2)}\n`);
+
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "creative-director",
+      stage: "stage-1-brand-direction",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      invocationReason: "creative director produced brand direction",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      outputArtifacts: [
+        ".supervibe/artifacts/prototypes/_design-system/tokens.css",
+        ".supervibe/artifacts/prototypes/_design-system/manifest.json",
+        ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+        ".supervibe/artifacts/prototypes/_design-system/styleboard.html",
+      ],
+      invocationReason: "brandbook producer materialized candidate design system",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "ux-ui-designer",
+      stage: "stage-3-screen-spec",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/spec.md"],
+      invocationReason: "ux ui designer produced prototype screen spec",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "prototype-builder",
+      stage: "stage-5-prototype-build",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/index.html"],
+      invocationReason: "prototype builder produced durable prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "ui-polish-reviewer",
+      stage: "stage-6-polish-review",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md"],
+      invocationReason: "ui polish reviewer accepted the prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "accessibility-reviewer",
+      stage: "stage-6-a11y-review",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md"],
+      invocationReason: "accessibility reviewer accepted the prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      stage: "stage-7-quality-gate",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json"],
+      invocationReason: "quality gate reviewer verified provenance and approval evidence",
+    });
 
     const result = await promoteDesignApprovalState(root, {
       slug: "agent-chat",
@@ -76,7 +198,7 @@ test("approval promotion moves design-system and prototype state from candidate 
       feedbackHash: "sha256:test",
     });
 
-    assert.equal(result.pass, true);
+    assert.equal(result.pass, true, JSON.stringify(result, null, 2));
     assert.ok(result.updatedFiles.includes(".supervibe/artifacts/prototypes/_design-system/manifest.json"));
     assert.ok(result.updatedFiles.includes(".supervibe/artifacts/prototypes/_design-system/design-flow-state.json"));
     assert.ok(result.updatedFiles.includes(".supervibe/artifacts/prototypes/agent-chat/.approval.json"));
@@ -163,7 +285,7 @@ test("approval promotion blocks prototype approval when review gate has blocker 
   }
 });
 
-test("approval promotion materializes review and quality-gate artifacts from browser evidence", async () => {
+test("approval promotion blocks prototype approval when browser evidence has no reviewer artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-approval-browser-evidence-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/manifest.json", `${JSON.stringify({
@@ -198,15 +320,14 @@ test("approval promotion materializes review and quality-gate artifacts from bro
       feedbackHash: "sha256:test",
     });
 
-    assert.equal(result.pass, true);
-    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md"));
-    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md"));
-    assert.ok(result.createdFiles.includes(".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json"));
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => /missing|required review/i.test(issue)));
 
-    const qualityGate = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json");
-    assert.equal(qualityGate.pass, true);
-    assert.equal(qualityGate.approvalAllowed, true);
-    assert.equal(qualityGate.missingRequiredReviews.length, 0);
+    assert.equal(
+      existsSync(join(root, ".supervibe", "artifacts", "prototypes", "agent-chat", "_reviews", "quality-gate.json")),
+      false,
+      "approval promotion must not synthesize final quality-gate reviewer evidence",
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

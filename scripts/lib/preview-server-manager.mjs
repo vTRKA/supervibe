@@ -4,6 +4,7 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
+import { request } from 'node:http';
 import { createConnection, createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 
@@ -84,12 +85,31 @@ export async function registerServer({
   logs = null,
   target = null,
   feedbackOverlay = true,
+  kind = null,
+  projectRoot = PROJECT_ROOT,
+  artifactRoot = null,
+  slug = null,
+  targetOrigin = null,
 }) {
   const entries = await readRegistry();
   const filtered = entries.filter(e => e.port !== port);
   filtered.push({
-    port, pid, root, label, watching, mode, logs, target, feedbackOverlay,
+    port,
+    pid,
+    root,
+    label,
+    watching,
+    mode,
+    logs,
+    target,
+    feedbackOverlay,
+    kind: kind || (target ? 'framework-proxy' : 'static-preview'),
+    projectRoot,
+    artifactRoot: artifactRoot || root,
+    slug: slug || deriveRegistrySlug(root, target),
+    targetOrigin: targetOrigin || target || null,
     startedAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
   });
   await writeRegistry(filtered);
 }
@@ -101,11 +121,21 @@ export async function unregisterServer(port) {
   await writeRegistry(filtered);
 }
 
-/** Read registry, auto-prune entries whose PID no longer exists. */
+/** Read registry and surface drift instead of hiding live-but-stale entries. */
 export async function listServers() {
   const entries = await readRegistry();
-  const alive = entries.filter(e => isPidAlive(e.pid));
-  if (alive.length !== entries.length) {
+  const alive = [];
+  for (const entry of entries) {
+    if (!isPidAlive(entry.pid)) continue;
+    const drift = await inspectPreviewRegistryDrift(entry);
+    alive.push({
+      ...entry,
+      lastSeenAt: new Date().toISOString(),
+      driftStatus: drift.status,
+      driftReasons: drift.reasons,
+    });
+  }
+  if (alive.length !== entries.length || JSON.stringify(alive) !== JSON.stringify(entries)) {
     await writeRegistry(alive);
   }
   return alive;
@@ -158,12 +188,34 @@ export async function killServer(port) {
 
 /** Kill all registered servers. */
 export async function killAllServers() {
-  const entries = await listServers();
+  const entries = await readRegistry();
   const results = [];
   for (const e of entries) {
     results.push(await killServer(e.port));
   }
   return results;
+}
+
+async function inspectPreviewRegistryDrift(entry = {}) {
+  const reasons = [];
+  if (!isPidAlive(entry.pid)) reasons.push('pid-dead');
+  if (!Number(entry.port) || !await isPortAcceptingConnections(Number(entry.port), 150)) {
+    reasons.push('port-not-accepting');
+  }
+  if (entry.kind !== 'framework-proxy' && entry.root && !existsSync(entry.root)) {
+    reasons.push('root-missing');
+  }
+  if (!String(entry.label || '').trim()) {
+    reasons.push('label-missing');
+  }
+  if (entry.feedbackOverlay !== false && !reasons.includes('port-not-accepting')) {
+    const overlay = await fetchPreviewOverlayEvidence(Number(entry.port));
+    if (overlay.checked && overlay.overlayPresent !== true) reasons.push('overlay-missing');
+  }
+  return {
+    status: reasons.length ? 'stale' : 'ok',
+    reasons,
+  };
 }
 
 function isPortAcceptingConnections(port, timeoutMs = 75) {
@@ -180,6 +232,33 @@ function isPortAcceptingConnections(port, timeoutMs = 75) {
     socket.once('connect', () => finish(true));
     socket.once('error', () => finish(false));
     socket.once('timeout', () => finish(false));
+  });
+}
+
+function fetchPreviewOverlayEvidence(port, timeoutMs = 200) {
+  return new Promise(resolve => {
+    if (!Number(port)) {
+      resolve({ checked: false, overlayPresent: false });
+      return;
+    }
+    const req = request({ host: '127.0.0.1', port, path: '/', method: 'GET', timeout: timeoutMs }, res => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => {
+        if (body.length < 200_000) body += chunk;
+      });
+      res.on('end', () => resolve({
+        checked: true,
+        status: res.statusCode,
+        overlayPresent: /supervibe-fb-toggle|__supervibeFeedbackTarget|_feedback/.test(body),
+      }));
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ checked: false, overlayPresent: false });
+    });
+    req.on('error', () => resolve({ checked: false, overlayPresent: false }));
+    req.end();
   });
 }
 
@@ -202,4 +281,20 @@ function detectFrameworkDevLabel(rootDir) {
     } catch {}
   }
   return 'framework dev server';
+}
+
+function deriveRegistrySlug(root = '', target = null) {
+  if (target) {
+    try {
+      return `framework:${new URL(target).host}`;
+    } catch {
+      return 'framework:unknown';
+    }
+  }
+  const normalized = String(root || '').replace(/\\/g, '/');
+  for (const segment of ['prototypes', 'mockups', 'presentations']) {
+    const match = normalized.match(new RegExp(`/${segment}/([^/]+)`));
+    if (match) return segment === 'prototypes' ? match[1] : `${segment.slice(0, -1)}:${match[1]}`;
+  }
+  return null;
 }

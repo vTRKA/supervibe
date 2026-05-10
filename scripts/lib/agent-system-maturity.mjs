@@ -235,12 +235,30 @@ export function scoreAgentSystemMaturity({
   );
 
   const total = dimensions.reduce((sum, item) => sum + item.score, 0);
+  const active = validators.activeCommandReadiness || null;
+  const activePenalty = active && active.pass === false && validators.commandContracts?.pass === true ? 1 : 0;
+  const globalScore = Number(Math.min(10, total + activePenalty).toFixed(2));
+  const activeWorkflowScore = active ? (active.pass === true ? 10 : 9) : null;
   return {
     schemaVersion: 1,
     score: Number(total.toFixed(2)),
     maxScore: 10,
     pass: total >= 10,
     status: total >= 10 ? "10-of-10-ready" : total >= 9 ? "near-10-operational-gaps" : "hardening-required",
+    globalMaturity: {
+      score: globalScore,
+      maxScore: 10,
+      pass: globalScore >= 10,
+      status: globalScore >= 10 ? "global-10-of-10-ready" : "global-hardening-required",
+    },
+    activeWorkflowMaturity: active ? {
+      command: active.command || "unknown",
+      score: activeWorkflowScore,
+      maxScore: 10,
+      pass: active.pass === true,
+      status: active.pass === true ? "active-workflow-10-of-10-ready" : "active-workflow-blocked",
+      receiptGate: active.receiptGate || null,
+    } : null,
     dimensions,
     blockers: dimensions.filter((item) => !item.pass).map((item) => ({
       id: item.id,
@@ -255,6 +273,10 @@ export function formatAgentSystemMaturityReport(report = {}) {
     "SUPERVIBE_AGENT_SYSTEM_MATURITY",
     `PASS: ${report.pass === true}`,
     `SCORE: ${report.score || 0}/${report.maxScore || 10}`,
+    `GLOBAL_MATURITY_SCORE: ${report.globalMaturity?.score ?? report.score ?? 0}/${report.globalMaturity?.maxScore || 10}`,
+    `GLOBAL_MATURITY_STATUS: ${report.globalMaturity?.status || "unknown"}`,
+    `ACTIVE_WORKFLOW_MATURITY_SCORE: ${report.activeWorkflowMaturity ? `${report.activeWorkflowMaturity.score}/${report.activeWorkflowMaturity.maxScore}` : "none"}`,
+    `ACTIVE_WORKFLOW_MATURITY_STATUS: ${report.activeWorkflowMaturity?.status || "none"}`,
     `STATUS: ${report.status || "unknown"}`,
     "DIMENSIONS:",
   ];

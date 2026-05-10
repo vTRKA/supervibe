@@ -11,6 +11,9 @@ const { values } = parseArgs({
     reject: { type: 'string', default: '' },
     progress: { type: 'string', default: '' },
     resolution: { type: 'string', default: '' },
+    slug: { type: 'string', default: '' },
+    target: { type: 'string', default: '' },
+    all: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -20,6 +23,9 @@ if (values.help) {
 
 Usage:
   feedback-status.mjs --list
+  feedback-status.mjs --list --slug <prototype-slug>
+  feedback-status.mjs --list --target <feedback-target-id>
+  feedback-status.mjs --list --all
   feedback-status.mjs --progress <id>
   feedback-status.mjs --resolve <id> --resolution .supervibe/artifacts/<prototypes|mockups|presentations>/<slug>/feedback-resolutions/<id>.md
   feedback-status.mjs --reject <id>`);
@@ -50,13 +56,19 @@ if (values.progress) {
 
 const entries = await readFeedbackQueue(queuePath);
 const state = await readFeedbackStatus(statusPath);
-const open = selectOpenFeedback(entries, state, { limit: 20 });
+const open = selectOpenFeedback(entries, state, {
+  limit: 20,
+  slug: values.slug,
+  target: values.target,
+  unresolvedOnly: values.all !== true,
+});
 
 if (open.length === 0) {
   console.log('No open feedback.');
 } else {
   for (const entry of open) {
     const status = state.entries[entry.id]?.status || 'pending';
-    console.log(`${entry.id}\t${status}\t${entry.prototypeSlug || 'unknown'}\t${entry.type || 'unknown'}\t${entry.region?.selector || 'unknown'}\t${entry.comment || ''}`);
+    const targetId = entry.feedbackTargetId || entry.target?.feedbackTargetId || state.entries[entry.id]?.feedbackTargetId || 'unknown';
+    console.log(`${entry.id}\t${status}\t${entry.prototypeSlug || 'unknown'}\t${targetId}\t${entry.type || 'unknown'}\t${entry.region?.selector || 'unknown'}\t${entry.comment || ''}`);
   }
 }

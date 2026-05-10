@@ -77,14 +77,15 @@ function buildWsFrame(text) {
   return Buffer.concat([header, payload]);
 }
 
-export function createFeedbackChannel({ queuePath }) {
+export function createFeedbackChannel({ queuePath, targetContext = null } = {}) {
   const clients = new Set();
 
   async function submit(entry) {
+    const normalized = normalizeFeedbackEntry(entry, targetContext);
     const full = {
       id: randomUUID(),
       timestamp: new Date().toISOString(),
-      ...entry,
+      ...normalized,
     };
     await mkdir(dirname(queuePath), { recursive: true });
     await appendFile(queuePath, JSON.stringify(full) + '\n', 'utf8');
@@ -131,4 +132,25 @@ export function createFeedbackChannel({ queuePath }) {
   }
 
   return { submit, handleUpgrade, attachUpgrade };
+}
+
+function normalizeFeedbackEntry(entry = {}, targetContext = null) {
+  const target = {
+    ...(targetContext || {}),
+    ...(entry.target || {}),
+  };
+  const prototypeSlug = entry.prototypeSlug || target.prototypeSlug || target.slug || 'unknown';
+  const feedbackTargetId = entry.feedbackTargetId
+    || target.feedbackTargetId
+    || [target.kind || 'prototype', prototypeSlug, entry.region?.selector || 'unknown'].join(':');
+  return {
+    ...entry,
+    prototypeSlug,
+    feedbackTargetId,
+    target: {
+      ...target,
+      prototypeSlug,
+      feedbackTargetId,
+    },
+  };
 }

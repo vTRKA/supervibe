@@ -7,6 +7,9 @@ import {
 import {
   validateDesignVariantSet,
 } from "./design-variant-set.mjs";
+import {
+  validateDesignAgentInvocationReceipts,
+} from "./design-agent-orchestration.mjs";
 
 const REQUIRED_DESIGN_REVIEW_FILES = Object.freeze(["polish.md", "a11y.md"]);
 const PROTOTYPE_HIGH_CONFIDENCE_CHECKS = Object.freeze([
@@ -63,13 +66,39 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       });
     }
   }
+  const resolvedReceiptValidation = receiptValidation || (requireReviews && slug
+    ? validateDesignAgentInvocationReceipts(rootDir, {
+      active: true,
+      slug,
+    })
+    : null);
+  if (requireReviews && resolvedReceiptValidation?.pass !== true) {
+    for (const item of resolvedReceiptValidation?.issues || []) {
+      issues.push({
+        code: "design-provenance-invalid",
+        severity: "blocker",
+        file: item.file || ".supervibe/artifacts/_workflow-invocations/supervibe-design",
+        line: 0,
+        message: `${item.code || "receipt-validation"}: ${item.message || "design provenance validation failed"}`,
+      });
+    }
+    if (!resolvedReceiptValidation?.issues?.length) {
+      issues.push({
+        code: "design-provenance-invalid",
+        severity: "blocker",
+        file: ".supervibe/artifacts/_workflow-invocations/supervibe-design",
+        line: 0,
+        message: "quality gate requires trusted scoped producer/reviewer receipts with host invocation evidence before approval",
+      });
+    }
+  }
 
   const blockerCount = issues.filter((item) => item.severity === "blocker").length;
   const highCount = issues.filter((item) => item.severity === "high").length;
   const approvalAllowed = blockerCount === 0 && highCount === 0;
   const confidence = aggregateDesignConfidence({
     qualityIssues: issues,
-    receiptValidation,
+    receiptValidation: resolvedReceiptValidation,
     browserVerification,
   });
 
@@ -83,6 +112,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
     blockerCount,
     highCount,
     approvalAllowed,
+    receiptValidation: resolvedReceiptValidation,
     pass: approvalAllowed,
     confidence,
     reviews,

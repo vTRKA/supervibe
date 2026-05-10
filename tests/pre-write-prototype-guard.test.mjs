@@ -16,6 +16,7 @@ async function fixture({
   approvedSections = REQUIRED_DESIGN_SYSTEM_SECTIONS,
   writeFlowState = true,
   capabilityPlan = false,
+  builderTransaction = false,
 } = {}) {
   const root = await mkdtemp(join(tmpdir(), "supervibe-prototype-guard-"));
   await mkdir(join(root, ".supervibe", "artifacts", "prototypes", "checkout"), { recursive: true });
@@ -41,6 +42,13 @@ async function fixture({
       "## Verification Commands",
       "npm run validate:design-capability-plan",
     ].join("\n"));
+  }
+  if (builderTransaction) {
+    await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", ".prototype-builder-transaction.json"), JSON.stringify({
+      status: "active",
+      subjectId: "prototype-builder",
+      stage: "stage-5-prototype-build",
+    }, null, 2));
   }
   if (approved) {
     const systemDir = join(root, ".supervibe", "artifacts", "prototypes", "_design-system");
@@ -87,7 +95,7 @@ test("prototype guard blocks raw design values after design system approval", as
     const result = await runHook(root, {
       tool_name: "Write",
       tool_input: {
-        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "style.css"),
         content: "<style>.btn{color:#ff00aa;padding:18px}</style>",
       },
     });
@@ -105,13 +113,32 @@ test("prototype guard allows tokenized prototype values after design system appr
     const result = await runHook(root, {
       tool_name: "Write",
       tool_input: {
-        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "style.css"),
         content: "<style>.btn{color:var(--color-primary-500);padding:var(--space-4)}</style>",
       },
     });
 
     assert.equal(result.code, 0);
     assert.match(result.stdout, /"allow"/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype guard blocks durable index writes without prototype-builder transaction or receipt", async () => {
+  const root = await fixture();
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"),
+        content: "<style>.btn{color:var(--color-primary-500);padding:var(--space-4)}</style>",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /prototype index writes require an active prototype-builder transaction/);
+    assert.match(result.stdout, /stage-5-prototype-build receipt/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -180,8 +207,8 @@ test("prototype guard blocks approved design system with missing required sectio
   }
 });
 
-test("prototype guard allows prototype requested after all design-system sections are approved", async () => {
-  const root = await fixture();
+test("prototype guard allows prototype-builder transaction after all design-system sections are approved", async () => {
+  const root = await fixture({ builderTransaction: true });
   try {
     const result = await runHook(root, {
       tool_name: "Write",
@@ -211,6 +238,25 @@ test("prototype guard blocks dependency imports without capability plan", async 
 
     assert.equal(result.code, 2);
     assert.match(result.stdout, /Unapproved dependency coupling detected/);
+    assert.match(result.stdout, /prototype-capability-plan\.md/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prototype guard blocks canvas or 3D writes without capability plan", async () => {
+  const root = await fixture();
+  try {
+    const result = await runHook(root, {
+      tool_name: "Write",
+      tool_input: {
+        file_path: join(root, ".supervibe", "artifacts", "prototypes", "checkout", "scripts", "scene.js"),
+        content: "const canvas = document.querySelector('canvas');\nconst ctx = canvas.getContext('webgl');\n",
+      },
+    });
+
+    assert.equal(result.code, 2);
+    assert.match(result.stdout, /Advanced visual\/canvas\/3D capability detected/);
     assert.match(result.stdout, /prototype-capability-plan\.md/);
   } finally {
     await rm(root, { recursive: true, force: true });

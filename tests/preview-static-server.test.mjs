@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { request } from 'node:http';
@@ -15,7 +15,7 @@ before(async () => {
   await writeFile(join(sandbox, 'index.html'), '<html><body>Hello</body></html>');
   await writeFile(join(sandbox, 'style.css'), 'body { color: red; }');
   await writeFile(join(sandbox, 'app.js'), 'console.log("hi");');
-  server = await startStaticServer({ root: sandbox, port: 0 });
+  server = await startStaticServer({ root: sandbox, port: 0, projectRoot: sandbox });
   port = server.port;
 });
 
@@ -87,6 +87,35 @@ test('SSE endpoint sets correct headers', async () => {
   });
   assert.strictEqual(r.status, 200);
   assert.match(r.headers['content-type'], /text\/event-stream/);
+});
+
+test('feedback overlay queue accepts browser-style submission with target id', async () => {
+  const ws = new WebSocket(`ws://localhost:${port}/_feedback`);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener('open', resolve);
+    ws.addEventListener('error', reject);
+  });
+  const ackPromise = new Promise(resolve => {
+    ws.addEventListener('message', event => resolve(JSON.parse(event.data)));
+  });
+  ws.send(JSON.stringify({
+    prototypeSlug: 'unknown',
+    feedbackTargetId: 'static-preview:unknown',
+    target: { kind: 'static-preview', artifactRoot: sandbox },
+    viewport: 'desktop',
+    region: { selector: 'body', x: 0, y: 0, width: 100, height: 50 },
+    comment: 'static preview target check',
+    type: 'visual',
+  }));
+  const ack = await ackPromise;
+  ws.close();
+  assert.ok(ack.ack);
+
+  const raw = await readFile(join(sandbox, '.supervibe', 'memory', 'feedback-queue.jsonl'), 'utf8');
+  const entry = raw.trim().split('\n').map(line => JSON.parse(line)).find(item => item.comment === 'static preview target check');
+  assert.ok(entry);
+  assert.equal(entry.feedbackTargetId, 'static-preview:unknown');
+  assert.equal(entry.target.artifactRoot, sandbox);
 });
 
 test('server.broadcastReload pushes data to SSE clients', async () => {

@@ -634,7 +634,8 @@ async function main() {
   if (visibleServers.length === 0) {
     console.log(color('○ Preview servers: none running', 'dim'));
   } else {
-    console.log(color(`✓ Preview servers: ${previews.length} running`, 'green'));
+    const driftedPreviews = previews.filter((preview) => preview.driftStatus && preview.driftStatus !== 'ok');
+    console.log(color(`${driftedPreviews.length ? '!' : '✓'} Preview servers: ${previews.length} running${driftedPreviews.length ? `; registry drift=${driftedPreviews.length}` : ''}`, driftedPreviews.length ? 'yellow' : 'green'));
     for (const p of previews) {
       const url = `http://localhost:${p.port}`;
       const ago = ((Date.now() - new Date(p.startedAt).getTime()) / 1000 / 60).toFixed(1);
@@ -643,7 +644,10 @@ async function main() {
         : p.feedbackOverlay === false
           ? '; feedback overlay: off'
           : '';
-      console.log(color(`  ${url}  ${p.label}  (pid=${p.pid}, ${ago}m ago${feedbackNote})`, 'dim'));
+      const driftNote = p.driftStatus && p.driftStatus !== 'ok'
+        ? `; registry drift: ${(p.driftReasons || []).join(',') || p.driftStatus}`
+        : '';
+      console.log(color(`  ${url}  ${p.label}  (pid=${p.pid}, ${ago}m ago${feedbackNote}${driftNote})`, p.driftStatus && p.driftStatus !== 'ok' ? 'yellow' : 'dim'));
     }
   }
 

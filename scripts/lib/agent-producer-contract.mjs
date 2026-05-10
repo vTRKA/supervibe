@@ -47,6 +47,10 @@ function isSkillProducerReceipt(receipt = {}) {
   return String(receipt.subjectType || "").toLowerCase() === "skill";
 }
 
+function isRecoveryReceipt(receipt = {}) {
+  return Boolean(receipt?.recovery || receipt?.runtime?.recovery);
+}
+
 function readAgentInvocationLog(rootDir = process.cwd()) {
   const logPath = join(rootDir, ...AGENT_INVOCATION_LOG_RELATIVE_PATH.split("/"));
   if (!existsSync(logPath)) return [];
@@ -169,6 +173,14 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
   for (const receipt of receipts) {
     if (receipt.__invalidJson) continue;
     if (!isProducerReceipt(receipt)) continue;
+    if (isRecoveryReceipt(receipt)) {
+      issues.push({
+        code: "recovery-receipt-not-producer-proof",
+        file: receipt.__file || "workflow receipt",
+        message: `${receipt.__file || receipt.receiptId}: recovery/reissue receipt is repair evidence only and cannot prove a producer ran before durable output`,
+      });
+      continue;
+    }
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
     for (const message of trust.issues) {
       issues.push({
@@ -266,6 +278,7 @@ export function validateScopedAgentProducerReceipts(rootDir = process.cwd(), opt
   const trustedHostAgentReceiptIds = new Set();
   const receiptBoundInvocationIds = new Set();
   const trustedSubjects = new Set();
+  const scopedSkillReceipts = [];
 
   for (const receipt of receipts) {
     if (receipt.__invalidJson) {
@@ -277,6 +290,15 @@ export function validateScopedAgentProducerReceipts(rootDir = process.cwd(), opt
       continue;
     }
     if (!isProducerReceipt(receipt)) continue;
+    if (isSkillProducerReceipt(receipt)) scopedSkillReceipts.push(receipt);
+    if (isRecoveryReceipt(receipt)) {
+      issues.push({
+        code: "recovery-receipt-not-producer-proof",
+        file: receipt.__file || "workflow receipt",
+        message: `${receipt.__file || receipt.receiptId}: recovery/reissue receipt is repair evidence only and cannot satisfy an active producer stage`,
+      });
+      continue;
+    }
 
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
     for (const message of trust.issues) {
@@ -312,6 +334,13 @@ export function validateScopedAgentProducerReceipts(rootDir = process.cwd(), opt
       file: scopedReceiptFileHint({ command, handoffId, workflowRunId }),
       expectedAgentId: subjectId,
       message: `${subjectId}: missing trusted scoped runtime receipt for ${command || "requested command"}${handoffId ? ` handoff ${handoffId}` : ""}`,
+    });
+  }
+  if (requiredSubjectIds.length > 0 && scopedSkillReceipts.length > 0 && trustedHostAgentReceiptIds.size === 0) {
+    issues.push({
+      code: "skill-only-required-agent-workflow",
+      file: scopedReceiptFileHint({ command, handoffId, workflowRunId }),
+      message: `skill-only receipts cannot complete ${command || "active workflow"} when required agent/reviewer/worker subjects are pending: ${requiredSubjectIds.join(", ")}`,
     });
   }
 
@@ -413,6 +442,9 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", "prototypes", prototype, "index.html"));
     const requiredReviewStage = requireDesignReviewStages && prototypeIndexExists;
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/media-capability-detection.md`, subjectType: "skill", subjectId: "supervibe:design-intelligence", stageId: "stage-4-media-capability-detection" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/prototype-capability-plan.md`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-4-prototype-capability-plan" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/interaction-design-patterns.md`, subjectType: "skill", subjectId: "supervibe:interaction-design-patterns", stageId: "stage-4-interaction-patterns" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/variant-manifest.json`, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
@@ -504,6 +536,7 @@ function normalizeAgentInvocationRecord(record = {}, index = 0) {
 
 function receiptMatchesProducerExpectation(receipt = {}, expectation = {}) {
   if (receipt.__invalidJson || receipt.status !== "completed") return false;
+  if (isRecoveryReceipt(receipt)) return false;
   if (receipt.command !== expectation.command) return false;
   if (receipt.subjectType !== expectation.subjectType) return false;
   if (receipt.stage !== expectation.stageId) return false;
@@ -572,9 +605,13 @@ function receiptMatchesScope(receipt = {}, scope = {}) {
   if (scope.workflowRunId && receipt.workflowRunId !== scope.workflowRunId && receipt.workflow_run_id !== scope.workflowRunId) return false;
   if (scope.requiredSubjectIds?.length) {
     const subjectId = receipt.subjectId || receipt.agentId || receipt.skillId;
-    if (!scope.requiredSubjectIds.includes(subjectId)) return false;
+    if (!scope.requiredSubjectIds.includes(subjectId) && !isSkillProducerReceipt(receipt)) return false;
   }
-  if (scope.requiredSubjectTypes?.size && !scope.requiredSubjectTypes.has(String(receipt.subjectType || "").toLowerCase())) return false;
+  if (
+    scope.requiredSubjectTypes?.size
+    && !scope.requiredSubjectTypes.has(String(receipt.subjectType || "").toLowerCase())
+    && !(scope.requiredSubjectIds?.length && isSkillProducerReceipt(receipt))
+  ) return false;
   if (scope.stageIds?.size && !scope.stageIds.has(receipt.stage)) return false;
   if (scope.outputArtifacts?.length) {
     const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];

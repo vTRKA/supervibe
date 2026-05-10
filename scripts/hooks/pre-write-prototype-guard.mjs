@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import { resolveSupervibeProjectRoot } from '../lib/supervibe-plugin-root.mjs';
 import {
   artifactRoot,
@@ -8,6 +8,10 @@ import {
   legacyProjectArtifactMatch,
 } from '../lib/supervibe-artifact-roots.mjs';
 import { evaluatePrototypeTransition } from '../lib/design-flow-state.mjs';
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from '../lib/supervibe-workflow-receipt-runtime.mjs';
 
 const FRAMEWORK_PATTERNS = [
   /\bimport\s+.+\s+from\s+['"](?!(?:\.{0,2}\/|\/|#))/,
@@ -15,9 +19,18 @@ const FRAMEWORK_PATTERNS = [
   /<script\s+[^>]*src=["'][^"']*(?:unpkg|cdn|jsdelivr|node_modules)/i,
   /\bfrom\s+['"](?:react|vue|svelte|next|nuxt|astro|@angular)/,
 ];
+const ADVANCED_VISUAL_PATTERNS = [
+  /\b<canvas\b/i,
+  /\bgetContext\s*\(\s*['"](?:2d|webgl2?|bitmaprenderer)['"]\s*\)/i,
+  /\bWebGLRenderingContext\b/i,
+  /\bthree(?:\.module)?\.js\b/i,
+  /\bTHREE\./,
+  /\b(?:lottie|rive|pixi|matter|maplibre|echarts|d3)\b/i,
+];
 
 const PROTOTYPE_DIR_RE = /(?:^|[\\/])\.supervibe[\\/]artifacts[\\/]prototypes[\\/][^\\/]+[\\/]/;
 const PROTOTYPE_SURFACE_RE = /\.(?:html|css|js|mjs)$/i;
+const PROTOTYPE_BUILDER_OUTPUT_RE = /(?:^|[\\/])(?:index\.html|variants[\\/][^\\/]+[\\/]index\.html)$/i;
 const UI_SOURCE_RE = /(?:^|[\\/])(?:src|app|pages|components|styles|assets)[\\/].*\.(?:css|scss|sass|less|html|jsx|tsx|vue|svelte|astro)$/i;
 const RAW_HEX_RE = /(?<![A-Za-z0-9_-])#[0-9a-fA-F]{3,8}\b/;
 const TOKENIZED_PX_PROPERTY_RE = /\b(?:margin|padding|gap|inset|top|right|bottom|left|width|height|min-width|max-width|min-height|max-height|border-radius|font-size|line-height|letter-spacing)\s*:\s*[^;]*\b(?!0px\b|1px\b)\d+(?:\.\d+)?px\b/i;
@@ -85,6 +98,58 @@ function hasApprovedPrototypeCapabilityPlan(projectRoot, slug) {
     /Verification Commands/i.test(text);
 }
 
+function normalizeRelPath(value = '') {
+  return String(value || '').split(sep).join('/').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function prototypeArtifactRelPath(projectRoot, filePath) {
+  const rel = normalizeRelPath(relative(projectRoot, filePath));
+  if (!rel.startsWith('..')) return rel;
+  const match = normalizeRelPath(filePath).match(/\.supervibe\/artifacts\/prototypes\/.+$/);
+  return match ? match[0] : rel;
+}
+
+function sameArtifact(left = '', right = '') {
+  const a = normalizeRelPath(left);
+  const b = normalizeRelPath(right);
+  return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+function hasActivePrototypeBuilderTransaction(projectRoot, slug) {
+  const transactionPath = resolve(artifactRoot(projectRoot, 'prototypes'), slug, '.prototype-builder-transaction.json');
+  if (!existsSync(transactionPath)) return false;
+  try {
+    const transaction = JSON.parse(readFileSync(transactionPath, 'utf8'));
+    return String(transaction.status || '').toLowerCase() === 'active' &&
+      String(transaction.subjectId || transaction.agentId || '') === 'prototype-builder' &&
+      String(transaction.stage || transaction.stageId || '') === 'stage-5-prototype-build';
+  } catch {
+    return false;
+  }
+}
+
+function hasTrustedPrototypeBuilderReceipt(projectRoot, artifactRelPath) {
+  return readWorkflowReceipts(projectRoot).some((receipt) => {
+    if (receipt.__invalidJson || receipt.command !== '/supervibe-design') return false;
+    const subjectId = receipt.subjectId ?? receipt.agentId ?? receipt.workerId;
+    if (subjectId !== 'prototype-builder') return false;
+    if (receipt.stage !== 'stage-5-prototype-build') return false;
+    if (receipt.status !== 'completed') return false;
+    if (receipt.recovery || receipt.runtime?.recovery) return false;
+    const outputs = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [];
+    if (!outputs.some((output) => sameArtifact(output, artifactRelPath))) return false;
+    return validateWorkflowReceiptTrust(projectRoot, receipt).pass === true;
+  });
+}
+
+function prototypeBuilderGateReason(projectRoot, slug, filePath) {
+  if (!PROTOTYPE_BUILDER_OUTPUT_RE.test(filePath)) return null;
+  const artifactRelPath = prototypeArtifactRelPath(projectRoot, filePath);
+  if (hasActivePrototypeBuilderTransaction(projectRoot, slug)) return null;
+  if (hasTrustedPrototypeBuilderReceipt(projectRoot, artifactRelPath)) return null;
+  return `${artifactRelPath}: prototype index writes require an active prototype-builder transaction at .supervibe/artifacts/prototypes/${slug}/.prototype-builder-transaction.json or a trusted stage-5-prototype-build receipt before the controller may edit durable prototype output.`;
+}
+
 const event = await readEvent();
 const tool = event.tool_name;
 if (tool !== 'Write' && tool !== 'Edit') emit('allow');
@@ -126,6 +191,13 @@ for (const pat of FRAMEWORK_PATTERNS) {
   }
 }
 
+for (const pat of ADVANCED_VISUAL_PATTERNS) {
+  if (pat.test(content)) {
+    if (hasApprovedPrototypeCapabilityPlan(projectRoot, slug)) continue;
+    emit('block', `Advanced visual/canvas/3D capability detected in prototype write (${pat}). Add .supervibe/artifacts/prototypes/${slug}/decisions/prototype-capability-plan.md before HTML/CSS/JS writes, including screenshot or canvas-pixel verification and reduced-motion fallback evidence.`);
+  }
+}
+
 // Item 7 — approved design-system gate: once tokens/components are approved,
 // prototype surfaces must consume them instead of inventing visual values.
 if (PROTOTYPE_SURFACE_RE.test(path)) {
@@ -133,6 +205,11 @@ if (PROTOTYPE_SURFACE_RE.test(path)) {
   if (!transition.allowed) {
     emit('block', `${transition.reason} Missing sections: ${(transition.missingSections || []).join(', ') || 'N/A'}.`);
   }
+}
+
+if (PROTOTYPE_SURFACE_RE.test(path)) {
+  const builderGateReason = prototypeBuilderGateReason(projectRoot, slug, path);
+  if (builderGateReason) emit('block', builderGateReason);
 }
 
 if (PROTOTYPE_SURFACE_RE.test(path) && hasActiveDesignSystem(projectRoot)) {

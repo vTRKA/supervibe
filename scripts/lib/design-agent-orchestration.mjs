@@ -101,6 +101,7 @@ export function buildDesignAgentPlan({
     referenceSources: sources,
     wizard,
   });
+  const capabilityRequirements = classifyPrototypeCapabilityRequirements(text);
   const variantSet = buildDesignVariantSet({
     slug: slug || "design-run",
     acceptanceContract,
@@ -122,6 +123,13 @@ export function buildDesignAgentPlan({
     skillId: "supervibe:design-intelligence",
     reason: "ground the design in local expert knowledge, tokens, patterns, and accessibility constraints",
   }));
+  if (capabilityRequirements.mediaCapabilityDetection) {
+    stages.push(stage({
+      id: "stage-4-media-capability-detection",
+      skillId: "supervibe:design-intelligence",
+      reason: "media/canvas/3D/map/chart capability detection is blocking before prototype artifact writes",
+    }));
+  }
 
   for (const source of sources) {
     if (source.kind === "website" || source.kind === "figma") {
@@ -175,6 +183,20 @@ export function buildDesignAgentPlan({
     agentId: "ux-ui-designer",
     reason: "screen architecture, states, and component inventory require an explicit UX/UI design pass",
   }));
+  if (capabilityRequirements.prototypeCapabilityPlan) {
+    stages.push(stage({
+      id: "stage-4-prototype-capability-plan",
+      agentId: "prototype-builder",
+      reason: "WOW, motion, 3D, canvas, dependency, or highly interactive briefs require a Prototype Capability Plan before HTML/CSS/JS",
+    }));
+  }
+  if (capabilityRequirements.interactionDesignPatterns) {
+    stages.push(stage({
+      id: "stage-4-interaction-patterns",
+      skillId: "supervibe:interaction-design-patterns",
+      reason: "motion-heavy or WOW briefs require interaction-design-patterns timing, easing, fallback, and verification recipes",
+    }));
+  }
   stages.push(stage({
     id: "stage-4-copy",
     agentId: "copywriter",
@@ -221,6 +243,7 @@ export function buildDesignAgentPlan({
     referenceInventory,
     wizard,
     intent,
+    capabilityRequirements,
     viewportPolicy: {
       ...resolveDesignViewportPolicy({
         target,
@@ -349,6 +372,15 @@ export function buildDesignPrewriteManifest(plan = {}, { slug = null } = {}) {
   const planned = [
     ...protectedArtifacts.map((path) => ({ path, writeClass: writeClassForDesignArtifact(path) })),
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/spec.md`, writeClass: "durable-design-artifacts" },
+    ...(plan.capabilityRequirements?.mediaCapabilityDetection
+      ? [{ path: `.supervibe/artifacts/prototypes/${prototypeSlug}/decisions/media-capability-detection.md`, writeClass: "durable-design-artifacts" }]
+      : []),
+    ...(plan.capabilityRequirements?.prototypeCapabilityPlan
+      ? [{ path: `.supervibe/artifacts/prototypes/${prototypeSlug}/decisions/prototype-capability-plan.md`, writeClass: "durable-design-artifacts" }]
+      : []),
+    ...(plan.capabilityRequirements?.interactionDesignPatterns
+      ? [{ path: `.supervibe/artifacts/prototypes/${prototypeSlug}/decisions/interaction-design-patterns.md`, writeClass: "durable-design-artifacts" }]
+      : []),
     { path: `.supervibe/artifacts/prototypes/${prototypeSlug}/content/copy.md`, writeClass: "durable-design-artifacts" },
     ...prototypeArtifacts,
   ];
@@ -426,7 +458,7 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
   const issues = [];
   const warnings = [];
 
-  if (scope.active && expected.length === 0) {
+  if (scope.active && expected.length === 0 && shouldBlockEmptyActiveDesignScope(rootDir, scope)) {
     issues.push({
       code: "active-design-receipt-scope-empty",
       file: scopeFileHint(scope),
@@ -576,6 +608,11 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   const hostDispatch = resolveHostAgentDispatcher(hostSelection.adapter.id);
   const hostDispatchAvailable = hostDispatch?.status === "supported";
   const callableAgents = new Set(listHostCallableAgentIds(rootDir, hostSelection.adapter.agentsFolder));
+  if (hostSelection.adapter.id === "codex") {
+    for (const agentId of requiredAgentIds) {
+      if (available.has(agentId)) callableAgents.add(agentId);
+    }
+  }
   const missingCallableAgents = requiredAgentIds.filter((agentId) => !callableAgents.has(agentId));
   const hostProofBlocked = Boolean(hostDispatch && hostDispatch.status !== "supported");
   const runtimeProof = buildDesignRuntimeProofStatus(rootDir, plan);
@@ -804,6 +841,15 @@ function designReceiptRequirementsForPlan(plan = {}) {
       })
       : null;
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
+    if (plan.capabilityRequirements?.mediaCapabilityDetection) {
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/decisions/media-capability-detection.md`, subjectType: "skill", subjectId: "supervibe:design-intelligence", stageId: "stage-4-media-capability-detection" });
+    }
+    if (plan.capabilityRequirements?.prototypeCapabilityPlan) {
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/decisions/prototype-capability-plan.md`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-4-prototype-capability-plan" });
+    }
+    if (plan.capabilityRequirements?.interactionDesignPatterns) {
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/decisions/interaction-design-patterns.md`, subjectType: "skill", subjectId: "supervibe:interaction-design-patterns", stageId: "stage-4-interaction-patterns" });
+    }
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
     if (variantSet?.active) {
       add({ command: "/supervibe-design", outputArtifact: variantSet.manifestPath, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
@@ -860,6 +906,23 @@ function designWizardStillOpen(plan = {}) {
     || plan.wizard?.gates?.tokensUnlocked !== true
     || plan.wizard?.gates?.viewportPolicyRecorded === false,
   );
+}
+
+function classifyPrototypeCapabilityRequirements(text = "") {
+  const value = String(text || "");
+  const interactionDesignPatterns = /(?:\bwow\b|вау|креатив|motion|animation|анимац|микро-?interaction|micro-?interaction|transition|easing)/i.test(value);
+  const mediaCapabilityDetection = /(?:\b3d\b|three\.?js|webgl|canvas|pixi|rive|lottie|gsap|maplibre|map\b|chart|echarts|d3\b|video|image|изображ|видео|карта|график)/i.test(value);
+  const prototypeCapabilityPlan = interactionDesignPatterns
+    || mediaCapabilityDetection
+    || /(?:интерактив|interactive|bundled dependency|framework sandbox|dependency|native \/ enhanced|enhanced-native)/i.test(value);
+  return {
+    prototypeCapabilityPlan,
+    interactionDesignPatterns,
+    mediaCapabilityDetection,
+    blockingTriageModes: prototypeCapabilityPlan
+      ? ["native-static", "enhanced-native", "bundled-dependency", "framework-sandbox", "handoff-only"]
+      : [],
+  };
 }
 
 function receiptMatchesRequirement(receipt = {}, requirement = {}) {
@@ -1383,6 +1446,43 @@ function normalizeDesignReceiptScope(options = {}) {
     handoffId: normalizeOptional(options.handoffId || options.handoff),
     workflowRunId: normalizeOptional(options.workflowRunId || options.workflow_run_id),
   };
+}
+
+function shouldBlockEmptyActiveDesignScope(rootDir, scope = {}) {
+  if (scope.slug || scope.handoffId || scope.workflowRunId) return true;
+  return hasPersistedActiveDesignWorkflow(rootDir);
+}
+
+function hasPersistedActiveDesignWorkflow(rootDir) {
+  const files = [
+    join(rootDir, ".supervibe", "memory", "active-workflow.json"),
+    join(rootDir, ".supervibe", "memory", "active-workflows.json"),
+  ];
+  for (const file of files) {
+    if (!existsSync(file)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(file, "utf8"));
+      const items = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.activeWorkflows)
+          ? parsed.activeWorkflows
+          : parsed.command || parsed.workflow || parsed.activeCommand
+            ? [parsed]
+            : [];
+      if (items.some((item) => normalizeWorkflowCommand(item.command || item.workflow || item.activeCommand) === "/supervibe-design")) {
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return false;
+}
+
+function normalizeWorkflowCommand(value = "") {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
 }
 
 function receiptMatchesDesignScope(receipt = {}, scope = {}) {

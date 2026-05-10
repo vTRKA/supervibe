@@ -72,6 +72,7 @@ export async function issueWorkflowInvocationReceipt({
   graphId = null,
   workGraphId = null,
   allowMissingHostInvocationProof = false,
+  recovery = null,
 } = {}) {
   if (!command) throw new Error("command required");
   if (!subjectId) throw new Error("subjectId required");
@@ -141,6 +142,7 @@ export async function issueWorkflowInvocationReceipt({
     runtime,
   };
   if (workItemBinding) canonical.workItemBinding = workItemBinding;
+  if (recovery) canonical.recovery = normalizeRecoveryMetadata(recovery);
   const canonicalHash = sha256(stableStringify(canonical));
   const signature = signCanonical(canonical, resolvedSecret);
   const receipt = {
@@ -374,6 +376,12 @@ export async function reissueWorkflowInvocationReceipt({
     taskId: existing.workItemBinding?.taskId || null,
     graphId: existing.workItemBinding?.graphId || null,
     allowMissingHostInvocationProof: false,
+    recovery: {
+      operation: "reissue",
+      originalReceiptId: existing.receiptId || null,
+      originalReceiptPath: normalizedReceiptPath,
+      reason: reason || "workflow receipt reissued for current artifact hashes",
+    },
   });
   const ledger = rebuildLedger
     ? await rebuildWorkflowReceiptLedger({ rootDir, secret, pruneStale: false })
@@ -814,7 +822,20 @@ function canonicalReceiptForVerification(receipt) {
   if (Object.prototype.hasOwnProperty.call(receipt, "workItemBinding")) {
     canonical.workItemBinding = receipt.workItemBinding || null;
   }
+  if (Object.prototype.hasOwnProperty.call(receipt, "recovery")) {
+    canonical.recovery = receipt.recovery || null;
+  }
   return canonical;
+}
+
+function normalizeRecoveryMetadata(value = null) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    operation: String(value.operation || "recovery"),
+    originalReceiptId: value.originalReceiptId || value.original_receipt_id || null,
+    originalReceiptPath: normalizeRelPath(value.originalReceiptPath || value.original_receipt_path || ""),
+    reason: value.reason || null,
+  };
 }
 
 function isHostAgentSubject(subjectType) {

@@ -215,6 +215,11 @@ await registerServer({
   logs: daemonLogs,
   target: targetMode ? server.target : null,
   feedbackOverlay: !values['no-feedback'],
+  kind: targetMode ? 'framework-proxy' : 'static-preview',
+  projectRoot: PROJECT_ROOT,
+  artifactRoot: targetMode ? null : absRoot,
+  slug: targetMode ? `framework:${new URL(targetOrigin).host}` : null,
+  targetOrigin: targetMode ? server.target : null,
 });
 
 const url = formatPreviewUrl({ port: server.port, root: absRoot, label });

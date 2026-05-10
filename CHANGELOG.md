@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.12] - 2026-05-11
+
+### Fixed
+
+- Hardened active workflow gates so scoped runtime receipts, required agent
+  producers, prototype provenance, final quality gates, preview feedback, and
+  global/active maturity reports are enforced before durable completion claims.
+- Added active workflow and design pipeline regression coverage for skill-only
+  bypasses, prototype-builder write guards, capability planning, feedback
+  target routing, preview registry drift, and strict active command exits.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.12`.
+
 ## [2.1.11] - 2026-05-11
 
 ### Fixed

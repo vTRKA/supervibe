@@ -20,6 +20,9 @@ import {
   validateDesignDiversityBenchmark,
 } from "../validate-design-diversity-benchmark.mjs";
 import {
+  validateDesignCapabilityContracts,
+} from "./design-capability-plan.mjs";
+import {
   validateDesignReadiness,
 } from "../validate-design-readiness.mjs";
 import {
@@ -64,6 +67,7 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
   const readiness = validateDesignReadiness(rootDir);
   const flowGates = validateDesignFlowGates(rootDir);
   const artifactWriteGates = validateDesignArtifactWriteGates(rootDir);
+  const capabilityContracts = validateDesignCapabilityContracts(rootDir);
   const styleboardQa = validateDesignStyleboardQa(rootDir);
   const dynamicQuestions = validateDynamicQuestionSystems();
   const agentContent = validateAgentContentQuality(rootDir);
@@ -84,11 +88,13 @@ function collectDesignAgentMaturityChecks(rootDir = process.cwd()) {
       readiness,
       flowGates,
       artifactWriteGates,
+      capabilityContracts,
       styleboardQa,
       dynamicQuestions,
       variantSetValidator: existsSync(join(rootDir, "scripts", "validate-design-variant-set.mjs"))
         && existsSync(join(rootDir, "scripts", "lib", "design-variant-set.mjs")),
       variantSetScript: Boolean(packageJson.scripts?.["validate:design-variant-set"]),
+      bypassGuards: inspectDesignBypassGuards(rootDir),
     },
     creative: {
       creativeDirectorHasEmotion: /emotional anchors|feeling held in form|user's body/i.test(designFiles.creativeDirector),
@@ -171,16 +177,18 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
   const workflowPass = checks.workflow?.readiness?.pass === true
     && checks.workflow?.flowGates?.pass === true
     && checks.workflow?.artifactWriteGates?.pass === true
+    && checks.workflow?.capabilityContracts?.pass === true
     && checks.workflow?.styleboardQa?.pass === true
     && checks.workflow?.dynamicQuestions?.pass === true
     && checks.workflow?.variantSetValidator === true
-    && checks.workflow?.variantSetScript === true;
+    && checks.workflow?.variantSetScript === true
+    && Object.values(checks.workflow?.bypassGuards || {}).every(Boolean);
   add(
     "design-workflow-gates",
     1.5,
     workflowPass,
-    `readiness=${checks.workflow?.readiness?.pass === true}, flow=${checks.workflow?.flowGates?.pass === true}, writeGates=${checks.workflow?.artifactWriteGates?.pass === true}, styleboardQa=${checks.workflow?.styleboardQa?.pass === true}, dynamicQuestions=${checks.workflow?.dynamicQuestions?.pass === true}, variantSetValidator=${checks.workflow?.variantSetValidator === true}, variantSetScript=${checks.workflow?.variantSetScript === true}`,
-    "Run and fix design readiness, flow, artifact write, styleboard QA, dynamic question, and variant-set validators.",
+    `readiness=${checks.workflow?.readiness?.pass === true}, flow=${checks.workflow?.flowGates?.pass === true}, writeGates=${checks.workflow?.artifactWriteGates?.pass === true}, capability=${checks.workflow?.capabilityContracts?.pass === true}, styleboardQa=${checks.workflow?.styleboardQa?.pass === true}, dynamicQuestions=${checks.workflow?.dynamicQuestions?.pass === true}, variantSetValidator=${checks.workflow?.variantSetValidator === true}, variantSetScript=${checks.workflow?.variantSetScript === true}, bypassGuards=${formatBypassGuards(checks.workflow?.bypassGuards)}`,
+    "Run and fix design readiness, flow, artifact write, capability, styleboard QA, dynamic question, bypass, and variant-set validators.",
   );
 
   const creativePass = Object.values(checks.creative || {}).every(Boolean);
@@ -265,6 +273,27 @@ function inspectDesignSystemOwner(rootDir) {
   const agentInRoster = readText(join(rootDir, "docs", "agent-roster.md")).includes("`design-system-architect`");
   const staleReferences = findStaleDesignSystemArchitectReferences(rootDir).length;
   return { agentExists, agentInRoster, staleReferences };
+}
+
+function inspectDesignBypassGuards(rootDir) {
+  const promotion = readText(join(rootDir, "scripts", "lib", "design-approval-promotion.mjs"));
+  const qualityGate = readText(join(rootDir, "scripts", "lib", "design-quality-gate-aggregator.mjs"));
+  const prewrite = readText(join(rootDir, "scripts", "hooks", "pre-write-prototype-guard.mjs"));
+  const commandPlan = readText(join(rootDir, "scripts", "command-agent-plan.mjs"));
+  const feedbackTests = readText(join(rootDir, "tests", "preview-static-server.test.mjs"))
+    + readText(join(rootDir, "tests", "feedback-channel.test.mjs"));
+  return {
+    promotionProvenance: !/ensureDesignReviewArtifactsFromEvidence/.test(promotion) && /evaluateDesignQualityGate/.test(promotion),
+    qualityGateReceiptValidation: /validateDesignAgentInvocationReceipts/.test(qualityGate) && /design-provenance-invalid/.test(qualityGate),
+    prewritePrototypeBuilderGate: /prototypeBuilderGateReason/.test(prewrite) && /hasTrustedPrototypeBuilderReceipt/.test(prewrite),
+    activeReceiptGate: /commandAgentPlanStrictReady/.test(commandPlan) && /STRICT_READY/.test(commandPlan),
+    mediaCapabilityStages: /stage-4-prototype-capability-plan/.test(readText(join(rootDir, "scripts", "lib", "design-agent-orchestration.mjs"))),
+    feedbackE2E: /feedbackTargetId/.test(feedbackTests) && /WebSocket/.test(feedbackTests),
+  };
+}
+
+function formatBypassGuards(value = {}) {
+  return Object.entries(value || {}).map(([key, pass]) => `${key}=${pass === true}`).join("|") || "none";
 }
 
 function findStaleDesignSystemArchitectReferences(rootDir) {

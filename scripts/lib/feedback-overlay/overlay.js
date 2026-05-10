@@ -117,6 +117,8 @@
     send.addEventListener('click', () => {
       const payload = {
         prototypeSlug: window.__supervibePrototypeSlug || 'unknown',
+        feedbackTargetId: window.__supervibeFeedbackTarget?.feedbackTargetId || `prototype:${window.__supervibePrototypeSlug || 'unknown'}:${sel}`,
+        target: window.__supervibeFeedbackTarget || null,
         viewport: window.__supervibeViewport || `${window.innerWidth}`,
         region: { selector: sel, x: rect.left, y: rect.top, width: rect.width, height: rect.height },
         comment: textarea.value.trim(),

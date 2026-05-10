@@ -19,6 +19,9 @@ test("feedback overlay injects a visible mandatory button and artifact slug", as
   assert.match(html, /Feedback queued/);
   assert.match(html, /Feedback unavailable/);
   assert.match(html, /window\.__supervibePrototypeSlug="checkout"/);
+  assert.match(html, /window\.__supervibeFeedbackTarget=/);
+  assert.match(html, /feedbackTargetId/);
+  assert.match(html, /target: window\.__supervibeFeedbackTarget/);
   const retiredBrand = ["evo", "lve"].join("");
   assert.doesNotMatch(html, new RegExp(["supervibeLegacy", "__" + retiredBrand, retiredBrand + "-fb"].join("|")));
 });

@@ -98,9 +98,14 @@ test("agent-system maturity blocks active 10/10 when command readiness is blocke
 
   assert.equal(report.pass, false);
   assert.ok(report.score < 10);
+  assert.equal(report.globalMaturity.score, 10);
+  assert.equal(report.activeWorkflowMaturity.pass, false);
+  assert.equal(report.activeWorkflowMaturity.score, 9);
   assert.ok(report.blockers.some((blocker) => blocker.id === "command-orchestration"));
   assert.match(formatAgentSystemMaturityReport(report), /activeCommand=\/supervibe-design/);
   assert.match(formatAgentSystemMaturityReport(report), /missingCallable=creative-director\|prototype-builder/);
+  assert.match(formatAgentSystemMaturityReport(report), /GLOBAL_MATURITY_SCORE: 10\/10/);
+  assert.match(formatAgentSystemMaturityReport(report), /ACTIVE_WORKFLOW_MATURITY_SCORE: 9\/10/);
 });
 
 test("agent-system maturity keeps baseline 10/10 when active command readiness is not requested", () => {

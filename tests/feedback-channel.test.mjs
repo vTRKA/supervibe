@@ -30,6 +30,56 @@ test('appends well-formed feedback entry to queue', async () => {
   assert.ok(entry.id);
 });
 
+test('adds durable feedback target metadata from preview context', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'fbq-target-'));
+  const queuePath = join(dir, 'feedback-queue.jsonl');
+  const channel = createFeedbackChannel({
+    queuePath,
+    targetContext: {
+      kind: 'static-preview',
+      prototypeSlug: 'checkout',
+      feedbackTargetId: 'static-preview:checkout',
+      artifactRoot: '/workspace/.supervibe/artifacts/prototypes/checkout',
+      sourceServerPort: 3047,
+    },
+  });
+
+  await channel.submit({
+    region: { selector: '.hero', x: 1, y: 2, width: 3, height: 4 },
+    comment: 'targeted feedback',
+    type: 'layout',
+  });
+
+  const raw = await readFile(queuePath, 'utf8');
+  const entry = JSON.parse(raw.trim().split('\n').pop());
+  assert.equal(entry.prototypeSlug, 'checkout');
+  assert.equal(entry.feedbackTargetId, 'static-preview:checkout');
+  assert.equal(entry.target.artifactRoot, '/workspace/.supervibe/artifacts/prototypes/checkout');
+  assert.equal(entry.target.sourceServerPort, 3047);
+});
+
+test('keeps explicit overlay feedback target over preview defaults', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'fbq-explicit-target-'));
+  const queuePath = join(dir, 'feedback-queue.jsonl');
+  const channel = createFeedbackChannel({
+    queuePath,
+    targetContext: { prototypeSlug: 'default', feedbackTargetId: 'static-preview:default' },
+  });
+
+  await channel.submit({
+    prototypeSlug: 'explicit',
+    feedbackTargetId: 'variant:explicit:v2',
+    target: { variantId: 'v2' },
+    region: { selector: 'main' },
+    comment: 'explicit wins',
+  });
+
+  const entry = JSON.parse((await readFile(queuePath, 'utf8')).trim());
+  assert.equal(entry.prototypeSlug, 'explicit');
+  assert.equal(entry.feedbackTargetId, 'variant:explicit:v2');
+  assert.equal(entry.target.variantId, 'v2');
+});
+
 test('parseWsFrame extracts text payload', () => {
   const payload = Buffer.from('hello');
   const mask = Buffer.from([0xa, 0xb, 0xc, 0xd]);
@@ -68,6 +118,7 @@ test('e2e: WebSocket client → server → queue → ack', async (t) => {
 
   ws.send(JSON.stringify({
     prototypeSlug: 'e2e',
+    feedbackTargetId: 'static-preview:e2e',
     viewport: 'mobile',
     region: { selector: '.x', x: 0, y: 0, width: 10, height: 10 },
     comment: 'e2e ok',
@@ -82,4 +133,5 @@ test('e2e: WebSocket client → server → queue → ack', async (t) => {
   const raw = await readFile(queuePath, 'utf8');
   const entry = JSON.parse(raw.trim().split('\n').pop());
   assert.equal(entry.comment, 'e2e ok');
+  assert.equal(entry.feedbackTargetId, 'static-preview:e2e');
 });

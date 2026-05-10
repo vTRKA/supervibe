@@ -55,7 +55,15 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
   function touch() { lastActivityAt = Date.now(); }
 
   const feedbackQueuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
-  const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath }) : null;
+  const feedbackTargetContext = {
+    kind: 'static-preview',
+    artifactRoot: absRoot,
+    prototypeSlug: derivePreviewArtifactSlug(join(absRoot, 'index.html')),
+    feedbackTargetId: `static-preview:${derivePreviewArtifactSlug(join(absRoot, 'index.html'))}`,
+    sourceServerPort: null,
+    previewUrl: null,
+  };
+  const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath, targetContext: feedbackTargetContext }) : null;
 
   const httpServer = createHttpServer(async (req, res) => {
     touch();
@@ -133,6 +141,11 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
         if (feedback) {
           injected = await injectOverlay(injected, {
             prototypeSlug: derivePreviewArtifactSlug(path),
+            feedbackTarget: {
+              ...feedbackTargetContext,
+              prototypeSlug: derivePreviewArtifactSlug(path),
+              feedbackTargetId: `static-preview:${derivePreviewArtifactSlug(path)}`,
+            },
           });
         }
         const buf = Buffer.from(injected, 'utf8');
@@ -167,6 +180,8 @@ export async function startStaticServer({ root, port = 0, host = '127.0.0.1', fe
   });
 
   const actualPort = httpServer.address().port;
+  feedbackTargetContext.sourceServerPort = actualPort;
+  feedbackTargetContext.previewUrl = `http://${host}:${actualPort}`;
 
   function broadcastReload() {
     touch();

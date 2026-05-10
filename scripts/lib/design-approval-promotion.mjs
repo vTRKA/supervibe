@@ -8,10 +8,6 @@ import {
   evaluateDesignQualityGate,
 } from "./design-quality-gate-aggregator.mjs";
 import {
-  ensureDesignReviewArtifactsFromEvidence,
-  writeDesignQualityGateArtifact,
-} from "./design-review-artifacts.mjs";
-import {
   buildDesignPrototypeStageTriage,
 } from "./design-workflow-status.mjs";
 import {
@@ -43,39 +39,34 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
     };
   }
 
-  await promoteManifest(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
-  await promoteFlowState(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
-  await promoteSectionApprovals(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles, createdFiles });
-  await promoteMarkdownStatuses(rootDir, designSystemRoot, { updatedFiles });
+  let preflightPrototypeRoot = null;
+  let preflightQualityGate = null;
+  if (slug && approvalScope !== "design-system-only") {
+    const prototypeRoot = join(prototypesRoot, slug);
+    if (existsSync(prototypeRoot) && prototypeArtifactExists(prototypeRoot)) {
+      preflightPrototypeRoot = prototypeRoot;
+      preflightQualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
+      if (!preflightQualityGate.approvalAllowed) {
+        issues.push(`prototype quality gate blocked approval: blockers=${preflightQualityGate.blockerCount}, high=${preflightQualityGate.highCount}`);
+        for (const issue of preflightQualityGate.issues) {
+          issues.push(`${issue.file}:${issue.line || 0}: ${issue.severity} ${issue.message}`);
+        }
+        return {
+          pass: false,
+          updatedFiles: [...new Set(updatedFiles)],
+          createdFiles: [...new Set(createdFiles)],
+          issues,
+        };
+      }
+    }
+  }
 
   if (slug) {
     const prototypeRoot = join(prototypesRoot, slug);
     if (existsSync(prototypeRoot)) {
       if (prototypeArtifactExists(prototypeRoot) && approvalScope !== "design-system-only") {
-        const reviewArtifacts = await ensureDesignReviewArtifactsFromEvidence(rootDir, {
-          slug,
-          reviewedBy: approvedBy,
-          reviewedAt: approvedAt,
-        });
-        createdFiles.push(...reviewArtifacts.createdFiles);
-        updatedFiles.push(...reviewArtifacts.updatedFiles);
-        const qualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
-        const qualityGatePath = join(prototypeRoot, "_reviews", "quality-gate.json");
-        const qualityGateExisted = existsSync(qualityGatePath);
-        const qualityGateArtifact = await writeDesignQualityGateArtifact(rootDir, {
-          slug,
-          qualityGate,
-          generatedAt: approvedAt,
-        });
-        if (qualityGateArtifact.written) {
-          (qualityGateExisted ? updatedFiles : createdFiles).push(qualityGateArtifact.path);
-          updatedFiles.push(qualityGateArtifact.path);
-        }
-        if (!qualityGate.approvalAllowed) {
-          issues.push(`prototype quality gate blocked approval: blockers=${qualityGate.blockerCount}, high=${qualityGate.highCount}`);
-          for (const issue of qualityGate.issues) {
-            issues.push(`${issue.file}:${issue.line || 0}: ${issue.severity} ${issue.message}`);
-          }
+        if (preflightPrototypeRoot !== prototypeRoot || !preflightQualityGate?.approvalAllowed) {
+          issues.push("prototype quality gate was not evaluated before approval promotion");
           return {
             pass: false,
             updatedFiles: [...new Set(updatedFiles)],
@@ -83,6 +74,10 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
             issues,
           };
         }
+        await promoteManifest(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+        await promoteFlowState(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+        await promoteSectionApprovals(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles, createdFiles });
+        await promoteMarkdownStatuses(rootDir, designSystemRoot, { updatedFiles });
         await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await writePrototypeApproval(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
         await promoteMarkdownStatuses(rootDir, prototypeRoot, { updatedFiles });
@@ -93,11 +88,20 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
         });
         await writeDesignerPackageManifest(rootDir, designSystemRoot, prototypeRoot, { approvedAt, updatedFiles, createdFiles });
       } else {
+        await promoteManifest(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+        await promoteFlowState(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+        await promoteSectionApprovals(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles, createdFiles });
+        await promoteMarkdownStatuses(rootDir, designSystemRoot, { updatedFiles });
         await promotePrototypeConfig(rootDir, prototypeRoot, { approvedBy, approvedAt, feedbackHash, approvalScope, updatedFiles, createdFiles });
       }
     } else {
       issues.push(`prototype not found: ${normalizeRelPath(relative(rootDir, prototypeRoot))}`);
     }
+  } else {
+    await promoteManifest(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+    await promoteFlowState(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles });
+    await promoteSectionApprovals(rootDir, designSystemRoot, { approvedBy, approvedAt, feedbackHash, updatedFiles, createdFiles });
+    await promoteMarkdownStatuses(rootDir, designSystemRoot, { updatedFiles });
   }
 
   return {

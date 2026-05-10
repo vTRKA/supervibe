@@ -121,18 +121,48 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(JSON.stringify(report, null, 2));
     } else {
       console.log(formatCommandAgentPlan(report.plan));
+      console.log(`STRICT_READY: ${commandAgentPlanStrictReady(report)}`);
+      if (!commandAgentPlanStrictReady(report)) {
+        console.log(`STRICT_BLOCK_REASON: ${commandAgentPlanStrictBlockReason(report)}`);
+      }
       console.log(`HOST_SELECTED: ${report.selectedHost}`);
       console.log(`HOST_CONFIDENCE: ${report.hostConfidence}`);
       console.log(`AVAILABLE_AGENTS: ${report.availableAgentCount}`);
       console.log(`CALLABLE_AGENTS: ${report.callableAgentCount}`);
       console.log(`INSTALLED_ONLY: ${options.installedOnly}`);
     }
-    process.exit(options.strictExit && !report.pass ? 3 : 0);
+    process.exit(options.strictExit && !commandAgentPlanStrictReady(report) ? 3 : 0);
   } catch (error) {
     console.error("SUPERVIBE_COMMAND_AGENT_PLAN_ERROR");
     console.error(`ERROR: ${error.message}`);
     process.exit(2);
   }
+}
+
+export function commandAgentPlanStrictReady(report = {}) {
+  const plan = report.plan || {};
+  return report.pass === true
+    && plan.executionMode !== "agent-required-blocked"
+    && plan.durableWritesAllowed === true
+    && plan.agentOwnedOutputRequiresReceipts !== true
+    && plan.agentDispatchRequired !== true
+    && (plan.missingAgents || []).length === 0
+    && (plan.missingCallableAgents || []).length === 0
+    && (plan.scopedReceiptTrust?.missingSubjects || []).length === 0
+    && !/^pending-/i.test(String(plan.receiptGate || ""));
+}
+
+function commandAgentPlanStrictBlockReason(report = {}) {
+  const plan = report.plan || {};
+  if (report.pass !== true) return "command-agent-plan failed";
+  if (plan.executionMode === "agent-required-blocked") return "required agents are blocked";
+  if ((plan.missingAgents || []).length) return `missing agents: ${plan.missingAgents.join(", ")}`;
+  if ((plan.missingCallableAgents || []).length) return `missing callable agents: ${plan.missingCallableAgents.join(", ")}`;
+  if ((plan.scopedReceiptTrust?.missingSubjects || []).length) return `missing scoped receipts: ${plan.scopedReceiptTrust.missingSubjects.join(", ")}`;
+  if (plan.durableWritesAllowed !== true) return "durable writes are blocked";
+  if (plan.agentOwnedOutputRequiresReceipts === true || plan.agentDispatchRequired === true) return "runtime agent receipts are still pending";
+  if (/^pending-/i.test(String(plan.receiptGate || ""))) return `receipt gate is pending: ${plan.receiptGate}`;
+  return "strict gate is not ready";
 }
 
 export function buildRuntimeCommandAgentPlan({

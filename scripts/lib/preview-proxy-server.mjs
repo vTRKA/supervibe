@@ -113,7 +113,15 @@ export async function startProxyServer({
 } = {}) {
   const targetUrl = normalizeProxyTarget(target);
   const feedbackQueuePath = join(projectRoot, '.supervibe', 'memory', 'feedback-queue.jsonl');
-  const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath }) : null;
+  const feedbackTargetContext = {
+    kind: 'framework-proxy',
+    prototypeSlug: `framework:${targetUrl.host}`,
+    feedbackTargetId: `framework-proxy:${targetUrl.host}`,
+    targetOrigin: targetUrl.origin,
+    sourceServerPort: null,
+    previewUrl: null,
+  };
+  const feedbackChannel = feedback ? createFeedbackChannel({ queuePath: feedbackQueuePath, targetContext: feedbackTargetContext }) : null;
   const sockets = new Set();
   let lastActivityAt = Date.now();
   function touch() { lastActivityAt = Date.now(); }
@@ -149,6 +157,7 @@ export async function startProxyServer({
           const html = Buffer.concat(chunks).toString('utf8');
           const injected = await injectOverlay(html, {
             prototypeSlug: `framework:${targetUrl.host}`,
+            feedbackTarget: feedbackTargetContext,
           });
           const body = Buffer.from(injected, 'utf8');
           res.writeHead(proxyRes.statusCode || 200, responseHeaders(proxyRes.headers, {
@@ -192,6 +201,8 @@ export async function startProxyServer({
   });
 
   const actualPort = httpServer.address().port;
+  feedbackTargetContext.sourceServerPort = actualPort;
+  feedbackTargetContext.previewUrl = `http://${host}:${actualPort}`;
   return {
     port: actualPort,
     target: targetUrl.origin,

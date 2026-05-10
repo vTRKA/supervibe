@@ -28,6 +28,11 @@ export async function ensureFeedbackTracked(statusPath, entries) {
         status: 'pending',
         firstSeenAt: new Date().toISOString(),
         prototypeSlug: entry.prototypeSlug || 'unknown',
+        feedbackTargetId: entry.feedbackTargetId || entry.target?.feedbackTargetId || null,
+        target: entry.target || null,
+        viewport: entry.viewport || null,
+        region: entry.region || null,
+        url: entry.url || null,
       };
       changed = true;
     }
@@ -75,8 +80,15 @@ export async function readFeedbackQueue(queuePath) {
   }
 }
 
-export function selectOpenFeedback(entries, state, { limit = 10 } = {}) {
+export function selectOpenFeedback(entries, state, { limit = 10, slug = '', target = '', unresolvedOnly = true } = {}) {
   return entries
-    .filter(entry => entry?.id && isFeedbackOpen(state, entry.id))
+    .filter(entry => entry?.id)
+    .filter(entry => !unresolvedOnly || isFeedbackOpen(state, entry.id))
+    .filter(entry => !slug || (entry.prototypeSlug || state.entries[entry.id]?.prototypeSlug || '') === slug)
+    .filter(entry => {
+      if (!target) return true;
+      const targetId = entry.feedbackTargetId || entry.target?.feedbackTargetId || state.entries[entry.id]?.feedbackTargetId || '';
+      return targetId === target;
+    })
     .slice(-limit);
 }

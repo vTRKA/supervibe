@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,9 @@ import {
 import {
   syncApprovedPrototypeState,
 } from "../scripts/lib/design-workflow-state-sync.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 async function writeUtf8(root, relPath, content) {
   const absPath = join(root, ...relPath.split("/"));
@@ -19,6 +22,63 @@ async function writeUtf8(root, relPath, content) {
 
 async function readJson(root, relPath) {
   return JSON.parse(await readFile(join(root, ...relPath.split("/")), "utf8"));
+}
+
+async function writeAgentInvocation(root, {
+  invocationId,
+  agentId,
+  taskSummary,
+  ts = "2026-05-06T00:00:00.000Z",
+  confidenceScore = 9.5,
+}) {
+  const absPath = join(root, ".supervibe", "memory", "agent-invocations.jsonl");
+  await mkdir(dirname(absPath), { recursive: true });
+  await appendFile(absPath, `${JSON.stringify({
+    schemaVersion: 1,
+    invocation_id: invocationId,
+    ts,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: confidenceScore,
+  })}\n`, "utf8");
+  return {
+    source: "agent-invocations-jsonl",
+    invocationId,
+  };
+}
+
+async function issueDesignReceipt(root, {
+  subjectType,
+  subjectId,
+  stage,
+  outputArtifacts,
+  invocationReason,
+  handoffId = "agent-chat",
+}) {
+  const isHostAgent = ["agent", "worker", "reviewer"].includes(subjectType);
+  const hostInvocation = isHostAgent
+    ? await writeAgentInvocation(root, {
+        invocationId: `${subjectId}-${stage}-invocation`,
+        agentId: subjectId,
+        taskSummary: invocationReason,
+      })
+    : null;
+  await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-design",
+    subjectType,
+    subjectId,
+    agentId: isHostAgent ? subjectId : null,
+    skillId: subjectType === "skill" ? subjectId : null,
+    stage,
+    invocationReason,
+    inputEvidence: [outputArtifacts[0]],
+    outputArtifacts,
+    startedAt: "2026-05-06T00:00:00.000Z",
+    completedAt: "2026-05-06T00:01:00.000Z",
+    handoffId,
+    ...(hostInvocation ? { hostInvocation } : {}),
+  });
 }
 
 test("design workflow state validator fails when config says no prototype but index exists", async () => {
@@ -105,7 +165,50 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json", `${JSON.stringify({
+      pass: true,
+      confidence: 10,
+      generatedAt: "2026-05-06T00:00:00.000Z",
+    }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/designer-package.json", "{}\n");
+    await issueDesignReceipt(root, {
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      outputArtifacts: [
+        ".supervibe/artifacts/prototypes/_design-system/manifest.json",
+        ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
+      ],
+      invocationReason: "brandbook producer materialized approved design-system state",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "prototype-builder",
+      stage: "stage-5-prototype-build",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/index.html"],
+      invocationReason: "prototype builder produced durable approved prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "ui-polish-reviewer",
+      stage: "stage-6-polish-review",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md"],
+      invocationReason: "ui polish reviewer accepted approved prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "accessibility-reviewer",
+      stage: "stage-6-a11y-review",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md"],
+      invocationReason: "accessibility reviewer accepted approved prototype",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      stage: "stage-7-quality-gate",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/_reviews/quality-gate.json"],
+      invocationReason: "quality gate reviewer verified approved prototype provenance",
+    });
 
     const sync = await syncApprovedPrototypeState(root, {
       slug: "agent-chat",

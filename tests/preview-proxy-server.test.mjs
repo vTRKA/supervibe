@@ -88,6 +88,9 @@ test('proxy keeps browser feedback local and writes queue entries', async () => 
     const entry = JSON.parse(raw.trim().split('\n').pop());
     assert.equal(entry.comment, 'proxy feedback works');
     assert.equal(entry.type, 'layout');
+    assert.equal(entry.feedbackTargetId, `framework-proxy:${new URL(target.url).host}`);
+    assert.equal(entry.target.targetOrigin, target.url);
+    assert.equal(entry.target.sourceServerPort, proxy.port);
   } finally {
     await proxy.stop();
     await target.close();

@@ -108,12 +108,12 @@ test("design agent plan maps source types and stages to explicit agents and skil
 
   assert.equal(plan.requiresReceipts, true);
   assert.equal(plan.receiptDirectory, ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/");
-  assert.equal(plan.executionStatus.executionMode, "agent-required-blocked");
+  assert.equal(plan.executionStatus.executionMode, "real-agents");
   assert.equal(plan.executionStatus.agentsInstalled, true);
-  assert.equal(plan.executionStatus.callableAgentsReady, false);
-  assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
-  assert.equal(plan.executionStatus.producerReceiptsTrusted, false);
-  assert.ok(plan.executionStatus.missingCallableAgents.includes("creative-director"));
+  assert.equal(plan.executionStatus.callableAgentsReady, true);
+  assert.equal(plan.executionStatus.agentReceiptsTrusted, true);
+  assert.equal(plan.executionStatus.producerReceiptsTrusted, true);
+  assert.equal(plan.executionStatus.missingCallableAgents.length, 0);
   assert.equal(plan.executionStatus.missingAgents.length, 0);
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "mode"));
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "viewport"));
@@ -128,9 +128,9 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:design-intelligence" && stage.reason.includes("pdf")));
 
   const prompt = formatDesignPlanPrompt(plan);
-  assert.match(prompt, /EXECUTION_GATE: specialist agents are unavailable/);
-  assert.match(prompt, /AGENT_PROVISIONING:/);
-  assert.match(prompt, /Install missing agents/);
+  assert.match(prompt, /SPECIALIST_QUESTION_GATE:/);
+  assert.doesNotMatch(prompt, /AGENT_PROVISIONING:/);
+  assert.doesNotMatch(prompt, /Install missing agents/);
   assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
 
@@ -185,8 +185,8 @@ test("design agent plan CLI resumes mode and decisions from saved prototype conf
     const parsed = JSON.parse(output);
 
     assert.equal(parsed.plan.mode, "full-prototype-pipeline");
-    assert.equal(parsed.plan.executionStatus.executionMode, "agent-required-blocked");
-    assert.equal(parsed.plan.executionStatus.callableAgentsReady, false);
+    assert.equal(parsed.plan.executionStatus.executionMode, "real-agents");
+    assert.equal(parsed.plan.executionStatus.callableAgentsReady, true);
     assert.equal(parsed.plan.wizard.decisions.reference_borrow_avoid.choiceId, "functional-only");
     assert.equal(parsed.plan.wizard.questionQueue[0].axis, "viewport");
     assert.equal(parsed.plan.wizard.questionQueue[0].step, 3);
@@ -231,6 +231,8 @@ test("design agent plan does not dispatch missing host-callable agents", async (
       root,
       "--plugin-root",
       ROOT,
+      "--host",
+      "cursor",
       "--slug",
       "agent-chat",
       "--dispatch-host-agents",
@@ -249,7 +251,7 @@ test("design agent plan does not dispatch missing host-callable agents", async (
   }
 });
 
-test("design agent plan treats namespaced host agent subfolders as non-callable", async () => {
+test("design agent plan treats Codex logical-role agents as callable even without flat files", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-namespaced-host-"));
   try {
     await writeUtf8(root, ".codex/agents/_design/creative-director.md", "# creative-director\n");
@@ -262,9 +264,8 @@ test("design agent plan treats namespaced host agent subfolders as non-callable"
       hostAdapterId: "codex",
     });
 
-    assert.equal(plan.executionStatus.callableAgentsReady, false);
-    assert.ok(plan.executionStatus.missingCallableAgents.includes("creative-director"));
-    assert.ok(plan.executionStatus.missingCallableAgents.includes("prototype-builder"));
+    assert.equal(plan.executionStatus.callableAgentsReady, true);
+    assert.equal(plan.executionStatus.missingCallableAgents.length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -663,9 +664,35 @@ test("design agent plan uses the same Codex host dispatch capability as command 
     assert.match(output, /HOST_DISPATCH_AVAILABLE: true/);
     assert.match(output, /HOST_DISPATCH: codex:supported/);
     assert.match(output, /HOST_TOOL: spawn_agent/);
+    assert.match(output, /CALLABLE_AGENTS_READY: true/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("design agent plan makes capability triage first-class for WOW motion and 3D briefs", () => {
+  const plan = buildDesignAgentPlan({
+    brief: "Сделай ВАУ интерактивно: 3D canvas hero with motion transitions and charts",
+    target: "web",
+    slug: "wow-lab",
+    mode: "full-prototype-pipeline",
+    designSystemStatus: "approved",
+    rootDir: ROOT,
+    pluginRoot: ROOT,
+    hostAdapterId: "codex",
+    initialDecisions: completedWizardDecisions(),
+  });
+  const stageIds = plan.stages.map((stage) => stage.id);
+  const manifest = buildDesignPrewriteManifest(plan, { slug: "wow-lab" });
+
+  assert.equal(plan.capabilityRequirements.prototypeCapabilityPlan, true);
+  assert.equal(plan.capabilityRequirements.mediaCapabilityDetection, true);
+  assert.equal(plan.capabilityRequirements.interactionDesignPatterns, true);
+  assert.ok(stageIds.includes("stage-4-media-capability-detection"));
+  assert.ok(stageIds.includes("stage-4-prototype-capability-plan"));
+  assert.ok(stageIds.includes("stage-4-interaction-patterns"));
+  assert.ok(manifest.files.some((file) => file.path.endsWith("/decisions/prototype-capability-plan.md")));
+  assert.ok(manifest.nextProducer);
 });
 
 test("design agent plan respects persisted reference scope before choosing next question", async () => {
@@ -1152,6 +1179,42 @@ test("active design receipt validator fails instead of passing checked-zero work
     assert.equal(result.executionMode, "agent-required-blocked");
     assert.ok(result.issues.some((issue) => issue.code === "active-design-receipt-scope-empty"));
     assert.match(result.qualityImpact, /Active design workflow has no scoped durable-output receipt coverage/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("unscoped active design receipt validator skips when no design workflow is active", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-empty-"));
+  try {
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, true);
+    assert.equal(result.checked, 0);
+    assert.equal(result.executionMode, "not-started");
+    assert.deepEqual(result.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("unscoped active design receipt validator blocks persisted active design workflows", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-state-"));
+  try {
+    await writeUtf8(root, ".supervibe/memory/active-workflow.json", JSON.stringify({ command: "/supervibe-design" }));
+
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(result.checked, 0);
+    assert.equal(result.executionMode, "agent-required-blocked");
+    assert.ok(result.issues.some((issue) => issue.code === "active-design-receipt-scope-empty"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
