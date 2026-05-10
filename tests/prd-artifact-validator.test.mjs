@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validatePrdArtifact } from "../scripts/validate-prd-artifacts.mjs";
@@ -71,4 +72,52 @@ test("validatePrdArtifact rejects thin PRDs", () => {
   const issues = validatePrdArtifact(GOOD_PRD.replace("## Success Metrics", "## Metrics").replace("- Contract: endpoint returns documented success and error envelopes.", ""));
   assert.ok(issues.some((issue) => issue.includes("Success Metrics")));
   assert.ok(issues.some((issue) => issue.includes("requirements")));
+});
+
+test("official PRD template validates as a canonical artifact example", async () => {
+  const markdown = await readFile("docs/templates/PRD-template.md", "utf8");
+  assert.deepEqual(validatePrdArtifact(markdown), []);
+});
+
+test("validatePrdArtifact rejects heading-complete but empty PRDs", () => {
+  const shallow = `# PRD: Empty
+
+## Problem Statement
+Nice feature.
+
+## Users And Jobs
+- User one.
+- User two.
+
+## Goals And Non-Goals
+- Goal.
+
+## Scope
+- Scope.
+
+## User Stories
+- Story.
+
+## Requirements
+- Requirement.
+
+## Success Metrics
+- Metric.
+
+## Data And Privacy
+- Data.
+
+## Risks And Open Questions
+- Risk.
+
+## Launch And Readiness
+- Launch.
+
+## Acceptance And Evidence
+- Evidence.
+`;
+  const issues = validatePrdArtifact(shallow);
+  assert.ok(issues.some((issue) => issue.includes("problem statement")));
+  assert.ok(issues.some((issue) => issue.includes("requirements")));
+  assert.ok(issues.some((issue) => issue.includes("success metrics")));
 });

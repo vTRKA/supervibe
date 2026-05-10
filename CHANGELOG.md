@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.14] - 2026-05-11
+
+### Changed
+
+- Recentered planning and review templates on MVP production delivery,
+  anti-bloat scope control, reviewer self-critique, and deploy-only release
+  readiness instead of visible SDLC ceremony.
+- Aligned PRD, ADR, and RFC templates with their artifact validators so
+  official templates act as canonical executable examples.
+- Strengthened plan and plan-review validators with semantic checks for MVP
+  value, anti-bloat, generic acceptance criteria, scorecard evidence, residual
+  risk ownership, and blocked pass verdicts with open major or critical
+  findings.
+
+### Validation
+
+- Added positive template-as-artifact tests and negative shallow-artifact tests
+  for PRD, ADR, RFC, plan, and plan-review validation.
+- Preserved release security, install integrity, workflow receipt, template
+  quality, agent quality, and production evidence gates.
+
 ## [2.1.13] - 2026-05-11
 
 ### Fixed

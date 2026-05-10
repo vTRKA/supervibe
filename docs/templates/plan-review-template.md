@@ -10,7 +10,7 @@
 ## Reviewer Coverage
 
 - supervibe-orchestrator: workflow order, receipts, and next handoff
-- systems-analyst: requirements, MVP boundary, and SDLC completeness
+- systems-analyst: requirements, MVP production slice, anti-bloat boundary, and production-readiness completeness
 - architect-reviewer: architecture, data, cache, queue, and deployment risk
 - quality-gate-reviewer: tests, validators, release gates, rollback, and evidence
 - Triggered specialists: database, cache, queue, security, api, infrastructure, frontend
@@ -63,9 +63,17 @@
 
 ## Residual Risks
 
-| Risk | Accepted | Owner | Rollback |
-| --- | --- | --- | --- |
-| residual risk statement | yes or no | responsible reviewer or owner | rollback action |
+| Risk | Accepted | Owner | Expiry | Rollback | Source |
+| --- | --- | --- | --- | --- | --- |
+| residual risk statement | yes or no | responsible reviewer or owner | revisit trigger or date | rollback action | acceptance source |
+
+## Reviewer Self-Critique
+
+- Weak assumptions inspected: list the assumptions the reviewer challenged before passing the plan.
+- What could be missed: list areas not inspected and why they do not block execution.
+- Hidden failure modes: name failure modes that could still happen despite passing tests.
+- What a senior engineer would reject: list any shortcut, unsupported claim, or weak evidence that would block 10/10.
+- What improves this to 10/10: name the exact evidence required before final production claim.
 
 ## Next User Decision
 

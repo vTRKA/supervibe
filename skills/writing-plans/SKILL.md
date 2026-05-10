@@ -89,7 +89,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 1. **File structure mapping** — list every file to Create/Modify, with one-line responsibility per file.
 2. **Phase decomposition** — group tasks into phases with clear goal + success criteria + prerequisites.
 3. **Scope Safety Gate** — create approved/deferred/rejected scope lists; require user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout and rollback for every accepted scope expansion.
-4. **Delivery strategy** — define SDLC flow, MVP slice, staged rollout, production target, owner/support path, and how the plan reaches production rather than stopping at a partial implementation.
+4. **Delivery strategy** — define MVP production slice, user value, anti-bloat boundary, staged rollout, production target, owner/support path, and how the plan reaches production rather than stopping at a partial implementation.
 5. **Production readiness contract** — specify test pyramid, security/privacy checks, performance/SLO gates, observability, rollback, release notes, migration/runbook needs, and post-release learning.
 6. **Per-task breakdown** with:
    - Files (Create/Modify list)
@@ -97,7 +97,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
    - Verification command + expected output
    - Commit step (or note if commits suppressed)
 7. **Final 10/10 acceptance gate** — define exact evidence needed to call the work production-ready; include "no open blockers" and plan reread requirements.
-8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, SDLC completeness, production-readiness coverage.
+8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, MVP delivery completeness, production-readiness coverage.
 9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file .supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
@@ -317,7 +317,7 @@ Required at end:
 - Every task has bite-sized steps + failing test + verify command + commit
 - Critical path documented
 - Scope Safety Gate documents approved, deferred, rejected, and spiked scope with evidence and tradeoffs
-- Delivery Strategy covers SDLC, MVP, phases, launch, and production target
+- Delivery Strategy covers MVP value, anti-bloat scope control, phases, launch, and production target
 - Production Readiness covers test, security/privacy, performance, observability, rollback, and release
 - Final 10/10 Acceptance Gate requires verification evidence and no open blockers
 - Parallelization batches in Handoff section

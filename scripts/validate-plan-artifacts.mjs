@@ -85,6 +85,22 @@ function hasTaskMetadata(body) {
   return required.filter(([, re]) => !re.test(body)).map(([name]) => name);
 }
 
+function acceptanceBody(body) {
+  const match = /\*\*Acceptance Criteria:\*\*([\s\S]*?)(?=\n\s*-\s+\[[ xX]\]\s+\*\*Step|\n\*\*Stop conditions:\*\*|\n\*\*Rollback:\*\*|\n\*\*Risks:\*\*|$)/i.exec(body);
+  return match ? match[1].trim() : '';
+}
+
+function hasGenericAcceptance(body) {
+  const acceptance = acceptanceBody(body);
+  return [
+    /\bworks correctly\b/i,
+    /\bdone when implemented\b/i,
+    /\bfully implemented\b/i,
+    /\bmake it work\b/i,
+    /\bshould work\b/i,
+  ].some(re => re.test(acceptance));
+}
+
 function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
@@ -141,7 +157,7 @@ export function validatePlanArtifact(markdown) {
   }
 
   const deliveryStrategy = sectionBody(markdown, 'Delivery Strategy');
-  for (const term of ['SDLC', 'MVP', 'phase', 'production']) {
+  for (const term of ['MVP', 'phase', 'production', 'value', 'anti-bloat']) {
     if (!new RegExp(term, 'i').test(deliveryStrategy)) issues.push(`delivery strategy: missing ${term}`);
   }
 
@@ -171,6 +187,7 @@ export function validatePlanArtifact(markdown) {
     if (!hasFailingTest(task.body)) issues.push(`${prefix}: missing failing-test-first/red phase evidence`);
     if (!hasVerification(task.body)) issues.push(`${prefix}: missing verification command/code block`);
     if (!hasCommitStep(task.body)) issues.push(`${prefix}: missing commit/no-commit step`);
+    if (hasGenericAcceptance(task.body)) issues.push(`${prefix}: generic acceptance criteria are not allowed`);
   }
 
   const selfReview = sectionBody(markdown, 'Self-Review');

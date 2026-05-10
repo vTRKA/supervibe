@@ -21,6 +21,20 @@ test("plan review artifact validator rejects missing convergence ledger", async 
   assert.ok(issues.some((issue) => issue.includes("missing section: Convergence Ledger")));
 });
 
+test("plan review artifact validator rejects missing reviewer self-critique", async () => {
+  const markdown = await readFile(FIXTURE, "utf8");
+  const bad = markdown.replace(/^## Reviewer Self-Critique[\s\S]*?(?=^## Next User Decision)/m, "");
+  const issues = validatePlanReviewArtifact(bad);
+  assert.ok(issues.some((issue) => issue.includes("missing section: Reviewer Self-Critique")));
+});
+
+test("plan review artifact validator rejects pass with open major finding", async () => {
+  const markdown = await readFile(FIXTURE, "utf8");
+  const bad = markdown.replace("Major: 0 Open, 2 Resolved", "Major: 1 Open, 1 Resolved");
+  const issues = validatePlanReviewArtifact(bad);
+  assert.ok(issues.some((issue) => issue.includes("pass verdict cannot have open critical or major findings")));
+});
+
 test("plan review artifact validator rejects missing next user decision", async () => {
   const markdown = await readFile(FIXTURE, "utf8");
   const bad = markdown.replace("- Continue to atomization: run `/supervibe-loop --atomize-plan .supervibe/artifacts/plans/review-loop-hardening.md --plan-review-passed`.", "");

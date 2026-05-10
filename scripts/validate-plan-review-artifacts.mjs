@@ -12,6 +12,7 @@ export const PLAN_REVIEW_REQUIRED_SECTIONS = Object.freeze([
   "Findings",
   "Convergence Ledger",
   "Residual Risks",
+  "Reviewer Self-Critique",
   "Next User Decision",
   "Evidence",
 ]);
@@ -101,12 +102,23 @@ export function validatePlanReviewArtifact(markdown) {
     body: sectionBody(markdown, "Plan Review Scorecard"),
     terms: PLAN_REVIEW_DIMENSION_TERMS,
   });
+  const scorecard = sectionBody(markdown, "Plan Review Scorecard");
+  if (!/\|\s*Dimension\s*\|\s*Score\s*\|\s*Evidence\s*\|/i.test(scorecard)) {
+    issues.push("plan review scorecard: missing evidence column");
+  }
   requireTerms({
     issues,
     section: "Findings",
     body: sectionBody(markdown, "Findings"),
     terms: ["Critical", "Major", "Minor", "Resolved", "Open"],
   });
+  const summary = sectionBody(markdown, "Review Summary");
+  const findings = sectionBody(markdown, "Findings");
+  if (/\b(Verdict|plan-review-passed)\b[\s\S]{0,80}\bpass(?:ed)?\b/i.test(summary)) {
+    if (/\b(Critical|Major)\s*:\s*[1-9]\d*\s+Open\b/i.test(findings)) {
+      issues.push("findings: pass verdict cannot have open critical or major findings");
+    }
+  }
   requireTerms({
     issues,
     section: "Convergence Ledger",
@@ -117,7 +129,13 @@ export function validatePlanReviewArtifact(markdown) {
     issues,
     section: "Residual Risks",
     body: sectionBody(markdown, "Residual Risks"),
-    terms: ["Accepted", "Owner", "Rollback"],
+    terms: ["Accepted", "Owner", "Expiry", "Rollback", "Source"],
+  });
+  requireTerms({
+    issues,
+    section: "Reviewer Self-Critique",
+    body: sectionBody(markdown, "Reviewer Self-Critique"),
+    terms: ["Weak assumptions", "What could be missed", "Hidden failure modes", "senior engineer", "10/10"],
   });
   requireTerms({
     issues,

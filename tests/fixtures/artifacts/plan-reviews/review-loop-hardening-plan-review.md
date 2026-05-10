@@ -10,7 +10,7 @@
 ## Reviewer Coverage
 
 - supervibe-orchestrator: confirms workflow order, receipts, and next handoff.
-- systems-analyst: confirms requirements, MVP boundary, and SDLC coverage.
+- systems-analyst: confirms requirements, MVP production slice, anti-bloat boundary, and production-readiness coverage.
 - architect-reviewer: confirms architecture fit, data boundaries, cache and queue topology, and deployment risk.
 - quality-gate-reviewer: confirms tests, validators, release gates, rollback, and evidence.
 - security-auditor: triggered by security and PII risk.
@@ -66,9 +66,17 @@
 
 ## Residual Risks
 
-| Risk | Accepted | Owner | Rollback |
-| --- | --- | --- | --- |
-| Minor documentation polish can be improved after atomization | yes | quality-gate-reviewer | keep plan reviewed and stop before execution if user requests another documentation pass |
+| Risk | Accepted | Owner | Expiry | Rollback | Source |
+| --- | --- | --- | --- | --- | --- |
+| Minor documentation polish can be improved after atomization | yes | quality-gate-reviewer | revisit before release handoff | keep plan reviewed and stop before execution if user requests another documentation pass | review-loop fixture acceptance |
+
+## Reviewer Self-Critique
+
+- Weak assumptions inspected: reviewers challenged whether cache, queue, security, API, and frontend risk triggers had specialist coverage before passing.
+- What could be missed: exact runtime receipts are fixture evidence, so a live run must bind real receipt ids before production execution.
+- Hidden failure modes: a plan could pass format checks while losing acceptance criteria during atomization, so atomization must preserve task evidence.
+- What a senior engineer would reject: pass verdict with open critical or major findings, missing owner for residual risk, or no verification command.
+- What improves this to 10/10: runtime receipts, plan-review-passed flag, full validator run, and no open blockers before execution.
 
 ## Next User Decision
 

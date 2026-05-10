@@ -39,8 +39,8 @@ dimensions:
     evidence-required: "No overlapping parallel write sets, explicit isolation decision, no permission bypass, and no hidden background automation"
   - id: convergence-decision
     weight: 1
-    question: "Does the review loop have a safe stopping point?"
-    evidence-required: "Review iterations, zero open critical or major findings, stop reason, and next user decision"
+    question: "Does the review loop have a safe stopping point and a real reviewer self-critique?"
+    evidence-required: "Review iterations, zero open critical or major findings, stop reason, next user decision, weak assumptions, missed inspection areas, hidden failure modes, senior-engineer rejection criteria, and 10/10 evidence path"
 gates:
   block-below: 9
   warn-below: 10

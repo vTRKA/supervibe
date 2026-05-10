@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateRfcArtifact } from "../scripts/validate-rfc-artifacts.mjs";
@@ -64,4 +65,45 @@ test("validateRfcArtifact accepts a complete RFC", () => {
 test("validateRfcArtifact rejects missing rollout contract", () => {
   const issues = validateRfcArtifact(GOOD_RFC.replace("## Rollout And Rollback", "## Launch"));
   assert.ok(issues.some((issue) => issue.includes("Rollout And Rollback")));
+});
+
+test("official RFC template validates as a canonical artifact example", async () => {
+  const markdown = await readFile("docs/templates/RFC-template.md", "utf8");
+  assert.deepEqual(validateRfcArtifact(markdown), []);
+});
+
+test("validateRfcArtifact rejects heading-complete but empty RFCs", () => {
+  const shallow = `# RFC: Empty
+
+## Summary
+- Summary.
+
+## Motivation
+- Motivation.
+
+## Proposal
+- Proposal.
+
+## Contracts
+- Contract.
+
+## Compatibility And Migration
+- Migration.
+
+## Rollout And Rollback
+- Rollout.
+
+## Verification Plan
+- Verification.
+
+## Security Privacy Observability
+- Security.
+
+## Open Questions
+- Question.
+`;
+  const issues = validateRfcArtifact(shallow);
+  assert.ok(issues.some((issue) => issue.includes("summary")));
+  assert.ok(issues.some((issue) => issue.includes("proposal")));
+  assert.ok(issues.some((issue) => issue.includes("contracts")));
 });

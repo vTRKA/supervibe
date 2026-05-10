@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateAdrArtifact } from "../scripts/validate-adr-artifacts.mjs";
@@ -53,5 +54,45 @@ test("validateAdrArtifact accepts a complete ADR", () => {
 
 test("validateAdrArtifact rejects missing alternatives", () => {
   const issues = validateAdrArtifact(GOOD_ADR.replace("- Async job: benefit scale, cost queue operations, risk support complexity.\n- Streaming service: benefit bounded memory, cost stream tests, risk client compatibility.", ""));
+  assert.ok(issues.some((issue) => issue.includes("alternatives")));
+});
+
+test("official ADR template validates as a canonical artifact example", async () => {
+  const markdown = await readFile("docs/templates/ADR-template.md", "utf8");
+  assert.deepEqual(validateAdrArtifact(markdown), []);
+});
+
+test("validateAdrArtifact rejects heading-complete but empty ADRs", () => {
+  const shallow = `# ADR: Empty
+
+## Status
+- Accepted.
+
+## Context
+- Context.
+
+## Decision
+- Decision.
+
+## Alternatives
+- A.
+- B.
+- C.
+
+## Consequences
+- Consequence.
+
+## Compatibility And Migration
+- Compatibility.
+
+## Rollback And Review
+- Rollback.
+
+## Evidence
+- Evidence.
+`;
+  const issues = validateAdrArtifact(shallow);
+  assert.ok(issues.some((issue) => issue.includes("context")));
+  assert.ok(issues.some((issue) => issue.includes("decision")));
   assert.ok(issues.some((issue) => issue.includes("alternatives")));
 });

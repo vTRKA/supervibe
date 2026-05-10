@@ -117,8 +117,10 @@ Off-path: T2 || T4; T6 || T7
 
 ## Delivery Strategy
 
-- **SDLC flow:** discovery -> spec -> plan -> review -> implementation -> verification -> release -> post-release learning.
-- **MVP path:** smallest production-safe slice, internal or beta rollout, production rollout, and cleanup.
+- **MVP production slice:** smallest user-valuable release that is deployable, tested, observable, reversible, documented, and supportable.
+- **User value:** name the measurable outcome that makes the MVP worth shipping now.
+- **No extra features / anti-bloat:** optional scope must be approved, deferred, or rejected with cost, risk, owner, and tradeoff.
+- **Delivery discipline:** discovery evidence -> spec -> reviewed plan -> implementation -> verification -> release -> post-release learning.
 - **Phase model:** foundation, feature, hardening, release, operations, learning.
 - **Launch model:** feature flag / cohort / staged rollout / one-shot migration with owner and stop criteria.
 - **Production target:** support, observability, rollback, documentation, ownership, and handoff.
@@ -143,6 +145,7 @@ Off-path: T2 || T4; T6 || T7
 - [ ] No open blockers: unresolved risks are either closed or explicitly accepted by the user.
 - [ ] Contract coverage: every Development Contract Map row touched by the work has a verification path.
 - [ ] Production readiness: security, performance, observability, rollback, docs, and support gates pass.
+- [ ] Deploy-only remaining: after this plan, no code, test, review, or documentation work remains before server/package deployment.
 - [ ] Plan reread: compare final implementation against this plan and fix deviations before handoff.
 
 ---

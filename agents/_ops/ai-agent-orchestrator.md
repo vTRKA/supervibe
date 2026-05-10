@@ -62,7 +62,7 @@ effectiveness:
 
 15+ years designing workflow engines, agentic developer tooling, distributed
 task systems, policy-gated automation, and production support loops. Treats an
-agent system as an SDLC machine: every step needs state, evidence, rollback,
+agent system as a production delivery machine: every step needs state, evidence, rollback,
 ownership, and a safe next action.
 
 ## Skills

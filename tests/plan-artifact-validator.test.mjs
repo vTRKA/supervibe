@@ -76,8 +76,10 @@ Off-path parallel candidates: T4 || T5
 
 ## Delivery Strategy
 
-- SDLC flow: discovery -> spec -> plan -> review -> implementation -> verification -> release.
 - MVP path: ship CSV export behind an internal gate before broad production exposure.
+- User value: finance admins can finish monthly reconciliation without engineering support.
+- Anti-bloat: PDF export, analytics, and async queue are rejected or deferred until evidence justifies them.
+- Delivery discipline: discovery -> spec -> plan -> review -> implementation -> verification -> release.
 - Phase plan: foundation, behavior, hardening, release.
 - Production target: export is supportable, observable, documented, and reversible.
 
@@ -172,7 +174,7 @@ test('validatePlanArtifact catches missing readiness fields', () => {
   assert.ok(issues.some(issue => issue.includes('rollback')));
 });
 
-test('validatePlanArtifact requires production SDLC and final 10/10 gate', () => {
+test('validatePlanArtifact requires production delivery and final 10/10 gate', () => {
   const issues = validatePlanArtifact(
     GOOD_PLAN
       .replace('## Scope Safety Gate', '## Scope Notes')
@@ -187,6 +189,11 @@ test('validatePlanArtifact requires production SDLC and final 10/10 gate', () =>
 test('validatePlanArtifact rejects placeholder wording', () => {
   const issues = validatePlanArtifact(`${GOOD_PLAN}\n\nTBD`);
   assert.ok(issues.some(issue => issue.includes('placeholders')));
+});
+
+test('validatePlanArtifact rejects generic acceptance criteria', () => {
+  const issues = validatePlanArtifact(GOOD_PLAN.replace('Requirement REQ1 exports CSV rows with approved columns.', 'The feature works correctly.'));
+  assert.ok(issues.some(issue => issue.includes('generic acceptance criteria')));
 });
 
 test('validate-plan-artifacts CLI fails bad file', async () => {

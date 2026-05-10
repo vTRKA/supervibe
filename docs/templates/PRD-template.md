@@ -1,155 +1,88 @@
-# PRD: <Feature Name>
+# PRD: Example Production Feature
 
-**Status:** draft | review | accepted | shipped | deprecated
-**Author:** <name>
-**Date:** YYYY-MM-DD
-**Reviewers:** <names>
-**Related:** <PRD/ADR/plan refs>
+**Status:** draft
+**Author:** product owner
+**Date:** 2026-05-11
+**Reviewers:** engineering lead, design lead, quality gate reviewer
+**Related:** ADR, RFC, implementation plan, plan review
 
----
+Use this as a canonical PRD shape. Replace the example values with project-specific facts while preserving every section and evidence requirement.
 
-## TL;DR
+## Problem Statement
 
-<3 sentences max. What it is. Who it's for. Why now.>
+- Problem: operators cannot complete the monthly export workflow without asking engineering for manual data pulls.
+- User: finance admin and support lead.
+- Impact: reconciliation takes 2 days each month and support answers are delayed.
+- Current workaround: support files an engineering request and waits for an ad hoc export.
 
----
+## Users And Jobs
 
-## Problem
+- Finance admin: export approved invoice rows, reconcile payments, and confirm monthly close without engineering help.
+- Support lead: answer billing tickets using approved invoice data and documented permission boundaries.
 
-<1-2 paragraphs. What's broken / missing today, with user evidence.>
+## Goals And Non-Goals
 
-**User research grounding:**
-- Source: <link / file ref>
-- Sample size: <N users>
-- Key insight: <quote or finding>
+- Goal: ship the smallest production-safe export workflow that solves the user job end to end.
+- Goal: preserve permissions, privacy, observability, rollback, and support readiness.
+- Non-goal: add PDF export, advanced analytics, or background automation without a new scope decision.
 
----
+## Scope
 
-## Users
-
-### Persona 1: <name>
-- **Role / context**: ...
-- **Top 3 pains**: ...
-- **Top 3 jobs-to-be-done**: ...
-- **Current workaround**: ...
-
-### Persona 2: <name>
-(same fields)
-
----
-
-## Competitive landscape
-
-| Product | What they do | What's good | What's missing |
-|---------|--------------|-------------|----------------|
-
----
-
-## Goals (Success Metrics)
-
-| Metric | Baseline | Target | Measurement | Trigger if missed |
-|--------|----------|--------|-------------|-------------------|
-
-(>=3 metrics; >=1 leading + >=1 lagging)
-
----
-
-## Non-Goals
-
-- ...
-
----
+- Included: CSV export with approved columns, role checks, audit event, and user-facing error behavior.
+- Deferred: async queue until export duration exceeds 30s with production evidence.
+- Rejected: PDF export because it adds QA, support, and layout complexity without current user evidence.
+- Tradeoff: keep the first release synchronous to reduce operational surface while preserving a clear upgrade path.
 
 ## Scope Safety Gate
 
-| Candidate capability | Must / Should / Could / Won't | Evidence | Complexity cost | Decision |
-|----------------------|-------------------------------|----------|-----------------|----------|
-| ... | ... | ... | ... | include / defer / reject / spike |
+| Candidate capability | Decision | Evidence | Complexity cost | Tradeoff |
+|---|---|---|---|---|
+| CSV export with approved columns | include | solves the monthly reconciliation job | low | direct MVP value |
+| Async queue | defer | needed only after 30s export evidence | medium | avoids premature operations surface |
+| PDF export | reject | no current user evidence | high | prevents hidden QA and support cost |
+| Advanced analytics | spike | needs separate product evidence | medium | avoids unapproved scope expansion |
 
-**Do not build now:** ...
-**Why not:** ...
-**Smallest production-safe release:** ...
-**Promotion trigger for deferred items:** ...
+## User Stories
 
----
+- As a finance admin, I can export filtered invoice rows so that monthly reconciliation finishes without engineering support.
+- As a support lead, I can see a documented permission error when my role is missing so that I do not request unsafe access.
 
-## AI/Data Boundary
+## Requirements
 
-| Data or surface | Allowed for agents/MCPs? | Redaction required | Approval required |
-|-----------------|--------------------------|--------------------|-------------------|
-| Source code | yes/no | <paths/fields> | <when> |
-| Customer/user data | yes/no | <PII fields> | <approver> |
-| Figma/design files | yes/no | <hidden layers/assets> | <file/node scope> |
-| Browser screenshots | yes/no | <regions to blur> | <when> |
-| External APIs/tools | yes/no | <request/response fields> | <tool/action scope> |
+- Behavior: export selected rows exactly once, preserve filter order, and return a clear error for invalid filters.
+- Data: export schema includes approved invoice columns only and excludes raw PII fields.
+- Contract: endpoint returns documented success, validation, authorization, and rate-limit error envelopes.
 
-**Never share:** <secrets, raw tokens, credentials, production PII, internal URLs, screenshots with private data>.
-**Approval boundary:** <which MCP, Figma, browser, network, or remote mutation actions require exact approval>.
+## Success Metrics
 
----
+- Export completes in 2s for 10000 rows in the target staging dataset.
+- Authorization failures return 100% documented errors in integration tests.
+- Monthly engineering export requests drop from 4 requests to 0 requests after release.
 
-## User stories with acceptance criteria
+## Data And Privacy
 
-### Story 1: <name>
-**As a** <persona>, **I want** <goal>, **so that** <benefit>.
+- PII: only approved invoice fields appear in the export.
+- Permission: finance role is required for export access.
+- Redaction: logs omit customer email, address, token, and raw payment fields.
+- Retention: generated files expire after 1 day unless policy requires shorter retention.
 
-**Acceptance criteria** (Gherkin):
-```gherkin
-Given <precondition>
-When <action>
-Then <observable outcome>
-```
+## Risks And Open Questions
 
----
+- Risk: CSV injection can execute formulas in spreadsheet tools; mitigation is escaping formula-leading characters.
+- Risk: export latency can exceed budget for large customers; mitigation is streaming and the async queue trigger.
+- Open question: confirm the timezone used for month filters before implementation.
 
-## Solution overview
+## Launch And Readiness
 
-<High-level. Architecture details belong in companion ADR.>
+- Test: unit, integration, authorization, CSV injection, and smoke tests pass.
+- Rollout: internal finance cohort first, then production cohort after metric review.
+- Rollback: feature flag disables the route and hides the action.
+- Support: support note documents fields, errors, escalation, and known limits.
+- Observability: export duration metric, failure counter, audit event, and alert exist.
 
----
+## Acceptance And Evidence
 
-## Risks
-
-- **R1 (severity: high)**: <description>; mitigation: <how>
-
-(>=3 entries; >=1 product/UX risk)
-
----
-
-## Deprecation plan (if applicable)
-
-OR: "No deprecation - additive feature only."
-
----
-
-## Instrumentation plan
-
-**Tracked events:** <list with properties>
-**Dashboards:** <existing + new>
-**Alerts:** <thresholds + oncall routing>
-
----
-
-## Launch checklist
-
-- [ ] Acceptance criteria verified in staging
-- [ ] Success metrics instrumentation deployed
-- [ ] Documentation updated
-- [ ] Support team briefed
-- [ ] Rollback procedure tested
-- [ ] Feature flag configured
-- [ ] Monitoring/alerting wired
-
----
-
-## Open questions
-
-(>=3, mandatory non-empty)
-
----
-
-## Appendix
-
-- Data: <links>
-- Screenshots: <paths>
-- References: <links>
+- 10/10 acceptance: each requirement maps to a task, test, and verification artifact.
+- Verification: targeted validator checks and full release checks pass before launch.
+- Source citations: plan cites route map, service pattern, permission policy, and test fixtures.
+- Blocker: no open critical or major blocker remains before production release.

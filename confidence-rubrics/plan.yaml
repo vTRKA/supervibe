@@ -1,18 +1,18 @@
 artifact: implementation-plan
 max-score: 10
 dimensions:
-  - id: phase-decomposition
+  - id: mvp-production-slice
     weight: 2
-    question: "Is the plan decomposed into phases, each with explicit goal, tasks, and success criteria?"
-    evidence-required: "Phases enumerated with goal sentences and bulleted tasks"
+    question: "Does the plan define the smallest user-valuable production slice, anti-bloat boundary, release owner, and deploy-only completion target?"
+    evidence-required: "MVP production slice, user value, approved/deferred/rejected scope, anti-bloat gate, owner, and deploy-only acceptance"
   - id: task-granularity
     weight: 2
     question: "Is every task bite-sized (2-5 minutes), with concrete files-to-touch and code shown?"
     evidence-required: "Tasks contain Files section (Create/Modify) and code blocks for code steps"
   - id: verification-evidence
     weight: 2
-    question: "Does every phase end with a verification command and expected output?"
-    evidence-required: "Verification section per phase with bash command and expected stdout/exit-code"
+    question: "Does every task and release gate include a verification command, expected evidence, and no generic acceptance criteria?"
+    evidence-required: "Verification command per task, expected stdout/exit-code, and concrete acceptance criteria"
   - id: spec-coverage
     weight: 1
     question: "Does every requirement in the source spec map to at least one task?"

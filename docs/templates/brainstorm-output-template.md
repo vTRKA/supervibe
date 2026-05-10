@@ -48,12 +48,12 @@
 
 ---
 
-## Product and SDLC fit
+## Product and MVP delivery fit
 
 ### Project type
 - MVP | production feature | migration | experiment | refactor | incident follow-up
 
-### SDLC path
+### MVP delivery path
 - Discovery evidence:
 - Requirements and contracts needed:
 - Implementation phases:
