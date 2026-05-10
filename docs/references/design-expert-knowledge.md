@@ -174,6 +174,100 @@ this direction fits the product better than the rejected ones. If a direction
 cannot name that tradeoff or prove a different layout/motion/interaction
 signature, it is a variation, not an alternative.
 
+## Anti-Generic AI Aesthetic Gate
+
+The phrase **generic AI-generated aesthetics** is a named failure mode. A design
+agent must not treat a polished but interchangeable screen as creative work.
+When the brief asks for strong visual quality, the artifact must pass these
+gates before it can be approved:
+
+1. **Anti-Generic AI Aesthetic Gate**: reject cookie-cutter layouts, default
+   SaaS cards, vague glass panels, and "looks modern" output that could belong
+   to any product.
+2. **No Cliche Palette Gate**: reject unsupported purple gradients, soft
+   aurora washes, and evenly timid palettes unless product evidence explains
+   why that palette is right.
+3. **No Default Font Gate**: do not choose Inter, Roboto, Arial, or system
+   fonts by default. If one is used, record the product reason and the rejected
+   alternatives.
+4. **Bold Aesthetic Direction Gate**: choose a clear aesthetic point of view
+   before producing a full creative direction. Examples include editorial,
+   luxury, industrial, organic, playful, brutalist, art deco, retro-future, or
+   restrained operational utility.
+5. **Product-Specific Visual Language Gate**: explain why the visual language
+   belongs to this product, audience, trust burden, platform, and workflow.
+6. **Unforgettable Detail Gate**: name one memorable visual, composition,
+   motion, narrative, or interaction signature that a user would remember after
+   the first screen.
+7. **Typography Courage Gate**: defend display/body pairing, hierarchy,
+   language coverage, loading strategy, fallback, and brand voice.
+8. **Composition Diversity Gate**: alternatives must differ on at least three
+   axes across palette, typography, motion, imagery, hierarchy, density,
+   composition, and interaction.
+9. **Same Shell New Paint Rejection**: color swaps, font swaps, and card spacing
+   tweaks are iterations, not new creative directions.
+10. **Reference Role Gate**: every external reference records role, tier,
+    capture date, what to borrow, what to avoid, and fit rationale.
+11. **Creative Benchmark Freshness Gate**: live creative benchmarks older than
+    90 days are historical evidence unless recaptured.
+12. **Motion Meaning Gate**: motion must clarify cause-effect, state change,
+    attention direction, or brand tempo.
+13. **Reduced Motion Gate**: vestibular-triggering effects are removed, not just
+    shortened, under reduced-motion preferences.
+14. **Transition Discipline Gate**: `transition: all` is forbidden; list
+    animated properties explicitly.
+15. **Transform Opacity Gate**: prefer transform and opacity for compositor-safe
+    animation.
+16. **Focus Visible Gate**: every interactive element has a visible keyboard
+    focus state.
+17. **Semantic Interaction Gate**: use buttons for actions and links for
+    navigation.
+18. **Text Overflow Gate**: long content uses wrapping, truncation, line clamp,
+    or break rules instead of escaping its container.
+19. **Flex Min Width Gate**: flex children that truncate must include `min-w-0`
+    or an equivalent min-width reset.
+20. **Numeric Alignment Gate**: metric columns and comparisons use
+    `font-variant-numeric: tabular-nums` or an equivalent tabular-nums utility.
+21. **Anchor Offset Gate**: heading anchors use `scroll-margin-top` when sticky
+    or fixed headers can cover linked content.
+22. **Translation Safety Gate**: brand names, identifiers, and code tokens use
+    `translate="no"` or an equivalent no-translate treatment.
+23. **Locale Formatting Gate**: dates, numbers, and currency use
+    `Intl.DateTimeFormat`, `Intl.NumberFormat`, or a locale-aware platform
+    formatter rather than hardcoded strings.
+24. **Hydration and Media Stability Gate**: inputs, images, dark mode, safe
+    areas, lazy loading, critical media priority, and URL state must avoid
+    layout shift, hydration mismatch, and broken deep links.
+
+## Web Interface Micro-Polish
+
+Use this web checklist when reviewing prototypes, framework screens, landing
+pages, dashboards, extension views, and handoff-ready HTML:
+
+- Accessibility: icon-only buttons have accessible names, form controls have
+  labels, semantic elements come before ARIA, dynamic updates use polite live
+  regions, and focus order is testable from the keyboard.
+- Focus states: use visible `:focus-visible` treatment and never remove
+  outlines without a stronger replacement.
+- Forms: use meaningful names, autocomplete tokens, correct input types, inline
+  errors, first-error focus, and paste-friendly inputs.
+- Animation: honor reduced motion, animate transform or opacity where possible,
+  avoid `transition: all`, and keep animations interruptible.
+- Typography and numbers: use balanced headings where supported, ellipsis and
+  wrapping intentionally, and `tabular-nums` for changing or comparable numbers.
+- Content handling: long names, empty arrays, long translations, and user text
+  must not break layout; flex children that truncate need `min-w-0`.
+- Images and media: meaningful images have alt text and dimensions; below-fold
+  media is lazy; above-fold critical media is prioritized.
+- Navigation and state: filters, tabs, pagination, and expanded panels should
+  deep-link through URL state when the user expects reload/share behavior.
+- Touch and safe areas: mobile targets, safe-area insets, overscroll behavior,
+  tap highlight, and gesture zones must be intentional.
+- Locale and translation: use locale-aware date, number, and currency
+  formatting, and mark brands, ids, and code tokens with no-translate handling.
+- Hydration safety: server/client date, time, theme, input, and browser-only
+  values must not create hydration mismatch or first-paint flicker.
+
 ## Eight-Pass Expert Routine
 
 This is an adaptive coverage routine, not a fixed eight-step user gauntlet.

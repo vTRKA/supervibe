@@ -62,6 +62,55 @@ const REGULATED_TRUST_REQUIRED = Object.freeze([
   /Domain evidence/i,
 ]);
 
+const ANTI_GENERIC_AESTHETIC_REQUIRED = Object.freeze([
+  /Anti-Generic AI Aesthetic Gate/i,
+  /generic AI-generated aesthetics/i,
+  /Bold Aesthetic Direction Gate/i,
+  /Product-Specific Visual Language Gate/i,
+  /Unforgettable Detail Gate/i,
+  /Typography Courage Gate/i,
+  /Inter, Roboto, Arial/i,
+  /purple gradients/i,
+]);
+
+const WEB_INTERFACE_MICRO_POLISH_REQUIRED = Object.freeze([
+  /Web Interface Micro-Polish/i,
+  /transition:\s*all/i,
+  /tabular-nums|font-variant-numeric/i,
+  /scroll-margin-top/i,
+  /translate="no"|no-translate/i,
+  /min-w-0/i,
+  /Intl\.DateTimeFormat|Intl\.NumberFormat|locale-aware/i,
+  /hydration/i,
+]);
+
+const CONTENT_STANDARD_24_REQUIRED = Object.freeze([
+  /Anti-Generic AI Aesthetic Gate/i,
+  /No Cliche Palette Gate/i,
+  /No Default Font Gate/i,
+  /Bold Aesthetic Direction Gate/i,
+  /Product-Specific Visual Language Gate/i,
+  /Unforgettable Detail Gate/i,
+  /Typography Courage Gate/i,
+  /Composition Diversity Gate/i,
+  /Same Shell New Paint Rejection/i,
+  /Reference Role Gate/i,
+  /Creative Benchmark Freshness Gate/i,
+  /Motion Meaning Gate/i,
+  /Reduced Motion Gate/i,
+  /Transition Discipline Gate/i,
+  /Transform Opacity Gate/i,
+  /Focus Visible Gate/i,
+  /Semantic Interaction Gate/i,
+  /Text Overflow Gate/i,
+  /Flex Min Width Gate/i,
+  /Numeric Alignment Gate/i,
+  /Anchor Offset Gate/i,
+  /Translation Safety Gate/i,
+  /Locale Formatting Gate/i,
+  /Hydration and Media Stability Gate/i,
+]);
+
 const RULES = Object.freeze([
   {
     file: "docs/references/design-expert-knowledge.md",
@@ -87,6 +136,9 @@ const RULES = Object.freeze([
       /product-fit style matrix/i,
       /stack-aware UI guidance/i,
       ...REGULATED_TRUST_REQUIRED,
+      ...ANTI_GENERIC_AESTHETIC_REQUIRED,
+      ...WEB_INTERFACE_MICRO_POLISH_REQUIRED,
+      ...CONTENT_STANDARD_24_REQUIRED,
     ],
   },
   {
@@ -156,6 +208,16 @@ const RULES = Object.freeze([
       /Design Pass Triage/i,
       /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i,
       ...DESIGN_DOMAINS,
+      ...ANTI_GENERIC_AESTHETIC_REQUIRED,
+      ...WEB_INTERFACE_MICRO_POLISH_REQUIRED,
+    ],
+  },
+  {
+    file: "agents/_design/ui-polish-reviewer.md",
+    label: "ui polish reviewer anti-generic and micro-polish gate",
+    required: [
+      ...ANTI_GENERIC_AESTHETIC_REQUIRED,
+      ...WEB_INTERFACE_MICRO_POLISH_REQUIRED,
     ],
   },
 ]);

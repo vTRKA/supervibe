@@ -8,8 +8,8 @@ prerequisites: [ui-artifact]
 emits-artifact: ui-polish-report
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 1.1
-last-verified: 2026-05-02
+version: 1.2
+last-verified: 2026-05-10
 ---
 
 # UI Review And Polish
@@ -102,6 +102,47 @@ Evaluate these eight dimensions in order:
 Use `docs/references/design-expert-knowledge.md` to make the review complete, not just visually tasteful. Cover or mark N/A with rationale: Accessibility, Touch & Interaction, Performance, Style Selection, Layout & Responsive, Typography & Color, Animation, Forms & Feedback, Navigation Patterns, and Charts & Data.
 
 For Accessibility, verify keyboard, focus, labels, contrast, semantics, target size, and reduced motion. For Performance, verify image sizing, layout shift risk, font loading, main-thread cost, and list virtualization where relevant. For Charts & Data, verify chart fit, legends, tooltips, non-color-only encoding, scale behavior, and empty/error states.
+
+## Anti-Generic AI Aesthetic Gate
+
+Treat **generic AI-generated aesthetics** as a review failure, not a matter of
+personal taste. When a UI claims creative quality, verify these gates or mark
+them N/A with rationale:
+
+- **Bold Aesthetic Direction Gate** - the artifact names a clear point of view
+  beyond "modern", "clean", or "premium".
+- **Product-Specific Visual Language Gate** - the visual language explains why
+  it belongs to this product, audience, trust burden, and workflow.
+- **Unforgettable Detail Gate** - at least one memorable composition, motion,
+  type, narrative, or interaction signature is present.
+- **Typography Courage Gate** - display/body type, loading, fallback, language
+  coverage, and voice are intentional; Inter, Roboto, Arial, or system fonts are
+  not accepted as defaults without product rationale.
+- **Cliche palette rejection** - purple gradients, vague aurora effects, glass
+  panels, or evenly timid palettes require evidence; otherwise flag them as
+  generic.
+- **Composition diversity** - alternative directions must differ on at least
+  three axes across palette, typography, motion, imagery, hierarchy, density,
+  composition, and interaction.
+
+## Web Interface Micro-Polish
+
+For web-facing artifacts, include these checks in the review:
+
+- `transition: all` is forbidden; transitions list explicit properties.
+- Changing or comparable numbers use `font-variant-numeric: tabular-nums` or an
+  equivalent `tabular-nums` utility.
+- Heading anchors account for sticky headers with `scroll-margin-top` when
+  applicable.
+- Brand names, ids, and code tokens use `translate="no"` or equivalent
+  no-translate handling.
+- Flex children that truncate include `min-w-0` or an equivalent min-width
+  reset.
+- Dates, numbers, and currency use `Intl.DateTimeFormat`,
+  `Intl.NumberFormat`, or another locale-aware formatter.
+- Hydration-sensitive values, browser-only state, inputs, images, safe areas,
+  dark mode, and URL state avoid mismatch, flicker, layout shift, and broken
+  deep links.
 
 ## Procedure
 

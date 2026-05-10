@@ -60,8 +60,15 @@ anti-patterns:
   - cosmetic-only
   - no-baseline-screenshots
   - unreviewed-wow-dependency
-version: 1.3
-last-verified: 2026-05-09T00:00:00.000Z
+  - generic-ai-generated-aesthetics
+  - cliche-purple-gradient
+  - default-font-choice
+  - transition-all
+  - missing-tabular-nums
+  - missing-scroll-margin-top
+  - missing-translate-no
+version: 1.4
+last-verified: 2026-05-10T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -137,6 +144,48 @@ Use `docs/references/design-expert-knowledge.md` as the review coverage checklis
 Treat Accessibility, Touch & Interaction, Performance, and Forms & Feedback as blocking dimensions when the surface includes interactive UI. For Charts & Data, verify legends, tooltips, non-color-only encoding, empty/error states, scale behavior, and accessible fallback.
 
 For advanced visuals, read `decisions/prototype-capability-plan.md` when it exists. Treat missing or stale capability plans as blocking for `bundled-dependency`, `framework-sandbox`, or `handoff-only` prototypes. Verify the dependency actually improves the artifact instead of adding a generic effect: compare it against hierarchy, scan path, state clarity, responsive behavior, and performance. For 3D/WebGL/Canvas/SVG/Lottie/Rive/charts/maps/code editors, check static fallback, reduced-motion fallback, keyboard/touch path, and text overlap at every declared viewport.
+
+## Anti-Generic AI Aesthetic Gate
+
+Treat **generic AI-generated aesthetics** as a production-quality failure when a
+surface claims creative or brand value. Do not approve a UI that is merely
+polished if it could belong to any product in the category.
+
+Review for these named gates:
+
+- **Bold Aesthetic Direction Gate** - the artifact names a clear aesthetic
+  direction beyond "modern", "clean", "sleek", or "premium".
+- **Product-Specific Visual Language Gate** - visual choices map to product
+  category, audience, trust burden, platform, workflow, and data density.
+- **Unforgettable Detail Gate** - the first screen has a memorable composition,
+  type, motion, interaction, or narrative signature.
+- **Typography Courage Gate** - display/body type, fallback, loading, language
+  coverage, and voice are defended; Inter, Roboto, Arial, or system fonts are
+  not accepted as unexamined defaults.
+- **Cliche palette rejection** - purple gradients, generic aurora surfaces,
+  glass cards, and timid evenly distributed palettes require product evidence.
+- **Composition diversity** - alternative directions must change at least three
+  axes across palette, typography, motion, imagery, hierarchy, density,
+  composition, and interaction.
+
+## Web Interface Micro-Polish
+
+For web-facing UI, add these checks to the normal eight-dimension review:
+
+- `transition: all` is forbidden; every transition lists explicit properties.
+- Comparable metrics, counters, prices, and table numbers use
+  `font-variant-numeric: tabular-nums` or an equivalent `tabular-nums` utility.
+- Heading anchors use `scroll-margin-top` when fixed or sticky headers can cover
+  linked sections.
+- Brand names, product names, identifiers, and code tokens use `translate="no"`
+  or equivalent no-translate handling.
+- Flex children that truncate include `min-w-0` or an equivalent min-width
+  reset.
+- Dates, numbers, and currency use `Intl.DateTimeFormat`,
+  `Intl.NumberFormat`, or another locale-aware formatter.
+- Hydration-sensitive UI avoids server/client mismatch for dates, theme, input
+  values, browser-only state, dark mode, media loading, safe areas, and URL
+  state.
 
 ## Procedure
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.130] - 2026-05-10
+
+### Changed
+
+- Hardened design expert knowledge with a validator-backed 24-point
+  anti-generic AI aesthetic and web-interface micro-polish standard.
+- Strengthened UI polish review guidance to reject interchangeable AI-looking
+  output and enforce production interface details such as explicit transitions,
+  tabular numbers, anchor offsets, no-translate handling, locale formatting, and
+  hydration stability.
+
 ## [2.0.129] - 2026-05-10
 
 ### Added
