@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
@@ -569,17 +569,21 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   const roster = loadMergedAgentRoster({ rootDir, pluginRoot });
   const available = new Set((roster.agents || []).map((agent) => agent.id));
   const missingAgents = requiredAgentIds.filter((agentId) => !available.has(agentId));
-  const runtimeProof = buildDesignRuntimeProofStatus(rootDir, plan);
   const hostSelection = selectHostAdapter({
     rootDir,
     env: hostAdapterId ? { ...env, SUPERVIBE_HOST: hostAdapterId } : env,
   });
   const hostDispatch = resolveHostAgentDispatcher(hostSelection.adapter.id);
   const hostDispatchAvailable = hostDispatch?.status === "supported";
-  const provisioningPlan = missingAgents.length > 0
+  const callableAgents = new Set(listHostCallableAgentIds(rootDir, hostSelection.adapter.agentsFolder));
+  const missingCallableAgents = requiredAgentIds.filter((agentId) => !callableAgents.has(agentId));
+  const hostProofBlocked = Boolean(hostDispatch && hostDispatch.status !== "supported");
+  const runtimeProof = buildDesignRuntimeProofStatus(rootDir, plan);
+  const provisioningPlan = missingAgents.length > 0 || missingCallableAgents.length > 0
     ? createAgentProvisioningPlan({
       projectRoot: rootDir,
       pluginRoot: pluginRoot || rootDir,
+      adapterId: hostSelection.adapter.id,
       agentIds: requiredAgentIds,
       skillIds: requiredSkillIds,
     })
@@ -594,12 +598,15 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     requestedMode,
     requiredAgentIds,
     missingAgents,
+    missingCallableAgents,
+    hostProofBlocked,
     runtimeProof,
     specialistDispatchDeferred,
   });
-  const realAgentCapable = requiredAgentIds.length > 0 && missingAgents.length === 0;
+  const realAgentCapable = requiredAgentIds.length > 0 && missingAgents.length === 0 && missingCallableAgents.length === 0 && !hostProofBlocked;
   const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid", "agent-dispatch-required"].includes(executionMode);
   const nonRealMode = executionMode !== "real-agents" && executionMode !== "agent-dispatch-required";
+  const unavailableAgents = unique([...missingAgents, ...missingCallableAgents]);
   const receiptGate = specialistDispatchDeferred
     ? "question-proposals-before-durable-gate"
     : runtimeProof.producerReceiptsTrusted
@@ -613,16 +620,18 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     requiredAgentIds,
     requiredSkillIds,
     missingAgents,
+    missingCallableAgents,
     provisioningPlan,
-    agentsInstalled: realAgentCapable,
+    agentsInstalled: missingAgents.length === 0,
+    callableAgentsReady: missingCallableAgents.length === 0,
     hostDispatchAvailable,
     hostDispatch,
     selectedHost: hostSelection.selectedHost,
     hostConfidence: hostSelection.confidence,
     hostInvocationsLogged: runtimeProof.hostInvocationsLogged,
     agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
-    agentReceiptsTrusted: specialistDispatchDeferred ? true : runtimeProof.agentReceiptsTrusted,
-    producerReceiptsTrusted: specialistDispatchDeferred ? true : runtimeProof.producerReceiptsTrusted,
+    agentReceiptsTrusted: specialistDispatchDeferred && realAgentCapable ? true : runtimeProof.agentReceiptsTrusted,
+    producerReceiptsTrusted: specialistDispatchDeferred && realAgentCapable ? true : runtimeProof.producerReceiptsTrusted,
     durableAgentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
     durableProducerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
     completedStageSubjects: runtimeProof.completedStageSubjects,
@@ -637,6 +646,10 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     manualEmulationAllowed: false,
     qualityImpact: missingAgents.length
       ? `Specialist stages cannot run or be claimed without real project agents: ${missingAgents.join(", ")}`
+      : missingCallableAgents.length
+        ? `Specialist definitions exist, but these agents are not callable in the selected host registry: ${missingCallableAgents.join(", ")}`
+      : hostProofBlocked
+        ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
       : executionMode === "inline"
         ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
       : executionMode === "hybrid"
@@ -649,8 +662,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     receiptGate,
     degradedModeQuestion: executionMode === "agent-dispatch-required"
       ? buildAgentDispatchQuestion(runtimeProof, { locale })
-      : missingAgents.length || nonRealMode
-      ? buildDegradedModeQuestion(missingAgents, provisioningPlan, { executionMode, locale })
+      : unavailableAgents.length || hostProofBlocked || nonRealMode
+      ? buildDegradedModeQuestion(unavailableAgents.length ? unavailableAgents : requiredAgentIds, provisioningPlan, { executionMode, locale })
       : null,
   };
 }
@@ -659,6 +672,8 @@ function deriveDesignExecutionMode({
   requestedMode = "real-agents",
   requiredAgentIds = [],
   missingAgents = [],
+  missingCallableAgents = [],
+  hostProofBlocked = false,
   runtimeProof = {},
   specialistDispatchDeferred = false,
 } = {}) {
@@ -666,6 +681,8 @@ function deriveDesignExecutionMode({
   if (requestedMode === "hybrid") return "hybrid";
   if (requiredAgentIds.length === 0) return "inline";
   if (missingAgents.length > 0) return "agent-required-blocked";
+  if (missingCallableAgents.length > 0) return "agent-required-blocked";
+  if (hostProofBlocked) return "agent-required-blocked";
   if (specialistDispatchDeferred) return "real-agents";
   return runtimeProof.producerReceiptsTrusted ? "real-agents" : "agent-dispatch-required";
 }
@@ -719,12 +736,14 @@ function buildDesignRuntimeProofStatus(rootDir = process.cwd(), plan = {}) {
       outputArtifacts: Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : [],
     }));
 
+  const hasProducerRequirements = statuses.length > 0;
+  const hasAgentRequirements = agentStatuses.length > 0;
   return {
     requirements: statuses,
     hostInvocationsLogged,
-    agentInvocationsCompleted: agentStatuses.every((item) => item.trusted === true),
-    agentReceiptsTrusted: agentStatuses.every((item) => item.trusted === true),
-    producerReceiptsTrusted: statuses.length === 0 || statuses.every((item) => item.trusted === true),
+    agentInvocationsCompleted: hasAgentRequirements && agentStatuses.every((item) => item.trusted === true),
+    agentReceiptsTrusted: hasAgentRequirements && agentStatuses.every((item) => item.trusted === true),
+    producerReceiptsTrusted: hasProducerRequirements && statuses.every((item) => item.trusted === true),
     completedStageSubjects,
     missingRuntimeProofs,
   };
@@ -814,6 +833,38 @@ function loadMergedAgentRoster({ rootDir = process.cwd(), pluginRoot = null } = 
   }
   const agents = [...byId.values()];
   return { agents, count: agents.length };
+}
+
+function listHostCallableAgentIds(rootDir = process.cwd(), agentsFolder = "") {
+  const dir = join(rootDir, ...normalizeRelPath(agentsFolder).split("/").filter(Boolean));
+  const ids = [];
+  if (!agentsFolder || !existsSync(dir)) return ids;
+  for (const filePath of walkFilesSync(dir)) {
+    if (!filePath.endsWith(".md")) continue;
+    ids.push(filePath.split(/[\\/]/).pop().replace(/\.md$/, ""));
+  }
+  return unique(ids);
+}
+
+function walkFilesSync(dirPath) {
+  const files = [];
+  let entries = [];
+  try {
+    entries = readdirSync(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return files;
+    throw error;
+  }
+  for (const entry of entries) {
+    const child = join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...walkFilesSync(child));
+    } else if (entry.isFile()) {
+      const stat = statSync(child);
+      if (stat.isFile()) files.push(child);
+    }
+  }
+  return files;
 }
 
 function designWizardStillOpen(plan = {}) {

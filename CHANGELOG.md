@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.5] - 2026-05-10
+
+### Changed
+
+- Hardened agent provisioning so shared `agents/` definitions are source
+  files only; host-callable readiness now requires selected runtime folders
+  such as `.codex/agents`, `.claude/agents`, `.cursor/agents`,
+  `.gemini/agents`, or `.opencode/agents`.
+- Hardened `/supervibe-design` runtime gates so missing host-callable agents
+  keep execution in `agent-required-blocked`, prevent false dispatch prompts,
+  and stop empty receipt sets from being treated as trusted.
+- Added natural-language routing for mandatory provider agent repair requests
+  so "fix agents for every provider" resolves to provisioning instead of a
+  generic audit path.
+
 ## [2.1.4] - 2026-05-10
 
 ### Added

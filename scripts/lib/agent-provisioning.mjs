@@ -20,12 +20,15 @@ export function createAgentProvisioningPlan({
   });
   const projectRoster = loadAgentRosterSync({ rootDir: projectRoot });
   const pluginRoster = loadAgentRosterSync({ rootDir: pluginRoot });
-  const projectAgents = new Set((projectRoster.agents || []).map((agent) => agent.id));
+  const hostAgentMap = hostCallableAgentMap(projectRoster, host.adapter.agentsFolder);
+  const projectSharedAgents = new Map((projectRoster.agents || [])
+    .filter((agent) => normalizeRel(agent.path).startsWith("agents/"))
+    .map((agent) => [agent.id, agent]));
   const pluginAgents = new Map((pluginRoster.agents || []).map((agent) => [agent.id, agent]));
 
   const agents = unique(agentIds).map((agentId) => {
-    if (projectAgents.has(agentId)) {
-      const existing = projectRoster.agents.find((agent) => agent.id === agentId);
+    if (hostAgentMap.has(agentId)) {
+      const existing = hostAgentMap.get(agentId);
       return item({
         type: "agent",
         id: agentId,
@@ -34,13 +37,13 @@ export function createAgentProvisioningPlan({
       });
     }
 
-    const upstream = pluginAgents.get(agentId);
+    const upstream = projectSharedAgents.get(agentId) || pluginAgents.get(agentId);
     if (!upstream) {
       return item({
         type: "agent",
         id: agentId,
         status: "missing-upstream",
-        reason: "agent is not present in the Supervibe plugin roster",
+        reason: "agent is not present in the project shared agents or Supervibe plugin roster",
       });
     }
 
@@ -138,9 +141,9 @@ export function createAgentProvisioningPlan({
     applyBlockedReason: hostSelectionRequired
       ? "host adapter selection is ambiguous; pass --host before applying"
       : missingUpstream.length > 0
-        ? "one or more requested agents/skills are missing from the plugin source"
+        ? "one or more requested agents/skills are missing from the project shared source and plugin source"
         : add.length === 0
-          ? "all requested agents and skills are already present"
+          ? "all requested agents and skills are already present in the selected host runtime folders"
           : null,
     counts: {
       requested: items.length,
@@ -272,7 +275,7 @@ function renderProvisioningManagedInstruction({
   return [
     `# Supervibe Managed Context (${adapter.displayName})`,
     "",
-    "This block was refreshed by Supervibe agent provisioning. It makes newly installed specialists visible to routing, dispatch, and receipt validation in this host.",
+    "This block was refreshed by Supervibe agent provisioning. It makes newly installed specialists visible as host-callable runtime agents for routing, dispatch, and receipt validation in this host.",
     "",
     `Host agents folder: ${adapter.agentsFolder}`,
     `Host skills folder: ${adapter.skillsFolder}`,
@@ -345,6 +348,13 @@ function findExistingSkill(projectRoot, skillsFolder, skillId) {
   const sharedRel = `skills/${skillId}/SKILL.md`;
   if (existsSync(join(projectRoot, ...sharedRel.split("/")))) return `skills/${skillId}`;
   return null;
+}
+
+function hostCallableAgentMap(roster = { agents: [] }, agentsFolder = "") {
+  const prefix = `${normalizeRel(agentsFolder).replace(/\/+$/, "")}/`;
+  return new Map((roster.agents || [])
+    .filter((agent) => normalizeRel(agent.path).startsWith(prefix))
+    .map((agent) => [agent.id, agent]));
 }
 
 function normalizeSkillId(value) {

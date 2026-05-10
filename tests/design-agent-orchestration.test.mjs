@@ -56,6 +56,24 @@ async function writeAgentInvocation(root, {
   };
 }
 
+const DESIGN_AGENT_IDS = [
+  "supervibe-orchestrator",
+  "creative-director",
+  "design-system-architect",
+  "ux-ui-designer",
+  "copywriter",
+  "prototype-builder",
+  "ui-polish-reviewer",
+  "accessibility-reviewer",
+  "quality-gate-reviewer",
+];
+
+async function installCodexDesignAgents(root) {
+  for (const agentId of DESIGN_AGENT_IDS) {
+    await writeUtf8(root, `.codex/agents/${agentId}.md`, `# ${agentId}\n`);
+  }
+}
+
 function completedWizardDecisions() {
   return {
     viewport: {
@@ -90,7 +108,12 @@ test("design agent plan maps source types and stages to explicit agents and skil
 
   assert.equal(plan.requiresReceipts, true);
   assert.equal(plan.receiptDirectory, ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/");
-  assert.equal(plan.executionStatus.executionMode, "real-agents");
+  assert.equal(plan.executionStatus.executionMode, "agent-required-blocked");
+  assert.equal(plan.executionStatus.agentsInstalled, true);
+  assert.equal(plan.executionStatus.callableAgentsReady, false);
+  assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
+  assert.equal(plan.executionStatus.producerReceiptsTrusted, false);
+  assert.ok(plan.executionStatus.missingCallableAgents.includes("creative-director"));
   assert.equal(plan.executionStatus.missingAgents.length, 0);
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "mode"));
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "viewport"));
@@ -105,9 +128,9 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:design-intelligence" && stage.reason.includes("pdf")));
 
   const prompt = formatDesignPlanPrompt(plan);
-  assert.match(prompt, /SPECIALIST_QUESTION_GATE: blocked/);
-  assert.match(prompt, /AGENT_GATE: collect specialist scratch question proposals before durable design writes/);
-  assert.match(prompt, /REQUIRED_SOURCE: real-specialist-proposal/);
+  assert.match(prompt, /EXECUTION_GATE: specialist agents are unavailable/);
+  assert.match(prompt, /AGENT_PROVISIONING:/);
+  assert.match(prompt, /Install missing agents/);
   assert.doesNotMatch(prompt, /Step 1\/|Decision unlocked:|If skipped:|\(recommended\)/);
 });
 
@@ -162,7 +185,8 @@ test("design agent plan CLI resumes mode and decisions from saved prototype conf
     const parsed = JSON.parse(output);
 
     assert.equal(parsed.plan.mode, "full-prototype-pipeline");
-    assert.equal(parsed.plan.executionStatus.executionMode, "real-agents");
+    assert.equal(parsed.plan.executionStatus.executionMode, "agent-required-blocked");
+    assert.equal(parsed.plan.executionStatus.callableAgentsReady, false);
     assert.equal(parsed.plan.wizard.decisions.reference_borrow_avoid.choiceId, "functional-only");
     assert.equal(parsed.plan.wizard.questionQueue[0].axis, "viewport");
     assert.equal(parsed.plan.wizard.questionQueue[0].step, 3);
@@ -175,6 +199,7 @@ test("design agent plan CLI resumes mode and decisions from saved prototype conf
 test("design agent plan dispatches orchestrator before specialists while wizard is open", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-dispatch-wizard-"));
   try {
+    await installCodexDesignAgents(root);
     const output = execFileSync(process.execPath, [
       join(ROOT, "scripts", "design-agent-plan.mjs"),
       "--root",
@@ -197,9 +222,37 @@ test("design agent plan dispatches orchestrator before specialists while wizard 
   }
 });
 
+test("design agent plan does not dispatch missing host-callable agents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-missing-host-dispatch-"));
+  try {
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "design-agent-plan.mjs"),
+      "--root",
+      root,
+      "--plugin-root",
+      ROOT,
+      "--slug",
+      "agent-chat",
+      "--dispatch-host-agents",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+
+    assert.match(output, /EXECUTION_MODE: agent-required-blocked/);
+    assert.match(output, /CALLABLE_AGENTS_READY: false/);
+    assert.match(output, /MISSING_CALLABLE_AGENTS: .*supervibe-orchestrator/);
+    assert.match(output, /NEXT_DISPATCH: none/);
+    assert.match(output, /NEXT_HOST_DISPATCH: none/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent plan does not redispatch orchestrator after trusted stage-0 receipt", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-dispatch-orchestrator-done-"));
   try {
+    await installCodexDesignAgents(root);
     await writeUtf8(root, ".supervibe/artifacts/_agent-outputs/orchestrator/agent-output.json", "{\"ok\":true}\n");
     await issueWorkflowInvocationReceipt({
       rootDir: root,
@@ -269,6 +322,7 @@ test("design agent plan exposes pre-gate specialist question proposal queue", ()
 test("design agent plan shows wizard question only after trusted specialist proposal receipt", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-trusted-question-proposal-"));
   try {
+    await installCodexDesignAgents(root);
     const initial = buildDesignAgentPlan({
       brief: "Agent chat workspace with approvals, tool calls, traces, and compact desktop panels.",
       target: "tauri",
@@ -351,21 +405,27 @@ test("design agent plan shows wizard question only after trusted specialist prop
   }
 });
 
-test("design agent plan localizes runtime dispatch question for Russian briefs", () => {
-  const plan = buildDesignAgentPlan({
-    brief: "Использовать безопасные дефолты для новой дизайн-системы агентского чата.",
-    target: "web",
-    mode: "design-system-only",
-    rootDir: process.cwd(),
-    pluginRoot: ROOT,
-    initialDecisions: completedWizardDecisions(),
-  });
-  const prompt = formatDesignPlanPrompt(plan);
+test("design agent plan localizes runtime dispatch question for Russian briefs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-ru-dispatch-"));
+  try {
+    await installCodexDesignAgents(root);
+    const plan = buildDesignAgentPlan({
+      brief: "Использовать безопасные дефолты для новой дизайн-системы агентского чата.",
+      target: "web",
+      mode: "design-system-only",
+      rootDir: root,
+      pluginRoot: ROOT,
+      initialDecisions: completedWizardDecisions(),
+    });
+    const prompt = formatDesignPlanPrompt(plan);
 
-  assert.equal(plan.wizard.locale, "ru");
-  assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
-  assert.doesNotMatch(prompt, /Runtime agent receipts are missing|Dispatch host agents|Scratch only|Stop here/);
-  assert.match(prompt, /runtime receipts|Запустить host agents|Только scratch|Остановиться/);
+    assert.equal(plan.wizard.locale, "ru");
+    assert.equal(plan.executionStatus.executionMode, "agent-dispatch-required");
+    assert.doesNotMatch(prompt, /Runtime agent receipts are missing|Dispatch host agents|Scratch only|Stop here/);
+    assert.match(prompt, /runtime receipts|Запустить host agents|Только scratch|Остановиться/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design agent plan CLI emits Russian output as UTF-8, not mojibake", async () => {
@@ -533,6 +593,7 @@ test("design write gate blocks durable artifacts when wizard or agent questions 
 test("design write gate blocks durable writes after wizard completion until runtime receipts exist", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-receipt-gate-"));
   try {
+    await installCodexDesignAgents(root);
     const plan = buildDesignAgentPlan({
       brief: "Use safe defaults for a new desktop agent chat design system.",
       target: "web",
@@ -589,6 +650,7 @@ test("design agent plan uses the same Codex host dispatch capability as command 
 test("design agent plan respects persisted reference scope before choosing next question", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-reference-scope-"));
   try {
+    await installCodexDesignAgents(root);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", `${JSON.stringify({
       brief: "Create a new desktop agent chat workspace with approvals and traces; study docs/old prototypes.",
       target: "tauri",
@@ -631,32 +693,40 @@ test("design agent plan respects persisted reference scope before choosing next 
   }
 });
 
-test("design execution modes are explicit and non-real modes cannot claim specialist output", () => {
-  const inlinePlan = buildDesignAgentPlan({
-    brief: "Draft a design direction using deterministic checks only.",
-    target: "web",
-    rootDir: process.cwd(),
-    requestedExecutionMode: "inline",
-    mode: "design-system-only",
-  });
+test("design execution modes are explicit and non-real modes cannot claim specialist output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-execution-modes-"));
+  try {
+    await installCodexDesignAgents(root);
+    const inlinePlan = buildDesignAgentPlan({
+      brief: "Draft a design direction using deterministic checks only.",
+      target: "web",
+      rootDir: root,
+      pluginRoot: ROOT,
+      requestedExecutionMode: "inline",
+      mode: "design-system-only",
+    });
 
-  assert.equal(inlinePlan.executionStatus.executionMode, "inline");
-  assert.equal(inlinePlan.executionStatus.agentReceiptsAllowed, false);
-  assert.equal(inlinePlan.writeGate.durableWritesAllowed, false);
-  assert.ok(inlinePlan.writeGate.blockedReasons.some((reason) => reason.code === "non-real-agent-execution-mode"));
+    assert.equal(inlinePlan.executionStatus.executionMode, "inline");
+    assert.equal(inlinePlan.executionStatus.agentReceiptsAllowed, false);
+    assert.equal(inlinePlan.writeGate.durableWritesAllowed, false);
+    assert.ok(inlinePlan.writeGate.blockedReasons.some((reason) => reason.code === "non-real-agent-execution-mode"));
 
-  const hybridPlan = buildDesignAgentPlan({
-    brief: "Hybrid design run with agents for final outputs.",
-    target: "web",
-    rootDir: process.cwd(),
-    requestedExecutionMode: "hybrid",
-    mode: "design-system-only",
-  });
+    const hybridPlan = buildDesignAgentPlan({
+      brief: "Hybrid design run with agents for final outputs.",
+      target: "web",
+      rootDir: root,
+      pluginRoot: ROOT,
+      requestedExecutionMode: "hybrid",
+      mode: "design-system-only",
+    });
 
-  assert.equal(hybridPlan.executionStatus.executionMode, "hybrid");
-  assert.equal(hybridPlan.executionStatus.agentReceiptsAllowed, true);
-  assert.equal(hybridPlan.writeGate.durableWritesAllowed, false);
-  assert.match(formatDesignPlanPrompt(hybridPlan), /hybrid/i);
+    assert.equal(hybridPlan.executionStatus.executionMode, "hybrid");
+    assert.equal(hybridPlan.executionStatus.agentReceiptsAllowed, true);
+    assert.equal(hybridPlan.writeGate.durableWritesAllowed, false);
+    assert.match(formatDesignPlanPrompt(hybridPlan), /hybrid/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("design write gate prioritizes intake question before wizard or artifact writes", () => {
@@ -702,6 +772,7 @@ test("design prewrite manifest lists blocked durable writes before artifact muta
 test("design prewrite manifest completes per-artifact receipts without unblocking later stages", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-prewrite-per-artifact-"));
   try {
+    await installCodexDesignAgents(root);
     await writeUtf8(root, ".supervibe/artifacts/brandbook/preferences.json", "{\"ok\":true}\n");
     await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
     await issueWorkflowInvocationReceipt({

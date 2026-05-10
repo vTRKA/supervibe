@@ -76,11 +76,82 @@ test("agent provisioning installs missing agents and refreshes host instructions
   }
 });
 
+test("agent provisioning treats shared agent definitions as source, not host-callable presence", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-shared-source-"));
+  try {
+    await writeUtf8(projectRoot, "AGENTS.md", "# AGENTS\n");
+    await writeUtf8(projectRoot, "agents/_meta/supervibe-orchestrator.md", [
+      "---",
+      "name: supervibe-orchestrator",
+      "namespace: _meta",
+      "description: Workflow orchestrator.",
+      "---",
+      "# Supervibe Orchestrator",
+      "",
+    ].join("\n"));
+
+    const plan = createAgentProvisioningPlan({
+      projectRoot,
+      pluginRoot: projectRoot,
+      adapterId: "codex",
+      agentIds: ["supervibe-orchestrator"],
+    });
+
+    assert.equal(plan.readyToApply, true, formatAgentProvisioningPlan(plan));
+    assert.equal(plan.counts.add, 1);
+    assert.equal(plan.counts.present, 0);
+    assert.ok(plan.agents.some((entry) => entry.status === "add" && entry.targetRel === ".codex/agents/_meta/supervibe-orchestrator.md"));
+    assert.doesNotMatch(formatAgentProvisioningPlan(plan), /all requested agents and skills are already present/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("agent provisioning targets the selected host runtime folder for every provider", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-provider-matrix-"));
+  try {
+    await writeUtf8(projectRoot, "agents/_meta/supervibe-orchestrator.md", [
+      "---",
+      "name: supervibe-orchestrator",
+      "namespace: _meta",
+      "description: Workflow orchestrator.",
+      "---",
+      "# Supervibe Orchestrator",
+      "",
+    ].join("\n"));
+
+    const expectedPrefixes = {
+      claude: ".claude/agents/",
+      codex: ".codex/agents/",
+      cursor: ".cursor/agents/",
+      gemini: ".gemini/agents/",
+      opencode: ".opencode/agents/",
+    };
+
+    for (const [adapterId, prefix] of Object.entries(expectedPrefixes)) {
+      const plan = createAgentProvisioningPlan({
+        projectRoot,
+        pluginRoot: projectRoot,
+        adapterId,
+        agentIds: ["supervibe-orchestrator"],
+      });
+
+      assert.equal(plan.readyToApply, true, `${adapterId}: ${formatAgentProvisioningPlan(plan)}`);
+      assert.ok(plan.agents.some((entry) => entry.status === "add" && entry.targetRel.startsWith(prefix)), adapterId);
+    }
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("agent provisioning command is discoverable from natural language", () => {
   const cases = [
     "add missing agents and skills to the project",
     "real agents are not being invoked, connect real agents",
+    "fix agents for every provider and make agents mandatory",
+    "repair host callable agents across providers",
     "агенты не вызываются, добавь недостающих агентов из плагина в проект",
+    "почини агентов для каждого провайдера и сделай агентов обязательными",
     "агенты эмулируются, подключи настоящих агентов",
   ];
 

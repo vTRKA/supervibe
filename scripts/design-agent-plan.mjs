@@ -101,6 +101,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`EXECUTION_MODE: ${plan.executionStatus.executionMode}`);
     console.log(`RECEIPT_GATE: ${plan.executionStatus.receiptGate}`);
     console.log(`AGENTS_INSTALLED: ${plan.executionStatus.agentsInstalled === true}`);
+    console.log(`CALLABLE_AGENTS_READY: ${plan.executionStatus.callableAgentsReady === true}`);
     console.log(`HOST_DISPATCH_AVAILABLE: ${plan.executionStatus.hostDispatchAvailable === true}`);
     console.log(`HOST_DISPATCH: ${plan.executionStatus.hostDispatch?.hostAdapterId || "unspecified"}:${plan.executionStatus.hostDispatch?.status || "not-checked"}`);
     console.log(`HOST_TOOL: ${plan.executionStatus.hostDispatch?.nativeTool || "unspecified"}`);
@@ -118,6 +119,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`NEXT_PRODUCER: ${formatNextProducer(prewriteManifest.nextProducer)}`);
     console.log(`MISSING_RUNTIME_PROOFS: ${(plan.executionStatus.missingRuntimeProofs || []).map((proof) => `${proof.subjectId}@${proof.stageId}`).join(",") || "none"}`);
     console.log(`MISSING_AGENTS: ${plan.executionStatus.missingAgents.join(",") || "none"}`);
+    console.log(`MISSING_CALLABLE_AGENTS: ${(plan.executionStatus.missingCallableAgents || []).join(",") || "none"}`);
     console.log(`AGENT_PROVISIONING_READY: ${plan.executionStatus.provisioningPlan?.readyToApply === true}`);
     if (plan.executionStatus.provisioningPlan?.applyCommand) {
       console.log(`AGENT_PROVISIONING_APPLY: ${plan.executionStatus.provisioningPlan.applyCommand}`);
@@ -235,6 +237,9 @@ function canonicalDesignContinuation({ plan = {}, prewriteManifest = {}, nextDis
 }
 
 function nextDispatchTarget(plan = {}, producer = null, manifest = {}) {
+  if (plan.executionStatus?.executionMode === "agent-required-blocked" || plan.executionStatus?.callableAgentsReady === false) {
+    return null;
+  }
   if (manifest.nextQuestionSource === "intake" || plan.writeGate?.nextQuestion?.source === "intake") {
     return null;
   }

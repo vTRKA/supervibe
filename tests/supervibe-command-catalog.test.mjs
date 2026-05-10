@@ -225,6 +225,8 @@ test("command catalog routes Russian plugin and agent-system audit requests", ()
     "хочу 10 из 10 аудит агентской системы",
     "audit agent system maturity",
     "rate agent system maturity out of 10",
+    "check whether agents are really invoked with receipts instead of emulation",
+    "проверь что агенты реально вызываются а не эмулируются",
   ]) {
     const match = resolveCommandRequest(request, {
       pluginRoot: ROOT,
@@ -236,6 +238,36 @@ test("command catalog routes Russian plugin and agent-system audit requests", ()
     assert.equal(match.doNotSearchProject, true, request);
     assert.match(formatCommandMatch(match), /AGENT_STAGE_GATE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-agent-maturity\.mjs|AGENT_PLAN_COMMAND:/, request);
   }
+});
+
+test("command catalog routes mandatory provider agent repair to provisioning", () => {
+  for (const request of [
+    "fix agents for every provider and make agents mandatory",
+    "repair host callable agents across providers",
+    "make agents mandatory for each provider",
+  ]) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.id, "agent-provisioning", request);
+    assert.equal(match.intent, "agent_provisioning", request);
+    assert.match(match.command, /supervibe-adapt\.mjs --add-agents/, request);
+    assert.equal(match.doNotSearchProject, true, request);
+    assert.notEqual(match.command, "/supervibe-audit", request);
+  }
+});
+
+test("command catalog does not treat host instruction migration as agent provisioning", () => {
+  const match = resolveCommandRequest("run host instruction migration in a project where multiple plugins share AGENTS.md and preserve other managed blocks", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.notEqual(match.intent, "agent_provisioning");
+  assert.notEqual(match.command, "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents <ids> --skills <ids>");
+  assert.notEqual(match.id, "agent-provisioning");
 });
 
 test("command catalog routes workflow-chain maturity audits before explicit slash preemption", () => {

@@ -471,6 +471,10 @@ const COMMAND_SHORTCUTS = Object.freeze([
       "install missing agents",
       "provision agents",
       "connect real agents",
+      "fix agents for every provider",
+      "repair mandatory agents",
+      "make agents mandatory",
+      "connect host callable agents",
       "real agents are not being invoked",
       "agents are being emulated",
       "copy agents from plugin to project",
@@ -484,9 +488,12 @@ const COMMAND_SHORTCUTS = Object.freeze([
       "синхронизируй агентов и скилы в проект",
     ],
     keywordGroups: [
-      ["add", "install", "provision", "connect", "copy", "sync", "invoke", "invoked", "emulated", "real", "missing", "unavailable", "добавь", "установи", "подключи", "подключены", "скопируй", "синхронизируй", "вызываются", "эмулируются", "настоящих", "не хватает", "недоступны", "отсутствуют"],
+      ["add", "install", "provision", "connect", "copy", "sync", "invoke", "invoked", "fix", "repair", "make", "добавь", "установи", "подключи", "подключены", "скопируй", "синхронизируй", "вызываются", "почини", "исправь", "пофикси", "сделай"],
+      ["emulated", "real", "missing", "unavailable", "mandatory", "required", "provider", "providers", "host callable", "callable", "every provider", "for each provider", "эмулируются", "настоящих", "не хватает", "недостающ", "недоступны", "отсутствуют", "обязательн", "провайдер"],
       ["agent", "agents", "skill", "skills", "агент", "агенты", "агентов", "скил", "скилы", "скиллы", "skills"],
     ],
+    requiredGroupIndexes: [0, 1, 2],
+    priorityPhrases: ["every provider", "for each provider", "mandatory agents", "host callable", "обязательн", "провайдер"],
     mutationRisk: "unknown",
     directRoute: true,
       nextAction: "Run the Adapt agent-provisioning dry-run first. Apply only after confirming the host, agents, skills, and managed instruction refresh.",
@@ -802,6 +809,10 @@ function scoreShortcut(shortcut, text) {
     });
   }
 
+  if (shortcut.id === "agent-provisioning" && looksLikeReadOnlyAgentAudit(text) && !looksLikeProvisioningMutation(text)) {
+    return null;
+  }
+
   const groups = shortcut.keywordGroups || [];
   const matchedGroups = groups
     .map((group) => group.find((phrase) => includesPhrase(text, phrase)))
@@ -821,6 +832,51 @@ function scoreShortcut(shortcut, text) {
     reason: `shortcut keyword groups: ${matchedGroups.join(", ")}`,
     matchedGroups,
   });
+}
+
+function looksLikeReadOnlyAgentAudit(text) {
+  return [
+    "audit",
+    "check",
+    "review",
+    "verify",
+    "prove",
+    "whether",
+    "really",
+    "receipt",
+    "receipts",
+    "semantic",
+    "rag",
+    "codegraph",
+    "maturity",
+    "проверь",
+    "оцени",
+    "докажи",
+    "реально",
+    "рецепт",
+  ].some((phrase) => includesPhrase(text, phrase));
+}
+
+function looksLikeProvisioningMutation(text) {
+  return [
+    "add",
+    "install",
+    "provision",
+    "connect",
+    "copy",
+    "sync",
+    "fix",
+    "repair",
+    "make",
+    "добавь",
+    "установи",
+    "подключи",
+    "скопируй",
+    "синхронизируй",
+    "почини",
+    "исправь",
+    "сделай",
+  ].some((phrase) => includesPhrase(text, phrase));
 }
 
 function readSlashCommands(pluginRoot) {
