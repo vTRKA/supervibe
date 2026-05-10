@@ -208,6 +208,55 @@ test("supervibe-adapt metadata-only apply refreshes stale baseline hashes for id
   }
 });
 
+test("supervibe-adapt refreshes stale Codex managed context in AGENTS.md", () => {
+  const upstreamContent = readFileSync(join(ROOT, "agents", "_core", "repo-researcher.md"), "utf8");
+  const { projectRoot } = createCodexProjectWithAgent({
+    agentName: "repo-researcher",
+    content: upstreamContent,
+    version: CURRENT_VERSION,
+    baselineHash: sha256(upstreamContent),
+  });
+  try {
+    writeFileSync(join(projectRoot, "AGENTS.md"), [
+      "# Project instructions",
+      "",
+      "## Local",
+      "Keep this.",
+      "",
+      "<!-- SUPERVIBE:BEGIN managed-context codex -->",
+      "# Supervibe Managed Context (OpenAI Codex)",
+      "",
+      "Host agents folder: .codex/agents",
+      "Provisioned/requested agents: none",
+      "",
+      "## Agent Roles",
+      "- none",
+      "<!-- SUPERVIBE:END managed-context codex -->",
+      "",
+    ].join("\n"));
+
+    const dryRun = runAdapt(projectRoot, ["--dry-run", "--summary-json", "--changed-only", "--no-color"]);
+    const summary = JSON.parse(dryRun);
+    assert.equal(summary.counts.update, 1);
+    assert.equal(summary.changedItems.length, 1);
+    assert.equal(summary.changedItems[0].path, "AGENTS.md");
+    assert.equal(summary.changedItems[0].classification, "host-context-managed-block-refresh");
+
+    const apply = runAdapt(projectRoot, ["--apply", "--include", "AGENTS.md", "--no-refresh-memory-index", "--no-color"]);
+    assert.match(apply, /APPLIED_FILE: AGENTS\.md/);
+    assert.match(apply, /ARTIFACT_ADAPT_CLEAN: true/);
+
+    const instructions = readFileSync(join(projectRoot, "AGENTS.md"), "utf8");
+    assert.match(instructions, /## Local\nKeep this\./);
+    assert.match(instructions, /Host-callable agents: repo-researcher/);
+    assert.match(instructions, /- repo-researcher: /);
+    assert.match(instructions, /node <resolved-supervibe-plugin-root>\/scripts\/validate-agent-producer-receipts\.mjs --root \./);
+    assert.doesNotMatch(instructions, /Run `npm run validate:agent-producer-receipts`/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-adapt blocked apply does not mutate lifecycle state or memory index", () => {
   const pluginRoot = createPluginFixture({ content: "# Prototype\n\nupstream changed\n" });
   const { projectRoot, artifactRel } = createCodexProjectWithAgent({

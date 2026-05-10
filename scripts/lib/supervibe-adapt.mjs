@@ -23,6 +23,8 @@ import {
   readGenesisFrontendDecision,
   resolveFrontendTarget,
 } from "./frontend-target-resolver.mjs";
+import { createAgentProvisioningContextMigration } from "./agent-provisioning.mjs";
+import { writeContextMigrationPlan } from "./supervibe-context-migrator.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
@@ -87,7 +89,18 @@ export async function createAdaptPlan({
     upstream,
     projectArtifacts,
   });
-  const items = dedupePlanItems([...projectItems, ...closureItems]);
+  const hostContextItem = planHostContextRefresh({
+    projectRoot,
+    pluginRoot,
+    adapter,
+    projectArtifacts,
+    env,
+  });
+  const items = dedupePlanItems([
+    ...projectItems,
+    ...closureItems,
+    ...(hostContextItem ? [hostContextItem] : []),
+  ]);
   const counts = countPlanItems(items);
   const memoryWrites = memoryIndex?.refreshed === true;
   const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
@@ -140,6 +153,10 @@ export async function applyAdaptPlan(plan, {
       skipped.push(item);
       continue;
     }
+    if (item.type === "host-context" && item.contextMigration) {
+      candidates.push(item);
+      continue;
+    }
     if (!item.upstreamAbs) {
       blocked.push({ ...item, reason: "missing upstream file" });
       continue;
@@ -162,6 +179,12 @@ export async function applyAdaptPlan(plan, {
   const applied = [];
   const mutatedPaths = [];
   for (const item of candidates) {
+    if (item.type === "host-context" && item.contextMigration) {
+      await writeContextMigrationPlan(item.contextMigration, { approved: true });
+      applied.push(item);
+      mutatedPaths.push(item.projectRel);
+      continue;
+    }
     const content = await readFile(item.upstreamAbs, "utf8");
     await mkdir(dirname(item.projectAbs), { recursive: true });
     await writeFile(item.projectAbs, content, "utf8");
@@ -530,10 +553,18 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   }
   for (const item of plan.items) {
     if (item.action === "add") {
-      const mandatory = item.mandatory === undefined ? "unknown" : String(Boolean(item.mandatory));
-      lines.push(`ADD: ${item.projectRel} <= ${item.upstreamRel} (${item.classification}; mandatory: ${mandatory})`);
+      if (item.type === "host-context") {
+        lines.push(`HOST_CONTEXT_ADD: ${item.projectRel} (${item.classification})`);
+      } else {
+        const mandatory = item.mandatory === undefined ? "unknown" : String(Boolean(item.mandatory));
+        lines.push(`ADD: ${item.projectRel} <= ${item.upstreamRel} (${item.classification}; mandatory: ${mandatory})`);
+      }
     } else if (item.action === "update") {
-      lines.push(`UPDATE: ${item.projectRel} <= ${item.upstreamRel} (${item.classification})`);
+      if (item.type === "host-context") {
+        lines.push(`HOST_CONTEXT_REFRESH: ${item.projectRel} (${item.classification})`);
+      } else {
+        lines.push(`UPDATE: ${item.projectRel} <= ${item.upstreamRel} (${item.classification})`);
+      }
     } else if (item.classification === "line-ending-only-drift") {
       lines.push(`LINE_ENDING_ONLY: ${item.projectRel} <= ${item.upstreamRel} (baseline refresh only)`);
     } else if (item.action === "project-only") {
@@ -1333,6 +1364,46 @@ function listProjectArtifacts(projectRoot, adapter) {
     ...listFiles(join(projectRoot, adapter.skillsFolder), { recursive: true, fileName: "SKILL.md" })
       .map((path) => projectArtifact(projectRoot, path, "skill", basename(dirname(path)))),
   ].sort((a, b) => a.projectRel.localeCompare(b.projectRel));
+}
+
+function planHostContextRefresh({ projectRoot, pluginRoot, adapter, projectArtifacts = [], env = process.env } = {}) {
+  const context = createAgentProvisioningContextMigration({
+    projectRoot,
+    pluginRoot,
+    adapterId: adapter.id,
+    env,
+  });
+  const migration = context.contextMigration;
+  const hasManagedBlock = (migration.parsed?.managedBlocks || []).some((block) => block.adapterId === adapter.id);
+  const hasProvisioningState = existsSync(join(projectRoot, ".supervibe", "memory", "agent-provisioning", "last-apply.json"));
+  const hasRuntimeArtifacts = projectArtifacts.some((item) => item.type === "agent" || item.type === "skill");
+  if (!hasManagedBlock && !(hasProvisioningState && hasRuntimeArtifacts)) return null;
+
+  const beforeContent = migration.beforeContent || "";
+  const afterContent = migration.afterContent || "";
+  if (hashComparableContent(beforeContent) === hashComparableContent(afterContent)) return null;
+
+  const projectRel = normalizeRel(relative(projectRoot, migration.absolutePath));
+  const beforeExists = existsSync(migration.absolutePath);
+  return {
+    type: "host-context",
+    id: `${adapter.id}-managed-context`,
+    action: beforeExists ? "update" : "add",
+    classification: hasManagedBlock
+      ? "host-context-managed-block-refresh"
+      : "host-context-managed-block-restore",
+    projectAbs: migration.absolutePath,
+    projectRel,
+    upstreamAbs: null,
+    upstreamRel: `generated:${adapter.id}-managed-context`,
+    upstreamHash: hashContent(afterContent),
+    projectHash: hashContent(beforeContent),
+    baselineHash: null,
+    baselineRefreshRequired: false,
+    contextMigration: migration,
+    generatedContent: afterContent,
+    diff: summarizeLineDiff(beforeContent, afterContent),
+  };
 }
 
 function projectArtifact(projectRoot, path, type, id) {

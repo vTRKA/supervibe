@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { cp, mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
@@ -102,6 +102,7 @@ export function createAgentProvisioningPlan({
   const hostSelectionRequired = Boolean(host.requiresSelection && !adapterId);
   const managedInstruction = renderProvisioningManagedInstruction({
     host,
+    projectRoot,
     projectRoster,
     pluginRoster,
     agentIds: unique(agentIds),
@@ -212,6 +213,46 @@ export async function applyAgentProvisioningPlan(plan = {}, { refreshContext = t
   };
 }
 
+export function createAgentProvisioningContextMigration({
+  projectRoot = process.cwd(),
+  pluginRoot = process.cwd(),
+  adapterId = null,
+  env = process.env,
+  agentIds = [],
+  skillIds = [],
+  agents = [],
+  skills = [],
+} = {}) {
+  const host = selectHostAdapter({
+    rootDir: projectRoot,
+    env: adapterId ? { ...env, SUPERVIBE_HOST: adapterId } : env,
+  });
+  const projectRoster = loadAgentRosterSync({ rootDir: projectRoot });
+  const pluginRoster = loadAgentRosterSync({ rootDir: pluginRoot });
+  const managedInstruction = renderProvisioningManagedInstruction({
+    host,
+    projectRoot,
+    projectRoster,
+    pluginRoster,
+    agentIds: unique(agentIds),
+    skillIds: unique(skillIds),
+    agents,
+    skills,
+  });
+  const contextMigration = planContextMigration({
+    rootDir: projectRoot,
+    adapterId: host.adapter.id,
+    generatedContent: managedInstruction,
+  });
+  return {
+    host,
+    projectRoster,
+    pluginRoster,
+    managedInstruction,
+    contextMigration,
+  };
+}
+
 export function formatAgentProvisioningPlan(plan = {}) {
   const lines = [
     "SUPERVIBE_AGENT_PROVISIONING_PLAN",
@@ -253,6 +294,7 @@ export function formatAgentProvisioningApply(result = {}) {
 
 function renderProvisioningManagedInstruction({
   host,
+  projectRoot = process.cwd(),
   projectRoster,
   pluginRoster,
   agentIds = [],
@@ -269,15 +311,26 @@ function renderProvisioningManagedInstruction({
   const adapter = host.adapter;
   const currentHostAgents = hostCallableAgents(projectRoster, adapter.agentsFolder);
   const currentHostAgentsById = new Map(currentHostAgents.map((agent) => [agent.id, agent]));
+  const currentHostSkills = hostInstalledSkills(projectRoot, adapter.skillsFolder);
+  const currentHostSkillsById = new Map(currentHostSkills.map((skill) => [skill.id, skill]));
   const plannedHostAgentIds = (agents || [])
     .filter((entry) => entry.status === "present" || entry.status === "add")
     .map((entry) => entry.id);
   const plannedHostAgentsById = new Map((agents || [])
     .filter((entry) => entry.status === "present" || entry.status === "add")
     .map((entry) => [entry.id, entry]));
+  const plannedHostSkillsById = new Map((skills || [])
+    .filter((entry) => entry.status === "present" || entry.status === "add")
+    .map((entry) => [entry.normalizedId || normalizeSkillId(entry.id), entry]));
   const hostCallableAgentIds = unique([
     ...currentHostAgents.map((agent) => agent.id),
     ...plannedHostAgentIds,
+  ]);
+  const hostInstalledSkillIds = unique([
+    ...currentHostSkills.map((skill) => skill.id),
+    ...(skills || [])
+      .filter((entry) => entry.status === "present" || entry.status === "add")
+      .map((entry) => entry.normalizedId || normalizeSkillId(entry.id)),
   ]);
   for (const agent of currentHostAgents) {
     byId.set(agent.id, agent);
@@ -292,10 +345,20 @@ function renderProvisioningManagedInstruction({
     const existing = currentHostAgentsById.get(id);
     return `- agent:${id} present${existing?.path ? ` -> ${existing.path}` : ""}`;
   });
+  for (const id of hostInstalledSkillIds) {
+    const planned = plannedHostSkillsById.get(id);
+    if (planned) {
+      currentProvisioning.push(`- skill:${planned.id} ${planned.status}${planned.targetRel ? ` -> ${planned.targetRel}` : planned.projectRel ? ` -> ${planned.projectRel}` : ""}`);
+      continue;
+    }
+    const existing = currentHostSkillsById.get(id);
+    currentProvisioning.push(`- skill:${id} present${existing?.path ? ` -> ${existing.path}` : ""}`);
+  }
   const requestedOperation = [
     ...agents.map((entry) => `- agent:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : entry.projectRel ? ` -> ${entry.projectRel}` : ""}`),
     ...skills.map((entry) => `- skill:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : entry.projectRel ? ` -> ${entry.projectRel}` : ""}`),
   ];
+  const agentReceiptValidationCommand = validationCommandForProject(projectRoot, "validate:agent-producer-receipts", "validate-agent-producer-receipts.mjs");
   return [
     `# Supervibe Managed Context (${adapter.displayName})`,
     "",
@@ -306,6 +369,7 @@ function renderProvisioningManagedInstruction({
     `Provisioned/requested agents: ${requestedAgents.join(", ") || "none"}`,
     `Host-callable agents: ${hostCallableAgentIds.join(", ") || "none"}`,
     `Provisioned/requested skills: ${requestedSkills.join(", ") || "none"}`,
+    `Host-installed skills: ${hostInstalledSkillIds.join(", ") || "none"}`,
     "",
     "## Agent Roles",
     roleSummary || "- none",
@@ -315,7 +379,7 @@ function renderProvisioningManagedInstruction({
     "- If a required specialist is missing, run `node <resolved-supervibe-plugin-root>/scripts/provision-agents.mjs --project-root . --agents <ids> --skills <ids>` as a dry-run, then apply only after approval.",
     "- Every claimed agent, worker, reviewer, skill, command, validator, or external-tool invocation must have a runtime-issued workflow receipt.",
     "- Agent-like receipts must include host invocation proof. Hand-written receipts and command receipts cannot substitute specialist output.",
-    "- Run `npm run validate:agent-producer-receipts` and command-specific receipt validators before claiming delegated work is complete.",
+    `- Run \`${agentReceiptValidationCommand}\` and command-specific receipt validators before claiming delegated work is complete.`,
     "",
     "## Current Provisioning",
     ...(currentProvisioning.length ? currentProvisioning : ["- agents: none"]),
@@ -375,6 +439,37 @@ function findExistingSkill(projectRoot, skillsFolder, skillId) {
   const sharedRel = `skills/${skillId}/SKILL.md`;
   if (existsSync(join(projectRoot, ...sharedRel.split("/")))) return `skills/${skillId}`;
   return null;
+}
+
+function hostInstalledSkills(projectRoot, skillsFolder = "") {
+  const folderRel = normalizeRel(skillsFolder).replace(/\/+$/, "");
+  const folderAbs = join(projectRoot, ...folderRel.split("/"));
+  if (!existsSync(folderAbs)) return [];
+  const out = [];
+  for (const entry of readdirSync(folderAbs, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const rel = normalizeRel(join(folderRel, entry.name));
+    if (existsSync(join(folderAbs, entry.name, "SKILL.md"))) {
+      out.push({ id: entry.name, path: rel });
+    }
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function validationCommandForProject(projectRoot, scriptName, fallbackScript) {
+  if (hasPackageScript(projectRoot, scriptName)) return `npm run ${scriptName}`;
+  return `node <resolved-supervibe-plugin-root>/scripts/${fallbackScript} --root .`;
+}
+
+function hasPackageScript(projectRoot, scriptName) {
+  const packagePath = join(projectRoot, "package.json");
+  if (!existsSync(packagePath)) return false;
+  try {
+    const parsed = JSON.parse(readFileSync(packagePath, "utf8"));
+    return Object.hasOwn(parsed.scripts || {}, scriptName);
+  } catch {
+    return false;
+  }
 }
 
 function hostCallableAgentMap(roster = { agents: [] }, agentsFolder = "") {

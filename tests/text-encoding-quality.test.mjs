@@ -81,8 +81,12 @@ test("text encoding validator skips generated directories unless explicitly incl
   const root = await mkdtemp(join(tmpdir(), "supervibe-text-generated-"));
   try {
     const generated = join(root, ".next", "dev", "static", "polyfill-nomodule.js");
+    const distCheckGenerated = join(root, "dist-check", "assets", "index.js");
     await mkdir(dirname(generated), { recursive: true });
+    await mkdir(dirname(distCheckGenerated), { recursive: true });
     await writeFile(generated, `const broken = '${corruptAsWindows1251("нужен")}';\n`, "utf8");
+
+    await writeFile(distCheckGenerated, "const broken = '\uFFFD';\n", "utf8");
 
     const defaultResult = validateTextEncoding(root);
     const includedResult = validateTextEncoding(root, { includeGenerated: true });
@@ -91,6 +95,7 @@ test("text encoding validator skips generated directories unless explicitly incl
     assert.equal(defaultResult.checked, 0);
     assert.equal(includedResult.pass, false);
     assert.ok(includedResult.issues.some((issue) => issue.file === ".next/dev/static/polyfill-nomodule.js"));
+    assert.ok(includedResult.issues.some((issue) => issue.file === "dist-check/assets/index.js"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

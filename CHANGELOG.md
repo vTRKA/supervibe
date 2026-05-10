@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.9] - 2026-05-10
+
+### Fixed
+
+- Added `/supervibe-adapt` host instruction refresh planning for stale
+  Supervibe managed blocks in `AGENTS.md`, `GEMINI.md`, Cursor rules, and
+  other host instruction surfaces while preserving user-owned sections through
+  the context migrator.
+- Updated managed provisioning context to show current host-installed skills
+  and to use the direct `validate-agent-producer-receipts.mjs --root .`
+  fallback when the target project does not define the npm validation script.
+- Excluded `dist-check/` generated assets from the default text-encoding gate
+  so workflow validation is not blocked by stale build-output files unless
+  generated files are explicitly included.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.9`.
+
 ## [2.1.8] - 2026-05-10
 
 ### Fixed

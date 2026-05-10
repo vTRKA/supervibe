@@ -40,6 +40,7 @@ const SKIP_DIRS = new Set([
   "build",
   "coverage",
   "dist",
+  "dist-check",
   "node_modules",
 ]);
 
