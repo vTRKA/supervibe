@@ -11,8 +11,8 @@ deferred.
 
 | Family | Status | Local path | Rationale |
 | --- | --- | --- | --- |
-| Main design CSV data | adapted | `skills/design-intelligence/data/*.csv` | Core retrieval evidence for product, style, color, typography, UX, charts, icons, landing, app interface, React performance, and UI reasoning. |
-| Duplicate data trees | adapted | `skills/design-intelligence/data/manifest.json` | Manifest records canonical family names, duplicate checksum comparison, imported row counts, and checksums. |
+| Main design CSV data | adapted | `skills/design-intelligence/data/*.csv` | Core retrieval evidence for product, style, color, typography, UX, charts, icons, landing, app interface, React performance, and UI reasoning. The app-interface runtime CSV is a merged web plus native platform superset. |
+| Duplicate data trees | adapted | `skills/design-intelligence/data/manifest.json` | Manifest records canonical family names, duplicate checksum comparison, imported row counts, checksums, source variants, canonical choices, and adaptation rationales. |
 | Stack CSV data | adapted | `skills/design-intelligence/data/stacks/*.csv` | Stack-aware UI handoff evidence for web, mobile, framework, component-library, and 3D surfaces. |
 | Slide decision CSV data | adapted | `skills/design-intelligence/data/slides/*.csv` | Deck strategy, layout, copy, chart, color, typography, and background evidence. |
 | Logo, icon, CIP collateral CSV data | adapted | `skills/design-intelligence/data/collateral/*.csv` | Brand/collateral evidence with approved brandbook precedence. |
@@ -101,6 +101,31 @@ Creative reference packs under `skills/design-intelligence/references/creative/`
 - `creative-regulated-trust.md`
 
 Taxonomy: `docs/references/creative-reference-taxonomy.md`.
+
+## Source Variant Contract
+
+`skills/design-intelligence/data/manifest.json` is the durable contract for
+source variants. Every domain must carry:
+
+- `sourceVariant`: the canonical coverage strategy.
+- `canonicalChoice`: why the runtime CSV is the local source of truth.
+- `adaptationRationale`: the exact reason for any local adaptation.
+- `sourceVariants`: neutral source paths, row counts, checksums, disposition,
+  and rationale for each covered variant.
+
+Five domains have explicit adaptation coverage:
+
+| Domain | Canonical choice |
+| --- | --- |
+| `app-interface` | Merged web package rows and native source-tree rows so agents cover browser, iOS, Android, and React Native interface practice. |
+| `color` | Format-normalized runtime CSV with the same parsed row content and stable packaged checksum. |
+| `icons` | 105-row local/source-tree superset covering the 104-row packaged variant plus the guideline row. |
+| `landing` | 34-row sanitized superset that preserves modern patterns and fixes malformed trailing packaged rows. |
+| `style` | Terminology-normalized runtime names with alias keywords for prior source-variant names. |
+
+The validator fails if a future import adds a source variant without a neutral
+path, rows, checksum, disposition, rationale, canonical choice, and runtime
+coverage entry.
 
 ## Advanced Prototype Tool Families
 

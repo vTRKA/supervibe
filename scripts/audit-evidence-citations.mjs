@@ -63,7 +63,8 @@ export function aggregateUsage(entries, windowSize) {
       if (!e.subtool_usage) continue;
       withTelemetry++;
       if (e.subtool_usage.memory > 0) usage.memory++;
-      if (e.subtool_usage['code-search'] > 0) usage['code-search']++;
+      const codeSearchCount = (e.subtool_usage['code-search'] || 0) + (e.subtool_usage.rag || 0);
+      if (codeSearchCount > 0) usage['code-search']++;
       if (e.subtool_usage['code-graph'] > 0) usage['code-graph']++;
     }
     if (withTelemetry === 0) continue;

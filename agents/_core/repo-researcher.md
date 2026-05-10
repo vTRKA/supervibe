@@ -352,6 +352,24 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - **Prior incident notes**: `.supervibe/memory/incidents/` — flag any module touched by past incidents as `[CAUTION]`
 - **Recent change context**: `git log --since=...` window relevant to research goal
 
+## Source Freshness Evidence
+
+For every research output, separate evidence by freshness tier:
+
+- Current local code: files and symbols read from the worktree after the last
+  code-search/RAG result.
+- Current generated state: registry, manifest, package, memory, Code RAG, and
+  CodeGraph health commands.
+- Durable memory: decisions or incidents from `.supervibe/memory/`, marked
+  current, aging, stale, or superseded.
+- External/current docs: official docs or primary sources with captured date
+  when the claim may have changed.
+
+If the map is used for agent-system or release confidence, include index
+health, memory result count, and the exact validators that cover the mapped
+surface. Do not let an old memory entry override current code or generated
+state.
+
 ## Summary
 <3-5 sentence executive overview: what was mapped, key takeaway, biggest unknown.>
 

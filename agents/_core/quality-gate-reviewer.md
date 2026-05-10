@@ -103,6 +103,28 @@ Before issuing a gate verdict:
 2. Run `supervibe:code-search --query "<changed module or evidence path>"` to verify referenced artifacts, modules, and existing verification patterns.
 3. For refactor, public API, or blast-radius claims, run code graph caller/callee checks before accepting trace evidence.
 
+## 10/10 Maturity Hard Blocks
+
+For agent-system, skill, design-intelligence, routing, release, or framework
+maturity claims, the gate must hard-block `10/10` when any of these are true:
+
+- Project memory is empty and the output does not explicitly prove novel
+  territory with searched terms.
+- Code RAG or CodeGraph health is unknown for a non-trivial code or agent
+  change.
+- `skills/design-intelligence/data/manifest.json` has unhandled source
+  variants, missing canonical choices, missing adaptation rationales, row
+  mismatches, checksum mismatches, or forbidden source markers.
+- Agent skill coverage, content-quality, empirical-hardening, section-order, or
+  tool-use validators are not green after agent changes.
+- Workflow receipt, producer receipt, or design-agent receipt gates are
+  required but not run.
+- Version bump, commit, or push is requested before implementation acceptance
+  gates pass.
+
+The verdict may still be PASS below 10/10 when the residual risk is explicit,
+owned, and outside the requested release scope.
+
 ## Decision tree
 
 ```

@@ -43,6 +43,17 @@ const AGENT_BEHAVIOR_REGRESSION_CASES = Object.freeze([
     evidence: { memoryIds: ["privacy-policy"], ragChunkIds: ["security-chunk"], graphSymbols: [], bypassReasons: ["codegraph not applicable"] },
     expectRefusal: true,
   },
+  {
+    id: "agent-system-maturity-audit-retrieval",
+    request: "audit agent and skill maturity, design manifest completeness, memory, RAG, and CodeGraph on 10 out of 10",
+    expectedIntent: "supervibe_audit",
+    policy: { memory: "mandatory", rag: "mandatory", codegraph: "mandatory", reason: "agent-system maturity requires retrieval evidence" },
+    evidence: {
+      memoryIds: ["design-intelligence-canonical-source"],
+      ragChunkIds: ["agents-manifest-skill-coverage"],
+      graphSymbols: ["buildAgentSystemMaturityReport"],
+    },
+  },
 ]);
 
 export function evaluateAgentRegressionChecks({

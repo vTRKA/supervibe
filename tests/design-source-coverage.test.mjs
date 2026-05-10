@@ -29,9 +29,24 @@ test("manifest records adapted local source families and no design lookup comman
 
   const manifest = JSON.parse(await readFile("skills/design-intelligence/data/manifest.json", "utf8"));
   assert.equal(manifest.sourceReference, "local-design-intelligence-pack");
+  assert.equal(manifest.sourceVariantPolicy?.required, true);
   assert.equal(manifest.excludedAssets.some((asset) => asset.path.includes("canvas-fonts")), true);
   assert.equal(manifest.excludedAssets.some((asset) => asset.path.includes("installer-src")), true);
   assert.equal(manifest.commandPolicy.includes("no new slash command"), true);
+
+  for (const domain of manifest.domains) {
+    assert.equal(typeof domain.sourceVariant, "string", `${domain.id}: sourceVariant missing`);
+    assert.equal(typeof domain.canonicalChoice, "string", `${domain.id}: canonicalChoice missing`);
+    assert.equal(typeof domain.adaptationRationale, "string", `${domain.id}: adaptationRationale missing`);
+    assert.equal(Array.isArray(domain.sourceVariants), true, `${domain.id}: sourceVariants missing`);
+    assert.ok(domain.sourceVariants.length >= 1, `${domain.id}: sourceVariants empty`);
+  }
+
+  for (const id of ["app-interface", "color", "icons", "landing", "style"]) {
+    const domain = manifest.domains.find((item) => item.id === id);
+    assert.ok(domain, `${id}: domain missing`);
+    assert.match(domain.adaptationRationale, /variant|superset|normaliz|merged|sanitized/i);
+  }
 
   const commands = await readdir("commands");
   assert.equal(commands.includes("supervibe-design-intelligence.md"), false);

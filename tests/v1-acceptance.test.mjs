@@ -25,10 +25,10 @@ test("LICENSE present", async () => {
   assert.ok(existsSync(join(ROOT, "LICENSE")));
 });
 
-test("all 16 confidence rubrics present and validate", async () => {
+test("all required confidence rubrics present and validate", async () => {
   const dir = join(ROOT, "confidence-rubrics");
   const files = (await readdir(dir)).filter((f) => f.endsWith(".yaml"));
-  assert.ok(files.length >= 16, `expected >=16 rubrics, found ${files.length}`);
+  assert.ok(files.length >= 18, `expected >=18 rubrics, found ${files.length}`);
   const expected = [
     "agent-delivery",
     "agent-quality",
@@ -36,9 +36,11 @@ test("all 16 confidence rubrics present and validate", async () => {
     "autonomous-loop",
     "autonomy-readiness",
     "brandbook",
+    "design-intelligence",
     "execute-plan",
     "framework",
     "memory-entry",
+    "plan-review",
     "plan",
     "prototype",
     "requirements",

@@ -32,7 +32,9 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 ## Working Rules
 
 - Check project memory, code search and code graph before non-trivial code changes.
+- Do not claim 10/10 agent, skill, design-data, or system maturity unless project memory, Code RAG, and CodeGraph readiness were checked, or the output explicitly records that no prior memory/index evidence was available and why that does not reduce confidence.
 - For command-like user requests, run `node scripts/supervibe-commands.mjs --match "<user request>"` before broad source search. If the result is `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
+- For ambiguous audit phrases about agents, skills, design datasets, RAG/CodeGraph, memory, or "10/10" maturity, route to `/supervibe-audit` before plan review unless the user explicitly references an existing plan artifact.
 - For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, create a runtime-issued workflow receipt with `node scripts/workflow-receipt.mjs issue ...`; hand-written receipts are untrusted and `npm run validate:workflow-receipts` must pass before claiming delegated work is complete.
 - Inline/manual drafts are diagnostic only. If a workflow names a producer agent, worker, reviewer, validator, executable skill producer, or external tool, use the real host/tool path whenever available and bind the result with runtime receipts. Do not emulate specialist producers in the controller and do not let command or skill receipts substitute for agent/worker/reviewer receipts.
 - For skill-owned durable design-system outputs, use executable producers such as `node scripts/brandbook-producer.mjs run ...`; use `workflow-receipt.mjs reissue`, `workflow-receipt.mjs prune-stale --apply`, `workflow-receipt.mjs rebuild-ledger`, and `workflow-receipt.mjs recovery-status` for repair/recovery instead of editing receipt JSON or the ledger by hand.
@@ -52,10 +54,10 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 
 ## Agent And Artifact Map
 
-- Agents: 92 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality, skill-coverage, empirical-hardening, section-order and tool-use gates in `scripts/validate-agent-content-quality.mjs`, `scripts/validate-agent-skill-coverage.mjs`, `scripts/validate-agent-empirical-hardening.mjs`, `scripts/validate-agent-section-order.mjs`, and `scripts/validate-agent-tool-use-matrix.mjs`.
+- Agents: 97 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality, skill-coverage, empirical-hardening, section-order and tool-use gates in `scripts/validate-agent-content-quality.mjs`, `scripts/validate-agent-skill-coverage.mjs`, `scripts/validate-agent-empirical-hardening.mjs`, `scripts/validate-agent-section-order.mjs`, and `scripts/validate-agent-tool-use-matrix.mjs`.
 - Skills: 56 folders under `skills/`; every skill needs at least one agent owner; operational/content-quality gates in `scripts/validate-skill-operational-contracts.mjs` and `scripts/validate-skill-content-quality.mjs`.
 - Rules: 31 files under `rules/`.
-- Confidence rubrics: 17 YAML files under `confidence-rubrics/`.
+- Confidence rubrics: 18 YAML files under `confidence-rubrics/`.
 - Commands: 19 files under `commands/`.
 - Core libraries: `scripts/lib/`.
 - Tests: `tests/*.test.mjs`.

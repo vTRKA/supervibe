@@ -7,7 +7,7 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-**v2.0** - current plugin `v2.0.130` - MIT - 1516 tests
+**v2.0** - current plugin `v2.0.131` - MIT - 1517 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -95,7 +95,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.0.130 initialized for this project
+[supervibe] welcome  plugin v2.0.131 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -293,7 +293,7 @@ Most users only need these five ideas:
 
 | Feature | What it means |
 |---|---|
-| 92 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
+| 97 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
 | Code graph | Tree-sitter symbols and edges; query callers, callees, neighbors, and impact |
 | Semantic code search | Offline multilingual source search with local embeddings |
 | Project memory | Decisions, patterns, incidents, learnings, and solutions under `.supervibe/memory/` |

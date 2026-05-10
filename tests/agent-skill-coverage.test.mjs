@@ -11,7 +11,7 @@ import {
 test("current agent roster has foundational and specialist skill coverage", () => {
   const result = validateAgentSkillCoverage(process.cwd());
   assert.deepEqual(result.issues, []);
-  assert.equal(result.checked, 92);
+  assert.equal(result.checked, 97);
   assert.equal(result.checkedSkills, 56);
 });
 

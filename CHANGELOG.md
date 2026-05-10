@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.131] - 2026-05-10
+
+### Added
+
+- Added five specialist agents for design-data curation, data visualization,
+  privacy/compliance architecture, payments/billing architecture, and release
+  governance.
+- Added a command-router ambiguity policy for agent, skill, design-data,
+  memory, RAG, CodeGraph, and 10/10 maturity audit requests.
+- Added source-variant design-intelligence documentation and regression
+  coverage for Russian agent/design-data maturity audit routing.
+
+### Changed
+
+- Hardened the design-intelligence dataset manifest with explicit source
+  variants, canonical-choice rationale, row/checksum validation, and
+  repository-neutral provenance.
+- Strengthened core/meta/design agents with retrieval evidence gates,
+  dataset-family matrices, memory seeding requirements, release blocks, and
+  maturity-audit routing.
+- Updated host/plugin/roster surfaces to 97 agents and 18 confidence rubrics.
+
+### Fixed
+
+- Counted recorded RAG usage as code-search evidence in the evidence-citation
+  audit so retrieval telemetry no longer reports false low-search warnings.
+
 ## [2.0.130] - 2026-05-10
 
 ### Changed

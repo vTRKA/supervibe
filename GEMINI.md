@@ -24,13 +24,13 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 ## What Supervibe provides
 
 Same Supervibe project context, adapted for Gemini CLI:
-- 92 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
+- 97 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - Agent smartness is validated by `npm run validate:agent-content-quality`,
   `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, and `npm run validate:agent-tool-use-matrix`, not by padding files to a line count. Use `npm run supervibe:agent-heatmap` when you need per-agent quality scores instead of a pass/fail answer.
 - Every agent must explain each declared skill in `## Skills`; every process skill must have at least one owning agent.
 - 56 process skills in `./skills/`, validated by `npm run validate:skill-operational-contracts` and `npm run validate:skill-content-quality`
 - 31 project rules in `./rules/`
-- 17 confidence rubrics in `./confidence-rubrics/`
+- 18 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
 - Idea-to-production routing starts with `/supervibe-brainstorm`, then `/supervibe-plan --from-brainstorm`, `/supervibe-plan --review`, `/supervibe-loop --atomize-plan`, and only then provider-safe execution.
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
@@ -50,6 +50,8 @@ If the output says `INTENT: missing_slash_command` or `HARD_STOP: true`, report 
 For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node ./scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
 
 Inline/manual drafts are diagnostics only. Do not treat reading a skill or agent markdown file as an invocation. If a workflow names a specialist producer and Gemini cannot produce host invocation proof, report the blocked producer, offer provision/connect/stop choices, and do not claim the stage complete.
+
+Ambiguous requests about agent strength, skill coverage, design-intelligence datasets, memory/RAG/CodeGraph readiness, or 10/10 maturity route to `/supervibe-audit` before plan review unless the user explicitly points at an existing plan artifact. A 10/10 maturity claim requires project memory, Code RAG, and CodeGraph readiness evidence, or an explicit no-prior-evidence note with confidence impact.
 
 Reference any agent by file path:
 ```

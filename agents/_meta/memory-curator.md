@@ -110,6 +110,24 @@ Before curating:
 2. Run `supervibe:code-search --query "<referenced symbol or module>"` when memory entries cite code, APIs, commands, or generated artifacts.
 3. For entries that claim a symbol, caller, or public contract still exists, use code graph caller/callee checks before preserving high-confidence guidance.
 
+### Post-Audit Seed Memory
+
+After an audit finds a systemic policy, regression lesson, source-variant
+decision, routing false positive, workflow receipt rule, or RAG/CodeGraph
+preflight requirement, create or request a durable memory entry before the
+audit is called complete. Required minimum set for framework hardening audits:
+
+- design-intelligence canonical source and source-variant policy.
+- workflow receipt provenance policy.
+- RAG/CodeGraph preflight policy.
+- host instruction preservation policy.
+- command routing ambiguity or false-positive lesson.
+
+Rebuild the index with `node scripts/build-memory-index.mjs` and verify at
+least one targeted `node scripts/search-memory.mjs --query "<topic>"`
+returns the entry. If project memory remains empty, quality gates must treat
+agent-system 10/10 claims as blocked or explicitly novel territory.
+
 ## Decision tree
 
 ```

@@ -137,6 +137,23 @@ Every question must show the user why it matters and what will happen with the a
 
 Use `Step N/M:` in English. In Russian conversations, localize the visible word "Step" and the recommended marker instead of showing English labels. Recompute `M` from the current triage, saved workflow state, skipped stages, and delegated safe decisions; never force the maximum stage count just because the workflow can have that many stages. Do not show bilingual option labels; pick one visible language for the whole question from the user conversation. Do not show internal lifecycle ids as visible labels. Labels must be domain actions grounded in the current task, not generic Option A/B labels or copied template placeholders. Wait for explicit user reply before advancing N. Do NOT bundle Step N+1 into the same message. If a saved `NEXT_STEP_HANDOFF` or `workflowSignal` exists and the user changes topic, ask whether to continue, skip/delegate safe decisions, pause and switch topic, or stop/archive the current state.
 
+## Agent Retrieval Evaluation
+
+When evaluating agents, treat retrieval discipline as an agent capability, not
+only an index feature. Add or require fixtures that prove:
+
+- The agent searches project memory before non-trivial work and reports hits
+  or explicit no-prior-memory evidence.
+- The agent uses Code RAG for relevant source, docs, validators, and generated
+  surfaces before broad manual search.
+- The agent uses Code Graph for public symbol, routing, validator, package, or
+  cross-module impact claims, or records Case C with rationale.
+- The agent does not claim 9/10 or 10/10 when memory is empty, index health is
+  unknown, required source rows are missing, or retrieved evidence is stale.
+
+Agent retrieval evals should report recall, precision, stale rejection,
+evidence citation, and fallback behavior per agent family.
+
 ## Anti-patterns
 
 - asking-multiple-questions-at-once

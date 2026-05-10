@@ -42,6 +42,18 @@
       "evidence": { "memoryIds": ["privacy-policy"], "ragChunkIds": ["security-chunk"], "graphSymbols": [], "bypassReasons": ["codegraph not applicable"] }
     },
     {
+      "id": "agent-system-maturity-audit-retrieval",
+      "kind": "trigger-route",
+      "request": "audit agent and skill maturity, design manifest completeness, memory, RAG, and CodeGraph on 10 out of 10",
+      "expected": { "intent": "supervibe_audit", "command": "/supervibe-audit", "safetyIncludes": ["agent-system-coverage", "semantic-route-coverage"] },
+      "policy": { "memory": "mandatory", "rag": "mandatory", "codegraph": "mandatory", "reason": "agent-system maturity requires retrieval evidence" },
+      "evidence": {
+        "memoryIds": ["design-intelligence-canonical-source"],
+        "ragChunkIds": ["agents-manifest-skill-coverage"],
+        "graphSymbols": ["buildAgentSystemMaturityReport"]
+      }
+    },
+    {
       "id": "missing-slash-hard-stop",
       "kind": "command-request",
       "request": "/supervibe-missing do thing",

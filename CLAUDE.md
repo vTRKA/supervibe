@@ -16,6 +16,7 @@ For deep dives, agents read on demand from tracked plugin sources, not local
 | Multi-agent orchestration | `docs/multi-agent-orchestration.md` |
 | Semantic anchors | `docs/semantic-anchors.md` |
 | Design intelligence | `docs/design-intelligence.md` |
+| Command router ambiguity | `docs/command-router-ambiguity-policy.md` |
 | Agent authoring | `docs/agent-authoring.md` |
 | Skill authoring | `docs/skill-authoring.md` |
 | Rule authoring | `docs/rule-authoring.md` |
@@ -44,11 +45,11 @@ These six principles override defaults whenever they conflict with general pract
 ```
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
-├── agents/                        92 agents (_core/_meta/_design/_ops/_product + stacks/)
+├── agents/                        97 agents (_core/_meta/_design/_ops/_product + stacks/)
 ├── skills/                        56 process skills
 ├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
 ├── rules/                         31 project rules
-├── confidence-rubrics/            17 YAML rubrics
+├── confidence-rubrics/            18 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars
 ├── models/Xenova/...              Embedding model metadata; ONNX is downloaded by installer
 ├── scripts/                       Build / index / search / validate (Node ESM)
@@ -67,6 +68,8 @@ supervibe/
 Before broad source search for any command-like request, run `node scripts/supervibe-commands.mjs --match "<user request>"`. If it returns `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 
 For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
+
+Ambiguous requests about agent strength, skill coverage, design-intelligence datasets, memory/RAG/CodeGraph readiness, or 10/10 maturity route to `/supervibe-audit` before plan review unless the user explicitly points at an existing plan artifact.
 
 When user asks X, route as follows:
 
@@ -131,6 +134,8 @@ For consistent quality, agents are encouraged to follow this order:
 - `PostToolUse` hook may log per-agent sub-tool usage for optional later review
 
 **Optional audit:** `npm run audit:evidence` reports per-agent memory/code-search/graph usage rates.
+
+**10/10 maturity rule:** do not claim agent, skill, design-data, or system maturity at 10/10 unless project memory, Code RAG, and CodeGraph readiness were checked, or the output explicitly records that no prior memory/index evidence was available and why confidence remains justified.
 
 ## When in doubt
 

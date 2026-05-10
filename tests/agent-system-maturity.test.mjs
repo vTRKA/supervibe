@@ -27,11 +27,11 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
 
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: PASSING_VALIDATORS,
     indexGate: {
@@ -57,11 +57,11 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
 test("agent-system maturity score blocks 10/10 when host telemetry is missing", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,
@@ -95,11 +95,11 @@ test("agent-system maturity score blocks 10/10 when host telemetry is missing", 
 test("agent-system maturity score blocks 10/10 when strict producer validation fails despite telemetry counts", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,
@@ -133,11 +133,11 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
 test("agent-system maturity blocks 10/10 when retrieval enforcement hook is missing", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: PASSING_VALIDATORS,
     indexGate: {
@@ -162,11 +162,11 @@ test("agent-system maturity blocks 10/10 when retrieval enforcement hook is miss
 test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 10/10", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: PASSING_VALIDATORS,
     indexGate: {
@@ -194,11 +194,11 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
 test("agent-system maturity does not double-count retrieval sample gap as CodeGraph failure", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,
@@ -234,11 +234,11 @@ test("agent-system maturity does not double-count retrieval sample gap as CodeGr
 test("agent-system maturity blocks 10/10 when list-missing reports stale graph rows", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: PASSING_VALIDATORS,
     indexGate: {
@@ -267,11 +267,11 @@ test("agent-system maturity blocks 10/10 when list-missing reports stale graph r
 test("agent-system maturity blocks 10/10 when route replay has command regressions", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: PASSING_VALIDATORS,
     indexGate: {
@@ -301,11 +301,11 @@ test("agent-system maturity blocks 10/10 when route replay has command regressio
 test("agent-system maturity blocks 10/10 when rules rely on filler content", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,
@@ -336,11 +336,11 @@ test("agent-system maturity blocks 10/10 when rules rely on filler content", () 
 test("agent-system maturity blocks 10/10 when agent content quality is weak", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,
@@ -371,11 +371,11 @@ test("agent-system maturity blocks 10/10 when agent content quality is weak", ()
 test("agent-system maturity blocks 10/10 when skill content quality is weak", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
-      agents: 92,
+      agents: 97,
       skills: 56,
       commands: 19,
       rules: 31,
-      testFiles: 287,
+      testFiles: 331,
     },
     validators: {
       ...PASSING_VALIDATORS,

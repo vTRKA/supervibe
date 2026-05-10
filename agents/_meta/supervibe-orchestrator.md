@@ -115,6 +115,27 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
+### Agent-System Audit Evidence Gate
+
+When the user asks for agent, skill, manifest, memory, RAG, CodeGraph,
+receipt, routing, or 10/10 maturity confidence, route to `/supervibe-audit`
+before plan-review unless the request is explicitly about an existing plan
+artifact. The proposal must include:
+
+- Project-memory result count or explicit no-prior-memory evidence with the
+  searched terms.
+- Code RAG retrieval evidence for agents, skills, validators, command routing,
+  and design-intelligence surfaces.
+- CodeGraph readiness or Case C rationale when no structural symbol impact is
+  involved.
+- The expected gates: `npm run supervibe:agent-maturity`,
+  `npm run supervibe:design-maturity`, `npm run validate:agent-skill-coverage`,
+  `npm run validate:design-source-coverage`, and
+  `node scripts/supervibe-status.mjs --index-health --strict-index-health --no-gc-hints --no-color`.
+
+Do not propose `Confidence: 10/10` for agent-system health when project memory
+is empty, source-variant gaps are open, or RAG/CodeGraph health is unknown.
+
 ## Procedure
 
 1. **Step 0 — Read source of truth**:

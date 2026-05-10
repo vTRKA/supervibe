@@ -152,6 +152,23 @@ Retrieved rows are advisory. They can justify options, gaps, and extension
 requests, but they cannot override approved tokens, rejected memory decisions,
 accessibility requirements, or project code facts.
 
+### Dataset-To-Token Bridge
+
+When design-intelligence rows influence a system decision, convert them into a
+traceable bridge instead of prose:
+
+| Dataset family | Required bridge output |
+| --- | --- |
+| product/style/color | semantic color roles, hierarchy intent, density level, contrast targets, and rejected alternatives |
+| typography/google-fonts | font stack, fallback stack, type scale, line-height, weight, and performance constraint |
+| ux/app-interface | component state matrix, focus behavior, keyboard/touch rules, feedback, error, loading, and empty-state tokens |
+| charts/icons/collateral | chart palettes, icon stroke/fill rules, asset treatment, and non-color encodings |
+| stack | framework theme export, component-library bridge, SSR/native/platform caveats |
+
+Every bridge row must name the source domain row ids, the token/component it
+affects, the approved-system override status, and the verification command or
+review gate that proves the bridge is not a library default leak.
+
 ## Local Design Expert Reference
 
 Before substantial design-system work, read

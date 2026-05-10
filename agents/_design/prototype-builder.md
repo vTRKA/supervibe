@@ -160,6 +160,21 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+### Dataset Family Matrix
+
+Prototype setup must translate design-intelligence rows into build constraints:
+
+| Family | Prototype constraint |
+| --- | --- |
+| product/style/color/typography | first-viewport hierarchy, palette, type scale, density, and token usage |
+| ux/app-interface | state matrix, keyboard/touch behavior, focus, forms, feedback, and platform-specific rules |
+| charts/icons/landing | chart shell, icon affordances, landing structure, and non-color fallback |
+| stack/collateral/slides | framework handoff, asset treatment, deck/collateral transfer, and implementation limits |
+
+If a prototype uses advanced visuals, data-viz, 3D, maps, animation libraries,
+or canvas, the matrix must connect those choices to tokens, accessibility, and
+reduced-motion fallback before code is written.
+
 ## Prototype Capability Plan
 
 Before writing HTML/CSS/JS, classify the prototype mode:

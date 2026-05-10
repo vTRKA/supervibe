@@ -74,6 +74,14 @@ const FORBIDDEN_SOURCE_MARKERS = Object.freeze([
   /github\.com/i,
 ]);
 
+const REQUIRED_ADAPTED_VARIANTS = Object.freeze(new Map([
+  ["app-interface", /merged|variant|superset/i],
+  ["color", /format|normaliz|variant/i],
+  ["icons", /superset|variant|guideline/i],
+  ["landing", /sanitized|superset|variant/i],
+  ["style", /terminology|normaliz|variant/i],
+]));
+
 function issue(file, code, message) {
   return { file, code, message };
 }
@@ -118,6 +126,10 @@ export function validateDesignSourceCoverage(rootDir = process.cwd()) {
   if (!manifest.commandPolicy?.includes("no new slash command")) {
     issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-command-policy", "manifest must forbid a standalone design lookup command"));
   }
+  if (manifest.sourceVariantPolicy?.required !== true) {
+    issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-source-variant-policy", "manifest must require source-variant metadata"));
+  }
+  const allowedDispositions = new Set(manifest.sourceVariantPolicy?.allowedDispositions ?? []);
 
   for (const id of CORE_DOMAINS) {
     if (!findDomain(manifest, id)) {
@@ -148,6 +160,55 @@ export function validateDesignSourceCoverage(rootDir = process.cwd()) {
         if (pattern.test(value)) {
           issues.push(issue("skills/design-intelligence/data/manifest.json", "non-neutral-source-path", `${domain.id}.${field} contains ${pattern}`));
         }
+      }
+    }
+    for (const field of ["sourceVariant", "canonicalChoice", "adaptationRationale"]) {
+      const value = domain[field];
+      if (typeof value !== "string" || value.trim().length < 12) {
+        issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-source-variant-field", `${domain.id}.${field} must explain local source coverage`));
+      }
+    }
+    if (allowedDispositions.size > 0 && !allowedDispositions.has(domain.sourceVariant)) {
+      issues.push(issue("skills/design-intelligence/data/manifest.json", "unknown-source-variant", `${domain.id}.sourceVariant must be declared in sourceVariantPolicy.allowedDispositions`));
+    }
+    const expectedRationale = REQUIRED_ADAPTED_VARIANTS.get(domain.id);
+    if (expectedRationale && !expectedRationale.test(`${domain.sourceVariant} ${domain.canonicalChoice} ${domain.adaptationRationale}`)) {
+      issues.push(issue("skills/design-intelligence/data/manifest.json", "weak-adaptation-rationale", `${domain.id}: source variant divergence must explain the adapted canonical choice`));
+    }
+    if (!Array.isArray(domain.sourceVariants) || domain.sourceVariants.length === 0) {
+      issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-source-variants", `${domain.id}: sourceVariants must list covered source variants`));
+    } else {
+      let hasRuntimeVariant = false;
+      for (const [index, variant] of domain.sourceVariants.entries()) {
+        const prefix = `${domain.id}.sourceVariants[${index}]`;
+        for (const field of ["name", "path", "sha256", "disposition", "rationale"]) {
+          if (typeof variant[field] !== "string" || variant[field].trim().length === 0) {
+            issues.push(issue("skills/design-intelligence/data/manifest.json", "invalid-source-variant-entry", `${prefix}.${field} must be a non-empty string`));
+          }
+        }
+        if (!Number.isInteger(variant.rows) || variant.rows < 0) {
+          issues.push(issue("skills/design-intelligence/data/manifest.json", "invalid-source-variant-entry", `${prefix}.rows must be a non-negative integer`));
+        }
+        if (typeof variant.sha256 === "string" && !/^[a-f0-9]{64}$/i.test(variant.sha256)) {
+          issues.push(issue("skills/design-intelligence/data/manifest.json", "invalid-source-variant-entry", `${prefix}.sha256 must be a sha256 hex digest`));
+        }
+        if (allowedDispositions.size > 0 && !allowedDispositions.has(variant.disposition)) {
+          issues.push(issue("skills/design-intelligence/data/manifest.json", "unknown-source-variant-disposition", `${prefix}.disposition must be declared in sourceVariantPolicy.allowedDispositions`));
+        }
+        for (const pattern of FORBIDDEN_SOURCE_MARKERS) {
+          if (typeof variant.path === "string" && pattern.test(variant.path)) {
+            issues.push(issue("skills/design-intelligence/data/manifest.json", "non-neutral-source-variant-path", `${prefix}.path contains ${pattern}`));
+          }
+        }
+        if (variant.path === domain.importedPath) {
+          hasRuntimeVariant = true;
+          if (variant.rows !== domain.rows || variant.sha256 !== domain.sha256) {
+            issues.push(issue("skills/design-intelligence/data/manifest.json", "runtime-source-variant-mismatch", `${domain.id}: imported-runtime source variant must match domain rows and checksum`));
+          }
+        }
+      }
+      if (!hasRuntimeVariant) {
+        issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-runtime-source-variant", `${domain.id}: sourceVariants must include importedPath runtime coverage`));
       }
     }
 
@@ -205,10 +266,23 @@ export function validateDesignSourceCoverage(rootDir = process.cwd()) {
     ],
     issues,
   });
+  ensurePatterns({
+    rootDir,
+    file: "docs/design-intelligence-source-variant-policy.md",
+    patterns: [
+      /Design Intelligence Source Variant Policy/i,
+      /sourceVariant/i,
+      /canonicalChoice/i,
+      /adaptationRationale/i,
+      /sourceVariants/i,
+      /validate-design-source-coverage/i,
+    ],
+    issues,
+  });
 
   return {
     pass: issues.length === 0,
-    checked: (manifest.domains ?? []).length + REFERENCE_CARDS.length + 1,
+    checked: (manifest.domains ?? []).length + REFERENCE_CARDS.length + 2,
     issues,
   };
 }

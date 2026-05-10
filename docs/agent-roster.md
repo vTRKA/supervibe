@@ -2,7 +2,7 @@
 
 This file is generated from `agents/**/*.md` frontmatter. It is the human-readable map used by genesis, README onboarding, and host instruction files so users can see which specialists exist and what each one is responsible for.
 
-Total agents: 92
+Total agents: 97
 
 ## Core workflow
 
@@ -20,6 +20,8 @@ Total agents: 92
 - `accessibility-reviewer` - Use BEFORE shipping any UI to verify WCAG AA compliance, keyboard navigation, screen reader support, contrast measurement, motion sensitivity, and ARIA correctness. Stacks: any.
 - `copywriter` - Use WHEN writing or reviewing UI copy (labels, body, CTAs, errors, microcopy) to ensure voice consistency, clarity, and localization-readiness. Stacks: any.
 - `creative-director` - Use WHEN starting any new product or major visual direction shift to define brand language, mood, palette intent, typographic intent, motion intent, and emotional anchors. Stacks: any.
+- `data-visualization-specialist` - Use WHEN designing, reviewing, or implementing dashboards, charts, maps, analytical UX, metric cards, data storytelling, data-density choices, accessibility fallbacks, and chart library handoffs. Stacks: any.
+- `design-data-curator` - Use WHEN importing, auditing, reconciling, or strengthening design-intelligence datasets, manifests, source variants, CSV domains, reference cards, and design retrieval evidence. Stacks: any.
 - `design-system-architect` - Use WHEN defining, reviewing, extending, or auditing the project design-system contract: tokens, component baseline, motion, accessibility platform rules, component-library bridge, token drift, and prototype-to-produc... Stacks: any.
 - `electron-ui-designer` - Use WHEN designing UI for an Electron desktop application — main window, settings, modals, tray dropdowns, multi-window experiences — to produce platform-faithful mockups that respect macOS / Windows / Linux HIG, nati... Stacks: electron.
 - `extension-ui-designer` - Use WHEN designing UI for a browser extension (Chrome MV3, Edge, Brave, Firefox WebExtensions) — popup, side panel, options, new-tab override — to produce surface-aware mockups that respect host-browser etiquette, CSP... Stacks: chrome-extension.
@@ -54,8 +56,11 @@ Total agents: 92
 - `model-ops-engineer` - Use WHEN designing or reviewing model selection, local/hosted inference, latency and cost budgets, model rollout, fallback, prompt/model versioning, eval-to-release promotion, or AI production operations. Stacks: ai, llm, any.
 - `network-router-engineer` - Use WHEN diagnosing or planning work on routers, switches, Wi-Fi gateways, firewalls, NAT, VPN, DNS/DHCP, VLANs, routing stability, or ISP edge issues. Defaults to read-only diagnostics and requires explicit scoped ap... Stacks: network, any.
 - `observability-architect` - Use BEFORE shipping a service to production to design tracing, metrics, logs, SLOs, and on-call so incidents are detectable and debuggable. Stacks: any.
+- `payments-billing-architect` - Use WHEN designing or reviewing payments, billing, subscriptions, entitlements, invoices, refunds, tax, reconciliation, webhooks, idempotency, and revenue-impacting release gates. Stacks: any.
 - `performance-reviewer` - Use WHEN reviewing or improving performance to apply profile-first methodology with before/after benchmarks and root-cause bottleneck analysis. Stacks: any.
+- `privacy-compliance-architect` - Use WHEN designing or reviewing privacy, PII handling, consent, retention, deletion, access logging, data minimization, cross-border data flow, and regulated-trust implementation contracts. Stacks: any.
 - `prompt-ai-engineer` - Use WHEN designing, reviewing, hardening, or debugging prompts, system instructions, agent prompts, tool-use policies, structured outputs, prompt evals, red-team suites, or user-intent interpretation. Stacks: any.
+- `release-governance-reviewer` - Use WHEN preparing release, version bump, changelog, package surfaces, pre-push verification, rollback, release notes, or final 10/10 quality gates before merging or pushing to main. Stacks: any.
 - `security-researcher` - Use WHEN auditing or planning security work to research CVE database, GitHub Security Advisories, and pattern-level vulnerabilities for project's stack. Stacks: any.
 
 ## Product planning

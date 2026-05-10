@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { validateAgenticQuestion } from "../scripts/lib/supervibe-dialogue-contract.mjs";
+import { resolveCommandRequest } from "../scripts/lib/supervibe-command-catalog.mjs";
 import { routeTriggerRequest } from "../scripts/lib/supervibe-trigger-router.mjs";
 
 describe("supervibe trigger router", () => {
@@ -115,6 +116,33 @@ describe("supervibe trigger router", () => {
     assert.equal(route.requiredSafety.includes("receipt-provenance-check"), true);
     assert.equal(route.requiredSafety.includes("semantic-route-coverage"), true);
     assert.deepEqual(route.safetyBlockers, []);
+  });
+
+  it("routes long Russian agent and design-data maturity audits to audit mode, not plan review", () => {
+    const request = [
+      "Проведи аудит и скажи на 10 из 10, что ты уверен что агенты и скилы сейчас сильно усилены",
+      "в плане содержания практик, подходов, инструментов, документации и т.д.",
+      "Скажи на сколько ты уверен что весь дата сет дизайнеров правильный, полностью содержит все необходимое",
+      "и все взаимосвязано в skills/design-intelligence/data, а файл manifest.json полный и без пробелов.",
+      "Убедись также что агенты умеют и понимают когда ходить в память/rag/codegraph.",
+    ].join(" ");
+
+    const shortcut = resolveCommandRequest(request, {
+      pluginRoot: process.cwd(),
+      projectRoot: process.cwd(),
+    });
+    assert.equal(shortcut.intent, "supervibe_audit");
+    assert.equal(shortcut.command, "/supervibe-audit");
+    assert.notEqual(shortcut.command, "/supervibe-plan --review");
+
+    const route = routeTriggerRequest(request, {
+      pluginRoot: process.cwd(),
+      projectRoot: process.cwd(),
+    });
+    assert.equal(route.intent, "supervibe_audit");
+    assert.equal(route.command, "/supervibe-audit");
+    assert.equal(route.requiredSafety.includes("agent-system-coverage"), true);
+    assert.equal(route.requiredSafety.includes("semantic-route-coverage"), true);
   });
 
   it("keeps small routing questions on diagnostics instead of dispatching agent audits", () => {

@@ -156,6 +156,22 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+### Dataset Family Matrix
+
+Before approving a direction, record which design-intelligence families shaped
+the choice:
+
+| Family | Direction question answered |
+| --- | --- |
+| product/style | category fit, differentiation pressure, and visual language |
+| color/typography | emotional tone, readability, contrast, and brand memory |
+| ux/landing/app-interface | conversion pattern, trust sequence, navigation, and platform behavior |
+| icons/collateral/creative packs | asset voice, icon treatment, collateral coherence, borrow/avoid notes |
+| stack/slides | implementation constraints and presentation transfer when relevant |
+
+No family can be silently skipped when the direction depends on it. If the
+approved design system overrides retrieved rows, say so in the matrix.
+
 Apply the `Reference Quality Ladder` from `docs/references/design-expert-knowledge.md` before any external source shapes the direction. Every reference needs a reference role, quality tier, capture date or local-pack source, borrow note, avoid note, and fit rationale. A source may be a creative benchmark, interaction benchmark, category convention, direct competitor, platform standard, implementation library, anti-pattern, or do-not-use-as-style. Famous product names are never style authority until decomposed into concrete traits.
 
 ### Creative Pack Selection

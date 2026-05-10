@@ -174,6 +174,21 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+### Dataset Family Matrix
+
+For any material screen, flow, or design audit, include a compact matrix before
+the recommendation:
+
+| Family | Required when | Evidence |
+| --- | --- | --- |
+| product/style/color/typography | visual direction, density, trust, or brand feel changes | cited design-intelligence rows plus approved-system override status |
+| ux/app-interface | IA, navigation, forms, state matrix, platform behavior | row ids for UX and app-interface, including web or native platform coverage |
+| charts/icons/landing | data surfaces, iconography, or marketing pages | chart/icon/landing row ids and accessibility implications |
+| stack/slides/collateral | implementation handoff, deck, or brand/collateral work | stack, slide, or collateral row ids and handoff constraints |
+
+Do not report `Confidence: 9/10` or higher if the matrix is absent for a
+design-facing output or if a required family is skipped without rationale.
+
 Apply the `Reference Quality Ladder` before using examples. UX references must declare reference role and quality tier. Use interaction benchmark sources for specific flows, category convention sources for expected patterns, direct competitor sources for parity and differentiation, platform standard sources for platform behavior, and anti-pattern sources for what to avoid. Brand-name analogies are not UX direction until translated into explicit borrow/avoid notes.
 
 When visual direction is still open, consume the creative-director's selected

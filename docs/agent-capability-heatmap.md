@@ -1,50 +1,103 @@
 # Agent Capability Heatmap
 
-This document defines the human-facing heatmap contract. The full heatmap is
-generated from live agent frontmatter and bodies so it cannot drift from the
-roster.
+Generated from agent frontmatter and body contracts.
 
-Run:
-
-```bash
-npm run supervibe:agent-heatmap
-npm run supervibe:agent-heatmap -- --json
-```
-
-Hard gate:
-
-```bash
-npm run validate:agent-empirical-hardening
-```
-
-## What The Heatmap Shows
-
-- Agent id and namespace.
-- Skill count, foundational skill count, specialist skill count.
-- Tool count, write/edit availability, MCP or web-doc capability.
-- Current best-practices freshness posture.
-- Numeric agent score and grade.
-- Critical-agent marker.
-
-## Quality Bands
-
-| Score | Grade | Meaning |
-|---:|---|---|
-| 9.7-10 | excellent | Agent has strong role, skill, tool, freshness, and output discipline. |
-| 9.0-9.6 | ready | Agent is shippable but may not be a critical-path specialist. |
-| <9.0 | needs-work | Release gate blocks until the agent is strengthened. |
-
-## Current Gate
-
-The current release gate requires:
-
-- 92 heatmap rows for 92 agents.
-- 92 generated per-agent eval packs.
-- At least 3 eval cases per agent.
-- Minimum score >= 9.
-- Every critical agent has a playbook.
-- Stack scenario fixtures cover at least 25 stack surfaces.
-- Russian regression corpus has at least 8 cases.
-
-The gate is implemented in `scripts/lib/supervibe-agent-empirical-hardening.mjs`
-and exposed by `scripts/validate-agent-empirical-hardening.mjs`.
+| Agent | Namespace | Skills | Tools | Foundational | Specialist | Score | Grade | Freshness | Write |
+|---|---:|---:|---:|---:|---:|---:|---|---|---|
+| architect-reviewer | _core | 6 | 4 | 5 | 1 | 10 | excellent | fresh | no |
+| auth-architect | _core | 7 | 5 | 5 | 2 | 10 | excellent | fresh | no |
+| code-reviewer | _core | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| quality-gate-reviewer | _core | 7 | 4 | 5 | 2 | 10 | excellent | fresh | no |
+| refactoring-specialist | _core | 8 | 5 | 5 | 3 | 10 | excellent | fresh | yes |
+| repo-researcher | _core | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| root-cause-debugger | _core | 6 | 4 | 4 | 2 | 10 | excellent | fresh | no |
+| security-auditor | _core | 8 | 5 | 5 | 3 | 10 | excellent | fresh | no |
+| accessibility-reviewer | _design | 6 | 9 | 4 | 2 | 10 | excellent | fresh | no |
+| copywriter | _design | 4 | 5 | 2 | 2 | 10 | excellent | fresh | yes |
+| creative-director | _design | 7 | 11 | 2 | 5 | 10 | excellent | fresh | yes |
+| data-visualization-specialist | _design | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| design-data-curator | _design | 6 | 4 | 4 | 2 | 10 | excellent | fresh | no |
+| design-system-architect | _design | 8 | 4 | 3 | 5 | 10 | excellent | fresh | no |
+| electron-ui-designer | _design | 7 | 10 | 2 | 5 | 10 | excellent | fresh | yes |
+| extension-ui-designer | _design | 8 | 10 | 2 | 6 | 10 | excellent | fresh | yes |
+| mobile-ui-designer | _design | 7 | 10 | 2 | 5 | 10 | excellent | fresh | yes |
+| presentation-deck-builder | _design | 7 | 6 | 3 | 4 | 10 | excellent | fresh | yes |
+| presentation-director | _design | 7 | 10 | 3 | 4 | 10 | excellent | fresh | yes |
+| prototype-builder | _design | 12 | 6 | 4 | 8 | 10 | excellent | fresh | yes |
+| tauri-ui-designer | _design | 8 | 22 | 2 | 6 | 10 | excellent | fresh | yes |
+| ui-polish-reviewer | _design | 8 | 12 | 4 | 4 | 10 | excellent | fresh | no |
+| ux-ui-designer | _design | 9 | 9 | 2 | 7 | 10 | excellent | fresh | yes |
+| memory-curator | _meta | 4 | 6 | 3 | 1 | 10 | excellent | fresh | yes |
+| rules-curator | _meta | 6 | 6 | 3 | 3 | 10 | excellent | fresh | yes |
+| supervibe-orchestrator | _meta | 15 | 4 | 2 | 13 | 10 | excellent | fresh | no |
+| ai-agent-orchestrator | _ops | 8 | 4 | 4 | 4 | 10 | excellent | fresh | no |
+| ai-integration-architect | _ops | 5 | 4 | 3 | 2 | 10 | excellent | fresh | no |
+| api-contract-reviewer | _ops | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| api-designer | _ops | 7 | 5 | 5 | 2 | 10 | excellent | fresh | no |
+| best-practices-researcher | _ops | 5 | 5 | 4 | 1 | 10 | excellent | fresh | no |
+| competitive-design-researcher | _ops | 6 | 5 | 4 | 2 | 10 | excellent | fresh | no |
+| data-modeler | _ops | 7 | 5 | 5 | 2 | 10 | excellent | fresh | no |
+| db-reviewer | _ops | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| dependency-researcher | _ops | 5 | 5 | 4 | 1 | 10 | excellent | fresh | no |
+| dependency-reviewer | _ops | 7 | 5 | 4 | 3 | 10 | excellent | fresh | no |
+| devops-sre | _ops | 6 | 6 | 4 | 2 | 10 | excellent | fresh | yes |
+| infra-pattern-researcher | _ops | 5 | 5 | 4 | 1 | 10 | excellent | fresh | no |
+| infrastructure-architect | _ops | 5 | 4 | 3 | 2 | 10 | excellent | fresh | no |
+| ipc-contract-reviewer | _ops | 7 | 14 | 5 | 2 | 10 | excellent | fresh | no |
+| job-scheduler-architect | _ops | 7 | 5 | 5 | 2 | 10 | excellent | fresh | no |
+| llm-evals-engineer | _ops | 5 | 4 | 4 | 1 | 10 | excellent | fresh | no |
+| llm-rag-architect | _ops | 5 | 4 | 4 | 1 | 10 | excellent | fresh | no |
+| mock-data-designer | _ops | 5 | 6 | 4 | 1 | 10 | excellent | fresh | yes |
+| model-ops-engineer | _ops | 5 | 4 | 4 | 1 | 10 | excellent | fresh | no |
+| network-router-engineer | _ops | 5 | 5 | 4 | 1 | 10 | excellent | fresh | no |
+| observability-architect | _ops | 7 | 5 | 5 | 2 | 10 | excellent | fresh | no |
+| payments-billing-architect | _ops | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| performance-reviewer | _ops | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| privacy-compliance-architect | _ops | 7 | 4 | 4 | 3 | 10 | excellent | fresh | no |
+| prompt-ai-engineer | _ops | 6 | 5 | 3 | 3 | 10 | excellent | fresh | no |
+| release-governance-reviewer | _ops | 6 | 4 | 4 | 2 | 10 | excellent | fresh | no |
+| security-researcher | _ops | 6 | 5 | 4 | 2 | 10 | excellent | fresh | no |
+| analytics-implementation | _product | 7 | 6 | 4 | 3 | 10 | excellent | fresh | yes |
+| email-lifecycle | _product | 6 | 6 | 4 | 2 | 10 | excellent | fresh | yes |
+| product-manager | _product | 8 | 5 | 3 | 5 | 10 | excellent | fresh | yes |
+| qa-test-engineer | _product | 5 | 36 | 4 | 1 | 10 | excellent | fresh | yes |
+| seo-specialist | _product | 7 | 7 | 4 | 3 | 10 | excellent | fresh | yes |
+| systems-analyst | _product | 8 | 3 | 2 | 6 | 10 | excellent | fresh | no |
+| android-developer | stacks/android | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| aspnet-developer | stacks/aspnet | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| chrome-extension-architect | stacks/chrome-extension | 8 | 4 | 3 | 5 | 10 | excellent | fresh | no |
+| chrome-extension-developer | stacks/chrome-extension | 10 | 6 | 6 | 4 | 10 | excellent | fresh | yes |
+| django-architect | stacks/django | 6 | 4 | 3 | 3 | 10 | excellent | fresh | no |
+| django-developer | stacks/django | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| drf-specialist | stacks/django | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| elasticsearch-architect | stacks/elasticsearch | 6 | 6 | 4 | 2 | 10 | excellent | fresh | no |
+| express-developer | stacks/express | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| fastapi-architect | stacks/fastapi | 8 | 4 | 3 | 5 | 10 | excellent | fresh | no |
+| fastapi-developer | stacks/fastapi | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| fastify-developer | stacks/fastify | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| flutter-developer | stacks/flutter | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| go-service-developer | stacks/go | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| graphql-schema-designer | stacks/graphql | 5 | 4 | 3 | 2 | 10 | excellent | fresh | no |
+| ios-developer | stacks/ios | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| eloquent-modeler | stacks/laravel | 8 | 6 | 4 | 4 | 10 | excellent | fresh | yes |
+| laravel-architect | stacks/laravel | 5 | 4 | 3 | 2 | 10 | excellent | fresh | no |
+| laravel-developer | stacks/laravel | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| queue-worker-architect | stacks/laravel | 5 | 6 | 3 | 2 | 10 | excellent | fresh | yes |
+| mongo-architect | stacks/mongodb | 6 | 6 | 4 | 2 | 10 | excellent | fresh | no |
+| mysql-architect | stacks/mysql | 6 | 6 | 4 | 2 | 10 | excellent | fresh | no |
+| nestjs-developer | stacks/nestjs | 11 | 9 | 6 | 5 | 10 | excellent | fresh | yes |
+| nextjs-architect | stacks/nextjs | 4 | 4 | 3 | 1 | 10 | excellent | fresh | no |
+| nextjs-developer | stacks/nextjs | 12 | 9 | 6 | 6 | 10 | excellent | fresh | yes |
+| server-actions-specialist | stacks/nextjs | 10 | 6 | 5 | 5 | 10 | excellent | fresh | yes |
+| nuxt-architect | stacks/nuxt | 9 | 4 | 6 | 3 | 10 | excellent | fresh | no |
+| nuxt-developer | stacks/nuxt | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| postgres-architect | stacks/postgres | 7 | 4 | 3 | 4 | 10 | excellent | fresh | no |
+| rails-architect | stacks/rails | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| rails-developer | stacks/rails | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| react-implementer | stacks/react | 10 | 9 | 6 | 4 | 10 | excellent | fresh | yes |
+| redis-architect | stacks/redis | 5 | 4 | 3 | 2 | 10 | excellent | fresh | no |
+| spring-architect | stacks/spring | 6 | 4 | 3 | 3 | 10 | excellent | fresh | no |
+| spring-developer | stacks/spring | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| sveltekit-developer | stacks/svelte | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
+| tauri-rust-engineer | stacks/tauri | 12 | 26 | 6 | 6 | 10 | excellent | fresh | yes |
+| vue-implementer | stacks/vue | 7 | 9 | 6 | 1 | 10 | excellent | fresh | yes |
