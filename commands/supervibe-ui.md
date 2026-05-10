@@ -3,7 +3,7 @@ description: >-
   Use WHEN the user wants to see or manage epics, work items, phases, loop
   state, context packs, blockers, GC previews, or local task actions visually
   TO launch the local Supervibe UI control plane.
-last-verified: "2026-05-08"
+last-verified: "2026-05-10"
 ---
 
 # /supervibe-ui
@@ -36,11 +36,14 @@ process, returns the URL and PID, and writes logs under `.supervibe/servers/`.
 ## What It Shows
 
 - Epic/work-item status groups: ready, blocked, claimed, deferred, review, done.
+- Graph tree for epic, task, and subtask hierarchy with rollup status.
+- Ready queue, blocker list, stale claims, and completion blockers derived from
+  the same native graph used by loop and status commands.
 - Workflow phase rail derived from real graph/run state: plan, atomize, execute,
   verify, close, archive. It marks completed phases, current phase, and blocked
   execution/verification instead of using decorative static labels.
-- Kanban board for epics, tasks, projects, active agent claims, blockers,
-  verification counts, and task movement across ready/claimed/blocked/review/done.
+- Kanban board for epics, tasks, subtasks, active agent claims, blockers,
+  verification counts, and work movement across ready/claimed/blocked/review/done.
 - Individual work items with quick selection.
 - Context Pack preview for the selected work item.
 - Loop `state.json` summary with current wave, gates, tasks, reports, and
@@ -60,6 +63,15 @@ The UI can perform local-only graph actions:
 - `defer`
 - `close`
 - `reopen`
+- `skip`
+- `cancel`
+- `create`
+- `edit`
+- `split`
+- `reparent`
+- `dep-add`
+- `dep-remove`
+- `delete`
 
 Every action supports preview first. Real mutations require an explicit
 `confirm=apply-local` apply request after preview. The server binds to
@@ -77,7 +89,11 @@ deployment targets, or external APIs.
 ## Local JSON Endpoints
 
 - `GET /api/graph?file=<graph.json>`
-  - Includes `kanban.project`, `kanban.epics`, `kanban.agents`, and
+  - Includes `graphTree` plus `panels.readyQueue`, `panels.blockers`,
+    `panels.staleClaims`, and `panels.completion.blockers` so UI clients can
+    show hierarchy, next work, stalled claims, and close blockers without
+    guessing from raw columns.
+  - Includes `kanban.graphSummary`, `kanban.epics`, `kanban.agents`, and
     `kanban.columns[]` so IDEs can show task movement and epic ownership.
   - Includes `flow.steps[]`, `flow.activeId`, `flow.status`, and `flow.metrics`
     so IDEs can show phase progress from graph status, task status, gates, and

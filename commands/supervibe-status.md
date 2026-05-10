@@ -4,7 +4,7 @@ description: >-
   tracker visibility, dashboard output, external integration readiness, saved
   views, structured queries, interactive status palette, or local work reports
   or eval reports TO show a read-only project status report.
-last-verified: "2026-05-08"
+last-verified: "2026-05-10"
 ---
 
 # /supervibe-status
@@ -27,6 +27,7 @@ saved views, and render local redacted daily/weekly/SLA reports.
 /supervibe-status --integrations
 /supervibe-status --integrations --json
 /supervibe-status --view ready-now --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-status --ready --blocked --stale --orphan --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-status --query "status:blocked label:integration sort:age" --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-status --save-view release-risk --query "risk:high status:not-done" --views-file .supervibe/memory/work-item-views.json
 /supervibe-status --report daily --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -89,6 +90,12 @@ which alternatives were rejected, and what evidence the handoff must include.
 
 The work-item watch and delegated inbox sections are observational. They do not
 claim, close, or mutate tasks.
+
+Default status also detects the active native work-item graph and prints
+`SUPERVIBE_ACTIVE_WORK_GRAPH` with `NEXT_ACTION`, ready work, blocked work,
+stale claims, orphaned evidence, and terminal counts. Use `--ready`, `--blocked`,
+`--stale`, and `--orphan` to include focused rows for the current graph or the
+graph passed with `--file`.
 
 ## Output Contract
 

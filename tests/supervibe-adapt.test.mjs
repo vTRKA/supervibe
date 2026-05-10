@@ -1047,6 +1047,20 @@ function escapeRegExp(value) {
 function previousPatchVersion(version) {
   const parts = String(version).split(".").map((part) => Number(part));
   if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) return "0.0.0";
-  parts[2] = Math.max(0, parts[2] - 1);
+  if (parts[2] > 0) {
+    parts[2] -= 1;
+    return parts.join(".");
+  }
+  if (parts[1] > 0) {
+    parts[1] -= 1;
+    parts[2] = 999;
+    return parts.join(".");
+  }
+  if (parts[0] > 0) {
+    parts[0] -= 1;
+    parts[1] = 999;
+    parts[2] = 999;
+    return parts.join(".");
+  }
   return parts.join(".");
 }

@@ -112,7 +112,7 @@ export function formatEpicCompletionReport(report = {}) {
   ];
   if (report.issues?.length) {
     lines.push("ISSUES:");
-    for (const issue of report.issues) lines.push(`- ${issue.code}: ${issue.itemId || "graph"}: ${issue.message}`);
+    for (const issue of report.issues) lines.push(`- ${issue.code}: ${issue.itemId || "graph"}: ${issue.message} NEXT_ACTION: ${issue.nextAction || "inspect blocker"}`);
   }
   if (report.warnings?.length) {
     lines.push("WARNINGS:");
@@ -194,5 +194,19 @@ function isDryRunEvidence(evidence) {
 }
 
 function completionIssue(code, itemId, message, details = {}) {
-  return { code, itemId: itemId || null, message, ...details };
+  return { code, itemId: itemId || null, message, nextAction: nextActionForIssue(code, itemId, details), ...details };
+}
+
+function nextActionForIssue(code, itemId, details = {}) {
+  const id = itemId || "graph";
+  if (code === "graph-invalid") return `repair work-item graph shape before completion (${details.graphIssue?.code || "invalid"})`;
+  if (code === "epic-not-closed") return `close epic ${id} after required work validates`;
+  if (code === "item-open") return `complete, skip with reason, or split blocker for ${id}`;
+  if (code === "item-skipped") return `restore ${id} or provide an explicit completion override`;
+  if (code === "missing-skip-reason") return `add skip/cancel reason to ${id}`;
+  if (code === "missing-evidence") return `attach verification evidence to ${id}`;
+  if (code === "dry-run-evidence") return `replace dry-run evidence on ${id} with production verification`;
+  if (code === "unknown-dependency") return `repair dependency ${details.dependencyId || ""} for ${id}`;
+  if (code === "dependency-open") return `complete dependency ${details.dependencyId || ""} before ${id}`;
+  return "inspect completion blocker";
 }

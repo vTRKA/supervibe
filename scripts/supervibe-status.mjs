@@ -15,7 +15,8 @@ import { defaultWorkItemDaemonPath, formatWorkItemWatchStatus, readWorkItemDaemo
 import { defaultDelegatedInboxPath, formatDelegatedInbox, readDelegatedInbox } from './lib/supervibe-work-item-message-delegation.mjs';
 import { buildRunDashboardModel, writeRunDashboardHtml } from './lib/supervibe-run-dashboard.mjs';
 import { createIntegrationCatalog, formatIntegrationCatalog, summarizeIntegrationCatalog } from './lib/supervibe-external-integration-catalog.mjs';
-import { createWorkItemIndex } from './lib/supervibe-work-item-query.mjs';
+import { createWorkItemIndex, detectOrphanWorkItems, detectStaleWorkItems, groupWorkItemsByStatus } from './lib/supervibe-work-item-query.mjs';
+import { resolveActiveWorkItemGraph } from './lib/supervibe-work-item-registry.mjs';
 import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth, formatIndexHealthGate } from './lib/supervibe-index-health.mjs';
 import { applyStructuredWorkItemQuery, formatStructuredWorkItemQueryResult, parseWorkItemQuery } from './lib/supervibe-work-item-query-language.mjs';
 import { applySavedView, defaultSavedViewsPath, formatSavedViewResult, listSavedViews, readSavedViewStore, saveCustomView, writeSavedViewStore } from './lib/supervibe-work-item-saved-views.mjs';
@@ -67,6 +68,80 @@ function ageStr(ms) {
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
   return `${Math.floor(sec / 86400)}d ago`;
+}
+
+async function printActiveWorkGraphSummary() {
+  const resolution = await resolveActiveWorkItemGraph({ rootDir: PROJECT_ROOT });
+  if (resolution.status === 'none') {
+    console.log(color('Work graph: none active', 'dim'));
+    console.log(color(`  NEXT_ACTION: ${resolution.nextAction}`, 'dim'));
+    return;
+  }
+
+  if (resolution.status === 'ambiguous') {
+    console.log(color('Work graph: ambiguous active graphs', 'yellow'));
+    console.log(color(`  CANDIDATES: ${resolution.candidates.length}`, 'yellow'));
+    for (const candidate of resolution.candidates.slice(0, 5)) {
+      console.log(color(`  - ${candidate.epicId}: ${candidate.graphPath}`, 'dim'));
+    }
+    console.log(color(`  NEXT_ACTION: ${resolution.nextAction}`, 'yellow'));
+    return;
+  }
+
+  let graph;
+  try {
+    graph = JSON.parse(readFileSync(resolution.graphPath, 'utf8'));
+  } catch (error) {
+    console.log(color(`Work graph: unreadable active graph (${error.message})`, 'yellow'));
+    console.log(color(`  PATH: ${resolution.graphPath}`, 'dim'));
+    console.log(color('  NEXT_ACTION: repair or regenerate the active work-item graph', 'yellow'));
+    return;
+  }
+
+  const index = createWorkItemIndex({
+    graph,
+    claims: graph.claims || [],
+    gates: graph.gates || [],
+    evidence: graph.evidence || [],
+  });
+  const grouped = groupWorkItemsByStatus(index);
+  const stale = detectStaleWorkItems(index);
+  const orphans = detectOrphanWorkItems(index, graph);
+  const epicId = graph.epicId || graph.graph_id || graph.graphId || resolution.epicId || 'unknown';
+  const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || 'none';
+  const terminalCount = (grouped.done?.length || 0) + (grouped.skipped?.length || 0) + (grouped.cancelled?.length || 0);
+  const total = index.length;
+  const driftCount = stale.length + orphans.length;
+
+  console.log(color('SUPERVIBE_ACTIVE_WORK_GRAPH', driftCount > 0 ? 'yellow' : 'green'));
+  console.log(color(`  EPIC: ${epicId}`, 'dim'));
+  console.log(color(`  PATH: ${resolution.graphPath}`, 'dim'));
+  console.log(color(`  TOTAL: ${total}`, 'dim'));
+  console.log(color(`  READY: ${grouped.ready.length}`, grouped.ready.length > 0 ? 'green' : 'dim'));
+  const inProgress = grouped.in_progress || grouped.claimed || [];
+  console.log(color(`  IN_PROGRESS: ${inProgress.length}`, inProgress.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  BLOCKED: ${grouped.blocked.length}`, grouped.blocked.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  TERMINAL: ${terminalCount}`, 'dim'));
+  console.log(color(`  STALE_CLAIMS: ${stale.length}`, stale.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  ORPHANS: ${orphans.length}`, orphans.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  NEXT_READY: ${nextReady}`, nextReady === 'none' ? 'dim' : 'green'));
+  console.log(color(`  NEXT_ACTION: ${nextReady === 'none' ? 'validate completion or unblock remaining work' : `claim ${nextReady} or inspect blockers`}`, driftCount > 0 ? 'yellow' : 'dim'));
+
+  if (args.ready) {
+    for (const item of grouped.ready) console.log(color(`  READY_ITEM: ${item.itemId || item.id} ${item.title || ''}`.trimEnd(), 'dim'));
+  }
+  if (args.blocked) {
+    for (const item of grouped.blocked) {
+      const reason = item.blockReason || item.blockerReason || item.blockerNextAction || 'blocked';
+      console.log(color(`  BLOCKED_ITEM: ${item.itemId || item.id} ${reason}`, 'yellow'));
+    }
+  }
+  if (args.stale) {
+    for (const item of stale) console.log(color(`  STALE_ITEM: ${item.itemId || item.id} ${item.claimOwner || item.owner || 'unknown-owner'}`, 'yellow'));
+  }
+  if (args.orphan) {
+    for (const item of orphans) console.log(color(`  ORPHAN_ITEM: ${item.itemId || item.id} missing_parent=${item.parentId || 'none'}`, 'yellow'));
+  }
 }
 
 async function main() {
@@ -597,6 +672,9 @@ async function main() {
   }
 
   console.log();
+  await printActiveWorkGraphSummary();
+
+  console.log();
   const watchState = await readWorkItemDaemonState(defaultWorkItemDaemonPath(PROJECT_ROOT));
   console.log(color(formatWorkItemWatchStatus(watchState), watchState.watches?.some(w => w.status === 'active') ? 'green' : 'dim'));
 
@@ -642,7 +720,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'ready', 'blocked', 'stale', 'orphan']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { atomizePlanToWorkItems } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
@@ -33,6 +34,8 @@ node --test tests/completion.test.mjs
 node scripts/validate-completion.mjs --file graph.json
 \`\`\`
 `;
+
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 test("validateEpicCompletion passes closed graph with production evidence", () => {
   const graph = completedGraph();
@@ -66,7 +69,7 @@ test("validateEpicCompletion rejects dry-run evidence for production completion"
   const diagnostic = validateEpicCompletion(graph, { allowDryRunEvidence: true });
 
   assert.equal(production.pass, false);
-  assert.ok(production.issues.some((issue) => issue.code === "dry-run-evidence"));
+  assert.ok(production.issues.some((issue) => issue.code === "dry-run-evidence" && issue.nextAction));
   assert.equal(diagnostic.pass, true);
 });
 
@@ -92,6 +95,21 @@ test("validate-epic-completion CLI reports failed and passed completion", async 
     encoding: "utf8",
     stdio: "pipe",
   }), /epic completion artifact\(s\) failed/);
+});
+
+test("validate-epic-completion --all reports no graph coverage explicitly", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-no-completion-graphs-"));
+  const stdout = execFileSync(process.execPath, [
+    join(ROOT, "scripts/validate-epic-completion.mjs"),
+    "--all",
+  ], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.match(stdout, /SUPERVIBE_EPIC_COMPLETION_COVERAGE/);
+  assert.match(stdout, /NO_COVERAGE: true/);
+  assert.match(stdout, /PASS: neutral/);
 });
 
 test("supervibe-loop exposes completion validation for current commands", async () => {

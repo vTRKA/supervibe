@@ -47,6 +47,7 @@ USAGE:
   node scripts/workflow-receipt.mjs issue --command /supervibe-plan --subject-type skill --subject-id supervibe:writing-plans --stage <stage> --reason <text> --output <path> --handoff <id>
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --host-invocation-id <id> --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
+  node scripts/workflow-receipt.mjs issue --command /supervibe-loop --stage <stage> --reason <text> --output <path> --handoff <id> --graph-id <epic-id> --task-id <work-item-id>
   node scripts/workflow-receipt.mjs reissue --receipt <receipt-json> [--reason <text>]
   node scripts/workflow-receipt.mjs prune-stale [--apply]
   node scripts/workflow-receipt.mjs rebuild-ledger [--prune-stale]
@@ -120,6 +121,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       receiptDir: options["receipt-dir"] || null,
       secret: options.secret || null,
       hostInvocation: buildHostInvocation(options),
+      graphId: options["graph-id"] || options["work-graph-id"] || null,
+      taskId: options["task-id"] || options["work-item-id"] || null,
     });
     console.log("SUPERVIBE_WORKFLOW_RECEIPT_ISSUED");
     console.log(`RECEIPT_ID: ${result.receipt.receiptId}`);
@@ -129,6 +132,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`RUN_TIMESTAMP: ${result.receipt.runtime.runTimestamp}`);
     if (result.receipt.hostInvocation?.evidencePath) {
       console.log(`HOST_INVOCATION_EVIDENCE: ${result.receipt.hostInvocation.evidencePath}`);
+    }
+    if (result.receipt.workItemBinding) {
+      console.log(`GRAPH_ID: ${result.receipt.workItemBinding.graphId || "none"}`);
+      console.log(`TASK_ID: ${result.receipt.workItemBinding.taskId || "none"}`);
     }
     process.exit(0);
   }

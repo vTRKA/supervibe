@@ -7,7 +7,7 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-**v2.0** - current plugin `v2.0.131` - MIT - 1517 tests
+**v2.1** - current plugin `v2.1.0` - MIT - 1544 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -95,7 +95,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.0.131 initialized for this project
+[supervibe] welcome  plugin v2.1.0 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -181,6 +181,7 @@ Copy-paste example:
 /supervibe-loop --guided --file .supervibe/memory/work-items/example-epic/graph.json
 /supervibe-loop --epic example-epic --worktree
 /supervibe-loop --validate-completion --epic example-epic
+/supervibe-loop --close-eligible --epic example-epic
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
 /supervibe-loop --stop example-run
@@ -189,6 +190,12 @@ Copy-paste example:
 For command routing diagnostics, use `/supervibe --diagnose-trigger` when a phrase did not route as expected and `/supervibe --why-trigger` when you want to see the selected command, selected skill, confidence, missing artifacts, and safety blockers. Long-running work stays visible through stop/resume/status controls.
 
 The guided loop runs in the current session. Worktree is optional: add `--worktree` only when you want isolated or parallel sessions. Fresh-context or autonomous modes require provider-safe adapter support and explicit permission handling; when that is missing, Supervibe stays in guided or manual mode.
+
+Repair path:
+
+- Invalid plan repair: revise the reviewed plan, rerun atomization with `--preview`, and write only after `--plan-review-passed`.
+- Graph drift repair: inspect `/supervibe-status --ready --blocked --stale --orphan`, then fix dependencies, claims, or ownership before execution.
+- Completion blocker repair: run `/supervibe-loop --validate-completion`, attach missing evidence, then rerun `/supervibe-loop --close-eligible`.
 
 Also supported:
 

@@ -13,6 +13,7 @@ import {
   createWorktreeCommandPlan,
   createWorktreeSessionRecord,
   defaultWorktreeRegistryPath,
+  evaluateWorktreeTaskCompletionGate,
   finishWorktreeSession,
   formatWorktreeSessionStatus,
   heartbeatWorktreeSession,
@@ -290,6 +291,44 @@ test("heartbeat, stale marking, finish, and cleanup keep dirty worktrees", () =>
   const finished = finishWorktreeSession(stale, "session-1", { hasUncommittedChanges: true });
   assert.equal(finished.sessions[0].status, "cleanup_blocked");
   assert.match(formatWorktreeSessionStatus(finished), /CLEANUP_BLOCKED: 1/);
+});
+
+test("worktree cleanup is gated by assigned work item terminal status", () => {
+  const session = createWorktreeSessionRecord({
+    sessionId: "session-task-gate",
+    epicId: "epic-1",
+    assignedTaskIds: ["T1", "T2"],
+    status: "active",
+  });
+  const registry = createSessionRegistry([session]);
+  const graph = {
+    items: [
+      { itemId: "T1", type: "task", status: "complete" },
+      { itemId: "T2", type: "task", status: "open" },
+    ],
+  };
+
+  const gate = evaluateWorktreeTaskCompletionGate(session, { graph });
+  assert.equal(gate.ok, false);
+  assert.deepEqual(gate.openWorkItemIds, ["T2"]);
+
+  const cleanup = createCleanupPlan(session, { graph, hasUncommittedChanges: false });
+  assert.equal(cleanup.status, "cleanup_blocked");
+  assert.equal(cleanup.command, null);
+  assert.match(cleanup.reason, /T2/);
+
+  const finished = finishWorktreeSession(registry, "session-task-gate", { graph, hasUncommittedChanges: false });
+  assert.equal(finished.sessions[0].status, "cleanup_blocked");
+  assert.deepEqual(finished.sessions[0].cleanup.taskCompletionGate.openWorkItemIds, ["T2"]);
+
+  const override = createCleanupPlan(session, {
+    graph,
+    hasUncommittedChanges: false,
+    allowIncompleteTasks: true,
+    overrideReason: "user explicitly keeps unfinished task outside this worktree",
+  });
+  assert.equal(override.status, "cleanup_ready");
+  assert.equal(override.taskCompletionGate.override, true);
 });
 
 test("existing worktree validation rejects main root and failed baseline", () => {

@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { CodeStore } from "./code-store.mjs";
 import { MemoryStore } from "./memory-store.mjs";
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from "./node-sqlite-runtime.mjs";
-import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
+import { createWorkItemIndex, detectOrphanWorkItems, detectStaleWorkItems, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
 import { mutateWorkItemGraphFile } from "./supervibe-work-item-actions.mjs";
 import { buildContextPack } from "./supervibe-context-pack.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
@@ -41,7 +41,23 @@ export function createSupervibeUiServer({
         const grouped = groupWorkItemsByStatus(index);
         const kanban = createKanbanModel({ graph, index });
         const flow = createWorkflowFlowModel({ graph, index, grouped });
-        return sendJson(res, { graphPath: file, graphId: graph.graph_id || graph.graphId || graph.epicId, title: graph.title, grouped, items: index, kanban, flow });
+        const completion = validateEpicCompletion(graph, {
+          production: true,
+          requireEvidence: true,
+          allowDryRunEvidence: false,
+          requireEpicClosed: url.searchParams.get("requireEpicClosed") !== "false",
+        });
+        return sendJson(res, {
+          graphPath: file,
+          graphId: graph.graph_id || graph.graphId || graph.epicId,
+          title: graph.title,
+          grouped,
+          items: index,
+          graphTree: createGraphTreeModel({ graph, index }),
+          panels: createWorkItemPanelModel({ graph, index, grouped, completion }),
+          kanban,
+          flow,
+        });
       }
       if (url.pathname === "/api/context-pack") {
         const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
@@ -777,6 +793,80 @@ export function createKanbanModel({ graph = {}, index = [] } = {}) {
     })),
     agents,
     columns,
+  };
+}
+
+function createGraphTreeModel({ graph = {}, index = [] } = {}) {
+  const byParent = new Map();
+  const byId = new Map(index.map((item) => [item.itemId || item.id, item]));
+  for (const item of index) {
+    const parentId = item.parentId || (item.type === "epic" ? null : graph.epicId || graph.graph_id || graph.graphId || null);
+    const bucket = byParent.get(parentId) || [];
+    bucket.push(item);
+    byParent.set(parentId, bucket);
+  }
+  const toNode = (item) => {
+    const id = item.itemId || item.id;
+    return {
+      id,
+      title: item.title || item.goal || id,
+      type: item.type || "task",
+      status: item.effectiveStatus || item.status || "ready",
+      parentId: item.parentId || null,
+      children: (byParent.get(id) || []).map(toNode),
+    };
+  };
+  const roots = (byParent.get(null) || index.filter((item) => item.type === "epic"))
+    .filter((item, idx, arr) => arr.findIndex((candidate) => (candidate.itemId || candidate.id) === (item.itemId || item.id)) === idx)
+    .map(toNode);
+  return {
+    roots,
+    rollup: {
+      epics: index.filter((item) => item.type === "epic").length,
+      tasks: index.filter((item) => item.type === "task").length,
+      subtasks: index.filter((item) => item.type === "subtask").length,
+      gates: index.filter((item) => item.type === "gate" || item.type === "review").length,
+      followups: index.filter((item) => item.type === "followup").length,
+      orphanItems: detectOrphanWorkItems(index, graph).length,
+      total: byId.size,
+    },
+  };
+}
+
+function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, completion = null } = {}) {
+  const groups = grouped || groupWorkItemsByStatus(index);
+  const staleClaims = detectStaleWorkItems(index);
+  const blockers = groups.blocked.map((item) => ({
+    id: item.itemId || item.id,
+    title: item.title || item.goal || item.itemId || item.id,
+    status: item.effectiveStatus,
+    reason: item.blockerReason || item.dependencyBlockers?.join(",") || item.gates?.[0]?.gateId || "blocked",
+    nextAction: item.blockerNextAction || `inspect ${item.itemId || item.id}`,
+  }));
+  return {
+    readyQueue: groups.ready.map(compactPanelItem),
+    blockers,
+    staleClaims: staleClaims.map(compactPanelItem),
+    completion: {
+      productionReady: completion?.pass === true,
+      blockers: (completion?.issues || []).map((issue) => ({
+        code: issue.code,
+        itemId: issue.itemId,
+        reason: issue.message,
+        nextAction: issue.nextAction || "inspect completion blocker",
+      })),
+      warnings: completion?.warnings || [],
+    },
+  };
+}
+
+function compactPanelItem(item = {}) {
+  return {
+    id: item.itemId || item.id,
+    title: item.title || item.goal || item.itemId || item.id,
+    type: item.type || "task",
+    status: item.effectiveStatus || item.status || "ready",
+    owner: item.owner || item.claims?.[0]?.agentId || null,
   };
 }
 

@@ -21,6 +21,7 @@ export const WORK_ITEM_QUERY_INTENTS = Object.freeze([
   "policy",
   "role",
   "duplicate",
+  "followup",
   "unknown",
 ]);
 
@@ -38,6 +39,7 @@ export function classifyWorkItemQuestion(question = "") {
   if (/stale|завис|просроч/.test(text)) return "stale";
   if (/orphan|unlinked|сирот/.test(text)) return "orphan";
   if (/duplicate|дублик/.test(text)) return "duplicate";
+  if (/follow[- ]?up|backlog|later/.test(text)) return "followup";
   if (/delegated|inbox|message|question/.test(text)) return "delegated";
   if (/integration|adapter|sync|tracker/.test(text)) return "integration";
   if (/interactive|palette|guided form|create work item/.test(text)) return "interactive";
@@ -65,29 +67,35 @@ export function createWorkItemIndex({
   const claimsByTask = groupBy(graphClaims, (claim) => claim.taskId);
   const gatesByTask = groupBy(gates, (gate) => gate.taskId);
   const delegatedByItem = groupBy(delegatedMessages, (message) => message.workItemId);
-  const taskById = new Map(tasks.map((task) => [task.id, task]));
-  const itemById = new Map(items.map((item) => [item.itemId, item]));
+  const taskById = new Map(tasks.map((task) => [task.id || task.itemId, task]));
+  const itemById = new Map(items.map((item) => [item.itemId || item.id, item]));
   return items.map((item) => {
-    const task = taskById.get(item.itemId) || null;
-    const itemComments = commentsByItem.get(item.itemId) || [];
-    const itemClaims = claimsByTask.get(item.itemId) || [];
-    const itemGates = gatesByTask.get(item.itemId) || [];
-    const itemDelegated = delegatedByItem.get(item.itemId) || [];
+    const itemId = item.itemId || item.id;
+    const task = taskById.get(itemId) || null;
+    const itemComments = commentsByItem.get(itemId) || [];
+    const itemClaims = claimsByTask.get(itemId) || [];
+    const itemGates = gatesByTask.get(itemId) || [];
+    const itemDelegated = delegatedByItem.get(itemId) || [];
+    const dependencyBlocks = dependencyBlockers(task, { taskById, itemById });
     return {
       ...item,
+      itemId,
       labels: normalizeLabels(item.labels || item.label),
       task,
-      mapping: mapping.items?.[item.itemId] || null,
+      mapping: mapping.items?.[itemId] || null,
       comments: itemComments,
       commentSummary: summarizeWorkItemComments(itemComments),
       claims: itemClaims,
       gates: itemGates,
       delegatedMessages: itemDelegated,
-      evidence: evidence.filter((entry) => entry.workItemId === item.itemId || entry.taskId === item.itemId),
+      evidence: evidence.filter((entry) => entry.workItemId === itemId || entry.taskId === itemId),
       dueAt: item.dueAt || item.due_at || item.dueDate || item.due_date || task?.dueAt || task?.dueDate || null,
       deferred: item.deferred || task?.deferred || null,
       deferredUntil: item.deferredUntil || item.defer_until || task?.deferredUntil || task?.defer_until || null,
       verificationState: item.verificationState || item.verification_state || item.verification?.status || null,
+      dependencyBlockers: dependencyBlocks,
+      blockerReason: item.blockerReason || task?.blockerReason || null,
+      blockerNextAction: item.blockerNextAction || task?.blockerNextAction || null,
       effectiveStatus: effectiveStatus(item, task, itemClaims, itemGates, now, itemDelegated, { taskById, itemById }),
     };
   });
@@ -135,8 +143,12 @@ export function queryWorkItems(question, context = {}) {
     items = detectStaleWorkItems(filtered, context);
     answer = items.length ? `Stale work: ${items.map((item) => item.itemId).join(", ")}` : "No stale work.";
   } else if (intent === "orphan") {
-    items = detectOrphanEvidence(context);
-    answer = items.length ? `Orphan evidence: ${items.map((item) => item.path || item.id).join(", ")}` : "No orphan evidence.";
+    const orphanItems = detectOrphanWorkItems(filtered, context.graph);
+    const orphanEvidence = detectOrphanEvidence(context);
+    items = [...orphanItems, ...orphanEvidence];
+    answer = items.length
+      ? `Orphans: ${items.map((item) => item.itemId || item.path || item.id).join(", ")}`
+      : "No orphan work items or evidence.";
   } else if (intent === "delegated") {
     items = filtered.filter((item) => item.delegatedMessages?.some((message) => message.status === "open"));
     answer = items.length ? `Delegated inbox: ${items.map((item) => item.itemId).join(", ")}` : "No delegated questions or blocker requests.";
@@ -164,6 +176,11 @@ export function queryWorkItems(question, context = {}) {
   } else if (intent === "duplicate") {
     items = detectDuplicateWorkItems(filtered);
     answer = items.length ? `Possible duplicates: ${items.map((item) => item.ids.join("~")).join(", ")}` : "No likely duplicates.";
+  } else if (intent === "followup") {
+    items = detectFollowupBacklog(filtered);
+    answer = items.length
+      ? `Follow-up backlog: ${items.map((item) => `${item.itemId}${item.blockingCompletion ? ":required" : ""}`).join(", ")}`
+      : "No follow-up backlog.";
   } else {
     answer = "Unknown work-item question. Try ready, blocked, owner, changed, next, summary, stale, orphan, delegated, integration, or duplicate.";
   }
@@ -206,6 +223,30 @@ export function detectDuplicateWorkItems(index = []) {
     .map((group) => ({ ids: group.map((item) => item.itemId), title: group[0].title }));
 }
 
+export function detectOrphanWorkItems(index = [], graph = {}) {
+  const ids = new Set([
+    ...index.map((item) => item.itemId || item.id).filter(Boolean),
+    ...(graph.items || []).map((item) => item.itemId || item.id).filter(Boolean),
+  ]);
+  return index
+    .filter((item) => item.type !== "epic" && item.parentId && !ids.has(item.parentId))
+    .map((item) => ({
+      ...item,
+      diagnostic: "orphan-work-item",
+      severity: "warning",
+      nextAction: `reparent ${item.itemId || item.id} or restore parent ${item.parentId}`,
+    }));
+}
+
+export function detectFollowupBacklog(index = []) {
+  return index
+    .filter((item) => item.type === "followup" && !TERMINAL_STATUSES.has(String(item.status || "").toLowerCase()))
+    .map((item) => ({
+      ...item,
+      blockingCompletion: item.required === true || item.blocksCompletion === true,
+    }));
+}
+
 export function detectStaleWorkItems(index = [], { now = new Date(), staleMinutes = 30 } = {}) {
   const nowMs = Date.parse(now instanceof Date ? now.toISOString() : now);
   return index.filter((item) => item.claims.some((claim) => {
@@ -216,7 +257,7 @@ export function detectStaleWorkItems(index = [], { now = new Date(), staleMinute
 }
 
 export function detectOrphanEvidence({ graph = {}, evidence = [] } = {}) {
-  const known = new Set([...(graph.items || []).map((item) => item.itemId), ...(graph.tasks || []).map((task) => task.id)]);
+  const known = new Set([...(graph.items || []).map((item) => item.itemId || item.id), ...(graph.tasks || []).map((task) => task.id || task.itemId)]);
   return evidence.filter((entry) => {
     const id = entry.workItemId || entry.taskId;
     return !id || !known.has(id);
@@ -302,9 +343,11 @@ function isTerminalStatus(status) {
 }
 
 function blockReason(item) {
+  if (item.blockerReason) return `blocked:${item.blockerReason}`;
   if (item.gates.length) return `gate:${item.gates[0].gateId}`;
   if (item.delegatedMessages?.some((message) => message.status === "open")) return "delegated-message";
   if (item.claims.length) return "stale-claim";
+  if (item.dependencyBlockers?.length) return `dependencies:${item.dependencyBlockers.join(",")}`;
   if (item.task?.dependencies?.length) return `dependencies:${item.task.dependencies.join(",")}`;
   return item.effectiveStatus;
 }

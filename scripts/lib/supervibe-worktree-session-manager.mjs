@@ -349,6 +349,19 @@ export function validateWorktreeTrackerVisibility(session = {}, mapping = {}) {
 
 export function createCleanupPlan(session, options = {}) {
   const hasUncommittedChanges = Boolean(options.hasUncommittedChanges);
+  const taskCompletionGate = evaluateWorktreeTaskCompletionGate(session, options);
+  if (!taskCompletionGate.ok && !(options.allowIncompleteTasks === true && options.overrideReason)) {
+    return {
+      sessionId: session.sessionId,
+      worktreePath: session.worktreePath,
+      status: "cleanup_blocked",
+      archiveFirst: true,
+      allowedActions: ["complete-task", "status", "review-diff", "keep"],
+      command: null,
+      reason: `Assigned work item(s) are not terminal: ${taskCompletionGate.openWorkItemIds.join(", ")}`,
+      taskCompletionGate,
+    };
+  }
   return {
     sessionId: session.sessionId,
     worktreePath: session.worktreePath,
@@ -361,6 +374,9 @@ export function createCleanupPlan(session, options = {}) {
     reason: hasUncommittedChanges
       ? "Never remove a worktree with uncommitted changes."
       : "Worktree can be archived and cleaned up after review.",
+    taskCompletionGate: taskCompletionGate.ok
+      ? taskCompletionGate
+      : { ...taskCompletionGate, override: true, overrideReason: options.overrideReason },
   };
 }
 
@@ -419,6 +435,39 @@ export function defaultWorktreeRegistryPath(rootDir = process.cwd()) {
   return join(rootDir, ".supervibe", "memory", "worktree-sessions", "registry.json");
 }
 
+export function evaluateWorktreeTaskCompletionGate(session = {}, options = {}) {
+  const graph = options.graph || options.workItemGraph || null;
+  const assigned = uniqueStrings([...(session.assignedTaskIds || []), ...(session.workItemIds || [])]);
+  if (!graph || assigned.length === 0) {
+    return { ok: true, checked: 0, openWorkItemIds: [], missingWorkItemIds: [], terminalWorkItemIds: [] };
+  }
+  const byId = new Map();
+  for (const item of [...(graph.items || []), ...(graph.tasks || [])]) {
+    const id = item.itemId || item.id || item.taskId;
+    if (id && !byId.has(id)) byId.set(id, item);
+  }
+  const missingWorkItemIds = [];
+  const openWorkItemIds = [];
+  const terminalWorkItemIds = [];
+  for (const id of assigned) {
+    const item = byId.get(id);
+    if (!item) {
+      missingWorkItemIds.push(id);
+      openWorkItemIds.push(id);
+      continue;
+    }
+    if (isTerminalWorkItemStatus(item.status || item.effectiveStatus)) terminalWorkItemIds.push(id);
+    else openWorkItemIds.push(id);
+  }
+  return {
+    ok: openWorkItemIds.length === 0,
+    checked: assigned.length,
+    openWorkItemIds,
+    missingWorkItemIds,
+    terminalWorkItemIds,
+  };
+}
+
 async function readGitIgnore(rootDir) {
   try {
     return await readFile(join(rootDir, ".gitignore"), "utf8");
@@ -475,6 +524,10 @@ function sanitizeBranchName(value) {
 
 function normalizeSessionStatus(status) {
   return WORKTREE_SESSION_STATUSES.includes(status) ? status : "planned";
+}
+
+function isTerminalWorkItemStatus(status) {
+  return ["complete", "completed", "closed", "done", "skipped", "cancelled", "canceled"].includes(String(status || "").toLowerCase());
 }
 
 function normalizeOptionalMinutes(value) {

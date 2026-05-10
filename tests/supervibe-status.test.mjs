@@ -130,6 +130,66 @@ test('supervibe-status: reports MCP registry state', () => {
   assert.ok(/MCPs:/.test(out), 'should mention MCPs');
 });
 
+test('supervibe-status reports active work graph ready, blocked, stale, orphan, and next action', () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-active-graph-'));
+  try {
+    const graphDir = join(projectRoot, '.supervibe', 'memory', 'work-items', 'epic-status');
+    mkdirSync(graphDir, { recursive: true });
+    writeFileSync(join(graphDir, 'graph.json'), JSON.stringify({
+      kind: 'supervibe-work-item-graph',
+      graph_id: 'epic-status',
+      epicId: 'epic-status',
+      title: 'Status Epic',
+      items: [
+        { itemId: 'epic-status', type: 'epic', status: 'open', title: 'Status Epic' },
+        { itemId: 'T-ready', type: 'task', status: 'open', title: 'Ready status task' },
+        { itemId: 'T-claimed', type: 'task', status: 'claimed', title: 'Claimed stale task' },
+        { itemId: 'T-orphan', type: 'task', parentId: 'missing-parent', status: 'open', title: 'Orphan task' },
+        { itemId: 'T-blocked', type: 'task', status: 'blocked', title: 'Blocked task', blockerReason: 'needs approval' },
+      ],
+      tasks: [
+        { id: 'T-ready', status: 'open' },
+        { id: 'T-claimed', status: 'claimed' },
+        { id: 'T-orphan', parentId: 'missing-parent', status: 'open' },
+        { id: 'T-blocked', status: 'blocked' },
+      ],
+      claims: [
+        { taskId: 'T-claimed', status: 'active', agentId: 'agent-a', claimedAt: '2026-01-01T00:00:00.000Z', heartbeatAt: '2026-01-01T00:00:00.000Z' },
+      ],
+    }, null, 2), 'utf8');
+
+    const out = execFileSync(process.execPath, [
+      STATUS_SCRIPT,
+      '--no-color',
+      '--no-gc-hints',
+      '--ready',
+      '--blocked',
+      '--stale',
+      '--orphan',
+    ], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_HOST: 'codex',
+        SUPERVIBE_PLUGIN_ROOT: ROOT,
+      },
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    assert.match(out, /SUPERVIBE_ACTIVE_WORK_GRAPH/);
+    assert.match(out, /EPIC: epic-status/);
+    assert.match(out, /NEXT_READY: T-ready/);
+    assert.match(out, /READY_ITEM: T-ready/);
+    assert.match(out, /BLOCKED_ITEM: T-blocked/);
+    assert.match(out, /STALE_ITEM: T-claimed/);
+    assert.match(out, /ORPHAN_ITEM: T-orphan missing_parent=missing-parent/);
+    assert.match(out, /NEXT_ACTION:/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test('supervibe-status: reports agent telemetry state', () => {
   const out = runStatus();
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');

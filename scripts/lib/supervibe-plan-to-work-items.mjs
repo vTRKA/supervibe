@@ -271,9 +271,10 @@ export function workItemsToLoopTasks(items = []) {
   const reverseBlocks = new Map();
   for (const item of items) {
     if (item.type === "epic") continue;
+    const itemId = item.itemId || item.id;
     for (const blockedId of item.blocks ?? []) {
       const dependencies = reverseBlocks.get(blockedId) ?? [];
-      dependencies.push(item.itemId);
+      if (itemId) dependencies.push(itemId);
       reverseBlocks.set(blockedId, dependencies);
     }
   }
@@ -281,21 +282,21 @@ export function workItemsToLoopTasks(items = []) {
   return items
     .filter((item) => !["epic", "followup"].includes(item.type))
     .map((item, index) => ({
-      id: item.itemId,
+      id: item.itemId || item.id,
       title: item.title,
       goal: item.title,
       category: categoryForWorkItemType(item.type),
       status: item.status || "open",
       priority: item.priority,
-      dependencies: [...new Set([...(reverseBlocks.get(item.itemId) ?? []), ...(item.blockedBy ?? [])])],
+      dependencies: [...new Set([...(reverseBlocks.get(item.itemId || item.id) ?? []), ...(item.blockedBy ?? [])])],
       parentId: item.parentId,
       epicId: item.epicId,
       acceptanceCriteria: item.acceptanceCriteria,
       verificationCommands: item.verificationCommands,
-      policyRiskLevel: item.executionHints.policyRiskLevel ?? "low",
-      stopConditions: item.executionHints.stopConditions ?? ["policy_stop", "budget_stop", "verification_failed"],
-      requiredAgentCapability: item.executionHints.requiredAgentCapability ?? capabilityForWorkItem(item),
-      confidenceRubricId: item.executionHints.confidenceRubricId ?? "autonomous-loop",
+      policyRiskLevel: item.executionHints?.policyRiskLevel ?? "low",
+      stopConditions: item.executionHints?.stopConditions ?? ["policy_stop", "budget_stop", "verification_failed"],
+      requiredAgentCapability: item.executionHints?.requiredAgentCapability ?? capabilityForWorkItem(item),
+      confidenceRubricId: item.executionHints?.confidenceRubricId ?? "autonomous-loop",
       writeScope: item.writeScope,
       labels: item.labels || [],
       severity: item.severity || null,
@@ -318,20 +319,27 @@ export function workItemsToLoopTasks(items = []) {
       source: {
         type: "work-item",
         planPath: item.discoveredFrom?.path ?? null,
-        itemId: item.itemId,
+        itemId: item.itemId || item.id,
         epicId: item.epicId,
       },
     }));
 }
 
 export async function writeWorkItemGraph(graph, options = {}) {
+  const validation = graph.validation ?? validateWorkItemGraph(graph);
+  if (!validation.valid && !options.allowInvalidGraph) {
+    const issueSummary = validation.issues
+      .map((item) => `${item.code}${item.itemId ? `:${item.itemId}` : ""}`)
+      .join(",");
+    throw new Error(`invalid work-item graph: ${issueSummary || "validation failed"}`);
+  }
   const rootDir = options.rootDir ?? process.cwd();
   const outDir = options.outDir ?? join(rootDir, ".supervibe", "memory", "work-items", graph.epicId);
   await mkdir(outDir, { recursive: true });
   const graphPath = join(outDir, "graph.json");
   const previewPath = join(outDir, "preview.txt");
   await writeFile(graphPath, `${JSON.stringify(stripParsedFields(graph), null, 2)}\n`);
-  await writeFile(previewPath, `${createWorkItemPreview(graph, graph.validation ?? validateWorkItemGraph(graph))}\n`);
+  await writeFile(previewPath, `${createWorkItemPreview(graph, validation)}\n`);
   await updateActiveWorkItemGraph({
     rootDir,
     graphPath,

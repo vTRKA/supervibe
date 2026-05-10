@@ -59,6 +59,11 @@ test("UI server renders local control plane and keeps actions preview-first", as
     const graph = await (await fetch(`${baseUrl}/api/graph?file=${encodeURIComponent(graphRel)}`)).json();
     assert.equal(graph.graphId, "epic-ui");
     assert.equal(graph.grouped.ready.length, 1);
+    assert.equal(graph.graphTree.rollup.epics, 1);
+    assert.equal(graph.graphTree.rollup.tasks, 1);
+    assert.equal(graph.panels.readyQueue[0].id, "design-kanban-cards");
+    assert.equal(graph.panels.completion.productionReady, false);
+    assert.ok(graph.panels.completion.blockers.length > 0);
     assert.equal(graph.kanban.graphSummary.graphId, "epic-ui");
     assert.equal("project" in graph.kanban, false);
     assert.equal(graph.kanban.epics[0].id, "epic-ui");

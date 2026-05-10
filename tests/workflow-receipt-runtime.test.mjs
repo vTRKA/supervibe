@@ -254,6 +254,73 @@ test("workflow receipt runtime keeps multiple receipt links for the same artifac
   }
 });
 
+test("workflow receipt runtime binds receipts to work graph task ids without breaking trust validation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-task-binding-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/epic-task/run.md", "# Run\n");
+
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop-runner",
+      stage: "wave-1",
+      invocationReason: "loop wave completed for task",
+      outputArtifacts: [".supervibe/artifacts/loops/epic-task/run.md"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "loop-epic-task",
+      graphId: "epic-task",
+      taskId: "epic-task-t1",
+      secret: "test-secret",
+    });
+
+    assert.deepEqual(issued.receipt.workItemBinding, {
+      graphId: "epic-task",
+      taskId: "epic-task-t1",
+    });
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+
+    const ledger = (await readFile(defaultWorkflowReceiptLedgerPath(root), "utf8")).trim().split(/\r?\n/).map(JSON.parse);
+    assert.deepEqual(ledger[0].workItemBinding, issued.receipt.workItemBinding);
+    const links = JSON.parse(await readFile(join(root, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-loop", "loop-epic-task", "artifact-links.json"), "utf8"));
+    assert.deepEqual(links.links[0].workItemBinding, issued.receipt.workItemBinding);
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/workflow-receipt.mjs",
+      "issue",
+      "--root",
+      root,
+      "--command",
+      "/supervibe-loop",
+      "--subject-type",
+      "command",
+      "--subject-id",
+      "supervibe-loop-runner",
+      "--stage",
+      "wave-2",
+      "--reason",
+      "loop wave completed for second task",
+      "--output",
+      ".supervibe/artifacts/loops/epic-task/run.md",
+      "--handoff",
+      "loop-epic-task",
+      "--graph-id",
+      "epic-task",
+      "--task-id",
+      "epic-task-t2",
+      "--secret",
+      "test-secret",
+    ], { cwd: REPO_ROOT });
+
+    assert.match(stdout, /GRAPH_ID: epic-task/);
+    assert.match(stdout, /TASK_ID: epic-task-t2/);
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt runtime rejects mutable log-like output artifacts before issuing", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-mutable-"));
   try {

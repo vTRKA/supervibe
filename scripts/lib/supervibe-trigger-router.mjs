@@ -130,6 +130,110 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: show blockers?",
     prerequisites: [],
   },
+  task_graph_resume: {
+    phase: "execution",
+    command: "/supervibe-loop --status",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать активный epic/task graph и следующий шаг для продолжения?",
+    nextQuestionEn: "Step 1/1: show the active epic/task graph and next action for resume?",
+    prerequisites: ["active-work-graph-or-loop-state"],
+  },
+  task_graph_claim_ready: {
+    phase: "execution",
+    command: "/supervibe-loop --claim-ready",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: выбрать и claim следующую ready task из активного graph?",
+    nextQuestionEn: "Step 1/1: select and claim the next ready task from the active graph?",
+    prerequisites: ["active-work-graph"],
+  },
+  task_graph_create_from_plan: {
+    phase: "execution",
+    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: создать epic, tasks и subtasks из reviewed plan?",
+    nextQuestionEn: "Step 1/1: create epic, tasks, and subtasks from the reviewed plan?",
+    prerequisites: ["reviewed-plan"],
+  },
+  task_graph_delete: {
+    phase: "execution",
+    command: "/supervibe-loop --delete <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview удаления task или subtask перед apply?",
+    nextQuestionEn: "Step 1/1: preview task or subtask deletion before apply?",
+    prerequisites: ["active-work-graph", "task-id"],
+  },
+  task_graph_split: {
+    phase: "execution",
+    command: "/supervibe-loop --split <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview split task на subtasks?",
+    nextQuestionEn: "Step 1/1: preview splitting the task into subtasks?",
+    prerequisites: ["active-work-graph", "task-id"],
+  },
+  task_graph_reparent: {
+    phase: "execution",
+    command: "/supervibe-loop --reparent <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview переноса task/subtask?",
+    nextQuestionEn: "Step 1/1: preview moving the task or subtask?",
+    prerequisites: ["active-work-graph", "task-id", "parent-id"],
+  },
+  task_graph_skip: {
+    phase: "execution",
+    command: "/supervibe-loop --skip <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview skip task с причиной?",
+    nextQuestionEn: "Step 1/1: preview skipping the task with a reason?",
+    prerequisites: ["active-work-graph", "task-id", "reason"],
+  },
+  task_graph_defer: {
+    phase: "execution",
+    command: "/supervibe-loop --defer <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview defer task?",
+    nextQuestionEn: "Step 1/1: preview deferring the task?",
+    prerequisites: ["active-work-graph", "task-id", "until-or-reason"],
+  },
+  task_graph_block: {
+    phase: "execution",
+    command: "/supervibe-loop --block <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview блокировки task с причиной?",
+    nextQuestionEn: "Step 1/1: preview blocking the task with a reason?",
+    prerequisites: ["active-work-graph", "task-id", "reason"],
+  },
+  task_graph_edit: {
+    phase: "execution",
+    command: "/supervibe-loop --edit <task-id> --preview",
+    skill: "supervibe:autonomous-agent-loop",
+    nextQuestionRu: "Шаг 1/1: показать preview изменения task или subtask перед apply?",
+    nextQuestionEn: "Step 1/1: preview task or subtask edit before apply?",
+    prerequisites: ["active-work-graph", "task-id"],
+  },
+  task_graph_validate_completion: {
+    phase: "review",
+    command: "/supervibe-loop --validate-completion",
+    skill: "supervibe:verification",
+    nextQuestionRu: "Шаг 1/1: проверить production readiness epic через completion validator?",
+    nextQuestionEn: "Step 1/1: validate epic production readiness through the completion validator?",
+    prerequisites: ["active-work-graph-or-epic-id"],
+  },
+  task_graph_stale_query: {
+    phase: "status",
+    command: "/supervibe-status --stale",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Шаг 1/1: показать stale task claims?",
+    nextQuestionEn: "Step 1/1: show stale task claims?",
+    prerequisites: ["active-work-graph"],
+  },
+  task_graph_orphan_query: {
+    phase: "status",
+    command: "/supervibe-status --orphan",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Шаг 1/1: показать orphan tasks/evidence?",
+    nextQuestionEn: "Step 1/1: show orphan tasks and evidence?",
+    prerequisites: ["active-work-graph"],
+  },
   trigger_diagnostics: {
     phase: "diagnostics",
     command: "/supervibe --diagnose-trigger",
@@ -437,6 +541,86 @@ const RULES = [
     intent: "blocked_query",
     confidence: 0.84,
     test: (text) => hasAny(text, ["что заблокировано", "blocked", "blockers"]),
+  },
+  {
+    intent: "task_graph_resume",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["продолжи loop", "продолжи работу", "вернуться к задачам", "resume loop", "resume task graph", "continue task graph"]) &&
+      hasAny(text, ["эпик", "эпикам", "задач", "tasks", "epic", "graph", "loop"]),
+  },
+  {
+    intent: "task_graph_claim_ready",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["claim next ready task", "claim ready task", "возьми следующую задачу", "забери следующую задачу"]) &&
+      hasAny(text, ["ready", "готов", "задач", "task"]),
+  },
+  {
+    intent: "task_graph_create_from_plan",
+    confidence: 0.94,
+    test: (text) => hasAny(text, ["create epic tasks from plan", "create tasks from plan", "atomize reviewed plan", "create subtasks from plan"]) &&
+      hasAny(text, ["plan", "reviewed", "epic", "tasks", "subtasks"]),
+  },
+  {
+    intent: "task_graph_delete",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["удали задачу", "удали подзадачу", "delete task", "delete subtask"]) &&
+      hasAny(text, ["задач", "task", "subtask", "подзадач"]),
+  },
+  {
+    intent: "task_graph_split",
+    confidence: 0.89,
+    test: (text) => hasAny(text, ["split task", "split into subtasks", "break task into subtasks"]) &&
+      hasAny(text, ["task", "subtask"]),
+  },
+  {
+    intent: "task_graph_reparent",
+    confidence: 0.89,
+    test: (text) => hasAny(text, ["move task", "reparent task", "change parent"]) &&
+      hasAny(text, ["task", "parent", "subtask"]),
+  },
+  {
+    intent: "task_graph_skip",
+    confidence: 0.88,
+    test: (text) => hasAny(text, ["skip task", "skip subtask"]) &&
+      hasAny(text, ["task", "reason", "subtask"]),
+  },
+  {
+    intent: "task_graph_defer",
+    confidence: 0.88,
+    test: (text) => hasAny(text, ["defer task", "postpone task"]) &&
+      hasAny(text, ["task", "until", "later"]),
+  },
+  {
+    intent: "task_graph_block",
+    confidence: 0.88,
+    test: (text) => hasAny(text, ["block task", "mark task blocked"]) &&
+      hasAny(text, ["task", "reason", "block"]),
+  },
+  {
+    intent: "task_graph_edit",
+    confidence: 0.9,
+    test: (text) => hasAny(text, ["измени задачу", "измени подзадачу", "edit task", "change task", "update task"]) &&
+      hasAny(text, ["задач", "task", "subtask", "подзадач"]),
+  },
+  {
+    intent: "task_graph_validate_completion",
+    confidence: 0.91,
+    test: (text) => hasAny(text, ["проверь готовность эпика", "готовность эпика к продакшену", "validate epic completion", "validate epic readiness", "production readiness"]) &&
+      hasAny(text, ["эпик", "epic", "completion", "prod", "production", "продакшен"]),
+  },
+  {
+    intent: "task_graph_stale_query",
+    confidence: 0.95,
+    test: (text) => hasAny(text, ["stale claims", "stale tasks"]) &&
+      hasAny(text, ["task", "claim"]) &&
+      hasAny(text, ["show", "list", "status", "query", "find", "inspect"]),
+  },
+  {
+    intent: "task_graph_orphan_query",
+    confidence: 0.95,
+    test: (text) => hasAny(text, ["orphan tasks", "orphan evidence", "unlinked tasks"]) &&
+      hasAny(text, ["task", "evidence", "graph"]) &&
+      hasAny(text, ["show", "list", "status", "query", "find", "inspect"]),
   },
   {
     intent: "readme_update",

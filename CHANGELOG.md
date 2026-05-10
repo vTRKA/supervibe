@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-10
+
+### Added
+
+- Added end-to-end native work graph coverage from reviewed plan atomization to
+  guided loop sync, UI mutation, resume after interruption, blocker recovery,
+  production completion validation, and close eligibility.
+
+### Changed
+
+- Added work graph and epic completion validators to the release gate so task
+  graph shape and production-close semantics are checked before publishing.
+
 ## [2.0.131] - 2026-05-10
 
 ### Added

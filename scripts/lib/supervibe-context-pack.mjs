@@ -159,7 +159,11 @@ export function formatContextPackMarkdown(pack = {}) {
     formatList((pack.dependencies || []).map((dep) => `${dep.itemId}: ${dep.effectiveStatus} ${dep.title}`)),
     "",
     "## Current Blockers",
-    formatList((pack.blockers || []).map((blocker) => `${blocker.itemId}: ${blocker.effectiveStatus} ${blocker.title}`)),
+    formatList((pack.blockers || []).map((blocker) => {
+      const reason = blocker.blockerReason || blocker.blockReason || blocker.dependencyBlockers?.join(",") || "blocked";
+      const nextAction = blocker.blockerNextAction || `inspect ${blocker.itemId || blocker.id}`;
+      return `${blocker.itemId}: ${blocker.effectiveStatus} ${blocker.title} reason=${reason} next=${nextAction}`;
+    })),
     "",
     "## Evidence",
     formatList((pack.evidence || []).map((entry) => `${entry.kind || "evidence"} ${entry.path || entry.command || entry.summary || ""}`)),

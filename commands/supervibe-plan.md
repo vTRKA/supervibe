@@ -4,7 +4,7 @@ description: >-
   require review loop, then atomic task split and epic handoff before execution.
   Triggers: 'plan', 'review plan', 'atomize', 'сделал план', 'план', 'ревью',
   'эпик'.
-last-verified: "2026-05-08"
+last-verified: "2026-05-10"
 ---
 
 # /supervibe-plan
@@ -136,7 +136,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    Step N/M: split the plan into atomic work items and an epic?
    ```
 
-After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`.
+After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`. Atomization is fail-closed: a reviewed plan without parseable atomic work items, epics, gates, or dependencies must not produce durable loop artifacts until the plan is revised or explicitly handled by a diagnostic override.
 After atomization, run tracker sync as the default next step whenever an adapter is configured: `/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json`. The native work-item graph remains canonical if no tracker adapter is available; a configured adapter lets `/supervibe-loop` reconcile ready work, mirror claims, prime agent context, and close mapped tasks with verification evidence.
 Atomized items are templated by work type and preserve labels, severity, owner/component/stack, required gates, verification hints, comments, and repo/package/workspace/subproject routing metadata for status queries.
 

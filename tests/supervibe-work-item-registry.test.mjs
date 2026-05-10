@@ -12,7 +12,9 @@ import {
 } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import {
   defaultWorkItemRegistryPath,
+  listWorkItemGraphSummaries,
   readWorkItemRegistry,
+  resolveActiveWorkItemGraph,
   resolveActiveWorkItemGraphPath,
 } from "../scripts/lib/supervibe-work-item-registry.mjs";
 
@@ -66,6 +68,47 @@ test("work-item writes register the active graph and status resolves it", async 
     assert.match(stdout, /EPIC: epic-registry/);
     assert.match(stdout, /SOURCE: active-registry/);
     assert.match(stdout, /NEXT_READY: epic-registry-t1/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("active graph resolver reports none, active, closed summaries, and ambiguity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-resolution-"));
+  try {
+    const none = await resolveActiveWorkItemGraph({ rootDir: root });
+    assert.equal(none.status, "none");
+    assert.match(none.nextAction, /atomize/);
+
+    const first = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/registry.md",
+      epicId: "epic-one",
+      planReviewPassed: true,
+    });
+    const firstWrite = await writeWorkItemGraph(first, { rootDir: root });
+    const active = await resolveActiveWorkItemGraph({ rootDir: root });
+    assert.equal(active.status, "active");
+    assert.equal(active.graphPath, firstWrite.graphPath);
+
+    const closedBase = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/registry-closed.md",
+      epicId: "epic-closed",
+      planReviewPassed: true,
+    });
+    const closed = {
+      ...closedBase,
+      items: closedBase.items.map((item) => ({ ...item, status: "complete" })),
+      tasks: closedBase.tasks.map((task) => ({ ...task, status: "complete" })),
+    };
+    await writeWorkItemGraph(closed, { rootDir: root, outDir: join(root, ".supervibe", "memory", "work-items", "epic-closed") });
+    const summaries = await listWorkItemGraphSummaries(root);
+    assert.ok(summaries.some((summary) => summary.epicId === "epic-closed" && summary.status === "closed"));
+
+    await writeFile(defaultWorkItemRegistryPath(root), JSON.stringify({ schemaVersion: 1, epics: {} }), "utf8");
+    const ambiguous = await resolveActiveWorkItemGraph({ rootDir: root });
+    assert.equal(ambiguous.status, "ambiguous");
+    assert.equal(ambiguous.candidates.length, 2);
+    assert.match(ambiguous.nextAction, /--file/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

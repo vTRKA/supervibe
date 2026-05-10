@@ -7,7 +7,9 @@ import {
   classifyWorkItemQuestion,
   createWorkItemIndex,
   detectDuplicateWorkItems,
+  detectFollowupBacklog,
   detectOrphanEvidence,
+  detectOrphanWorkItems,
   detectStaleWorkItems,
   detectTrackerDrift,
   groupWorkItemsByStatus,
@@ -37,6 +39,29 @@ npm test
   result.items.push({
     ...result.items.find((item) => item.itemId === "epic-query-t1"),
     itemId: "epic-query-duplicate",
+  });
+  result.items.push({
+    itemId: "epic-query-orphan",
+    type: "subtask",
+    status: "open",
+    title: "Orphan Subtask",
+    parentId: "missing-parent",
+    blocks: [],
+    blockedBy: [],
+    related: [],
+    acceptanceCriteria: ["Orphan is reported"],
+    verificationCommands: ["npm test"],
+  });
+  result.items.push({
+    itemId: "epic-query-followup",
+    type: "followup",
+    status: "open",
+    title: "Later follow-up",
+    parentId: "epic-query",
+    required: false,
+    blocks: [],
+    blockedBy: [],
+    related: [],
   });
   return result;
 }
@@ -96,10 +121,14 @@ test("query helpers detect duplicates, stale claims, orphan evidence, drift, and
 
   assert.ok(detectDuplicateWorkItems(index).length >= 1);
   assert.ok(detectStaleWorkItems(index, { now: "2000-01-01T01:00:00.000Z", staleMinutes: 30 }).length >= 1);
+  assert.ok(detectOrphanWorkItems(index, workGraph).some((item) => item.itemId === "epic-query-orphan"));
   assert.equal(detectOrphanEvidence({ graph: workGraph, evidence: [{ id: "orphan", path: "unknown.log" }] }).length, 1);
+  assert.ok(detectFollowupBacklog(index).some((item) => item.itemId === "epic-query-followup" && item.blockingCompletion === false));
   assert.ok(detectTrackerDrift(index).some((item) => item.itemId === "epic-query-t1"));
   assert.ok(applyWorkItemFilters(index, { repo: "web", package: "ui" }).length > 0);
   assert.equal(applyWorkItemFilters(index, { repo: "api" }).length, 0);
+  assert.match(queryWorkItems("orphan work", { index, graph: workGraph }).answer, /epic-query-orphan/);
+  assert.match(queryWorkItems("followup backlog", { index }).answer, /epic-query-followup/);
 });
 
 test("storage mode keeps protected and contributor workflows local by default", () => {

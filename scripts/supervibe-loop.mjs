@@ -30,7 +30,7 @@ import { createFederatedSyncBundle, importFederatedSyncBundle, writeFederatedSyn
 import { formatNotificationRouteResult, routeNotificationEvent } from "./lib/supervibe-notification-router.mjs";
 import { deferWorkItemFile } from "./lib/supervibe-work-item-scheduler.mjs";
 import { mutateWorkItemGraphFile } from "./lib/supervibe-work-item-actions.mjs";
-import { resolveActiveWorkItemGraphPath } from "./lib/supervibe-work-item-registry.mjs";
+import { resolveActiveWorkItemGraph, resolveActiveWorkItemGraphPath } from "./lib/supervibe-work-item-registry.mjs";
 import { createGuidedWorkItemDraft, importGuidedWorkItemFromText, saveGuidedWorkItemDraft } from "./lib/supervibe-guided-work-item-forms.mjs";
 import { createDryRunPreview, runInteractiveCli } from "./lib/supervibe-interactive-cli.mjs";
 import { formatEvalHarnessReport, runAutonomousLoopEvals } from "./lib/autonomous-loop-eval-harness.mjs";
@@ -100,6 +100,7 @@ function parseArgs(argv) {
     "yes",
     "force",
     "create-work-item",
+    "claim-ready",
     "eval",
     "eval-live",
     "approval-receipts",
@@ -128,10 +129,12 @@ function parseArgs(argv) {
     "allow-flat-plan",
     "validate-completion",
     "completion-status",
+    "close-eligible",
     "allow-dry-run-evidence",
     "allow-open-epic",
     "no-evidence-required",
     "non-production",
+    "indefinite",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -454,6 +457,36 @@ async function main() {
   }
 
   const workItemAction = resolveWorkItemAction(args);
+  if (args["claim-ready"]) {
+    const graphPath = args.file
+      ? resolve(rootDir, args.file)
+      : await resolveActiveWorkItemGraphPath({ rootDir });
+    if (!graphPath) throw new Error("claim-ready requires --file <graph.json> or an active work graph");
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const index = createWorkItemIndex({ graph });
+    const ready = orderReadyWorkItems(index.filter((item) => item.type !== "epic" && item.effectiveStatus === "ready"), { graph });
+    const selected = ready[0];
+    if (!selected) throw new Error("claim-ready found no ready work items; inspect blockers or status");
+    const dryRun = Boolean(args["dry-run"] || args.preview);
+    const result = await mutateWorkItemGraphFile(graphPath, {
+      type: "claim",
+      itemId: selected.itemId || selected.id,
+      actor: args.actor || args.owner || "user",
+      reason: args.reason || "claimed next ready work item from /supervibe-loop --claim-ready",
+      dryRun,
+      force: Boolean(args.force),
+      rootDir,
+    });
+    console.log("SUPERVIBE_WORK_ITEM_ACTION");
+    console.log("ACTION: claim-ready");
+    console.log(`ITEM: ${result.itemId}`);
+    console.log(`CHANGED: ${result.changed}`);
+    console.log(`DRY_RUN: ${result.dryRun}`);
+    console.log(`GRAPH: ${graphPath}`);
+    if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
   if (workItemAction) {
     const graphPath = args.file
       ? resolve(rootDir, args.file)
@@ -461,6 +494,25 @@ async function main() {
     const dryRun = Boolean(args["dry-run"] || args.preview);
     if (workItemAction.type === "delete" && !dryRun && !args.yes && !args.force) {
       throw new Error("delete requires --preview, --dry-run, --yes, or --force");
+    }
+    if (workItemAction.type === "close" && !args.force) {
+      const graph = JSON.parse(await readFile(graphPath, "utf8"));
+      const target = (graph.items || []).find((item) => (item.itemId || item.id) === workItemAction.itemId);
+      if (target?.type === "epic" || workItemAction.itemId === graph.epicId || workItemAction.itemId === graph.graph_id) {
+        const report = validateEpicCompletion(graph, {
+          production: !args["non-production"],
+          requireEvidence: !args["no-evidence-required"],
+          allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
+          requireEpicClosed: false,
+        });
+        if (!report.pass) {
+          console.log(formatEpicCompletionReport(report));
+          console.log(`GRAPH: ${graphPath}`);
+          console.log("NEXT_ACTION: fix completion blockers or rerun with --force after explicit user override");
+          process.exitCode = 1;
+          return;
+        }
+      }
     }
     const result = await mutateWorkItemGraphFile(graphPath, {
       ...workItemAction,
@@ -499,6 +551,9 @@ async function main() {
   }
 
   if (args.defer) {
+    if (!args.until && !args.reason && !args.indefinite) {
+      throw new Error("defer requires --until or --reason for indefinite deferral");
+    }
     const graphPath = args.file
       ? resolve(rootDir, args.file)
       : await findGraphContainingItem(rootDir, args.defer);
@@ -625,8 +680,18 @@ async function main() {
       }
     }
     if (!args.loop) {
-      const activeGraphPath = await resolveActiveWorkItemGraphPath({ rootDir });
-      if (activeGraphPath) {
+      const activeGraph = await resolveActiveWorkItemGraph({ rootDir });
+      if (activeGraph.status === "ambiguous") {
+        console.log("SUPERVIBE_EPIC_STATUS");
+        console.log("STATUS: ambiguous active work graph");
+        console.log(`CANDIDATES: ${activeGraph.candidates.length}`);
+        for (const candidate of activeGraph.candidates) console.log(`- ${candidate}`);
+        console.log(`NEXT_ACTION: ${activeGraph.nextAction}`);
+        process.exitCode = 2;
+        return;
+      }
+      if (activeGraph.graphPath) {
+        const activeGraphPath = activeGraph.graphPath;
         const graph = JSON.parse(await readFile(activeGraphPath, "utf8"));
         printEpicStatus({ graph, graphPath: activeGraphPath, source: "active-registry" });
         return;
@@ -732,14 +797,14 @@ async function main() {
     return;
   }
 
-  if (args["validate-completion"] || args["completion-status"]) {
+  if (args["validate-completion"] || args["completion-status"] || args["close-eligible"]) {
     const graphPath = await resolveCompletionGraphPath({ rootDir, args });
     const graph = JSON.parse(await readFile(graphPath, "utf8"));
     const report = validateEpicCompletion(graph, {
       production: !args["non-production"],
       requireEvidence: !args["no-evidence-required"],
       allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
-      requireEpicClosed: !args["allow-open-epic"],
+      requireEpicClosed: args["close-eligible"] ? false : !args["allow-open-epic"],
     });
     console.log(formatEpicCompletionReport(report));
     console.log(`GRAPH: ${graphPath}`);
@@ -830,6 +895,19 @@ async function main() {
   if (args.resume) {
     const result = await resumeAutonomousLoop(resolve(rootDir, args.resume));
     console.log(`Resume status: ${result.status}`);
+    if (result.state?.resume_work_graph) {
+      const resumeGraph = result.state.resume_work_graph;
+      console.log("SUPERVIBE_RESUME_WORK_GRAPH");
+      console.log(`STATUS: ${resumeGraph.status}`);
+      if (resumeGraph.epicId) console.log(`EPIC: ${resumeGraph.epicId}`);
+      console.log(`READY: ${resumeGraph.ready ?? 0}`);
+      console.log(`BLOCKED: ${resumeGraph.blocked ?? 0}`);
+      console.log(`CLAIMED: ${resumeGraph.claimed ?? 0}`);
+      console.log(`STALE: ${resumeGraph.stale ?? 0}`);
+      console.log(`NEXT_READY: ${resumeGraph.nextReady || "none"}`);
+      console.log(`NEXT_ACTION: ${resumeGraph.nextAction || "inspect resume state"}`);
+      console.log(`GRAPH: ${resumeGraph.graphPath}`);
+    }
     return;
   }
 
@@ -885,6 +963,7 @@ async function main() {
     : null;
   const result = await runAutonomousLoop({
     rootDir,
+    runId: args["run-id"],
     plan: executionSource.plan,
     request: executionSource.request,
     dryRun: Boolean(args["dry-run"]),
@@ -919,6 +998,14 @@ async function main() {
   console.log(`STOP_REASON: ${result.stopReason || "none"}`);
   console.log(`REPORT: ${result.reportPath}`);
   console.log(`TASK_SOURCE: ${executionSource.source}`);
+  if (result.state?.completion_semantics) {
+    console.log(`COMPLETION_SEMANTICS: ${result.state.completion_semantics.status}`);
+    console.log(`PRODUCTION_READY: ${result.state.completion_semantics.productionReady === true}`);
+    console.log(`NEXT_COMPLETION_ACTION: ${result.state.completion_semantics.nextAction}`);
+  }
+  if (result.state?.native_work_graph_sync) {
+    console.log(`NATIVE_WORK_GRAPH_SYNC: ${result.state.native_work_graph_sync.status}`);
+  }
   if (policyProfile) console.log(`POLICY_PROFILE: ${policyProfile.name}`);
   if (args.notify) {
     const notification = routeNotificationEvent({
@@ -1036,11 +1123,20 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`REVIEW: ${grouped.review.length}`);
   console.log(`DONE: ${grouped.done.length}`);
   console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
+  console.log(`NEXT_ACTION: ${nextActionForEpicStatus(grouped)}`);
   console.log(`GRAPH: ${graphPath}`);
 }
 
+function nextActionForEpicStatus(grouped = {}) {
+  const nextReady = grouped.ready?.[0]?.itemId || grouped.ready?.[0]?.id || null;
+  if (nextReady) return `claim ${nextReady} or run /supervibe-loop --claim-ready`;
+  if ((grouped.blocked || []).length > 0) return "inspect blockers, unblock tasks, or validate dependency completion";
+  if ((grouped.review || []).length > 0) return "complete required review and gate work items";
+  return "run /supervibe-loop --validate-completion";
+}
+
 function resolveWorkItemAction(args) {
-  const actionKeys = ["claim", "close", "complete", "reopen", "delete", "skip", "cancel", "edit", "split"];
+  const actionKeys = ["claim", "close", "complete", "reopen", "delete", "skip", "cancel", "block", "unblock", "comment", "handoff", "recover-stale", "edit", "split"];
   for (const key of actionKeys) {
     if (!args[key]) continue;
     const itemId = String(args[key]);
@@ -1067,6 +1163,33 @@ function resolveWorkItemAction(args) {
         type: "split",
         itemId,
         titles: parseCsvArg(args.titles || args.subtasks || args.title),
+      };
+    }
+    if (key === "block") {
+      return {
+        type: "block",
+        itemId,
+        reason: args.reason,
+        nextAction: args["next-action"] || args.nextAction,
+      };
+    }
+    if (key === "comment") {
+      return {
+        type: "comment",
+        itemId,
+        body: args.body || args.message || args.reason,
+        commentType: args["comment-type"] || args.commentType,
+        links: args.links || args.link,
+      };
+    }
+    if (key === "handoff") {
+      return {
+        type: "handoff",
+        itemId,
+        producer: args.producer || args.from,
+        recipient: args.recipient || args.to,
+        receiptId: args.receipt || args.receiptId,
+        summary: args.summary || args.reason,
       };
     }
     return { type: key, itemId, status: args["set-status"] };
@@ -1255,6 +1378,7 @@ Primary:
   supervibe-loop --stop <run-id>
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json

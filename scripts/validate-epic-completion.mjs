@@ -87,7 +87,11 @@ dependencies must be terminal, the epic must be closed, and production completio
         : [];
 
   if (files.length === 0) {
-    console.log("[validate-epic-completion] no work-item graph files found; skipping");
+    console.log("SUPERVIBE_EPIC_COMPLETION_COVERAGE");
+    console.log("STATUS: no work-item graph files found");
+    console.log("NO_COVERAGE: true");
+    console.log("PASS: neutral");
+    console.log("NEXT_ACTION: atomize a reviewed plan before production completion validation");
     return;
   }
 

@@ -71,20 +71,81 @@ export async function resolveActiveWorkItemGraphPath({
   if (file) return resolve(rootDir, file);
   if (epicId) return join(rootDir, ".supervibe", "memory", "work-items", epicId, "graph.json");
 
+  const resolution = await resolveActiveWorkItemGraph({ rootDir, registryPath });
+  return resolution.status === "active" ? resolution.graphPath : null;
+}
+
+export async function resolveActiveWorkItemGraph({
+  rootDir = process.cwd(),
+  registryPath = null,
+} = {}) {
   const filePath = registryPath || defaultWorkItemRegistryPath(rootDir);
   const registry = await readWorkItemRegistry(filePath);
   if (registry.activeGraphPath) {
     const candidate = resolve(rootDir, registry.activeGraphPath);
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(candidate)) {
+      return {
+        status: "active",
+        graphPath: candidate,
+        epicId: registry.activeEpicId,
+        source: "registry",
+        candidates: [candidate],
+        registry,
+      };
+    }
   }
 
   const graphPaths = await findWorkItemGraphPaths(rootDir);
-  if (graphPaths.length === 1) return graphPaths[0];
+  if (graphPaths.length === 1) {
+    return {
+      status: "active",
+      graphPath: graphPaths[0],
+      epicId: null,
+      source: "single-discovered-graph",
+      candidates: graphPaths,
+      registry,
+    };
+  }
   if (graphPaths.length > 1) {
     graphPaths.sort();
-    return graphPaths[graphPaths.length - 1];
+    return {
+      status: "ambiguous",
+      graphPath: null,
+      epicId: null,
+      source: "discovered-graphs",
+      candidates: graphPaths,
+      registry,
+      nextAction: "pass --file <graph.json> or --epic <epic-id>",
+    };
   }
-  return null;
+  return {
+    status: "none",
+    graphPath: null,
+    epicId: null,
+    source: "none",
+    candidates: [],
+    registry,
+    nextAction: "atomize a reviewed plan into a work graph",
+  };
+}
+
+export async function listWorkItemGraphSummaries(rootDir = process.cwd()) {
+  const graphPaths = await findWorkItemGraphPaths(rootDir);
+  const summaries = [];
+  for (const graphPath of graphPaths) {
+    try {
+      const graph = JSON.parse(await readFile(graphPath, "utf8"));
+      summaries.push(summarizeGraphForRegistry({ graph, graphPath, rootDir }));
+    } catch (error) {
+      summaries.push({
+        epicId: "unreadable",
+        graphPath: toProjectRelativePath(rootDir, graphPath),
+        status: "error",
+        error: error.message,
+      });
+    }
+  }
+  return summaries.sort((a, b) => String(a.graphPath).localeCompare(String(b.graphPath)));
 }
 
 export async function findWorkItemGraphPaths(rootDir = process.cwd()) {

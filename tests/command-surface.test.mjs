@@ -261,7 +261,12 @@ test("ui and gc commands document local work control plane", async () => {
   assert.match(ui, /Kanban/);
   assert.match(ui, /Context Pack/);
   assert.match(ui, /claim/);
+  assert.match(ui, /dep-add/);
+  assert.match(ui, /delete/);
+  assert.match(ui, /kanban\.graphSummary/);
   assert.match(ui, /preview/i);
+  assert.doesNotMatch(ui, /kanban\.project/);
+  assert.doesNotMatch(ui, /Kanban board for epics, tasks, projects/);
 
   const gc = await readFile(join(ROOT, "commands", "supervibe-gc.md"), "utf8");
   assert.match(gc, /--work-items/);
@@ -290,6 +295,7 @@ test("loop CLI help is plain text and lists primary plus advanced modes", async 
   assert.match(stdout, /--allow-spawn --permission-prompt-bridge/);
   assert.match(stdout, /--adapter-command <command>/);
   assert.match(stdout, /--tracker-prime/);
+  assert.match(stdout, /--claim-ready --file \.supervibe\/memory\/work-items\/<epic-id>\/graph\.json/);
   assert.match(stdout, /--tracker memory\|cli/);
   assert.match(stdout, /--provider-matrix/);
   assert.match(stdout, /--happy-path --plan \.supervibe\/artifacts\/plans\/example\.md/);

@@ -38,10 +38,19 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
           verificationCommands: ["npm test -- checkout"],
           writeScope: [{ path: "src/checkout.ts" }],
         },
+        {
+          itemId: "T2",
+          type: "task",
+          status: "blocked",
+          title: "Blocked checkout followup",
+          blockerReason: "waiting for payment approval",
+          blockerNextAction: "ask finance owner",
+        },
       ],
       tasks: [
         { id: "T0", status: "complete" },
         { id: "T1", status: "open", dependencies: ["T0"] },
+        { id: "T2", status: "blocked" },
       ],
       evidence: [{ workItemId: "T1", kind: "test", command: "npm test -- checkout" }],
     });
@@ -59,6 +68,8 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
 
     assert.equal(pack.activeItem.itemId, "T1");
     assert.equal(pack.dependencies[0].itemId, "T0");
+    assert.equal(pack.blockers[0].itemId, "T2");
+    assert.equal(pack.blockers[0].blockerReason, "waiting for payment approval");
     assert.equal(pack.evidence.length, 1);
     assert.equal(pack.memory[0].id, "checkout-payment-decision");
     assert.equal(pack.memory[0].freshness, "fresh");
@@ -72,6 +83,8 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
     assert.match(pack.markdown, /Semantic Anchors/);
     assert.match(pack.markdown, /File-Local Contracts/);
     assert.match(pack.markdown, /checkout-contract/);
+    assert.match(pack.markdown, /waiting for payment approval/);
+    assert.match(pack.markdown, /ask finance owner/);
     assert.ok(pack.summary.estimatedTokens > 0);
     assert.equal(pack.summary.tokenBudget.status, "ok");
     assert.match(pack.markdown, /Token budget: ok/);

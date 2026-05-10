@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -61,6 +61,11 @@ npm test -- api.test.ts
 npm test -- payment.test.ts
 \`\`\`
 - Follow-up: add external provider replay fixture.
+`;
+
+const INVALID_PLAN_WITHOUT_TASKS = `# Empty Reviewed Implementation Plan
+
+This reviewed plan has narrative text but no parseable task sections.
 `;
 
 test("plan parser extracts tasks, critical path, parallel groups, and review gates", () => {
@@ -182,6 +187,31 @@ test("native write and external adapter failure preserve native graph", async ()
   }
 });
 
+test("reviewed plans without parseable tasks cannot be durably written", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-invalid-work-items-"));
+  try {
+    const graph = atomizePlanToWorkItems(INVALID_PLAN_WITHOUT_TASKS, {
+      planPath: ".supervibe/artifacts/plans/invalid.md",
+      epicId: "epic-invalid",
+      planReviewPassed: true,
+    });
+
+    assert.equal(graph.validation.valid, false);
+    assert.ok(graph.validation.issues.some((issue) => issue.code === "missing-child-task"));
+
+    await assert.rejects(
+      () => writeWorkItemGraph(graph, { rootDir: temp }),
+      /invalid work-item graph/i,
+    );
+    await assert.rejects(
+      () => stat(join(temp, ".supervibe", "memory", "work-items", "epic-invalid", "graph.json")),
+      /ENOENT/,
+    );
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-cli-"));
   try {
@@ -200,6 +230,35 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
     assert.match(stdout, /VALID: true/);
     const saved = JSON.parse(await readFile(join(temp, "out", "graph.json"), "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI rejects invalid reviewed plan without writing graph artifacts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-invalid-cli-"));
+  try {
+    const planPath = join(temp, "invalid-plan.md");
+    const outDir = join(temp, "out");
+    await writeFile(planPath, INVALID_PLAN_WITHOUT_TASKS);
+
+    await assert.rejects(
+      () => execFileAsync(process.execPath, [
+        join(process.cwd(), "scripts", "supervibe-loop.mjs"),
+        "--atomize-plan",
+        planPath,
+        "--plan-review-passed",
+        "--out",
+        outDir,
+      ], { cwd: process.cwd() }),
+      (error) => {
+        assert.notEqual(error.code, 0);
+        assert.match(`${error.stderr}\n${error.stdout}`, /invalid work-item graph/i);
+        return true;
+      },
+    );
+
+    await assert.rejects(() => stat(join(outDir, "graph.json")), /ENOENT/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

@@ -4,7 +4,7 @@ description: >-
   session, or separate worktree TO perform provider-safe policy preflight,
   goal-bounded execution, status, resume, stop, side-effect ledger, and cleanup
   gates. Triggers: 'loop', 'epic', 'worktree', 'goal-complete', 'эпик'.
-last-verified: "2026-05-08"
+last-verified: "2026-05-10"
 ---
 
 # /supervibe-loop
@@ -25,6 +25,7 @@ Primary path:
 /supervibe-loop --from-plan .supervibe/artifacts/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json --guided
 /supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --close-eligible --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
 /supervibe-loop --happy-path --plan .supervibe/artifacts/plans/payment-integration.md
@@ -40,6 +41,7 @@ Primary path:
 /supervibe-loop --tracker-prime
 /supervibe-loop --completion bash
 /supervibe-loop --claim task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --close task-123 --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --edit task-123 --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --split task-123 --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
@@ -47,6 +49,7 @@ Primary path:
 /supervibe-loop --dep-add task-123 --to task-456 --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --delete task-123 --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
 /supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --close-eligible --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --create-work-item --interactive
 /supervibe-loop --create-work-item --title "Fix checkout bug" --template bug --dry-run
 /supervibe-loop --import-tasks .supervibe/artifacts/plans/example.md --dry-run
@@ -112,7 +115,7 @@ Plan atomization:
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
 ```
 
-Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed`; `--dry-run` previews the graph without writing.
+Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed`; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
 Generated work items use reusable templates for feature, bugfix, refactor, UI story, integration, migration, documentation, release-prep, production-prep, and research spike work. Items carry labels, severity, owner/component/stack fields, required gates, verification hints, comments, and optional repo/package/workspace/subproject routing metadata.
 Production-oriented plans also generate release, observability, rollback,
 security/privacy, and post-release learning work items so the loop does not
@@ -124,6 +127,12 @@ After atomization or a dry-run preview, print `NEXT_USER_ACTIONS[]` and wait for
 - **Run another review** - send the reviewed plan or generated work graph back through specialist review.
 - **Start guided execution** - run `/supervibe-loop --guided` only after review and atomization evidence is accepted.
 - **Keep work graph and stop** - save the result without starting execution.
+
+Repair paths:
+
+- Invalid plan repair: when atomization cannot derive a valid epic/task/subtask graph, revise the reviewed plan or rerun `--atomize-plan <plan> --preview`; do not write `graph.json` until the plan has parseable work items and `--plan-review-passed`.
+- Graph drift repair: run `/supervibe-status --ready --blocked --stale --orphan --file <graph.json>`, then repair dependency cycles, stale claims, orphaned evidence, ownership gaps, or worktree assignment drift before continuing.
+- Completion blocker repair: run `/supervibe-loop --validate-completion --file <graph.json>` or `/supervibe-loop --close-eligible --file <graph.json>` to list blockers, attach production or dry-run evidence, then rerun close validation. `--allow-dry-run-evidence` and `--no-evidence-required` are explicit diagnostic overrides, not default completion.
 
 Durable tracker sync:
 
@@ -152,8 +161,15 @@ status, comments, evidence, tracker mapping, and checksums into a portable local
 directory; import currently supports `--dry-run` validation and conflict
 reporting without mutating remote systems.
 
+Executing `/supervibe-loop --file <graph.json>` treats the native work-item graph
+as the canonical queue. Loop task status, claims, verification evidence, and
+completion semantics are synced back into that graph so status, UI, resume, and
+worktree sessions see the same source of truth. Completion output includes
+`COMPLETION_SEMANTICS`, `PRODUCTION_READY`, and `NEXT_COMPLETION_ACTION` when
+the validator can derive them from the graph and run state.
+
 Saved views and reports are handled by `/supervibe-status`. Local task control
-is handled by `/supervibe-loop --claim|--close|--complete|--reopen|--edit|--split|--reparent|--dep-add|--dep-remove|--skip|--cancel|--delete`
+is handled by `/supervibe-loop --claim-ready|--claim|--close|--complete|--reopen|--edit|--split|--reparent|--dep-add|--dep-remove|--skip|--cancel|--delete`
 against the native `graph.json`. Destructive delete requires preview, dry-run,
 `--yes`, or `--force`; every mutation writes an audit event, and non-dry writes
 create a graph backup. Deferred work uses `/supervibe-loop --defer <item>

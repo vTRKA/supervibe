@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { createRunId, nowIso, versionEnvelope } from "./autonomous-loop-constants.mjs";
 import { createTasksFromRequest, loadPlanTasks } from "./autonomous-loop-task-source.mjs";
 import { createTaskGraph } from "./autonomous-loop-task-graph.mjs";
@@ -42,6 +42,11 @@ import {
   syncClose,
   syncReadyFront,
 } from "./supervibe-task-tracker-sync.mjs";
+import {
+  createWorkItemIndex,
+  detectStaleWorkItems,
+  groupWorkItemsByStatus,
+} from "./supervibe-work-item-query.mjs";
 
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
@@ -50,18 +55,22 @@ export async function runAutonomousLoop(options = {}) {
   await mkdir(loopDir, { recursive: true });
   const executionMode = normalizeExecutionMode(options.executionMode || (options.dryRun ? "dry-run" : "dry-run"));
   const commitPerTask = Boolean(options.commitPerTask || options["commit-per-task"]);
+  const sourcePlanPath = options.plan ? resolve(rootDir, options.plan) : null;
+  const nativeWorkGraphPath = sourcePlanPath ? await detectNativeWorkGraphPath(sourcePlanPath) : null;
 
   if (options.statusFile) {
     const state = await readState(options.statusFile);
     return { statusText: formatStatus(state), state };
   }
 
-  const sourceTasks = options.plan
-    ? await loadPlanTasks(resolve(rootDir, options.plan))
+  const sourceTasks = sourcePlanPath
+    ? await loadPlanTasks(sourcePlanPath)
     : createTasksFromRequest(options.request || "validate integrations");
   const taskGraph = createTaskGraph({
     graph_id: runId,
-    source: options.plan ? { type: "plan", path: options.plan } : { type: "request", request: options.request || "" },
+    source: sourcePlanPath
+      ? { type: nativeWorkGraphPath ? "work-item-graph" : "plan", path: options.plan }
+      : { type: "request", request: options.request || "" },
     tasks: sourceTasks,
   });
   const tasks = taskGraph.tasks;
@@ -814,6 +823,15 @@ export async function runAutonomousLoop(options = {}) {
     finalAcceptance,
     stopReason,
   });
+  if (nativeWorkGraphPath) {
+    state.native_work_graph_sync = await syncLoopTasksToNativeWorkGraph(nativeWorkGraphPath, {
+      runId,
+      tasks,
+      claims,
+      attempts,
+      executionMode,
+    });
+  }
 
   await writeState(join(loopDir, "state.json"), state);
   await writeFile(join(loopDir, "tasks.jsonl"), `${tasks.map((task) => JSON.stringify(versionEnvelope(task))).join("\n")}\n`, "utf8");
@@ -842,9 +860,9 @@ export async function resumeAutonomousLoop(statePath) {
     if (migration.error) return { status: validation.status, state: raw };
     await writeFile(`${statePath}.pre-migration`, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
     await writeFile(statePath, `${JSON.stringify(migration.state, null, 2)}\n`, "utf8");
-    return { status: "migrated", state: migration.state };
+    return { status: "migrated", state: await attachResumeWorkGraphSignal(migration.state, statePath) };
   }
-  return { status: "compatible", state: raw };
+  return { status: "compatible", state: await attachResumeWorkGraphSignal(raw, statePath) };
 }
 
 export async function stopAutonomousLoop(statePath, reason = "user_requested_stop") {
@@ -929,6 +947,159 @@ export async function recordUserGoalAcceptance(statePath, {
   });
   await writeState(statePath, state);
   return state;
+}
+
+async function attachResumeWorkGraphSignal(state, statePath) {
+  const graphPath = resolveResumeWorkGraphPath(state, statePath);
+  if (!graphPath) return state;
+  try {
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const index = createWorkItemIndex({ graph });
+    const grouped = groupWorkItemsByStatus(index);
+    const stale = detectStaleWorkItems(index);
+    const ready = (grouped.ready || []).filter((item) => item.type !== "epic");
+    const blocked = grouped.blocked || [];
+    const claimed = grouped.claimed || [];
+    const nextReady = ready[0] || null;
+    return {
+      ...state,
+      resume_work_graph: {
+        status: "active",
+        graphPath,
+        epicId: graph.epicId || graph.graph_id || graph.graphId || null,
+        ready: ready.length,
+        blocked: blocked.length,
+        claimed: claimed.length,
+        stale: stale.length,
+        terminal: (grouped.done || []).length,
+        nextReady: nextReady?.itemId || nextReady?.id || null,
+        nextAction: nextResumeActionForWorkGraph({ ready, blocked, claimed, stale }),
+      },
+    };
+  } catch (error) {
+    return {
+      ...state,
+      resume_work_graph: {
+        status: "unavailable",
+        graphPath,
+        reason: error.message,
+        nextAction: "repair or regenerate the referenced work graph before resuming",
+      },
+    };
+  }
+}
+
+function resolveResumeWorkGraphPath(state = {}, statePath = null) {
+  const sourcePath = state.native_work_graph_sync?.graphPath
+    || state.task_graph?.source?.path
+    || state.taskGraph?.source?.path
+    || state.work_graph?.path
+    || null;
+  if (!sourcePath) return null;
+  if (isAbsolute(sourcePath)) return sourcePath;
+  return resolve(inferRootDirFromLoopStatePath(statePath), sourcePath);
+}
+
+function inferRootDirFromLoopStatePath(statePath) {
+  if (!statePath) return process.cwd();
+  const full = resolve(statePath);
+  const normalized = full.replace(/\\/g, "/");
+  const marker = "/.supervibe/memory/loops/";
+  const index = normalized.indexOf(marker);
+  if (index >= 0) return normalized.slice(0, index) || process.cwd();
+  return dirname(full);
+}
+
+function nextResumeActionForWorkGraph({ ready = [], blocked = [], claimed = [], stale = [] } = {}) {
+  if (ready.length > 0) return `continue ready work item ${ready[0].itemId || ready[0].id}`;
+  if (stale.length > 0) return "recover stale claims before resuming execution";
+  if (claimed.length > 0) return "continue claimed work or release the claim with a handoff";
+  if (blocked.length > 0) return "resolve blockers before dispatching more work";
+  return "validate completion or close the epic";
+}
+
+async function detectNativeWorkGraphPath(filePath) {
+  try {
+    const parsed = JSON.parse(String(await readFile(filePath, "utf8")).replace(/^\uFEFF/, ""));
+    return parsed?.kind === "supervibe-work-item-graph" || (Array.isArray(parsed?.items) && parsed?.epicId)
+      ? filePath
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function syncLoopTasksToNativeWorkGraph(graphPath, {
+  runId,
+  tasks = [],
+  claims = [],
+  attempts = [],
+  executionMode = "dry-run",
+} = {}) {
+  const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const evidenceByTask = new Map();
+  for (const attempt of attempts) {
+    const refs = attempt.verificationEvidence || [];
+    if (!attempt.taskId || refs.length === 0) continue;
+    const existing = evidenceByTask.get(attempt.taskId) || [];
+    for (const ref of refs) {
+      existing.push({
+        source: "autonomous-loop",
+        runId,
+        attemptId: attempt.attemptId || null,
+        mode: executionMode === "dry-run" ? "dry-run" : "runtime",
+        ref,
+      });
+    }
+    evidenceByTask.set(attempt.taskId, existing);
+  }
+  const syncedAt = nowIso();
+  const updateEntry = (entry) => {
+    const id = entry.itemId || entry.id;
+    const task = taskById.get(id);
+    if (!task) return entry;
+    const evidence = evidenceByTask.get(id) || [];
+    return {
+      ...entry,
+      status: task.status,
+      owner: task.owner || entry.owner || null,
+      resumeNotes: task.resumeNotes || entry.resumeNotes || null,
+      verificationMatrix: task.verificationMatrix || entry.verificationMatrix || null,
+      evidence: mergeEvidence(entry.evidence || [], evidence),
+      updatedAt: syncedAt,
+    };
+  };
+  const syncedTaskIds = [...taskById.keys()].filter((id) =>
+    (graph.items || []).some((item) => (item.itemId || item.id) === id) ||
+    (graph.tasks || []).some((task) => task.id === id)
+  );
+  const nextGraph = {
+    ...graph,
+    updatedAt: syncedAt,
+    claims,
+    items: (graph.items || []).map(updateEntry),
+    tasks: (graph.tasks || []).map(updateEntry),
+    nativeLoopSync: {
+      status: "synced",
+      runId,
+      syncedAt,
+      taskCount: syncedTaskIds.length,
+      evidenceMode: executionMode === "dry-run" ? "dry-run" : "runtime",
+    },
+  };
+  await writeFile(graphPath, `${JSON.stringify(nextGraph, null, 2)}\n`, "utf8");
+  return nextGraph.nativeLoopSync;
+}
+
+function mergeEvidence(existing = [], next = []) {
+  const seen = new Set();
+  return [...existing, ...next].filter((entry) => {
+    const key = JSON.stringify(entry);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function forkAutonomousLoopCheckpoint(statePath, {

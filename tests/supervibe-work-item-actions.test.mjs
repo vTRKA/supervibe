@@ -145,10 +145,12 @@ test("work-item skip, cancel, reparent, and dependency mutations are audit logge
     now: "2026-05-07T00:00:00.000Z",
   });
   assert.equal(skipped.graph.items.find((item) => item.itemId === "task-1").status, "skipped");
+  assert.equal(skipped.graph.items.find((item) => item.itemId === "task-1").skipReason, "out of scope");
 
   const cancelled = mutateWorkItemGraph(baseGraph(), {
     type: "cancel",
     itemId: "task-1",
+    reason: "duplicate work",
     now: "2026-05-07T00:00:00.000Z",
   });
   assert.equal(cancelled.graph.items.find((item) => item.itemId === "task-1").status, "cancelled");
@@ -181,6 +183,84 @@ test("work-item skip, cancel, reparent, and dependency mutations are audit logge
   assert.deepEqual(depRemoved.graph.tasks.find((task) => task.id === "task-2").dependencies, []);
 });
 
+test("work-item block, unblock, comments, handoff, and stale recovery are task-scoped", () => {
+  const blocked = mutateWorkItemGraph(baseGraph(), {
+    type: "block",
+    itemId: "task-1",
+    reason: "missing API contract",
+    nextAction: "write contract",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+  assert.equal(blocked.graph.items.find((item) => item.itemId === "task-1").status, "blocked");
+  assert.equal(blocked.graph.events[0].blocker.nextAction, "write contract");
+
+  const unblocked = mutateWorkItemGraph(blocked.graph, {
+    type: "unblock",
+    itemId: "task-1",
+    reason: "contract merged",
+    now: "2026-05-07T00:01:00.000Z",
+  });
+  assert.equal(unblocked.graph.items.find((item) => item.itemId === "task-1").status, "ready");
+
+  const commented = mutateWorkItemGraph(unblocked.graph, {
+    type: "comment",
+    itemId: "task-1",
+    body: "Implementation note",
+    actor: "agent-a",
+    now: "2026-05-07T00:02:00.000Z",
+  });
+  assert.equal(commented.comment.workItemId, "task-1");
+  assert.equal(commented.graph.items.find((item) => item.itemId === "task-1").comments.length, 1);
+  assert.equal(commented.graph.events.at(-1).action, "comment");
+
+  const handoff = mutateWorkItemGraph(commented.graph, {
+    type: "handoff",
+    itemId: "task-1",
+    producer: "worker",
+    recipient: "reviewer",
+    receiptId: "receipt-1",
+    now: "2026-05-07T00:03:00.000Z",
+  });
+  assert.equal(handoff.handoff.receiptId, "receipt-1");
+  assert.equal(handoff.graph.events.at(-1).handoffId, handoff.handoff.handoffId);
+
+  const claimed = mutateWorkItemGraph(handoff.graph, {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:04:00.000Z",
+    leaseTtlMinutes: 1,
+  });
+  const recovered = mutateWorkItemGraph(claimed.graph, {
+    type: "recover-stale",
+    itemId: "task-1",
+    actor: "lead",
+    now: "2026-05-07T00:06:00.000Z",
+  });
+  assert.equal(recovered.graph.claims.at(-1).status, "recovered");
+  assert.equal(recovered.graph.items.find((item) => item.itemId === "task-1").status, "ready");
+});
+
+test("dependency add rejects cycles before writing graph", () => {
+  const graph = mutateWorkItemGraph(baseGraph(), {
+    type: "dep-add",
+    from: "task-1",
+    to: "task-2",
+    now: "2026-05-07T00:00:00.000Z",
+  }).graph;
+
+  assert.throws(
+    () => mutateWorkItemGraph(graph, {
+      type: "dep-add",
+      from: "task-2",
+      to: "task-1",
+      now: "2026-05-07T00:01:00.000Z",
+    }),
+    /dependency cycle/i,
+  );
+});
+
 test("work-item delete refuses dependents unless forced", () => {
   const graph = mutateWorkItemGraph(baseGraph(), {
     type: "dep-add",
@@ -201,6 +281,8 @@ test("work-item delete refuses dependents unless forced", () => {
     now: "2026-05-07T00:01:00.000Z",
   });
   assert.equal(deleted.graph.items.some((item) => item.itemId === "task-1"), false);
+  assert.equal(deleted.graph.tombstones[0].itemId, "task-1");
+  assert.equal(deleted.graph.events[1].tombstone.itemId, "task-1");
   assert.deepEqual(deleted.graph.tasks.find((task) => task.id === "task-2").dependencies, []);
 });
 

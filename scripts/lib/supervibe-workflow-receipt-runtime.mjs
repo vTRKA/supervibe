@@ -67,6 +67,10 @@ export async function issueWorkflowInvocationReceipt({
   receiptPrefix = "workflow",
   secret = null,
   hostInvocation = null,
+  taskId = null,
+  workItemId = null,
+  graphId = null,
+  workGraphId = null,
   allowMissingHostInvocationProof = false,
 } = {}) {
   if (!command) throw new Error("command required");
@@ -100,6 +104,12 @@ export async function issueWorkflowInvocationReceipt({
     .update(`${command}:${subjectType}:${subjectId}:${stage}:${handoffId}:${issuedAt}`)
     .digest("hex")
     .slice(0, 12)}`;
+  const workItemBinding = normalizeWorkItemBinding({
+    taskId,
+    workItemId,
+    graphId,
+    workGraphId,
+  });
 
   const runtime = {
     issuer: WORKFLOW_RECEIPT_ISSUER,
@@ -130,6 +140,7 @@ export async function issueWorkflowInvocationReceipt({
     hostInvocation: normalizedHostInvocation,
     runtime,
   };
+  if (workItemBinding) canonical.workItemBinding = workItemBinding;
   const canonicalHash = sha256(stableStringify(canonical));
   const signature = signCanonical(canonical, resolvedSecret);
   const receipt = {
@@ -154,6 +165,7 @@ export async function issueWorkflowInvocationReceipt({
       command,
       subjectType,
       subjectId,
+      workItemBinding,
       receiptPath: relReceiptPath,
       artifactLinksPath: relLinksPath,
       canonicalHash,
@@ -182,6 +194,10 @@ export async function issueWorkflowInvocationReceipt({
       "supervibe.workflow.handoff_id": handoffId,
       "supervibe.workflow.receipt_id": receiptId,
       "supervibe.workflow.receipt_path": relReceiptPath,
+      ...(workItemBinding ? {
+        "supervibe.workflow.graph_id": workItemBinding.graphId || "",
+        "supervibe.workflow.task_id": workItemBinding.taskId || "",
+      } : {}),
     },
     links: normalizedHostInvocation?.traceId
       ? [{
@@ -355,6 +371,8 @@ export async function reissueWorkflowInvocationReceipt({
     receiptPrefix: receiptPrefixFromReceiptId(existing.receiptId),
     secret,
     hostInvocation: existing.hostInvocation || null,
+    taskId: existing.workItemBinding?.taskId || null,
+    graphId: existing.workItemBinding?.graphId || null,
     allowMissingHostInvocationProof: false,
   });
   const ledger = rebuildLedger
@@ -431,6 +449,7 @@ export async function rebuildWorkflowReceiptLedger({
         command: receipt.command,
         subjectType: receipt.subjectType,
         subjectId: receipt.subjectId,
+        ...(receipt.workItemBinding ? { workItemBinding: receipt.workItemBinding } : {}),
         receiptPath: receipt.__file,
         artifactLinksPath,
         canonicalHash: receipt.runtime?.canonicalHash,
@@ -513,6 +532,16 @@ function assertReceiptableOutputArtifacts(outputArtifacts = [], rootDir = proces
   const paths = blocked.map((item) => item.path).join(", ");
   const recommendation = blocked[0].recommendation;
   throw new Error(`output artifact is mutable/log-like and cannot be receipt output: ${paths}. ${recommendation}`);
+}
+
+function normalizeWorkItemBinding({ taskId = null, workItemId = null, graphId = null, workGraphId = null } = {}) {
+  const normalizedTaskId = taskId || workItemId || null;
+  const normalizedGraphId = graphId || workGraphId || null;
+  if (!normalizedTaskId && !normalizedGraphId) return null;
+  return {
+    graphId: normalizedGraphId,
+    taskId: normalizedTaskId,
+  };
 }
 
 function repairCommandForReceiptIssues(issues = []) {
@@ -634,6 +663,7 @@ async function upsertArtifactLinks(path, receipt, receiptPath) {
       receiptId: receipt.receiptId,
       receiptPath,
       sha256: output.sha256,
+      ...(receipt.workItemBinding ? { workItemBinding: receipt.workItemBinding } : {}),
     });
   }
   await writeFile(path, `${JSON.stringify({ schemaVersion: 1, links: nextLinks }, null, 2)}\n`, "utf8");
@@ -759,7 +789,7 @@ function canonicalReceiptForVerification(receipt) {
   const runtime = { ...(receipt.runtime || {}) };
   delete runtime.canonicalHash;
   delete runtime.signature;
-  return {
+  const canonical = {
     schemaVersion: receipt.schemaVersion,
     receiptId: receipt.receiptId,
     command: receipt.command,
@@ -781,6 +811,10 @@ function canonicalReceiptForVerification(receipt) {
     hostInvocation: receipt.hostInvocation || null,
     runtime,
   };
+  if (Object.prototype.hasOwnProperty.call(receipt, "workItemBinding")) {
+    canonical.workItemBinding = receipt.workItemBinding || null;
+  }
+  return canonical;
 }
 
 function isHostAgentSubject(subjectType) {

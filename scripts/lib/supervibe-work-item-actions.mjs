@@ -2,6 +2,7 @@ import { copyFile, mkdir, open, readFile, unlink, writeFile } from "node:fs/prom
 import { dirname } from "node:path";
 import { deferWorkItemInGraph } from "./supervibe-work-item-scheduler.mjs";
 import { inferRootDirFromGraphPath, updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
+import { createWorkItemComment } from "./supervibe-work-item-comments.mjs";
 
 const DONE_STATUSES = new Set(["done", "complete", "completed", "closed", "skipped", "cancelled", "canceled"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["active", "claimed", "in_progress"]);
@@ -44,6 +45,9 @@ export function mutateWorkItemGraph(graph = {}, action = {}) {
   if (!type) throw new Error("work-item action type is required");
   let result;
   if (type === "defer") {
+    if (!action.until && !action.reason && !action.indefinite) {
+      throw new Error("defer requires --until or an explicit reason for indefinite deferral");
+    }
     result = deferWorkItemInGraph(graph, {
       itemId: action.itemId,
       until: action.until,
@@ -59,6 +63,11 @@ export function mutateWorkItemGraph(graph = {}, action = {}) {
   else if (type === "complete") result = updateStatus(graph, action, "complete");
   else if (type === "skip") result = updateStatus(graph, action, "skipped");
   else if (type === "cancel" || type === "cancelled" || type === "canceled") result = updateStatus(graph, action, "cancelled");
+  else if (type === "block") result = blockWorkItem(graph, action);
+  else if (type === "unblock") result = unblockWorkItem(graph, action);
+  else if (type === "comment") result = appendWorkItemCommentToGraph(graph, action);
+  else if (type === "handoff") result = appendWorkItemHandoff(graph, action);
+  else if (type === "recover-stale" || type === "recover-stale-claim") result = recoverStaleWorkItemClaim(graph, action);
   else if (type === "reopen") result = updateStatus(graph, action, action.status || "ready", { clearTerminal: true });
   else if (type === "claim") result = claimWorkItem(graph, action);
   else if (type === "edit") result = editWorkItem(graph, action);
@@ -77,6 +86,9 @@ export function isTerminalWorkItemStatus(status) {
 
 function updateStatus(graph, action, status, options = {}) {
   if (!action.itemId) throw new Error("work-item action requires itemId");
+  if (["skipped", "cancelled"].includes(status) && !action.reason && !action.force) {
+    throw new Error(`${status} requires reason`);
+  }
   const now = action.now || new Date().toISOString();
   let changed = false;
   const update = (entry) => {
@@ -93,6 +105,8 @@ function updateStatus(graph, action, status, options = {}) {
       next.closedAt = now;
       next.closeReason = action.reason || (status === "complete" ? "completed by user" : "closed by user");
     }
+    if (status === "skipped") next.skipReason = action.reason || "skipped by user";
+    if (status === "cancelled") next.cancelReason = action.reason || "cancelled by user";
     if (options.clearTerminal) {
       delete next.closedAt;
       delete next.closeReason;
@@ -111,6 +125,192 @@ function updateStatus(graph, action, status, options = {}) {
   };
   if (!changed) throw new Error(`work item not found: ${action.itemId}`);
   return { graph: nextGraph, itemId: action.itemId, action: status, changed: true };
+}
+
+function blockWorkItem(graph, action) {
+  if (!action.itemId) throw new Error("block requires itemId");
+  if (!action.reason) throw new Error("block requires reason");
+  const now = action.now || new Date().toISOString();
+  let changed = false;
+  const update = (entry) => {
+    const id = entry.itemId || entry.id;
+    if (id !== action.itemId) return entry;
+    changed = true;
+    return {
+      ...entry,
+      status: "blocked",
+      blockerReason: action.reason,
+      blockerNextAction: action.nextAction || action["next-action"] || "resolve blocker and reopen task",
+      blockedAt: now,
+      updatedAt: now,
+      updatedBy: action.actor || "user",
+    };
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: now,
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`work item not found: ${action.itemId}`);
+  return {
+    graph: nextGraph,
+    itemId: action.itemId,
+    action: "block",
+    changed: true,
+    blocker: {
+      reason: action.reason,
+      nextAction: action.nextAction || action["next-action"] || "resolve blocker and reopen task",
+    },
+  };
+}
+
+function unblockWorkItem(graph, action) {
+  if (!action.itemId) throw new Error("unblock requires itemId");
+  const now = action.now || new Date().toISOString();
+  let changed = false;
+  const update = (entry) => {
+    const id = entry.itemId || entry.id;
+    if (id !== action.itemId) return entry;
+    changed = true;
+    const next = {
+      ...entry,
+      status: action.status || "ready",
+      unblockedAt: now,
+      unblockReason: action.reason || "blocker resolved",
+      updatedAt: now,
+      updatedBy: action.actor || "user",
+    };
+    delete next.blockerReason;
+    delete next.blockerNextAction;
+    return next;
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: now,
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`work item not found: ${action.itemId}`);
+  return { graph: nextGraph, itemId: action.itemId, action: "unblock", changed: true };
+}
+
+function appendWorkItemCommentToGraph(graph, action) {
+  if (!action.itemId) throw new Error("comment requires itemId");
+  const now = action.now || new Date().toISOString();
+  const body = action.body || action.comment || action.reason || "";
+  if (!body) throw new Error("comment requires body");
+  let changed = false;
+  const comment = createWorkItemComment({
+    workItemId: action.itemId,
+    author: action.actor || action.author || "user",
+    type: action.commentType || action.comment_type || "implementation-note",
+    body,
+    links: normalizeStringList(action.links || action.link),
+    createdAt: now,
+  });
+  const update = (entry) => {
+    const id = entry.itemId || entry.id;
+    if (id !== action.itemId) return entry;
+    changed = true;
+    return {
+      ...entry,
+      comments: [...(entry.comments || []), comment],
+      activity: [...(entry.activity || []), { type: "comment", commentId: comment.commentId, at: now }],
+      updatedAt: now,
+    };
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: now,
+    comments: [...(graph.comments || []), comment],
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`work item not found: ${action.itemId}`);
+  return { graph: nextGraph, itemId: action.itemId, action: "comment", changed: true, comment };
+}
+
+function appendWorkItemHandoff(graph, action) {
+  if (!action.itemId) throw new Error("handoff requires itemId");
+  const now = action.now || new Date().toISOString();
+  const handoff = {
+    handoffId: action.handoffId || `${action.itemId}-handoff-${Date.parse(now) || Date.now()}`,
+    itemId: action.itemId,
+    producer: action.producer || action.from || action.actor || "unknown",
+    recipient: action.recipient || action.to || action.owner || "unknown",
+    receiptId: action.receiptId || action.receipt || null,
+    summary: action.summary || action.reason || null,
+    at: now,
+  };
+  let changed = false;
+  const update = (entry) => {
+    const id = entry.itemId || entry.id;
+    if (id !== action.itemId) return entry;
+    changed = true;
+    return {
+      ...entry,
+      handoffs: [...(entry.handoffs || []), handoff],
+      updatedAt: now,
+    };
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: now,
+    handoffs: [...(graph.handoffs || []), handoff],
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`work item not found: ${action.itemId}`);
+  return { graph: nextGraph, itemId: action.itemId, action: "handoff", changed: true, handoff };
+}
+
+function recoverStaleWorkItemClaim(graph, action) {
+  if (!action.itemId) throw new Error("recover-stale requires itemId");
+  const now = action.now || new Date().toISOString();
+  const expiredClaims = expireWorkItemClaims(graph.claims || [], now);
+  const recoveredClaims = [];
+  const claims = expiredClaims.map((claim) => {
+    if (claim.taskId !== action.itemId || claim.status !== "expired") return claim;
+    const recovered = {
+      ...claim,
+      status: "recovered",
+      recoveredAt: now,
+      recoveredBy: action.actor || "user",
+      recoveryReason: action.reason || "stale claim recovered",
+    };
+    recoveredClaims.push(recovered);
+    return recovered;
+  });
+  if (recoveredClaims.length === 0 && !action.force) {
+    throw new Error(`no stale claim found for ${action.itemId}`);
+  }
+  let changed = recoveredClaims.length > 0;
+  const update = (entry) => {
+    const id = entry.itemId || entry.id;
+    if (id !== action.itemId) return entry;
+    changed = true;
+    return {
+      ...entry,
+      status: isTerminalWorkItemStatus(entry.status) ? entry.status : "ready",
+      owner: null,
+      staleRecoveredAt: now,
+      updatedAt: now,
+    };
+  };
+  return {
+    graph: {
+      ...graph,
+      updatedAt: now,
+      claims,
+      items: (graph.items || []).map(update),
+      tasks: (graph.tasks || []).map(update),
+    },
+    itemId: action.itemId,
+    action: "recover-stale",
+    changed,
+    recoveredClaims,
+  };
 }
 
 function claimWorkItem(graph, action) {
@@ -214,10 +414,19 @@ function deleteWorkItem(graph, action) {
     dependencies: removeValue(entry.dependencies, action.itemId),
     updatedAt: now,
   });
+  const deletedItem = (graph.items || []).find((entry) => (entry.itemId || entry.id) === action.itemId);
+  const tombstone = {
+    itemId: action.itemId,
+    deletedAt: now,
+    deletedBy: action.actor || "user",
+    reason: action.reason || "deleted by user",
+    snapshot: deletedItem || null,
+  };
   return {
     graph: {
       ...graph,
       updatedAt: now,
+      tombstones: [...(graph.tombstones || []), tombstone],
       items: (graph.items || [])
         .filter((entry) => (entry.itemId || entry.id) !== action.itemId)
         .map(clean),
@@ -230,6 +439,7 @@ function deleteWorkItem(graph, action) {
     itemId: action.itemId,
     action: "delete",
     changed: true,
+    tombstone,
     dependentsRemoved: action.force ? dependents : [],
   };
 }
@@ -346,8 +556,7 @@ function mutateDependency(graph, action, mode) {
     return entry;
   };
   const edge = { from, to, type: depType };
-  return {
-    graph: {
+  const nextGraph = {
       ...graph,
       updatedAt: now,
       items: (graph.items || []).map(updateItem),
@@ -355,12 +564,36 @@ function mutateDependency(graph, action, mode) {
       dependencyEdges: add
         ? addEdge(graph.dependencyEdges || [], edge)
         : removeEdge(graph.dependencyEdges || [], edge),
-    },
+    };
+  if (add && depType !== "related" && hasDependencyCycle(nextGraph.tasks || [])) {
+    throw new Error(`dependency cycle detected for ${from}->${to}`);
+  }
+  return {
+    graph: nextGraph,
     itemId: from,
     action: mode === "add" ? "dep-add" : "dep-remove",
     changed: true,
     dependency: edge,
   };
+}
+
+function hasDependencyCycle(tasks = []) {
+  const byId = new Map(tasks.map((task) => [task.id || task.itemId, task]));
+  const visiting = new Set();
+  const visited = new Set();
+  const visit = (id) => {
+    if (!id || visited.has(id)) return false;
+    if (visiting.has(id)) return true;
+    visiting.add(id);
+    const task = byId.get(id);
+    for (const dependencyId of task?.dependencies || []) {
+      if (visit(dependencyId)) return true;
+    }
+    visiting.delete(id);
+    visited.add(id);
+    return false;
+  };
+  return [...byId.keys()].some((id) => visit(id));
 }
 
 function splitWorkItem(graph, action) {
@@ -512,6 +745,11 @@ function appendAuditEvent(result, action, requestedType) {
   };
   if (result.conflict) event.conflict = result.conflict;
   if (result.claim?.claimId) event.claimId = result.claim.claimId;
+  if (result.blocker) event.blocker = result.blocker;
+  if (result.comment?.commentId) event.commentId = result.comment.commentId;
+  if (result.handoff?.handoffId) event.handoffId = result.handoff.handoffId;
+  if (result.tombstone) event.tombstone = { itemId: result.tombstone.itemId, deletedAt: result.tombstone.deletedAt };
+  if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
   return {
     ...result,
     graph: {
