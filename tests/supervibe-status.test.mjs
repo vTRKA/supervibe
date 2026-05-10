@@ -328,6 +328,7 @@ test('supervibe-status --genesis-dry-run uses plugin artifacts, not project cwd,
     assert.match(out, /RECOMMENDED_AGENTS: .*react-implementer/);
     assert.match(out, /RECOMMENDED_AGENTS: .*product-manager/);
     assert.match(out, /RECOMMENDED_AGENTS: .*creative-director/);
+    assert.match(out, /RECOMMENDED_AGENTS: .*design-system-architect/);
     assert.match(out, /OPTIONAL_AGENTS: .*competitive-design-researcher/);
     assert.doesNotMatch(out, /OPTIONAL_AGENTS: .*mobile-ui-designer/);
     assert.doesNotMatch(out, /OPTIONAL_AGENTS: .*electron-ui-designer/);

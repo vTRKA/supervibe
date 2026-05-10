@@ -470,6 +470,10 @@ test("supervibe-adapt summary-json changed-only omits identical artifact payload
     assert.equal(summary.counts.update, 1);
     assert.equal(summary.fastPath.eligible, true);
     assert.match(summary.agentPlanCommand, /--adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false/);
+    assert.equal(summary.commandAgentReadiness.ready, false);
+    assert.ok(summary.commandAgentReadiness.missingCallableAgents.includes("design-system-architect"));
+    assert.ok(summary.commandAgentReadiness.blockedCommands.some((entry) => entry.command === "/supervibe-design"));
+    assert.match(summary.commandAgentReadiness.repairCommand, /--add-agents .*design-system-architect/);
     assert.equal(summary.changedItems.length, 1);
     assert.equal(summary.changedItems[0].path, ".codex/agents/repo-researcher.md");
     assert.equal(Object.hasOwn(summary, "items"), false);
@@ -498,6 +502,9 @@ test("supervibe-adapt dry-run is read-only for memory index by default", () => {
     const out = runAdapt(projectRoot, ["--dry-run", "--diff-summary", "--no-color"]);
 
     assert.match(out, /SUPERVIBE_ADAPT_DIFF_SUMMARY/);
+    assert.match(out, /COMMAND_AGENT_READINESS: gaps/);
+    assert.match(out, /COMMAND_AGENT_GAP: \/supervibe-design .*callable:design-system-architect/);
+    assert.match(out, /COMMAND_AGENT_REPAIR: .*--add-agents .*design-system-architect/);
     assert.match(out, /DIFF: \.codex\/agents\/repo-researcher\.md \+\d+ -\d+ \(review-update\)/);
     assert.match(out, /MEMORY_INDEX: not-refreshed/);
     assert.match(out, /MEMORY_INDEX_REFRESHED: false/);

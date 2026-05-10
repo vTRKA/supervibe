@@ -17,3 +17,22 @@ test("build-registry includes pack.yaml stack packs with normalized profiles", a
   assert.ok(pack.profiles.includes("minimal"));
   assert.ok(pack["agent-profiles"].includes("full-stack"));
 });
+
+test("design-capable stack packs attach the design-system architect", async () => {
+  const designArchitect = "supervibe:_design:design-system-architect";
+  const packPaths = [
+    "stack-packs/chrome-extension-mv3/manifest.yaml",
+    "stack-packs/laravel-nextjs-postgres/manifest.yaml",
+    "stack-packs/laravel-nextjs-postgres-redis/manifest.yaml",
+  ];
+
+  for (const packPath of packPaths) {
+    const manifest = parseYaml(await readFile(packPath, "utf8"));
+    assert.ok((manifest["agents-attach"] || []).includes(designArchitect), `${packPath}: agents-attach`);
+
+    const productDesignAgents = manifest["agent-profiles"]?.["product-design"]?.agents;
+    if (productDesignAgents) {
+      assert.ok(productDesignAgents.includes(designArchitect), `${packPath}: product-design profile`);
+    }
+  }
+});

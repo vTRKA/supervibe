@@ -506,6 +506,9 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `AGENT_PLAN_EXECUTION_MODE: ${plan.commandAgentPlan?.executionMode || "not-run"}`,
     `AGENT_PLAN_RECEIPT_GATE: ${plan.commandAgentPlan?.receiptGate || "not-run"}`,
     `AGENT_PLAN_REQUIRED_AGENTS: ${(plan.commandAgentPlan?.requiredAgentIds || []).join(",") || "none"}`,
+    `COMMAND_AGENT_READINESS: ${plan.commandAgentReadiness?.ready === true ? "ready" : plan.commandAgentReadiness ? "gaps" : "not-run"}`,
+    `COMMAND_AGENT_READY_COMMANDS: ${plan.commandAgentReadiness ? `${plan.commandAgentReadiness.readyCommands}/${plan.commandAgentReadiness.totalCommands}` : "not-run"}`,
+    `COMMAND_AGENT_MISSING_CALLABLE_AGENTS: ${(plan.commandAgentReadiness?.missingCallableAgents || []).join(",") || "none"}`,
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
@@ -514,6 +517,16 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   for (const warning of plan.frontendTarget?.driftWarnings || []) {
     lines.push(`FRONTEND_DRIFT: ${warning.code} - ${warning.message}`);
     lines.push(`FRONTEND_CHOICES: ${(warning.options || []).map((choice) => choice.id).join(", ")}`);
+  }
+  for (const entry of plan.commandAgentReadiness?.blockedCommands || []) {
+    const missing = [
+      ...(entry.missingCallableAgents || []).map((agentId) => `callable:${agentId}`),
+      ...(entry.missingAgents || []).map((agentId) => `missing:${agentId}`),
+    ].join(",");
+    lines.push(`COMMAND_AGENT_GAP: ${entry.command} ${missing || "unknown"}`);
+  }
+  if (plan.commandAgentReadiness?.repairCommand) {
+    lines.push(`COMMAND_AGENT_REPAIR: ${plan.commandAgentReadiness.repairCommand}`);
   }
   for (const item of plan.items) {
     if (item.action === "add") {
@@ -702,6 +715,7 @@ export function summarizeAdaptPlan(plan) {
     agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
     commandAgentPlan: plan.commandAgentPlan || null,
     commandAgentPlanReport: plan.commandAgentPlanReport || null,
+    commandAgentReadiness: plan.commandAgentReadiness || null,
     changeDetection: plan.changeDetection,
     frontendTarget: plan.frontendTarget,
     baselineRefreshRequired: plan.baselineRefreshRequired === true,

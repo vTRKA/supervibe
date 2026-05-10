@@ -269,9 +269,20 @@ function renderProvisioningManagedInstruction({
     ...((projectRoster.agents || []).map((agent) => [agent.id, agent])),
     ...((pluginRoster.agents || []).map((agent) => [agent.id, agent])),
   ]);
-  const roleRoster = { agents: requestedAgents.map((id) => byId.get(id)).filter(Boolean) };
-  const roleSummary = formatAgentRoleSummaries(requestedAgents, roleRoster, { max: 80 });
   const adapter = host.adapter;
+  const currentHostAgents = hostCallableAgents(projectRoster, adapter.agentsFolder);
+  const plannedHostAgentIds = (agents || [])
+    .filter((entry) => entry.status === "present" || entry.status === "add")
+    .map((entry) => entry.id);
+  const hostCallableAgentIds = unique([
+    ...currentHostAgents.map((agent) => agent.id),
+    ...plannedHostAgentIds,
+  ]);
+  for (const agent of currentHostAgents) {
+    byId.set(agent.id, agent);
+  }
+  const roleRoster = { agents: hostCallableAgentIds.map((id) => byId.get(id)).filter(Boolean) };
+  const roleSummary = formatAgentRoleSummaries(hostCallableAgentIds, roleRoster, { max: 80 });
   return [
     `# Supervibe Managed Context (${adapter.displayName})`,
     "",
@@ -280,6 +291,7 @@ function renderProvisioningManagedInstruction({
     `Host agents folder: ${adapter.agentsFolder}`,
     `Host skills folder: ${adapter.skillsFolder}`,
     `Provisioned/requested agents: ${requestedAgents.join(", ") || "none"}`,
+    `Host-callable agents: ${hostCallableAgentIds.join(", ") || "none"}`,
     `Provisioned/requested skills: ${requestedSkills.join(", ") || "none"}`,
     "",
     "## Agent Roles",
@@ -351,10 +363,19 @@ function findExistingSkill(projectRoot, skillsFolder, skillId) {
 }
 
 function hostCallableAgentMap(roster = { agents: [] }, agentsFolder = "") {
+  return new Map(hostCallableAgents(roster, agentsFolder).map((agent) => [agent.id, agent]));
+}
+
+function hostCallableAgents(roster = { agents: [] }, agentsFolder = "") {
   const prefix = `${normalizeRel(agentsFolder).replace(/\/+$/, "")}/`;
-  return new Map((roster.agents || [])
-    .filter((agent) => normalizeRel(agent.path).startsWith(prefix))
-    .map((agent) => [agent.id, agent]));
+  return (roster.agents || [])
+    .map((agent) => {
+      const hostPath = unique([agent.path, ...(agent.locations || [])])
+        .map(normalizeRel)
+        .find((relPath) => relPath.startsWith(prefix));
+      return hostPath ? { ...agent, path: hostPath } : null;
+    })
+    .filter(Boolean);
 }
 
 function normalizeSkillId(value) {

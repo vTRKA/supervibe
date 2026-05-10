@@ -35,6 +35,9 @@ import {
   buildRuntimeCommandAgentPlan,
 } from "./command-agent-plan.mjs";
 import {
+  listCommandAgentProfiles,
+} from "./lib/command-agent-orchestration-contract.mjs";
+import {
   writeWorkflowTransactionAndReceipt,
 } from "./lib/supervibe-workflow-transaction.mjs";
 import {
@@ -400,6 +403,7 @@ function withEmbeddedAdaptAgentPlan(value, { args: values = {}, counts = null, d
     },
     env: process.env,
   });
+  const hostAdapterId = values.host || process.env.SUPERVIBE_HOST || value.host?.adapterId || "codex";
   return {
     ...value,
     commandAgentPlan: report.plan,
@@ -409,6 +413,58 @@ function withEmbeddedAdaptAgentPlan(value, { args: values = {}, counts = null, d
       hostConfidence: report.hostConfidence,
       availableAgentCount: report.availableAgentCount,
     },
+    commandAgentReadiness: buildCommandAgentReadiness({
+      hostAdapterId,
+      projectRoot,
+      pluginRoot,
+      env: process.env,
+    }),
+  };
+}
+
+function buildCommandAgentReadiness({
+  hostAdapterId = "codex",
+  projectRoot: targetProjectRoot,
+  pluginRoot: targetPluginRoot,
+  env = process.env,
+} = {}) {
+  const commandReports = listCommandAgentProfiles().map((profile) => {
+    const report = buildRuntimeCommandAgentPlan({
+      command: profile.commandId,
+      projectRoot: targetProjectRoot,
+      pluginRoot: targetPluginRoot,
+      host: hostAdapterId,
+      workflowContext: {
+        dryRun: true,
+        active: false,
+        memoryWrites: false,
+      },
+      env,
+    });
+    const plan = report.plan || {};
+    return {
+      command: profile.commandId,
+      executionMode: plan.executionMode || "unknown",
+      callableAgentsReady: plan.callableAgentsReady === true,
+      missingCallableAgents: plan.missingCallableAgents || [],
+      missingAgents: plan.missingAgents || [],
+    };
+  });
+  const blockedCommands = commandReports
+    .filter((entry) => entry.missingCallableAgents.length > 0 || entry.missingAgents.length > 0);
+  const missingCallableAgents = unique(blockedCommands.flatMap((entry) => entry.missingCallableAgents));
+  const missingAgents = unique(blockedCommands.flatMap((entry) => entry.missingAgents));
+  return {
+    ready: blockedCommands.length === 0,
+    host: hostAdapterId,
+    totalCommands: commandReports.length,
+    readyCommands: commandReports.length - blockedCommands.length,
+    blockedCommands,
+    missingCallableAgents,
+    missingAgents,
+    repairCommand: missingCallableAgents.length > 0
+      ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents ${missingCallableAgents.join(",")} --host ${hostAdapterId} --apply`
+      : null,
   };
 }
 

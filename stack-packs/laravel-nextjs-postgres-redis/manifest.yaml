@@ -41,6 +41,7 @@ agents-attach:
   - supervibe:_ops:ai-integration-architect
   # Design
   - supervibe:_design:creative-director
+  - supervibe:_design:design-system-architect
   - supervibe:_design:ux-ui-designer
   - supervibe:_design:ui-polish-reviewer
   - supervibe:_design:accessibility-reviewer
@@ -83,6 +84,7 @@ agent-profiles:
       - supervibe:_product:systems-analyst
       - supervibe:_product:qa-test-engineer
       - supervibe:_design:creative-director
+      - supervibe:_design:design-system-architect
       - supervibe:_design:ux-ui-designer
       - supervibe:_design:prototype-builder
       - supervibe:_design:presentation-director

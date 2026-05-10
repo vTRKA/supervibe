@@ -107,6 +107,85 @@ test("agent provisioning treats shared agent definitions as source, not host-cal
   }
 });
 
+test("skills-only provisioning preserves existing host-callable agent roles", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-skills-only-"));
+  const pluginRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-skills-plugin-"));
+  try {
+    await writeUtf8(projectRoot, "AGENTS.md", "# AGENTS\n");
+    await writeUtf8(projectRoot, ".codex/agents/_design/creative-director.md", [
+      "---",
+      "name: creative-director",
+      "namespace: _design",
+      "description: Creative direction specialist for product-grade design systems.",
+      "---",
+      "# Creative Director",
+      "",
+    ].join("\n"));
+    await writeUtf8(pluginRoot, "skills/brandbook/SKILL.md", "# Brandbook\n");
+
+    const plan = createAgentProvisioningPlan({
+      projectRoot,
+      pluginRoot,
+      adapterId: "codex",
+      skillIds: ["supervibe:brandbook"],
+    });
+
+    assert.equal(plan.readyToApply, true, formatAgentProvisioningPlan(plan));
+    assert.equal(plan.counts.add, 1);
+    assert.match(plan.contextMigration.afterContent, /Provisioned\/requested agents: none/);
+    assert.match(plan.contextMigration.afterContent, /Host-callable agents: creative-director/);
+    assert.match(plan.contextMigration.afterContent, /- creative-director: Creative direction specialist/);
+    assert.doesNotMatch(plan.contextMigration.afterContent, /## Agent Roles\n- none/);
+
+    await applyAgentProvisioningPlan(plan);
+    const instructions = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
+    assert.match(instructions, /Host-callable agents: creative-director/);
+    assert.match(instructions, /- creative-director: Creative direction specialist/);
+    assert.doesNotMatch(instructions, /## Agent Roles\n- none/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+    await rm(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test("agent provisioning detects host-callable duplicate when shared source also exists", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-host-duplicate-"));
+  try {
+    await writeUtf8(projectRoot, "agents/_design/creative-director.md", [
+      "---",
+      "name: creative-director",
+      "namespace: _design",
+      "description: Shared creative direction specialist.",
+      "---",
+      "# Shared Creative Director",
+      "",
+    ].join("\n"));
+    await writeUtf8(projectRoot, ".codex/agents/_design/creative-director.md", [
+      "---",
+      "name: creative-director",
+      "namespace: _design",
+      "description: Host-callable creative direction specialist.",
+      "---",
+      "# Host Creative Director",
+      "",
+    ].join("\n"));
+
+    const plan = createAgentProvisioningPlan({
+      projectRoot,
+      pluginRoot: projectRoot,
+      adapterId: "codex",
+      agentIds: ["creative-director"],
+    });
+
+    assert.equal(plan.readyToApply, false);
+    assert.equal(plan.counts.present, 1);
+    assert.ok(plan.agents.some((entry) => entry.status === "present" && entry.projectRel === ".codex/agents/_design/creative-director.md"));
+    assert.match(plan.contextMigration.afterContent, /Host-callable agents: creative-director/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("agent provisioning targets the selected host runtime folder for every provider", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-agent-provision-provider-matrix-"));
   try {

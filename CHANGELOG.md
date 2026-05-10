@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.7] - 2026-05-10
+
+### Fixed
+
+- Hardened agent provisioning so skills-only refreshes preserve already
+  host-callable agents in managed host instructions instead of showing
+  `Agent Roles: none`.
+- Added command-agent readiness diagnostics to `/supervibe-adapt` so projects
+  with no artifact drift still report missing callable agents for important
+  workflows such as `/supervibe-design`.
+- Added `design-system-architect` to design-capable stack-pack profiles so
+  creative/design workflows provision the real design-system owner by default.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.7`.
+
 ## [2.1.6] - 2026-05-10
 
 ### Added
