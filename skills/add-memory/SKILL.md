@@ -84,7 +84,7 @@ Confidence self-assessment:
    - **What** (the decision/pattern/incident/learning/solution)
    - **Why** (rationale)
    - **How to apply** (concrete usage / when to invoke this knowledge)
-   - **References** (links to specs, ADRs, code, PRs)
+   - **References** (links to specs, PRD decision sections, code, PRs)
 7. **Score** with `supervibe:confidence-scoring` (memory-entry rubric ≥9 required)
 8. **Trigger `scripts/build-memory-index.mjs`** to update `index.json`
 9. **Cross-link** — update `related:` in any related entries (bidirectional)

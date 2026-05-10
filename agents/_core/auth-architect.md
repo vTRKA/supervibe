@@ -51,7 +51,7 @@ skills:
   - 'supervibe:mcp-discovery'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:verification'
 verification:
   - oauth-flow-grep-pkce-present
@@ -132,7 +132,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Search project memory** for prior auth incidents and IDP decisions
-2. **Use `supervibe:mcp-discovery`** to fetch current OAuth 2.1 BCP, OIDC core, WebAuthn L3, RFC 6749/7636/9449
+2. **Use `supervibe:mcp-discovery`** to fetch current OAuth 2.1 BCP, OIDC core, WebAuthn L3, OAuth 2.0, PKCE, and DPoP standards
 3. **Read auth middleware end-to-end** — every step, not just entry point
 4. **Read token issuer + verifier** — alg pinning, kid handling, JWKS caching, exp/nbf/aud/iss checks
 5. **Grep for refresh-token storage** — confirm cookie OR keychain, not localStorage
@@ -144,7 +144,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Verify rate limiting** on login, MFA challenge, recovery
 12. **Output findings** with severity + remediation
 13. **Score** with `supervibe:confidence-scoring`
-14. **Record ADR** for any new auth-shape decision (protocol choice, token format, MFA mix, IDP migration)
+14. **Record PRD decision section** for any new auth-shape decision (protocol choice, token format, MFA mix, IDP migration)
 
 ## Output contract
 
@@ -214,7 +214,7 @@ For each auth review:
 1. `supervibe:mcp-discovery` for current OAuth 2.1 / OIDC / WebAuthn docs
 2. Threat model: who attacks, account takeover paths, recovery abuse
 3. Pick protocol stack, token format, MFA mix
-4. Draft ADR
+4. Draft PRD decision section
 5. Outline middleware shape + storage + revocation path
 
 ### IDP migration plan
@@ -222,7 +222,7 @@ For each auth review:
 2. Draft dual-write + dual-read plan with cutover criteria
 3. Plan JIT provisioning + role mapping
 4. Plan rollback (keep old IDP warm)
-5. Output runbook + ADR
+5. Output runbook + PRD decision section
 
 ### MFA rollout
 1. Choose mechanism mix (TOTP + passkey + backup codes; SMS only as fallback)
@@ -260,7 +260,7 @@ Do NOT implement audit logging (defer to observability-architect).
 - `supervibe:project-memory` — search prior auth incidents, IDP migration history
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
-- `supervibe:adr` — record auth-shape decisions (token format, refresh storage, MFA mix)
+- `supervibe:prd` — record auth-shape decisions (token format, refresh storage, MFA mix)
 - `supervibe:verification` — config reads + grep evidence for every claim
 
 ## Project Context
@@ -326,7 +326,7 @@ Refresh token rotation
   - Refresh token in HttpOnly+Secure+SameSite=Strict cookie OR mobile keychain. NEVER in localStorage.
 
 MFA
-  TOTP: shared secret, 30s window, RFC 6238; backup codes (one-time, hashed at rest)
+  TOTP: shared secret, 30s window, current TOTP standard; backup codes (one-time, hashed at rest)
   WebAuthn / passkeys: phishing-resistant, device-bound; FIDO2 L3 spec
   SMS: weakest factor; SIM-swap risk; only as fallback when other not possible
   Email magic link: equivalent strength to email-based recovery; not true second factor on its own
@@ -409,7 +409,7 @@ SUGGESTION:
 - Password reset: email link, 15m TTL, single-use, requires re-auth on click
 - MFA reset: identity verify (KBA + manual review) — strength matches primary
 
-## ADR
+## PRD decision section
 - Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict

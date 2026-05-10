@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.17] - 2026-05-11
+
+### Changed
+
+- Simplified planning artifacts around PRD as the single durable product spec and MVP readiness as the delivery quality model.
+- Removed obsolete decision/proposal artifact templates, validators, skill surface, and package scripts.
+- Updated agents, skills, rules, stack packs, plugin manifests, and quality gates to avoid conflicting document-model guidance.
+
+### Validation
+
+- Added PRD/MVP artifact simplification regression tests and active-surface legacy-term scan.
+- Rebuilt Code RAG/CodeGraph readiness and refreshed workflow receipt trust after artifact wording changes.
+
 ## [2.1.16] - 2026-05-11
 
 ### Added
@@ -52,8 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Recentered planning and review templates on MVP production delivery,
   anti-bloat scope control, reviewer self-critique, and deploy-only release
-  readiness instead of visible SDLC ceremony.
-- Aligned PRD, ADR, and RFC templates with their artifact validators so
+  readiness instead of visible MVP readiness ceremony.
+- Aligned PRD, PRD decision section, and protocol specification templates with their artifact validators so
   official templates act as canonical executable examples.
 - Strengthened plan and plan-review validators with semantic checks for MVP
   value, anti-bloat, generic acceptance criteria, scorecard evidence, residual
@@ -63,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Validation
 
 - Added positive template-as-artifact tests and negative shallow-artifact tests
-  for PRD, ADR, RFC, plan, and plan-review validation.
+  for PRD, PRD decision section, protocol specification, plan, and plan-review validation.
 - Preserved release security, install integrity, workflow receipt, template
   quality, agent quality, and production evidence gates.
 
@@ -201,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added dedicated PRD, ADR, and RFC artifact validators and wired them into
+- Added dedicated PRD, PRD decision section, and protocol specification artifact validators and wired them into
   the release check so spec artifacts are validated by type instead of by a
   generic brainstorm-only path.
 
@@ -2668,7 +2681,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added production-grade SDLC, MVP, rollout, contract, production-readiness,
+- Added production-grade MVP readiness, MVP, rollout, contract, production-readiness,
   and final 10/10 acceptance gates to brainstorm, plan, loop, artifact
   validators, and work-item templates.
 - Added senior AI/LLM specialist coverage for RAG architecture, LLM evals,
@@ -2938,13 +2951,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `supervibe:brainstorming` (87 → 268 lines): first-principle decomp / stakeholder map / kill criteria / decision matrix
 - `supervibe:writing-plans` (84 → 250): critical path / parallelization batches / rollback per task / risk register
 - `supervibe:prd` (105 → 254): user research / Gherkin ACs / metrics / instrumentation / launch checklist
-- `supervibe:adr` (108 → 253): alternatives matrix / NFRs / decision review trigger
+- `supervibe:prd` (108 → 253): alternatives matrix / NFRs / decision review trigger
 - `supervibe:requirements-intake` (90 → 257): persona elicitation / constraint matrix / success criteria before solution
 - `supervibe:explore-alternatives` (128 → 256): carbon-copy lookup / weighted matrix / sensitivity analysis
 
 ### Added — Reference Templates (Phase E3)
 
-- `docs/templates/{PRD,ADR,plan,RFC,brainstorm-output,intake}-template.md`
+- `docs/templates/{PRD,PRD decision section,plan,protocol specification,brainstorm-output,intake}-template.md`
 - Host instruction docs / README.md / docs/getting-started.md surface all new capabilities
 
 ### Added — Dynamic MCP Discovery (Phase F1)
@@ -3430,7 +3443,7 @@ Now: `chunker.mjs` splits full body into ~200-token chunks with 32-token overlap
 ### Added — Phase 2: Process Skills (brainstorming/plan/exec lifecycle)
 
 - 14 process skills: brainstorming, writing-plans, executing-plans, tdd, systematic-debugging, code-review, requirements-intake, requesting-code-review, receiving-code-review, dispatching-parallel-agents, subagent-driven-development, using-git-worktrees, finishing-a-development-branch, pre-pr-check
-- 6 capability skills: adr, prd, new-feature, landing-page, incident-response, experiment
+- 6 capability skills: prd decision section, prd, new-feature, landing-page, incident-response, experiment
 
 ### Added — Phase 3: Universal Agents + Rules
 

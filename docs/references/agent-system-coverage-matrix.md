@@ -20,7 +20,7 @@ This document is the durable coverage contract for audit, research, planning, so
 
 ## Source Of Truth Hierarchy
 
-Tier 1 sources are authoritative and win conflicts: repository code, committed Supervibe docs, official vendor docs, standards, RFCs, changelogs, security advisories, CVE/NVD/GHSA/CISA records, signed release metadata, and user-provided private source content.
+Tier 1 sources are authoritative and win conflicts: repository code, committed Supervibe docs, official vendor docs, standards, protocol specifications, changelogs, security advisories, CVE/NVD/GHSA/CISA records, signed release metadata, and user-provided private source content.
 
 Tier 2 sources are project-local evidence: project memory, Code RAG chunks, CodeGraph symbols, test output, workflow receipts, audit artifacts, and host adapter state. Tier 2 can decide project behavior, but it must defer to Tier 1 for external facts and security or compliance claims.
 

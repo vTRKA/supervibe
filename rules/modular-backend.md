@@ -96,7 +96,7 @@ class UpdateOrderStatus {
 
 - Linter: deptrac (PHP), depgraph (Python), arch-unit (Java), or custom CI script
 - Code review enforces module boundaries
-- ADR for any new cross-module dependency
+- PRD decision section for any new cross-module dependency
 
 ## Related rules
 

@@ -12,7 +12,7 @@ dimensions:
   - id: architecture-fit
     weight: 1
     question: "Does the review validate architecture fit before execution?"
-    evidence-required: "Architecture boundaries, ADR decision, and unresolved decision status"
+    evidence-required: "Architecture boundaries, PRD decision, and unresolved decision status"
   - id: topology-readiness
     weight: 1
     question: "Does the review cover database, cache, and queue topology when triggered?"

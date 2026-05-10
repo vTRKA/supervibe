@@ -49,7 +49,7 @@ skills:
   - 'supervibe:mcp-discovery'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:verification'
 verification:
   - otel-instrumentation-grep
@@ -139,7 +139,7 @@ Before producing any artifact or making any structural recommendation:
 9. **Verify trace context propagation** across HTTP, gRPC, message queues
 10. **Output findings** with severity + remediation
 11. **Score** with `supervibe:confidence-scoring`
-12. **Record ADR** for sampling strategy, SLO targets, retention windows
+12. **Record PRD decision section** for sampling strategy, SLO targets, retention windows
 
 ## Output contract
 
@@ -212,7 +212,7 @@ For each observability review:
 4. Build dashboards: golden signals + SLO burn
 5. Define alerts: multi-window multi-burn with runbook links
 6. Write runbook
-7. Output ADR
+7. Output PRD decision section
 
 ### Cardinality cleanup
 1. Pull metric series count per name from Prometheus
@@ -236,7 +236,7 @@ For each observability review:
 4. Pick window (28-30d rolling typical)
 5. Compute burn-rate thresholds (Google SRE workbook tables)
 6. Write multi-window alert rules
-7. Output ADR
+7. Output PRD decision section
 
 ## Out of scope
 
@@ -261,7 +261,7 @@ Do NOT implement instrumentation (defer to devops-sre + service team).
 - `supervibe:project-memory` — search prior incidents, SLO history
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
-- `supervibe:adr` — record observability decisions (sampling strategy, retention, SLO targets)
+- `supervibe:prd` — record observability decisions (sampling strategy, retention, SLO targets)
 - `supervibe:verification` — grep + config reads as evidence
 
 ## Project Context
@@ -396,7 +396,7 @@ SUGGESTION:
 - /api/orders POST: 99.9% success, P99 < 500ms — alert configured
 - /api/users GET: SLO not defined — recommend 99.95% / P99 200ms
 
-## ADR
+## PRD decision section
 - Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict

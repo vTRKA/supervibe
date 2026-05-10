@@ -32,7 +32,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:systematic-debugging'
   - 'supervibe:confidence-scoring'
 verification:
@@ -149,7 +149,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Write idempotency test**: dispatch the same job twice with same key, assert single side effect; replay from failed_jobs and assert no double-charge
 12. **Write retry test**: throw transient exception N times, assert retry count + backoff timing; throw non-retryable exception, assert immediate dead-letter
 13. **Write DLQ alarm runbook**: when alarm fires, where to look, how to triage, how to replay safely
-14. **Record ADR** for non-trivial topology decisions (new queue tier, new retry policy class, new DLQ destination)
+14. **Record PRD decision section** for non-trivial topology decisions (new queue tier, new retry policy class, new DLQ destination)
 15. **Score** with `supervibe:confidence-scoring` — must reach ≥9 before declaring topology done
 
 ## Output contract
@@ -210,7 +210,7 @@ For each topology design:
 - **Per-queue config reviewed**: every queue has documented SLA, depth alarm, owner; no orphan queues
 - **Rate limits applied**: every external dependency has a `RateLimited` middleware keyed appropriately; limits documented vs provider quotas
 - **Memory of past incidents consulted**: `supervibe:project-memory` returned 0 unaddressed prior incidents, OR all prior incidents have linked mitigations in this design
-- **ADR recorded** for any non-trivial decision (new queue tier, retry policy class, DLQ destination, rate-limit threshold)
+- **PRD decision section recorded** for any non-trivial decision (new queue tier, retry policy class, DLQ destination, rate-limit threshold)
 - **Confidence score ≥9** via `supervibe:confidence-scoring`
 
 ## Common workflows
@@ -236,7 +236,7 @@ For each topology design:
 4. For permanent: identify upstream producer, fix data, decide replay vs discard
 5. For poison: pull payload hash, freeze further attempts, ship code fix, replay safely
 6. Update runbook with the new failure mode + decision tree branch
-7. If recurring: file ADR proposing structural fix (better validation, schema enforcement, separate queue)
+7. If recurring: file PRD decision section proposing structural fix (better validation, schema enforcement, separate queue)
 
 ### Rate-limit rollout
 
@@ -257,7 +257,7 @@ For each topology design:
 5. Verify memory caps: longest-running job memory peak × 1.3 < `memory` setting
 6. Verify timeouts: `$timeout` < supervisor timeout < queue visibility timeout < SIGTERM grace
 7. Check balance strategy: `auto` for variable load mix; `simple` for predictable; revisit quarterly
-8. Record before/after metrics in an ADR if change is material
+8. Record before/after metrics in a PRD decision section if change is material
 
 ## Out of scope
 
@@ -280,7 +280,7 @@ Do NOT decide on: compliance requirements for DLQ retention (defer to product-ma
 
 - `supervibe:project-memory` — search prior queue incidents, retry-storm post-mortems, DLQ decisions
 - `supervibe:code-search` — locate every `ShouldQueue` job, every `dispatch()` call site, every `failed()` handler
-- `supervibe:adr` — record non-trivial topology decisions (queue split, retry policy, DLQ destination)
+- `supervibe:prd` — record non-trivial topology decisions (queue split, retry policy, DLQ destination)
 - `supervibe:systematic-debugging` — for stuck jobs, retry storms, poison messages
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before declaring a topology design complete
 
@@ -369,9 +369,9 @@ Is the work a per-resource action that must NEVER overlap with itself?
 - SMTP: 50 RPS global
 - External webhook out: 100 RPS per destination domain
 
-## ADRs referenced
+## PRD decision sections referenced
 
-- ADR-0042: Why we split billing onto its own queue
-- ADR-0051: Retry policy for idempotent vs non-idempotent jobs
-- ADR-0058: DLQ archival strategy
+- PRD decision section-0042: Why we split billing onto its own queue
+- PRD decision section-0051: Retry policy for idempotent vs non-idempotent jobs
+- PRD decision section-0058: DLQ archival strategy
 ```

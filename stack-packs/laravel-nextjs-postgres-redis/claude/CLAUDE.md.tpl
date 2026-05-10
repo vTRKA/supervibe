@@ -39,7 +39,7 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
   - **Brandbook direction**: `.supervibe/artifacts/brandbook/`
   - **Design system source of truth**: `.supervibe/artifacts/prototypes/_design-system/`
 - **Docs**: `docs/`
-  - ADRs: `.supervibe/artifacts/adr/`
+  - PRD decision sections: `.supervibe/artifacts/prd/`
   - PRDs: `.supervibe/artifacts/prd/`
   - Specs: `.supervibe/artifacts/specs/`
   - Plans: `.supervibe/artifacts/plans/`
@@ -51,22 +51,22 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
 | Explore code / find files | `Explore` (built-in) | — |
 | Map repo before work | `supervibe:_core:repo-researcher` | repo discovery, anti-hallucination |
 | Define requirements | `supervibe:_product:systems-analyst` | requirements-intake |
-| Product / strategy / OKR | `supervibe:_product:product-manager` (CPO scope) | prd, adr |
+| Product / strategy / OKR | `supervibe:_product:product-manager` (CPO scope) | prd, prd decision section |
 | Backend: modules, services, models | `supervibe:stacks/laravel:laravel-developer` | tdd, verification, code-review |
-| Backend: architecture | `supervibe:stacks/laravel:laravel-architect` (READ-ONLY) | adr |
-| Backend: queue jobs | `supervibe:stacks/laravel:queue-worker-architect` | adr, debugging |
+| Backend: architecture | `supervibe:stacks/laravel:laravel-architect` (READ-ONLY) | prd decision section |
+| Backend: queue jobs | `supervibe:stacks/laravel:queue-worker-architect` | prd decision section, debugging |
 | Backend: Eloquent models | `supervibe:stacks/laravel:eloquent-modeler` | verification |
 | Frontend: pages, components | `supervibe:stacks/nextjs:nextjs-developer` | tdd, verification, code-review |
-| Frontend: architecture | `supervibe:stacks/nextjs:nextjs-architect` (READ-ONLY) | adr |
+| Frontend: architecture | `supervibe:stacks/nextjs:nextjs-architect` (READ-ONLY) | prd decision section |
 | Frontend: server actions | `supervibe:stacks/nextjs:server-actions-specialist` | tdd |
-| Database: schema, migrations | `supervibe:stacks/postgres:postgres-architect` + `supervibe:_ops:db-reviewer` | adr, verification |
-| Cache / Redis | `supervibe:stacks/redis:redis-architect` | adr |
-| AI / LLM integration | `supervibe:_ops:ai-integration-architect` | adr |
-| Infra: Sentinel, replicas, sharding | `supervibe:_ops:infrastructure-architect` | adr |
+| Database: schema, migrations | `supervibe:stacks/postgres:postgres-architect` + `supervibe:_ops:db-reviewer` | prd decision section, verification |
+| Cache / Redis | `supervibe:stacks/redis:redis-architect` | prd decision section |
+| AI / LLM integration | `supervibe:_ops:ai-integration-architect` | prd decision section |
+| Infra: Sentinel, replicas, sharding | `supervibe:_ops:infrastructure-architect` | prd decision section |
 | Debug / investigate failure | `supervibe:_core:root-cause-debugger` | systematic-debugging |
 | Code review | `supervibe:_core:code-reviewer` | code-review |
 | Security audit | `supervibe:_core:security-auditor` (READ-ONLY) | code-review |
-| Architecture review | `supervibe:_core:architect-reviewer` (READ-ONLY) | adr |
+| Architecture review | `supervibe:_core:architect-reviewer` (READ-ONLY) | prd decision section |
 | Final quality gate | `supervibe:_core:quality-gate-reviewer` | confidence-scoring |
 | Refactoring | `supervibe:_core:refactoring-specialist` | tdd, code-review |
 | Design system / brand direction | `supervibe:_design:creative-director` | brandbook |
@@ -79,7 +79,7 @@ Deliver correct, minimal, verifiable changes for a **Laravel + Next.js + Postgre
 | Analytics tracking | `supervibe:_product:analytics-implementation` | confidence-scoring |
 | SEO | `supervibe:_product:seo-specialist` | seo-audit |
 | Email lifecycle | `supervibe:_product:email-lifecycle` | confidence-scoring |
-| DevOps / SRE / CI/CD | `supervibe:_ops:devops-sre` | incident-response, adr |
+| DevOps / SRE / CI/CD | `supervibe:_ops:devops-sre` | incident-response, prd decision section |
 | Performance | `supervibe:_ops:performance-reviewer` (READ-ONLY) | systematic-debugging |
 | Dependencies | `supervibe:_ops:dependency-reviewer` (READ-ONLY) | confidence-scoring |
 | API contracts | `supervibe:_ops:api-contract-reviewer` (READ-ONLY) | confidence-scoring |

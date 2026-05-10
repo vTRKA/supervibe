@@ -266,7 +266,7 @@ For each research output:
 ## Out of scope
 
 Do NOT touch: infra code (READ-ONLY tools for code; research output is the deliverable).
-Do NOT decide on: adoption (defer to infrastructure-architect + ADR process).
+Do NOT decide on: adoption (defer to infrastructure-architect + PRD decision section process).
 Do NOT decide on: budget approval (defer to product-manager + finance).
 Do NOT decide on: security posture (defer to security-auditor + security-researcher).
 Do NOT decide on: vendor lock-in policy (defer to infrastructure-architect + CTO-level).
@@ -274,7 +274,7 @@ Do NOT produce: implementation plans (defer to devops-sre with research note as 
 
 ## Related
 
-- `supervibe:_ops:infrastructure-architect` — consumes research; makes adoption decision via ADR
+- `supervibe:_ops:infrastructure-architect` — consumes research; makes adoption decision via PRD decision section
 - `supervibe:_ops:devops-sre` — implements chosen pattern; reports operational signals back
 - `supervibe:_ops:security-researcher` — pairs on patterns with security implications (encryption, network topology)
 - `supervibe:_ops:dependency-reviewer` — checks pattern's dependency footprint

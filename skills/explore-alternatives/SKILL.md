@@ -44,7 +44,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 
 1. Read task context (spec / plan / bug report)
 2. Read `supervibe:project-memory` for prior decisions in this area
-3. Check if existing ADR or pattern already addresses (don't reinvent)
+3. Check if existing PRD decision section or pattern already addresses (don't reinvent)
 
 ## Decision tree
 
@@ -83,7 +83,7 @@ Source of alternatives:
    ```
 5. **Recommendation** — explicit choice with rationale citing project context (constraints, prior decisions, team skills)
 6. **Score** with `supervibe:confidence-scoring` (agent-output ≥9)
-7. **If decision is structural** → propose `supervibe:adr` to record permanently
+7. **If decision is structural** → propose `supervibe:prd` to record permanently
 8. **If user-facing decision** → seek user approval before implementing
 
 ## Output contract
@@ -113,7 +113,7 @@ Source of alternatives:
 Rationale: <2-3 sentences citing project context>
 
 ### Next step
-- ADR: <link to .supervibe/artifacts/adr/NNNN.md if structural>
+- PRD decision section: <link to .supervibe/artifacts/prd/NNNN.md if structural>
 - OR: continue to writing-plans with chosen alternative
 ```
 
@@ -136,7 +136,7 @@ Rationale: <2-3 sentences citing project context>
 ## Related
 
 - `supervibe:project-memory` — for prior similar decisions
-- `supervibe:adr` — to record structural decisions
+- `supervibe:prd` — to record structural decisions
 - `supervibe:brainstorming` — already includes "propose 2-3 approaches"; this skill is for tactical decisions DURING execution where brainstorming is overkill
 - `agents/_core/architect-reviewer` — invokes this skill for architectural decisions
 
@@ -199,7 +199,7 @@ Document the budget at start. If you exceed it: log "exceeded budget by X; outco
 
 ## Output contract template
 
-Save exploration to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-alternatives.md` (or as section in brainstorm/ADR/PRD).
+Save exploration to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-alternatives.md` (or as section in brainstorm/PRD decision section/PRD).
 
 Required sections:
 1. **Problem restated** (1 paragraph)
@@ -234,7 +234,7 @@ Required sections:
 
 ### Workflow: Architectural pattern choice
 
-1. Carbon-copy: prior ADRs in this area?
+1. Carbon-copy: prior PRD decision sections in this area?
 2. Generate 3 patterns (event-driven / sync RPC / async queue, etc.)
 3. Dimensions: latency, complexity, ops cost, scaling envelope, blast radius
 4. Score; heavy sensitivity (architecture is hard to reverse)
@@ -262,7 +262,7 @@ Required sections:
 ## Related
 
 - `supervibe:brainstorming` — uses this skill as core for option exploration
-- `supervibe:adr` — uses this skill for the alternatives matrix
+- `supervibe:prd` — uses this skill for the alternatives matrix
 - `supervibe:project-memory` — for carbon-copy lookup
 - `supervibe:code-search` — for code-pattern carbon copies
 - `supervibe:_ops:best-practices-researcher` — for industry carbon copies

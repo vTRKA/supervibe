@@ -81,11 +81,11 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases. State why the question matters, what decision it unlocks, and what assumption you will use if the user skips it.
 4. **Stack-aware evidence loading** — if `questionnaires/*.yaml` matches detected stack, treat it as internal reference only; synthesize one contextual agent-owned question from current project evidence instead of showing raw questionnaire rows or option lists.
 5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
-6. **Map product and SDLC path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
+6. **Map product and MVP readiness path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
 8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
 9. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
-10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, SDLC completeness, production readiness gaps. Fix inline.
+10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, MVP readiness completeness, production readiness gaps. Fix inline.
 11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
 13. **User review of written spec** — explicit approval required. Saving the candidate spec is not approval to continue.
@@ -245,7 +245,7 @@ Required sections (in order):
 3. **Competitive scan** (if applicable)
 4. **Stakeholder map** (if applicable)
 5. **Options explored** (≥3, each with 1 paragraph)
-6. **Product and SDLC fit** (MVP path, launch path, production owner, rollout model)
+6. **Product and MVP readiness fit** (MVP path, launch path, production owner, rollout model)
 7. **Non-obvious risks** (≥3 bullets)
 8. **Kill criteria** (≥2 bullets)
 9. **Decision matrix** (table with weights set BEFORE scoring)
@@ -301,7 +301,7 @@ Required sections (in order):
 ## Verification
 
 - Output saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`
-- All required sections present, including SDLC fit, Scope Safety Gate, production readiness contract, and 10/10 scorecard
+- All required sections present, including MVP readiness fit, Scope Safety Gate, production readiness contract, and 10/10 scorecard
 - Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence, harm, and tradeoff
 - Decision matrix weights documented BEFORE scores
 - ≥3 non-obvious risks listed
@@ -317,7 +317,7 @@ Required sections (in order):
 - `supervibe:writing-plans` — next step after brainstorm picks a direction
 - `supervibe:explore-alternatives` — sub-skill for decision matrix
 - `supervibe:requirements-intake` — predecessor when intake hasn't happened yet
-- `supervibe:adr` — when brainstorm output IS an architectural decision
+- `supervibe:prd` — when brainstorm output IS an architectural decision
 - `supervibe:mcp-discovery` — for competitive scan tools
 
 ## FAQ
@@ -335,10 +335,10 @@ A: Save partial progress to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brain
 session. Mark unresolved sections with `TBD: <what's missing>` and surface them at the
 top of the file so the next session resumes without re-discovery.
 
-**Q: When should I escalate to `supervibe:adr` instead of finishing here?**
+**Q: When should I escalate to `supervibe:prd` instead of finishing here?**
 A: If the recommended option locks in a long-term architectural choice (DB engine,
-runtime, framework, vendor), the output should also produce an ADR. Brainstorm captures
-exploration; ADR captures the binding decision with reversal cost.
+runtime, framework, vendor), the output should also produce a PRD decision section. Brainstorm captures
+exploration; PRD decision section captures the binding decision with reversal cost.
 
 ## Failure recovery
 

@@ -3,11 +3,11 @@ max-score: 10
 dimensions:
   - id: source-recency
     weight: 2
-    question: "Are at least 80% of cited sources dated within the last 12 months OR explicitly marked as canonical (RFC, official docs)?"
+    question: "Are at least 80% of cited sources dated within the last 12 months OR explicitly marked as canonical (protocol specification, official docs)?"
     evidence-required: "Citation list with publication dates"
   - id: source-authority
     weight: 2
-    question: "Are sources from authoritative origins (official docs, vendor blogs, RFC, well-known engineers) rather than random tutorials?"
+    question: "Are sources from authoritative origins (official docs, vendor blogs, protocol specification, well-known engineers) rather than random tutorials?"
     evidence-required: "URL list with domain authority indicator"
   - id: claim-support
     weight: 2

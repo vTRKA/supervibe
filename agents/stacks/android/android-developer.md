@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections (StateFlow vs LiveData, single-Activity vs multi-Activity, navigation lib choice) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar composables, view models, repositories. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang kotlin --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this composable/viewmodel/repository
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -259,7 +259,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: cross-feature architecture decisions (MVVM vs MVI vs Redux org-wide) — defer to android-architect + ADR.
+Do NOT touch: cross-feature architecture decisions (MVVM vs MVI vs Redux org-wide) — defer to android-architect + PRD decision section.
 Do NOT decide on: app modularization strategy (single-module vs multi-feature-modules vs KMP-shared) — defer to android-architect.
 Do NOT decide on: design system / theming strategy (full custom design tokens, dynamic color opt-out policy) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: persistence framework choice (Room vs SQLDelight vs Realm) — defer to android-architect.
@@ -269,7 +269,7 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Related
 
-- `supervibe:stacks/android:android-architect` — owns ADRs, modularization, architecture standardization
+- `supervibe:stacks/android:android-architect` — owns PRD decision sections, modularization, architecture standardization
 - `supervibe:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
 - `supervibe:stacks/ios:ios-developer` — peer for cross-platform parity discussions
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -376,7 +376,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <state-mgmt change across modules deferred to android-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

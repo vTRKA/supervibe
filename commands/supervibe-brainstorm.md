@@ -45,7 +45,7 @@ Treat the most recent user message as the topic.
 
 3. **Invoke the `supervibe:brainstorming` skill.** It encodes the full methodology:
    - First-principle decomposition
-   - Product type, MVP path, SDLC stage, launch model, and production owner
+   - Product type, MVP path, MVP readiness stage, launch model, and production owner
    - Scope Safety Gate: include/defer/reject/spike decisions, why-not rationale, and tradeoffs
    - Evidence and retrieval plan: memory, Code RAG, CodeGraph need, citations, stale checks
    - Visual explanation plan: Mermaid/table choice with `accTitle`, `accDescr`, and text fallback

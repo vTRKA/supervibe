@@ -4,7 +4,7 @@
 **Author:** product owner
 **Date:** 2026-05-11
 **Reviewers:** engineering lead, design lead, quality gate reviewer
-**Related:** ADR, RFC, implementation plan, plan review
+**Related:** implementation plan, plan review, API contract, decision brief
 
 Use this as a canonical PRD shape. Replace the example values with project-specific facts while preserving every section and evidence requirement.
 

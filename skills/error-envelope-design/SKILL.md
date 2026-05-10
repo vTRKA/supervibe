@@ -2,7 +2,7 @@
 name: error-envelope-design
 namespace: app-excellence
 description: >-
-  Use WHEN designing API error responses TO pick a consistent envelope (RFC 7807
+  Use WHEN designing API error responses TO pick a consistent envelope (HTTP problem details
   problem+json / GraphQL union / gRPC status), define retry semantics, partial
   failure shapes. Triggers: 'error envelope', 'API ошибки формат', 'формат
   ошибок', 'problem+json'.
@@ -37,7 +37,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 1. Read API style guide / OpenAPI / GraphQL schema / proto files for the project.
 2. Sample real error responses from at least three endpoints — confirm whether the shape is already consistent or already drifted.
 3. Read the gateway / framework defaults (Express, Fastify, NestJS, ASP.NET, Spring, gRPC) — they ship default envelopes that often leak.
-4. Read RFC 7807 (problem+json) for HTTP-JSON projects.
+4. Read HTTP problem details (problem+json) for HTTP-JSON projects.
 5. Read the relevant GraphQL spec for error extensions and union-error patterns; or the canonical google.rpc.Status and google.rpc.ErrorInfo for gRPC.
 6. Inventory error codes already in use: `grep -rE "ErrorCode|errorCode|code:\s*['\"]" src/`. The result is the seed of the registry.
 
@@ -45,7 +45,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 
 ```
 Transport?
-  HTTP/JSON         → RFC 7807 problem+json (type, title, status, detail, instance, code, errors[])
+  HTTP/JSON         → HTTP problem details problem+json (type, title, status, detail, instance, code, errors[])
   GraphQL           → Errors-as-data via union types on mutations; reserve top-level `errors[]` for transport faults
   gRPC              → google.rpc.Status with typed details (ErrorInfo, BadRequest, RetryInfo, QuotaFailure)
 
@@ -78,7 +78,7 @@ Is the error machine-actionable by the client?
 ## Output contract
 
 ```
-Envelope: <RFC 7807 | GraphQL union | google.rpc.Status>
+Envelope: <HTTP problem details | GraphQL union | google.rpc.Status>
 Required fields: <list>
 Registry location: <path>
 Code naming rule: <regex / pattern>
@@ -125,5 +125,5 @@ Deprecation: <Sunset header + monitoring metric>
 
 - `supervibe:test-strategy` — contract tests assert the envelope at the API boundary.
 - `supervibe:auth-flow-design` — auth errors must use the same envelope, not a bespoke one.
-- `supervibe:adr` — capture envelope choice as an ADR; future API versions inherit it.
+- `supervibe:prd` — capture envelope choice as a PRD decision section; future API versions inherit it.
 - `supervibe:incident-response` — `correlationId` from the envelope is the bridge to logs/traces.

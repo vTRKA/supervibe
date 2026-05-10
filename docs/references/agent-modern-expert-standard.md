@@ -6,7 +6,7 @@ modern standards to map into concrete task behavior.
 
 ## External Baseline
 
-- NIST SSDF SP 800-218: secure practices must be part of every SDLC, not a
+- NIST SSDF SP 800-218: secure practices must be part of every MVP readiness, not a
   final release-only audit.
 - NIST AI RMF and NIST AI 600-1 GenAI Profile: AI features need explicit risk
   framing, evaluation, trustworthiness, monitoring, and human impact review.
@@ -32,7 +32,7 @@ modern standards to map into concrete task behavior.
 3. Translate standards into concrete contracts: inputs, outputs, permissions,
    data boundaries, failure modes, tests, observability, rollout, rollback,
    and residual risk.
-4. Prefer production-ready SDLC thinking over isolated implementation slices:
+4. Prefer production-ready MVP readiness thinking over isolated implementation slices:
    discovery, MVP boundary, architecture, implementation, verification,
    security/privacy, accessibility, observability, release, support, learning.
 5. Apply `docs/references/scope-safety-standard.md` before broadening scope:

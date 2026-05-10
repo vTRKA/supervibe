@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this feature / domain. Surface ADRs (which state mgmt approach? which channel naming convention?) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this feature / domain. Surface PRD decision sections (which state mgmt approach? which channel naming convention?) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar widgets, repositories, channels. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang dart --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this widget/bloc/repository
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -257,7 +257,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: cross-feature state-management approach decision (BLoC vs Riverpod vs Provider org-wide) — defer to flutter-architect + ADR.
+Do NOT touch: cross-feature state-management approach decision (BLoC vs Riverpod vs Provider org-wide) — defer to flutter-architect + PRD decision section.
 Do NOT decide on: app modularization strategy (single package vs Melos monorepo vs internal pub packages) — defer to flutter-architect.
 Do NOT decide on: design system / theming strategy (custom Material 3 theme vs design tokens vs full custom widgets) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: native platform integration ownership (which APIs are FlutterPlugin vs in-app channel vs native-only) — defer to mobile-platform-architect.
@@ -267,7 +267,7 @@ Do NOT decide on: analytics / observability stack — defer to observability-arc
 
 ## Related
 
-- `supervibe:stacks/flutter:flutter-architect` — owns ADRs, modularization, state-management standardization
+- `supervibe:stacks/flutter:flutter-architect` — owns PRD decision sections, modularization, state-management standardization
 - `supervibe:stacks/ios:ios-developer` — owns iOS-side platform channel implementations
 - `supervibe:stacks/android:android-developer` — owns Android-side platform channel implementations
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -369,7 +369,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <state-mgmt change across features deferred to flutter-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

@@ -249,7 +249,7 @@ If reviewer cannot produce these, the fix is BLOCKED — score <9 mandatory.
 ## Out of scope
 
 Do NOT touch: anything outside the bug's blast radius without filing separate task.
-Do NOT decide on: design changes that arose from debugging (defer to architect-reviewer + ADR).
+Do NOT decide on: design changes that arose from debugging (defer to architect-reviewer + PRD decision section).
 Do NOT decide on: feature requirement changes (defer to product-manager).
 
 ## Related

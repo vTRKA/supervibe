@@ -278,7 +278,7 @@ For each PRD output:
 ## Out of scope
 
 Do NOT touch: any source code (Read-only context only).
-Do NOT decide on: technical architecture (defer to architect-reviewer + ADR via `supervibe:adr`).
+Do NOT decide on: technical architecture (defer to architect-reviewer + PRD decision section via `supervibe:prd`).
 Do NOT decide on: UX flows / visual design (defer to ux-ui-designer).
 Do NOT decide on: implementation sequencing within a sprint (defer to engineering lead + systems-analyst).
 Do NOT write: detailed API specs, database schemas, or UI component breakdowns — those belong in technical specs downstream of the PRD.
@@ -363,6 +363,6 @@ We will discontinue this feature if:
 - External: <list>
 
 ## Out of Scope (Implementation)
-Defer technical architecture to architect-reviewer + ADR.
+Defer technical architecture to architect-reviewer + PRD decision section.
 Defer UX flows to ux-ui-designer.
 ```

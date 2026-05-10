@@ -104,9 +104,9 @@ Admins need a reliable billing export path that avoids manual SQL.
 - CodeGraph: graph N/A for brainstorm; planner must run CodeGraph if public API changes.
 - Citations: cite memory IDs and source file:line references in the plan.
 
-## Product and SDLC fit
+## Product and MVP fit
 - MVP path: ship synchronous export first, async only if measured need appears.
-- SDLC stage: discovery complete, ready for implementation planning, test design, release review, and production rollout.
+- Readiness path: discovery complete, ready for implementation planning, test design, release review, and production rollout.
 - Launch path: internal beta, finance validation, then production release.
 - Production bar: no raw PII leakage, auditable exports, measurable performance.
 
@@ -191,14 +191,14 @@ test('validateBrainstormSpec flags weak decision artifacts', () => {
   assert.ok(issues.some(issue => issue.includes('quantitative')));
 });
 
-test('validateBrainstormSpec requires production-grade SDLC and 10/10 gates', () => {
+test('validateBrainstormSpec requires production-grade MVP readiness and 10/10 gates', () => {
   const issues = validateBrainstormSpec(
     GOOD_BRAINSTORM
-      .replace('## Product and SDLC fit', '## Product notes')
+      .replace('## Product and MVP fit', '## Product notes')
       .replace('## Scope Safety Gate', '## Scope Notes')
       .replace('## Acceptance and 10/10 scorecard', '## Acceptance')
   );
-  assert.ok(issues.some(issue => issue.includes('Product and SDLC fit')));
+  assert.ok(issues.some(issue => issue.includes('Product and MVP fit')));
   assert.ok(issues.some(issue => issue.includes('Scope Safety Gate')));
   assert.ok(issues.some(issue => issue.includes('10/10')));
 });
@@ -207,8 +207,6 @@ test('validateSpecArtifact auto-detects intake vs brainstorm', () => {
   assert.equal(validateSpecArtifact(GOOD_INTAKE).kind, 'intake');
   assert.equal(validateSpecArtifact(GOOD_BRAINSTORM).kind, 'brainstorm');
   assert.equal(validateSpecArtifact('# PRD: Billing export\n').kind, 'prd');
-  assert.equal(validateSpecArtifact('# ADR: Streaming export\n').kind, 'adr');
-  assert.equal(validateSpecArtifact('# RFC: Export endpoint\n').kind, 'rfc');
 });
 
 test('validate-spec-artifacts CLI fails bad file', async () => {

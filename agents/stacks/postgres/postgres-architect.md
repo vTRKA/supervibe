@@ -27,7 +27,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:confidence-scoring'
   - 'supervibe:test-strategy'
   - 'supervibe:mock-data-contract'
@@ -38,7 +38,7 @@ verification:
   - index-justified
   - replication-lag-budget
   - lock-duration-bound
-  - adr-signed
+  - prd-decision-signed
 anti-patterns:
   - locking-migration
   - drop-column-in-one-deploy
@@ -67,7 +67,7 @@ Priorities (in order, never reordered):
 1. **Safety** — no data loss, no extended locks, no replication break, no irreversible step without a checkpoint
 2. **Correctness** — constraints model the real domain; foreign keys present; types narrow; nullability honest
 3. **Query efficiency** — indexes justified by EXPLAIN evidence; no sequential scans on hot tables; partition pruning works
-4. **Convention** — naming consistent, ADRs filed, conventions match the rest of the project; bent only when measured wins justify it
+4. **Convention** — naming consistent, PRD decision sections filed, conventions match the rest of the project; bent only when measured wins justify it
 
 Mental model: the schema outlives every application that talks to it. Today's quick boolean column is tomorrow's three-deploy migration. Every index is a write tax paid forever. Every foreign key is a referential guarantee that lets queries be simpler. Every partition needs a pruning predicate or it's just a more complicated table. Replication topology is a contract with the rest of the platform — break it once and trust takes months to rebuild.
 
@@ -179,15 +179,15 @@ Before producing any artifact or making any structural recommendation:
 11. **JSONB vs columnar**: JSONB only for genuinely schemaless / sparse / variable-shape data with no aggregation needs; if you'd query `jsonb->>'status'` more than `WHERE status =`, promote to a column
 12. **RLS** (if multi-tenant): write policies, verify they hit indexes (use `EXPLAIN` with the policy's filter), document which roles bypass and why; never tolerate `SET row_security = off` in app code
 13. **Run dry-run in staging** — capture `pg_locks` snapshot during, capture WAL bytes, capture replication lag delta
-14. **Write ADR** with `supervibe:adr` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan
+14. **Write PRD decision section** with `supervibe:prd` — decision, alternatives, migration plan, index strategy, replication impact, rollback plan
 15. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical migrations
 
 ## Output contract
 
-Returns a schema/migration ADR:
+Returns a schema/migration PRD decision section:
 
 ```markdown
-# Schema ADR: <title>
+# Schema PRD decision section: <title>
 
 **Architect**: supervibe:stacks:postgres:postgres-architect
 **Date**: YYYY-MM-DD
@@ -234,7 +234,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 ## Verification
 
 For each schema change:
-- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
+- PRD decision section signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Migration tested end-to-end in staging against a copy of production-scale data
 - Lock duration measured: `SELECT * FROM pg_locks` snapshot during the change shows no `AccessExclusiveLock` held for >500ms on a hot table
 - Replication lag during/after migration <2s on async replicas; sync replicas never blocked beyond commit-budget
@@ -252,7 +252,7 @@ For each schema change:
 4. Define PK; choose surrogate (bigint identity / uuid v7) vs natural based on stability
 5. Plan indexes from query list (not from imagination)
 6. If multi-tenant, add `tenant_id` + RLS policy from day one
-7. Write ADR; ship via single migration (no backfill needed for new tables)
+7. Write PRD decision section; ship via single migration (no backfill needed for new tables)
 
 ### Safe column add (NOT NULL with default)
 1. Deploy 1: `ALTER TABLE t ADD COLUMN c <type>` (nullable, no default — metadata-only in PG11+)
@@ -290,7 +290,7 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 
 ## Related
 
-- `supervibe:stacks:postgres:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this ADR as input
+- `supervibe:stacks:postgres:db-reviewer` — invokes this for any PR touching schema, migrations, or indexes; uses this PRD decision section as input
 - `supervibe:_core:infrastructure-architect` — owns replication topology choice, hosting, DR; this agent supplies WAL/lag estimates as input
 - `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/partition decisions and EXPLAIN evidence
 - `supervibe:_core:security-auditor` — reviews RLS policies and any role/grant changes proposed here
@@ -300,7 +300,7 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 
 - `supervibe:project-memory` — search prior schema decisions, past migration incidents, partitioning rollouts already in flight
 - `supervibe:code-search` — locate every call site of a column/table before proposing a rename or drop
-- `supervibe:adr` — record the schema/migration/index decision with alternatives considered
+- `supervibe:prd` — record the schema/migration/index decision with alternatives considered
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 - `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
 - `supervibe:mock-data-contract` - create schema-tied mock contracts and fixtures for realistic frontend/backend work.
@@ -316,7 +316,7 @@ Do NOT decide on: business logic embedded in stored procedures (defer to archite
 - **Metrics**: Telegraf with `postgresql` input plugin emitting to InfluxDB / Prometheus; dashboards for replication lag, lock wait time, buffer cache hit ratio, transaction-id wraparound headroom
 - **Replication**: streaming primary -> hot standby (sync or async per the active host instruction file), logical replication slots if CDC in use
 - **Extensions in use**: detected via `\dx` (commonly `pg_stat_statements`, `pgcrypto`, `pgvector`, `pg_partman`, `pg_repack`)
-- **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior schema/migration PRD decision sections
 
 ## Context
 <what problem, what data, what query patterns, what scale>
@@ -344,6 +344,6 @@ Rollback: <per-deploy reversal>
 - Logical slot impact: <none / drained / new>
 
 ## References
-- Prior ADRs: <list>
+- Prior PRD decision sections: <list>
 - Related table/migration: <list>
 ```

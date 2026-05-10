@@ -53,7 +53,7 @@ Is rollback automated?
   NO  → require a named on-call owner and a tested manual disable path
 
 Is this a long-lived config switch (not a release gate)?
-  YES → it is NOT a feature flag; move it to typed config + ADR
+  YES → it is NOT a feature flag; move it to typed config + PRD decision section
   NO  → continue, with cleanup deadline
 ```
 
@@ -114,5 +114,5 @@ Storage backend: <platform / repo path> (NOT env vars)
 
 - `supervibe:test-strategy` — defines the contract test pinned to the OFF branch.
 - `supervibe:incident-response` — consumes the kill-switch + runbook designed here.
-- `supervibe:adr` — capture the rollout decision as an architecture decision record.
+- `supervibe:prd` — capture the rollout decision as an architecture decision record.
 - `supervibe:audit` — periodic flag-debt sweep.

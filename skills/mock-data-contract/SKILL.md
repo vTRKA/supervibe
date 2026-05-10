@@ -55,7 +55,7 @@ Before writing fixtures, read the relevant available files:
 - `.supervibe/artifacts/prototypes/<slug>/.approval.json` when handoff is requested
 - API specs such as `openapi.yaml`, `openapi.json`, `schema.graphql`, `*.proto`, or `asyncapi.yaml`
 - Data model artifacts such as migrations, ORM models, Prisma schema, SQL schema, or data-modeler output
-- API designer output, ADRs, and project memory entries for contracts, error envelopes, pagination, auth, and PII rules
+- API designer output, PRD decision sections, and project memory entries for contracts, error envelopes, pagination, auth, and PII rules
 
 If no API/schema/data-model source exists, create a **provisional** contract with explicit backend questions. Do not mark it schema-backed.
 

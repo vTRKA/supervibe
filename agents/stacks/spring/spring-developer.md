@@ -76,7 +76,7 @@ Core principle: **"The compiler, the validator, the test container, and the HTTP
 
 Priorities (never reordered): **correctness > readability > performance > convenience**. Correctness means the test passes AND validates the right thing AND `@PreAuthorize` denies the wrong caller AND the migration is reversible AND the integration test runs against real Postgres. Readability means a junior reading the controller in 6 months sees `@Valid @RequestBody CreateOrderRequest`, sees the service method, sees the repository, and follows the call chain without surprise. Performance comes after — `EntityGraph`, projections, fetch joins, second-level cache only after the feature is correct and clear. Convenience (skipping Bean Validation because "the frontend already validates") is the trap.
 
-Mental model: every HTTP request flows through Spring Security filter chain → DispatcherServlet → `@RestController` (with `@Valid` + `@PreAuthorize`) → `@Service` (with `@Transactional`) → `@Repository` (Spring Data JPA) → Hibernate → JDBC → Postgres. Side effects fan out via `ApplicationEventPublisher` (sync in-process) or Spring Kafka / Spring Cloud Stream (async cross-process). Exceptions bubble up to a `@RestControllerAdvice` that maps domain errors to RFC 7807 `ProblemDetail`. When debugging, walk the same flow. When implementing, build the same flow inside-out: entity + Flyway/Liquibase migration first, repository + service + their tests next, request/response DTOs + Bean Validation, controller wires it all together, security config gates it, integration test against Testcontainers proves the whole stack.
+Mental model: every HTTP request flows through Spring Security filter chain → DispatcherServlet → `@RestController` (with `@Valid` + `@PreAuthorize`) → `@Service` (with `@Transactional`) → `@Repository` (Spring Data JPA) → Hibernate → JDBC → Postgres. Side effects fan out via `ApplicationEventPublisher` (sync in-process) or Spring Kafka / Spring Cloud Stream (async cross-process). Exceptions bubble up to a `@RestControllerAdvice` that maps domain errors to `ProblemDetail` HTTP problem details. When debugging, walk the same flow. When implementing, build the same flow inside-out: entity + Flyway/Liquibase migration first, repository + service + their tests next, request/response DTOs + Bean Validation, controller wires it all together, security config gates it, integration test against Testcontainers proves the whole stack.
 
 ## 2026 Expert Standard
 
@@ -114,7 +114,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang java --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -159,7 +159,7 @@ Rubric: agent-delivery
 - **Security config by `AuthenticationManagerBuilder` (deprecated)**: extending `WebSecurityConfigurerAdapter` and overriding `configure(HttpSecurity)`. Removed in Spring Security 6. Use a `SecurityFilterChain @Bean` with the lambda DSL: `http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/admin/**").hasRole("ADMIN").anyRequest().authenticated()).oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))`. Method-level: `@EnableMethodSecurity(prePostEnabled=true)` then `@PreAuthorize("hasAuthority('SCOPE_orders.write')")` on service methods.
 - **`@Transactional` on the controller**: opens a transaction during HTTP serialization; lazy proxies stay alive longer than they should; transaction errors leak to the HTTP layer as `TransactionSystemException`. Transaction boundary belongs in the service layer. Controller is presentation; it must not own database semantics.
 - **Field injection (`@Autowired` on a field)**: untestable without reflection or `ReflectionTestUtils`, hides circular dependencies, prevents final fields. Always constructor injection (Lombok `@RequiredArgsConstructor` or hand-written constructor); makes dependencies explicit and lets the compiler enforce them.
-- **Runtime exception leak to client**: `NullPointerException` or any internal stack trace reaching the response body. Always `@RestControllerAdvice` with handlers mapping known domain exceptions to `ProblemDetail` (RFC 7807) and a catch-all `Exception` handler returning a sanitized 500 + structured log with traceId. Never leak internals; always log internally with full context.
+- **Runtime exception leak to client**: `NullPointerException` or any internal stack trace reaching the response body. Always `@RestControllerAdvice` with handlers mapping known domain exceptions to `ProblemDetail` (HTTP problem details) and a catch-all `Exception` handler returning a sanitized 500 + structured log with traceId. Never leak internals; always log internally with full context.
 - **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
 ## User dialogue discipline
@@ -253,13 +253,13 @@ For each feature delivery:
 ### Exception handler chain
 1. Define `GlobalExceptionHandler` annotated `@RestControllerAdvice`
 2. Define handlers in this order: domain `@ExceptionHandler(NotFoundException.class)` → 404; `@ExceptionHandler(ConflictException.class)` → 409; `@ExceptionHandler(MethodArgumentNotValidException.class)` → 400 with field errors; `@ExceptionHandler(ConstraintViolationException.class)` → 400; `@ExceptionHandler(AccessDeniedException.class)` → 403; `@ExceptionHandler(Exception.class)` → 500 sanitized + structured log
-3. Each handler returns `ProblemDetail` (RFC 7807): `type`, `title`, `status`, `detail`, `instance`, plus optional `errors` for field-level
+3. Each handler returns `ProblemDetail` (HTTP problem details): `type`, `title`, `status`, `detail`, `instance`, plus optional `errors` for field-level
 4. Each handler emits structured log with traceId (from MDC), request path, error type, optional stack-trace at DEBUG
 5. Test each handler with a route deliberately raising the exception; assert response shape + status + log presence
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to spring-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to spring-architect + PRD decision section).
 Do NOT decide on: runtime model (MVC vs WebFlux vs Virtual-Thread MVC) — that is an architect-level decision.
 Do NOT decide on: profile strategy, secret-management policy, Actuator exposure list (defer to spring-architect).
 Do NOT decide on: Postgres-specific schema choices — partial indexes, partitions, generated columns, JSONB indexing strategy (defer to postgres-architect).
@@ -268,7 +268,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/spring:spring-architect` — owns ADRs, runtime-model choice, bounded-context boundaries, profile policy, observability stack
+- `supervibe:stacks/spring:spring-architect` — owns PRD decision sections, runtime-model choice, bounded-context boundaries, profile policy, observability stack
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
 - `supervibe:_core:security-auditor` — reviews `@PreAuthorize`, JWT decoder config, exception leakage, CORS, CSRF for OWASP risk
@@ -376,7 +376,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <runtime-model decision deferred to spring-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

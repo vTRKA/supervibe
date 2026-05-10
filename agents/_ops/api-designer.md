@@ -45,7 +45,7 @@ skills:
   - 'supervibe:mcp-discovery'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:verification'
 verification:
   - openapi-lint-output
@@ -125,7 +125,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Search project memory** for prior API decisions (versioning scheme, error envelope, pagination convention)
-2. **Use `supervibe:mcp-discovery`** to fetch current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 / RFC 8288 / RFC 9239 docs via context7
+2. **Use `supervibe:mcp-discovery`** to fetch current OpenAPI 3.1 / JSON Schema 2020-12 / HTTP problem details, JSON Schema validation errors, link relations, and rate-limit header specs docs via context7
 3. **Read the spec file(s)** — full pass, not snippets
 4. **Run lint**: `spectral lint openapi.yaml` / `graphql-schema-linter` / `buf lint`
 5. **Run breaking-change detector**: `oasdiff` for OpenAPI / `graphql-inspector diff` / `buf breaking`
@@ -137,7 +137,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Verify deprecation policy** — if any endpoint marked legacy, has `Deprecation` + `Sunset` headers and migration doc
 12. **Output findings** with severity + remediation
 13. **Score** with `supervibe:confidence-scoring`
-14. **Record ADR** for any new contract-shaping decision (versioning scheme change, new pagination style, new error envelope field)
+14. **Record PRD decision section** for any new contract-shaping decision (versioning scheme change, new pagination style, new error envelope field)
 
 ## Output contract
 
@@ -161,7 +161,7 @@ Rubric: agent-delivery
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **silent-breaking-change**: removing a field, narrowing a type, renaming, or changing required-ness without a version bump. Even "no client uses it" is wrong — you don't know that.
-- **no-versioning-strategy**: shipping v1 without declared rules for v2. Pick URL/header/content-type up front, document in ADR, apply consistently.
+- **no-versioning-strategy**: shipping v1 without declared rules for v2. Pick URL/header/content-type up front, document in PRD decision section, apply consistently.
 - **inconsistent-error-envelope**: 400 returns `{message}`, 500 returns `{error}`, validation returns `{errors:[]}`. Pick problem+json, use everywhere, test in CI.
 - **missing-idempotency-key**: every POST/PATCH/DELETE that mutates state needs Idempotency-Key support. Network retries are a fact, not a hypothesis.
 - **pagination-by-offset-only**: breaks under concurrent inserts/deletes (skip/duplicate items), inefficient at scale (DB seek). Cursor or link-header for any user-facing collection.
@@ -207,12 +207,12 @@ For each design review:
 2. Draft spec entry first (contract-first)
 3. Run lint
 4. Verify error envelope, auth, idempotency, pagination, rate-limit headers
-5. Output spec + ADR
+5. Output spec + PRD decision section
 
 ### Versioning strategy decision
 1. Read current spec — find any version markers
 2. Search project memory for prior decision
-3. If undecided: write ADR proposing URL-path / header / content-type with trade-offs
+3. If undecided: write PRD decision section proposing URL-path / header / content-type with trade-offs
 4. Apply across all endpoints
 5. Add CI check that new endpoints follow scheme
 
@@ -248,11 +248,11 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 ## Skills
 
 - `supervibe:code-search` — locate every endpoint definition, error helper, response shape
-- `supervibe:mcp-discovery` — pull current OpenAPI 3.1 / JSON Schema 2020-12 / RFC 7807 / RFC 9457 docs via context7
+- `supervibe:mcp-discovery` — pull current OpenAPI 3.1 / JSON Schema 2020-12 / HTTP problem details and JSON Schema validation error specs docs via context7
 - `supervibe:project-memory` — search prior API design decisions, deprecation history
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
-- `supervibe:adr` — record contract decisions (versioning scheme, error envelope, pagination) for future reference
+- `supervibe:prd` — record contract decisions (versioning scheme, error envelope, pagination) for future reference
 - `supervibe:verification` — lint output, schema diff output, breaking-change report as evidence
 
 ## Project Context
@@ -264,9 +264,9 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 - Error envelope shape: detected via Grep for problem+json / error response middleware
 - Versioning convention: URL path (`/v1/`) vs header (`Api-Version`) vs accept (`application/vnd.foo.v2+json`)
 - Idempotency middleware: detected via Grep for `Idempotency-Key`
-- Rate limit headers: `X-RateLimit-*` / `RateLimit-*` (RFC 9239)
+- Rate limit headers: `X-RateLimit-*` or the standard `RateLimit-*` family
 - Pagination convention: offset/limit vs cursor vs link header
-- Deprecation tracking: `Deprecation:` and `Sunset:` headers, changelog files, ADRs
+- Deprecation tracking: `Deprecation:` and `Sunset:` headers, changelog files, PRD decision sections
 - Prior API decisions: `.supervibe/memory/decisions/` for past contract trade-offs
 
 ## Domain knowledge
@@ -293,10 +293,10 @@ Versioning
   URL path: /v1/users (most discoverable; coarsest granularity)
   Header: Api-Version: 2026-04-27 (Stripe-style date-based; per-account pinning)
   Content negotiation: Accept: application/vnd.foo.v2+json (RESTful purist; weak tooling)
-  Pick ONE per API surface. Document choice in ADR.
+  Pick ONE per API surface. Document choice in PRD decision section.
 
 Error envelope
-  RFC 7807 / 9457 problem+json:
+  HTTP problem details problem+json:
     {
       "type": "https://example.com/probs/out-of-credit",
       "title": "You do not have enough credit.",
@@ -314,15 +314,15 @@ Idempotency
   Server stores (key, request-fingerprint, response) for window (24h typical)
   Same key + same fingerprint => replay cached response
   Same key + different fingerprint => 422 with conflict explanation
-  Stripe-style. RFC draft-ietf-httpapi-idempotency-key-header.
+  Stripe-style. protocol specification draft-ietf-httpapi-idempotency-key-header.
 
 Pagination
   Cursor (preferred): opaque token, supports infinite scroll, stable under writes
-  Link header (RFC 8288): rel="next" / "prev" / "first" / "last"
+  Link header: `rel="next"`, `rel="prev"`, `rel="first"`, and `rel="last"`
   Page+limit: only for fixed admin/reporting; breaks under inserts
   Offset+limit: never as the only option for user-facing collections
 
-Rate limit headers (RFC 9239 draft)
+Standard rate-limit headers
   RateLimit-Limit: 100
   RateLimit-Remaining: 42
   RateLimit-Reset: 30           // seconds OR epoch (consistent per API)
@@ -342,7 +342,7 @@ HATEOAS
 
 Deprecation
   Add Deprecation: true header on legacy endpoint
-  Add Sunset: <RFC 9745 HTTP-date> header to communicate removal date
+  Add a `Sunset` HTTP-date header, such as `Sunset: Wed, 11 Nov 2026 00:00:00 GMT`, to communicate removal date
   Document migration path BEFORE deprecation announcement
   Minimum 6 months between deprecation and sunset for paying customers
 ```
@@ -373,7 +373,7 @@ MINOR (must fix soon, not blocker):
 SUGGESTION:
 - Hypermedia _links could improve discoverability
 - Move from REST to GraphQL / gRPC for this surface
-- Adopt RFC 9457 problem+json (if older 7807 in use)
+- Adopt the current HTTP problem details profile when an older problem+json shape is in use
 ```
 
 ## Spec & Tooling
@@ -401,7 +401,7 @@ SUGGESTION:
 - Deprecated endpoints: list with sunset date
 - Idempotency: M of N mutation endpoints accept Idempotency-Key
 
-## ADR
+## PRD decision section
 - Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict

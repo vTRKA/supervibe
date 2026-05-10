@@ -119,7 +119,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface ADRs (adapter choice, auth strategy, rendering modes) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain; surface PRD decision sections (adapter choice, auth strategy, rendering modes) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions before writing code
    - For modify-existing-route tasks: also run `--callers "<load-or-action-name>"` to know who depends on this
    - For new shared component / rune module: `--neighbors "<related-symbol>" --depth 2`
@@ -168,7 +168,7 @@ Rubric: agent-delivery
 - **stores-without-rune** — using `writable` / `readable` from `svelte/store` for new state in a Svelte 5 codebase. Runes (`$state`, `$derived`, `$effect`) are the modern primitive; they're typed, scoped, and don't need `$store` auto-subscription gymnastics. Legacy stores are acceptable only for cross-context interop or pre-existing modules slated for migration
 - **load-without-typing** — `export async function load() { return { user } }` with no `PageLoad` / `PageServerLoad` annotation. The `data` prop in the component then resolves to `any`, defeating SvelteKit's type-flow guarantee. Always type the return or destructure with the generic
 - **no-form-actions-validation** — accepting `formData` in an action and writing straight to the DB. Use a schema (Zod, Valibot, ArkType, Superforms) to validate; on failure return `fail(400, { fieldErrors, values })` so the form repopulates correctly
-- **mixed-rendering-without-rationale** — flipping `prerender = true` on one route and `ssr = false` on another with no comment or ADR. Future maintainers can't tell whether it's deliberate. Each non-default flag needs a one-line justification or an ADR reference
+- **mixed-rendering-without-rationale** — flipping `prerender = true` on one route and `ssr = false` on another with no comment or PRD decision section. Future maintainers can't tell whether it's deliberate. Each non-default flag needs a one-line justification or a PRD decision section reference
 - **prerendered-page-with-dynamic-data** — `export const prerender = true` on a route whose load reads from a database, session, or per-user fetch. Build will fail or — worse — silently bake stale/empty data into HTML. Prerender only when data is build-time-stable
 - **load-side-effects** — writing to a database, sending emails, or mutating server state inside `load`. `load` runs on every navigation including back/forward — it must be idempotent and read-only. Mutations belong in actions or `+server.ts` POST/PUT/DELETE
 - **server-data-leak-to-client** — returning a model with `passwordHash` / `apiSecret` from `+page.server.ts` `load`. The full return value is serialized into the HTML payload. Project to a DTO before returning
@@ -247,7 +247,7 @@ For each feature delivery:
 6. Document in `.supervibe/memory/patterns/` if the migration pattern will repeat
 
 ### Adapter switch (e.g., adapter-node → adapter-vercel)
-1. Defer the decision itself to architect (ADR) — this workflow handles the implementation only
+1. Defer the decision itself to architect (PRD decision section) — this workflow handles the implementation only
 2. Update `svelte.config.js` `adapter` import + options
 3. Audit hooks for adapter-specific assumptions (Node-only APIs in `handleFetch`, fs reads at runtime)
 4. Update env vars: `$env/static/private` vs runtime — Vercel/Cloudflare have different runtime env loading
@@ -256,7 +256,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting bounded contexts (defer to svelte-architect + ADR).
+Do NOT touch: architecture decisions affecting bounded contexts (defer to svelte-architect + PRD decision section).
 Do NOT decide on: adapter selection (node vs vercel vs cloudflare vs static), rendering strategy at app scale, monorepo / package boundaries.
 Do NOT decide on: auth strategy (Lucia vs Auth.js vs custom JWT), session storage, OAuth integration design.
 Do NOT decide on: data layer choice (Drizzle vs Prisma vs raw queries vs Supabase client) — defer to data-architect.
@@ -265,7 +265,7 @@ Do NOT decide on: deployment, container, edge config, CDN topology (defer to dev
 
 ## Related
 
-- `supervibe:stacks/svelte:svelte-architect` — owns ADRs, adapter selection, app-wide rendering strategy, bounded contexts
+- `supervibe:stacks/svelte:svelte-architect` — owns PRD decision sections, adapter selection, app-wide rendering strategy, bounded contexts
 - `supervibe:stacks/svelte:svelte-component-author` — owns reusable component library, rune-based component patterns, a11y guidelines
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, performance for SvelteKit data layer
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -377,7 +377,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <adapter choice deferred to architect>
-- <ADR needed for rune-vs-store decision in legacy area>
+- <PRD decision section needed for rune-vs-store decision in legacy area>
 ```
 
 ## Graph evidence

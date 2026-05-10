@@ -160,7 +160,7 @@ Total agents: 97
 
 ## Stack: rails
 
-- `rails-architect` - Use WHEN deciding Rails architecture — Hotwire vs SPA, queue backend, ActionCable namespacing, engine boundaries, ADR-worthy choices. Stacks: rails, ruby.
+- `rails-architect` - Use WHEN deciding Rails architecture — Hotwire vs SPA, queue backend, ActionCable namespacing, engine boundaries, major architectural choices. Stacks: rails, ruby.
 - `rails-developer` - Use WHEN implementing Rails features — controllers, models, jobs, channels, Hotwire views with RSpec/Minitest and FormObject patterns. Stacks: rails, ruby.
 
 ## Stack: react

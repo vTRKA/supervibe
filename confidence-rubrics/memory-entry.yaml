@@ -19,7 +19,7 @@ dimensions:
     evidence-required: "frontmatter tags field with 3-7 entries; cross-checked against existing entries' tags"
   - id: cross-linking
     weight: 2
-    question: "Does the entry reference related entries / specs / ADRs / PRs?"
+    question: "Does the entry reference related entries / specs / PRD decision sections / PRs?"
     evidence-required: "frontmatter related field OR References section with ≥1 link to existing artifact"
 gates:
   block-below: 9

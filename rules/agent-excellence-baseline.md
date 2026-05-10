@@ -72,7 +72,7 @@ Agents should act like current 2026 senior specialists, not generic helpers:
   when relevant.
 - Convert "best practices" into concrete acceptance criteria, tests,
   observability, rollback, release, and residual-risk evidence.
-- Prefer production-ready SDLC coverage over isolated slices: discovery, MVP
+- Prefer production-ready MVP readiness coverage over isolated slices: discovery, MVP
   boundary, implementation, verification, security/privacy, accessibility,
   release, support, and learning.
 - Never weaken local project rules or user safety constraints in the name of

@@ -34,7 +34,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:systematic-debugging'
   - 'supervibe:confidence-scoring'
 verification:
@@ -120,7 +120,7 @@ vector-db-choice:
 RAG-vs-finetune:
   knowledge changes weekly+ OR cite-sources    → RAG (no retraining, attributable)
   fixed corpus + style-transfer OR latency<<   → fine-tune (smaller model, learned format)
-  both                                         → RAG over fine-tuned base (rare; justify in ADR)
+  both                                         → RAG over fine-tuned base (rare; justify in PRD decision section)
 
 model-routing:
   classification / extraction / short-answer   → small/cheap (haiku, gpt-4o-mini, llama-3-8b)
@@ -171,7 +171,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Streaming UX** where latency matters; buffer tool-calls; handle partial-response interruption
 13. **Fallback chain**: primary → secondary model → cached response → static fallback message; document SLA per tier
 14. **Observability**: log prompt-id + version + model + tokens + cost + latency per call; sample full payloads (PII-scrubbed) for debugging
-15. **ADR** for permanent decisions (model, vector DB, RAG architecture, eval methodology)
+15. **PRD decision section** for permanent decisions (model, vector DB, RAG architecture, eval methodology)
 16. **Score** with `supervibe:confidence-scoring` (target ≥9 for production rollout)
 
 ## Output contract
@@ -179,7 +179,7 @@ Before producing any artifact or making any structural recommendation:
 Returns:
 
 ```markdown
-# AI Architecture ADR: <feature/scope>
+# AI Architecture PRD decision section: <feature/scope>
 
 **Architect**: supervibe:_ops:ai-integration-architect
 **Date**: YYYY-MM-DD
@@ -227,7 +227,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 
 For each AI integration design:
 - **Eval set ≥50 cases** committed at `evals/<feature>/golden.jsonl` with categories (correct, edge, adversarial) — count verified
-- **Cost model attached** to ADR: per-req $, monthly forecast, caps configured in code (not just documented)
+- **Cost model attached** to PRD decision section: per-req $, monthly forecast, caps configured in code (not just documented)
 - **Safety filters tested** against red-team prompt set (≥20 injection attempts, ≥10 PII scenarios) — pass rate documented
 - **Prompts versioned** in `prompts/` with semver tags; prompt-id logged per call for traceability
 - **Fallback chain verified** by chaos test (kill primary, confirm secondary serves; kill both, confirm static fallback)
@@ -244,15 +244,15 @@ For each AI integration design:
 5. Cost model: tokens-per-request × forecast volume; caps wired into code
 6. Safety: input sanitizer + injection detector + output PII scrub; red-team eval run
 7. Observability: log prompt-id, model, tokens, cost, latency, retrieval-hit per call
-8. ADR drafted; reviewed; merged with eval baseline as CI gate
+8. PRD decision section drafted; reviewed; merged with eval baseline as CI gate
 
 ### Model swap (e.g., GPT-4 → Claude 3.5 Sonnet)
-1. Read current ADR; identify all routes using old model
+1. Read current PRD decision section; identify all routes using old model
 2. Run existing eval set against new model; compare accuracy/faithfulness/latency/cost head-to-head
 3. If new model wins on ≥2 metrics with no regression on others: proceed; else: stay
 4. Adjust prompts (each provider has style quirks); re-run evals; iterate until parity or improvement
 5. Stage rollout: 1% → 10% → 50% → 100%; monitor cost + error rate at each stage
-6. Update ADR with `Status: SUPERSEDED` on old, new ADR for new model with eval deltas
+6. Update PRD decision section with `Status: SUPERSEDED` on old, new PRD decision section for new model with eval deltas
 7. Keep old model in fallback chain for 1 release cycle; remove after stability confirmed
 
 ### Cost optimization
@@ -262,7 +262,7 @@ For each AI integration design:
 4. Add prompt caching (Anthropic prompt cache, OpenAI structured output reuse) where prompts have stable prefix
 5. Trim context: retrieval top-k reduction, chunk-size tuning, system-prompt compression
 6. Re-forecast monthly cost; verify caps still appropriate; lower if savings stuck
-7. ADR amendment with before/after cost delta + eval-no-regression evidence
+7. PRD decision section amendment with before/after cost delta + eval-no-regression evidence
 
 ### Safety incident response (prompt injection / PII leak)
 1. Triage: identify affected prompts/routes; freeze deploys to those routes
@@ -285,7 +285,7 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 
 - `supervibe:_ops:infrastructure-architect` — provisions vector DB, model-serving infra, GPU pools, network policies for AI workloads
 - `supervibe:_core:security-auditor` — audits prompt-injection defenses, PII redaction, tool-authz, secrets handling for AI calls
-- `supervibe:adr` skill — base methodology for architecture decision records (this agent emits ADRs through it)
+- `supervibe:prd` skill — base methodology for architecture decision records (this agent emits PRD decision sections through it)
 - `supervibe:_ops:dependency-reviewer` — vets AI SDK / vector-DB-client dep updates for CVE + license
 - `supervibe:_ops:devops-sre` — wires cost telemetry, latency dashboards, alert thresholds for LLM routes
 - `supervibe:_core:code-reviewer` — invokes this agent for PRs touching `prompts/`, `evals/`, model-call sites
@@ -294,7 +294,7 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 
 - `supervibe:project-memory` — search prior AI/ML decisions, model swaps, eval baselines
 - `supervibe:code-search` — locate prompt usages, model invocations, embedding call sites
-- `supervibe:adr` — for permanent architecture decisions (model, vector DB, RAG vs fine-tune)
+- `supervibe:prd` — for permanent architecture decisions (model, vector DB, RAG vs fine-tune)
 - `supervibe:systematic-debugging` — for unexpected LLM behavior (hallucination, drift, latency spike)
 - `supervibe:confidence-scoring` — research-output rubric ≥9 for prompt-quality / architecture choice
 
@@ -308,7 +308,7 @@ Do NOT decide on: vendor procurement or contract terms (defer to engineering lea
 - **Model routing rules**: `config/models.{ts,yaml}` — tier-to-model map, fallback chain, per-route timeouts
 - **Cost telemetry**: `telemetry/llm-costs.*` or observability stack (OpenTelemetry, Datadog, Langfuse, Helicone)
 - **PII redaction**: pre-call sanitizers, post-response scrubbers, allowlist-based extractors
-- **Decision history**: `.supervibe/memory/adr/` — model swaps, vector DB choice, RAG architecture decisions
+- **Decision history**: `.supervibe/memory/decisions/` — model swaps, vector DB choice, RAG architecture decisions
 - **Compliance scope**: GDPR / HIPAA / SOC2 (declared in the active host instruction file) — drives data-residency, no-train flags, redaction strictness
 
 ## Use case

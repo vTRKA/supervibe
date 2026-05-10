@@ -396,8 +396,8 @@ function evaluatePlanReviewDimension(id, context) {
           && Array.isArray(context.architecture.boundaries)
           && context.architecture.boundaries.length > 0
           && context.architecture.unresolvedDecision !== true
-          && (context.architecture.adrRequired !== true || context.architecture.adrPresent === true),
-        "Architecture style, boundaries, and ADR need are reviewed.",
+          && (context.architecture.prdDecisionRequired !== true || context.architecture.prdDecisionPresent === true),
+        "Architecture style, boundaries, and PRD decision section need are reviewed.",
       );
     case "data-storage-topology":
       if (!isRiskTriggered(context, ["database"])) {

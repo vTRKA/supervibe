@@ -10,7 +10,7 @@ const TEMPLATE_RULES = [
       "Problem statement",
       "First-principle decomposition",
       "Evidence and retrieval plan",
-      "Product and MVP delivery fit",
+      "Product and MVP fit",
       "Scope Safety Gate",
       "Visual explanation plan",
       "Production readiness contract",
@@ -126,39 +126,6 @@ const TEMPLATE_RULES = [
     minimumWordCount: 250,
   },
   {
-    file: "docs/templates/ADR-template.md",
-    label: "ADR template",
-    requiredSections: [
-      "Status",
-      "Context",
-      "Decision",
-      "Alternatives",
-      "Consequences",
-      "Compatibility And Migration",
-      "Rollback And Review",
-      "Evidence",
-    ],
-    requiredTerms: ["accepted", "constraint", "driver", "because", "owner", "benefit", "cost", "risk", "CodeGraph", "RAG", "verification"],
-    minimumWordCount: 200,
-  },
-  {
-    file: "docs/templates/RFC-template.md",
-    label: "RFC template",
-    requiredSections: [
-      "Summary",
-      "Motivation",
-      "Proposal",
-      "Contracts",
-      "Compatibility And Migration",
-      "Rollout And Rollback",
-      "Verification Plan",
-      "Security Privacy Observability",
-      "Open Questions",
-    ],
-    requiredTerms: ["owner", "status", "outcome", "architecture", "data", "API", "failure mode", "schema", "event", "error", "permission", "observability"],
-    minimumWordCount: 250,
-  },
-  {
     file: "docs/templates/decision-brief-template.md",
     label: "decision brief template",
     requiredSections: [
@@ -263,6 +230,45 @@ const TEMPLATE_RULES = [
   },
 ];
 
+const GLOBAL_TEMPLATE_REJECTED_PATTERNS = [
+  {
+    label: "angle placeholder token",
+    pattern: /<[a-z0-9][^>\n]{0,80}>/i,
+  },
+  {
+    label: "brace placeholder token",
+    pattern: /\{[a-z0-9][^}\n]{0,80}\}/i,
+  },
+  {
+    label: "ellipsis placeholder",
+    pattern: /\.\.\./,
+  },
+  {
+    label: "generic file placeholder",
+    pattern: /\b(?:path\/file\.ext|path\/existing\.ext|tests\/path\/test\.ext|src\/path\/new-file\.ext|docs\/path\/new-doc\.md)\b/i,
+  },
+  {
+    label: "binary yes-no placeholder",
+    pattern: /\byes\s*\/\s*no\b/i,
+  },
+  {
+    label: "pass-fail placeholder",
+    pattern: /\bpass\s+or\s+fail\b/i,
+  },
+  {
+    label: "same-fields placeholder",
+    pattern: /\(same fields\)|same fields/i,
+  },
+  {
+    label: "tbd placeholder",
+    pattern: /\bTBD\b/i,
+  },
+  {
+    label: "empty bullet field",
+    pattern: /^\s*[-*]\s+[A-Z][^:\n]{2,80}:\s*$/m,
+  },
+];
+
 export function validateTemplateQuality({ rootDir = process.cwd(), rules = TEMPLATE_RULES } = {}) {
   const results = [];
   for (const rule of rules) {
@@ -274,6 +280,7 @@ export function validateTemplateQuality({ rootDir = process.cwd(), rules = TEMPL
       continue;
     }
     const markdown = readFileSync(path, "utf8");
+    const proseMarkdown = stripFencedCode(markdown);
     for (const section of rule.requiredSections || []) {
       if (!hasHeading(markdown, section)) issues.push(`missing section: ${section}`);
     }
@@ -282,6 +289,12 @@ export function validateTemplateQuality({ rootDir = process.cwd(), rules = TEMPL
     }
     for (const term of rule.rejectedTerms || []) {
       if (new RegExp(escapeRegex(term), "i").test(markdown)) issues.push(`rejected generic prompt term: ${term}`);
+    }
+    if (rule.file.startsWith("docs/templates/")) {
+      for (const rejected of GLOBAL_TEMPLATE_REJECTED_PATTERNS) {
+        const match = proseMarkdown.match(rejected.pattern);
+        if (match) issues.push(`weak template placeholder: ${rejected.label}: ${match[0].trim()}`);
+      }
     }
     if (rule.minimumWordCount && countWords(markdown) < rule.minimumWordCount) {
       issues.push(`template too thin: expected at least ${rule.minimumWordCount} words`);
@@ -319,6 +332,10 @@ function countWords(markdown) {
     .split(/\s+/)
     .filter(Boolean)
     .length;
+}
+
+function stripFencedCode(markdown) {
+  return String(markdown).replace(/```[\s\S]*?```/g, " ");
 }
 
 if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("validate-template-quality.mjs")) {

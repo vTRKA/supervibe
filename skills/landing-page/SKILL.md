@@ -232,7 +232,7 @@ Same as `supervibe:prototype`, plus:
 - DO NOT skip SEO meta tags. Even on a draft, scaffolding must be present.
 - DO NOT inline analytics provider code. Just `data-analytics-event` attributes; provider wiring is downstream's job.
 - DO NOT use placeholder Lorem Ipsum past Stage 1. Actual copy from copywriter (or user-provided) must be in by Stage 3.
-- DO NOT exceed Lighthouse mobile budgets without justification ADR.
+- DO NOT exceed Lighthouse mobile budgets without justification PRD decision section.
 - DO NOT reuse or edit an old landing artifact without the artifact-mode question when the brief is ambiguous.
 - DO NOT disable preview feedback overlay for landing previews.
 - DO NOT build or preview from a candidate or needs_revision design system.

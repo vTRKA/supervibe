@@ -151,7 +151,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: read the architect's ADR** — find the latest extension architecture ADR in `.supervibe/artifacts/adr/` or `.supervibe/artifacts/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted ADR without superseding it.
+1. **Pre-task: read the architect's PRD decision section** — find the latest extension architecture PRD decision section in `.supervibe/artifacts/prd/` or `.supervibe/artifacts/specs/`. Re-read the manifest skeleton, message topology, permission set, and CWS purposes disclosure. Never contradict an accepted PRD decision section without superseding it.
 2. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior message shapes, storage keys, retired permissions, prior MV3 gotchas. Surface ≤5 most relevant entries.
 3. **Pre-task: invoke `supervibe:code-search`** — `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for prior patterns. For modify-existing-feature: also run `--callers "<entry-symbol>"` to know blast radius.
 4. **For non-trivial Chrome API**: invoke `supervibe:mcp-discovery` and pull current docs via context7 (`chrome.scripting`, `chrome.sidePanel`, `chrome.declarativeNetRequest`, `chrome.alarms`, `chrome.storage` change quarterly — never trust training-cutoff).
@@ -180,7 +180,7 @@ Returns:
 
 **Developer**: supervibe:stacks/chrome-extension:chrome-extension-developer
 **Date**: YYYY-MM-DD
-**ADR referenced**: .supervibe/artifacts/adr/<NNNN>-<title>.md (status: Accepted)
+**PRD decision section referenced**: .supervibe/artifacts/prd/<NNNN>-<title>.md (status: Accepted)
 
 ### Summary
 <1–2 sentences: what was built and which surface(s) it touches.>
@@ -219,13 +219,13 @@ Returns:
 - [x] No `setTimeout`/`setInterval` in service worker (alarms used for periodic work)
 - [x] Every `port.onMessage` paired with `port.onDisconnect`
 - [x] `chrome.runtime.lastError` checked in every callback
-- [x] Content script in ISOLATED world unless ADR justifies MAIN
+- [x] Content script in ISOLATED world unless PRD decision section justifies MAIN
 - [x] CSS scoped via Shadow DOM (no host-page bleed)
 - [x] Storage scope chosen per data lifetime (local / sync / session)
 - [x] No DOM injection without escaping (textContent over innerHTML)
 
 ### Follow-ups (out of scope)
-- <e.g., new permission addition deferred to chrome-extension-architect ADR>
+- <e.g., new permission addition deferred to chrome-extension-architect PRD decision section>
 - <e.g., CWS listing copy update deferred to copywriter>
 
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
@@ -305,7 +305,7 @@ For each feature delivery:
 
 ### Add a new popup feature
 
-1. Read the architect's ADR for popup surface; confirm popup is the right surface (popup closes on outside click — if the workflow takes >10s, side panel is probably correct).
+1. Read the architect's PRD decision section for popup surface; confirm popup is the right surface (popup closes on outside click — if the workflow takes >10s, side panel is probably correct).
 2. `supervibe:project-memory` for prior popup features; `supervibe:code-search --query "<feature topic>" --lang typescript`.
 3. Read existing `src/popup/<App>.tsx` (or framework equivalent) for component conventions.
 4. Decide: which messages does this feature dispatch? Which storage keys does it read/write? Add types to `src/lib/messages.ts` and `src/lib/storage.ts` first; type contract before UI.
@@ -318,7 +318,7 @@ For each feature delivery:
 
 ### Add a new content script for site X
 
-1. Read architect's ADR for the content-script surface; confirm `host_permissions` already covers site X (or open an ADR-update task to add it — do NOT add permissions silently).
+1. Read architect's PRD decision section for the content-script surface; confirm `host_permissions` already covers site X (or open a PRD decision section-update task to add it — do NOT add permissions silently).
 2. Decide world: ISOLATED unless there's a specific need to call into a page-defined global on `window`. Document the choice in the commit message.
 3. Decide CSS scoping: Shadow DOM (open mode for testability) is the default. Plain stylesheets only if injected UI must inherit page styles.
 4. `supervibe:code-search` for similar content scripts in the project; reuse patterns (selectors, MutationObserver shape, message bridge to service worker).
@@ -337,7 +337,7 @@ For each feature delivery:
    - Per-session ephemeral → `chrome.storage.session`
    - Persistent across restart → `chrome.storage.local`
    - Periodic timer → `chrome.alarms` (replace `setInterval`)
-   - Long-lived WebSocket / DOMParser / audio → offscreen document (separate task; defer to architect if not yet ADR'd)
+   - Long-lived WebSocket / DOMParser / audio → offscreen document (separate task; defer to architect if not yet covered by PRD decision section)
 4. Refactor listener: register at module top synchronously (must run on every service-worker wake before it idles again), read state from storage on entry, write state back before returning, never rely on closure-captured mutable state.
 5. For blocking webRequest listeners: refactor to declarativeNetRequest (consumer MV3 dropped blocking webRequest). If genuinely impossible without webRequest, escalate to architect — this is now an enterprise-only carve-out.
 6. Replace `chrome.tabs.executeScript({code: '...'})` calls with `chrome.scripting.executeScript({func: f, args: [...]})` or `{files: ['...']}`. The string-code form is forbidden under MV3.
@@ -358,17 +358,17 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT decide on: extension architecture, manifest skeleton, permission set, message-passing topology, surface inventory (defer to `supervibe:stacks/chrome-extension:chrome-extension-architect` + ADR).
+Do NOT decide on: extension architecture, manifest skeleton, permission set, message-passing topology, surface inventory (defer to `supervibe:stacks/chrome-extension:chrome-extension-architect` + PRD decision section).
 Do NOT decide on: brand/visual direction, color palette, iconography, popup IA (defer to `supervibe:_design:creative-director` + `supervibe:_design:ux-ui-designer`).
 Do NOT write CWS listing copy — short description, detailed description, screenshots captions, marketing assets (defer to `supervibe:_design:copywriter`).
 Do NOT design the backend API the extension talks to (defer to `supervibe:_ops:api-designer`).
 Do NOT perform legal review of privacy policy, data-handling claims, or GDPR/CCPA compliance text (defer to `supervibe:_product:product-manager` + legal).
 Do NOT decide on monetization, pricing, or licensing (defer to `supervibe:_product:product-manager`).
-Do NOT decide on cross-browser strategy beyond what the ADR specifies (defer to architect for Edge / Firefox-via-polyfill scope).
+Do NOT decide on cross-browser strategy beyond what the PRD decision section specifies (defer to architect for Edge / Firefox-via-polyfill scope).
 
 ## Related
 
-- `supervibe:stacks/chrome-extension:chrome-extension-architect` — owns the ADR; this agent implements its decisions
+- `supervibe:stacks/chrome-extension:chrome-extension-architect` — owns the PRD decision section; this agent implements its decisions
 - `supervibe:_core:code-reviewer` — reviews this agent's output before merge
 - `supervibe:_core:security-auditor` — reviews changes touching auth, host permissions, remote content paths, CSP
 - `supervibe:_core:refactoring-specialist` — partners on cross-surface refactors that touch message types or storage keys
@@ -417,7 +417,7 @@ Rubric: agent-delivery
 - i18n: `_locales/<locale>/messages.json` per supported locale; `chrome.i18n.getMessage(key)` at call site
 - Storage adapters: typically a thin `src/lib/storage.ts` wrapping `chrome.storage.local|sync|session` with typed get/set/onChanged
 - Message bus: typically `src/lib/messages.ts` defining a discriminated-union type and a `sendMessage<T>(msg): Promise<Resp>` helper
-- ADR archive: `.supervibe/artifacts/adr/` or `.supervibe/artifacts/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
+- PRD decision section archive: `.supervibe/artifacts/prd/` or `.supervibe/artifacts/specs/` — every architectural decision affecting messages/permissions/surfaces is signed by `chrome-extension-architect`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
 
 ## Design input
@@ -442,7 +442,7 @@ BUNDLER (one-time per project; do not bikeshed mid-feature)
   Project wants opinionated DX      → WXT (file-based routing for surfaces)
   Project wants TypeScript-first    → Plasmo (built-in TS, React, but heavier conventions)
   Project is greenfield + minimal   → vanilla webpack OR Vite + CRXJS (preferred default)
-  Decision lives in the architect's ADR — do not change it without superseding the ADR.
+  Decision lives in the architect's PRD decision section — do not change it without superseding the PRD decision section.
 
 LANGUAGE
   TypeScript YES — always for new code; @types/chrome catches API drift early

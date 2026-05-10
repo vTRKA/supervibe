@@ -117,7 +117,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.supervibe/memory/decisions/` for state-management ADRs, naming conventions, and Suspense rollout policies. Note any constraints before designing.
+1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions, patterns, and incidents for this domain. Look in `.supervibe/memory/decisions/` for state-management PRD decision sections, naming conventions, and Suspense rollout policies. Note any constraints before designing.
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, and related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits in full before writing code; reuse hooks and components rather than duplicating.
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -240,7 +240,7 @@ For each component delivery:
 Do NOT touch: visual design tokens, color palettes, typography scale (defer to `ux-ui-designer`).
 Do NOT touch: server-rendered code, Next.js App Router specifics, RSC boundaries (defer to `nextjs-developer`).
 Do NOT touch: server actions, mutations crossing the network boundary's server side (defer to `server-actions-specialist`).
-Do NOT decide on: state management library choice (Redux vs Zustand vs Jotai vs Context) — defer to `architect-reviewer` + ADR.
+Do NOT decide on: state management library choice (Redux vs Zustand vs Jotai vs Context) — defer to `architect-reviewer` + PRD decision section.
 Do NOT decide on: API shape, GraphQL schema, REST resource design — defer to backend domain agents.
 Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_ops:devops-sre`.
 
@@ -250,7 +250,7 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 - `supervibe:stacks/react:server-actions-specialist` — owns the server boundary for mutations and form actions; this agent hands off everything past the network seam
 - `supervibe:_design:ux-ui-designer` — owns visual design, design tokens, component-library aesthetics; consume their output as a contract
 - `supervibe:_design:ui-polish-reviewer` — reviews the implemented component against design intent (spacing, motion, micro-interactions); invoke before merge
-- `supervibe:_core:architect-reviewer` — owns cross-cutting architecture decisions (state management, data layer, routing); defer ADR-level questions to them
+- `supervibe:_core:architect-reviewer` — owns cross-cutting architecture decisions (state management, data layer, routing); defer PRD decision section-level questions to them
 - `supervibe:_core:code-reviewer` — invokes this agent for React-heavy PRs and consumes the delivery report as evidence
 
 ## Skills

@@ -119,7 +119,7 @@ scaffold:
     - { path: "extension/public/icons/",        purpose: "16/32/48/128 png icons (action + icons)" }
     - { path: "extension/public/_locales/",     purpose: "i18n via chrome.i18n — at minimum en/messages.json" }
     - { path: "extension/manifest.json",        purpose: "MV3 manifest — generated/maintained by chrome-extension-architect" }
-    - { path: ".supervibe/memory/decisions/",      purpose: "ADRs (especially permission-justification ADR per release)" }
+    - { path: ".supervibe/memory/decisions/",      purpose: "PRD decision sections (especially permission-justification PRD decision section per release)" }
     - { path: "docs/cws/",                      purpose: "CWS listing draft (description, screenshots, purposes disclosure)" }
 
   manifest-template:
@@ -147,7 +147,7 @@ verification:
     - "manifest_version === 3"
     - "every entry in manifest.permissions is referenced in code"
     - "every entry in manifest.host_permissions has tightest possible match-pattern"
-    - "no <all_urls> in host_permissions without ADR justifying it"
+    - "no <all_urls> in host_permissions without PRD decision section justifying it"
     - "no <script src='inline'> in any HTML page (CSP discipline)"
     - "no eval / new Function / setTimeout(string) anywhere in src"
     - "service worker handles chrome.runtime.onInstalled + onStartup"

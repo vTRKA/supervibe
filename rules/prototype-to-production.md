@@ -34,7 +34,7 @@ Concrete consequence of NOT following: approved design is a fiction; stakeholder
 - Any UI feature with an approved prototype + final tokens
 - Cross-platform implementations (web + mobile rendering same brand)
 
-This rule does NOT apply when: explicit ADR documenting deviation reason (e.g., platform constraint).
+This rule does NOT apply when: explicit PRD decision section documenting deviation reason (e.g., platform constraint).
 
 ## What to do
 

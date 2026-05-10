@@ -28,7 +28,6 @@ const FORBIDDEN = Object.freeze([
   { label: "presentations/", pattern: /(^|[^A-Za-z0-9_.\\/-])presentations\//, canonical: ".supervibe/artifacts/presentations/" },
   { label: "docs/specs/", pattern: /docs\/specs\//, canonical: ".supervibe/artifacts/specs/" },
   { label: "docs/plans/", pattern: /docs\/plans\//, canonical: ".supervibe/artifacts/plans/" },
-  { label: "docs/adr/", pattern: /docs\/adr\//, canonical: ".supervibe/artifacts/adr/" },
   { label: "docs/prd/", pattern: /docs\/prd\//, canonical: ".supervibe/artifacts/prd/" },
   { label: "docs/requirements/", pattern: /docs\/requirements\//, canonical: ".supervibe/artifacts/requirements/" },
   { label: "docs/runbooks/", pattern: /docs\/runbooks\//, canonical: ".supervibe/artifacts/runbooks/" },

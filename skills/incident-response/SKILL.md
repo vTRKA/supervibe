@@ -128,4 +128,4 @@ Returns:
 
 - `supervibe:systematic-debugging` — invoked for root-cause investigation
 - Phase 3 `devops-sre` agent — primary user
-- `supervibe:adr` — for architectural changes resulting from postmortem
+- `supervibe:prd` — for architectural changes resulting from postmortem

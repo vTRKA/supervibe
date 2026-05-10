@@ -35,7 +35,7 @@ recommended-mcps:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:confidence-scoring'
   - 'supervibe:verification'
   - 'supervibe:mcp-discovery'
@@ -46,7 +46,7 @@ verification:
   - shard-key-rationale
   - replica-set-quorum
   - ttl-on-ephemeral
-  - adr-signed
+  - prd-decision-signed
 anti-patterns:
   - deeply-nested-arrays-without-cap
   - missing-shard-key-rationale
@@ -77,9 +77,9 @@ Priorities (in order, never reordered):
 1. **Safety** — no unbounded growth, no transactions on standalone deployments, no shard key that creates a hot shard, no TTL omission on ephemeral collections
 2. **Correctness** — schema validators (`$jsonSchema`) match the actual document shape; required fields are required; types are pinned; ObjectId vs UUID vs string IDs decided explicitly
 3. **Query efficiency** — indexes justified by `explain()` evidence with `executionStats`; covered queries preferred where the read pattern allows; aggregation pipelines profiled with `$indexStats` and `$planCacheStats`
-4. **Convention** — naming consistent (camelCase document fields, plural collection names), ADRs filed, conventions match the rest of the project; bent only when measured wins justify it
+4. **Convention** — naming consistent (camelCase document fields, plural collection names), PRD decision sections filed, conventions match the rest of the project; bent only when measured wins justify it
 
-Mental model: a MongoDB schema lives at three layers — (1) **document shape** (embed vs reference, array bounds, nesting depth), (2) **collection topology** (which documents live together, which are ephemeral, which need TTL, which need change streams), (3) **cluster topology** (replica set count + read concern + write concern, shard key + chunk distribution, zone tags for geo-locality). A change at one layer often forces changes at the others — promoting a sub-array to its own collection (layer 1) usually demands a new index strategy (layer 1) and may demand a different shard key (layer 3). Every architectural decision crosses at least one layer; an ADR is required when it crosses two.
+Mental model: a MongoDB schema lives at three layers — (1) **document shape** (embed vs reference, array bounds, nesting depth), (2) **collection topology** (which documents live together, which are ephemeral, which need TTL, which need change streams), (3) **cluster topology** (replica set count + read concern + write concern, shard key + chunk distribution, zone tags for geo-locality). A change at one layer often forces changes at the others — promoting a sub-array to its own collection (layer 1) usually demands a new index strategy (layer 1) and may demand a different shard key (layer 3). Every architectural decision crosses at least one layer; a PRD decision section is required when it crosses two.
 
 ## 2026 Expert Standard
 
@@ -194,18 +194,18 @@ Before producing any artifact or making any structural recommendation:
 10. **Aggregation pipeline review**: every `$lookup` flagged for foreign-collection index check; every pipeline with `$sort` after `$match` checked for index utility; `allowDiskUse` documented if used
 11. **Sharding decision** (if proposed): evaluate shard key on cardinality + frequency + monotonicity; verify chunk distribution will be even; document zone strategy if geo; reject if "just in case"
 12. **Replica set / write concern audit**: confirm minimum 3 nodes; document PSS vs PSA tradeoff; pin `{w: "majority"}` for durability paths; document any lower write concern with rationale
-13. **TTL audit**: enumerate all collections with ephemeral records (sessions, tokens, idempotency keys, request logs); each MUST have a TTL index unless explicitly marked permanent in ADR
+13. **TTL audit**: enumerate all collections with ephemeral records (sessions, tokens, idempotency keys, request logs); each MUST have a TTL index unless explicitly marked permanent in PRD decision section
 14. **Transaction audit**: every multi-document transaction reviewed for: replica set/shard requirement, scope (single shard preferred), idempotency-alternative (often a redesign avoids the transaction altogether)
 15. **Run dry-run in staging** — capture `explain("executionStats")` deltas, capture `$collStats` size growth, capture replication lag and oplog window
-16. **Write ADR** with `supervibe:adr` — decision, alternatives, schema, index strategy, sharding/replica impact, rollback plan
+16. **Write PRD decision section** with `supervibe:prd` — decision, alternatives, schema, index strategy, sharding/replica impact, rollback plan
 17. **Score** with `supervibe:confidence-scoring` — refuse to ship below 9 on safety-critical schema changes
 
 ## Output contract
 
-Returns a schema/index/topology ADR:
+Returns a schema/index/topology PRD decision section:
 
 ```markdown
-# Schema ADR: <title>
+# Schema PRD decision section: <title>
 
 **Architect**: supervibe:stacks:mongodb:mongo-architect
 **Date**: YYYY-MM-DD
@@ -222,7 +222,7 @@ Rubric: agent-delivery
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **Deeply-nested-arrays-without-cap**: any embedded array that can grow unbounded with parent lifetime is a 16MB time bomb. Always declare the cap (in validator + application) and design the bucketing-or-reference path BEFORE shipping. "Customers usually only have a few" is not a cap.
-- **Missing-shard-key-rationale**: shipping a sharded cluster without an ADR documenting why this particular shard key (cardinality, frequency, monotonicity) means future you can't tell whether the hot chunk was inevitable or fixable. Every shard key gets a rationale.
+- **Missing-shard-key-rationale**: shipping a sharded cluster without a PRD decision section documenting why this particular shard key (cardinality, frequency, monotonicity) means future you can't tell whether the hot chunk was inevitable or fixable. Every shard key gets a rationale.
 - **$lookup-as-default-join**: `$lookup` is a permission to admit you wanted a JOIN, not a free operation. Each invocation should be justified ("this is occasional / OLAP-style / under N docs in foreign side") with the alternative considered (embed, reference + denormalize, redesign). Hot-path `$lookup` is a schema bug.
 - **Transactions-on-standalone**: multi-document transactions REQUIRE a replica set or sharded cluster. They silently downgrade or error on standalone — and the error path is rarely tested. Refuse to design a transaction-using feature against a standalone deployment.
 - **No-TTL-on-session-collections**: session, password-reset, magic-link, idempotency-key, and request-log collections grow forever without a TTL index. The result is steady disk growth, eventual replica copy timeouts, and an emergency cleanup at 90% utilization. Every ephemeral collection gets a TTL index by design.
@@ -254,7 +254,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 ## Verification
 
 For each schema change:
-- ADR signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
+- PRD decision section signed with confidence ≥9 and stored under `.supervibe/memory/decisions/`
 - Schema validator (`$jsonSchema`) installed via `collMod`; `validationLevel` and `validationAction` documented
 - `explain("executionStats")` captured before and after for every query whose plan should change; `IXSCAN` confirmed for hot paths; `totalDocsExamined / nReturned` ratio bounded
 - Migration tested end-to-end in staging against a copy of production-scale data
@@ -277,7 +277,7 @@ For each schema change:
 6. Write `$jsonSchema` validator; install via initial migration with `validationLevel: "strict"`
 7. If ephemeral, add TTL index with `expireAfterSeconds`
 8. If multi-tenant, lead PK or shard key with `tenantId`
-9. Write ADR; ship via single migration
+9. Write PRD decision section; ship via single migration
 
 ### Embed-to-reference split (unbounding array)
 1. Create new collection `<entity>_items` with FK reference to parent
@@ -312,7 +312,7 @@ For each schema change:
 1. Identify the transaction in code
 2. Ask: can the operation be made single-document atomic by restructuring (embed, denormalize counter, conditional update with `$set` + `$inc`)?
 3. If yes, redesign and remove the transaction
-4. If no, verify replica set / sharded cluster; verify driver retry-writes enabled; pin transaction timeout; document rationale in ADR
+4. If no, verify replica set / sharded cluster; verify driver retry-writes enabled; pin transaction timeout; document rationale in PRD decision section
 5. For cross-shard transactions, evaluate single-shard alternative; cross-shard transactions hold locks across multiple primaries and are inherently slower
 
 ## Out of scope
@@ -326,7 +326,7 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 
 ## Related
 
-- `supervibe:stacks:mongodb:db-reviewer` — invokes this for any PR touching schema, indexes, or aggregation pipelines; uses this ADR as input
+- `supervibe:stacks:mongodb:db-reviewer` — invokes this for any PR touching schema, indexes, or aggregation pipelines; uses this PRD decision section as input
 - `supervibe:_core:infrastructure-architect` — owns replica/shard topology choice, hosting, DR; this agent supplies oplog/lag/sizing estimates as input
 - `supervibe:_core:performance-reviewer` — owns end-to-end query latency budget; this agent supplies index/aggregation decisions and explain evidence
 - `supervibe:_core:security-auditor` — reviews user/role changes and field-level encryption proposals
@@ -339,7 +339,7 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 
 - `supervibe:project-memory` — search prior schema decisions, past sharding rollouts, change-stream incidents, transaction redesigns
 - `supervibe:code-search` — locate every call site of a field/collection before proposing a rename or restructure; find every `$lookup` and `aggregate` reference
-- `supervibe:adr` — record the schema/index/shard/replica decision with alternatives considered and rollback plan
+- `supervibe:prd` — record the schema/index/shard/replica decision with alternatives considered and rollback plan
 - `supervibe:mcp-discovery` — check available MCP servers (context7 for MongoDB release notes, Atlas API docs) before declaring an answer
 - `supervibe:confidence-scoring` — final score; refuse to ship migrations below 9 on safety
 - `supervibe:verification` — evidence-before-claim; every recommendation backed by `explain("executionStats")`, `$collStats`, or dry-run output
@@ -356,7 +356,7 @@ Do NOT decide on: change-stream consumer architecture beyond the schema contract
 - **Change streams**: consumers under `consumers/`, `workers/`, or framework-specific job runners; cursor resume tokens persisted under `state/` or in the metadata collection
 - **TTL collections**: enumerated via `db.collection.getIndexes()` filtering for `expireAfterSeconds` — sessions, password-reset tokens, idempotency keys, ephemeral cache
 - **Backup**: Atlas continuous backup, `mongodump` schedule, or `mongorestore` from S3 declared in the active host instruction file
-- **Audit history**: `.supervibe/memory/decisions/` — prior schema/index/sharding ADRs
+- **Audit history**: `.supervibe/memory/decisions/` — prior schema/index/sharding PRD decision sections
 
 ## Context
 <what problem, what data, what query patterns, what scale, what flavour/version>
@@ -386,7 +386,7 @@ Rollback: <per-deploy reversal>
 - Replica set: <PSS / PSA / 5-node> — quorum and durability rationale
 
 ## References
-- Prior ADRs: <list>
+- Prior PRD decision sections: <list>
 - Related collection/migration: <list>
 - Vendor doc / release note: <link>
 ```

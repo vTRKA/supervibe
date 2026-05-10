@@ -159,13 +159,13 @@ Before producing any artifact or making any structural recommendation:
 
 1. **Search project memory** for prior deliverability incidents, blocklisting events, reputation history on this domain
 2. **Inventory current state**: `dig TXT <domain>` for SPF, `dig TXT <selector>._domainkey.<domain>` for each DKIM key, `dig TXT _dmarc.<domain>` for DMARC; record output verbatim
-3. **Verify SPF**: single `v=spf1` record, ESP `include:` present, terminates with `~all` (softfail) or `-all` (hardfail in mature programs); no >10 DNS lookups (RFC 7208 limit)
+3. **Verify SPF**: single `v=spf1` record, ESP `include:` present, terminates with `~all` (softfail) or `-all` (hardfail in mature programs); no more than 10 DNS lookups in the SPF evaluation path
 4. **Verify DKIM**: 2048-bit key, ESP-supplied selector(s) published, signing active in ESP console; rotate keys annually
 5. **Verify DMARC**: start at `p=none` with `rua=mailto:dmarc@<domain>` aggregate reporting, monitor 4–6 weeks, advance to `p=quarantine` then `p=reject` once aligned-pass rate ≥99%
 6. **BIMI (optional)**: only after `p=quarantine`/`p=reject` enforced; SVG Tiny PS logo + VMC (Verified Mark Certificate, ~$1.5k/yr from DigiCert/Entrust); validate with `bimigroup.org` checker
 7. **Identify ESP integration**: locate sender config (`mail.php`, `mailers/`, `app/services/email.ts`); confirm domain-aligned `From:` address (DKIM `d=` matches `From` domain for DMARC alignment)
 8. **Audit templates**: enumerate via Glob (`emails/**/*.{mjml,html,blade.php,tsx}`), check each for: doctype, table-based layout, inline CSS (Premailer/Juice), alt text on every `<img>`, plaintext multipart, preheader text (hidden span at top), unsubscribe link, footer with physical address (CAN-SPAM)
-9. **Required headers**: `List-Unsubscribe: <https://...>, <mailto:unsubscribe@...>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058 — Gmail/Yahoo bulk-sender requirement), `Precedence: bulk` for marketing
+9. **Required headers**: `List-Unsubscribe: <https://unsubscribe.example.test>, <mailto:unsubscribe@example.test>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click` for Gmail/Yahoo bulk-sender compliance, `Precedence: bulk` for marketing
 10. **Test in Litmus / Email on Acid / Mailtrap**: capture screenshots across Gmail (web/iOS/Android), Outlook (Win/Mac/web), Apple Mail, Yahoo, dark-mode variants; record render failures
 11. **Spam score**: run through mail-tester.com / GlockApps; target score ≥8/10 (mail-tester) or spam-score <3 (SpamAssassin); fix every flagged rule with measurable impact
 12. **Suppression integration**: confirm send pipeline checks suppression table BEFORE handing payload to ESP; confirm webhook handler ingests bounces/complaints/unsubscribes from ESP into suppression table within minutes

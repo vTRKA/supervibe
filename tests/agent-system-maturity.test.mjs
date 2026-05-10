@@ -34,7 +34,7 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -64,7 +64,7 @@ test("agent-system maturity blocks active 10/10 when command readiness is blocke
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -112,7 +112,7 @@ test("agent-system maturity keeps baseline 10/10 when active command readiness i
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -169,7 +169,7 @@ test("agent-system maturity score blocks 10/10 when host telemetry is missing", 
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -207,7 +207,7 @@ test("agent-system maturity score blocks 10/10 when strict producer validation f
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -245,7 +245,7 @@ test("agent-system maturity blocks 10/10 when invocation distribution hides miss
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -290,7 +290,7 @@ test("agent-system maturity reports distribution skew without blocking when no s
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -333,7 +333,7 @@ test("agent-system maturity blocks 10/10 when retrieval enforcement hook is miss
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -362,7 +362,7 @@ test("agent-system maturity blocks 10/10 when retrieval telemetry is not strict 
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -394,7 +394,7 @@ test("agent-system maturity does not double-count retrieval sample gap as CodeGr
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -434,7 +434,7 @@ test("agent-system maturity blocks 10/10 when list-missing reports stale graph r
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -467,7 +467,7 @@ test("agent-system maturity blocks 10/10 when route replay has command regressio
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -501,7 +501,7 @@ test("agent-system maturity blocks 10/10 when rules rely on filler content", () 
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -536,7 +536,7 @@ test("agent-system maturity blocks 10/10 when agent content quality is weak", ()
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,
@@ -571,7 +571,7 @@ test("agent-system maturity blocks 10/10 when skill content quality is weak", ()
   const report = scoreAgentSystemMaturity({
     roster: {
       agents: 97,
-      skills: 56,
+      skills: 55,
       commands: 19,
       rules: 31,
       testFiles: 331,

@@ -31,7 +31,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:systematic-debugging'
   - 'supervibe:confidence-scoring'
 verification:
@@ -159,9 +159,9 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Search project memory** for prior Redis incidents, prior ADRs, sizing assumptions
+1. **Search project memory** for prior Redis incidents, prior PRD decision sections, sizing assumptions
 2. **Workload model** — read/write ratio, key count, average + p99 value size, peak QPS, working set size, growth rate (per month), latency budget (p50/p99)
-3. **Classify role per namespace** — for each prefix (`cache:*`, `session:*`, `lock:*`, `stream:*`, `rate:*`), declare cache | store | queue | lock; record in ADR
+3. **Classify role per namespace** — for each prefix (`cache:*`, `session:*`, `lock:*`, `stream:*`, `rate:*`), declare cache | store | queue | lock; record in PRD decision section
 4. **Topology decision** — single / Sentinel / Cluster per the decision tree; capture rationale, blast radius, failover RTO/RPO
 5. **Sizing** — `maxmemory` = container_limit × 0.7 (leave headroom for COW during BGSAVE/AOF rewrite); replica count; shard count if Cluster
 6. **Eviction policy** — explicit per dataset; if multiple roles share an instance, document that it splits behavior and prefer separate instances
@@ -175,14 +175,14 @@ Before producing any artifact or making any structural recommendation:
 14. **Failover rehearsal** — schedule a quarterly drill: kill primary, time RTO, verify clients reconnect, verify no data divergence
 15. **Persistence restore drill** — quarterly: take last RDB+AOF, restore to a clean node, diff key count and sample values
 16. **Observability** — wire `INFO`, slowlog, latency, hot-keys, evicted_keys, replication lag, AOF size, command stats; alert thresholds documented
-17. **ADR** — emit decision record; score with `supervibe:confidence-scoring`
+17. **PRD decision section** — emit decision record; score with `supervibe:confidence-scoring`
 
 ## Output contract
 
-Returns a Redis architecture ADR:
+Returns a Redis architecture PRD decision section:
 
 ```markdown
-# ADR-NNNN: Redis Architecture for <scope>
+# PRD decision section-NNNN: Redis Architecture for <scope>
 
 **Author**: supervibe:stacks/redis:redis-architect
 **Date**: YYYY-MM-DD
@@ -250,7 +250,7 @@ For each architecture decision:
 5. Wire stampede protection: TTL jitter + single-flight lock OR probabilistic early refresh
 6. Add monitoring: hit ratio, eviction rate, p99 GET latency
 7. Capacity check: working set × 1.5 fits in `maxmemory`?
-8. Emit ADR; deploy to staging; soak; rollout
+8. Emit PRD decision section; deploy to staging; soak; rollout
 
 ### Sentinel deployment
 1. Workload sizing — confirm dataset fits one node's RAM with 30% headroom
@@ -303,9 +303,9 @@ Do NOT decide on: data model in primary DB (defer to db-reviewer).
 
 ## Skills
 
-- `supervibe:project-memory` — search prior Redis incidents, ADRs, sizing decisions
+- `supervibe:project-memory` — search prior Redis incidents, PRD decision sections, sizing decisions
 - `supervibe:code-search` — locate all client code, key patterns, lock usage
-- `supervibe:adr` — emit topology and persistence decisions as ADRs
+- `supervibe:prd` — emit topology and persistence decisions as PRD decision sections
 - `supervibe:systematic-debugging` — hot-key, slow-log, replication-lag investigations
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before finalizing recommendation
 

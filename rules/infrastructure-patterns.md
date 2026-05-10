@@ -97,7 +97,7 @@ Why this is good: each tier matched to actual scale.
 ## Enforcement
 
 - `infrastructure-architect` agent owns selection
-- `supervibe:adr` records decision with rationale
+- `supervibe:prd` records decision with rationale
 - `infra-pattern-researcher` keeps this rule current
 
 ## Related rules

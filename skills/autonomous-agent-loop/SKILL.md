@@ -214,7 +214,7 @@ different result.
 5. Add Scope Safety metadata to every task: approved scope id, scope decision
    (`include`, `defer`, `reject`, `spike`, `ask-one-question`), complexity
    cost, tradeoff, and stop condition for unapproved scope expansion.
-6. Add an SDLC and production path to the graph: discovery/spec evidence,
+6. Add an MVP readiness and production path to the graph: discovery/spec evidence,
    MVP slice, phased rollout, release gate, security/privacy checks,
    observability, rollback, support owner, and post-release learning. If the
    user asks for "one big spec/plan to production", keep the plan broad enough
@@ -266,7 +266,7 @@ STOP_REASON: concrete reason or none
 POLICY_RISK: none | low | medium | high
 PERMISSION_MODE: ask-preserving | blocked | unknown
 BYPASS_DISABLED: true | false
-SDLC_STAGE: discovery | planning | implementation | verification | release | post-release
+MVP_READINESS_STAGE: discovery | planning | implementation | verification | release | post-release
 PRODUCTION_READINESS: 0.0-10.0
 OPEN_BLOCKERS: number
 SCOPE_SAFETY: pass | blocked | needs-tradeoff

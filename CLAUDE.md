@@ -46,10 +46,10 @@ These six principles override defaults whenever they conflict with general pract
 supervibe/
 ├── .claude-plugin/plugin.json     Manifest — agents:[] array
 ├── agents/                        97 agents (_core/_meta/_design/_ops/_product + stacks/)
-├── skills/                        56 process skills
+├── skills/                        55 process skills
 ├── commands/                      19 slash commands (/supervibe-genesis, /supervibe-plan, /supervibe-security-audit, /supervibe-execute-plan, ...)
 ├── rules/                         31 project rules
-├── confidence-rubrics/            18 YAML rubrics
+├── confidence-rubrics/            19 YAML rubrics
 ├── grammars/                      Bundled WASM tree-sitter grammars
 ├── models/Xenova/...              Embedding model metadata; ONNX is downloaded by installer
 ├── scripts/                       Build / index / search / validate (Node ESM)

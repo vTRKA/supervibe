@@ -9,7 +9,7 @@ import {
 test("context orchestrator merges memory, source chunks and graph neighborhood", () => {
   const pack = buildOrchestratedContextPack({
     query: "genesis host adapter codegraph",
-    memoryResults: [{ id: "ADR-1", summary: "Host adapter decision", file: "memory/decisions/adr.md", score: 0.9 }],
+    memoryResults: [{ id: "DECISION-1", summary: "Host adapter decision", file: "memory/decisions/host-adapter.md", score: 0.9 }],
     ragResults: [{ path: "scripts/lib/supervibe-host-detector.mjs", startLine: 1, endLine: 20, text: "detect host", score: 0.8 }],
     graphNeighborhood: [{ symbol: "selectHostAdapter", path: "scripts/lib/supervibe-host-detector.mjs", relationships: ["resolveHostAdapter"] }],
     hostFiles: [{ path: "CLAUDE.md", summary: "Project context" }],

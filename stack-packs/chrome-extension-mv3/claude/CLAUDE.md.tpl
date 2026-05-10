@@ -43,9 +43,9 @@ Inherited from the plugin:
 - `i18n` — every user-facing string via `chrome.i18n.getMessage()`
 
 Stack-specific discipline:
-- **Permission justification ADR** — every permission added to `manifest.json` requires a one-paragraph ADR in `.supervibe/memory/decisions/` answering: why this permission, what API call needs it, what is the user-visible feature
+- **Permission justification PRD decision section** — every permission added to `manifest.json` requires a one-paragraph PRD decision section in `.supervibe/memory/decisions/` answering: why this permission, what API call needs it, what is the user-visible feature
 - **CSP strict-by-default** — `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`. If a third-party script must run, sandbox it via `sandbox.pages` instead of relaxing CSP
-- **`<all_urls>` requires explicit ADR** — broad host_permissions are a CWS-rejection trigger and a trust cost
+- **`<all_urls>` requires explicit PRD decision section** — broad host_permissions are a CWS-rejection trigger and a trust cost
 - **Message handlers always check `chrome.runtime.lastError`** — silent failures hide bugs that only show on idle restart
 - **Port `.onDisconnect` cleanup is mandatory** — leaked ports = leaked memory, observable as service worker bloat
 
@@ -64,7 +64,7 @@ Stack-specific discipline:
 - `extension/manifest.json`     — MV3 manifest
 - `dist/`                        — vite build output, loaded as unpacked extension
 - `docs/cws/`                    — Chrome Web Store listing draft
-- `.supervibe/memory/decisions/`    — ADRs (permissions, architecture)
+- `.supervibe/memory/decisions/`    — PRD decision sections (permissions, architecture)
 }}
 
 ## Verification commands
@@ -91,14 +91,14 @@ Custom decisions, patterns, incidents go in `.supervibe/memory/<category>/` as m
 ## Common workflows
 
 **New popup feature:**
-1. `chrome-extension-architect` reviews if new permission needed — if yes, ADR
+1. `chrome-extension-architect` reviews if new permission needed — if yes, PRD decision section
 2. `chrome-extension-developer` implements failing test → minimal popup component → wires runtime.sendMessage → service worker handler
 3. `ui-polish-reviewer` + `accessibility-reviewer` per `_design` rubric
 4. `code-reviewer` final pass
 
 **Add a new content script for site X:**
 1. Architect reviews `content_scripts.matches` — tightest pattern (no broad wildcards)
-2. ADR if new host_permission required
+2. PRD decision section if new host_permission required
 3. Developer adds content script with `world: "ISOLATED"` by default; only escalate to `MAIN` with rationale
 4. CSS isolation via shadow DOM if injecting visible UI into host page
 

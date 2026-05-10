@@ -62,7 +62,7 @@ Specifically: a rename in TypeScript broke production because 3 callers in a Pyt
 3. Read each caller. Decide:
    - **0 callers**: safe to proceed (still validate with `--neighbors` for indirect refs)
    - **1–10 callers**: update them in the same PR
-   - **>10 callers OR cross-module**: escalate to architect-reviewer for ADR before proceeding
+   - **>10 callers OR cross-module**: escalate to architect-reviewer for PRD decision section before proceeding
 4. If renaming: after the change, verify `--callers "<old-name>"` returns 0
 5. Check semantic anchors when present:
    ```bash

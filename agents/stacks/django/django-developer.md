@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -225,7 +225,7 @@ For each feature delivery:
 8. Re-run pytest / ruff / mypy
 
 ### Celery task addition (existing project with Celery topology in place)
-1. Confirm queue topology from the active host instruction file / ADR — pick the right queue (critical / default / low / notifications)
+1. Confirm queue topology from the active host instruction file / PRD decision section — pick the right queue (critical / default / low / notifications)
 2. Add task in `apps/<name>/tasks.py`: `@shared_task(bind=True, autoretry_for=(<transient>,), retry_backoff=True, retry_jitter=True, max_retries=5)`
 3. Constructor / signature: accept only serializable args (model IDs, scalars — NEVER model instances, NEVER closures, NEVER QuerySets)
 4. Body: re-fetch model from ID, idempotent guard (`if invoice.sent_at: return`), single responsibility
@@ -264,7 +264,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple apps (defer to django-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple apps (defer to django-architect + PRD decision section).
 Do NOT decide on: Celery topology, worker tuning, supervisor count (defer to django-architect / devops-sre).
 Do NOT decide on: complex model design — STI, MTI, polymorphic-vs-pivot, soft-delete cascade strategy (defer to django-architect).
 Do NOT decide on: DRF serializer design, viewset composition, throttling rates (defer to drf-specialist).
@@ -274,7 +274,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/django:django-architect` — owns ADRs, app-boundary, Celery / Channels topology, settings split, middleware ordering
+- `supervibe:stacks/django:django-architect` — owns PRD decision sections, app-boundary, Celery / Channels topology, settings split, middleware ordering
 - `supervibe:stacks/django:drf-specialist` — owns DRF API surface (serializers, viewsets, permissions, pagination, throttling, JWT)
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -383,7 +383,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <queue topology decision deferred to django-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

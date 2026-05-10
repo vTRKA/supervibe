@@ -87,7 +87,7 @@ test("shared agents skills and rules use host-neutral instruction wording", () =
     const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
     for (const pattern of [
       /\bCLAUDE\.md\b/,
-      /\.claude\/(?:agents|rules|skills|settings|adr|genesis|stack-fingerprint)\b/,
+      /\.claude\/(?:agents|rules|skills|settings|decisions|genesis|stack-fingerprint)\b/,
     ]) {
       if (pattern.test(text)) {
         offenders.push(`${file}: shared artifact hardcodes a Claude host path/instruction file`);

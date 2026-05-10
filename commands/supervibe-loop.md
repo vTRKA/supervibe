@@ -12,7 +12,7 @@ last-verified: "2026-05-10"
 Run a goal-until-complete autonomous loop for a user plan or open request. The
 command is observable, cancellable, policy-gated, and blocked below a 9/10 task
 score.
-For large specs, the loop must preserve the full SDLC path from discovery to
+For large specs, the loop must preserve the full MVP readiness path from discovery to
 production release: MVP slice, phased implementation, verification, release
 gate, rollback, support owner, and post-release learning.
 

@@ -123,7 +123,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs (queue backend, Hotwire vs SPA, engine boundaries) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections (queue backend, Hotwire vs SPA, engine boundaries) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ruby --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who breaks
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -271,7 +271,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting bounded contexts (defer to rails-architect + ADR).
+Do NOT touch: architecture decisions affecting bounded contexts (defer to rails-architect + PRD decision section).
 Do NOT decide on: queue backend choice (Sidekiq vs Solid Queue vs GoodJob), cache backend, cable transport (defer to rails-architect).
 Do NOT decide on: engine extractions, bounded-context splits, microservice carve-outs.
 Do NOT decide on: complex AR modeling — STI vs polymorphic, soft-delete cascade, sharding strategy (defer to rails-architect / postgres-architect).
@@ -281,7 +281,7 @@ Do NOT decide on: deployment, container, infra topology (defer to devops-sre).
 
 ## Related
 
-- `supervibe:stacks/rails:rails-architect` — owns ADRs, bounded-context boundaries, queue/cache/cable backend decisions, engine extractions
+- `supervibe:stacks/rails:rails-architect` — owns PRD decision sections, bounded-context boundaries, queue/cache/cable backend decisions, engine extractions
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres schema, indexing, partitioning, performance for AR-backed apps
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
 - `supervibe:_core:security-auditor` — reviews policies, channels, mass-assignment surface, brakeman output for OWASP risk
@@ -393,7 +393,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <queue topology decision deferred to rails-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

@@ -339,7 +339,7 @@ Do NOT delete entries — archive only. Restoration must always be possible.
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - **Memory root**: `.supervibe/memory/` with five canonical subdirectories:
-  - `decisions/` — architectural / technology / process decisions (ADR-style)
+  - `decisions/` — architectural / technology / process decisions (PRD decision section-style)
   - `patterns/` — reusable solutions, code idioms, integration patterns
   - `incidents/` — postmortems, security incidents, outages, regressions
   - `learnings/` — discoveries, surprises, "we learned X the hard way"

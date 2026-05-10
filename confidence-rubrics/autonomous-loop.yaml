@@ -21,10 +21,10 @@ dimensions:
     weight: 1
     question: "Did agent handoffs preserve risks, decisions, verification, and next action?"
     evidence-required: "Validated handoff JSONL entry."
-  - id: sdlc
+  - id: mvp-readiness
     weight: 1
-    question: "Do SDLC gates pass for the task risk level and environment?"
-    evidence-required: "SDLC gate result including tests, rollback, security/privacy, and deployment evidence."
+    question: "Do MVP readiness gates pass for the task risk level and environment?"
+    evidence-required: "MVP readiness gate result including tests, rollback, security/privacy, and deployment evidence."
   - id: runtime
     weight: 1
     question: "Are runtime, platform, server, Docker, MCP, and side effects handled safely?"

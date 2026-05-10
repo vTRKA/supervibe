@@ -110,5 +110,5 @@ POST /v1/orders/789/cancel
 
 ## See also
 
-- RFC 7231 (HTTP semantics)
+- HTTP semantics
 - https://restfulapi.net/

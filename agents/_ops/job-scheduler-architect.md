@@ -49,7 +49,7 @@ skills:
   - 'supervibe:mcp-discovery'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:verification'
 verification:
   - job-handler-idempotency-grep
@@ -139,7 +139,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Verify backoff has jitter and bounded retries**
 11. **Output findings** with severity + remediation
 12. **Score** with `supervibe:confidence-scoring`
-13. **Record ADR** for queue choice / delivery semantics / idempotency strategy
+13. **Record PRD decision section** for queue choice / delivery semantics / idempotency strategy
 
 ## Output contract
 
@@ -208,13 +208,13 @@ For each scheduler review:
 2. Choose idempotency strategy (key + dedup table / natural / optimistic lock)
 3. Choose retry policy (max attempts, backoff base, jitter, error-class rules)
 4. Choose DLQ behavior (after N attempts → DLQ + alert)
-5. Output handler skeleton + ADR
+5. Output handler skeleton + PRD decision section
 
 ### Queue tech selection
 1. Requirements: throughput, ordering, retention, fan-out, ops appetite
 2. Map to matrix: RabbitMQ / Kafka / SQS / Redis / Sidekiq / Temporal
 3. Consider existing tech in stack (avoid second tech without strong reason)
-4. ADR with chosen + rejected with reasons
+4. PRD decision section with chosen + rejected with reasons
 
 ### Cron-overlap incident remediation
 1. Identify the cron + previous run duration
@@ -228,7 +228,7 @@ For each scheduler review:
 2. Assign distinct keyprefix per app+env
 3. Migrate one app at a time (drain old prefix, switch to new)
 4. Add CI check that Sidekiq config has non-empty namespace
-5. ADR + runbook
+5. PRD decision section + runbook
 
 ## Out of scope
 
@@ -253,7 +253,7 @@ Do NOT decide on: data retention beyond queue-related (defer to data-modeler)
 - `supervibe:project-memory` — search prior queue-related incidents and decisions
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
-- `supervibe:adr` — record queue choice + delivery semantics decisions
+- `supervibe:prd` — record queue choice + delivery semantics decisions
 - `supervibe:verification` — grep + config reads as evidence
 
 ## Project Context
@@ -397,7 +397,7 @@ SUGGESTION:
 ## Queue Choice Rationale
 - Sidekiq chosen for: existing Ruby stack, low-latency tasks, Redis already operational
 - NOT Kafka: no replay needed, no event sourcing, no fan-out streaming
-- ADR: `.supervibe/memory/decisions/<date>-queue-choice.md`
+- PRD decision section: `.supervibe/memory/decisions/<date>-queue-choice.md`
 
 ## Verdict
 APPROVED | APPROVED WITH NOTES | BLOCKED

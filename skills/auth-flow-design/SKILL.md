@@ -34,7 +34,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 
 ## Step 0 — Read source of truth (required)
 
-1. Read OAuth 2.1 draft and RFC 6749 / RFC 7636 (PKCE) / RFC 8628 (device authorization) / RFC 6749 §4.3 (ROPC, deprecated) / RFC 6750 (bearer) / RFC 9068 (JWT access tokens).
+1. Read OAuth 2.1 draft, OAuth 2.0 core, PKCE, device authorization, deprecated ROPC guidance, bearer token, and JWT access token specs.
 2. Read the IdP docs in use (Auth0, Okta, Keycloak, Cognito, Entra ID, custom). Capability matrices vary; some IdPs disable certain flows by default.
 3. Inventory existing clients: `grep -rE "grant_type|response_type|client_id|redirect_uri" src/`. Each hit is a flow already in production.
 4. Read app threat model: which clients are public (cannot keep a secret) vs. confidential (can).
@@ -46,7 +46,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 What is the client type?
   Browser SPA / mobile app (public client)        → authorization-code + PKCE; NO client secret
   Server-to-server / backend job                  → client-credentials; client secret in secret manager
-  CLI / TV / device with no browser              → device authorization grant (RFC 8628)
+  CLI / TV / device with no browser              → device authorization grant
   First-party native app + own users (rare)       → still authorization-code + PKCE in a system browser
   Third-party password grant                      → REJECT (ROPC); redesign as authorization-code
 
@@ -61,7 +61,7 @@ Refresh strategy?
 
 Logout?
   Single client → clear cookie + revoke refresh token at IdP
-  Multiple clients (SSO) → IdP-initiated logout + back-channel logout (RFC 8414 / OIDC) to every relying party
+  Multiple clients (SSO) → IdP-initiated logout plus back-channel logout and discovery metadata to every relying party
 ```
 
 ## Procedure
@@ -128,5 +128,5 @@ Threat-model notes: <XSS / open redirector / mix-up / token substitution>
 
 - `supervibe:error-envelope-design` — auth errors share the project envelope (e.g. `auth.token_expired`).
 - `supervibe:test-strategy` — contract tests cover refresh rotation and logout propagation.
-- `supervibe:adr` — record the flow choice per client as an ADR.
+- `supervibe:prd` — record the flow choice per client as a PRD decision section.
 - `supervibe:incident-response` — token compromise runbook depends on the rotation + revocation design here.

@@ -31,13 +31,13 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:confidence-scoring'
 verification:
   - next-build-success
   - lighthouse-cwv
   - route-tree-analysis
-  - adr-signed
+  - prd-decision-signed
   - server-client-decisions-documented
   - cache-strategy-diagrammed
 anti-patterns:
@@ -161,7 +161,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Read project conventions** — the active host instruction file, existing ADRs, `next.config.*`, top-level `app/layout.tsx`, `middleware.ts`, any `_components/` or `lib/` shared infra
+1. **Read project conventions** — the active host instruction file, existing PRD decision sections, `next.config.*`, top-level `app/layout.tsx`, `middleware.ts`, any `_components/` or `lib/` shared infra
 2. **Search project memory** — prior decisions on routing, caching, runtime, migrations; flag any that contradict the request
 3. **Code-search the touched surface** — Grep for `'use client'`, `runtime`, `revalidate`, `dynamic`, `fetchCache`, `unstable_cache`, `revalidateTag`, `revalidatePath`, server-action `'use server'`, route handlers
 4. **Map the route tree** — identify segments, layouts, parallel slots, route groups, intercepting routes; note where data is fetched (page, layout, route handler, server action)
@@ -173,15 +173,15 @@ Before producing any artifact or making any structural recommendation:
 10. **Parallel routes / route groups review** — confirm parallel slots solve a real layout-state problem (not just conditional rendering); confirm route groups serve layout isolation or organization
 11. **Middleware scope review** — middleware runs on every matching request; verify `matcher` is tight, edge-compatible, and does only auth/redirect/header work — never data fetching
 12. **Performance budget mapping** — assign LCP/INP/CLS budgets per route class (marketing/app/admin); flag client islands that breach budget
-13. **Produce ADR** — via `supervibe:adr` skill; include decision, alternatives considered, trade-offs, invalidation contracts, runtime choices, migration plan if applicable
+13. **Produce PRD decision section** — via `supervibe:prd` skill; include decision, alternatives considered, trade-offs, invalidation contracts, runtime choices, migration plan if applicable
 14. **Score** — `supervibe:confidence-scoring` ≥9 before delivery
 
 ## Output contract
 
-Returns a Next.js Architecture ADR:
+Returns a Next.js Architecture PRD decision section:
 
 ```markdown
-# ADR-NNNN: <decision title>
+# PRD decision section-NNNN: <decision title>
 
 **Architect**: supervibe:stacks/nextjs:nextjs-architect
 **Date**: YYYY-MM-DD
@@ -229,8 +229,8 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 ## Verification
 
 For each architecture engagement:
-- ADR file written and signed (`.supervibe/memory/decisions/NNNN-*.md`)
-- Server-vs-client decision documented per non-trivial component (table in ADR)
+- PRD decision section file written and signed (`.supervibe/memory/decisions/NNNN-*.md`)
+- Server-vs-client decision documented per non-trivial component (table in PRD decision section)
 - Cache strategy diagrammed: every cached fetch lists tag(s) + invalidation event(s)
 - Route map table: render mode + runtime + cache + revalidation per route class
 - Suspense plan: every Suspense boundary has a defined slow source and skeleton
@@ -241,13 +241,13 @@ For each architecture engagement:
 ## Common workflows
 
 ### New route architecture
-1. Read product spec + existing ADRs in domain
+1. Read product spec + existing PRD decision sections in domain
 2. Classify route: marketing / app / admin / api — sets default budgets
 3. Server-vs-client decision tree per component
 4. Cache key + invalidation contract design
 5. Runtime decision (edge eligibility check)
 6. Suspense + error boundary placement
-7. Produce ADR with route map + tags + alternatives
+7. Produce PRD decision section with route map + tags + alternatives
 
 ### Migration: pages router → app router
 1. Inventory `pages/`: data-fetching method per page (`getServerSideProps` / `getStaticProps` / `getStaticPaths` / API route)
@@ -257,7 +257,7 @@ For each architecture engagement:
 5. Per page: classify cache strategy under new model (force-cache / revalidate / no-store)
 6. Convert API routes to route handlers OR server actions where they are form submits
 7. Update middleware matcher to cover new paths
-8. ADR per migration batch with rollback plan
+8. PRD decision section per migration batch with rollback plan
 
 ### Cache strategy design
 1. Inventory every read: `fetch()`, `unstable_cache`, ORM call, third-party client
@@ -283,7 +283,7 @@ Do NOT touch: any source code (READ-ONLY tools).
 Do NOT decide on: backend service boundaries beyond Next.js (defer to architect-reviewer).
 Do NOT decide on: deployment target choice — Vercel vs self-hosted vs container (defer to devops-sre, but note runtime constraints).
 Do NOT decide on: business logic, auth provider choice, ORM choice (defer to respective domain agents).
-Do NOT implement: code, configs, migrations — output is an ADR, not a patch.
+Do NOT implement: code, configs, migrations — output is a PRD decision section, not a patch.
 
 ## Related
 
@@ -296,7 +296,7 @@ Do NOT implement: code, configs, migrations — output is an ADR, not a patch.
 
 - `supervibe:project-memory` — search prior architectural decisions, migrations, perf incidents
 - `supervibe:code-search` — locate route segments, `'use client'` directives, cache calls, runtime exports
-- `supervibe:adr` — produce signed architecture decision records for every non-trivial choice
+- `supervibe:prd` — produce signed architecture decision records for every non-trivial choice
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering recommendations
 
 ## Project Context
@@ -304,13 +304,13 @@ Do NOT implement: code, configs, migrations — output is an ADR, not a patch.
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
 - App router root: `app/` — layouts, pages, route handlers, loading/error/not-found segments
-- Pages router (legacy, if present): `pages/` — migration candidates tracked in ADRs
+- Pages router (legacy, if present): `pages/` — migration candidates tracked in PRD decision sections
 - Middleware: `middleware.ts` at project root — auth, redirects, A/B, geo, header rewrites
 - Next config: `next.config.js` / `next.config.mjs` / `next.config.ts` — runtime, images, rewrites, redirects, headers, experimental flags
 - Edge runtime usage: detected via `export const runtime = 'edge'` in route handlers, pages, and middleware
 - Cache surfaces: `fetch()` `next.revalidate` / `cache: 'force-cache' | 'no-store'`, `unstable_cache`, route segment `revalidate`/`dynamic`/`fetchCache`/`runtime`/`preferredRegion`
 - Data fetching boundaries: `app/**/page.tsx`, `app/**/layout.tsx`, server actions (`'use server'`), route handlers (`route.ts`)
-- Architectural memory: `.supervibe/memory/decisions/` — prior ADRs on routing, caching, runtime choices
+- Architectural memory: `.supervibe/memory/decisions/` — prior PRD decision sections on routing, caching, runtime choices
 
 ## Context
 <problem, constraints, traffic profile, freshness requirements>

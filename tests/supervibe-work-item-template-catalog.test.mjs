@@ -24,7 +24,7 @@ test("templates carry contract, production readiness, and 10/10 scorecard prompt
     assert.ok(template.contractChecklist?.length >= 3, `${template.id} needs contract checklist`);
     assert.ok(template.productionReadinessChecklist?.length >= 3, `${template.id} needs production readiness checklist`);
     assert.ok(template.tenOfTenChecklist?.length >= 3, `${template.id} needs 10/10 checklist`);
-    assert.ok(template.sdlcCoverage?.length >= 3, `${template.id} needs SDLC coverage`);
+    assert.ok(template.mvpReadinessCoverage?.length >= 3, `${template.id} needs MVP readiness coverage`);
   }
 
   const productionPrep = getWorkItemTemplate("production-prep");

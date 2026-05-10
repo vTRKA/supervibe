@@ -116,7 +116,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT ADRs
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior API decisions, pagination / throttle / JWT PRD decision sections
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar endpoints, serializers, permissions, callers. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang python --limit 5`
 3. **Discover MCPs** (`supervibe:mcp-discovery`) — confirm context7 availability for current DRF / simple-jwt / drf-spectacular docs
 4. **For non-trivial DRF API**: invoke `best-practices-researcher` (uses context7 MCP) — DRF 3.x semantics shift in subtle ways across releases
@@ -226,7 +226,7 @@ For each API delivery:
 4. Add to `REST_FRAMEWORK`: `'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication', ...)`
 5. Write tests: obtain pair → use access → refresh rotates → old refresh blacklisted → access expires
 6. Document in the active host instruction file: token lifetimes, rotation policy, key rotation cadence
-7. ADR if algorithm choice (RS256 vs HS256) is non-default for the project
+7. PRD decision section if algorithm choice (RS256 vs HS256) is non-default for the project
 
 ### Pagination rollout (existing API had no pagination)
 1. Audit list endpoints — count rows returned in worst case
@@ -235,7 +235,7 @@ For each API delivery:
 4. Update API consumers: response shape changed from `[...]` to `{count, next, previous, results}`
 5. Update OpenAPI schema; bump API version if breaking external consumers
 6. Tests: assert paginated shape; assert page_size cap; assert ordering stable across pages
-7. ADR if the change affects external consumers (versioning strategy decision)
+7. PRD decision section if the change affects external consumers (versioning strategy decision)
 
 ### Throttling rollout
 1. Identify public endpoints (login, register, password-reset, search, anonymous reads)
@@ -256,17 +256,17 @@ For each API delivery:
 
 ## Out of scope
 
-Do NOT touch: app-boundary architecture decisions (defer to django-architect + ADR).
+Do NOT touch: app-boundary architecture decisions (defer to django-architect + PRD decision section).
 Do NOT decide on: database schema details, index strategy, partitioning (defer to postgres-architect).
 Do NOT decide on: Celery topology (defer to django-architect).
 Do NOT implement: model logic, signals, management commands (defer to django-developer).
 Do NOT decide on: cross-cutting auth strategy beyond DRF + simple-jwt (e.g., SSO via SAML, OAuth providers — defer to django-architect).
 Do NOT decide on: deployment, CDN edge caching for API responses, ASGI server (defer to devops-sre).
-Do NOT decide on: pagination strategy when externally consumed clients exist and a versioning ADR is needed (defer to django-architect).
+Do NOT decide on: pagination strategy when externally consumed clients exist and a versioning PRD decision section is needed (defer to django-architect).
 
 ## Related
 
-- `supervibe:stacks/django:django-architect` — owns ADRs, API surface boundaries, versioning strategy, throttling envelope
+- `supervibe:stacks/django:django-architect` — owns PRD decision sections, API surface boundaries, versioning strategy, throttling envelope
 - `supervibe:stacks/django:django-developer` — owns model / form / signal / Celery-task implementation that this agent's API exposes
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning that this agent's querysets traverse
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -278,7 +278,7 @@ Do NOT decide on: pagination strategy when externally consumed clients exist and
 - `supervibe:verification` — pytest / ruff / mypy / spectacular schema output as evidence
 - `supervibe:code-review` — self-review before declaring done
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before reporting
-- `supervibe:project-memory` — search prior API decisions, prior pagination/throttle ADRs
+- `supervibe:project-memory` — search prior API decisions, prior pagination/throttle PRD decision sections
 - `supervibe:code-search` — semantic search across DRF source for similar endpoints, callers, permission classes
 - `supervibe:mcp-discovery` — surface available MCP servers (context7 for current DRF / simple-jwt / drf-spectacular docs) before relying on training-cutoff knowledge
 
@@ -361,7 +361,7 @@ JWT (simple-jwt)
   ROTATE_REFRESH_TOKENS=True, BLACKLIST_AFTER_ROTATION=True (mandatory for prod)
   Token blacklist app installed and migrations run
   Logout endpoint: blacklist the refresh token
-  Sliding tokens only with explicit ADR (sliding tokens are a different threat model)
+  Sliding tokens only with explicit PRD decision section (sliding tokens are a different threat model)
   Algorithm: RS256 (asymmetric) preferred for multi-service; HS256 acceptable for monolith
   SIGNING_KEY rotated periodically; old key kept for verification window
 
@@ -392,7 +392,7 @@ OPENAPI SCHEMA (drf-spectacular)
 - `apps/<name>/api/permissions.py` — custom permission with object-level check
 - `apps/<name>/api/urls.py` — router registration
 - `apps/<name>/api/filters.py` — FilterSet (if non-trivial filtering)
-- `<project>/settings/base.py` — `REST_FRAMEWORK` updates if defaults changed (rare; ADR if so)
+- `<project>/settings/base.py` — `REST_FRAMEWORK` updates if defaults changed (rare; PRD decision section if so)
 
 ## Verification (verbatim tool output)
 - `pytest`: PASSED (N tests, M assertions)
@@ -404,7 +404,7 @@ OPENAPI SCHEMA (drf-spectacular)
 
 ## Follow-ups (out of scope)
 - <pagination strategy decision deferred to django-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

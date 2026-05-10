@@ -38,7 +38,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:systematic-debugging'
   - 'supervibe:confidence-scoring'
 verification:
@@ -48,7 +48,7 @@ verification:
   - capacity-model
   - cost-estimate
   - scale-headroom-calculated
-  - adr-signed
+  - prd-decision-signed
 anti-patterns:
   - single-region-tolerated
   - no-failure-mode-analysis
@@ -263,7 +263,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Cost estimate**: instance count × instance class × hours + bandwidth + storage + cross-region replication; produce monthly cost projection; compare to budget; flag if >120% budget
 11. **Vendor lock-in audit**: for each managed service chosen, document the eject path — how would we move off this service in 90 days if forced; if no eject path exists, justify acceptance of lock-in
 12. **Instrumentation plan**: for every component, list metrics emitted, alert thresholds, dashboard panels; "if you can't see it, you can't operate it"
-13. **Write ADR**: produce architecture decision record (decision, alternatives considered, failure modes, capacity model, cost, DR plan, eject path)
+13. **Write PRD decision section**: produce architecture decision record (decision, alternatives considered, failure modes, capacity model, cost, DR plan, eject path)
 14. **Score with confidence-scoring**: agent-output rubric ≥9 before sign-off; if below 9, identify gaps and iterate
 
 ## Output contract
@@ -271,7 +271,7 @@ Before producing any artifact or making any structural recommendation:
 Returns:
 
 ```markdown
-# Infrastructure ADR: <topology-name>
+# Infrastructure PRD decision section: <topology-name>
 
 **Architect**: supervibe:_ops:infrastructure-architect
 **Date**: YYYY-MM-DD
@@ -329,7 +329,7 @@ For each topology decision:
 - Cost estimate with monthly $ and comparison to budget
 - Eject path documented for every vendor-managed component
 - Instrumentation list (metrics, alerts, dashboards) per component
-- ADR written and signed (status = ACCEPTED with reviewer name)
+- PRD decision section written and signed (status = ACCEPTED with reviewer name)
 - Confidence-scoring ≥9 with rubric output attached
 
 ## Common workflows
@@ -341,7 +341,7 @@ For each topology decision:
 4. Walk decision tree per component (compute, store, cache, queue)
 5. Enumerate failure modes per chosen pattern
 6. Cost estimate vs budget
-7. Write ADR; obtain devops-sre review for operability
+7. Write PRD decision section; obtain devops-sre review for operability
 8. Hand off to devops-sre for IaC implementation
 
 ### Scaling event (capacity threshold breached)
@@ -349,7 +349,7 @@ For each topology decision:
 2. Identify bottleneck — single node, single shard, single region?
 3. Choose vertical-first if cheaper and headroom buys 6+ months; horizontal if vertical ceiling close
 4. Validate failure modes still hold under new shape (more nodes = more failure surface)
-5. Update capacity model and ADR
+5. Update capacity model and PRD decision section
 6. Plan rollout (canary, blue-green, shadow traffic) with devops-sre
 
 ### DR drill
@@ -358,7 +358,7 @@ For each topology decision:
 3. Trigger simulated failure (kill primary, fail region in DNS, etc.) in non-prod or controlled prod
 4. Time each runbook step against RTO target
 5. Document deviations (steps slower than expected, missing pre-conditions, broken automation)
-6. File post-drill report; update runbook; update ADR if topology gap discovered
+6. File post-drill report; update runbook; update PRD decision section if topology gap discovered
 7. Re-drill failed steps within 30 days
 
 ### Cost optimization
@@ -392,7 +392,7 @@ Do NOT decide on: schema or query design (defer to db-reviewer / postgres-archit
 
 - `supervibe:project-memory` — search prior infra decisions, incidents, capacity events
 - `supervibe:code-search` — locate infra-as-code definitions, runbook references, dashboard links
-- `supervibe:adr` — for permanent infra decisions (must produce ADR for any new topology)
+- `supervibe:prd` — for permanent infra decisions (must produce PRD decision section for any new topology)
 - `supervibe:systematic-debugging` — for failure-mode enumeration and post-incident root-cause work
 - `supervibe:confidence-scoring` — agent-output rubric, target ≥9 for production topology decisions
 
@@ -404,7 +404,7 @@ Do NOT decide on: schema or query design (defer to db-reviewer / postgres-archit
 - Runbooks: `.supervibe/artifacts/runbooks/`, `.supervibe/memory/runbooks/`, `RUNBOOK.md` — incident response procedures
 - Capacity dashboards: Grafana/Datadog/Cloudwatch links referenced in the active host instruction file
 - Topology diagrams: `docs/architecture/`, `docs/infra/` — current-state and target-state
-- ADR archive: `.supervibe/artifacts/adr/`, `.supervibe/memory/decisions/` — prior infra decisions and rationale
+- PRD decision section archive: `.supervibe/artifacts/prd/`, `.supervibe/memory/decisions/` — prior infra decisions and rationale
 - Incident archive: `.supervibe/memory/incidents/` — past outages, post-mortems, lessons learned
 - SLO/SLI definitions: `.supervibe/artifacts/slo/`, `slo.yml` — uptime targets, latency budgets, error budgets
 - Cost reports: monthly cloud bills, FinOps dashboards (referenced, not stored)

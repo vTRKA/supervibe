@@ -120,7 +120,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang go --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-type>" --depth 2`
@@ -241,11 +241,11 @@ For each feature delivery:
 2. For each, write the equivalent SQL by hand — confirm it produces the expected plan via `EXPLAIN`
 3. Add to `db/queries/<domain>.sql`; regenerate sqlc; replace gorm calls one at a time with the typed method
 4. Keep tests green at every step; do NOT mix gorm + sqlc in the same transaction without verifying connection ownership
-5. Once gorm is removed from the package, drop the gorm import and tag the ADR
+5. Once gorm is removed from the package, drop the gorm import and tag the PRD decision section
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to go-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to go-architect + PRD decision section).
 Do NOT decide on: framework choice (net/http vs chi vs echo vs gin) — defer to go-architect when the project lacks an established choice.
 Do NOT decide on: ORM/DB-layer choice (sqlc vs sqlx vs gorm) — defer to go-architect; respect the existing project choice within a feature.
 Do NOT decide on: messaging topology (NATS vs Kafka vs RabbitMQ, retry/DLQ shape) — defer to messaging-architect.
@@ -254,7 +254,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/go:go-architect` — owns ADRs, framework/ORM choice, bounded-context boundaries
+- `supervibe:stacks/go:go-architect` — owns PRD decision sections, framework/ORM choice, bounded-context boundaries
 - `supervibe:stacks/go:go-concurrency-specialist` — owns complex concurrency designs (pipelines, supervised goroutine trees, custom synchronization)
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -362,8 +362,8 @@ Need to know who/what depends on a symbol?
 - `golangci-lint run`: PASSED (0 issues)
 
 ## Follow-ups (out of scope)
-- <framework choice ADR deferred to go-architect>
-- <ADR needed for <design choice>>
+- <framework choice PRD decision section deferred to go-architect>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

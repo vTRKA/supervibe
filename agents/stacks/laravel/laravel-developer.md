@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang php --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -256,7 +256,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to laravel-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to laravel-architect + PRD decision section).
 Do NOT decide on: queue topology, supervisor count, Horizon balancing strategy (defer to queue-worker-architect).
 Do NOT decide on: complex Eloquent modeling decisions — STI vs MTI, polymorphic-vs-pivot, soft-delete cascade strategy (defer to eloquent-modeler).
 Do NOT decide on: Postgres-specific schema choices — partial indexes, partitions, generated columns, JSONB indexing strategy (defer to postgres-architect).
@@ -265,7 +265,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/laravel:laravel-architect` — owns ADRs, bounded-context boundaries, cross-module contracts
+- `supervibe:stacks/laravel:laravel-architect` — owns PRD decision sections, bounded-context boundaries, cross-module contracts
 - `supervibe:stacks/laravel:queue-worker-architect` — owns queue topology, Horizon supervisors, retry/backoff policy
 - `supervibe:stacks/laravel:eloquent-modeler` — owns complex modeling (inheritance, polymorphism, pivots, scopes design)
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning, performance
@@ -373,7 +373,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <queue topology decision deferred to queue-worker-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

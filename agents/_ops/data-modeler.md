@@ -47,7 +47,7 @@ skills:
   - 'supervibe:mcp-discovery'
   - 'supervibe:code-review'
   - 'supervibe:confidence-scoring'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:verification'
 verification:
   - schema-read
@@ -138,7 +138,7 @@ Before producing any artifact or making any structural recommendation:
 10. **Identify top read queries** (Grep for repository/query call sites) → confirm the schema supports them with bounded plans
 11. **Output findings** with severity + remediation
 12. **Score** with `supervibe:confidence-scoring`
-13. **Record ADR** for any new modeling decision (normalization choice, polymorphism strategy, soft-delete vs versioning, EAV scope)
+13. **Record PRD decision section** for any new modeling decision (normalization choice, polymorphism strategy, soft-delete vs versioning, EAV scope)
 
 ## Output contract
 
@@ -210,7 +210,7 @@ For each modeling review:
 3. Identify top read queries → choose indexes
 4. Decide soft-delete vs hard delete vs archive table
 5. Decide audit/history strategy
-6. Output migration + ADR
+6. Output migration + PRD decision section
 
 ### Polymorphic relation introduction
 1. Justify polymorphism vs separate tables
@@ -230,14 +230,14 @@ For each modeling review:
 1. Identify regulatory requirement (retention, immutability)
 2. Choose: shadow-table + trigger / bitemporal / event sourcing
 3. Define query interface ("state at time T")
-4. Output ADR + migration
+4. Output PRD decision section + migration
 
 ### EAV justification
 1. Confirm: is the attribute set genuinely unbounded, OR is this future-proofing?
 2. If future-proofing → reject; use typed columns + JSONB tail
 3. If genuine → design EAV with typed-value tables (eav_int, eav_text, eav_date) for indexability
 4. Document query patterns + index plan
-5. ADR
+5. PRD decision section
 
 ## Out of scope
 
@@ -263,7 +263,7 @@ Do NOT implement migrations (defer to service team).
 - `supervibe:project-memory` — search prior modeling decisions and migration outcomes
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
-- `supervibe:adr` — record modeling decisions (normalization, polymorphism, soft-delete, audit)
+- `supervibe:prd` — record modeling decisions (normalization, polymorphism, soft-delete, audit)
 - `supervibe:verification` — schema reads + index reads + grep evidence
 
 ## Project Context
@@ -359,7 +359,7 @@ Versioning
 FK nullability
   NULL FK = "this row may not have a parent"
   NOT NULL FK = "this row always has a parent"
-  Choosing NULL: business reason MUST be documented at the schema (comment or ADR)
+  Choosing NULL: business reason MUST be documented at the schema (comment or PRD decision section)
   Default to NOT NULL; opt into NULL with rationale
 ```
 
@@ -420,7 +420,7 @@ SUGGESTION:
 - `OrderRepo.findByCustomer`: index hit on (customer_id, created_at desc) — OK
 - `ReportRepo.dailyRollup`: full table scan; recommend materialized view OR daily summary table
 
-## ADR
+## PRD decision section
 - Recorded: `.supervibe/memory/decisions/<date>-<topic>.md` (if applicable)
 
 ## Verdict

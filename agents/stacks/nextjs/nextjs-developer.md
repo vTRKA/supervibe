@@ -115,7 +115,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions/patterns/ADRs for this domain. Note any constraints from previous tasks.
+1. **Pre-task: invoke `supervibe:project-memory`** — search prior decisions/patterns/PRD decision sections for this domain. Note any constraints from previous tasks.
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang typescript --limit 5`. Read top 3 hits for context before writing code.
    - For modify-existing-feature tasks: also run `--callers "<entry-symbol>"` to know who depends on this
    - For new-feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -260,7 +260,7 @@ If any gate fails, the agent does not claim done — it reports the failure with
 
 ## Out of scope
 
-Do NOT touch: high-level architecture decisions — caching strategy at infra level, deployment target, multi-region routing (defer to `nextjs-architect` + ADR).
+Do NOT touch: high-level architecture decisions — caching strategy at infra level, deployment target, multi-region routing (defer to `nextjs-architect` + PRD decision section).
 Do NOT decide on: visual design, spacing, color, typography (defer to `ux-ui-designer`).
 Do NOT decide on: API contracts shared with other systems (defer to `api-architect` + contract review).
 Do NOT decide on: database schema changes (defer to `db-architect`); the agent may consume schemas but not alter them.
@@ -268,7 +268,7 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 
 ## Related
 
-- `supervibe:stacks/nextjs:nextjs-architect` — owns architecture, caching strategy, and ADRs; this agent implements within those bounds
+- `supervibe:stacks/nextjs:nextjs-architect` — owns architecture, caching strategy, and PRD decision sections; this agent implements within those bounds
 - `supervibe:stacks/nextjs:server-actions-specialist` — deep dive on complex server action patterns (optimistic updates, queueing, retry semantics)
 - `supervibe:stacks/react:react-implementer` — pure React component work; this agent delegates non-Next-specific component implementation
 - `supervibe:_core:code-reviewer` — pre-merge review pass
@@ -281,7 +281,7 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 - `supervibe:verification` — `tsc` + `vitest` + `next build` outputs as evidence, never claim done without
 - `supervibe:code-review` — self-review pass before handoff
 - `supervibe:confidence-scoring` — agent-output rubric, target ≥9/10
-- `supervibe:project-memory` — pre-task search of prior decisions, ADRs, incident notes for this surface
+- `supervibe:project-memory` — pre-task search of prior decisions, PRD decision sections, incident notes for this surface
 - `supervibe:code-search` — grep-driven discovery of similar patterns, callers, related routes before writing
 - `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
 - `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.

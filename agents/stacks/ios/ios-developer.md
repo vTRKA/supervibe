@@ -116,7 +116,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface ADRs (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this feature. Surface PRD decision sections (MVVM vs TCA, ObservableObject vs @Observable, Combine vs async/await) before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar views, view models, services. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang swift --limit 5`. Read top 3 hits for context before writing code
    - For modify-existing-feature: also run `--callers "<entry-symbol>"` to know who depends on this view/viewmodel/service
    - For new feature touching shared code: `--neighbors "<related-class>" --depth 2`
@@ -251,7 +251,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: cross-feature architecture decisions (MVVM vs TCA vs VIPER org-wide) — defer to ios-architect + ADR.
+Do NOT touch: cross-feature architecture decisions (MVVM vs TCA vs VIPER org-wide) — defer to ios-architect + PRD decision section.
 Do NOT decide on: app modularization strategy (single target vs SPM-per-feature vs Tuist-managed) — defer to ios-architect.
 Do NOT decide on: design system / theming strategy (custom design tokens, semantic colors, custom controls library) — defer to `supervibe:_design:design-system-architect`.
 Do NOT decide on: persistence framework choice (CoreData vs SwiftData vs GRDB vs Realm) — defer to ios-architect.
@@ -261,7 +261,7 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Related
 
-- `supervibe:stacks/ios:ios-architect` — owns ADRs, modularization, architecture standardization
+- `supervibe:stacks/ios:ios-architect` — owns PRD decision sections, modularization, architecture standardization
 - `supervibe:stacks/flutter:flutter-developer` — owns Dart side of platform channels when in a Flutter app
 - `supervibe:stacks/android:android-developer` — peer for cross-platform parity discussions
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -363,7 +363,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <state-mgmt change across modules deferred to ios-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

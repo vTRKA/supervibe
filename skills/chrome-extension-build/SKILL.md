@@ -48,7 +48,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 
 1. Read the project's `manifest.json` (or `manifest.json.tpl` if generated). If absent → STOP and tell the user to run `chrome-extension-architect` first.
 2. Read `package.json` for current scripts + devDependencies (which bundler is wired, if any).
-3. Read `.supervibe/memory/decisions/` for any past bundler ADR. If one exists, the choice is locked unless an explicit re-evaluation ADR is written.
+3. Read `.supervibe/memory/decisions/` for any past bundler PRD decision section. If one exists, the choice is locked unless an explicit re-evaluation PRD decision section is written.
 4. Read `vite.config.*` / `wxt.config.*` / `plasmo.config.*` if present.
 
 ## Decision tree — bundler
@@ -60,11 +60,11 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 | React-heavy team, want Next.js-like file-based routing for popup/options | **Plasmo** | Tightest React DX. Cost: heaviest framework, more abstraction over manifest |
 | Pure vanilla JS, no bundler, fast iteration | **No bundler — copy `extension/` directly** | Minimal moving parts. Fine for ≤5 files. Loses TS, HMR, tree-shaking |
 
-When changing bundler on an existing project, write the migration ADR FIRST. Document the pain point being solved.
+When changing bundler on an existing project, write the migration PRD decision section FIRST. Document the pain point being solved.
 
 ## Procedure
 
-1. **Confirm bundler choice.** If a `.supervibe/memory/decisions/<date>-extension-bundler.md` ADR exists, follow it. Otherwise propose one with the decision tree above and wait for user "yes".
+1. **Confirm bundler choice.** If a `.supervibe/memory/decisions/<date>-extension-bundler.md` PRD decision section exists, follow it. Otherwise propose one with the decision tree above and wait for user "yes".
 
 2. **Install bundler + tooling.**
    ```bash
@@ -129,7 +129,7 @@ Returns:
 
 ```
 === Chrome Extension Build Pipeline ===
-Bundler:        <choice>            ADR: <path or "ad-hoc — recommend writing one">
+Bundler:        <choice>            PRD decision section: <path or "ad-hoc — recommend writing one">
 Scripts wired:  dev / build / lint / typecheck / test / package
 Build output:   dist/  (size: <KB>)
 web-ext lint:   <warnings count>    (must be 0 to ship)
@@ -142,7 +142,7 @@ Rubric:         scaffold
 
 ## Guard rails
 
-- DO NOT switch bundler mid-project without an ADR. Bundler swaps cascade through CI, dev experience, and team muscle memory.
+- DO NOT switch bundler mid-project without a PRD decision section. Bundler swaps cascade through CI, dev experience, and team muscle memory.
 - DO NOT skip `web-ext lint --warnings-as-errors`. CWS catches the same warnings on upload and rejects with worse error messages.
 - DO NOT ship placeholder icons. CWS auto-rejection is faster than any review feedback.
 - DO NOT inline scripts into HTML pages. CSP `script-src 'self'` is non-negotiable for trust score.

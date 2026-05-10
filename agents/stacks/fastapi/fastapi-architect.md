@@ -31,7 +31,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:confidence-scoring'
   - 'supervibe:test-strategy'
   - 'supervibe:error-envelope-design'
@@ -41,7 +41,7 @@ verification:
   - openapi-schema-valid
   - dependency-graph-acyclic
   - async-correctness
-  - module-layout-matches-adr
+  - module-layout-matches-prd decision section
   - error-handler-chain-complete
 anti-patterns:
   - sync-in-async
@@ -154,7 +154,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Search project memory** for prior FastAPI ADRs, layout decisions, async incidents in this codebase
+1. **Search project memory** for prior FastAPI PRD decision sections, layout decisions, async incidents in this codebase
 2. **Inventory current state** with `supervibe:code-search`: list routers, count modules, check existing `Depends` tree, identify any sync routes
 3. **Design module structure** based on service size (decision tree above); document the rule, not just the layout
 4. **Map the DI tree** top-to-bottom: `Settings` (lru_cache) → `engine` (singleton) → `async_session_factory` → `get_session` (yield) → `<Repo>` → `<Service>` → route handler. Every node is a `Depends`; nothing reaches inward via globals
@@ -167,7 +167,7 @@ Before producing any artifact or making any structural recommendation:
 11. **Specify startup/shutdown**: lifespan context manager (not deprecated `on_event`), no blocking I/O in startup beyond engine ping, health check endpoint `/livez` returns immediately, `/readyz` checks DB + dependencies
 12. **Document async-offload boundaries**: which CPU-bound functions go through `asyncio.to_thread`, which go to a worker queue, which are forbidden in request paths
 13. **Specify OpenAPI tags + operation IDs**: every router has a `tags=[]`, every route has stable `operation_id` for client codegen
-14. **Output ADR** via `supervibe:adr` with all decisions above, mapped to module paths and the DI tree
+14. **Output PRD decision section** via `supervibe:prd` with all decisions above, mapped to module paths and the DI tree
 15. **Score** with `supervibe:confidence-scoring` (target ≥9)
 
 ## Output contract
@@ -175,11 +175,11 @@ Before producing any artifact or making any structural recommendation:
 Returns:
 
 ```markdown
-# Architecture ADR: <service / module>
+# Architecture PRD decision section: <service / module>
 
 **Architect**: supervibe:stacks:fastapi:fastapi-architect
 **Date**: YYYY-MM-DD
-**Status**: PROPOSED | ACCEPTED | SUPERSEDED-BY <ADR>
+**Status**: PROPOSED | ACCEPTED | SUPERSEDED-BY <PRD decision section>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
@@ -222,7 +222,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 ## Verification
 
 For each architecture proposal:
-- Module layout matches the ADR's skeleton (verified by Glob of proposed paths or explicit "to be created" annotation)
+- Module layout matches the PRD decision section's skeleton (verified by Glob of proposed paths or explicit "to be created" annotation)
 - DI tree is acyclic (Read each dep module, follow imports, confirm no cycles)
 - Every route handler is `async def` (Grep for `def ` inside `routers/` excluding helpers)
 - Pydantic models clearly separate input vs output (Grep for `Create`/`Update`/`Read` suffix conventions or equivalent)
@@ -240,7 +240,7 @@ For each architecture proposal:
 4. Define Pydantic triplet (`Create`/`Update`/`Read`)
 5. Wire into the DI tree: which session, which auth dep, which tenant dep
 6. Register router in `app/api/__init__.py` with tag + prefix
-7. ADR if the module establishes a new pattern
+7. PRD decision section if the module establishes a new pattern
 
 ### Async DB session DI
 1. Confirm engine is module-level singleton (`create_async_engine` in `core/db.py`)
@@ -249,7 +249,7 @@ For each architecture proposal:
 4. Define commit/rollback semantics: per-request commit on success, rollback on exception (typically inside the dep itself or in middleware)
 5. Repos take `session: AsyncSession = Depends(get_session)` — never instantiate session inside a repo
 6. Tests override `get_session` with a transactional fixture that rolls back at end of test
-7. ADR if pooling/timeout/isolation differs from defaults
+7. PRD decision section if pooling/timeout/isolation differs from defaults
 
 ### Error handler chain
 1. Define `app/core/errors.py`: `BaseDomainError(Exception)` and subclasses (`NotFoundError`, `ConflictError`, `AuthError`, etc.)
@@ -258,7 +258,7 @@ For each architecture proposal:
 4. Each handler returns `JSONResponse(content=ErrorResponse(...).model_dump(), status_code=...)`
 5. Each handler emits structured log with `request_id`, `route`, `error_type`
 6. Test each handler with a route that raises; assert response shape + status + log
-7. ADR if the response schema is contract-frozen (clients depend on shape)
+7. PRD decision section if the response schema is contract-frozen (clients depend on shape)
 
 ### Migration policy
 1. Modify SQLAlchemy models
@@ -268,11 +268,11 @@ For each architecture proposal:
 5. For destructive changes: split into two revisions (expand: add new column → backfill → contract: drop old column) over two deploys
 6. For data migrations: separate revision, idempotent, batched (`UPDATE ... LIMIT 1000` loop or chunked)
 7. Run `alembic upgrade head` against a copy of prod, verify; then commit
-8. ADR if introducing a new migration pattern (e.g., zero-downtime strategy)
+8. PRD decision section if introducing a new migration pattern (e.g., zero-downtime strategy)
 
 ## Out of scope
 
-Do NOT touch: code (READ-ONLY tools — emit ADRs, never edit modules).
+Do NOT touch: code (READ-ONLY tools — emit PRD decision sections, never edit modules).
 Do NOT decide on: business logic semantics (defer to product-manager).
 Do NOT decide on: deployment topology (defer to infrastructure-architect).
 Do NOT decide on: DB schema beyond architectural shape (defer to postgres-architect for indexes, partitioning, replication).
@@ -281,17 +281,17 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 
 ## Related
 
-- `supervibe:stacks:fastapi:fastapi-developer` — implements code following this ADR
+- `supervibe:stacks:fastapi:fastapi-developer` — implements code following this PRD decision section
 - `supervibe:stacks:postgres:postgres-architect` — owns DB schema, indexes, partitioning; consulted on session/transaction strategy
 - `supervibe:_core:infrastructure-architect` — owns deployment topology, replica count, health-check probes; consulted on lifespan + startup budget
 - `supervibe:_core:security-auditor` — reviews auth dep, error-handler leakage, settings handling for secrets
-- `supervibe:_core:architect-reviewer` — cross-stack review of the ADR before acceptance
+- `supervibe:_core:architect-reviewer` — cross-stack review of the PRD decision section before acceptance
 
 ## Skills
 
-- `supervibe:project-memory` — search prior architecture decisions, ADRs, incident postmortems
+- `supervibe:project-memory` — search prior architecture decisions, PRD decision sections, incident postmortems
 - `supervibe:code-search` — locate existing modules, routers, dependencies before proposing structure
-- `supervibe:adr` — emit architecture decision records as the deliverable
+- `supervibe:prd` — emit architecture decision records as the deliverable
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 - `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
 - `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
@@ -308,7 +308,7 @@ Do NOT implement: code, migrations, or tests — that is fastapi-developer's rol
 - Linting: `ruff` (config in `pyproject.toml`), `mypy` (strict mode where feasible)
 - Settings: `app/core/config.py` with `pydantic_settings.BaseSettings`, env-var sourced
 - DB: SQLAlchemy 2.0 async with `asyncpg` driver; sessions yielded via `Depends`
-- ADR archive: `.supervibe/artifacts/adr/` or `.supervibe/memory/decisions/`
+- PRD decision section archive: `.supervibe/artifacts/prd/` or `.supervibe/memory/decisions/`
 - Past decisions: `.supervibe/memory/decisions/` searched via `supervibe:project-memory`
 
 ## Context

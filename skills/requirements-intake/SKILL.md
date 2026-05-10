@@ -188,7 +188,7 @@ Required sections:
 7. **Scope Safety Gate**
 8. **Stakeholders**
 9. **Open questions** (≥3)
-10. **Suggested next step**: brainstorm / PRD / ADR / direct implementation
+10. **Suggested next step**: brainstorm / PRD / PRD decision section / direct implementation
 
 ## Anti-patterns
 
@@ -232,7 +232,7 @@ Required sections:
 3. Heavy on constraints (existing systems, deploy windows)
 4. Success criteria operational (time saved, error rate)
 5. Open questions short (less ambiguity)
-6. Suggest next: ADR or direct plan
+6. Suggest next: PRD decision section or direct plan
 
 ## Verification
 
@@ -249,7 +249,7 @@ Required sections:
 
 - `supervibe:brainstorming` — successor when intake reveals exploration needed
 - `supervibe:prd` — successor when intake is well-defined enough for product spec
-- `supervibe:adr` — successor when intake is purely architectural
+- `supervibe:prd` — successor when intake is purely architectural
 - `supervibe:_product:product-manager` — collaborator
 - `supervibe:_product:systems-analyst` — collaborator on ACs
 - `supervibe:explore-alternatives` — for tradeoff matrix when multiple paths exist
@@ -273,7 +273,7 @@ Intake notes must be **scannable in 60 seconds** by someone who wasn't in the co
 - TL;DR at top (3 bullets max)
 - Personas / constraints / success in tables (not prose)
 - Open questions as numbered list (easier to reply: "1: yes, 2: no, 3: skip")
-- Suggest-next-step is a single decisive sentence — not "perhaps consider one of brainstorm/PRD/ADR"
+- Suggest-next-step is a single decisive sentence — not "perhaps consider one of brainstorm/PRD/PRD decision section"
 
 A reader who skips the body and reads only TL;DR + Suggest-next-step should still get the right action.
 

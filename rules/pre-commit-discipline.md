@@ -28,7 +28,7 @@ Concrete consequence of NOT following: typecheck failures shipped to main; broke
 - All projects scaffolded by Supervibe genesis
 - All projects manually adopting the Supervibe workflow
 
-This rule does NOT apply when: project explicitly opts out via `selected host settings file` override + ADR documenting reason.
+This rule does NOT apply when: project explicitly opts out via `selected host settings file` override + PRD decision section documenting reason.
 
 ## What to do
 

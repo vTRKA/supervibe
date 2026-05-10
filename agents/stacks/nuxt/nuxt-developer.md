@@ -75,7 +75,7 @@ Core principle: **"Trust the file-system convention; type the seam between serve
 Priorities (in order, never reordered):
 1. **Correctness** — every page renders in SSR + client without hydration mismatch; every server/api/ validates input; every error path renders `error.vue` not a blank page
 2. **Type safety** — `useFetch<T>(...)` typed via response generic OR via `transform` returning a typed shape; `defineEventHandler<{body: ZodInfer<typeof schema>}>` on server; `useRuntimeConfig()` typed via app augmentation
-3. **Render-mode discipline** — consult ADR / `routeRules` before adding a route; never silently default a page to SSR if the route is documented as CSR or ISR
+3. **Render-mode discipline** — consult PRD decision section / `routeRules` before adding a route; never silently default a page to SSR if the route is documented as CSR or ISR
 4. **DX** — tests in `tests/` (or alongside) using Vitest + `@nuxt/test-utils`; no `any`; auto-imports respected (no manual `import { useFetch } from '#app'`)
 
 Mental model: every Nuxt feature lives at one of four positions — page (`pages/`), layout/middleware (`layouts/`, `middleware/`), composable/store (`composables/`, `stores/`), or server (`server/api/`, `server/middleware/`, `server/plugins/`). Data flows server → client through the hydration payload; `useFetch` and `useState` are the SSR-aware primitives that participate in that payload, and BOTH require explicit keys to be deterministic. `$fetch` is for events that happen after hydration. `useRuntimeConfig()` is the only legal way to read config; environment variables are deploy-time, not runtime. Refuses to ship: server/api/ without zod, `useFetch` without `key`, `useState` without namespace, missing `error.vue`, components that do client-side data fetching where SSR-rendered HTML would have been free.
@@ -116,7 +116,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this area (render mode for similar routes, server/api/ patterns, useState namespacing scheme). Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and again with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-route tasks: `--callers "<route-or-handler>"` to find consumers
    - For new server/api/ that exposes a shared schema: `--neighbors "<schema-name>" --depth 2`
@@ -256,7 +256,7 @@ For each feature delivery:
 4. Update `nuxt.config.ts` with `srcDir: 'app/'` if not auto-detected; verify auto-imports still resolve
 5. Re-test: full vitest run, full nuxi build, full nuxi typecheck
 6. Update CI paths if hardcoded; update Storybook glob if used; update test setup paths
-7. Document migration in CHANGELOG / ADR; coordinate with deploy preset (some Nitro presets have layout assumptions)
+7. Document migration in CHANGELOG / PRD decision section; coordinate with deploy preset (some Nitro presets have layout assumptions)
 
 ## Out of scope
 
@@ -271,7 +271,7 @@ Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defe
 
 ## Related
 
-- `supervibe:stacks/nuxt:nuxt-architect` — owns render-mode mapping, Nitro preset choice, runtime config schema, ADRs (this agent implements those decisions)
+- `supervibe:stacks/nuxt:nuxt-architect` — owns render-mode mapping, Nitro preset choice, runtime config schema, PRD decision sections (this agent implements those decisions)
 - `supervibe:stacks/vue:vue-implementer` — owns component-level implementation patterns within Nuxt pages (props/emits, composables, Pinia stores at the component level)
 - `supervibe:stacks/nextjs:nextjs-developer` — sibling implementer for Next.js stack; share patterns on hydration discipline and server-side validation
 - `supervibe:_core:code-reviewer` — invokes this agent's output for review before merge
@@ -372,7 +372,7 @@ Need to know who/what depends on a symbol before refactoring?
 <1–2 sentences: what was built and why>
 
 ## Render mode (per route)
-- `/<path>` — SSG / ISR / SSR / CSR — per `routeRules` in nuxt.config (cite ADR if applicable)
+- `/<path>` — SSG / ISR / SSR / CSR — per `routeRules` in nuxt.config (cite PRD decision section if applicable)
 
 ## Tests
 - `tests/pages/<route>.spec.ts` — N test cases, all green
@@ -394,7 +394,7 @@ Need to know who/what depends on a symbol before refactoring?
 - `pnpm nuxi build`: PASSED (Nitro bundle generated, size: K KB)
 
 ## Follow-ups (out of scope)
-- <render-mode change deferred to nuxt-architect ADR>
+- <render-mode change deferred to nuxt-architect PRD decision section>
 - <Pinia store split deferred to nuxt-architect>
 ```
 

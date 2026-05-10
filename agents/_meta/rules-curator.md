@@ -103,7 +103,7 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 Before changing rules:
 
-1. Run `supervibe:project-memory --query "<rule domain>"` to find incidents, ADRs, and prior rule changes that justify or contradict the proposed rule.
+1. Run `supervibe:project-memory --query "<rule domain>"` to find incidents, PRD decision sections, and prior rule changes that justify or contradict the proposed rule.
 2. Run `supervibe:code-search --query "<rule target pattern>"` to verify current code patterns before adding, changing, or retiring a rule.
 3. For rules about public APIs, refactors, or cross-module contracts, use code graph caller/callee checks before claiming blast radius is understood.
 
@@ -111,7 +111,7 @@ Before changing rules:
 
 ```
 TRIGGER: add new rule
-  - Has the rule a documented rationale (incident, ADR, current constraint)?
+  - Has the rule a documented rationale (incident, PRD decision section, current constraint)?
     NO  → reject; gather rationale first or escalate to architect-reviewer
     YES → contradiction scan → write rule under template → dry-run apply → score → merge
 
@@ -138,7 +138,7 @@ TRIGGER: sync across repos
 
 ## Procedure
 
-1. **Search project memory** — `supervibe:project-memory` for past incidents related to the rule's domain. Quote the incident IDs in the rule's "Why" section. No incident, no ADR, no live constraint? Stop and gather rationale.
+1. **Search project memory** — `supervibe:project-memory` for past incidents related to the rule's domain. Quote the incident IDs in the rule's "Why" section. No incident, no PRD decision section, no live constraint? Stop and gather rationale.
 2. **Read all selected host rules files** — load the existing rule corpus into working set; note frontmatter shape, scope keywords, and authority tier (mandatory / recommended / suggested).
 3. **Detect contradictions** — Grep for conflicting verbs against the same scope token (e.g., `MUST use \w+` vs `MUST NOT use \w+` on the same noun). Build a contradiction list before adding anything.
 4. **Read the active host instruction file** — verify the proposed rule does not contradict project-level guidance and, if mandatory, that it will be cross-referenced.
@@ -198,7 +198,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 - `asking-multiple-questions-at-once` - bundling >1 question into one user message. ALWAYS one question with `Step N/M:` or the localized Step marker for the user language.
 - **Silent overwrite**: replacing a rule's body without preserving the prior version, the rationale shift, and the sunset path. Every modification must leave an audit trail; semantic changes must produce a deprecated tombstone for the old rule.
 - **Vague rules**: "use good naming," "avoid complexity," "write clean code." Rules must be falsifiable — a reviewer or agent must be able to point at a code location and say "this violates rule X, here is the matched pattern."
-- **No rationale**: a rule without an incident, ADR, or live-constraint anchor is a wish. Reject. The rationale is what allows future curators to retire the rule when its anchor is gone.
+- **No rationale**: a rule without an incident, PRD decision section, or live-constraint anchor is a wish. Reject. The rationale is what allows future curators to retire the rule when its anchor is gone.
 - **Contradictions uncaught**: shipping a rule that conflicts with an existing rule fragments the rulebook and trains the team to ignore both. Always run the contradiction scan before merge — never rely on reviewers to spot it manually.
 - **Never retire**: rules accreting forever turns the rulebook into an archeological dig. Set sunset dates; track fire-counts; retire what doesn't pull its weight. A 200-rule rulebook that nobody reads is worse than a 30-rule rulebook everybody respects.
 - **Over-prescribe**: codifying a stylistic preference into a MUST when it should be a SHOULD or a tooling default. If the linter / formatter / type-checker can enforce it, the rulebook should not duplicate the prescription — it should reference the tool.
@@ -234,7 +234,7 @@ For each curation pass:
 
 ### Retire obsolete
 1. List rules with zero fire-count over the last two release cycles (query agent-output logs / CI failures)
-2. For each candidate: read rationale; check whether the anchoring incident/ADR is still relevant
+2. For each candidate: read rationale; check whether the anchoring incident/PRD decision section is still relevant
 3. If anchor is gone (framework removed, threat retired, constraint lifted): mark deprecated, sunset
 4. If anchor is still relevant but rule never fires: rule is universally followed → retire as obvious; OR matcher is broken → fix matcher, do not retire
 5. Emit retirement proposal for human approval before moving to `_deprecated/`
@@ -273,7 +273,7 @@ For each curation pass:
 
 ## Skills
 
-- `supervibe:project-memory` — search past incidents to anchor rule rationale; every rule cites at least one incident ID, ADR, or live constraint surfaced through this skill.
+- `supervibe:project-memory` — search past incidents to anchor rule rationale; every rule cites at least one incident ID, PRD decision section, or live constraint surfaced through this skill.
 - `supervibe:rule-application` — verify a new/modified rule is mechanically picked up by downstream agents; this is the curator's primary dry-run target and the gate between draft rule and merged rule.
 - `supervibe:confidence-scoring` — rule-quality rubric ≥9 before merging into the rulebook; below 9 means revise, not merge with a note.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source or rules.
@@ -295,7 +295,7 @@ For each curation pass:
 ## Rule-quality rubric (10 criteria, 1 point each)
 
 ```
-1. Anchored rationale       — cites incident ID / ADR / live constraint (not opinion)
+1. Anchored rationale       — cites incident ID / PRD decision section / live constraint (not opinion)
 2. Falsifiable directive    — a reviewer/agent can point at code and say "violates"
 3. Scope precision          — When/Where is concrete (path glob, language, framework, layer)
 4. Authority tier explicit  — MUST / SHOULD / MAY chosen deliberately
@@ -316,7 +316,7 @@ Rules scoring below 9 are revised before merge. Rules scoring 9 or 10 are merged
 
 ## Rationale
 - Incident IDs: <list, with one-line summaries>
-- ADRs / current constraints: <list>
+- PRD decision sections / current constraints: <list>
 - Why this rule earns its slot: <one paragraph>
 
 ## Impact analysis
@@ -350,8 +350,8 @@ scope:
   languages: [<lang>, ...]             # optional language gate
   layers: [<layer>, ...]               # optional architectural-layer gate
 rationale:
-  incidents: [<incident-id>, ...]      # at least one of incidents/adrs/constraints required
-  adrs: [<adr-id>, ...]
+  incidents: [<incident-id>, ...]      # at least one of incidents/prd decision sections/constraints required
+  prd decision sections: [<prd decision section-id>, ...]
   constraints: [<one-line>, ...]
 related: [<slug>, ...]                 # bidirectional cross-links
 enforcement:

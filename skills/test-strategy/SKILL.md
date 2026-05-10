@@ -69,7 +69,7 @@ Is the feature behind a flag with staged rollout?
 5. **Coverage triangulation**: do not gate on line coverage alone. Combine line + branch + at least one stronger signal (mutation testing on critical modules, contract tests at the API boundary, or property-based tests on pure functions).
 6. **CI gate thresholds**: encode minimum line / branch / mutation thresholds as CI failures, not advisory warnings. Differential coverage on the diff is preferable to absolute repo numbers.
 7. **Fast-feedback loops**: keep the unit suite under 60 seconds locally. If it grows beyond that, split by package/module before adding parallelism — slow tests usually mean leaked I/O.
-8. **Output**: write the strategy as a short ADR-style note (see Output contract).
+8. **Output**: write the strategy as a short PRD decision section-style note (see Output contract).
 9. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output; ≥9 required to mark this skill complete.
 
 ## Output contract

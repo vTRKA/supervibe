@@ -379,7 +379,7 @@ test("agent invocation CLI writes evidence ledger from retrieval flags", () => {
       "--retrieval-policy",
       "memory=mandatory,rag=mandatory,codegraph=mandatory,reason=structural",
       "--memory-ids",
-      "checkout-adr",
+      "checkout-decision",
       "--rag-chunk-ids",
       "scripts/checkout.mjs:12",
       "--graph-symbols",

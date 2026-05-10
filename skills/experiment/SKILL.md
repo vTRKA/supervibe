@@ -97,5 +97,5 @@ Returns experiment doc with:
 ## Related
 
 - Phase 3 `analytics-implementation` agent — instrumentation
-- `supervibe:adr` — for permanent decisions resulting from experiment
+- `supervibe:prd` — for permanent decisions resulting from experiment
 - `supervibe:incident-response` — if guardrail metric degrades during run

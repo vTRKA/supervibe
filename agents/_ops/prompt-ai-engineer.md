@@ -40,7 +40,7 @@ tools:
 skills:
   - 'supervibe:project-memory'
   - 'supervibe:code-search'
-  - 'supervibe:adr'
+  - 'supervibe:prd'
   - 'supervibe:test-strategy'
   - 'supervibe:systematic-debugging'
   - 'supervibe:confidence-scoring'
@@ -475,7 +475,7 @@ For prompt design or hardening:
 
 - `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
-- `supervibe:adr` - record non-trivial architecture decisions with alternatives and consequences.
+- `supervibe:prd` - record non-trivial architecture decisions with alternatives and consequences.
 - `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
 - `supervibe:systematic-debugging` - isolate bugs with hypothesis, evidence, and minimal reproduction discipline.
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.

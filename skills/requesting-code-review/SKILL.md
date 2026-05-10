@@ -84,7 +84,7 @@ What's the review surface?
 When the input artifact is a plan, produce a review package with:
 - Spec coverage and unresolved questions
 - MVP value, anti-bloat check, and explicit approved/deferred/rejected scope
-- Architecture fit, ADR need, and unresolved architecture decisions
+- Architecture fit, PRD decision section need, and unresolved architecture decisions
 - Risk-triggered specialist coverage for database, cache, queue, security, API, infrastructure, and frontend areas
 - Data storage topology, migration safety, backup, restore, and scaling posture when database risk is triggered
 - Cache and queue topology, retry, idempotency, and dead-letter behavior when cache or queue risk is triggered

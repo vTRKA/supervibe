@@ -118,7 +118,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this module/feature. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar modules, services, repositories, custom decorators. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-feature: `--callers "<ServiceName>"` and `--callers "<ProviderToken>"`
    - For new-shared-provider: `--neighbors "<RelatedModule>" --depth 2` to confirm import boundaries
@@ -257,7 +257,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to nestjs-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple bounded contexts (defer to nestjs-architect + PRD decision section).
 Do NOT decide on: CQRS / event sourcing adoption, federated GraphQL boundaries, microservice split (defer to nestjs-architect).
 Do NOT decide on: queue topology, BullMQ concurrency, retry/backoff policy across the platform (defer to queue-worker-architect).
 Do NOT decide on: ORM choice (TypeORM vs Prisma vs MikroORM) — that's a platform-level decision.
@@ -267,7 +267,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/nestjs:nestjs-architect` — owns ADRs, module-graph contracts, CQRS/ES decisions
+- `supervibe:stacks/nestjs:nestjs-architect` — owns PRD decision sections, module-graph contracts, CQRS/ES decisions
 - `supervibe:stacks/nestjs:graphql-resolver-specialist` — owns GraphQL schema, federation, dataloader patterns
 - `supervibe:stacks/nestjs:queue-worker-architect` — owns BullMQ topology, processor concurrency, retry policy
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, partitioning
@@ -377,7 +377,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <module boundary decision deferred to nestjs-architect>
-- <ADR needed for <CQRS adoption / event sourcing>>
+- <PRD decision section needed for <CQRS adoption / event sourcing>>
 ```
 
 ## Graph evidence

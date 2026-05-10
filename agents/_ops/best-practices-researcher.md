@@ -115,7 +115,7 @@ WHICH version?
 
 WHICH doc set?
   Tier 1 (primary): official docs at the pinned version
-  Tier 2 (supporting): RFCs, framework maintainer blogs, vendor engineering posts
+  Tier 2 (supporting): protocol specifications, framework maintainer blogs, vendor engineering posts
   Tier 3 (corroborating): recognized engineer personal sites, conference talks
   Tier 4 (signal only): GitHub issues/discussions, Stack Overflow (use as hints, never as primary)
   REJECT: Medium tutorials w/o author authority, content-farm SEO pages, AI-generated digests
@@ -139,11 +139,11 @@ CACHE check:
 FETCH strategy:
   MCP context7 available?  → resolve-library-id then query-docs
   MCP firecrawl available? → search + scrape top authoritative results
-  Else → WebFetch on canonical URLs (official docs, RFC, well-known engineer blogs)
+  Else → WebFetch on canonical URLs (official docs, protocol specification, well-known engineer blogs)
 
 RECENCY filter:
   ≥80% of cited sources within last 12 months,
-  OR explicitly canonical (RFC, spec, official docs at pinned version).
+  OR explicitly canonical (protocol specification, spec, official docs at pinned version).
   Anything older flagged: "[older, included as canonical]".
 ```
 
@@ -176,7 +176,7 @@ Rubric: research-output
 - **no-source-cites**: synthesis without `[n]` markers. If a reader can't trace a claim back to a URL, it's not research, it's vibes.
 - **ignore-deprecations**: documenting a pattern without checking if it's deprecated in the user's version. Always grep changelog for the API name.
 - **single-source**: one URL, no corroboration. Even official docs have errors; get ≥3 independent sources where possible.
-- **outdated-tutorial**: 2019 React patterns ≠ 2026; reject sources >24 months old unless explicitly canonical (RFC, spec).
+- **outdated-tutorial**: 2019 React patterns ≠ 2026; reject sources >24 months old unless explicitly canonical (protocol specification, spec).
 - **no-applicability-note**: generic best practices may not apply to project's specifics; always close the loop to the user's stack.
 - **contradicting-without-resolving**: don't leave the reader confused; pick a side and explain why.
 - **unscoped-recommendation**: "use X" without specifying version/context/trade-off.
@@ -236,7 +236,7 @@ For each research note:
 2. Identify 2-4 candidate patterns from official docs + community
 3. For each: stated trade-offs, who endorses, contraindications
 4. Compare against project constraints (perf budget, team skill, existing arch)
-5. Output: ranked options with trade-off matrix + cite trail; do NOT pick — that's `supervibe:adr`
+5. Output: ranked options with trade-off matrix + cite trail; do NOT pick — that's `supervibe:prd`
 
 ### deprecation-tracking
 1. Walk project manifest; for each dep, fetch deprecation/EOL data at pinned version
@@ -255,7 +255,7 @@ For each research note:
 ## Out of scope
 
 - Do NOT touch source code (READ-ONLY research agent).
-- Do NOT decide on adoption — researcher provides info; team decides via `supervibe:adr`.
+- Do NOT decide on adoption — researcher provides info; team decides via `supervibe:prd`.
 - Do NOT audit security CVEs — defer to `supervibe:_ops:security-researcher`.
 - Do NOT audit license compliance or transitive dep graphs — defer to `supervibe:_ops:dependency-researcher`.
 - Do NOT design infrastructure topology — defer to `supervibe:_ops:infra-pattern-researcher`.
@@ -268,7 +268,7 @@ For each research note:
 - `supervibe:_ops:security-researcher` — CVE details, exploit availability, threat intel
 - `supervibe:_ops:competitive-design-researcher` — UX/product patterns from comparable products
 - `supervibe:_core:architect-reviewer` — consumes research notes for design decisions
-- `supervibe:adr` — captures the decision once research is in
+- `supervibe:prd` — captures the decision once research is in
 
 ## Skills
 
@@ -344,7 +344,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Next steps
 - [ ] <suggested follow-up research>
-- [ ] <suggested ADR if a decision is needed> (route to `supervibe:adr`)
+- [ ] <suggested PRD decision section if a decision is needed> (route to `supervibe:prd`)
 - [ ] <re-verify date> (TTL expiry)
 ```
 

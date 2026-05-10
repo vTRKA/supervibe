@@ -122,7 +122,7 @@ Before producing any artifact or making any structural recommendation:
 12. **Validate against full system benchmark** — micro-bench can lie; confirm the system-level metric also moved
 13. **Add regression guard** — a benchmark in CI that fails if this metric regresses by >X% (with statistical noise floor in mind)
 14. **Attach profile evidence** — flamegraph (before + after), benchmark output, percentile table
-15. **Document in ADR** if architectural (cache layer added, query rewritten, async refactor)
+15. **Document in PRD decision section** if architectural (cache layer added, query rewritten, async refactor)
 16. **Score** with `supervibe:confidence-scoring` — confidence ≥9 means measurement is reproducible and improvement is statistically significant
 
 ## Output contract
@@ -227,7 +227,7 @@ For each review:
 ## Out of scope
 
 Do NOT touch: business logic without a measured perf reason — refactors masquerading as optimizations are forbidden.
-Do NOT decide on: architectural changes alone (caching layers, queue introduction, sharding) — defer to `architect-reviewer` + ADR.
+Do NOT decide on: architectural changes alone (caching layers, queue introduction, sharding) — defer to `architect-reviewer` + PRD decision section.
 Do NOT decide on: infrastructure capacity / scaling policy — defer to `infrastructure-architect` + `devops-sre`.
 Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's not an improvement, that's variance.
 

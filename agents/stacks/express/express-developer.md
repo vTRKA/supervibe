@@ -118,7 +118,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work on this resource, validator pattern, or error code. Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar routes, middleware, validators. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5`. Read top 3 hits for naming + style conventions
    - For modify-existing-route tasks: also run `--callers "<controllerName>"` and `--callers "<serviceName>"`
    - For new-middleware touching shared pipeline: `--neighbors "errorHandler" --depth 2`
@@ -251,7 +251,7 @@ For each feature delivery:
 
 ## Out of scope
 
-Do NOT touch: architecture decisions affecting multiple services or bounded contexts (defer to express-architect + ADR).
+Do NOT touch: architecture decisions affecting multiple services or bounded contexts (defer to express-architect + PRD decision section).
 Do NOT decide on: cross-service auth strategy (JWT vs session vs OAuth gateway), SSO integration, identity provider choice.
 Do NOT decide on: queue topology, BullMQ concurrency, retry/backoff policy across the platform (defer to queue-worker-architect).
 Do NOT decide on: Postgres-specific schema choices — partial indexes, partitions, JSONB indexing strategy (defer to postgres-architect).
@@ -260,7 +260,7 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Related
 
-- `supervibe:stacks/express:express-architect` — owns ADRs, error-code taxonomy, middleware-pipeline contract
+- `supervibe:stacks/express:express-architect` — owns PRD decision sections, error-code taxonomy, middleware-pipeline contract
 - `supervibe:stacks/express:api-security-specialist` — owns helmet/CORS policy, auth strategy, rate-limit posture
 - `supervibe:stacks/postgres:postgres-architect` — owns Postgres-specific schema, indexing, performance
 - `supervibe:stacks/redis:redis-architect` — owns rate-limit storage, idempotency-key TTL strategy
@@ -366,7 +366,7 @@ Need to know who/what depends on a symbol?
 
 ## Follow-ups (out of scope)
 - <rate-limit policy decision deferred to express-architect>
-- <ADR needed for <error-code taxonomy>>
+- <PRD decision section needed for <error-code taxonomy>>
 ```
 
 ## Graph evidence

@@ -8,7 +8,6 @@ const LEGACY_TO_CANONICAL = Object.freeze([
   ["presentations", `${SUPERVIBE_ARTIFACT_ROOT}/presentations`],
   ["docs/specs", `${SUPERVIBE_ARTIFACT_ROOT}/specs`],
   ["docs/plans", `${SUPERVIBE_ARTIFACT_ROOT}/plans`],
-  ["docs/adr", `${SUPERVIBE_ARTIFACT_ROOT}/adr`],
   ["docs/prd", `${SUPERVIBE_ARTIFACT_ROOT}/prd`],
   ["docs/requirements", `${SUPERVIBE_ARTIFACT_ROOT}/requirements`],
   ["docs/runbooks", `${SUPERVIBE_ARTIFACT_ROOT}/runbooks`],

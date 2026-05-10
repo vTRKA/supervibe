@@ -40,7 +40,7 @@ const TEMPLATE_CATALOG = {
     labels: ["feature"],
     riskLevel: "low",
     requiredGates: ["review", "10/10-acceptance"],
-    sdlcCoverage: ["discovery", "implementation", "verification", "release-readiness"],
+    mvpReadinessCoverage: ["discovery", "implementation", "verification", "release-readiness"],
     contractChecklist: [
       "User-facing goal and acceptance contract",
       "Input/output, API, data, or UI state contract",
@@ -54,7 +54,7 @@ const TEMPLATE_CATALOG = {
     tenOfTenChecklist: [
       "No known acceptance gaps",
       "Verification commands pass or blockers are explicit",
-      "Release readiness is clear for the intended SDLC stage",
+      "Release readiness is clear for the intended MVP readiness state",
     ],
   }),
   bugfix: template({
@@ -72,7 +72,7 @@ const TEMPLATE_CATALOG = {
     labels: ["bugfix"],
     riskLevel: "medium",
     requiredGates: ["regression-review", "10/10-acceptance"],
-    sdlcCoverage: ["triage", "root-cause", "fix", "regression-release"],
+    mvpReadinessCoverage: ["triage", "root-cause", "fix", "regression-release"],
     contractChecklist: [
       "Broken behavior contract",
       "Expected behavior contract",
@@ -104,7 +104,7 @@ const TEMPLATE_CATALOG = {
     labels: ["refactor"],
     riskLevel: "medium",
     requiredGates: ["codegraph-review", "10/10-acceptance"],
-    sdlcCoverage: ["design", "migration", "verification", "release-readiness"],
+    mvpReadinessCoverage: ["design", "migration", "verification", "release-readiness"],
     contractChecklist: [
       "Preserved external behavior",
       "Updated internal module contract",
@@ -136,7 +136,7 @@ const TEMPLATE_CATALOG = {
     labels: ["ui", "visual-verification"],
     riskLevel: "medium",
     requiredGates: ["browser-evidence", "10/10-acceptance"],
-    sdlcCoverage: ["ux-design", "implementation", "visual-qa", "release-readiness"],
+    mvpReadinessCoverage: ["ux-design", "implementation", "visual-qa", "release-readiness"],
     contractChecklist: [
       "User workflow contract",
       "State model contract",
@@ -168,7 +168,7 @@ const TEMPLATE_CATALOG = {
     labels: ["integration"],
     riskLevel: "medium",
     requiredGates: ["access-gate", "10/10-acceptance"],
-    sdlcCoverage: ["contract-design", "implementation", "integration-test", "release-readiness"],
+    mvpReadinessCoverage: ["contract-design", "implementation", "integration-test", "release-readiness"],
     contractChecklist: [
       "External API/provider contract",
       "Auth and secret handling contract",
@@ -200,7 +200,7 @@ const TEMPLATE_CATALOG = {
     labels: ["migration"],
     riskLevel: "high",
     requiredGates: ["approval", "rollback-review", "production-readiness", "10/10-acceptance"],
-    sdlcCoverage: ["planning", "dry-run", "execution", "post-release-validation"],
+    mvpReadinessCoverage: ["planning", "dry-run", "execution", "post-release-validation"],
     contractChecklist: [
       "Schema/data contract",
       "Backward/forward compatibility contract",
@@ -232,7 +232,7 @@ const TEMPLATE_CATALOG = {
     labels: ["documentation"],
     riskLevel: "low",
     requiredGates: ["docs-review", "10/10-acceptance"],
-    sdlcCoverage: ["knowledge-capture", "implementation-support", "release-readiness"],
+    mvpReadinessCoverage: ["knowledge-capture", "implementation-support", "release-readiness"],
     contractChecklist: [
       "Reader outcome contract",
       "Source-of-truth alignment contract",
@@ -264,7 +264,7 @@ const TEMPLATE_CATALOG = {
     labels: ["release"],
     riskLevel: "medium",
     requiredGates: ["release-gate", "10/10-acceptance"],
-    sdlcCoverage: ["release-candidate", "verification", "packaging", "launch"],
+    mvpReadinessCoverage: ["release-candidate", "verification", "packaging", "launch"],
     contractChecklist: [
       "Version and changelog contract",
       "Artifact contents contract",
@@ -296,7 +296,7 @@ const TEMPLATE_CATALOG = {
     labels: ["production-prep", "approval-required"],
     riskLevel: "high",
     requiredGates: ["human-approval", "production-readiness", "10/10-acceptance"],
-    sdlcCoverage: ["go-live-planning", "approval", "deployment-readiness", "post-launch-validation"],
+    mvpReadinessCoverage: ["go-live-planning", "approval", "deployment-readiness", "post-launch-validation"],
     contractChecklist: [
       "Exact production mutation contract",
       "Approval and operator contract",
@@ -328,7 +328,7 @@ const TEMPLATE_CATALOG = {
     labels: ["research"],
     riskLevel: "low",
     requiredGates: ["decision-review", "10/10-acceptance"],
-    sdlcCoverage: ["discovery", "decision", "planning-handoff"],
+    mvpReadinessCoverage: ["discovery", "decision", "planning-handoff"],
     contractChecklist: [
       "Research question contract",
       "Decision criteria contract",
@@ -410,7 +410,7 @@ export function applyTemplateToWorkItem(item = {}, templateOrId = null, override
       ...(item.executionHints || {}),
       templateId: selected.id,
       policyRiskLevel: item.executionHints?.policyRiskLevel || selected.riskLevel,
-      templateSdlcCoverage: selected.sdlcCoverage || [],
+      templateMvpReadinessCoverage: selected.mvpReadinessCoverage || [],
     },
   };
 }

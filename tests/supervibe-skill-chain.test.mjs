@@ -108,7 +108,7 @@ test("plan review package passes only with atomic tasks, verification, rollback,
     architecture: {
       style: "host-neutral ESM control plane",
       boundaries: ["router", "review package", "artifact validator"],
-      adrRequired: false,
+      prdDecisionRequired: false,
     },
     data: {
       topologyReviewed: true,

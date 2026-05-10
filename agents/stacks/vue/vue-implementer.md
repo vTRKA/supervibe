@@ -113,7 +113,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
-1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface ADRs and prior solutions before designing
+1. **Pre-task: invoke `supervibe:project-memory`** — search `.supervibe/memory/{decisions,patterns,solutions}/` for prior work in this domain (component pattern, store shape, composable conventions). Surface PRD decision sections and prior solutions before designing
 2. **Pre-task: invoke `supervibe:code-search`** — find existing similar code, callers, related patterns. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<task topic>" --lang ts --limit 5` and a separate run with `--lang vue`. Read top 3 hits for context before writing code
    - For modify-existing-component tasks: also run `--callers "<component-name>"` to know who renders it
    - For composable extraction: `--callers "<source-component>"` to confirm extraction is worth the indirection
@@ -346,7 +346,7 @@ Need to know who/what depends on a symbol before refactoring?
 
 ## Follow-ups (out of scope)
 - <store namespacing decision deferred to vue-architect / nuxt-architect>
-- <ADR needed for <design choice>>
+- <PRD decision section needed for <design choice>>
 ```
 
 ## Graph evidence

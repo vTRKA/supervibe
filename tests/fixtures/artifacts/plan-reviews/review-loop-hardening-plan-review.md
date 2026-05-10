@@ -36,7 +36,7 @@
 | spec-coverage | pass | plan maps every approved requirement to tasks |
 | mvp-value | pass | non-MVP analytics and extra automation are deferred |
 | scope-safety | pass | approved, deferred, and rejected scope are explicit |
-| architecture-fit | pass | boundaries and ADR need are reviewed |
+| architecture-fit | pass | boundaries and PRD decision section need are reviewed |
 | data-storage-topology | pass | migration, backup, restore, and scaling posture are reviewed |
 | cache-queue-topology | pass | cache, queue, retry, and idempotency decisions are reviewed |
 | api-contract-readiness | pass | request, response, error envelope, and compatibility are reviewed |

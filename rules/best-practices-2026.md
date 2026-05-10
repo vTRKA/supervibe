@@ -28,7 +28,7 @@ Concrete consequence of NOT following: code that future contributors find archai
 - New code (default to current best practices)
 - Major refactors (consider migrating)
 
-This rule does NOT apply when: matching existing project style intentionally for consistency (open ADR if changing project direction).
+This rule does NOT apply when: matching existing project style intentionally for consistency (open a PRD decision section if changing project direction).
 
 ## What to do
 

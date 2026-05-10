@@ -115,7 +115,7 @@ Returns: PRD file with all sections filled, success metrics measurable, out-of-s
 
 - `supervibe:brainstorming` — technical design after PRD approved
 - Phase 3 `product-manager` agent — primary author
-- `supervibe:adr` — for technical decisions referenced in Solution
+- `supervibe:prd` — for technical decisions referenced in Solution
 
 ## User research grounding
 
@@ -261,7 +261,7 @@ Required sections (in order):
 
 - `supervibe:requirements-intake` — predecessor (intake → research → PRD)
 - `supervibe:writing-plans` — consumer (PRD → implementation plan)
-- `supervibe:adr` — design decisions called out separately from PRD
+- `supervibe:prd` — design decisions called out separately from PRD
 - `supervibe:_product:product-manager` — primary author
 - `supervibe:_product:systems-analyst` — collaborator on ACs
 - `supervibe:_product:analytics-implementation` — collaborator on instrumentation

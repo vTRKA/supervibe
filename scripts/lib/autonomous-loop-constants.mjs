@@ -24,7 +24,7 @@ const TASK_STATUSES = [
   "command_adapter_required",
   "deployment_approval_required",
   "mcp_required",
-  "sdlc_gate_failed",
+  "mvp_readiness_failed",
   "confidence_calibration_required",
   "state_migration_required",
   "state_version_unsupported",

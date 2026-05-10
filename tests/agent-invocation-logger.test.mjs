@@ -62,7 +62,7 @@ test('logInvocation: writes retrieval evidence ledger when evidence is provided'
     confidence_score: 9,
     retrievalPolicy: { memory: 'mandatory', rag: 'mandatory', codegraph: 'mandatory', reason: 'structural change' },
     evidence: {
-      memoryIds: ['checkout-adr'],
+      memoryIds: ['checkout-decision'],
       ragChunkIds: ['scripts/checkout.mjs:12'],
       graphSymbols: ['checkoutService'],
       citations: [{ id: 'checkout', source: 'code-rag', path: 'scripts/checkout.mjs:12' }],

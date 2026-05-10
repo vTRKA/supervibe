@@ -300,7 +300,7 @@ Change touches a published contract surface?
   - Mark REST field with `deprecated: true` in OpenAPI; keep serving
   - Mark GraphQL field/argument with `@deprecated(reason: ...)`
   - Mark gRPC field/method with `[deprecated = true]`
-  - Add `Deprecation` and `Sunset` HTTP headers per RFC 8594/9745
+  - Add `Deprecation` and `Sunset` HTTP headers using the current HTTP deprecation and sunset header specs
   - Update changelog + docs + deprecation log entry
   - Open removal ticket scheduled past sunset date
 
@@ -327,7 +327,7 @@ Change touches a published contract surface?
 
   ERROR ENVELOPE convention check:
   - One canonical shape project-wide (e.g. `{ error: { code, message, details, request_id } }`)
-  - RFC 7807 `application/problem+json` is the default for new HTTP APIs unless documented otherwise
+  - HTTP problem details `application/problem+json` is the default for new HTTP APIs unless documented otherwise
   - GraphQL: errors via `errors[]` with `extensions.code`; never embed errors in `data`
   - gRPC: standard `google.rpc.Status` with `details` packed messages
 

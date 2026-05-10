@@ -53,7 +53,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 ```
 .supervibe/memory/
 ├── index.json              # auto-generated tag→entries index
-├── decisions/              # ADRs lived shorter than full ADR; tactical choices
+├── decisions/              # PRD decision sections lived shorter than full PRD decision section; tactical choices
 │   └── <date>-<slug>.md
 ├── patterns/               # reusable patterns observed/established
 │   └── <slug>.md
