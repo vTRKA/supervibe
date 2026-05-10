@@ -17,6 +17,9 @@ worktrees/
 # Local Supervibe generated reports, descriptors, and derived defaults.
 .supervibe/
 
+# Local Codex host state and provisioned runtime agents.
+.codex/
+
 # Models: track quantized only, ignore full + tmp downloads
 models/**/onnx/model.onnx
 models/**/onnx/model_quantized.onnx

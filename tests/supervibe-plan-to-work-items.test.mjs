@@ -27,11 +27,43 @@ const PLAN = `# Payment Flow Implementation Plan
 Critical path: T1 -> T2 -> T3
 Parallelizable: T4 || T5
 
+## Development Contract Map
+
+| ID | Contract | Required details | Owner | Verification |
+|----|----------|------------------|-------|--------------|
+| C-BEH | Behavior contract | Payment behavior and invariants | payments | unit tests |
+| C-DATA | Data and schema contract | Payment schema and migration | payments | schema tests |
+| C-API | API and event contract | Endpoint and idempotency | payments | integration tests |
+| C-OBS | Observability contract | Metrics, logs, and alerts | ops | metric assertion |
+
+## Scope Safety Gate
+
+- Approved scope baseline: payment schema, API, and final review.
+- Deferred scope: external provider replay remains deferred.
+
+## Production Readiness
+
+- Test: unit and integration suites pass.
+- Security: payment permissions are reviewed.
+- Observability: metrics and logs are emitted.
+- Rollback: route rollback is documented.
+
+## Final 10/10 Acceptance Gate
+
+- 10/10 acceptance: all tasks complete.
+- Verification: commands pass.
+- No open blockers: blockers are closed.
+- Contract coverage: all touched contract rows are covered.
+
 ## Task 1: Foundation schema
 **Files:**
 - Create: \`src/schema.ts\`
+**Scope IDs:** S1
+**Requirement IDs:** REQ1
+**Contract rows touched:** C-BEH, C-DATA
 **Estimated time:** 15min, confidence: high
 **Rollback:** git revert <sha>
+**Stop conditions:** stop if schema requires external production data.
 **Acceptance Criteria:**
 - Schema validates payment records.
 \`\`\`bash
@@ -41,8 +73,12 @@ npm test -- schema.test.ts
 ## Task 2: API implementation
 **Files:**
 - Modify: \`src/api.ts\`
+**Scope IDs:** S2
+**Requirement IDs:** REQ2
+**Contract rows touched:** C-API, C-OBS
 **Estimated time:** 30min, confidence: high
 **Rollback:** git revert <sha>
+**Stop conditions:** stop if API compatibility changes without approval.
 **Acceptance Criteria:**
 - API returns idempotent responses.
 \`\`\`bash
@@ -54,7 +90,11 @@ npm test -- api.test.ts
 ## Task 3: Final review
 **Files:**
 - Test: \`tests/payment.test.ts\`
+**Scope IDs:** S3
+**Requirement IDs:** REQ3
+**Contract rows touched:** C-BEH, C-OBS
 **Rollback:** git revert <sha>
+**Stop conditions:** stop if release checks cannot run.
 **Acceptance Criteria:**
 - Full payment suite is green.
 \`\`\`bash
@@ -98,6 +138,11 @@ test("atomization creates one epic, child tasks, blocker edges, gates, and follo
   assert.ok(t2.acceptanceCriteria.some((item) => /idempotent/.test(item)));
   assert.ok(t2.verificationCommands.includes("npm test -- api.test.ts"));
   assert.deepEqual(t2.writeScope, [{ action: "modify", path: "src/api.ts" }]);
+  assert.deepEqual(t2.executionHints.scopeIds, ["S2"]);
+  assert.deepEqual(t2.executionHints.requirementIds, ["REQ2"]);
+  assert.ok(t2.contractChecklist.includes("C-API"));
+  assert.ok(t2.productionReadinessChecklist.some((item) => /Observability/.test(item)));
+  assert.ok(t2.tenOfTenChecklist.some((item) => /Contract coverage/.test(item)));
 });
 
 test("work item graph converts into runner-compatible loop tasks", () => {

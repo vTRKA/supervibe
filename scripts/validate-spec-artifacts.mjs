@@ -3,6 +3,9 @@ import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { parseArgs } from 'node:util';
+import { validateAdrArtifact } from './validate-adr-artifacts.mjs';
+import { validatePrdArtifact } from './validate-prd-artifacts.mjs';
+import { validateRfcArtifact } from './validate-rfc-artifacts.mjs';
 
 const REQUIRED_INTAKE_SECTIONS = [
   'Request as stated',
@@ -46,6 +49,10 @@ const PLACEHOLDER_PATTERNS = [
 
 function sectionRegex(section) {
   return new RegExp(`^##\\s+${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'im');
+}
+
+function hasSection(markdown, section) {
+  return sectionRegex(section).test(markdown);
 }
 
 function sectionBody(markdown, section) {
@@ -210,6 +217,15 @@ export function validateBrainstormSpec(markdown) {
 
 export function validateSpecArtifact(markdown) {
   const heading = markdown.match(/^#\s+(.+)$/m)?.[1]?.toLowerCase() || '';
+  if (heading.startsWith('prd:') || hasSection(markdown, 'Users And Jobs')) {
+    return { kind: 'prd', issues: validatePrdArtifact(markdown) };
+  }
+  if (heading.startsWith('adr:') || hasSection(markdown, 'Alternatives') && hasSection(markdown, 'Consequences')) {
+    return { kind: 'adr', issues: validateAdrArtifact(markdown) };
+  }
+  if (heading.startsWith('rfc:') || hasSection(markdown, 'Verification Plan') && hasSection(markdown, 'Contracts')) {
+    return { kind: 'rfc', issues: validateRfcArtifact(markdown) };
+  }
   if (heading.includes('intake') || sectionRegex('Request as stated').test(markdown)) {
     return { kind: 'intake', issues: validateIntakeSpec(markdown) };
   }

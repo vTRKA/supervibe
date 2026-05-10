@@ -20,10 +20,14 @@ test("template quality validator reports missing retrieval and visual contracts"
       label: "fixture",
       requiredSections: ["Missing Retrieval Section"],
       requiredTerms: ["definitely-not-present-template-term"],
+      rejectedTerms: ["Problem statement"],
+      minimumWordCount: 100000,
     }],
   });
 
   assert.equal(report.pass, false);
   assert.match(formatTemplateQualityReport(report), /missing section: Missing Retrieval Section/);
   assert.match(formatTemplateQualityReport(report), /missing term: definitely-not-present-template-term/);
+  assert.match(formatTemplateQualityReport(report), /rejected generic prompt term: Problem statement/);
+  assert.match(formatTemplateQualityReport(report), /template too thin/);
 });

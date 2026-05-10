@@ -7,7 +7,7 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-**v2.1** - current plugin `v2.1.5` - MIT - 1586 tests
+**v2.1** - current plugin `v2.1.6` - MIT - 1592 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -95,7 +95,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.5 initialized for this project
+[supervibe] welcome  plugin v2.1.6 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -170,6 +170,8 @@ Validator label:
 ```text
 Brainstorm -> Plan -> Review -> Atomize -> Safe Run
 ```
+
+Plans are contract artifacts, not loose task lists. A production-ready plan should carry a Development Contract Map for behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support, then pass `node scripts/validate-plan-artifacts.mjs --file <plan>`.
 
 Copy-paste example:
 

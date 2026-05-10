@@ -88,6 +88,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    - File structure (which files to create / modify, with paths)
    - Critical path
    - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
+   - Development Contract Map covering behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support
    - Retrieval, CodeGraph, and visual evidence contract
    - Delivery strategy from MVP to production
    - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
@@ -150,6 +151,7 @@ Phases:      <count>
 Tasks:       <count>  (parallelizable batches: <count>)
 Critical path: <N> tasks
 Production readiness: test/security/perf/observability/rollback/release covered
+Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
 Scope safety: approved scope mapped; deferred/rejected extras documented
 Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
 Visual evidence: Mermaid/table plan with accessible title, description and text fallback

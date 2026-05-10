@@ -206,6 +206,9 @@ test('validateBrainstormSpec requires production-grade SDLC and 10/10 gates', ()
 test('validateSpecArtifact auto-detects intake vs brainstorm', () => {
   assert.equal(validateSpecArtifact(GOOD_INTAKE).kind, 'intake');
   assert.equal(validateSpecArtifact(GOOD_BRAINSTORM).kind, 'brainstorm');
+  assert.equal(validateSpecArtifact('# PRD: Billing export\n').kind, 'prd');
+  assert.equal(validateSpecArtifact('# ADR: Streaming export\n').kind, 'adr');
+  assert.equal(validateSpecArtifact('# RFC: Export endpoint\n').kind, 'rfc');
 });
 
 test('validate-spec-artifacts CLI fails bad file', async () => {

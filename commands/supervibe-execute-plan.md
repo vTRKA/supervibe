@@ -63,12 +63,12 @@ First run `node scripts/validate-plan-artifacts.mjs --file <plan>`. If it fails,
 | 2 | **File structure mapped** | Has `## File Structure` section listing every file to create/modify with paths |
 | 3 | **Tasks bite-sized** | Every task has explicit steps; no "TBD"/"add appropriate"/"similar to"; code blocks for code steps |
 | 4 | **Verification per step** | Code-creation steps have a "Run X, expect Y" verification command |
-| 5 | **Hard constraints listed** | Has explicit `**Hard constraints (do not violate):**` block (or equivalent quality guard) |
-| 6 | **Risk mitigation per phase** | Each phase has stated quality risk + mitigation; phases ordered by risk/impact, not random |
+| 5 | **Hard constraints listed** | Has explicit `**Hard constraints (do not violate):**` block or `**Constraints:**` block |
+| 6 | **Development contracts mapped** | Has `## Development Contract Map` with behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support |
 | 7 | **Reversibility documented** | Each phase commit-isolated; rollback procedure named (e.g., `git revert <sha>`) |
 | 8 | **Dependencies clear** | Critical path / phase ordering / parallel batches documented |
 | 9 | **Self-review pass** | Has `## Self-Review` section confirming spec coverage, no placeholders, type consistency |
-| 10 | **Quality gates per phase** | Each phase has explicit pass/fail acceptance criteria, not just "looks good" |
+| 10 | **Quality gates per phase** | Each phase has explicit pass/fail acceptance criteria and contract verification, not just "looks good" |
 
 If score < 10:
 - Print the failing dimensions with file:line of the gap

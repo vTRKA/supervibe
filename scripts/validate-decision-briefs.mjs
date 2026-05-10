@@ -65,7 +65,7 @@ export function validateDecisionBrief(markdown) {
   }
 
   const options = sectionBody(markdown, "Options");
-  if (!/\|\s*Option\s*\|\s*Benefit\s*\|\s*Cost\s*\|\s*Risk\s*\|\s*Recommendation\s*\|/i.test(options)) {
+  if (!/\|\s*Option\s*\|\s*Benefit\s*\|\s*Cost\s*\|\s*Risk\s*\|(?:\s*Reversibility\s*\|)?\s*Recommendation\s*\|/i.test(options)) {
     issues.push("options: missing benefit/cost/risk/recommendation table");
   }
 
@@ -177,4 +177,3 @@ if (isMain || process.argv[1]?.endsWith("validate-decision-briefs.mjs")) {
     process.exit(2);
   });
 }
-

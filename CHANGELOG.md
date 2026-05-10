@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.6] - 2026-05-10
+
+### Added
+
+- Added dedicated PRD, ADR, and RFC artifact validators and wired them into
+  the release check so spec artifacts are validated by type instead of by a
+  generic brainstorm-only path.
+
+### Changed
+
+- Rebuilt the implementation plan template around explicit development
+  contracts for behavior, architecture, data/schema, API/event, UI state,
+  security/privacy, performance, observability, rollout/rollback, and
+  docs/support.
+- Hardened plan/template validation and work-item atomization so scope ids,
+  requirement ids, contract rows, production gates, stop conditions, and
+  verification hints survive from planning into execution.
+- Marked `.codex/` as local host state in `.gitignore`, matching the existing
+  `.supervibe/` policy.
+
 ## [2.1.5] - 2026-05-10
 
 ### Changed

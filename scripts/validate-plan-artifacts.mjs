@@ -74,6 +74,17 @@ function hasEstimate(body) {
   return /\*\*Estimated time:\*\*/i.test(body) && /confidence\s*:\s*(high|medium|low)/i.test(body);
 }
 
+function hasTaskMetadata(body) {
+  const required = [
+    ["scope ids", /\*\*Scope IDs:\*\*\s*\S/i],
+    ["requirement ids", /\*\*Requirement IDs:\*\*\s*\S/i],
+    ["contract rows touched", /\*\*Contract rows touched:\*\*\s*\S/i],
+    ["acceptance criteria", /\*\*Acceptance Criteria:\*\*/i],
+    ["stop conditions", /\*\*Stop conditions:\*\*\s*\S/i],
+  ];
+  return required.filter(([, re]) => !re.test(body)).map(([name]) => name);
+}
+
 function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
@@ -92,7 +103,7 @@ export function validatePlanArtifact(markdown) {
     issues.push('plan format: missing hard constraints block');
   }
 
-  for (const section of ['AI/Data Boundary', 'Retrieval, CodeGraph, And Visual Evidence', 'File Structure', 'Critical Path', 'Scope Safety Gate', 'Delivery Strategy', 'Production Readiness', 'Final 10/10 Acceptance Gate', 'Self-Review', 'Execution Handoff']) {
+  for (const section of ['AI/Data Boundary', 'Retrieval, CodeGraph, And Visual Evidence', 'Development Contract Map', 'File Structure', 'Critical Path', 'Scope Safety Gate', 'Delivery Strategy', 'Production Readiness', 'Final 10/10 Acceptance Gate', 'Self-Review', 'Execution Handoff']) {
     if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
   }
 
@@ -109,6 +120,11 @@ export function validatePlanArtifact(markdown) {
   const retrievalVisual = sectionBody(markdown, 'Retrieval, CodeGraph, And Visual Evidence');
   for (const term of ['memory', 'RAG', 'CodeGraph', 'Mermaid', 'accTitle', 'accDescr', 'fallback']) {
     if (!new RegExp(term, 'i').test(retrievalVisual)) issues.push(`retrieval/codegraph/visual evidence: missing ${term}`);
+  }
+
+  const contractMap = sectionBody(markdown, 'Development Contract Map');
+  for (const term of ['Behavior', 'Architecture', 'Data', 'API', 'UI', 'Security', 'Performance', 'Observability', 'Rollout', 'Documentation', 'Owner', 'Verification']) {
+    if (!new RegExp(term, 'i').test(contractMap)) issues.push(`development contract map: missing ${term}`);
   }
 
   const criticalPath = sectionBody(markdown, 'Critical Path');
@@ -130,12 +146,12 @@ export function validatePlanArtifact(markdown) {
   }
 
   const productionReadiness = sectionBody(markdown, 'Production Readiness');
-  for (const term of ['test', 'security', 'observability', 'rollback', 'release']) {
+  for (const term of ['test', 'security', 'performance', 'observability', 'rollback', 'release', 'docs', 'support']) {
     if (!new RegExp(term, 'i').test(productionReadiness)) issues.push(`production readiness: missing ${term}`);
   }
 
   const finalGate = sectionBody(markdown, 'Final 10/10 Acceptance Gate');
-  for (const term of ['10/10', 'acceptance', 'verification', 'no open blockers']) {
+  for (const term of ['10/10', 'acceptance', 'verification', 'no open blockers', 'contract coverage', 'production readiness']) {
     if (!new RegExp(term.replace('/', '\\/'), 'i').test(finalGate)) issues.push(`final 10/10 acceptance gate: missing ${term}`);
   }
 
@@ -149,6 +165,8 @@ export function validatePlanArtifact(markdown) {
     if (!hasEstimate(task.body)) issues.push(`${prefix}: missing estimate with confidence`);
     if (!hasRollback(task.body)) issues.push(`${prefix}: missing rollback`);
     if (!hasRisks(task.body)) issues.push(`${prefix}: missing risks/mitigation`);
+    const missingMetadata = hasTaskMetadata(task.body);
+    for (const item of missingMetadata) issues.push(`${prefix}: missing ${item}`);
     if (!hasCheckboxSteps(task.body)) issues.push(`${prefix}: missing bite-sized checkbox steps`);
     if (!hasFailingTest(task.body)) issues.push(`${prefix}: missing failing-test-first/red phase evidence`);
     if (!hasVerification(task.body)) issues.push(`${prefix}: missing verification command/code block`);

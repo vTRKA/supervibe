@@ -169,6 +169,18 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
     const rollback = /^\*\*Rollback:\*\*\s*(.+)$/i.exec(line.trim());
     if (rollback) current.rollback = rollback[1].trim();
 
+    const scopeIds = /^\*\*Scope IDs:\*\*\s*(.+)$/i.exec(line.trim());
+    if (scopeIds) current.scopeIds.push(...splitInlineList(scopeIds[1]));
+
+    const requirementIds = /^\*\*Requirement IDs:\*\*\s*(.+)$/i.exec(line.trim());
+    if (requirementIds) current.requirementIds.push(...splitInlineList(requirementIds[1]));
+
+    const contractRows = /^\*\*Contract rows touched:\*\*\s*(.+)$/i.exec(line.trim());
+    if (contractRows) current.contractRows.push(...splitInlineList(contractRows[1]));
+
+    const stopConditions = /^\*\*Stop conditions:\*\*\s*(.+)$/i.exec(line.trim());
+    if (stopConditions) current.stopConditions.push(...splitInlineList(stopConditions[1]));
+
     const estimate = /^\*\*Estimated time:\*\*\s*([^,\n]+)/i.exec(line.trim());
     if (estimate) current.estimatedSize = estimate[1].trim();
 
@@ -186,6 +198,7 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
   return {
     title,
     planPath,
+    globalMetadata: parsePlanGlobalMetadata(markdown),
     tasks: tasks.length > 0 || options.requireTasks
       ? tasks
       : [createParsedTask({ ref: "T1", title: `Execute ${title}`, line: 1, planPath })],
@@ -438,6 +451,18 @@ function createChildItems(parsed, epicId, options = {}) {
         ? [...new Set(task.verificationCommands)]
         : parsed.planVerificationCommands,
       writeScope: task.writeScope,
+      requiredGates: parsed.reviewGates.map((gate) => gate.id),
+      verificationHints: uniqueStrings([
+        ...task.stopConditions.map((item) => `stop:${item}`),
+        ...task.contractRows.map((item) => `contract:${item}`),
+      ]),
+      contractChecklist: uniqueStrings([
+        ...task.contractRows,
+        ...parsed.globalMetadata.contractRows.map((row) => row.id),
+      ]),
+      scopeSafetyChecklist: parsed.globalMetadata.scopeSafetyChecklist,
+      productionReadinessChecklist: parsed.globalMetadata.productionReadinessChecklist,
+      tenOfTenChecklist: parsed.globalMetadata.tenOfTenChecklist,
       estimatedSize: task.estimatedSize,
       parallelGroup: groups.get(task.ref) ?? null,
       repo: options.repo || null,
@@ -447,10 +472,16 @@ function createChildItems(parsed, epicId, options = {}) {
       executionHints: {
         sourceTaskRef: task.ref,
         rollback: task.rollback,
+        scopeIds: task.scopeIds,
+        requirementIds: task.requirementIds,
+        contractRows: task.contractRows,
+        stopConditions: task.stopConditions.length > 0
+          ? task.stopConditions
+          : ["policy_stop", "budget_stop", "verification_failed"],
+        receiptHints: parsed.globalMetadata.receiptHints,
         requiredAgentCapability: inferCapability(task.title),
         confidenceRubricId: "autonomous-loop",
         policyRiskLevel: inferPolicyRisk(`${task.title} ${task.writeScope.map((item) => item.path).join(" ")}`),
-        stopConditions: ["policy_stop", "budget_stop", "verification_failed"],
         repo: options.repo || null,
         package: options.package || null,
         workspace: options.workspace || null,
@@ -588,6 +619,45 @@ function parseParallelGroups(markdown) {
   return groups;
 }
 
+function parsePlanGlobalMetadata(markdown) {
+  return {
+    contractRows: parseContractRows(sectionBody(markdown, "Development Contract Map")),
+    scopeSafetyChecklist: checklistFromSection(sectionBody(markdown, "Scope Safety Gate")),
+    productionReadinessChecklist: checklistFromSection(sectionBody(markdown, "Production Readiness")),
+    tenOfTenChecklist: checklistFromSection(sectionBody(markdown, "Final 10/10 Acceptance Gate")),
+    receiptHints: collectReceiptHints(markdown),
+  };
+}
+
+function parseContractRows(body) {
+  return String(body ?? "")
+    .split(/\r?\n/)
+    .map((line) => /^\|\s*(C-[A-Z0-9_-]+)\s*\|\s*([^|]+)\|/.exec(line))
+    .filter(Boolean)
+    .map((match) => ({
+      id: match[1].trim(),
+      label: match[2].trim(),
+    }));
+}
+
+function checklistFromSection(body) {
+  return uniqueStrings(
+    String(body ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^\s*[-*]\s+(?:\[[ xX]\]\s*)?/, "").trim())
+      .filter((line) => line && !line.startsWith("|") && !/^[-:]+$/.test(line))
+      .map((line) => safeInline(line, 180)),
+  );
+}
+
+function collectReceiptHints(markdown) {
+  const hints = [];
+  for (const line of String(markdown ?? "").split(/\r?\n/)) {
+    if (/\breceipt\b/i.test(line)) hints.push(safeInline(line.replace(/^\s*[-*]\s+/, ""), 180));
+  }
+  return uniqueStrings(hints);
+}
+
 function collectPlanVerificationCommands(markdown, planPath) {
   const commands = [];
   let inCodeBlock = false;
@@ -608,12 +678,26 @@ function collectPlanVerificationCommands(markdown, planPath) {
   return [...new Set(commands)];
 }
 
+function sectionBody(markdown, section) {
+  const re = new RegExp(`^##\\s+${escapeRegex(section)}\\s*$`, "im");
+  const match = re.exec(String(markdown ?? ""));
+  if (!match) return "";
+  const start = match.index + match[0].length;
+  const rest = String(markdown ?? "").slice(start);
+  const next = /^##\s+/im.exec(rest);
+  return (next ? rest.slice(0, next.index) : rest).trim();
+}
+
 function createParsedTask({ ref, title, line, planPath }) {
   return {
     ref,
     title,
     line,
     planPath,
+    scopeIds: [],
+    requirementIds: [],
+    contractRows: [],
+    stopConditions: [],
     dependencies: [],
     acceptanceCriteria: [],
     verificationCommands: [],
@@ -725,6 +809,15 @@ function normalizePath(value) {
   return String(value ?? "").replace(/\\/g, "/");
 }
 
+function splitInlineList(value) {
+  return uniqueStrings(
+    String(value ?? "")
+      .split(/[,;]/)
+      .map((item) => item.replace(/`/g, "").trim())
+      .filter(Boolean),
+  );
+}
+
 function slug(value) {
   return String(value || "plan")
     .toLowerCase()
@@ -735,6 +828,10 @@ function slug(value) {
 
 function stableHash(value) {
   return createHash("sha1").update(String(value)).digest("hex").slice(0, 10);
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function uniqueStrings(values) {

@@ -35,6 +35,21 @@ const GOOD_PLAN = `# Billing Export Implementation Plan
 - Mermaid: include accTitle and accDescr on the release-flow diagram.
 - Text fallback: explain plan -> build -> verify -> release path.
 
+## Development Contract Map
+
+| ID | Contract | Required details | Owner | Verification |
+|----|----------|------------------|-------|--------------|
+| C-BEH | Behavior contract | CSV export behavior, edge cases, invariants | backend | unit tests |
+| C-ARCH | Architecture contract | Controller and service boundary | backend | review |
+| C-DATA | Data and schema contract | Export row schema and validation | backend | schema tests |
+| C-API | API contract | Route, auth, response, error envelope | backend | integration tests |
+| C-UI | UI state contract | Loading, empty, error, permission states | frontend | component tests |
+| C-SEC | Security contract | Role checks, PII redaction, audit logging | security | authorization tests |
+| C-PERF | Performance contract | Stream budget and timeout threshold | backend | performance smoke |
+| C-OBS | Observability contract | Metrics, logs, alerts, correlation id | ops | metric assertion |
+| C-ROLL | Rollout contract | Feature flag and route rollback | release | rollback note |
+| C-DOC | Documentation contract | Changelog and support note | support | doc review |
+
 ## File Structure
 
 ### Created
@@ -70,15 +85,18 @@ Off-path parallel candidates: T4 || T5
 
 - Test: unit, integration, authorization, and CSV injection tests pass.
 - Security: role checks and PII boundaries reviewed.
+- Performance: export stream stays within the agreed duration budget.
 - Observability: export duration and failure metrics are emitted.
 - Rollback: feature flag and route removal are documented.
-- Release: changelog and operator notes are ready.
+- Release: changelog, docs, and support notes are ready.
 
 ## Final 10/10 Acceptance Gate
 
 - 10/10 acceptance requires every requirement mapped to a green verification.
 - Verification commands are rerun after the final task.
 - No open blockers remain before production release.
+- Contract coverage maps each touched contract row to a verification.
+- Production readiness covers security, performance, observability, rollback, docs, and support.
 
 ## Task T1: Export service
 
@@ -87,8 +105,16 @@ Off-path parallel candidates: T4 || T5
 - Test: \`tests/billing/export-service.test.ts\`
 
 **Estimated time:** 15min (confidence: high)
+**Scope IDs:** S1
+**Requirement IDs:** REQ1
+**Contract rows touched:** C-BEH, C-DATA, C-API, C-SEC, C-OBS, C-ROLL
 **Rollback:** \`git revert <sha>\`
 **Risks:** R1: CSV injection; mitigation: escape spreadsheet formulas.
+**Stop conditions:** stop if the endpoint requires extra PII columns or production mutation.
+
+**Acceptance Criteria:**
+- Requirement REQ1 exports CSV rows with approved columns.
+- Contract rows C-BEH, C-DATA, C-API, C-SEC, C-OBS, and C-ROLL have verification evidence.
 
 - [ ] **Step 1: Write failing test**
 \`\`\`bash

@@ -32,14 +32,31 @@ const TEMPLATE_RULES = [
     requiredSections: [
       "AI/Data Boundary",
       "Retrieval, CodeGraph, And Visual Evidence",
+      "Development Contract Map",
+      "File Structure",
       "Critical Path",
       "Scope Safety Gate",
       "Delivery Strategy",
       "Production Readiness",
       "Final 10/10 Acceptance Gate",
+      "Self-Review",
       "Execution Handoff",
     ],
     requiredTerms: [
+      "Behavior contract",
+      "Architecture contract",
+      "Data and schema contract",
+      "API and event contract",
+      "UI state contract",
+      "Security and privacy contract",
+      "Performance contract",
+      "Observability contract",
+      "Rollout and rollback contract",
+      "Documentation and support contract",
+      "Scope IDs",
+      "Requirement IDs",
+      "Contract rows touched",
+      "Stop conditions",
       "RAG",
       "CodeGraph",
       "Mermaid",
@@ -47,6 +64,14 @@ const TEMPLATE_RULES = [
       "rollback",
       "no open blockers",
     ],
+    rejectedTerms: [
+      "<one sentence>",
+      "<2-3 sentences>",
+      "<key libraries>",
+      "<hard rules>",
+      "Which approach?",
+    ],
+    minimumWordCount: 900,
   },
   {
     file: "docs/templates/plan-review-template.md",
@@ -99,7 +124,11 @@ const TEMPLATE_RULES = [
       "Revise",
       "Defer",
       "Stop",
+      "Evidence And Assumptions",
+      "Complexity cost",
+      "Residual risks accepted",
     ],
+    minimumWordCount: 250,
   },
   {
     file: "docs/templates/api-contract-template.md",
@@ -125,7 +154,14 @@ const TEMPLATE_RULES = [
       "retry",
       "typed client",
       "mock",
+      "Example request",
+      "Example success response",
+      "Redacted fields",
+      "Security test",
+      "Observability check",
+      "Rollback check",
     ],
+    minimumWordCount: 300,
   },
   {
     file: "templates/agent.md.tpl",
@@ -186,6 +222,12 @@ export function validateTemplateQuality({ rootDir = process.cwd(), rules = TEMPL
     for (const term of rule.requiredTerms || []) {
       if (!new RegExp(escapeRegex(term), "i").test(markdown)) issues.push(`missing term: ${term}`);
     }
+    for (const term of rule.rejectedTerms || []) {
+      if (new RegExp(escapeRegex(term), "i").test(markdown)) issues.push(`rejected generic prompt term: ${term}`);
+    }
+    if (rule.minimumWordCount && countWords(markdown) < rule.minimumWordCount) {
+      issues.push(`template too thin: expected at least ${rule.minimumWordCount} words`);
+    }
     results.push({ ...rule, path, issues });
   }
   return {
@@ -211,6 +253,14 @@ function hasHeading(markdown, section) {
 
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function countWords(markdown) {
+  return String(markdown)
+    .replace(/`[^`]*`/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .length;
 }
 
 if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("validate-template-quality.mjs")) {
