@@ -190,6 +190,34 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
   }
 });
 
+test('supervibe-status reports atomize and runtime gate guidance with no active work graph', () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-no-active-'));
+  try {
+    mkdirSync(join(projectRoot, '.supervibe', 'memory'), { recursive: true });
+    const out = execFileSync(process.execPath, [
+      STATUS_SCRIPT,
+      '--no-color',
+      '--no-gc-hints',
+    ], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_HOST: 'codex',
+        SUPERVIBE_PLUGIN_ROOT: ROOT,
+      },
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    assert.match(out, /Work graph: none active/);
+    assert.match(out, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(out, /RUNTIME_GATE: node scripts\/supervibe-task-graph-maturity\.mjs --require-active-graph/);
+    assert.match(out, /UI_COMMAND: \/supervibe-ui/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test('supervibe-status: reports agent telemetry state', () => {
   const out = runStatus();
   assert.ok(/Agent telemetry:/.test(out), 'should mention agent telemetry');

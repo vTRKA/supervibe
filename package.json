@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -115,6 +115,7 @@
     "validate:api-contracts": "node scripts/validate-api-contracts.mjs --fixture-dir tests/fixtures/artifacts/api-contracts",
     "validate:work-item-graphs": "node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/artifacts/work-item-graphs && node scripts/validate-work-item-graphs.mjs",
     "validate:epic-completion": "node scripts/validate-epic-completion.mjs --all",
+    "validate:epic-completion:strict": "node scripts/validate-epic-completion.mjs --all --strict-coverage",
     "validate:design-expert-knowledge": "node scripts/validate-design-expert-knowledge.mjs",
     "validate:design-source-coverage": "node scripts/validate-design-source-coverage.mjs",
     "validate:design-reference-quality": "node scripts/validate-design-reference-quality.mjs",
@@ -139,6 +140,7 @@
     "supervibe:stage": "node scripts/supervibe-stage.mjs",
     "supervibe:agent-maturity": "node scripts/supervibe-agent-maturity.mjs",
     "supervibe:task-graph-maturity": "node scripts/supervibe-task-graph-maturity.mjs",
+    "supervibe:task-graph-runtime-maturity": "node scripts/supervibe-task-graph-maturity.mjs --require-active-graph",
     "supervibe:design-maturity": "node scripts/supervibe-design-maturity.mjs",
     "supervibe:maturity-report": "node scripts/supervibe-maturity-report.mjs",
     "supervibe:skill-sources": "node scripts/skill-source-report.mjs",

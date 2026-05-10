@@ -10,6 +10,8 @@ export function importWorkItemsFromSource({ content = "", sourcePath = "inline",
   const detected = format === "auto" ? detectFormat(content) : format;
   const parsed = detected === "json"
     ? parseJsonTasks(content, sourcePath)
+    : detected === "jsonl"
+      ? parseJsonlTasks(content, sourcePath)
     : parseMarkdownTasks(content, sourcePath);
   const safeEpicId = epicId || slug(`import-${basename(sourcePath).replace(/\.[^.]+$/, "")}`);
   const items = [
@@ -21,9 +23,12 @@ export function importWorkItemsFromSource({ content = "", sourcePath = "inline",
       status: task.status || "open",
       labels: task.labels || [],
       notes: task.notes || [],
+      owner: task.owner || null,
       source: task.source,
       dependencies: task.dependencies || [],
       blockedBy: task.dependencies || [],
+      acceptanceCriteria: task.acceptanceCriteria || [],
+      verificationCommands: task.verificationCommands || [],
     })),
   ];
   const graph = {
@@ -37,6 +42,11 @@ export function importWorkItemsFromSource({ content = "", sourcePath = "inline",
       goal: item.title,
       status: item.status,
       dependencies: item.dependencies,
+      labels: item.labels || [],
+      notes: item.notes || [],
+      owner: item.owner || null,
+      acceptanceCriteria: item.acceptanceCriteria || [],
+      verificationCommands: item.verificationCommands || [],
       source: item.source,
     })),
   };
@@ -101,22 +111,85 @@ function parseMarkdownTasks(content, sourcePath) {
 
 function parseJsonTasks(content, sourcePath) {
   const json = JSON.parse(content);
-  const rawTasks = Array.isArray(json) ? json : json.tasks || json.items || [];
+  const rawTasks = extractRawTasks(json);
   return {
-    tasks: rawTasks.map((task, index) => ({
-      title: task.title || task.goal || task.id || `Imported task ${index + 1}`,
-      status: task.status || "open",
-      labels: task.labels || [],
-      notes: task.notes || [],
-      dependencies: task.dependencies || task.blockedBy || [],
-      source: task.source || { path: sourcePath, line: null },
-    })),
+    tasks: rawTasks.map((task, index) => normalizeImportedTask(task, index, sourcePath)),
   };
 }
 
 function detectFormat(content) {
   const text = String(content || "").trim();
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 1 && lines.every((line) => line.startsWith("{"))) return "jsonl";
   return text.startsWith("{") || text.startsWith("[") ? "json" : "markdown";
+}
+
+function parseJsonlTasks(content, sourcePath) {
+  const tasks = [];
+  const lines = String(content || "").split(/\r?\n/);
+  for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let record;
+    try {
+      record = JSON.parse(trimmed);
+    } catch (error) {
+      throw new SyntaxError(`Invalid JSONL record in ${sourcePath}:${index + 1}: ${error.message}`);
+    }
+    tasks.push(normalizeImportedTask(record, tasks.length, sourcePath, index + 1));
+  }
+  return { tasks };
+}
+
+function extractRawTasks(json) {
+  if (Array.isArray(json)) return json;
+  if (!json || typeof json !== "object") return [];
+  if (Array.isArray(json.tasks)) return json.tasks;
+  if (Array.isArray(json.items)) return json.items.filter((item) => item?.type !== "epic");
+  if (Array.isArray(json.taskGraph?.tasks)) return json.taskGraph.tasks;
+  if (Array.isArray(json.task_graph?.tasks)) return json.task_graph.tasks;
+  if (Array.isArray(json.state?.tasks)) return json.state.tasks;
+  if (Array.isArray(json.loop?.tasks)) return json.loop.tasks;
+  return [];
+}
+
+function normalizeImportedTask(task, index, sourcePath, line = null) {
+  const record = task && typeof task === "object" ? task : {};
+  const legacyId = firstString(record.id, record.itemId, record.taskId, record.task_id);
+  const source = normalizeSource(record.source, sourcePath, line, legacyId);
+  return {
+    type: record.type || "task",
+    title: firstString(record.title, record.goal, record.name, legacyId, `Imported task ${index + 1}`),
+    status: record.status || "open",
+    labels: normalizeArray(record.labels ?? record.tags),
+    notes: normalizeArray(record.notes ?? record.note),
+    owner: firstString(record.owner, record.assignee, record.agent),
+    dependencies: normalizeArray(record.dependencies ?? record.blockedBy ?? record.blocked_by ?? record.dependsOn ?? record.depends_on),
+    acceptanceCriteria: normalizeArray(record.acceptanceCriteria ?? record.acceptance_criteria ?? record.acceptance ?? record.criteria),
+    verificationCommands: normalizeArray(record.verificationCommands ?? record.verification_commands ?? record.verify ?? record.commands),
+    source,
+  };
+}
+
+function normalizeSource(source, sourcePath, line, legacyId) {
+  const normalized = source && typeof source === "object" ? { ...source } : {};
+  normalized.path ||= sourcePath;
+  normalized.line ??= line;
+  if (legacyId) normalized.legacyId = legacyId;
+  return normalized;
+}
+
+function normalizeArray(value) {
+  if (Array.isArray(value)) return value.filter((entry) => entry !== null && entry !== undefined).map((entry) => String(entry));
+  if (value === null || value === undefined || value === "") return [];
+  return [String(value)];
+}
+
+function firstString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 function parseDependencies(title) {

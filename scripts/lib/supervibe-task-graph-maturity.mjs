@@ -23,6 +23,12 @@ const COMMAND_SHORTCUT_CASES = Object.freeze([
   ["task graph maturity", "task_graph_maturity"],
   ["проверь task graph maturity", "task_graph_maturity"],
   ["оцени task graph на 10 из 10", "task_graph_maturity"],
+  ["план", "supervibe_plan"],
+  ["сделай план", "supervibe_plan"],
+  ["create plan and then tasks", "supervibe_plan"],
+  ["брейншторм", "supervibe_brainstorm"],
+  ["давай новую фичу", "supervibe_brainstorm"],
+  ["new feature", "supervibe_brainstorm"],
 ]);
 
 const REQUIRED_LOOP_TOKENS = Object.freeze([

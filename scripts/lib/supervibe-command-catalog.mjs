@@ -127,7 +127,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-brainstorm",
     title: "Brainstorm and capture a spec",
-    aliases: ["сделай брейншторм идеи", "brainstorm the feature", "обсудим идею", "придумай решение"],
+    aliases: ["брейншторм", "давай брейншторм", "start brainstorm", "brainstorm", "new feature", "давай новую фичу", "сделай брейншторм идеи", "brainstorm the feature", "обсудим идею", "придумай решение"],
     keywordGroups: [["brainstorm", "ideate", "explore", "брейншторм", "обсудим", "придумай"], ["feature", "idea", "solution", "идея", "решение", "фича"]],
   },
   {
@@ -194,7 +194,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-plan",
     title: "Write or review an implementation plan",
-    aliases: ["напиши план реализации", "create implementation plan", "составь план", "составь детальный план реализации", "review the plan"],
+    aliases: ["план", "сделай план", "make a plan", "create plan and then tasks", "составь план для новой фичи", "напиши план реализации", "create implementation plan", "составь план", "составь детальный план реализации", "review the plan"],
     keywordGroups: [["plan", "planning", "план", "спланируй", "составь"], ["implementation", "реализация", "реализации", "review", "ревью"]],
   },
   {

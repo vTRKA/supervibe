@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-05-10
+
+### Added
+
+- Added natural-language route coverage for short planning and brainstorm
+  phrases so users can enter the task graph workflow without exact commands.
+- Added JSONL and legacy loop-state import support for work-item graph
+  migration, preserving dependencies, owners, acceptance criteria, and
+  verification commands.
+
+### Changed
+
+- Hardened no-active-graph recovery guidance across loop, status, UI, and
+  maturity checks with explicit atomize, status, and runtime gate commands.
+
 ## [2.1.3] - 2026-05-10
 
 ### Added

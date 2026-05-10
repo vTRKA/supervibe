@@ -219,7 +219,7 @@ export async function withWorktreeSessionRegistryLock(filePath, callback, option
         await rm(lockDir, { recursive: true, force: true });
       }
     } catch (error) {
-      if (error.code !== "EEXIST") throw error;
+      if (!isLockContentionError(error)) throw error;
       lastError = error;
       await removeStaleLock(lockDir, staleMs);
       await sleep(retryMs);
@@ -227,6 +227,10 @@ export async function withWorktreeSessionRegistryLock(filePath, callback, option
   }
 
   throw new Error(`Timed out waiting for worktree session registry lock: ${lockDir}${lastError ? ` (${lastError.code})` : ""}`);
+}
+
+function isLockContentionError(error) {
+  return ["EEXIST", "EPERM", "EACCES", "ENOTEMPTY"].includes(error?.code);
 }
 
 export function upsertWorktreeSession(registry = createSessionRegistry(), session, options = {}) {

@@ -17,6 +17,34 @@ async function matchCommand(request) {
   return stdout;
 }
 
+test("routes plain planning workflow phrases to plan command", async () => {
+  for (const request of [
+    "план",
+    "сделай план",
+    "составь план для новой фичи",
+    "make a plan",
+    "create plan and then tasks",
+  ]) {
+    const output = await matchCommand(request);
+    assert.match(output, /INTENT: supervibe_plan/);
+    assert.match(output, /COMMAND: \/supervibe-plan/);
+  }
+});
+
+test("routes plain brainstorm and new feature phrases to brainstorm command", async () => {
+  for (const request of [
+    "брейншторм",
+    "давай брейншторм",
+    "start brainstorm",
+    "new feature",
+    "давай новую фичу",
+  ]) {
+    const output = await matchCommand(request);
+    assert.match(output, /INTENT: supervibe_brainstorm/);
+    assert.match(output, /COMMAND: \/supervibe-brainstorm/);
+  }
+});
+
 test("routes Russian task graph resume requests to loop status", async () => {
   const output = await matchCommand("продолжи loop по эпикам и задачам");
   assert.match(output, /INTENT: task_graph_resume/);

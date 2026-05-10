@@ -75,6 +75,9 @@ async function printActiveWorkGraphSummary() {
   if (resolution.status === 'none') {
     console.log(color('Work graph: none active', 'dim'));
     console.log(color(`  NEXT_ACTION: ${resolution.nextAction}`, 'dim'));
+    console.log(color('  ATOMIZE_COMMAND: /supervibe-loop --atomize-plan <plan-path> --plan-review-passed', 'dim'));
+    console.log(color('  RUNTIME_GATE: node scripts/supervibe-task-graph-maturity.mjs --require-active-graph', 'dim'));
+    console.log(color('  UI_COMMAND: /supervibe-ui', 'dim'));
     return;
   }
 

@@ -216,6 +216,8 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
     nextAction: "atomize a reviewed plan into a work graph",
     commands: {
       atomizeReviewedPlan: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+      inspectStatus: "/supervibe-status --ready --blocked --stale --orphan",
+      runtimeMaturity: "node scripts/supervibe-task-graph-maturity.mjs --require-active-graph",
       inspectPlans: `dir ${planGlob}`,
     },
   };

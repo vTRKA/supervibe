@@ -216,3 +216,20 @@ test("loop CLI resume prints active work graph next action after interruption", 
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("loop tracker-prime prints atomize and runtime gate guidance when graph is absent", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-no-active-"));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--tracker-prime",
+    ], { cwd: temp });
+
+    assert.match(stdout, /STATUS: no active work graph/);
+    assert.match(stdout, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(stdout, /RUNTIME_GATE: node scripts\/supervibe-task-graph-maturity\.mjs --require-active-graph/);
+    assert.match(stdout, /UI_COMMAND: \/supervibe-ui/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});

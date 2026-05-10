@@ -174,6 +174,8 @@ test("UI server returns no-active-graph model instead of raw graph error", async
     assert.equal(graph.tracker.mappingPath, null);
     assert.match(graph.nextAction, /atomize a reviewed plan/);
     assert.match(graph.commands.atomizeReviewedPlan, /--atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(graph.commands.inspectStatus, /--ready --blocked --stale --orphan/);
+    assert.match(graph.commands.runtimeMaturity, /--require-active-graph/);
   } finally {
     await close(server);
     await rm(root, { recursive: true, force: true });

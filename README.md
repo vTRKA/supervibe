@@ -7,7 +7,7 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-**v2.1** - current plugin `v2.1.3` - MIT - 1568 tests
+**v2.1** - current plugin `v2.1.4` - MIT - 1581 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -95,7 +95,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.3 initialized for this project
+[supervibe] welcome  plugin v2.1.4 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```

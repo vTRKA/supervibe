@@ -370,7 +370,14 @@ async function main() {
   if (args["tracker-prime"]) {
     const summary = await createTaskTrackerPrimeSummary({ rootDir });
     if (args.json) console.log(JSON.stringify(summary, null, 2));
-    else console.log(formatTaskTrackerPrimeReminder(summary) || "SUPERVIBE_TASK_TRACKER_PRIME\nSTATUS: no active work graph\nNEXT_ACTION: atomize a reviewed plan or continue native loop setup");
+    else console.log(formatTaskTrackerPrimeReminder(summary) || [
+      "SUPERVIBE_TASK_TRACKER_PRIME",
+      "STATUS: no active work graph",
+      "NEXT_ACTION: atomize a reviewed plan or continue native loop setup",
+      "ATOMIZE_COMMAND: /supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+      "RUNTIME_GATE: node scripts/supervibe-task-graph-maturity.mjs --require-active-graph",
+      "UI_COMMAND: /supervibe-ui",
+    ].join("\n"));
     return;
   }
 
