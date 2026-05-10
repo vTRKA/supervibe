@@ -113,6 +113,11 @@ function toConfidenceEntry(record = {}) {
     score: confidence,
     gate: confidence !== null && confidence >= 9 ? "pass" : "review",
     evidenceGatePass: record.evidence_gate?.pass ?? null,
+    confidenceDetails: record.confidence_details
+      || record.confidenceDetails
+      || record.delivery_confidence
+      || record.deliveryConfidence
+      || null,
     output: record.structured_output?.json || null,
   };
 }

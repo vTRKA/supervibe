@@ -84,6 +84,34 @@ test('logInvocation: writes retrieval evidence ledger when evidence is provided'
   assert.strictEqual(output.retrievalEnforcement.evidenceLedger, 'written');
 });
 
+test('logInvocation: preserves structured delivery confidence details', async () => {
+  const record = await logInvocation({
+    agent_id: 'quality-gate-reviewer',
+    task_summary: 'Score delivery readiness',
+    confidence_score: 9,
+    confidence_details: {
+      readinessScore: 10,
+      riskPenalty: 1,
+      uncappedScore: 9,
+      finalScore: 9,
+      status: 'pass',
+      complete: true,
+      caps: [{ score: 9, reason: 'review passed' }],
+    },
+  });
+
+  assert.strictEqual(record.confidence_details.finalScore, 9);
+  const output = JSON.parse(await readFile(join(sandbox, record.structured_output.json), 'utf8'));
+  assert.strictEqual(output.confidenceDetails.readinessScore, 10);
+  assert.strictEqual(output.confidenceDetails.riskPenalty, 1);
+  const confidenceLog = (await readFile(join(sandbox, '.supervibe', 'confidence-log.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const latest = confidenceLog[confidenceLog.length - 1];
+  assert.strictEqual(latest.confidenceDetails.finalScore, 9);
+});
+
 test('readInvocations: filters by agent_id', async () => {
   await logInvocation({ agent_id: 'a', task_summary: 't1', confidence_score: 8 });
   await logInvocation({ agent_id: 'b', task_summary: 't2', confidence_score: 9 });

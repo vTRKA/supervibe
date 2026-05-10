@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.16] - 2026-05-11
+
+### Added
+
+- Added delivery readiness confidence scoring with weighted evidence,
+  residual risk penalties, hard caps, runtime evaluator integration, telemetry
+  details, and validation coverage.
+
+### Fixed
+
+- Clarified `NEXT_USER_ACTIONS[]` as a machine-readable marker so normal
+  assistant summaries render human-readable next steps instead of raw contract
+  syntax.
+
+### Validation
+
+- Added delivery-confidence validator coverage and wired the gate into
+  `npm run check`.
+
 ## [2.1.15] - 2026-05-11
 
 ### Fixed

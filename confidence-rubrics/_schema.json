@@ -24,11 +24,29 @@
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-          "weight": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "weight": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 },
           "question": { "type": "string", "minLength": 10 },
           "evidence-required": { "type": "string", "minLength": 10 }
         }
       }
+    },
+    "risk-model": {
+      "type": "object",
+      "required": ["formula", "factors"],
+      "additionalProperties": false,
+      "properties": {
+        "formula": { "type": "string", "minLength": 10 },
+        "factors": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string", "minLength": 3 }
+        }
+      }
+    },
+    "hard-caps": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 10 }
     },
     "gates": {
       "type": "object",

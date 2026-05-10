@@ -48,6 +48,7 @@ export async function logInvocation(entry) {
   record.risks = normalizeList(record.risks);
   record.recommendations = normalizeList(record.recommendations);
   record.confidence = normalizeInvocationConfidence(record.confidence_score);
+  record.confidence_details = normalizeConfidenceDetails(record);
   record.structured_output = structuredOutputPathsForRecord(record);
   record.retrieval_enforcement = {
     schemaVersion: 1,
@@ -219,6 +220,7 @@ async function writeStructuredAgentOutput(record = {}) {
     status: record.status || 'completed',
     confidence: record.confidence || normalizeInvocationConfidence(record.confidence_score),
     confidenceScore: record.confidence_score,
+    confidenceDetails: record.confidence_details || null,
     retrievalPolicy: record.retrieval_policy || normalizeRetrievalPolicy(record),
     evidence: record.evidence || normalizeInvocationEvidence(record),
     changedFiles: normalizeList(record.changed_files || record.changedFiles),
@@ -277,6 +279,7 @@ async function appendConfidenceRecord(record = {}) {
     score: confidence,
     gate: confidence !== null && confidence >= 9 ? 'pass' : 'review',
     evidenceGatePass: record.evidence_gate?.pass ?? null,
+    confidenceDetails: record.confidence_details || null,
     output: record.structured_output?.json || null,
   };
   await mkdir(dirname(path), { recursive: true });
@@ -291,6 +294,11 @@ function formatAgentOutputSummary(payload = {}) {
     `Host Invocation: ${payload.hostInvocationId || 'unknown'}`,
     `Status: ${payload.status || 'unknown'}`,
     `Confidence: ${payload.confidenceScore ?? 'unknown'}`,
+    ...(payload.confidenceDetails ? [
+      `Readiness Score: ${payload.confidenceDetails.readinessScore ?? 'unknown'}`,
+      `Risk Penalty: ${payload.confidenceDetails.riskPenalty ?? 'unknown'}`,
+      `Hard Caps: ${Array.isArray(payload.confidenceDetails.caps) ? payload.confidenceDetails.caps.length : 'unknown'}`,
+    ] : []),
     '',
     '## Summary',
     '',
@@ -382,6 +390,33 @@ function normalizeInvocationConfidence(value) {
     score,
     status: score === null ? 'missing' : score >= 9 ? 'pass' : 'review',
   };
+}
+
+function normalizeConfidenceDetails(entry = {}) {
+  const details = entry.confidence_details
+    || entry.confidenceDetails
+    || entry.delivery_confidence
+    || entry.deliveryConfidence
+    || null;
+  if (!details || typeof details !== 'object' || Array.isArray(details)) return null;
+  return {
+    schemaVersion: Number.isFinite(Number(details.schemaVersion)) ? Number(details.schemaVersion) : 1,
+    readinessScore: numericOrNull(details.readinessScore ?? details.readiness_score),
+    riskPenalty: numericOrNull(details.riskPenalty ?? details.risk_penalty),
+    uncappedScore: numericOrNull(details.uncappedScore ?? details.uncapped_score),
+    finalScore: numericOrNull(details.finalScore ?? details.final_score),
+    status: details.status ? String(details.status) : null,
+    complete: typeof details.complete === 'boolean' ? details.complete : null,
+    dimensions: Array.isArray(details.dimensions) ? details.dimensions : [],
+    risks: Array.isArray(details.risks) ? details.risks : [],
+    caps: Array.isArray(details.caps) ? details.caps : [],
+    warnings: Array.isArray(details.warnings) ? details.warnings.map(String) : [],
+  };
+}
+
+function numericOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function hasRetrievalEvidenceInput(entry = {}) {

@@ -21,6 +21,12 @@ test("agent trend log rebuild materializes effectiveness and confidence logs", a
         agent_id: "repo-researcher",
         task_summary: "Map retrieval telemetry",
         confidence_score: 9,
+        confidence_details: {
+          readinessScore: 10,
+          riskPenalty: 1,
+          finalScore: 9,
+          status: "pass",
+        },
         retrieval_enforcement: { schemaVersion: 1 },
         structured_output: { json: ".supervibe/artifacts/_agent-outputs/host-1/agent-output.json" },
       }),
@@ -43,6 +49,7 @@ test("agent trend log rebuild materializes effectiveness and confidence logs", a
     assert.equal(effectiveness[0].outcome, "success");
     assert.equal(effectiveness[1].blockers.includes("legacy-pre-enforcement"), true);
     assert.equal(confidence[0].gate, "pass");
+    assert.equal(confidence[0].confidenceDetails.finalScore, 9);
     assert.equal(confidence[1].gate, "review");
   } finally {
     await rm(rootDir, { recursive: true, force: true });

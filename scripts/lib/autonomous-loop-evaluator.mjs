@@ -1,3 +1,5 @@
+import { scoreDeliveryConfidence } from "./delivery-confidence-score.mjs";
+
 export const REQUEUE_REASONS = Object.freeze([
   "verification_failed",
   "contract_drift",
@@ -39,12 +41,49 @@ export function evaluateTask(task, evidence = {}, options = {}) {
   if (evidence.changedUndeclaredFiles) caps.push({ score: 5, reason: "undeclared file changes" });
   if (evidence.independentEvaluationRequired && !evidence.independentReview) caps.push({ score: 8, reason: "independent evaluator unavailable" });
 
-  for (const cap of caps) score = Math.min(score, cap.score);
+  const deliveryConfidence = scoreDeliveryConfidence({
+    dimensions: [
+      { id: "acceptance", weight: 2, score: dimensions.acceptance / 2 },
+      { id: "verification", weight: 2, score: dimensions.verification / 2 },
+      { id: "tests", weight: 1, score: dimensions.tests },
+      { id: "integration", weight: 1, score: dimensions.integration },
+      { id: "regressions", weight: 1, score: dimensions.regressions },
+      { id: "codeGraph", weight: 1, score: dimensions.codeGraph },
+      { id: "handoff", weight: 1, score: dimensions.handoff },
+      { id: "policy", weight: 1, score: dimensions.policy },
+    ],
+    risks: [
+      ...normalizeDeliveryRisks(task.risks),
+      ...normalizeDeliveryRisks(evidence.risks),
+    ],
+    caps,
+    evidence: {
+      acceptanceCriteriaPresent: hasItems(task.acceptanceCriteria),
+      requiredVerification: hasItems(task.verificationCommands),
+      verificationRan: evidence.verificationRan === true,
+      verificationPassed: evidence.testsPassed === false || evidence.noRegressions === false ? false : undefined,
+      codeGraphRequired: requiresCodeGraph(task),
+      codeGraphHandled: evidence.codeGraphHandled === true,
+      policyRiskLevel: task.policyRiskLevel,
+      userApproval: evidence.userApproval === true,
+      independentReview: evidence.independentReview === true,
+      openCriticalFindings: evidence.openCriticalFindings,
+      openMajorFindings: evidence.openMajorFindings,
+      rollbackRequired: evidence.rollbackRequired === true,
+      rollbackPresent: evidence.rollbackPresent === true,
+      traceabilityRequired: evidence.traceabilityRequired === true,
+      traceabilityPresent: evidence.traceabilityPresent === true,
+      halfFinished: evidence.halfFinished === true,
+      criticalSecurityPrivacyGap: evidence.criticalSecurityPrivacyGap === true,
+    },
+  });
+  score = deliveryConfidence.finalScore;
   const finalScore = Number(score.toFixed(1));
   return {
     taskId: task.id,
     dimensions,
     caps,
+    deliveryConfidence,
     finalScore,
     status: finalScore >= 9 ? "complete" : "scored_below_gate",
     complete: finalScore >= 9,
@@ -101,4 +140,8 @@ function hasItems(value) {
 
 function requiresCodeGraph(task) {
   return /(refactor|integration|dependency|public api|architecture)/i.test(`${task.goal} ${task.category}`);
+}
+
+function normalizeDeliveryRisks(value) {
+  return Array.isArray(value) ? value : [];
 }

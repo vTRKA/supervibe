@@ -60,7 +60,7 @@ Treat the most recent user message as the topic.
 
 5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
-5a. **Mandatory next user actions.** After showing the brainstorm result, print `NEXT_USER_ACTIONS[]` with these visible choices and wait for one choice before moving on:
+5a. **Mandatory next user actions.** After showing the brainstorm result, print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
    - **Approve spec and write plan** - run `/supervibe-plan --from-brainstorm <spec-path>`.
    - **Revise idea/spec** - update goals, references, assumptions, scope, or acceptance criteria before planning.
    - **Compare or research deeper** - run additional alternatives, references, risks, or specialist checks before approval.
@@ -114,6 +114,8 @@ Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude or defer items | keep spec draft and stop
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
 ```
+
+`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
 
 ## When NOT to invoke
 

@@ -105,7 +105,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
 
-8. **Mandatory review handoff before execution.** Print:
+8. **Mandatory review handoff before execution.** Print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
    ```
    Plan saved to <path>.
    Step N/M: run the plan review loop?
@@ -164,6 +164,8 @@ NEXT_USER_ACTIONS[]: run plan review | revise plan first | audit plan deeper | e
 Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>`
 Source mode: `--from-brainstorm` when the plan came from a brainstorm spec
 ```
+
+`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
 
 ## When NOT to invoke
 

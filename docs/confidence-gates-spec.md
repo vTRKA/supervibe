@@ -134,6 +134,52 @@ If `gate-on-exit: true` AND `score < block-below` → skill emits `BLOCKED` stat
 
 ---
 
+## Delivery Confidence Formula
+
+Task, epic, plan, and agent-delivery readiness use `confidence-rubrics/delivery-readiness.yaml`
+and `scripts/lib/delivery-confidence-score.mjs`. The score is not a subjective
+single number; it is a three-part gate:
+
+```text
+ReadinessScore = 10 * weightedEarnedEvidence / totalDimensionWeight
+RiskPenalty = min(4, 10 * weightedAverage(likelihood * impact * (6 - detectability) / 125 * (1 - mitigationCoverage)))
+FinalConfidence = min(ReadinessScore - RiskPenalty, hard caps)
+```
+
+Readiness dimensions cover requirements completeness, specification completeness,
+traceability, retrieval evidence, dependency readiness, implementation confidence,
+testability, rollback/observability, independent review provenance, and scope
+safety. A 10/10 claim requires every dimension to have concrete evidence and
+zero residual risk after mitigation.
+
+Residual risk is scored with four explicit inputs: likelihood 1..5, impact 1..5,
+detectability 1..5 where higher means easier to catch before user impact, and
+mitigationCoverage 0..1. Severe hidden risks can reduce an otherwise complete
+checklist to review/block status.
+
+Hard caps prevent inflated scores when mandatory evidence is missing. Examples:
+missing acceptance criteria caps at 6, missing verification command caps at 7,
+verification not run caps at 8, failed verification caps at 6, missing required
+CodeGraph or retrieval index readiness caps at 8, high-risk work without user
+approval caps at 6, missing rollback or traceability caps at 8, open critical
+findings cap at 7, and unresolved critical security/privacy gaps cap at 6.
+
+Agent outputs that use this formula should persist `confidenceDetails` alongside
+the numeric score so reviewers can inspect `ReadinessScore`, `RiskPenalty`, hard
+caps, dimensions, risks, and warnings.
+
+---
+
+## Continuation Marker UX
+
+`NEXT_USER_ACTIONS[]` and `NEXT_STEP_HANDOFF` are machine-readable continuation
+markers for command artifacts and validators. In normal conversational summaries,
+agents should translate the available actions into a short human-readable next
+step sentence and avoid exposing the raw `NEXT_USER_ACTIONS[]` marker as prose
+unless the command output contract explicitly requires the machine block.
+
+---
+
 ## Telemetry contract
 
 Every gate decision (pass / warn / block / override) flows into `.supervibe/memory/score-log.jsonl`:

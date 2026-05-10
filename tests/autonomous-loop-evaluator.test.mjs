@@ -33,7 +33,29 @@ test("task completes when evidence is present", () => {
     independentReview: true,
   });
   assert.equal(score.finalScore, 10);
+  assert.equal(score.deliveryConfidence.finalScore, 10);
+  assert.equal(score.deliveryConfidence.readinessScore, 10);
+  assert.equal(score.deliveryConfidence.riskPenalty, 0);
   assert.equal(evaluateRun([task], [score]).complete, true);
+});
+
+test("residual delivery risk lowers confidence despite complete checklist evidence", () => {
+  const score = evaluateTask({
+    ...task,
+    risks: [{ id: "unknown-schema-drift", likelihood: 5, impact: 5, detectability: 1, mitigationCoverage: 0 }],
+  }, {
+    verificationRan: true,
+    verificationEvidence: ["ok"],
+    testsPassed: true,
+    integrationWorks: true,
+    codeGraphHandled: true,
+    independentReview: true,
+  });
+
+  assert.equal(score.deliveryConfidence.readinessScore, 10);
+  assert.equal(score.deliveryConfidence.riskPenalty, 4);
+  assert.equal(score.finalScore, 6);
+  assert.equal(score.complete, false);
 });
 
 test("task cannot score 9+ when verification matrix coverage fails", () => {

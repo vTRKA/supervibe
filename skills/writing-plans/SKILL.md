@@ -102,7 +102,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
 11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-11b. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop.
+11b. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
 12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
@@ -130,6 +130,8 @@ Choices:
 - Keep plan draft and stop - no review, atomization, or execution starts.
 END_NEXT_STEP_HANDOFF
 ```
+
+`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
 
 ## Guard rails
 

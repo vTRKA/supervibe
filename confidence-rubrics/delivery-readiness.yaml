@@ -1,0 +1,68 @@
+artifact: delivery-readiness
+max-score: 10
+dimensions:
+  - id: requirements-completeness
+    weight: 1.2
+    question: "Are requirements complete, testable, and tied to user-visible outcomes?"
+    evidence-required: "Acceptance criteria with measurable verbs, edge cases, and user outcome"
+  - id: specification-completeness
+    weight: 1.0
+    question: "Does the spec define behavior, constraints, non-goals, and production boundaries?"
+    evidence-required: "Spec sections for behavior, constraints, non-goals, and production readiness"
+  - id: traceability
+    weight: 1.2
+    question: "Can every requirement be traced through epic, task, files, verification, and evidence?"
+    evidence-required: "Traceability matrix mapping requirement -> epic -> task -> verification"
+  - id: retrieval-evidence
+    weight: 1.0
+    question: "Were project memory, Code RAG, and CodeGraph evidence checked when required?"
+    evidence-required: "Memory IDs, RAG chunk IDs, graph symbols, or explicit bypass reason"
+  - id: dependency-readiness
+    weight: 1.0
+    question: "Are dependencies, environment, credentials, and access gates understood before work starts?"
+    evidence-required: "Dependency and environment readiness notes with blockers or access gates"
+  - id: implementation-confidence
+    weight: 1.0
+    question: "Is the implementation approach feasible within the existing architecture?"
+    evidence-required: "Architecture fit notes, affected files, and unresolved decision status"
+  - id: testability
+    weight: 1.3
+    question: "Can the feature or task be verified by concrete commands and expected evidence?"
+    evidence-required: "Verification matrix, commands, expected output, and test-gap rationale if any"
+  - id: rollback-observability
+    weight: 0.8
+    question: "Are rollback, logs, metrics, release support, and failure visibility covered?"
+    evidence-required: "Rollback plan plus observability or support evidence"
+  - id: independent-review-provenance
+    weight: 0.8
+    question: "Is independent review, receipt, or provenance evidence available for non-trivial work?"
+    evidence-required: "Reviewer output, receipt ID, or accepted low-risk rationale"
+  - id: scope-safety
+    weight: 0.7
+    question: "Does the work stay inside approved scope and explicitly defer or reject extras?"
+    evidence-required: "Scope Safety Gate with approved, deferred, rejected, and tradeoff entries"
+risk-model:
+  formula: "riskPenalty = min(4, 10 * weightedAverage(likelihood * impact * (6 - detectability) / 125 * (1 - mitigationCoverage)))"
+  factors:
+    likelihood: "1..5 probability of the failure mode"
+    impact: "1..5 user, production, security, data, or maintenance impact"
+    detectability: "1..5 ability to catch before user impact; higher is easier to detect"
+    mitigationCoverage: "0..1 evidence-backed mitigation coverage"
+hard-caps:
+  missing-acceptance-criteria: 6
+  missing-verification-command: 7
+  verification-not-run: 8
+  verification-failed: 6
+  codegraph-missing: 8
+  index-not-ready: 8
+  high-risk-no-approval: 6
+  medium-risk-no-independent-review: 8
+  rollback-missing: 8
+  traceability-missing: 8
+  open-critical-findings: 7
+  open-major-findings: 8
+  half-finished: 7
+  critical-security-privacy-gap: 6
+gates:
+  block-below: 9
+  warn-below: 10

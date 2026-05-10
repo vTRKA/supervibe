@@ -89,7 +89,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
 12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
 13. **User review of written spec** — explicit approval required. Saving the candidate spec is not approval to continue.
-13a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop.
+13a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
 14. **Handoff** to `supervibe:writing-plans`.
 15. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
 
@@ -113,6 +113,8 @@ Next: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<s
 Step 1/1: write the plan?
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude/defer items | keep spec draft and stop
 ```
+
+`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
 
 Also include the machine-readable handoff block:
 
