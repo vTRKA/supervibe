@@ -48,10 +48,7 @@ export function createAgentProvisioningPlan({
     }
 
     const sourceRel = upstream.path;
-    const targetRel = normalizeRel(join(
-      host.adapter.agentsFolder,
-      ...relPathAfterAgents(sourceRel).split("/"),
-    ));
+    const targetRel = normalizeRel(join(host.adapter.agentsFolder, hostAgentFileName(sourceRel, agentId)));
     return item({
       type: "agent",
       id: agentId,
@@ -271,9 +268,13 @@ function renderProvisioningManagedInstruction({
   ]);
   const adapter = host.adapter;
   const currentHostAgents = hostCallableAgents(projectRoster, adapter.agentsFolder);
+  const currentHostAgentsById = new Map(currentHostAgents.map((agent) => [agent.id, agent]));
   const plannedHostAgentIds = (agents || [])
     .filter((entry) => entry.status === "present" || entry.status === "add")
     .map((entry) => entry.id);
+  const plannedHostAgentsById = new Map((agents || [])
+    .filter((entry) => entry.status === "present" || entry.status === "add")
+    .map((entry) => [entry.id, entry]));
   const hostCallableAgentIds = unique([
     ...currentHostAgents.map((agent) => agent.id),
     ...plannedHostAgentIds,
@@ -283,6 +284,18 @@ function renderProvisioningManagedInstruction({
   }
   const roleRoster = { agents: hostCallableAgentIds.map((id) => byId.get(id)).filter(Boolean) };
   const roleSummary = formatAgentRoleSummaries(hostCallableAgentIds, roleRoster, { max: 80 });
+  const currentProvisioning = hostCallableAgentIds.map((id) => {
+    const planned = plannedHostAgentsById.get(id);
+    if (planned) {
+      return `- agent:${id} ${planned.status}${planned.targetRel ? ` -> ${planned.targetRel}` : planned.projectRel ? ` -> ${planned.projectRel}` : ""}`;
+    }
+    const existing = currentHostAgentsById.get(id);
+    return `- agent:${id} present${existing?.path ? ` -> ${existing.path}` : ""}`;
+  });
+  const requestedOperation = [
+    ...agents.map((entry) => `- agent:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : entry.projectRel ? ` -> ${entry.projectRel}` : ""}`),
+    ...skills.map((entry) => `- skill:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : entry.projectRel ? ` -> ${entry.projectRel}` : ""}`),
+  ];
   return [
     `# Supervibe Managed Context (${adapter.displayName})`,
     "",
@@ -305,8 +318,10 @@ function renderProvisioningManagedInstruction({
     "- Run `npm run validate:agent-producer-receipts` and command-specific receipt validators before claiming delegated work is complete.",
     "",
     "## Current Provisioning",
-    ...agents.map((entry) => `- agent:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : ""}`),
-    ...skills.map((entry) => `- skill:${entry.id} ${entry.status}${entry.targetRel ? ` -> ${entry.targetRel}` : ""}`),
+    ...(currentProvisioning.length ? currentProvisioning : ["- agents: none"]),
+    "",
+    "## Requested Provisioning Operation",
+    ...(requestedOperation.length ? requestedOperation : ["- none"]),
   ].join("\n");
 }
 
@@ -367,15 +382,22 @@ function hostCallableAgentMap(roster = { agents: [] }, agentsFolder = "") {
 }
 
 function hostCallableAgents(roster = { agents: [] }, agentsFolder = "") {
-  const prefix = `${normalizeRel(agentsFolder).replace(/\/+$/, "")}/`;
   return (roster.agents || [])
     .map((agent) => {
       const hostPath = unique([agent.path, ...(agent.locations || [])])
         .map(normalizeRel)
-        .find((relPath) => relPath.startsWith(prefix));
+        .find((relPath) => isDirectHostAgentPath(relPath, agentsFolder));
       return hostPath ? { ...agent, path: hostPath } : null;
     })
     .filter(Boolean);
+}
+
+function isDirectHostAgentPath(relPath, agentsFolder = "") {
+  const prefix = `${normalizeRel(agentsFolder).replace(/\/+$/, "")}/`;
+  const normalized = normalizeRel(relPath);
+  if (!normalized.startsWith(prefix) || !normalized.endsWith(".md")) return false;
+  const rest = normalized.slice(prefix.length);
+  return rest.length > 0 && !rest.includes("/");
 }
 
 function normalizeSkillId(value) {
@@ -383,11 +405,10 @@ function normalizeSkillId(value) {
   return raw.includes(":") ? raw.split(":").pop() : raw;
 }
 
-function relPathAfterAgents(relPath) {
-  const parts = normalizeRel(relPath).split("/");
-  const index = parts.lastIndexOf("agents");
-  if (index >= 0) return parts.slice(index + 1).join("/");
-  return basename(relPath);
+function hostAgentFileName(sourceRel, agentId) {
+  const sourceBase = basename(normalizeRel(sourceRel));
+  if (sourceBase && sourceBase.endsWith(".md")) return sourceBase;
+  return `${String(agentId || sourceBase || "agent").trim()}.md`;
 }
 
 function normalizeRel(value) {

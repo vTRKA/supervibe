@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.8] - 2026-05-10
+
+### Fixed
+
+- Flattened provider runtime agent provisioning so shared upstream paths such
+  as `agents/_core/security-auditor.md` install as host-callable files like
+  `.codex/agents/security-auditor.md`, `.claude/agents/security-auditor.md`,
+  and `.gemini/agents/security-auditor.md` instead of creating namespace
+  subfolders in runtime agent directories.
+- Tightened callable-agent readiness checks so legacy nested runtime folders
+  such as `.codex/agents/_design/*.md` no longer count as host-callable
+  specialists.
+- Clarified managed host instruction output by separating the full
+  `Current Provisioning` runtime roster from the latest
+  `Requested Provisioning Operation`, keeping it aligned with `Agent Roles`.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.8`.
+
 ## [2.1.7] - 2026-05-10
 
 ### Fixed

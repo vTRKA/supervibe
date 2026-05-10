@@ -25,8 +25,7 @@ export async function loadAgentRoster({ rootDir = process.cwd() } = {}) {
       if (!filePath.endsWith(".md")) continue;
       const raw = await readFile(filePath, "utf8");
       const agent = parseAgentFile({ rootDir, filePath, raw, host: root.host });
-      if (!byId.has(agent.id)) byId.set(agent.id, agent);
-      else byId.get(agent.id).locations.push(agent.path);
+      mergeAgentEntry(byId, agent);
     }
   }
 
@@ -48,8 +47,7 @@ export function loadAgentRosterSync({ rootDir = process.cwd() } = {}) {
       if (!filePath.endsWith(".md")) continue;
       const raw = readFileSync(filePath, "utf8");
       const agent = parseAgentFile({ rootDir, filePath, raw, host: root.host });
-      if (!byId.has(agent.id)) byId.set(agent.id, agent);
-      else byId.get(agent.id).locations.push(agent.path);
+      mergeAgentEntry(byId, agent);
     }
   }
 
@@ -221,6 +219,34 @@ function parseAgentFile({ rootDir, filePath, raw, host }) {
   };
 }
 
+function mergeAgentEntry(byId, agent) {
+  const existing = byId.get(agent.id);
+  if (!existing) {
+    byId.set(agent.id, agent);
+    return;
+  }
+  const locations = uniquePaths([...(existing.locations || []), agent.path, ...(agent.locations || [])]);
+  if (agentPriority(agent) > agentPriority(existing)) {
+    byId.set(agent.id, {
+      ...agent,
+      locations,
+    });
+    return;
+  }
+  existing.locations = locations;
+}
+
+function agentPriority(agent = {}) {
+  const hostScore = agent.host && agent.host !== "shared" ? 2 : 0;
+  const directHostScore = hostScore > 0 && isDirectAgentFile(agent.path) ? 2 : 0;
+  return hostScore + directHostScore;
+}
+
+function isDirectAgentFile(relPath) {
+  const parts = partsAfterAgents(relPath);
+  return parts.length === 1 && String(parts[0] || "").endsWith(".md");
+}
+
 function partsAfterAgents(relPath) {
   const parts = normalizeRel(relPath).split("/");
   const agentsIndex = parts.lastIndexOf("agents");
@@ -230,4 +256,8 @@ function partsAfterAgents(relPath) {
 
 function normalizeRel(value) {
   return String(value || "").replace(/\\/g, "/");
+}
+
+function uniquePaths(values = []) {
+  return [...new Set(values.map(normalizeRel).filter(Boolean))];
 }

@@ -935,6 +935,37 @@ test("command-agent-plan CLI separates plugin definitions from host-callable age
   }
 });
 
+test("command-agent-plan CLI does not treat namespaced host subfolders as callable agents", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-namespaced-host-"));
+  try {
+    const nestedDir = join(projectRoot, ".codex", "agents", "_design");
+    mkdirSync(nestedDir, { recursive: true });
+    for (const agentId of ["creative-director", "prototype-builder"]) {
+      writeFileSync(join(nestedDir, `${agentId}.md`), `# ${agentId}\n`, "utf8");
+    }
+
+    const out = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "codex",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    assert.match(out, /EXECUTION_MODE: agent-required-blocked/);
+    assert.match(out, /CALLABLE_AGENTS: 0/);
+    assert.match(out, /MISSING_CALLABLE_AGENTS: .*creative-director.*prototype-builder/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("command-agent-plan CLI trusts runtime agent receipts when validators pass", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-trusted-"));
   try {

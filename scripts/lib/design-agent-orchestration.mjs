@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
 import { loadAgentRosterSync } from "./supervibe-agent-roster.mjs";
 import {
@@ -839,32 +839,19 @@ function listHostCallableAgentIds(rootDir = process.cwd(), agentsFolder = "") {
   const dir = join(rootDir, ...normalizeRelPath(agentsFolder).split("/").filter(Boolean));
   const ids = [];
   if (!agentsFolder || !existsSync(dir)) return ids;
-  for (const filePath of walkFilesSync(dir)) {
-    if (!filePath.endsWith(".md")) continue;
-    ids.push(filePath.split(/[\\/]/).pop().replace(/\.md$/, ""));
-  }
-  return unique(ids);
-}
-
-function walkFilesSync(dirPath) {
-  const files = [];
   let entries = [];
   try {
-    entries = readdirSync(dirPath, { withFileTypes: true });
+    entries = readdirSync(dir, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") return files;
+    if (error.code === "ENOENT") return ids;
     throw error;
   }
   for (const entry of entries) {
-    const child = join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...walkFilesSync(child));
-    } else if (entry.isFile()) {
-      const stat = statSync(child);
-      if (stat.isFile()) files.push(child);
+    if (entry.isFile() && entry.name.endsWith(".md")) {
+      ids.push(entry.name.replace(/\.md$/, ""));
     }
   }
-  return files;
+  return unique(ids);
 }
 
 function designWizardStillOpen(plan = {}) {

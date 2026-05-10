@@ -249,6 +249,27 @@ test("design agent plan does not dispatch missing host-callable agents", async (
   }
 });
 
+test("design agent plan treats namespaced host agent subfolders as non-callable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-namespaced-host-"));
+  try {
+    await writeUtf8(root, ".codex/agents/_design/creative-director.md", "# creative-director\n");
+    await writeUtf8(root, ".codex/agents/_design/prototype-builder.md", "# prototype-builder\n");
+
+    const plan = buildDesignAgentPlan({
+      brief: "design a new agent chat",
+      rootDir: root,
+      pluginRoot: ROOT,
+      hostAdapterId: "codex",
+    });
+
+    assert.equal(plan.executionStatus.callableAgentsReady, false);
+    assert.ok(plan.executionStatus.missingCallableAgents.includes("creative-director"));
+    assert.ok(plan.executionStatus.missingCallableAgents.includes("prototype-builder"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design agent plan does not redispatch orchestrator after trusted stage-0 receipt", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-dispatch-orchestrator-done-"));
   try {

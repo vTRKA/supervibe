@@ -437,8 +437,8 @@ test("supervibe-adapt provisions agents through first-class add-agents mode", ()
 
     const out = runAdapt(projectRoot, ["--add-agents", "creative-director", "--apply", "--no-color"]);
     assert.match(out, /SUPERVIBE_ADAPT_AGENT_PROVISIONING_APPLY/);
-    assert.match(out, /APPLIED_FILE: \.codex\/agents\/_design\/creative-director\.md/);
-    assert.equal(existsSync(join(projectRoot, ".codex", "agents", "_design", "creative-director.md")), true);
+    assert.match(out, /APPLIED_FILE: \.codex\/agents\/creative-director\.md/);
+    assert.equal(existsSync(join(projectRoot, ".codex", "agents", "creative-director.md")), true);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

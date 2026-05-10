@@ -244,17 +244,17 @@ function listCallableAgentSources({
   hostAgentsFolder,
 }) {
   const sources = new Map();
-  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable");
+  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable", { recursive: false });
   return sources;
 }
 
-function addAgentSources(sources, dir, source) {
+function addAgentSources(sources, dir, source, { recursive = true } = {}) {
   if (!existsSync(dir)) return;
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     const stat = statSync(path);
     if (stat.isDirectory()) {
-      addAgentSources(sources, path, source);
+      if (recursive) addAgentSources(sources, path, source, { recursive });
     } else if (entry.endsWith(".md")) {
       const id = entry.replace(/\.md$/, "");
       if (source === "project artifact" || !sources.has(id)) sources.set(id, source);
