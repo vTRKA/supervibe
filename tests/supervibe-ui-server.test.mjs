@@ -63,6 +63,9 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.equal(graph.graphTree.rollup.epics, 1);
     assert.equal(graph.graphTree.rollup.tasks, 1);
     assert.equal(graph.panels.readyQueue[0].id, "design-kanban-cards");
+    assert.equal(graph.panels.sourceSnapshot.present, false);
+    assert.equal(graph.panels.evidenceCoverage.required > 0, true);
+    assert.equal(graph.panels.evidenceCoverage.covered <= graph.panels.evidenceCoverage.required, true);
     assert.equal(graph.panels.completion.productionReady, false);
     assert.ok(graph.panels.completion.blockers.length > 0);
     assert.equal(graph.tracker.status, "native-ready");

@@ -200,7 +200,7 @@ export function groupWorkItemsByStatus(index = []) {
     claimed: index.filter((item) => item.effectiveStatus === "claimed"),
     delegated: index.filter((item) => item.effectiveStatus === "delegated"),
     deferred: index.filter((item) => item.effectiveStatus === "deferred"),
-    review: index.filter((item) => item.type === "review" || item.type === "gate"),
+    review: index.filter((item) => (item.type === "review" || item.type === "gate") && item.effectiveStatus !== "done"),
     done: index.filter((item) => item.effectiveStatus === "done"),
   };
 }

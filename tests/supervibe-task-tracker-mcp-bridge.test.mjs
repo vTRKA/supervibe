@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assertMcpTaskTrackerApproved,
   createTaskTrackerMcpBridge,
+  createTaskTrackerMcpAdapter,
   detectMcpTaskTrackerCapability,
 } from "../scripts/lib/supervibe-task-tracker-mcp-bridge.mjs";
 
@@ -38,4 +39,22 @@ test("MCP capability detection finds issue/task servers", () => {
 
   assert.equal(detection.available, true);
   assert.deepEqual(detection.servers, ["tracker"]);
+});
+
+test("MCP tracker adapter is approval gated and exposes tracker methods", async () => {
+  const blocked = createTaskTrackerMcpAdapter({ servers: ["issue-mcp"], allowedTools: ["create_task"] });
+  assert.equal(blocked.detect().available, false);
+  await assert.rejects(() => blocked.createTask({ itemId: "task-1", title: "Task" }), /requires explicit approval/);
+
+  const approved = createTaskTrackerMcpAdapter({
+    servers: ["issue-mcp"],
+    approved: true,
+    allowedTools: ["create_task", "add_dependency"],
+  });
+  const created = await approved.createTask({ itemId: "task-1", title: "Task" });
+  const linked = await approved.addDependency({ fromExternalId: "task-1", toExternalId: "task-2", type: "blocks" });
+
+  assert.equal(approved.detect().available, true);
+  assert.equal(created.externalId, "task-1");
+  assert.equal(linked.method, "addDependency");
 });

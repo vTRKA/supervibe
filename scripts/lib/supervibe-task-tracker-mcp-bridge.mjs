@@ -49,6 +49,36 @@ export function createTaskTrackerMcpBridge(options = {}) {
   };
 }
 
+export function createTaskTrackerMcpAdapter(options = {}) {
+  const bridge = createTaskTrackerMcpBridge(options);
+  const call = async (method, payload = {}) => {
+    const result = await bridge.call(method, payload);
+    if (!result.ok) throw new Error(result.reason || `MCP task tracker ${method} failed`);
+    return {
+      ok: true,
+      externalId: payload.externalId || payload.itemId || payload.id || `${method}:${stableId(payload.title || payload.itemId || payload.id || method)}`,
+      method,
+      transport: "mcp",
+      bridge: bridge.id,
+      result,
+    };
+  };
+  return {
+    id: "task-tracker-mcp",
+    transport: "mcp",
+    detect: () => bridge.detect(),
+    createEpic: (epic) => call("createEpic", epic),
+    createTask: (task) => call("createTask", task),
+    addDependency: (dependency) => call("addDependency", dependency),
+    ready: (query = {}) => call("ready", query),
+    claim: (claim = {}) => call("claim", claim),
+    update: (update = {}) => call("update", update),
+    close: (close = {}) => call("close", close),
+    syncPush: (payload = {}) => call("syncPush", payload),
+    syncPull: (payload = {}) => call("syncPull", payload),
+  };
+}
+
 export function assertMcpTaskTrackerApproved(bridge) {
   const detection = bridge.detect();
   if (detection.available) return true;
@@ -72,4 +102,8 @@ function redactPayload(payload) {
     if (/token|secret|password|credential/i.test(key)) return "[REDACTED_SECRET]";
     return value;
   }));
+}
+
+function stableId(value) {
+  return String(value || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "item";
 }

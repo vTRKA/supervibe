@@ -57,6 +57,8 @@ export function validateEpicCompletion(graph = {}, options = {}) {
         issues.push(completionIssue("missing-evidence", id, `${id} is complete without verification evidence.`));
       } else if (strictProduction && !allowDryRunEvidence && evidence.some(isDryRunEvidence)) {
         issues.push(completionIssue("dry-run-evidence", id, `${id} uses dry-run evidence and cannot close production completion.`));
+      } else if (strictProduction && !evidence.some(isStructuredProductionEvidence)) {
+        issues.push(completionIssue("insufficient-evidence", id, `${id} has evidence, but it is not structured enough for production completion.`));
       }
     }
   }
@@ -155,7 +157,9 @@ function collectEvidenceByTask(graph = {}) {
   }
   for (const event of graph.events || []) {
     if (["close", "complete", "closed", "completed"].includes(normalizeStatus(event.action || event.type))) {
-      add(event.itemId || event.taskId, event.evidence || event.reason || event);
+      add(event.itemId || event.taskId, event.verificationEvidence);
+      add(event.itemId || event.taskId, event.evidence);
+      if (isStructuredProductionEvidence(event)) add(event.itemId || event.taskId, event);
     }
   }
   return evidenceByTask;
@@ -200,6 +204,17 @@ function isDryRunEvidence(evidence) {
   return /\bdry[-_ ]?run\b/i.test(text);
 }
 
+function isStructuredProductionEvidence(evidence) {
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return false;
+  const status = normalizeStatus(evidence.status || evidence.verdict || evidence.result || evidence.outcome);
+  const statusOk = ["pass", "passed", "ok", "success", "succeeded", "complete", "completed", "done"].includes(status);
+  const hasCommandSignal = Boolean(evidence.command || evidence.commands || evidence.verificationCommand || evidence.check);
+  const hasOutputSignal = Boolean(evidence.output || evidence.outputSummary || evidence.summary || evidence.stdout || evidence.stderr);
+  const hasReceiptSignal = Boolean(evidence.receiptId || evidence.receipt || evidence.workflowReceiptId);
+  const hasReviewerSignal = Boolean(evidence.reviewerStatus || evidence.validatorStatus || evidence.reviewStatus);
+  return statusOk && (hasCommandSignal || hasReceiptSignal || hasReviewerSignal) && (hasOutputSignal || hasReceiptSignal || hasReviewerSignal);
+}
+
 function completionIssue(code, itemId, message, details = {}) {
   return { code, itemId: itemId || null, message, nextAction: nextActionForIssue(code, itemId, details), ...details };
 }
@@ -213,6 +228,7 @@ function nextActionForIssue(code, itemId, details = {}) {
   if (code === "missing-skip-reason") return `add skip/cancel reason to ${id}`;
   if (code === "missing-skip-impact") return `add skipped-work impact to ${id}`;
   if (code === "missing-evidence") return `attach verification evidence to ${id}`;
+  if (code === "insufficient-evidence") return `attach structured evidence to ${id} with command, pass status, output summary, receipt id, or reviewer status`;
   if (code === "dry-run-evidence") return `replace dry-run evidence on ${id} with production verification`;
   if (code === "unknown-dependency") return `repair dependency ${details.dependencyId || ""} for ${id}`;
   if (code === "dependency-open") return `complete dependency ${details.dependencyId || ""} before ${id}`;

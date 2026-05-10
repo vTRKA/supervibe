@@ -35,6 +35,7 @@ export async function atomizePlanFile(planPath, options = {}) {
 
 export function atomizePlanToWorkItems(markdown, options = {}) {
   const planPath = normalizePath(options.planPath ?? ".supervibe/artifacts/plans/plan.md");
+  const sourcePlanSnapshot = createSourcePlanSnapshot(markdown, planPath, options);
   const parsed = parsePlanForWorkItems(markdown, planPath, {
     requireTasks: Boolean(options.requireTasks || options.planReviewPassed),
   });
@@ -79,6 +80,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
       planReviewPassed: Boolean(options.planReviewPassed),
       dryRun: Boolean(options.dryRun),
       createdFrom: "plan",
+      sourcePlanSnapshot,
     },
   });
   const validation = validateWorkItemGraph(graph);
@@ -212,13 +214,19 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
 }
 
 export function createWorkItemGraph({ epicId, planPath, title, items, metadata = {} }) {
+  const sourcePlanSnapshot = metadata.sourcePlanSnapshot || null;
   return {
     schema_version: LOOP_SCHEMA_VERSION,
     kind: "supervibe-work-item-graph",
     graph_id: epicId,
     epicId,
     title,
-    source: { type: "plan", path: normalizePath(planPath) },
+    source: {
+      type: "plan",
+      path: normalizePath(planPath),
+      sha256: sourcePlanSnapshot?.sha256 || null,
+      snapshotPath: sourcePlanSnapshot?.storedPath || null,
+    },
     metadata,
     items,
     dependencyEdges: createDependencyEdges(items),
@@ -351,6 +359,10 @@ export async function writeWorkItemGraph(graph, options = {}) {
   await mkdir(outDir, { recursive: true });
   const graphPath = join(outDir, "graph.json");
   const previewPath = join(outDir, "preview.txt");
+  const sourcePlanSnapshot = graph.metadata?.sourcePlanSnapshot;
+  if (sourcePlanSnapshot?.content && sourcePlanSnapshot?.storedPath) {
+    await writeFile(join(outDir, normalizePath(sourcePlanSnapshot.storedPath)), String(sourcePlanSnapshot.content), "utf8");
+  }
   await writeFile(graphPath, `${JSON.stringify(stripParsedFields(graph), null, 2)}\n`);
   await writeFile(previewPath, `${createWorkItemPreview(graph, validation)}\n`);
   await updateActiveWorkItemGraph({
@@ -802,7 +814,32 @@ function estimateEpicSize(items) {
 
 function stripParsedFields(graph) {
   const { parsed, validation, preview, ...serializable } = graph;
+  const sourcePlanSnapshot = serializable.metadata?.sourcePlanSnapshot;
+  if (sourcePlanSnapshot?.content != null) {
+    const { content, ...compactSnapshot } = sourcePlanSnapshot;
+    return {
+      ...serializable,
+      metadata: {
+        ...serializable.metadata,
+        sourcePlanSnapshot: {
+          ...compactSnapshot,
+          contentLength: Buffer.byteLength(String(content), "utf8"),
+        },
+      },
+    };
+  }
   return serializable;
+}
+
+function createSourcePlanSnapshot(markdown, planPath, options = {}) {
+  const content = String(markdown ?? "");
+  return {
+    path: normalizePath(planPath),
+    sha256: createHash("sha256").update(content).digest("hex"),
+    storedPath: normalizePath(options.sourcePlanSnapshotPath || "source-plan.md"),
+    capturedAt: options.capturedAt || new Date().toISOString(),
+    content,
+  };
 }
 
 function normalizePath(value) {

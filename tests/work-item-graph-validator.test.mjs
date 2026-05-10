@@ -68,6 +68,33 @@ test("validate-work-item-graphs CLI passes persisted graph", async () => {
   assert.match(stdout, /All 1 work-item graph artifact\(s\) passed/);
 });
 
+test("validate-work-item-graphs CLI strict source snapshot flag fails legacy graph", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "work-item-graph-strict-source-"));
+  const file = join(dir, "graph.json");
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true });
+  graph.metadata.sourcePlanSnapshot = null;
+  graph.source.sha256 = null;
+  graph.source.snapshotPath = null;
+  await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
+
+  assert.throws(() => execFileSync(process.execPath, [
+    "scripts/validate-work-item-graphs.mjs",
+    "--file",
+    file,
+    "--require-source-plan-snapshot",
+  ], {
+    cwd: new URL("../", import.meta.url),
+    encoding: "utf8",
+    stdio: "pipe",
+  }), /missing-source-plan-snapshot/);
+});
+
+test("package scripts expose strict source snapshot graph validation", async () => {
+  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+
+  assert.match(pkg.scripts["validate:work-item-graphs:strict-source"], /--require-source-plan-snapshot/);
+});
+
 test("reviewed plan without parseable tasks is invalid instead of one vague fallback task", () => {
   const graph = atomizePlanToWorkItems("# Weak Implementation Plan\n\nNo task headings.", {
     planPath: "weak.md",
@@ -78,4 +105,3 @@ test("reviewed plan without parseable tasks is invalid instead of one vague fall
   assert.equal(graph.validation.valid, false);
   assert.ok(graph.validation.issues.some((issue) => issue.code === "missing-child-task"));
 });
-

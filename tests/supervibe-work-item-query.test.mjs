@@ -105,6 +105,17 @@ test("dependencies unblock when blocker task is terminal", () => {
   assert.match(queryWorkItems("what is ready?", { index }).answer, /epic-query-t2/);
 });
 
+test("terminal review and gate items are grouped as done instead of pending review", () => {
+  const grouped = groupWorkItemsByStatus([
+    { itemId: "review-complete", type: "review", effectiveStatus: "done" },
+    { itemId: "gate-complete", type: "gate", effectiveStatus: "done" },
+    { itemId: "gate-open", type: "gate", effectiveStatus: "gate" },
+  ]);
+
+  assert.deepEqual(grouped.done.map((item) => item.itemId), ["review-complete", "gate-complete"]);
+  assert.deepEqual(grouped.review.map((item) => item.itemId), ["gate-open"]);
+});
+
 test("query helpers detect duplicates, stale claims, orphan evidence, drift, and multi-repo filters", () => {
   const workGraph = graph();
   const index = createWorkItemIndex({

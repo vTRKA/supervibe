@@ -139,13 +139,21 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
     }
 
     graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const productionEvidence = {
+      kind: "test",
+      command: "node --test tests/task-graph-full-flow.test.mjs",
+      status: "pass",
+      outputSummary: "full flow production completion verified",
+      receiptId: "task-graph-full-flow-production-evidence",
+      mode: "production",
+    };
     graph.evidence = [];
     graph.items = graph.items.map((item) => {
       if (item.type !== "epic") {
         return {
           ...item,
           status: "complete",
-          evidence: [{ kind: "test", command: "node --test tests/task-graph-full-flow.test.mjs", mode: "production" }],
+          evidence: [{ ...productionEvidence, taskId: item.itemId }],
         };
       }
       return item;
@@ -153,7 +161,7 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
     graph.tasks = graph.tasks.map((task) => ({
       ...task,
       status: "complete",
-      evidence: [{ kind: "test", command: "node --test tests/task-graph-full-flow.test.mjs", mode: "production" }],
+      evidence: [{ ...productionEvidence, taskId: task.id }],
     }));
     await writeFile(graphPath, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
 

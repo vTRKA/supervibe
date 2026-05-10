@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.13] - 2026-05-11
+
+### Fixed
+
+- Hardened graph-first task execution with source plan snapshots, strict
+  production evidence checks, truthful terminal review status, MCP tracker
+  wiring, and UI evidence/source traceability.
+- Added strict source snapshot validation and task graph maturity coverage for
+  source snapshots, structured completion evidence, and approval-gated MCP
+  tracker integration.
+
+### Security
+
+- Refreshed release security and install integrity version evidence for
+  `v2.1.13`.
+
 ## [2.1.12] - 2026-05-11
 
 ### Fixed

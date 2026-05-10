@@ -949,6 +949,8 @@ function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, comp
     readyQueue: groups.ready.map(compactPanelItem),
     blockers,
     staleClaims: staleClaims.map(compactPanelItem),
+    sourceSnapshot: sourceSnapshotPanel(graph),
+    evidenceCoverage: evidenceCoveragePanel(completion),
     completion: {
       productionReady: completion?.pass === true,
       blockers: (completion?.issues || []).map((issue) => ({
@@ -959,6 +961,40 @@ function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, comp
       })),
       warnings: completion?.warnings || [],
     },
+  };
+}
+
+function sourceSnapshotPanel(graph = {}) {
+  const snapshot = graph.metadata?.sourcePlanSnapshot || {};
+  const source = graph.source || {};
+  const storedPath = snapshot.storedPath || source.snapshotPath || null;
+  const sha256 = snapshot.sha256 || source.sha256 || null;
+  return {
+    present: Boolean(storedPath && sha256),
+    sourcePath: source.path || snapshot.path || null,
+    snapshotPath: storedPath,
+    sha256,
+    nextAction: storedPath && sha256
+      ? "source plan snapshot is traceable"
+      : "atomize the reviewed plan again to capture a source-plan.md snapshot",
+  };
+}
+
+function evidenceCoveragePanel(completion = {}) {
+  const evidenceIssues = (completion?.issues || []).filter((issue) => [
+    "missing-evidence",
+    "insufficient-evidence",
+    "dry-run-evidence",
+  ].includes(issue.code));
+  const required = completion?.counts?.required || evidenceIssues.length || 0;
+  return {
+    required,
+    missing: evidenceIssues.length,
+    covered: Math.max(0, required - evidenceIssues.length),
+    blockerIds: evidenceIssues.map((issue) => issue.itemId).filter(Boolean),
+    nextAction: evidenceIssues.length > 0
+      ? "attach structured command, status, output, receipt, or reviewer evidence before production completion"
+      : "completion evidence coverage is sufficient",
   };
 }
 

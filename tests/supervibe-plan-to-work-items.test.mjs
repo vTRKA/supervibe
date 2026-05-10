@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -227,6 +228,32 @@ test("native write and external adapter failure preserve native graph", async ()
     const nativeAdapter = createNativeWorkItemAdapter({ rootDir: temp, outDir: join(temp, "native") });
     const nativeResult = await nativeAdapter.createGraph(graph);
     assert.equal(nativeResult.ok, true);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("atomization records and writes an adjacent source plan snapshot", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-work-items-source-plan-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment",
+      planReviewPassed: true,
+    });
+    const expectedHash = createHash("sha256").update(PLAN).digest("hex");
+
+    assert.equal(graph.source.sha256, expectedHash);
+    assert.equal(graph.metadata.sourcePlanSnapshot.sha256, expectedHash);
+
+    const writeResult = await writeWorkItemGraph(graph, { rootDir: temp });
+    const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
+    const snapshot = await readFile(join(writeResult.outDir, "source-plan.md"), "utf8");
+
+    assert.equal(snapshot, PLAN);
+    assert.equal(saved.source.snapshotPath, "source-plan.md");
+    assert.equal(saved.metadata.sourcePlanSnapshot.sha256, expectedHash);
+    assert.equal("content" in saved.metadata.sourcePlanSnapshot, false);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

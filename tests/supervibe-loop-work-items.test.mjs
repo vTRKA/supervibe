@@ -233,3 +233,43 @@ test("loop tracker-prime prints atomize and runtime gate guidance when graph is 
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("loop CLI status does not report terminal review gates as pending review work", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-terminal-status-"));
+  try {
+    const graph = atomizePlanToWorkItems(`${PLAN}
+
+### REVIEW GATE 1
+`, {
+      planPath: ".supervibe/artifacts/plans/terminal-status.md",
+      epicId: "epic-terminal-status",
+      planReviewPassed: true,
+    });
+    const closedGraph = {
+      ...graph,
+      items: graph.items.map((item) => ({
+        ...item,
+        status: "complete",
+        verificationEvidence: item.type === "epic" ? item.verificationEvidence : [{ taskId: item.itemId, command: "node --test", status: "pass", output: "verified" }],
+      })),
+      tasks: graph.tasks.map((task) => ({
+        ...task,
+        status: "complete",
+        verificationEvidence: [{ taskId: task.id, command: "node --test", status: "pass", output: "verified" }],
+      })),
+    };
+    const { graphPath } = await writeWorkItemGraph(closedGraph, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+    ], { cwd: ROOT });
+
+    assert.match(stdout, /REVIEW: 0/);
+    assert.match(stdout, /NEXT_ACTION: run \/supervibe-loop --validate-completion/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});

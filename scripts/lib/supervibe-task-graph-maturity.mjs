@@ -112,6 +112,9 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
       tokens: REQUIRED_SYNC_DIAGNOSTIC_TOKENS,
     }),
     validatorDimension(rootDir),
+    sourceSnapshotDimension(rootDir),
+    strictCompletionEvidenceDimension(rootDir),
+    mcpTrackerWiringDimension(rootDir),
     testsDimension(rootDir),
     graphFixtureDimension(rootDir),
     currentGraphDimension(rootDir, { required: requireActiveGraph }),
@@ -129,6 +132,70 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     pass,
     status: pass ? "10-of-10-ready" : "needs-work",
     dimensions,
+  };
+}
+
+function sourceSnapshotDimension(rootDir) {
+  const planWriter = readOptional(join(rootDir, "scripts/lib/supervibe-plan-to-work-items.mjs"));
+  const graphValidator = readOptional(join(rootDir, "scripts/validate-work-item-graphs.mjs"));
+  const checks = [
+    ["atomizer records sourcePlanSnapshot", planWriter.includes("sourcePlanSnapshot")],
+    ["atomizer writes source-plan.md", planWriter.includes("source-plan.md")],
+    ["validator exposes strict source flag", graphValidator.includes("require-source-plan-snapshot")],
+    ["validator checks sha256", graphValidator.includes("source-plan-snapshot-hash-mismatch") && graphValidator.includes("sha256")],
+  ];
+  const blockers = checks.filter(([, pass]) => !pass).map(([label]) => label);
+  return {
+    id: "source-plan-snapshots",
+    title: "Source plan snapshot traceability",
+    pass: blockers.length === 0,
+    summary: blockers.length === 0 ? "source plan snapshot metadata, persistence, and strict validation present" : `${blockers.length} source snapshot checks missing`,
+    blockers,
+    evidence: [
+      "scripts/lib/supervibe-plan-to-work-items.mjs",
+      "scripts/validate-work-item-graphs.mjs",
+    ],
+  };
+}
+
+function strictCompletionEvidenceDimension(rootDir) {
+  const validator = readOptional(join(rootDir, "scripts/lib/supervibe-epic-completion-validator.mjs"));
+  const checks = [
+    ["structured evidence helper", validator.includes("isStructuredProductionEvidence")],
+    ["insufficient evidence blocker", validator.includes("insufficient-evidence")],
+    ["event reason is not collected as evidence", !validator.includes("event.evidence || event.reason || event")],
+  ];
+  const blockers = checks.filter(([, pass]) => !pass).map(([label]) => label);
+  return {
+    id: "strict-completion-evidence",
+    title: "Strict production evidence",
+    pass: blockers.length === 0,
+    summary: blockers.length === 0 ? "completion validator rejects weak event reasons and unstructured evidence" : `${blockers.length} evidence checks missing`,
+    blockers,
+    evidence: ["scripts/lib/supervibe-epic-completion-validator.mjs"],
+  };
+}
+
+function mcpTrackerWiringDimension(rootDir) {
+  const loop = readOptional(join(rootDir, "scripts/supervibe-loop.mjs"));
+  const bridge = readOptional(join(rootDir, "scripts/lib/supervibe-task-tracker-mcp-bridge.mjs"));
+  const checks = [
+    ["loop imports MCP adapter", loop.includes("createTaskTrackerMcpAdapter")],
+    ["loop supports --tracker mcp", loop.includes("args.tracker === \"mcp\"") && loop.includes("--tracker memory|cli|mcp")],
+    ["approval flag is present", loop.includes("approve-mcp-tracker")],
+    ["bridge adapter is approval gated", bridge.includes("createTaskTrackerMcpAdapter") && bridge.includes("requires explicit approval")],
+  ];
+  const blockers = checks.filter(([, pass]) => !pass).map(([label]) => label);
+  return {
+    id: "mcp-tracker-wiring",
+    title: "MCP tracker adapter wiring",
+    pass: blockers.length === 0,
+    summary: blockers.length === 0 ? "MCP tracker path is wired and approval-gated" : `${blockers.length} MCP tracker checks missing`,
+    blockers,
+    evidence: [
+      "scripts/supervibe-loop.mjs",
+      "scripts/lib/supervibe-task-tracker-mcp-bridge.mjs",
+    ],
   };
 }
 

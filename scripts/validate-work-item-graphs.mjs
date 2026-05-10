@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 
 import { validateWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
@@ -17,11 +18,21 @@ async function walkGraphs(dir) {
   return out;
 }
 
-export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [] } = {}) {
+export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false } = {}) {
   const results = [];
   for (const file of files) {
     const graph = JSON.parse(await readFile(file, "utf8"));
-    const validation = validateWorkItemGraph(graph);
+    let validation = validateWorkItemGraph(graph);
+    if (requireSourcePlanSnapshot) {
+      const sourceIssues = await validateSourcePlanSnapshot({ graph, graphPath: file });
+      if (sourceIssues.length > 0) {
+        validation = {
+          ...validation,
+          valid: false,
+          issues: [...validation.issues, ...sourceIssues],
+        };
+      }
+    }
     results.push({ file, validation });
   }
   return {
@@ -36,6 +47,7 @@ async function main() {
       file: { type: "string", short: "f" },
       all: { type: "boolean", default: false },
       "fixture-dir": { type: "string" },
+      "require-source-plan-snapshot": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -44,7 +56,8 @@ async function main() {
     console.log(`Usage:
   node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json
   node scripts/validate-work-item-graphs.mjs --all
-  node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/work-item-graphs`);
+  node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/work-item-graphs
+  node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json --require-source-plan-snapshot`);
     return;
   }
 
@@ -60,7 +73,11 @@ async function main() {
     return;
   }
 
-  const report = await validateWorkItemGraphFiles({ rootDir: root, files });
+  const report = await validateWorkItemGraphFiles({
+    rootDir: root,
+    files,
+    requireSourcePlanSnapshot: Boolean(values["require-source-plan-snapshot"]),
+  });
   for (const result of report.results) {
     const rel = relative(root, result.file).split(sep).join("/");
     if (result.validation.valid) {
@@ -77,6 +94,37 @@ async function main() {
   console.log(`\nAll ${report.results.length} work-item graph artifact(s) passed`);
 }
 
+async function validateSourcePlanSnapshot({ graph = {}, graphPath }) {
+  const issues = [];
+  const snapshot = graph.metadata?.sourcePlanSnapshot || {};
+  const storedPath = snapshot.storedPath || graph.source?.snapshotPath;
+  const expectedHash = snapshot.sha256 || graph.source?.sha256;
+  if (!storedPath || !expectedHash) {
+    issues.push(issue("missing-source-plan-snapshot", graph.epicId || graph.graph_id, "Graph is missing source plan snapshot metadata."));
+    return issues;
+  }
+
+  const snapshotPath = resolve(dirname(graphPath), storedPath);
+  if (!existsSync(snapshotPath)) {
+    issues.push(issue("missing-source-plan-snapshot-file", graph.epicId || graph.graph_id, `Source plan snapshot file is missing: ${relative(process.cwd(), snapshotPath).split(sep).join("/")}`));
+    return issues;
+  }
+
+  const content = await readFile(snapshotPath, "utf8");
+  const actualHash = createHash("sha256").update(content).digest("hex");
+  if (actualHash !== expectedHash) {
+    issues.push(issue("source-plan-snapshot-hash-mismatch", graph.epicId || graph.graph_id, "Source plan snapshot hash does not match graph metadata.", {
+      expectedHash,
+      actualHash,
+    }));
+  }
+  return issues;
+}
+
+function issue(code, itemId, message, extra = {}) {
+  return { code, itemId: itemId || null, message, ...extra };
+}
+
 const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`;
 if (isMain || process.argv[1]?.endsWith("validate-work-item-graphs.mjs")) {
   main().catch((error) => {
@@ -84,4 +132,3 @@ if (isMain || process.argv[1]?.endsWith("validate-work-item-graphs.mjs")) {
     process.exit(2);
   });
 }
-

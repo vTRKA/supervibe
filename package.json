@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.12",
+  "version": "2.1.13",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -114,6 +114,7 @@
     "validate:decision-briefs": "node scripts/validate-decision-briefs.mjs --fixture-dir tests/fixtures/artifacts/decision-briefs",
     "validate:api-contracts": "node scripts/validate-api-contracts.mjs --fixture-dir tests/fixtures/artifacts/api-contracts",
     "validate:work-item-graphs": "node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/artifacts/work-item-graphs && node scripts/validate-work-item-graphs.mjs",
+    "validate:work-item-graphs:strict-source": "node scripts/validate-work-item-graphs.mjs --all --require-source-plan-snapshot",
     "validate:epic-completion": "node scripts/validate-epic-completion.mjs --all",
     "validate:epic-completion:strict": "node scripts/validate-epic-completion.mjs --all --strict-coverage",
     "validate:design-expert-knowledge": "node scripts/validate-design-expert-knowledge.mjs",

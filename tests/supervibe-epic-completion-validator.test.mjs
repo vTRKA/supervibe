@@ -93,6 +93,37 @@ test("validateEpicCompletion requires skipped work to include reason and impact"
   assert.equal(accepted.pass, true);
 });
 
+test("validateEpicCompletion rejects event reason without structured evidence", () => {
+  const graph = atomizePlanToWorkItems(PLAN, {
+    planPath: ".supervibe/artifacts/plans/completion.md",
+    epicId: "epic-completion",
+    planReviewPassed: true,
+  });
+  graph.items = graph.items.map((item) => ({ ...item, status: "complete" }));
+  graph.tasks = graph.tasks.map((task) => ({ ...task, status: "complete" }));
+  graph.events = graph.items
+    .filter((item) => item.type !== "epic" && item.type !== "followup")
+    .map((item) => ({ action: "complete", itemId: item.itemId, reason: "verified manually" }));
+
+  const report = validateEpicCompletion(graph);
+
+  assert.equal(report.pass, false);
+  assert.ok(report.issues.some((issue) => issue.code === "missing-evidence"));
+});
+
+test("validateEpicCompletion rejects unstructured production evidence", () => {
+  const graph = completedGraph();
+  const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
+  task.verificationEvidence = ["verified manually"];
+  graph.tasks.find((item) => item.id === "epic-completion-t1").verificationEvidence = ["verified manually"];
+  graph.evidence = graph.evidence.filter((item) => item.taskId !== "epic-completion-t1");
+
+  const report = validateEpicCompletion(graph);
+
+  assert.equal(report.pass, false);
+  assert.ok(report.issues.some((issue) => issue.code === "insufficient-evidence" && issue.itemId === "epic-completion-t1"));
+});
+
 test("validate-epic-completion CLI reports failed and passed completion", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-epic-completion-"));
   const passingFile = join(root, "passing.graph.json");

@@ -17,6 +17,7 @@ import { formatDoctorReport, primeLoopRun, repairLoopRun } from "./lib/autonomou
 import { archiveLoopRun, exportLoopBundle, importLoopBundle } from "./lib/autonomous-loop-archive.mjs";
 import { atomizePlanFile, createWorkItemPreview, writeWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
 import { createCliTaskTrackerAdapter, createMemoryTaskTrackerAdapter, createUnavailableTaskTrackerAdapter } from "./lib/supervibe-durable-task-tracker-adapter.mjs";
+import { createTaskTrackerMcpAdapter } from "./lib/supervibe-task-tracker-mcp-bridge.mjs";
 import { formatTaskTrackerDoctorReport, repairTaskTracker } from "./lib/supervibe-task-tracker-doctor.mjs";
 import { defaultTrackerMappingPath, materializeEpicAndTasks, readTrackerMapping, syncPull } from "./lib/supervibe-task-tracker-sync.mjs";
 import { createTaskTrackerPrimeSummary, formatTaskTrackerPrimeReminder } from "./lib/supervibe-task-tracker-prime.mjs";
@@ -106,6 +107,7 @@ function parseArgs(argv) {
     "approval-receipts",
     "policy-doctor",
     "fix-derived",
+    "approve-mcp-tracker",
     "anchors",
     "anchor-doctor",
     "summarize-changes",
@@ -1341,6 +1343,13 @@ function shouldUseTaskTrackerAdapter(args) {
 
 function createTaskTrackerAdapterFromArgs(args, options = {}) {
   if (args.tracker === "memory") return createMemoryTaskTrackerAdapter();
+  if (args.tracker === "mcp") {
+    return createTaskTrackerMcpAdapter({
+      servers: parseCsvArg(args["tracker-mcp-servers"] || args["tracker-mcp-server"] || args["mcp-servers"]),
+      allowedTools: parseCsvArg(args["tracker-mcp-tools"] || args["mcp-tools"]),
+      approved: Boolean(args["approve-mcp-tracker"]),
+    });
+  }
   if (args.tracker === "cli" || args["tracker-command"] || process.env.SUPERVIBE_TASK_TRACKER_COMMAND) {
     return createCliTaskTrackerAdapter({
       command: args["tracker-command"] || process.env.SUPERVIBE_TASK_TRACKER_COMMAND,
@@ -1450,7 +1459,8 @@ Execution modes:
   --fresh-context --tool codex|claude|gemini|opencode
   --fresh-context --tool codex|claude|gemini|opencode --allow-spawn --permission-prompt-bridge
   --adapter-command <command> [--adapter-args arg1,arg2]
-  --tracker memory|cli [--tracker-command <command>] [--tracker-base-args arg1,arg2]
+  --tracker memory|cli|mcp [--tracker-command <command>] [--tracker-base-args arg1,arg2]
+  --tracker mcp --tracker-mcp-servers issue-tracker --tracker-mcp-tools create_issue,link_dependency --approve-mcp-tracker
   --provider-matrix
   --require-user-acceptance
   --accept-goals | --reject-goals --file <state.json>
