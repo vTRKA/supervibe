@@ -10,6 +10,9 @@ import {
 import {
   validateDesignAgentInvocationReceipts,
 } from "./lib/design-agent-orchestration.mjs";
+import {
+  validateDesignVariantSet,
+} from "./lib/design-variant-set.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
@@ -28,6 +31,7 @@ export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
         slug: workflow.slug || "",
         handoffId: workflow.handoffId || "",
         workflowRunId: workflow.workflowRunId || "",
+        requestedVariantCount: workflow.requestedVariantCount || 0,
       },
     });
     const commandPass = commandAgentPlanStrictReady(commandReport);
@@ -66,6 +70,34 @@ export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
           message: `${issue.code || "design-agent-receipts"}: ${issue.message || "active design receipt validator failed"}`,
         });
       }
+      if (Number(workflow.requestedVariantCount || 0) > 0) {
+        const variantSet = validateDesignVariantSet(rootDir, {
+          slug: workflow.slug || "",
+          requestedVariantCount: workflow.requestedVariantCount,
+        });
+        checks.push({
+          id: "validate:design-variant-set:active",
+          command: workflow.command,
+          pass: variantSet.pass === true && variantSet.status !== "not-started",
+          report: variantSet,
+        });
+        if (variantSet.pass !== true || variantSet.status === "not-started") {
+          for (const issue of variantSet.issues || []) {
+            issues.push({
+              code: "active-design-variant-set-blocked",
+              file: issue.file || ".supervibe/artifacts/prototypes",
+              message: `${issue.code || "design-variant-set"}: ${issue.message || "active design variant set failed"}`,
+            });
+          }
+          if (!variantSet.issues?.length) {
+            issues.push({
+              code: "active-design-variant-set-not-started",
+              file: variantSet.manifestPath || ".supervibe/artifacts/prototypes",
+              message: "active design variant set returned not-started; requested variants require concrete artifacts",
+            });
+          }
+        }
+      }
     }
   }
   return {
@@ -86,6 +118,11 @@ export function discoverActiveWorkflows(rootDir = process.cwd(), options = {}) {
       slug: options.slug || process.env.SUPERVIBE_ACTIVE_SLUG || "",
       handoffId: options.handoffId || process.env.SUPERVIBE_ACTIVE_HANDOFF_ID || "",
       workflowRunId: options.workflowRunId || process.env.SUPERVIBE_ACTIVE_WORKFLOW_RUN_ID || "",
+      requestedVariantCount: options.requestedVariantCount || options.requestedVariants || process.env.SUPERVIBE_ACTIVE_REQUESTED_VARIANTS || "",
+      target: options.target || process.env.SUPERVIBE_ACTIVE_TARGET || "",
+      mode: options.mode || process.env.SUPERVIBE_ACTIVE_MODE || "",
+      requiresCapabilityPlan: options.requiresCapabilityPlan || options.requireCapabilityPlan || process.env.SUPERVIBE_ACTIVE_REQUIRES_CAPABILITY_PLAN || false,
+      requireBrowserEvidence: options.requireBrowserEvidence || process.env.SUPERVIBE_ACTIVE_REQUIRES_BROWSER_EVIDENCE || false,
     }]
     : [];
   const files = [
@@ -131,6 +168,11 @@ function readActiveWorkflowFile(path) {
       slug: item.slug || item.prototypeSlug || "",
       handoffId: item.handoffId || item.handoff || "",
       workflowRunId: item.workflowRunId || item.workflow_run_id || "",
+      requestedVariantCount: item.requestedVariantCount || item.requestedVariants || item.variantCount || item.requested_variants || "",
+      target: item.target || "",
+      mode: item.mode || "",
+      requiresCapabilityPlan: item.requiresCapabilityPlan || item.requireCapabilityPlan || false,
+      requireBrowserEvidence: item.requireBrowserEvidence || item.requiresBrowserEvidence || false,
     }));
   } catch {
     return [];
@@ -147,6 +189,11 @@ function uniqueWorkflows(items = []) {
       slug: item.slug || "",
       handoffId: item.handoffId || "",
       workflowRunId: item.workflowRunId || "",
+      requestedVariantCount: normalizeRequestedVariantCount(item.requestedVariantCount),
+      target: item.target || "",
+      mode: item.mode || "",
+      requiresCapabilityPlan: boolish(item.requiresCapabilityPlan),
+      requireBrowserEvidence: boolish(item.requireBrowserEvidence),
     };
     const key = JSON.stringify(normalized);
     if (seen.has(key)) continue;
@@ -188,8 +235,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     slug: options.slug,
     handoffId: options["handoff-id"] || options.handoffId,
     workflowRunId: options["workflow-run-id"] || options.workflowRunId,
+    requestedVariantCount: options["requested-variants"] || options.requestedVariantCount || options.requestedVariants,
+    target: options.target,
+    mode: options.mode,
+    requiresCapabilityPlan: options["require-capability-plan"] || options.requiresCapabilityPlan || options.requireCapabilityPlan,
+    requireBrowserEvidence: options["require-browser-evidence"] || options.requireBrowserEvidence,
     pluginRoot: options["plugin-root"] || options.pluginRoot,
   });
   console.log(options.json ? JSON.stringify(result, null, 2) : formatActiveWorkflowValidation(result));
   process.exit(result.pass ? 0 : 1);
+}
+
+function normalizeRequestedVariantCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 1 ? Math.trunc(count) : 0;
+}
+
+function boolish(value) {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  return /^(1|true|yes|on|required)$/i.test(String(value));
 }

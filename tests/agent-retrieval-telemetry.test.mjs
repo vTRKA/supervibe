@@ -77,7 +77,7 @@ test("agent retrieval telemetry does not report 10/10 when samples are too thin"
     agent_id: `specialist-${index}`,
     task_summary: "audit memory rag codegraph usage",
     confidence_score: 9,
-    retrieval_enforcement: { schemaVersion: 1 },
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "written" },
     subtool_usage: { memory: 0, "code-search": 0, "code-graph": 0 },
   }));
 
@@ -113,6 +113,56 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
   assert.equal(report.summary.legacySkipped, 10);
   assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");
   assert.ok(report.globalWarnings.some((item) => item.includes("post-enforcement retrieval telemetry samples")));
+});
+
+test("agent retrieval telemetry skips explicit not-provided enforcement samples", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: "quality-gate-reviewer",
+    task_summary: "review quality gate without retrieval evidence",
+    confidence_score: 9,
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "not-provided" },
+    retrieval_policy: { schemaVersion: 1, provided: false, reason: "not-provided" },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: [],
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.summary.invocations, 0);
+  assert.equal(report.summary.legacySkipped, 6);
+  assert.equal(report.maturityScore, 8);
+  assert.equal(isStrictAgentRetrievalTelemetryPass(report), false);
+});
+
+test("agent retrieval telemetry does not penalize sources marked optional by retrieval policy", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: "quality-gate-reviewer",
+    task_summary: "quality gate review with receipt backed RAG",
+    confidence_score: 9,
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "trusted-workflow-receipt" },
+    retrieval_policy: { memory: "optional", rag: "mandatory", codegraph: "optional" },
+    subtool_usage: { memory: 0, rag: 1, codegraph: 0 },
+    evidence_gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(report.agents[0].memoryRate, 1);
+  assert.equal(report.agents[0].ragRate, 1);
 });
 
 test("agent retrieval telemetry accepts receipt-backed distributed evidence portfolios", () => {

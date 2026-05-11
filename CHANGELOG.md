@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.19] - 2026-05-11
+
+### Added
+
+- Added a plugin-wide command-agent enforcement gate that verifies every Supervibe command profile requires real agents, owner orchestration, quality-gate review, diagnostic-only inline mode, and synthetic active blocking without scoped runtime receipts.
+- Added active design completion validation that blocks false 10/10 design/prototype claims on missing scoped receipts, `CHECKED: 0`, `STATUS: not-started`, missing requested variants, missing launcher, missing screenshot evidence, missing capability plan, browser evidence gaps, and missing reviewer provenance.
+
+### Changed
+
+- Wired requested variant counts through active workflow and design quality validation so multi-variant design runs cannot pass as not-started or global-only evidence.
+- Added global-safe npm scripts for `validate:command-agent-enforcement` and `validate:design-active-completion`, and included them in `npm run check`.
+
+### Validation
+
+- Added regression coverage for plugin-wide required agent enforcement and active design completion blockers.
+
 ## [2.1.18] - 2026-05-11
 
 ### Added

@@ -44,6 +44,7 @@ function parseArgs(argv) {
     slug: "",
     json: false,
     active: false,
+    requestedVariantCount: null,
   };
   for (let index = 2; index < argv.length; index += 1) {
     const item = argv[index];
@@ -76,6 +77,7 @@ export function validateWorkflow(rootDir = process.cwd(), {
   host = null,
   handoffId = "",
   workflowRunId = "",
+  requestedVariantCount = null,
   prototypePath = "",
   productionPath = "",
   requireProductionPair = false,
@@ -104,18 +106,23 @@ export function validateWorkflow(rootDir = process.cwd(), {
     checks.push(check("design-wizard", validateDesignWizard(resolvedPluginRoot)));
     checks.push(check("design-preview-daemon", validateDesignPreviewDaemon(resolvedPluginRoot)));
     checks.push(check("design-variant-set", slug
-      ? validateDesignVariantSet(rootDir, { slug })
+      ? validateDesignVariantSet(rootDir, { slug, requestedVariantCount })
       : validateAllDesignVariantSets(rootDir)));
-    checks.push(check("design-agent-receipts", validateDesignAgentInvocationReceipts(rootDir, {
+    const designReceipts = validateDesignAgentInvocationReceipts(rootDir, {
       active,
       slug,
       handoffId,
       workflowRunId,
-    })));
+    });
+    checks.push(check("design-agent-receipts", designReceipts));
     if (active && slug) {
       checks.push(check("design-quality-gate", evaluateDesignQualityGate(rootDir, {
         slug,
         requireReviews: true,
+        requestedVariantCount,
+        handoffId,
+        workflowRunId,
+        receiptValidation: designReceipts,
       })));
     }
     if (requireProductionPair || prototypePath || productionPath) {
@@ -238,6 +245,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     host: options.host || null,
     handoffId: options.handoffId || options["handoff-id"] || "",
     workflowRunId: options.workflowRunId || options["workflow-run-id"] || "",
+    requestedVariantCount: options.requestedVariantCount || options.requestedVariants || options["requested-variants"] || options.requested || null,
     prototypePath: options.prototype || options.prototypePath || "",
     productionPath: options.production || options.productionPath || "",
     requireProductionPair: options["require-production-pair"] === true || options.requireProductionPair === true,

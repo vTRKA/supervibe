@@ -82,7 +82,11 @@ export async function buildAgentRetrievalTelemetryReportFromProject({
   const evidenceLedger = await auditEvidenceLedger({ rootDir });
   const receiptEvidence = collectTrustedReceiptEvidence({ rootDir, invocations });
   return buildAgentRetrievalTelemetryReport({
-    invocations: enrichLegacyInvocationsWithReceiptEvidence(invocations, receiptEvidence.byInvocationId),
+    invocations: enrichInvocationsWithEvidence({
+      invocations,
+      receiptEvidenceByInvocationId: receiptEvidence.byInvocationId,
+      evidenceEntries: evidenceLedger.entries || [],
+    }),
     evidenceEntries: [
       ...(evidenceLedger.entries || []),
       ...receiptEvidence.entries,
@@ -111,16 +115,15 @@ export function buildAgentRetrievalTelemetryReport({
     const sample = recent.length;
     if (!sample) continue;
     const structuralSample = recent.filter((entry) => STRUCTURAL_TASK_PATTERN.test(entry.task_summary || "")).length;
-    const subtool = recent.map((entry) => normalizeSubtoolUsage(entry.subtool_usage));
     const evidenceContracts = recent.map((entry) => entry.evidence_contract).filter(Boolean);
     const evidenceGates = recent.map((entry) => entry.evidence_gate).filter(Boolean);
     const avgConfidence = average(recent.map((entry) => Number(entry.confidence_score || 0)));
     const metrics = {
       sample,
       structuralSample,
-      memoryRate: rate(subtool, (usage) => usage.memory > 0),
-      ragRate: rate(subtool, (usage) => usage.rag > 0),
-      codegraphRate: rate(subtool, (usage) => usage.codegraph > 0),
+      memoryRate: sourceSatisfactionRate(recent, "memory"),
+      ragRate: sourceSatisfactionRate(recent, "rag"),
+      codegraphRate: sourceSatisfactionRate(recent, "codegraph"),
       evidenceContractPassRate: evidenceContracts.length ? rate(evidenceContracts, (item) => item.pass) : null,
       evidenceGatePassRate: evidenceGates.length ? rate(evidenceGates, (item) => item.pass) : null,
       avgConfidence: Number(avgConfidence.toFixed(2)),
@@ -306,11 +309,12 @@ function detectGlobalRetrievalTelemetryWarnings({
 }
 
 function isRetrievalTelemetryScoredInvocation(entry = {}) {
-  if (entry.retrieval_enforcement?.schemaVersion || entry.retrieval_enforcement?.version) return true;
-  if (entry.evidence_gate || entry.evidence_contract) return true;
-  if (entry.retrievalPolicy || entry.retrieval_policy) return true;
   const usage = normalizeSubtoolUsage(entry.subtool_usage);
-  return usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0;
+  if (usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0) return true;
+  if (hasProvidedRetrievalEnforcement(entry.retrieval_enforcement)) return true;
+  if (entry.evidence_gate || entry.evidence_contract) return true;
+  if (hasProvidedRetrievalPolicy(entry.retrievalPolicy || entry.retrieval_policy)) return true;
+  return false;
 }
 
 function collectTrustedReceiptEvidence({ rootDir = process.cwd(), invocations = [] } = {}) {
@@ -341,31 +345,71 @@ function collectTrustedReceiptEvidence({ rootDir = process.cwd(), invocations = 
   return { byInvocationId, entries };
 }
 
-function enrichLegacyInvocationsWithReceiptEvidence(invocations = [], receiptEvidenceByInvocationId = new Map()) {
+function enrichInvocationsWithEvidence({
+  invocations = [],
+  receiptEvidenceByInvocationId = new Map(),
+  evidenceEntries = [],
+} = {}) {
+  const ledgerEvidenceByInvocationKey = collectLedgerEvidenceByInvocationKey(evidenceEntries);
   return invocations.map((entry) => {
-    if (isRetrievalTelemetryScoredInvocation(entry)) return entry;
     const invocationId = entry.invocation_id || entry.invocationId;
-    const match = receiptEvidenceByInvocationId.get(invocationId);
-    if (!match) return entry;
-    const evidence = match.evidence;
-    return {
-      ...entry,
-      subtool_usage: mergeSubtoolUsage(entry.subtool_usage, {
-        memory: evidence.memoryIds?.length ? 1 : 0,
-        rag: evidence.ragChunkIds?.length ? 1 : 0,
-        codegraph: evidence.graphSymbols?.length ? 1 : 0,
-      }),
-      retrieval_policy: evidence.retrievalPolicy,
-      evidence_contract: evidence.gate,
-      evidence_gate: evidence.gate,
-      retrieval_enforcement: {
-        schemaVersion: 1,
+    const receiptMatch = receiptEvidenceByInvocationId.get(invocationId);
+    const ledgerMatch = ledgerEvidenceByInvocationKey.get(invocationEvidenceKey(entry));
+    let enriched = entry;
+    if (ledgerMatch && hasRetrievalEvidence(ledgerMatch)) {
+      enriched = mergeInvocationEvidence(enriched, ledgerMatch, {
+        evidenceLedger: "evidence-ledger",
+        ledgerTaskId: ledgerMatch.taskId || null,
+      });
+    }
+    if (receiptMatch && hasRetrievalEvidence(receiptMatch.evidence)) {
+      enriched = mergeInvocationEvidence(enriched, receiptMatch.evidence, {
         evidenceLedger: "trusted-workflow-receipt",
-        receiptId: match.receipt.receiptId || null,
-        receiptPath: match.receipt.__file || null,
-      },
-    };
+        receiptId: receiptMatch.receipt.receiptId || null,
+        receiptPath: receiptMatch.receipt.__file || null,
+      });
+    }
+    return enriched;
   });
+}
+
+function collectLedgerEvidenceByInvocationKey(evidenceEntries = []) {
+  const out = new Map();
+  for (const entry of evidenceEntries || []) {
+    const key = invocationEvidenceKey({
+      agent_id: entry.agentId || entry.agent_id,
+      task_summary: entry.taskId || entry.task_id,
+    });
+    if (!key) continue;
+    const current = out.get(key);
+    const normalized = createEvidenceRecord(entry);
+    if (!current || scoreReceiptEvidence(normalized) > scoreReceiptEvidence(current)) {
+      out.set(key, normalized);
+    }
+  }
+  return out;
+}
+
+function mergeInvocationEvidence(entry = {}, evidence = {}, enforcement = {}) {
+  const existingEnforcement = entry.retrieval_enforcement || {};
+  const existingGate = entry.evidence_gate || entry.evidence_contract || null;
+  const evidenceGate = evidence.gate || null;
+  return {
+    ...entry,
+    subtool_usage: mergeSubtoolUsage(entry.subtool_usage, {
+      memory: evidence.memoryIds?.length ? 1 : 0,
+      rag: evidence.ragChunkIds?.length ? 1 : 0,
+      codegraph: evidence.graphSymbols?.length ? 1 : 0,
+    }),
+    retrieval_policy: mergeRetrievalPolicy(entry.retrievalPolicy || entry.retrieval_policy, evidence.retrievalPolicy),
+    evidence_contract: chooseBestGate(existingGate, evidenceGate),
+    evidence_gate: chooseBestGate(entry.evidence_gate, evidenceGate),
+    retrieval_enforcement: {
+      ...existingEnforcement,
+      schemaVersion: existingEnforcement.schemaVersion || existingEnforcement.version || 1,
+      ...enforcement,
+    },
+  };
 }
 
 function buildReceiptEvidenceRecord(receipt = {}) {
@@ -400,6 +444,89 @@ function buildReceiptEvidenceRecord(receipt = {}) {
   };
 }
 
+function hasProvidedRetrievalEnforcement(enforcement = {}) {
+  if (!enforcement || typeof enforcement !== "object") return false;
+  if (!(enforcement.schemaVersion || enforcement.version)) return false;
+  if (String(enforcement.evidenceLedger || "").toLowerCase() === "not-provided") return false;
+  if (enforcement.evidencePass === false) return false;
+  return Boolean(
+    enforcement.evidenceLedger
+    || enforcement.ledgerPath
+    || enforcement.receiptId
+    || enforcement.receiptPath
+  );
+}
+
+function hasProvidedRetrievalPolicy(policy = {}) {
+  if (!policy || typeof policy !== "object") return false;
+  if (Array.isArray(policy.required) && policy.required.length) return true;
+  const nested = policy.policy && typeof policy.policy === "object" ? policy.policy : {};
+  const hasMandatorySource = ["memory", "rag", "codegraph"].some((source) => (
+    isMandatoryPolicyValue(policy[source])
+    || isMandatoryPolicyValue(policy.sources?.[source])
+    || isMandatoryPolicyValue(nested[source])
+    || isMandatoryPolicyValue(nested.sources?.[source])
+  ));
+  if (hasMandatorySource) return true;
+  if (policy.provided === false) return false;
+  return false;
+}
+
+function sourceSatisfactionRate(entries = [], source) {
+  const evaluated = entries.filter((entry) => shouldEvaluateSource(entry, source));
+  if (!evaluated.length) return 1;
+  return rate(evaluated, (entry) => normalizeSubtoolUsage(entry.subtool_usage)[source] > 0);
+}
+
+function shouldEvaluateSource(entry = {}, source) {
+  const usage = normalizeSubtoolUsage(entry.subtool_usage);
+  if (usage[source] > 0) return true;
+  const policy = entry.retrievalPolicy || entry.retrieval_policy || {};
+  if (Array.isArray(policy.required) && policy.required.includes(source)) return true;
+  if (isMandatoryPolicyValue(policy[source]) || isMandatoryPolicyValue(policy.sources?.[source])) return true;
+  const nested = policy.policy && typeof policy.policy === "object" ? policy.policy : {};
+  if (Array.isArray(nested.required) && nested.required.includes(source)) return true;
+  if (isMandatoryPolicyValue(nested[source]) || isMandatoryPolicyValue(nested.sources?.[source])) return true;
+  if (source === "codegraph" && STRUCTURAL_TASK_PATTERN.test(entry.task_summary || "")) return true;
+  return !hasProvidedRetrievalPolicy(policy);
+}
+
+function isMandatoryPolicyValue(value) {
+  return /^(mandatory|required|true)$/i.test(String(value || ""));
+}
+
+function invocationEvidenceKey(entry = {}) {
+  const agentId = entry.agent_id || entry.agentId;
+  const taskSummary = entry.task_summary || entry.taskSummary;
+  if (!agentId || !taskSummary) return "";
+  return `${slug(agentId)}::${slug(taskSummary)}`;
+}
+
+function mergeRetrievalPolicy(existing = {}, addition = {}) {
+  const current = existing && typeof existing === "object" ? existing : {};
+  const extra = addition && typeof addition === "object" ? addition : {};
+  return {
+    ...current,
+    ...extra,
+    memory: strongestPolicyValue(current.memory || current.sources?.memory, extra.memory || extra.sources?.memory),
+    rag: strongestPolicyValue(current.rag || current.sources?.rag, extra.rag || extra.sources?.rag),
+    codegraph: strongestPolicyValue(current.codegraph || current.sources?.codegraph, extra.codegraph || extra.sources?.codegraph),
+    reason: extra.reason || current.reason || "retrieval evidence merged from trusted runtime artifacts",
+  };
+}
+
+function strongestPolicyValue(left, right) {
+  if (isMandatoryPolicyValue(left) || isMandatoryPolicyValue(right)) return "mandatory";
+  if (left || right) return String(right || left);
+  return "optional";
+}
+
+function chooseBestGate(left, right) {
+  if (!left) return right || null;
+  if (!right) return left;
+  return Number(right.score || 0) >= Number(left.score || 0) ? right : left;
+}
+
 function hasPortfolioEvidencePass({ invocations = [], evidenceEntries = [], thresholds = DEFAULT_THRESHOLDS } = {}) {
   const contractPassRate = rate(invocations.map((entry) => entry.evidence_contract).filter(Boolean), (item) => item.pass);
   const gatePassRate = rate(invocations.map((entry) => entry.evidence_gate).filter(Boolean), (item) => item.pass);
@@ -432,6 +559,14 @@ function scoreReceiptEvidence(evidence = {}) {
     + Number(evidence.memoryIds?.length || 0)
     + Number(evidence.ragChunkIds?.length || 0)
     + Number(evidence.graphSymbols?.length || 0);
+}
+
+function hasRetrievalEvidence(evidence = {}) {
+  return Boolean(
+    evidence.memoryIds?.length
+    || evidence.ragChunkIds?.length
+    || evidence.graphSymbols?.length
+  );
 }
 
 function detectRetrievalViolations(agentId, metrics, thresholds) {

@@ -27,6 +27,9 @@ const PROTOTYPE_HIGH_CONFIDENCE_CHECKS = Object.freeze([
 export function evaluateDesignQualityGate(rootDir = process.cwd(), {
   slug = "",
   requireReviews = false,
+  requestedVariantCount = null,
+  handoffId = "",
+  workflowRunId = "",
   receiptValidation = null,
   browserVerification = null,
 } = {}) {
@@ -55,7 +58,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
     });
   }
   if (prototypeRoot && existsSync(join(prototypeRoot, "variant-manifest.json"))) {
-    const variantSet = validateDesignVariantSet(rootDir, { slug });
+    const variantSet = validateDesignVariantSet(rootDir, { slug, requestedVariantCount });
     for (const variantIssue of variantSet.issues || []) {
       issues.push({
         code: "design-variant-set-invalid",
@@ -70,6 +73,8 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
     ? validateDesignAgentInvocationReceipts(rootDir, {
       active: true,
       slug,
+      handoffId,
+      workflowRunId,
     })
     : null);
   if (requireReviews && resolvedReceiptValidation?.pass !== true) {
