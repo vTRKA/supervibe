@@ -36,7 +36,13 @@ test('logInvocation: appends entry to JSONL', async () => {
     .split('\n')
     .map((line) => JSON.parse(line));
   assert.strictEqual(confidenceLog[0].agent, 'laravel-developer');
-  assert.strictEqual(confidenceLog[0].gate, 'pass');
+  assert.strictEqual(confidenceLog[0].gate, 'review');
+  const effectiveness = (await readFile(join(sandbox, '.supervibe', 'memory', 'effectiveness.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  assert.strictEqual(effectiveness[0].outcome, 'partial');
+  assert.ok(effectiveness[0].blockers.includes('missing-verification'));
 });
 
 test('logInvocation: redacts durable task, risk, and recommendation text', async () => {
@@ -82,6 +88,35 @@ test('logInvocation: writes retrieval evidence ledger when evidence is provided'
   assert.strictEqual(latest.gate.pass, true);
   const output = JSON.parse(await readFile(join(sandbox, record.structured_output.json), 'utf8'));
   assert.strictEqual(output.retrievalEnforcement.evidenceLedger, 'written');
+  const confidenceLog = (await readFile(join(sandbox, '.supervibe', 'confidence-log.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const latestConfidence = confidenceLog[confidenceLog.length - 1];
+  assert.strictEqual(latestConfidence.gate, 'pass');
+});
+
+test('logInvocation: high confidence without verification cannot be success', async () => {
+  const record = await logInvocation({
+    agent_id: 'quality-gate-reviewer',
+    task_summary: 'Claim ready without verification',
+    confidence_score: 9.8,
+  });
+
+  assert.strictEqual(record.confidence.status, 'review');
+  const effectiveness = (await readFile(join(sandbox, '.supervibe', 'memory', 'effectiveness.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const latestEffectiveness = effectiveness[effectiveness.length - 1];
+  assert.strictEqual(latestEffectiveness.outcome, 'partial');
+  assert.ok(latestEffectiveness.blockers.includes('missing-verification'));
+  const confidenceLog = (await readFile(join(sandbox, '.supervibe', 'confidence-log.jsonl'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const latestConfidence = confidenceLog[confidenceLog.length - 1];
+  assert.strictEqual(latestConfidence.gate, 'review');
 });
 
 test('logInvocation: preserves structured delivery confidence details', async () => {

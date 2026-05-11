@@ -134,7 +134,12 @@ async function writeValidPrototype(root, { launcher = true, screenshot = true, c
   if (browser) {
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/browser-verification.json", `${JSON.stringify({
       desktopViewport: true,
+      desktopScreenshot: { path: ".supervibe/artifacts/prototypes/agent-chat/_evidence/desktop.png" },
       mobileViewport: true,
+      mobileScreenshot: { path: ".supervibe/artifacts/prototypes/agent-chat/_evidence/mobile.png" },
+      url: "http://127.0.0.1:4173/agent-chat/",
+      capturedAt: "2026-05-11T00:00:00.000Z",
+      selectorReady: true,
       nonblankRender: true,
       noHorizontalOverflow: true,
       feedbackButtonVisible: true,
@@ -144,7 +149,10 @@ async function writeValidPrototype(root, { launcher = true, screenshot = true, c
       textOverlapScan: true,
       contrastAudit: true,
       focusVisible: true,
+      feedbackOverlayNonOverlap: true,
     }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/desktop.png", "desktop screenshot placeholder\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/mobile.png", "mobile screenshot placeholder\n");
   }
   await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "No blockers. No high issues.\n");
   await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "No blockers. No high issues.\n");
@@ -300,6 +308,21 @@ test("active multi-variant run fails when screenshot similarity evidence is miss
   }
 });
 
+test("active multi-variant run fails when screenshot evidence references foreign variants", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-screenshot-scope-"));
+  try {
+    await writeValidPrototype(root, { launcher: true, screenshot: true });
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/screenshot-similarity.json", `${JSON.stringify({
+      pairs: [{ left: "variant-1", right: "foreign-variant", similarity: 0.42 }],
+    }, null, 2)}\n`);
+    const result = validateDesignActiveCompletion(root, completionOptions());
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "screenshot-screenshot-variant-not-in-manifest"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("active prototype outputs require browser evidence by default", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-browser-default-"));
   try {
@@ -347,9 +370,73 @@ test("browser evidence requires keyboard, focus trap, and contrast proofs", asyn
     const result = validateBrowserEvidence(root, completionOptions());
     const messages = result.issues.map((issue) => issue.message).join("\n");
     assert.equal(result.pass, false);
+    assert.match(messages, /desktop screenshot proof is required/);
+    assert.match(messages, /mobile screenshot proof is required/);
+    assert.match(messages, /selector readiness proof is required/);
     assert.match(messages, /keyboard navigation proof is required/);
     assert.match(messages, /drawer\/modal focus-trap proof is required/);
     assert.match(messages, /contrast audit proof is required/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("browser evidence rejects placeholder string proofs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-browser-placeholder-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/browser-verification.json", `${JSON.stringify({
+      desktopViewport: "skipped",
+      desktopScreenshot: "skipped",
+      mobileViewport: "skipped",
+      mobileScreenshot: "skipped",
+      url: "skipped",
+      capturedAt: "skipped",
+      selectorReady: "skipped",
+      nonblankRender: "skipped",
+      noHorizontalOverflow: "skipped",
+      feedbackButtonVisible: "skipped",
+      drawerOpenClose: "skipped",
+      focusTrap: "skipped",
+      keyboardNavigation: "skipped",
+      textOverlapScan: "skipped",
+      contrastAudit: "skipped",
+      focusVisible: "skipped",
+      feedbackOverlayNonOverlap: "skipped",
+    }, null, 2)}\n`);
+    const result = validateBrowserEvidence(root, completionOptions());
+    assert.equal(result.pass, false);
+    assert.equal(result.issues.length, 17);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("browser evidence rejects screenshot paths that do not exist", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-browser-missing-shot-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/browser-verification.json", `${JSON.stringify({
+      desktopViewport: true,
+      desktopScreenshot: { path: ".supervibe/artifacts/prototypes/agent-chat/_evidence/missing-desktop.png" },
+      mobileViewport: true,
+      mobileScreenshot: { path: ".supervibe/artifacts/prototypes/agent-chat/_evidence/missing-mobile.png" },
+      url: "http://127.0.0.1:4173/agent-chat/",
+      capturedAt: "2026-05-11T00:00:00.000Z",
+      selectorReady: true,
+      nonblankRender: true,
+      noHorizontalOverflow: true,
+      feedbackButtonVisible: true,
+      drawerOpenClose: true,
+      focusTrap: true,
+      keyboardNavigation: true,
+      textOverlapScan: true,
+      contrastAudit: true,
+      focusVisible: true,
+      feedbackOverlayNonOverlap: true,
+    }, null, 2)}\n`);
+    const result = validateBrowserEvidence(root, completionOptions());
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => /desktop screenshot proof/.test(issue.message)));
+    assert.ok(result.issues.some((issue) => /mobile screenshot proof/.test(issue.message)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

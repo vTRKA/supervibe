@@ -32,7 +32,9 @@ function parseArgs(argv) {
       options[key] = true;
       continue;
     }
-    if (key === "requested") options.requestedVariantCount = Number(value);
+    if (["requested", "requested-variants", "requestedVariantCount", "requestedVariants"].includes(key)) {
+      options.requestedVariantCount = Number(value);
+    }
     else options[key] = value;
     index += 1;
   }

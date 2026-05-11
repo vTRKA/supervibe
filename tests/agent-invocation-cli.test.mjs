@@ -33,6 +33,20 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
       "Create brand direction",
       "--confidence",
       "9",
+      "--retrieval-policy",
+      "memory=mandatory,rag=mandatory,codegraph=mandatory,reason=brand-direction",
+      "--memory-ids",
+      "brand-direction-memory",
+      "--rag-chunk-ids",
+      ".supervibe/artifacts/brandbook/direction.md:1",
+      "--graph-symbols",
+      "brandbookProducer",
+      "--citations",
+      "direction|code-rag|.supervibe/artifacts/brandbook/direction.md:1",
+      "--verification-commands",
+      "node scripts/validate-plan-artifacts.mjs --file .supervibe/artifacts/brandbook/direction.md",
+      "--redaction-status",
+      "not-needed",
       "--changed-files",
       ".supervibe/artifacts/brandbook/direction.md",
       "--risks",
@@ -54,16 +68,17 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
     assert.equal(record.invocation_id, "codex-agent-123");
     assert.equal(record.host_invocation_id, "codex-agent-123");
     assert.equal(record.host_invocation_source, "codex-spawn-agent");
-    assert.deepEqual(record.retrieval_policy, {
-      schemaVersion: 1,
-      provided: false,
-      reason: "not-provided",
-    });
-    assert.deepEqual(record.evidence, {
-      schemaVersion: 1,
-      provided: false,
-      reason: "not-provided",
-    });
+    assert.equal(record.retrieval_policy.provided, true);
+    assert.equal(record.retrieval_policy.policy.memory, "mandatory");
+    assert.equal(record.retrieval_policy.policy.rag, "mandatory");
+    assert.equal(record.retrieval_policy.policy.codegraph, "mandatory");
+    assert.equal(record.evidence.provided, true);
+    assert.deepEqual(record.evidence.memoryIds, ["brand-direction-memory"]);
+    assert.deepEqual(record.evidence.ragChunkIds, [".supervibe/artifacts/brandbook/direction.md:1"]);
+    assert.deepEqual(record.evidence.graphSymbols, ["brandbookProducer"]);
+    assert.deepEqual(record.evidence.verificationCommands, ["node scripts/validate-plan-artifacts.mjs --file .supervibe/artifacts/brandbook/direction.md"]);
+    assert.equal(record.evidence.redactionStatus, "not-needed");
+    assert.equal(record.evidence_gate.pass, true);
     assert.deepEqual(record.changed_files, [".supervibe/artifacts/brandbook/direction.md"]);
     assert.deepEqual(record.risks, ["Needs approval"]);
     assert.deepEqual(record.recommendations, ["Review styleboard"]);
@@ -75,8 +90,8 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
     assert.equal(record.structured_output.json, ".supervibe/artifacts/_agent-outputs/codex-agent-123/agent-output.json");
     const agentOutput = JSON.parse(readFileSync(join(projectRoot, ...record.structured_output.json.split("/")), "utf8"));
     assert.equal(agentOutput.hostInvocationId, "codex-agent-123");
-    assert.equal(agentOutput.retrievalPolicy.provided, false);
-    assert.equal(agentOutput.evidence.provided, false);
+    assert.equal(agentOutput.retrievalPolicy.provided, true);
+    assert.equal(agentOutput.evidence.provided, true);
     assert.equal(agentOutput.confidence.score, 9);
     assert.deepEqual(agentOutput.changedFiles, [".supervibe/artifacts/brandbook/direction.md"]);
     assert.deepEqual(agentOutput.risks, ["Needs approval"]);

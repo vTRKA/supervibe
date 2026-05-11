@@ -148,6 +148,7 @@ export function commandAgentPlanStrictReady(report = {}) {
     && plan.agentDispatchRequired !== true
     && (plan.missingAgents || []).length === 0
     && (plan.missingCallableAgents || []).length === 0
+    && (plan.logicalFallbackRequiredAgents || []).length === 0
     && (plan.scopedReceiptTrust?.missingSubjects || []).length === 0
     && !/^pending-/i.test(String(plan.receiptGate || ""));
 }
@@ -159,6 +160,7 @@ function commandAgentPlanStrictBlockReason(report = {}) {
   if ((plan.missingAgents || []).length) return `missing agents: ${plan.missingAgents.join(", ")}`;
   if ((plan.missingCallableAgents || []).length) return `missing callable agents: ${plan.missingCallableAgents.join(", ")}`;
   if ((plan.scopedReceiptTrust?.missingSubjects || []).length) return `missing scoped receipts: ${plan.scopedReceiptTrust.missingSubjects.join(", ")}`;
+  if ((plan.logicalFallbackRequiredAgents || []).length) return `logical fallback agents are not strict host-callable proof: ${plan.logicalFallbackRequiredAgents.join(", ")}`;
   if (plan.durableWritesAllowed !== true) return "durable writes are blocked";
   if (plan.agentOwnedOutputRequiresReceipts === true || plan.agentDispatchRequired === true) return "runtime agent receipts are still pending";
   if (/^pending-/i.test(String(plan.receiptGate || ""))) return `receipt gate is pending: ${plan.receiptGate}`;
@@ -278,7 +280,7 @@ function listCallableAgentSources({
   availableAgentSources = new Map(),
 }) {
   const sources = new Map();
-  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable", { recursive: false });
+  if (hostAgentsFolder) addAgentSources(sources, join(projectRoot, ...hostAgentsFolder.split("/")), "host callable", { recursive: true });
   if (hostAdapterId === "codex") {
     for (const [agentId] of availableAgentSources.entries()) {
       if (!sources.has(agentId)) sources.set(agentId, "codex-spawn-agent logical role");

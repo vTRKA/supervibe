@@ -51,6 +51,21 @@ test("design quality gate blocks approval when required prototype artifacts were
   }
 });
 
+test("design quality gate does not approve design context when requireReviews is false", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-no-review-"));
+  try {
+    const gate = evaluateDesignQualityGate(root, { slug: "agent-chat", requireReviews: false });
+
+    assert.equal(gate.pass, false);
+    assert.equal(gate.approvalAllowed, false);
+    assert.equal(gate.checkedReviews, 0);
+    assert.ok(gate.issues.some((issue) => issue.code === "prototype-not-started"));
+    assert.ok(gate.issues.some((issue) => issue.code === "reviews-not-started"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design quality gate blocks approval on invalid variant-set manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-quality-variants-"));
   try {

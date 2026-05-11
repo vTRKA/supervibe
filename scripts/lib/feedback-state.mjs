@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -78,6 +79,32 @@ export async function readFeedbackQueue(queuePath) {
   } catch {
     return [];
   }
+}
+
+export async function inspectFeedbackLifecycle(queuePath, statusPath, options = {}) {
+  const queueExists = existsSync(queuePath);
+  const statusExists = existsSync(statusPath);
+  const entries = await readFeedbackQueue(queuePath);
+  const state = await readFeedbackStatus(statusPath);
+  const open = selectOpenFeedback(entries, state, options);
+  const resolved = entries.filter((entry) => {
+    const status = state.entries[entry.id]?.status;
+    return status === 'resolved' || status === 'rejected';
+  });
+  return {
+    schemaVersion: 1,
+    queueExists,
+    statusExists,
+    status: !queueExists && !statusExists
+      ? 'not-initialized'
+      : open.length > 0
+        ? 'open'
+        : 'no-open-feedback',
+    entries: entries.length,
+    open: open.length,
+    resolved: resolved.length,
+    openEntries: open,
+  };
 }
 
 export function selectOpenFeedback(entries, state, { limit = 10, slug = '', target = '', unresolvedOnly = true } = {}) {

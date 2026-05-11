@@ -271,22 +271,28 @@ test("variant validator rejects marker-only feedback overlays without a payload 
 test("variant validator CLI reports missing requested variants", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-variant-cli-"));
   try {
-    const output = execFileSync(process.execPath, [
-      join(ROOT, "scripts", "validate-design-variant-set.mjs"),
-      "--root",
-      root,
-      "--slug",
-      "agent-chat",
-      "--requested",
-      "5",
-    ], {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    assert.match(output, /PASS: false/);
-  } catch (error) {
-    assert.match(error.stdout.toString(), /PASS: false/);
+    for (const flag of ["--requested", "--requested-variants", "--requestedVariantCount"]) {
+      try {
+        execFileSync(process.execPath, [
+          join(ROOT, "scripts", "validate-design-variant-set.mjs"),
+          "--root",
+          root,
+          "--slug",
+          "agent-chat",
+          flag,
+          "5",
+        ], {
+          cwd: ROOT,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        assert.fail(`${flag} should fail when requested variants have no manifest`);
+      } catch (error) {
+        assert.match(error.stdout.toString(), /PASS: false/);
+        assert.match(error.stdout.toString(), /REQUESTED_VARIANTS: 5/);
+        assert.match(error.stdout.toString(), /missing-variant-manifest/);
+      }
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -27,6 +27,7 @@ const PROTOTYPE_HIGH_CONFIDENCE_CHECKS = Object.freeze([
 export function evaluateDesignQualityGate(rootDir = process.cwd(), {
   slug = "",
   requireReviews = false,
+  approvalContext = null,
   requestedVariantCount = null,
   handoffId = "",
   workflowRunId = "",
@@ -38,7 +39,11 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
   const reviewFiles = listReviewFiles(reviewRoot);
   const reviews = reviewFiles.map((file) => parseReviewFile(rootDir, file));
   const issues = reviews.flatMap((review) => review.findings);
-  if (requireReviews && !prototypeWorkStarted(prototypeRoot)) {
+  const designApprovalContext = approvalContext === null
+    ? Boolean(slug)
+    : approvalContext === true;
+  const reviewsRequired = requireReviews === true || designApprovalContext;
+  if (reviewsRequired && !prototypeWorkStarted(prototypeRoot)) {
     issues.push({
       code: "prototype-not-started",
       severity: "blocker",
@@ -47,7 +52,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       message: "prototype artifacts must exist before approval can be evaluated",
     });
   }
-  const missingRequiredReviews = requiredReviewFilesMissing(reviewRoot, { requireReviews });
+  const missingRequiredReviews = requiredReviewFilesMissing(reviewRoot, { requireReviews: reviewsRequired });
   for (const fileName of missingRequiredReviews) {
     issues.push({
       code: "missing-required-review",
@@ -55,6 +60,15 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       file: reviewRoot ? rel(rootDir, join(reviewRoot, fileName)) : `_reviews/${fileName}`,
       line: 0,
       message: `${fileName}: required review is missing before prototype approval`,
+    });
+  }
+  if (reviewsRequired && reviews.length === 0) {
+    issues.push({
+      code: "reviews-not-started",
+      severity: "blocker",
+      file: reviewRoot ? rel(rootDir, reviewRoot) : `_reviews`,
+      line: 0,
+      message: "quality gate cannot approve a design context before required reviews are checked",
     });
   }
   if (prototypeRoot && existsSync(join(prototypeRoot, "variant-manifest.json"))) {
@@ -69,7 +83,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       });
     }
   }
-  const resolvedReceiptValidation = receiptValidation || (requireReviews && slug
+  const resolvedReceiptValidation = receiptValidation || (reviewsRequired && slug
     ? validateDesignAgentInvocationReceipts(rootDir, {
       active: true,
       slug,
@@ -77,7 +91,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       workflowRunId,
     })
     : null);
-  if (requireReviews && resolvedReceiptValidation?.pass !== true) {
+  if (reviewsRequired && resolvedReceiptValidation?.pass !== true) {
     for (const item of resolvedReceiptValidation?.issues || []) {
       issues.push({
         code: "design-provenance-invalid",
@@ -100,7 +114,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
 
   const blockerCount = issues.filter((item) => item.severity === "blocker").length;
   const highCount = issues.filter((item) => item.severity === "high").length;
-  const approvalAllowed = blockerCount === 0 && highCount === 0;
+  const approvalAllowed = blockerCount === 0 && highCount === 0 && (!reviewsRequired || reviews.length > 0);
   const confidence = aggregateDesignConfidence({
     qualityIssues: issues,
     receiptValidation: resolvedReceiptValidation,
@@ -112,7 +126,7 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
     slug: slug || null,
     reviewRoot: reviewRoot ? rel(rootDir, reviewRoot) : null,
     checkedReviews: reviews.length,
-    requiredReviews: [...REQUIRED_DESIGN_REVIEW_FILES],
+    requiredReviews: reviewsRequired ? [...REQUIRED_DESIGN_REVIEW_FILES] : [],
     missingRequiredReviews,
     blockerCount,
     highCount,

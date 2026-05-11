@@ -317,6 +317,10 @@ export function buildCommandAgentPlan(commandId, {
     ...baseRequiredAgentIds,
     ...extraRequiredAgentIds,
   ]);
+  const callableAgentSourceRows = agentSourcesFor(requiredAgentIds, callableAgentSources);
+  const logicalFallbackRequiredAgents = callableAgentSourceRows
+    .filter((item) => /logical/i.test(String(item.source || "")))
+    .map((item) => item.agentId);
   const immediateAgentIds = normalizeImmediateAgentIds(profile, requiredAgentIds);
   const deferredAgentIds = requiredAgentIds.filter((agentId) => !immediateAgentIds.includes(agentId));
   const available = availableAgentIds ? new Set([...availableAgentIds].map(String)) : null;
@@ -377,7 +381,8 @@ export function buildCommandAgentPlan(commandId, {
     defaultExecutionMode: profile.defaultExecutionMode,
     requiredAgentIds,
     requiredAgentSources: agentSourcesFor(requiredAgentIds, availableAgentSources),
-    callableAgentSources: agentSourcesFor(requiredAgentIds, callableAgentSources),
+    callableAgentSources: callableAgentSourceRows,
+    logicalFallbackRequiredAgents,
     immediateAgentIds,
     deferredAgentIds,
     stageGate: profile.stageGate || null,
@@ -607,6 +612,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `DYNAMIC_SELECTORS: ${(plan.dynamicAgentSelectors || []).join(", ") || "none"}`,
     `MISSING_AGENTS: ${(plan.missingAgents || []).join(", ") || "none"}`,
     `MISSING_CALLABLE_AGENTS: ${(plan.missingCallableAgents || []).join(", ") || "none"}`,
+    `LOGICAL_FALLBACK_AGENTS: ${(plan.logicalFallbackRequiredAgents || []).join(", ") || "none"}`,
     `SCOPED_RECEIPTS_MISSING: ${(plan.scopedReceiptTrust?.missingSubjects || []).join(", ") || "none"}`,
     `HOST_DISPATCH: ${plan.hostDispatch?.hostAdapterId || "unspecified"}:${plan.hostDispatch?.status || "not-checked"}`,
     `HOST_TOOL: ${plan.hostDispatch?.nativeTool || "unspecified"}`,

@@ -257,7 +257,7 @@ export function formatDesignWorkflowStatus(status = {}) {
     `STAGE_CONTRACTS_CHECKED: ${status.stageContracts?.checked ?? 0}`,
     `STAGE_CONTRACTS_BLOCKING: ${status.stageContracts?.blockingCount ?? 0}`,
     `RESUME_CHECKPOINT: ${formatResumeCheckpoint(status.resumeCheckpoint)}`,
-    `QUALITY_GATE_PASS: ${status.qualityGate?.pass !== false}`,
+    `QUALITY_GATE_PASS: ${status.qualityGate ? status.qualityGate.pass === true : "unknown"}`,
     `QUALITY_BLOCKERS: ${status.qualityGate?.blockerCount ?? 0}`,
     `QUALITY_HIGH: ${status.qualityGate?.highCount ?? 0}`,
     `QUALITY_CONFIDENCE: ${status.qualityGate?.confidence?.score ?? "unknown"}`,

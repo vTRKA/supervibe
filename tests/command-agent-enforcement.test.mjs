@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
+import {
+  buildRuntimeCommandAgentPlan,
+  commandAgentPlanStrictReady,
+} from "../scripts/command-agent-plan.mjs";
 import {
   validateCommandAgentEnforcement,
   validateProfileShape,
@@ -88,4 +94,48 @@ test("CLI reports plugin-wide command agent enforcement", () => {
   assert.match(output, /SUPERVIBE_COMMAND_AGENT_ENFORCEMENT/);
   assert.match(output, /PASS: true/);
   assert.match(output, /SYNTHETIC_ACTIVE_CHECKED:/);
+});
+
+test("command agent plan reports Codex logical fallback as non-strict proof", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-logical-fallback-"));
+  try {
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+    });
+
+    assert.ok(report.plan.logicalFallbackRequiredAgents.includes("supervibe-orchestrator"));
+    assert.equal(commandAgentPlanStrictReady(report), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("command agent plan discovers nested Codex host-callable agent files", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-nested-agents-"));
+  try {
+    for (const [folder, agentId] of [
+      ["_meta", "supervibe-orchestrator"],
+      ["_product", "systems-analyst"],
+      ["_core", "architect-reviewer"],
+      ["_core", "quality-gate-reviewer"],
+    ]) {
+      const path = join(root, ".codex", "agents", folder, `${agentId}.md`);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, `# ${agentId}\n`, "utf8");
+    }
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+    });
+
+    assert.deepEqual(report.plan.logicalFallbackRequiredAgents, []);
+    assert.ok(report.plan.callableAgentSources.every((item) => item.source === "host callable"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

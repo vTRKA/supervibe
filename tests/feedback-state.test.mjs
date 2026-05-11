@@ -5,11 +5,22 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   ensureFeedbackTracked,
+  inspectFeedbackLifecycle,
   markFeedbackStatus,
   readFeedbackQueue,
   readFeedbackStatus,
   selectOpenFeedback,
 } from '../scripts/lib/feedback-state.mjs';
+
+test('inspectFeedbackLifecycle reports not-initialized when feedback files are missing', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'fb-state-'));
+  const lifecycle = await inspectFeedbackLifecycle(join(dir, 'queue.jsonl'), join(dir, 'status.json'));
+
+  assert.equal(lifecycle.status, 'not-initialized');
+  assert.equal(lifecycle.queueExists, false);
+  assert.equal(lifecycle.statusExists, false);
+  assert.equal(lifecycle.open, 0);
+});
 
 test('ensureFeedbackTracked initializes new entries as pending', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'fb-state-'));

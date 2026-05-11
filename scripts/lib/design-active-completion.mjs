@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 
 import {
   buildRuntimeCommandAgentPlan,
@@ -29,7 +29,12 @@ const BROWSER_EVIDENCE_CANDIDATES = Object.freeze([
 ]);
 const REQUIRED_BROWSER_PROOFS = Object.freeze([
   ["desktopViewport", "desktop viewport proof"],
+  ["desktopScreenshot", "desktop screenshot proof"],
   ["mobileViewport", "mobile viewport proof"],
+  ["mobileScreenshot", "mobile screenshot proof"],
+  ["url", "browser URL proof"],
+  ["capturedAt", "browser evidence timestamp proof"],
+  ["selectorReady", "selector readiness proof"],
   ["nonblankRender", "nonblank render proof"],
   ["noHorizontalOverflow", "no horizontal overflow proof"],
   ["feedbackButtonVisible", "visible feedback button proof"],
@@ -39,6 +44,7 @@ const REQUIRED_BROWSER_PROOFS = Object.freeze([
   ["textOverlapScan", "text-overlap scan proof"],
   ["contrastAudit", "contrast audit proof"],
   ["focusVisible", "focus visibility proof"],
+  ["feedbackOverlayNonOverlap", "feedback overlay non-overlap proof"],
 ]);
 const CAPABILITY_PLAN_CANDIDATES = Object.freeze([
   "prototype-capability-plan.md",
@@ -346,7 +352,7 @@ export function validateBrowserEvidence(rootDir = process.cwd(), context = {}) {
   }
   const issues = [];
   for (const [field, label] of REQUIRED_BROWSER_PROOFS) {
-    if (!proofPass(parsed, field)) {
+    if (!proofPass(parsed, field, { rootDir, evidencePath })) {
       issues.push(issue("missing-browser-proof", rel(rootDir, evidencePath), `${label} is required`));
     }
   }
@@ -603,14 +609,66 @@ function readJsonIfExists(path) {
   }
 }
 
-function proofPass(parsed = {}, field = "") {
+function proofPass(parsed = {}, field = "", context = {}) {
   const direct = parsed[field];
   const nested = parsed.checks?.[field] ?? parsed.proofs?.[field];
   for (const value of [direct, nested]) {
-    if (value === true) return true;
-    if (value && typeof value === "object" && value.pass === true) return true;
+    if (field === "url" && urlProofPass(value)) return true;
+    if (field === "capturedAt" && timestampProofPass(value)) return true;
+    if ((field === "desktopScreenshot" || field === "mobileScreenshot") && screenshotProofPass(value, context)) return true;
+    if (field !== "url" && field !== "capturedAt" && field !== "desktopScreenshot" && field !== "mobileScreenshot") {
+      if (value === true) return true;
+      if (value && typeof value === "object" && value.pass === true) return true;
+    }
   }
   return false;
+}
+
+function urlProofPass(value) {
+  const candidate = typeof value === "string"
+    ? value
+    : value && typeof value === "object"
+      ? value.url
+      : "";
+  if (typeof candidate !== "string") return false;
+  return /^https?:\/\/[^\s]+$/i.test(candidate.trim());
+}
+
+function timestampProofPass(value) {
+  const candidate = typeof value === "string"
+    ? value
+    : value && typeof value === "object"
+      ? value.capturedAt || value.timestamp || value.ts
+      : "";
+  if (typeof candidate !== "string" || !candidate.trim()) return false;
+  return Number.isFinite(Date.parse(candidate));
+}
+
+function screenshotProofPass(value, { rootDir = process.cwd(), evidencePath = "" } = {}) {
+  const candidate = typeof value === "string"
+    ? value
+    : value && typeof value === "object"
+      ? value.path || value.screenshotPath
+      : "";
+  if (typeof candidate !== "string" || !candidate.trim()) return false;
+  if (isPlaceholderProof(candidate)) return false;
+  const resolved = resolveEvidenceFile(rootDir, evidencePath, candidate);
+  return Boolean(resolved && existsSync(resolved) && statSync(resolved).isFile());
+}
+
+function isPlaceholderProof(value = "") {
+  return /^(?:skipped|skip|not[- ]?checked|none|null|n\/a|todo|pending)$/i.test(String(value || "").trim());
+}
+
+function resolveEvidenceFile(rootDir, evidencePath, value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (isAbsolute(raw)) return raw;
+  const normalized = normalizeRelPath(raw);
+  if (normalized.startsWith(".supervibe/")) {
+    return join(rootDir, ...normalized.split("/"));
+  }
+  return join(dirname(evidencePath), ...normalized.split("/"));
 }
 
 function requestedVariantCountFromOption(value) {

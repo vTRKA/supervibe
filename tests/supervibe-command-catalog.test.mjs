@@ -994,6 +994,7 @@ test("command-agent-plan CLI treats Codex spawn_agent as logical-role callable",
     assert.match(out, /CALLABLE_AGENTS_READY: true/);
     assert.match(out, /MISSING_CALLABLE_AGENTS: none/);
     assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=codex-spawn-agent logical role/);
+    assert.match(out, /LOGICAL_FALLBACK_AGENTS: .*creative-director/);
     assert.match(out, /CODEX_SPAWN_PAYLOADS:/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -1057,7 +1058,9 @@ test("command-agent-plan CLI keeps Codex logical-role dispatch independent from 
     assert.match(out, /EXECUTION_MODE: agent-dispatch-required/);
     assert.match(out, /CALLABLE_AGENTS_READY: true/);
     assert.match(out, /MISSING_CALLABLE_AGENTS: none/);
-    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=codex-spawn-agent logical role/);
+    assert.match(out, /CALLABLE_AGENT_SOURCES: .*creative-director=host callable/);
+    assert.match(out, /CALLABLE_AGENT_SOURCES: .*prototype-builder=host callable/);
+    assert.match(out, /LOGICAL_FALLBACK_AGENTS: .*ux-ui-designer/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

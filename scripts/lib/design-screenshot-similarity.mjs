@@ -49,7 +49,16 @@ export function validateScreenshotSimilarityEvidence(rootDir = process.cwd(), {
 
   const pairs = Array.isArray(parsed.pairs) ? parsed.pairs : [];
   const issues = [];
+  const expectedVariantIds = variantIdsForPrototype(rootDir, prototypeSlug);
   for (const pair of pairs) {
+    for (const side of ["left", "right"]) {
+      const id = String(pair[side] || "").trim();
+      if (!id) {
+        issues.push(issue("missing-screenshot-variant-id", evidencePath, `pair is missing ${side} variant id`));
+      } else if (expectedVariantIds.size && !expectedVariantIds.has(id)) {
+        issues.push(issue("screenshot-variant-not-in-manifest", evidencePath, `${side} variant ${id} is not present in variant-manifest.json`));
+      }
+    }
     const similarity = Number(pair.similarity ?? pair.score);
     if (!Number.isFinite(similarity)) {
       issues.push(issue("invalid-screenshot-similarity-score", evidencePath, `${pair.left || "left"} vs ${pair.right || "right"} missing numeric similarity`));
@@ -77,4 +86,18 @@ function issue(code, file, message) {
 
 function normalizeRelPath(path = "") {
   return String(path || "").split(sep).join("/").replace(/^\.\//, "");
+}
+
+function variantIdsForPrototype(rootDir, prototypeSlug = "") {
+  if (!prototypeSlug) return new Set();
+  const manifestPath = join(rootDir, ".supervibe", "artifacts", "prototypes", prototypeSlug, "variant-manifest.json");
+  if (!existsSync(manifestPath)) return new Set();
+  try {
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));
+    return new Set((Array.isArray(parsed.variants) ? parsed.variants : [])
+      .map((variant) => String(variant.id || "").trim())
+      .filter(Boolean));
+  } catch {
+    return new Set();
+  }
 }

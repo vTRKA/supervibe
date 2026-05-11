@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.26",
+  "version": "2.1.27",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -138,6 +138,7 @@
     "validate:design-preview-daemon": "node scripts/validate-design-preview-daemon.mjs",
     "validate:design-wizard": "node scripts/validate-design-wizard.mjs",
     "validate:design-workflow-state": "node scripts/validate-design-workflow-state.mjs",
+    "validate:design-workflow-report": "node scripts/validate-design-workflow-report.mjs",
     "validate:prototype-production-regression": "node scripts/validate-prototype-production-regression.mjs",
     "validate:design-styleboard-qa": "node scripts/validate-design-styleboard-qa.mjs",
     "validate:dynamic-question-systems": "node scripts/validate-dynamic-question-systems.mjs",

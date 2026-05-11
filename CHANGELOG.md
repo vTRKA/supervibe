@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.27] - 2026-05-11
+
+### Changed
+
+- Hardened design workflow readiness so quality gates, active completion, workflow status, feedback lifecycle, and consolidated reports fail closed when receipts, reviews, browser evidence, or lifecycle state are missing.
+- Tightened agent invocation confidence so high scores without retrieval evidence and verification remain review-only instead of success.
+- Expanded command agent planning to distinguish real host-callable specialists from logical fallback agents, including nested Codex agent discovery.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.27`.
+- Added positive and negative regression coverage for design workflow reports, active completion browser proof, variant-set aliases, screenshot similarity manifests, feedback lifecycle initialization, quality gates, host-callable discovery, and evidence-backed agent invocation logging.
+
 ## [2.1.26] - 2026-05-11
 
 ### Changed

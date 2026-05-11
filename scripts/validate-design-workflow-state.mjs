@@ -62,15 +62,32 @@ function listPrototypeSlugs(rootDir) {
     .sort();
 }
 
-function arg(name, fallback = "") {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] : fallback;
+function parseArgs(argv = process.argv) {
+  const options = { root: process.cwd(), slug: "", json: false };
+  for (let index = 2; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (!item.startsWith("--")) continue;
+    const key = item.slice(2);
+    if (key === "json") {
+      options.json = true;
+      continue;
+    }
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      options[key] = true;
+      continue;
+    }
+    options[key] = value;
+    index += 1;
+  }
+  return options;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = validateDesignWorkflowState(arg("--root", process.cwd()), {
-    slug: arg("--slug", ""),
+  const options = parseArgs(process.argv);
+  const result = validateDesignWorkflowState(options.root, {
+    slug: options.slug,
   });
-  console.log(formatDesignWorkflowStateValidation(result));
+  console.log(options.json ? JSON.stringify(result, null, 2) : formatDesignWorkflowStateValidation(result));
   process.exit(result.pass ? 0 : 2);
 }

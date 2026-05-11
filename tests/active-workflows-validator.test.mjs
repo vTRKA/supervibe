@@ -18,8 +18,10 @@ test("active workflow validator is a no-op when no active workflow state exists"
     const result = validateActiveWorkflows(root, { pluginRoot: ROOT });
 
     assert.equal(result.pass, true);
+    assert.equal(result.status, "not-started");
     assert.equal(result.activeWorkflows, 0);
     assert.equal(result.checked, 0);
+    assert.ok(result.warnings.some((warning) => warning.code === "active-workflow-not-started"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

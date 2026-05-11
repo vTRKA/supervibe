@@ -65,6 +65,10 @@ export async function logInvocation(entry) {
     record.retrieval_enforcement.ledgerPath = '.supervibe/memory/evidence-ledger.jsonl';
     record.retrieval_enforcement.evidencePass = appended.gate.pass;
   }
+  record.confidence = normalizeInvocationConfidence(record.confidence_score, {
+    evidenceGatePass: record.evidence_gate?.pass ?? null,
+    verificationCommands: record.evidence?.verificationCommands || [],
+  });
   await mkdir(dirname(_logPath), { recursive: true });
   await appendFile(_logPath, JSON.stringify(record) + '\n');
   await writeStructuredAgentOutput(record);
@@ -239,14 +243,14 @@ async function appendEffectivenessRecord(record = {}) {
   const path = join(rootDir, '.supervibe', 'memory', 'effectiveness.jsonl');
   const confidence = typeof record.confidence_score === 'number' ? record.confidence_score : null;
   const status = String(record.status || 'completed').toLowerCase();
+  const blockers = [];
+  if (record.evidence_gate?.pass !== true) blockers.push('missing-context');
+  if (!record.evidence?.verificationCommands?.length) blockers.push('missing-verification');
   const outcome = status === 'failed' || status === 'error'
     ? 'failed'
-    : confidence !== null && confidence >= 9
+    : blockers.length === 0 && confidence !== null && confidence >= 9
       ? 'success'
       : 'partial';
-  const blockers = [];
-  if (record.evidence_gate?.pass === false) blockers.push('missing-context');
-  if (!record.evidence?.verificationCommands?.length) blockers.push('missing-verification');
   const entry = {
     ts: record.ts,
     agent: record.agent_id,
@@ -268,6 +272,9 @@ async function appendConfidenceRecord(record = {}) {
   const rootDir = rootDirFromInvocationLogPath();
   const path = join(rootDir, '.supervibe', 'confidence-log.jsonl');
   const confidence = typeof record.confidence_score === 'number' ? record.confidence_score : null;
+  const evidenceReady = record.evidence_gate?.pass === true
+    && Array.isArray(record.evidence?.verificationCommands)
+    && record.evidence.verificationCommands.length > 0;
   const entry = {
     schemaVersion: 1,
     ts: record.ts,
@@ -277,7 +284,7 @@ async function appendConfidenceRecord(record = {}) {
     invocationId: record.invocation_id,
     confidence,
     score: confidence,
-    gate: confidence !== null && confidence >= 9 ? 'pass' : 'review',
+    gate: confidence !== null && confidence >= 9 && evidenceReady ? 'pass' : 'review',
     evidenceGatePass: record.evidence_gate?.pass ?? null,
     confidenceDetails: record.confidence_details || null,
     output: record.structured_output?.json || null,
@@ -383,12 +390,18 @@ function normalizeInvocationEvidence(entry = {}) {
   };
 }
 
-function normalizeInvocationConfidence(value) {
+function normalizeInvocationConfidence(value, {
+  evidenceGatePass = null,
+  verificationCommands = [],
+} = {}) {
   const score = typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const evidenceReady = evidenceGatePass === true
+    && Array.isArray(verificationCommands)
+    && verificationCommands.length > 0;
   return {
     schemaVersion: 1,
     score,
-    status: score === null ? 'missing' : score >= 9 ? 'pass' : 'review',
+    status: score === null ? 'missing' : score >= 9 && evidenceReady ? 'pass' : 'review',
   };
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { markFeedbackStatus, readFeedbackQueue, readFeedbackStatus, selectOpenFeedback } from './lib/feedback-state.mjs';
+import { inspectFeedbackLifecycle, markFeedbackStatus, readFeedbackQueue, readFeedbackStatus, selectOpenFeedback } from './lib/feedback-state.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -56,6 +56,12 @@ if (values.progress) {
 
 const entries = await readFeedbackQueue(queuePath);
 const state = await readFeedbackStatus(statusPath);
+const lifecycle = await inspectFeedbackLifecycle(queuePath, statusPath, {
+  limit: 20,
+  slug: values.slug,
+  target: values.target,
+  unresolvedOnly: values.all !== true,
+});
 const open = selectOpenFeedback(entries, state, {
   limit: 20,
   slug: values.slug,
@@ -63,7 +69,9 @@ const open = selectOpenFeedback(entries, state, {
   unresolvedOnly: values.all !== true,
 });
 
-if (open.length === 0) {
+if (lifecycle.status === 'not-initialized') {
+  console.log('Feedback lifecycle not initialized.');
+} else if (open.length === 0) {
   console.log('No open feedback.');
 } else {
   for (const entry of open) {

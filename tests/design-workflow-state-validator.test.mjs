@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+
+const ROOT = process.cwd();
 
 import {
   validateDesignWorkflowState,
@@ -100,6 +103,26 @@ test("design workflow state validator fails when config says no prototype but in
 
     assert.equal(result.pass, false);
     assert.ok(result.issues.some((issue) => issue.code === "config-prototype-exists-drift"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design workflow state validator CLI supports JSON output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-state-json-"));
+  try {
+    const output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-design-workflow-state.mjs"),
+      "--root",
+      root,
+      "--json",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    const parsed = JSON.parse(output);
+    assert.equal(parsed.pass, true);
+    assert.equal(parsed.checked, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

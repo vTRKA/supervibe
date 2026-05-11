@@ -20,6 +20,14 @@ export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
   const workflows = discoverActiveWorkflows(rootDir, options);
   const checks = [];
   const issues = [];
+  const warnings = [];
+  if (workflows.length === 0) {
+    warnings.push({
+      code: "active-workflow-not-started",
+      file: ".supervibe/memory/active-workflow.json",
+      message: "no active workflow state was found; this is diagnostic only and does not prove active workflow completion",
+    });
+  }
   for (const workflow of workflows) {
     const commandReport = buildRuntimeCommandAgentPlan({
       command: workflow.command,
@@ -102,10 +110,12 @@ export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
   }
   return {
     pass: issues.length === 0,
+    status: workflows.length === 0 ? "not-started" : issues.length === 0 ? "passed" : "blocked",
     activeWorkflows: workflows.length,
     checked: checks.length,
     checks,
     issues,
+    warnings,
   };
 }
 
@@ -139,14 +149,19 @@ export function formatActiveWorkflowValidation(result = {}) {
     "SUPERVIBE_ACTIVE_WORKFLOWS",
     `PASS: ${result.pass === true}`,
     `ACTIVE_WORKFLOWS: ${result.activeWorkflows || 0}`,
+    `STATUS: ${result.status || "unknown"}`,
     `CHECKS: ${result.checked || 0}`,
     `ISSUES: ${(result.issues || []).length}`,
+    `WARNINGS: ${(result.warnings || []).length}`,
   ];
   for (const check of result.checks || []) {
     lines.push(`CHECK: ${check.id} ${check.command || "unknown"} pass=${check.pass === true}`);
   }
   for (const issue of result.issues || []) {
     lines.push(`ISSUE: ${issue.code} ${issue.file} - ${issue.message}`);
+  }
+  for (const warning of result.warnings || []) {
+    lines.push(`WARNING: ${warning.code} ${warning.file} - ${warning.message}`);
   }
   return lines.join("\n");
 }
