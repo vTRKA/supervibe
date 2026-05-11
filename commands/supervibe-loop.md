@@ -82,6 +82,8 @@ npm run supervibe:task-graph-maturity
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
+/supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui
+/supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui --auto-ui-dry-run --ui-port 3057
 /supervibe-loop --stop <run-id>
 ```
 
@@ -186,6 +188,17 @@ For visual inspection, `/supervibe-ui` can open the same `graph.json` and loop
 `state.json` in a localhost control plane. It previews context packs, waves,
 reports, GC candidates, and safe local actions without changing the canonical
 JSON graph unless the user previews and explicitly applies a local mutation.
+For long loop or worktree sessions, `--auto-ui` on `--status` starts the same
+localhost-only control plane as a visible sidecar and prints the URL, PID, logs,
+and graph path. `--auto-ui-dry-run` prints the exact `npm run supervibe:ui --`
+daemon command without spawning a process, which is the safe mode for tests,
+headless sessions, and operator review.
+
+Closed work graphs are reported as `ARCHIVE_CANDIDATE: true` and
+`LIFECYCLE: completed-awaiting-archive` when all required work is terminal and
+the graph has not already been archived. That label is an operational lifecycle
+signal; production completion still depends on the completion validator and
+trusted evidence gates.
 
 Interactive mode is opt-in. `/supervibe-loop --create-work-item --interactive`
 uses guided terminal forms when a real TTY exists; otherwise it prints a

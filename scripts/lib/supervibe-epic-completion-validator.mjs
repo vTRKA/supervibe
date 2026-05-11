@@ -10,6 +10,10 @@ export function validateEpicCompletion(graph = {}, options = {}) {
   const strictProduction = options.production !== false;
   const allowSkipped = options.allowSkipped !== false;
   const allowDryRunEvidence = Boolean(options.allowDryRunEvidence);
+  const allowLegacyEvidence = Boolean(options.allowLegacyEvidence);
+  const disallowLegacyEvidence = Boolean(options.disallowLegacyEvidence) && !allowLegacyEvidence;
+  const requireTrustedEvidence = Boolean(options.requireTrustedEvidence);
+  const trustedReceiptIds = new Set((options.trustedReceiptIds || []).map(String));
   const requireEpicClosed = options.requireEpicClosed !== false;
   const requireEvidence = options.requireEvidence !== false;
   const includeFollowups = Boolean(options.requireFollowups);
@@ -57,8 +61,12 @@ export function validateEpicCompletion(graph = {}, options = {}) {
         issues.push(completionIssue("missing-evidence", id, `${id} is complete without verification evidence.`));
       } else if (strictProduction && !allowDryRunEvidence && evidence.some(isDryRunEvidence)) {
         issues.push(completionIssue("dry-run-evidence", id, `${id} uses dry-run evidence and cannot close production completion.`));
+      } else if (strictProduction && disallowLegacyEvidence && evidence.some(isLegacyEvidence)) {
+        issues.push(completionIssue("legacy-evidence", id, `${id} uses migrated legacy evidence and cannot close strict production completion.`));
       } else if (strictProduction && !evidence.some(isStructuredProductionEvidence)) {
         issues.push(completionIssue("insufficient-evidence", id, `${id} has evidence, but it is not structured enough for production completion.`));
+      } else if (strictProduction && requireTrustedEvidence && !evidence.some((entry) => isTrustedProductionEvidence(entry, { trustedReceiptIds }))) {
+        issues.push(completionIssue("untrusted-evidence", id, `${id} has structured evidence, but no trusted runtime receipt evidence for production completion.`));
       }
     }
   }
@@ -98,6 +106,9 @@ export function validateEpicCompletion(graph = {}, options = {}) {
     counts,
     production: strictProduction,
     requireEvidence,
+    requireTrustedEvidence,
+    disallowLegacyEvidence,
+    allowLegacyEvidence,
     allowSkipped,
     allowDryRunEvidence,
     issues,
@@ -113,6 +124,8 @@ export function formatEpicCompletionReport(report = {}) {
     `SCORE: ${report.score ?? 0}/10`,
     `PRODUCTION: ${report.production !== false}`,
     `REQUIRE_EVIDENCE: ${report.requireEvidence !== false}`,
+    `REQUIRE_TRUSTED_EVIDENCE: ${report.requireTrustedEvidence === true}`,
+    `DISALLOW_LEGACY_EVIDENCE: ${report.disallowLegacyEvidence === true}`,
     `COUNTS: required=${report.counts?.required || 0} complete=${report.counts?.complete || 0} skipped=${report.counts?.skipped || 0} open=${report.counts?.open || 0}`,
   ];
   if (report.issues?.length) {
@@ -204,6 +217,23 @@ function isDryRunEvidence(evidence) {
   return /\bdry[-_ ]?run\b/i.test(text);
 }
 
+function isLegacyEvidence(evidence) {
+  const receiptId = evidenceReceiptId(evidence);
+  const text = typeof evidence === "string" ? evidence : JSON.stringify(evidence || {});
+  return /legacy-graph-evidence-migration/i.test(receiptId) || /legacy-graph-evidence-migration/i.test(text);
+}
+
+function isTrustedProductionEvidence(evidence, { trustedReceiptIds = new Set() } = {}) {
+  if (!isStructuredProductionEvidence(evidence) || isLegacyEvidence(evidence)) return false;
+  const receiptId = evidenceReceiptId(evidence);
+  return Boolean(receiptId && trustedReceiptIds.has(String(receiptId)));
+}
+
+function evidenceReceiptId(evidence) {
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return "";
+  return String(evidence.receiptId || evidence.receipt || evidence.workflowReceiptId || "");
+}
+
 function isStructuredProductionEvidence(evidence) {
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return false;
   const status = normalizeStatus(evidence.status || evidence.verdict || evidence.result || evidence.outcome);
@@ -230,6 +260,8 @@ function nextActionForIssue(code, itemId, details = {}) {
   if (code === "missing-evidence") return `attach verification evidence to ${id}`;
   if (code === "insufficient-evidence") return `attach structured evidence to ${id} with command, pass status, output summary, receipt id, or reviewer status`;
   if (code === "dry-run-evidence") return `replace dry-run evidence on ${id} with production verification`;
+  if (code === "legacy-evidence") return `replace migrated legacy evidence on ${id} with fresh verification or a trusted runtime receipt`;
+  if (code === "untrusted-evidence") return `attach trusted runtime receipt evidence to ${id}`;
   if (code === "unknown-dependency") return `repair dependency ${details.dependencyId || ""} for ${id}`;
   if (code === "dependency-open") return `complete dependency ${details.dependencyId || ""} before ${id}`;
   return "inspect completion blocker";

@@ -80,6 +80,7 @@ async function main() {
       file: { type: "string", short: "f", multiple: true },
       "fixture-dir": { type: "string" },
       all: { type: "boolean", default: false },
+      "require-claimed": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -88,6 +89,7 @@ async function main() {
     console.log(`Usage:
   node scripts/validate-visual-explanation-artifacts.mjs --file .supervibe/artifacts/visual-explanations/<slug>/index.html
   node scripts/validate-visual-explanation-artifacts.mjs --all
+  node scripts/validate-visual-explanation-artifacts.mjs --all --require-claimed
   node scripts/validate-visual-explanation-artifacts.mjs --fixture-dir tests/fixtures/artifacts/visual-explanations`);
     return;
   }
@@ -105,6 +107,10 @@ async function main() {
       : await walkFiles(join(root, ".supervibe", "artifacts", "visual-explanations"));
 
   if (files.length === 0) {
+    if (values["require-claimed"]) {
+      console.error("[validate-visual-explanation-artifacts] claimed visual explanation artifacts are required but none were found");
+      process.exit(1);
+    }
     console.log("[validate-visual-explanation-artifacts] no visual explanation artifacts found; skipping");
     return;
   }

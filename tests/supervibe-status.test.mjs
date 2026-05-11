@@ -193,6 +193,54 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
   }
 });
 
+test('supervibe-status labels completed active graph as archive candidate', () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-archive-candidate-'));
+  try {
+    const graphDir = join(projectRoot, '.supervibe', 'memory', 'work-items', 'epic-archive');
+    mkdirSync(graphDir, { recursive: true });
+    writeFileSync(join(graphDir, 'graph.json'), JSON.stringify({
+      kind: 'supervibe-work-item-graph',
+      graph_id: 'epic-archive',
+      epicId: 'epic-archive',
+      title: 'Archive Epic',
+      items: [
+        { itemId: 'epic-archive', type: 'epic', status: 'closed', title: 'Archive Epic' },
+        {
+          itemId: 'T-done',
+          type: 'task',
+          status: 'complete',
+          title: 'Done task',
+          verificationEvidence: [{ taskId: 'T-done', command: 'node --test', status: 'pass', output: 'verified' }],
+        },
+      ],
+      tasks: [
+        { id: 'T-done', status: 'complete', verificationEvidence: [{ taskId: 'T-done', command: 'node --test', status: 'pass', output: 'verified' }] },
+      ],
+      evidence: [{ taskId: 'T-done', command: 'node --test', status: 'pass', output: 'verified' }],
+    }, null, 2), 'utf8');
+
+    const out = execFileSync(process.execPath, [
+      STATUS_SCRIPT,
+      '--no-color',
+      '--no-gc-hints',
+    ], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_HOST: 'codex',
+        SUPERVIBE_PLUGIN_ROOT: ROOT,
+      },
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    assert.match(out, /ARCHIVE_CANDIDATE: true/);
+    assert.match(out, /LIFECYCLE: completed-awaiting-archive/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test('supervibe-status reports atomize and runtime gate guidance with no active work graph', () => {
   const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-no-active-'));
   try {

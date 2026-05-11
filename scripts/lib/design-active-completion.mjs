@@ -34,7 +34,10 @@ const REQUIRED_BROWSER_PROOFS = Object.freeze([
   ["noHorizontalOverflow", "no horizontal overflow proof"],
   ["feedbackButtonVisible", "visible feedback button proof"],
   ["drawerOpenClose", "drawer/modal open-close proof"],
+  ["focusTrap", "drawer/modal focus-trap proof"],
+  ["keyboardNavigation", "keyboard navigation proof"],
   ["textOverlapScan", "text-overlap scan proof"],
+  ["contrastAudit", "contrast audit proof"],
   ["focusVisible", "focus visibility proof"],
 ]);
 const CAPABILITY_PLAN_CANDIDATES = Object.freeze([
@@ -59,9 +62,33 @@ export function validateDesignActiveCompletion(rootDir = process.cwd(), options 
       mode: options.mode,
       requiresCapabilityPlan: options.requireCapabilityPlan ?? options.requiresCapabilityPlan,
       requireBrowserEvidence: options.requireBrowserEvidence,
-    });
+  });
   const workflow = resolveWorkflow(options, workflows);
   if (!explicit && !workflow) {
+    const durableArtifacts = discoverDurablePrototypeArtifacts(rootDir);
+    if (durableArtifacts.length > 0) {
+      return {
+        schemaVersion: 1,
+        pass: false,
+        status: "blocked",
+        active: false,
+        command: null,
+        slug: inferPrototypeSlugFromArtifact(durableArtifacts[0]) || null,
+        handoffId: null,
+        requestedVariantCount: 0,
+        globalMaturity: "blocked",
+        activeWorkflowMaturity: "missing-active-receipts",
+        designCompletion: "blocked",
+        checks: [],
+        issues: [issue(
+          "durable-design-artifacts-without-active-receipts",
+          rel(rootDir, durableArtifacts[0]),
+          "durable prototype artifacts exist but no active scoped design receipts were validated",
+        )],
+        warnings: [],
+        nextAction: "run validate-design-active-completion with --active and scoped receipt context, or mark exploratory prototype folders with .draft-exploration",
+      };
+    }
     return {
       schemaVersion: 1,
       pass: true,
@@ -181,7 +208,9 @@ export function validateDesignActiveCompletion(rootDir = process.cwd(), options 
     for (const item of capability.issues || []) issues.push(item);
   }
 
-  const browserRequired = context.requireBrowserEvidence === true || context.requiresBrowserEvidence === true;
+  const browserRequired = context.requireBrowserEvidence === true
+    || context.requiresBrowserEvidence === true
+    || hasActivePrototypeOutput(rootDir, context);
   const browserEvidence = browserRequired
     ? (options.browserEvidenceResult || validateBrowserEvidence(rootDir, context))
     : null;
@@ -450,6 +479,66 @@ function nextActionForIssues(issues = [], context = {}) {
     return "run scoped ui-polish, accessibility, and quality-gate reviewer stages";
   }
   return "repair listed blockers and rerun validate-design-active-completion";
+}
+
+function discoverDurablePrototypeArtifacts(rootDir = process.cwd()) {
+  const prototypeRoot = join(rootDir, ".supervibe", "artifacts", "prototypes");
+  if (!existsSync(prototypeRoot)) return [];
+  const artifacts = [];
+  const visit = (dir) => {
+    if (isDraftExplorationDir(dir, prototypeRoot)) return;
+    let entries = [];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "_design-system") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(path);
+      } else if (isDurablePrototypeArtifact(entry.name)) {
+        artifacts.push(path);
+      }
+    }
+  };
+  visit(prototypeRoot);
+  return artifacts;
+}
+
+function isDurablePrototypeArtifact(name = "") {
+  if (name === ".draft-exploration") return false;
+  return /^(?:index|variant-manifest|browser-verification|approval|prototype-capability-plan)\.(?:html|json|md)$/i.test(name)
+    || /\.(?:html|md)$/i.test(name);
+}
+
+function isDraftExplorationDir(dir, prototypeRoot) {
+  let current = dir;
+  while (normalizeRelPath(current).startsWith(normalizeRelPath(prototypeRoot))) {
+    if (existsSync(join(current, ".draft-exploration"))) return true;
+    if (current === prototypeRoot) return false;
+    const parent = dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+  return false;
+}
+
+function inferPrototypeSlugFromArtifact(path = "") {
+  const normalized = normalizeRelPath(path);
+  const marker = ".supervibe/artifacts/prototypes/";
+  const index = normalized.indexOf(marker);
+  if (index < 0) return "";
+  return normalized.slice(index + marker.length).split("/")[0] || "";
+}
+
+function hasActivePrototypeOutput(rootDir, context = {}) {
+  const safeSlug = sanitizePathPart(context.slug || "");
+  if (!safeSlug) return false;
+  const marker = `.supervibe/artifacts/prototypes/${safeSlug}/`;
+  return discoverDurablePrototypeArtifacts(rootDir)
+    .some((artifactPath) => normalizeRelPath(artifactPath).includes(marker));
 }
 
 function expectedVariantTargets(rootDir, { slug = "", requestedVariantCount = 0 } = {}) {

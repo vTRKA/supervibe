@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { access, mkdir, readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   forkAutonomousLoopCheckpoint,
   recordUserGoalAcceptance,
@@ -61,6 +62,7 @@ import {
   formatLoopProviderCapabilityMatrix,
   getLoopProviderCapabilityMatrix,
 } from "./lib/autonomous-loop-tool-adapters.mjs";
+import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -138,6 +140,8 @@ function parseArgs(argv) {
     "no-evidence-required",
     "non-production",
     "indefinite",
+    "auto-ui",
+    "auto-ui-dry-run",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -669,6 +673,7 @@ async function main() {
         const graph = JSON.parse(await readFile(graphPath, "utf8"));
         if (graph.kind === "supervibe-work-item-graph" || Array.isArray(graph.items)) {
           printEpicStatus({ graph, graphPath });
+          printAutoUiStatus({ rootDir, args, graphPath });
           return;
         }
       } catch (error) {
@@ -680,6 +685,7 @@ async function main() {
       try {
         const graph = JSON.parse(await readFile(graphPath, "utf8"));
         printEpicStatus({ graph, graphPath, epicId: args.epic });
+        printAutoUiStatus({ rootDir, args, graphPath });
         return;
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
@@ -705,6 +711,7 @@ async function main() {
         const activeGraphPath = activeGraph.graphPath;
         const graph = JSON.parse(await readFile(activeGraphPath, "utf8"));
         printEpicStatus({ graph, graphPath: activeGraphPath, source: "active-registry" });
+        printAutoUiStatus({ rootDir, args, graphPath: activeGraphPath });
         return;
       }
     }
@@ -1158,6 +1165,61 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`GRAPH: ${graphPath}`);
 }
 
+function printAutoUiStatus({ rootDir, args, graphPath }) {
+  if (!args["auto-ui"]) return;
+  const plan = createAutoUiPlan({ rootDir, args, graphPath });
+  console.log("SUPERVIBE_AUTO_UI");
+  if (args["auto-ui-dry-run"] || args.preview || args["dry-run"]) {
+    console.log("STATUS: dry-run");
+    console.log(`URL: ${plan.url}`);
+    console.log(`BIND: 127.0.0.1`);
+    console.log(`COMMAND: ${plan.command}`);
+    console.log(`GRAPH: ${graphPath || "active"}`);
+    return;
+  }
+  const child = startBackgroundNodeScript({
+    scriptPath: plan.scriptPath,
+    args: plan.childArgs,
+    cwd: rootDir,
+    name: "supervibe-ui",
+    port: plan.port,
+  });
+  console.log("STATUS: started");
+  console.log(`URL: ${plan.url}`);
+  console.log(`BIND: 127.0.0.1`);
+  console.log(`PID: ${child.pid}`);
+  console.log(`LOG_STDOUT: ${child.logs.stdout}`);
+  console.log(`LOG_STDERR: ${child.logs.stderr}`);
+  console.log(`COMMAND: ${plan.command}`);
+  console.log(`GRAPH: ${graphPath || "active"}`);
+}
+
+function createAutoUiPlan({ rootDir, args, graphPath }) {
+  const port = normalizeLocalPort(args["ui-port"] || args.port || 3057);
+  const scriptPath = fileURLToPath(new URL("./supervibe-ui.mjs", import.meta.url));
+  const childArgs = ["--port", String(port), "--root", rootDir, "--foreground"];
+  const commandParts = ["npm run supervibe:ui --", "--daemon", "--port", String(port)];
+  if (graphPath) {
+    childArgs.push("--file", graphPath);
+    commandParts.push("--file", graphPath);
+  }
+  return {
+    port,
+    url: `http://127.0.0.1:${port}/`,
+    scriptPath,
+    childArgs,
+    command: commandParts.join(" "),
+  };
+}
+
+function normalizeLocalPort(value) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`--ui-port must be an integer between 1 and 65535, got ${value}`);
+  }
+  return port;
+}
+
 function nextActionForEpicStatus(grouped = {}) {
   const nextReady = grouped.ready?.[0]?.itemId || grouped.ready?.[0]?.id || null;
   if (nextReady) return `claim ${nextReady} or run /supervibe-loop --claim-ready`;
@@ -1413,6 +1475,8 @@ Primary:
   supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
   supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --status --epic <epic-id>
+  supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui
+  supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui --auto-ui-dry-run --ui-port 3057
   supervibe-loop --stop <run-id>
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -1482,6 +1546,7 @@ Execution modes:
   --tracker mcp --tracker-mcp-servers issue-tracker --tracker-mcp-tools create_issue,link_dependency --approve-mcp-tracker
   --provider-matrix
   --require-user-acceptance
+  --auto-ui [--auto-ui-dry-run] [--ui-port 3057]
   --accept-goals | --reject-goals --file <state.json>
   --fork-checkpoint --file <state.json>
   --commit-per-task

@@ -123,9 +123,12 @@ async function printActiveWorkGraphSummary() {
   } catch {
     completionPass = false;
   }
+  const archivedAt = graph.archivedAt || graph.archived_at || graph.metadata?.archivedAt || null;
+  const archiveCandidate = !archivedAt && (completionPass || isOperationallyClosedWorkGraph(graph));
+  const lifecycle = archivedAt ? 'archived' : archiveCandidate ? 'completed-awaiting-archive' : 'active';
   const nextAction = nextReady !== 'none'
     ? `claim ${nextReady} or inspect blockers`
-    : completionPass
+    : archiveCandidate
       ? 'finish/archive completed epic'
       : 'validate completion or unblock remaining work';
 
@@ -138,10 +141,12 @@ async function printActiveWorkGraphSummary() {
   console.log(color(`  IN_PROGRESS: ${inProgress.length}`, inProgress.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  BLOCKED: ${grouped.blocked.length}`, grouped.blocked.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  TERMINAL: ${terminalCount}`, 'dim'));
+  console.log(color(`  ARCHIVE_CANDIDATE: ${archiveCandidate}`, archiveCandidate ? 'green' : 'dim'));
+  console.log(color(`  LIFECYCLE: ${lifecycle}`, archiveCandidate ? 'green' : 'dim'));
   console.log(color(`  STALE_CLAIMS: ${stale.length}`, stale.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  ORPHANS: ${orphans.length}`, orphans.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  NEXT_READY: ${nextReady}`, nextReady === 'none' ? 'dim' : 'green'));
-  console.log(color(`  NEXT_ACTION: ${nextAction}`, driftCount > 0 ? 'yellow' : completionPass ? 'green' : 'dim'));
+  console.log(color(`  NEXT_ACTION: ${nextAction}`, driftCount > 0 ? 'yellow' : archiveCandidate ? 'green' : 'dim'));
 
   if (args.ready) {
     for (const item of grouped.ready) console.log(color(`  READY_ITEM: ${item.itemId || item.id} ${item.title || ''}`.trimEnd(), 'dim'));
@@ -163,6 +168,19 @@ async function printActiveWorkGraphSummary() {
   if (args.orphan) {
     for (const item of orphans) console.log(color(`  ORPHAN_ITEM: ${item.itemId || item.id} missing_parent=${item.parentId || 'none'}`, 'yellow'));
   }
+}
+
+function isOperationallyClosedWorkGraph(graph = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const epic = items.find((item) => item.type === 'epic') || null;
+  const required = items.filter((item) => item.type !== 'epic' && item.type !== 'followup');
+  if (epic && !isTerminalWorkStatus(epic.status)) return false;
+  if (required.length === 0) return false;
+  return required.every((item) => isTerminalWorkStatus(item.status));
+}
+
+function isTerminalWorkStatus(status) {
+  return ['done', 'complete', 'completed', 'closed', 'skipped', 'skip', 'cancelled', 'canceled'].includes(String(status || '').trim().toLowerCase());
 }
 
 async function main() {

@@ -30,6 +30,9 @@ const REQUIRED_CAPS = Object.freeze([
   "rollback-missing",
   "traceability-missing",
   "open-critical-findings",
+  "evidence-gate-failed",
+  "inline-producer",
+  "untrusted-receipt-evidence",
 ]);
 
 export async function validateDeliveryConfidence({ rootDir = ROOT } = {}) {

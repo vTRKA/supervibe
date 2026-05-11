@@ -63,6 +63,9 @@ hard-caps:
   open-major-findings: 8
   half-finished: 7
   critical-security-privacy-gap: 6
+  evidence-gate-failed: 8
+  inline-producer: 8
+  untrusted-receipt-evidence: 8
 gates:
   block-below: 9
   warn-below: 10

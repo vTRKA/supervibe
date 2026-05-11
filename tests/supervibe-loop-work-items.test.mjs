@@ -273,3 +273,34 @@ test("loop CLI status does not report terminal review gates as pending review wo
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("loop CLI status can emit an auto UI daemon plan without spawning", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-auto-ui-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/auto-ui.md",
+      epicId: "epic-auto-ui",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+      "--auto-ui",
+      "--auto-ui-dry-run",
+      "--ui-port",
+      "3999",
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_AUTO_UI/);
+    assert.match(stdout, /STATUS: dry-run/);
+    assert.match(stdout, /URL: http:\/\/127\.0\.0\.1:3999\//);
+    assert.match(stdout, /COMMAND: npm run supervibe:ui -- --daemon --port 3999 --file/);
+    assert.match(stdout, /GRAPH: .*graph\.json/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});

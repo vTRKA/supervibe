@@ -564,7 +564,7 @@ const RULES = [
   {
     intent: "task_graph_remaining",
     confidence: 0.93,
-    test: (text) => hasAny(text, ["что осталось по задачам", "какие задачи остались", "покажи оставшиеся задачи", "remaining tasks", "what remains", "what is left"]) &&
+    test: (text) => hasAny(text, ["что осталось по задачам", "какие задачи остались", "покажи оставшиеся задачи", "покажи задачи", "список задач", "remaining tasks", "what remains", "what is left"]) &&
       hasAny(text, ["задач", "task", "tasks", "work", "эпик", "epic"]),
   },
   {
@@ -580,7 +580,7 @@ const RULES = [
   {
     intent: "task_graph_resume",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["продолжи loop", "продолжи работу", "вернуться к задачам", "вернуться к проекту с задачами", "resume loop", "resume task graph", "continue task graph"]) &&
+    test: (text) => hasAny(text, ["продолжи loop", "продолжи работу", "вернуться к задачам", "вернуться к проекту с задачами", "вернись к проекту с задачами", "вернись к задачам", "resume loop", "resume task graph", "continue task graph"]) &&
       hasAny(text, ["эпик", "эпикам", "задач", "tasks", "epic", "graph", "loop"]),
   },
   {
@@ -634,8 +634,8 @@ const RULES = [
   {
     intent: "task_graph_edit",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["измени задачу", "измени подзадачу", "измени эпик", "edit task", "change task", "update task", "edit epic", "change epic", "update epic"]) &&
-      hasAny(text, ["задач", "task", "subtask", "подзадач", "эпик", "epic"]),
+    test: (text) => hasAny(text, ["измени задачу", "измени подзадачу", "измени эпик", "измени цель loop", "изменить цель loop", "поменяй цель loop", "edit task", "change task", "update task", "edit epic", "change epic", "update epic", "change loop goal", "update loop goal"]) &&
+      hasAny(text, ["задач", "task", "subtask", "подзадач", "эпик", "epic", "цель", "goal", "loop"]),
   },
   {
     intent: "task_graph_validate_completion",

@@ -139,7 +139,10 @@ async function writeValidPrototype(root, { launcher = true, screenshot = true, c
       noHorizontalOverflow: true,
       feedbackButtonVisible: true,
       drawerOpenClose: true,
+      focusTrap: true,
+      keyboardNavigation: true,
       textOverlapScan: true,
+      contrastAudit: true,
       focusVisible: true,
     }, null, 2)}\n`);
   }
@@ -154,6 +157,35 @@ test("global-safe mode passes as not-started when no active workflow exists", as
     assert.equal(result.pass, true);
     assert.equal(result.status, "not-started");
     assert.equal(result.designCompletion, "not-started");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("global-safe mode blocks when durable prototype artifacts exist without active receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-artifacts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<main>prototype</main>\n");
+    const result = validateDesignActiveCompletion(root, {});
+
+    assert.equal(result.pass, false);
+    assert.equal(result.status, "blocked");
+    assert.equal(result.designCompletion, "blocked");
+    assert.ok(result.issues.some((issue) => issue.code === "durable-design-artifacts-without-active-receipts"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("global-safe mode treats explicit draft prototypes as not-started diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-draft-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<main>prototype</main>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/.draft-exploration", "draft\n");
+    const result = validateDesignActiveCompletion(root, {});
+
+    assert.equal(result.pass, true);
+    assert.equal(result.status, "not-started");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -268,6 +300,19 @@ test("active multi-variant run fails when screenshot similarity evidence is miss
   }
 });
 
+test("active prototype outputs require browser evidence by default", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-browser-default-"));
+  try {
+    await writeValidPrototype(root, { launcher: true, screenshot: true });
+    const result = validateDesignActiveCompletion(root, completionOptions());
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-browser-evidence"));
+    assert.ok(result.checks.some((item) => item.id === "browser-evidence:active" && item.pass === false));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("capability and browser evidence flags are hard blockers when requested", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-capability-"));
   try {
@@ -281,6 +326,30 @@ test("capability and browser evidence flags are hard blockers when requested", a
     assert.ok(result.issues.some((issue) => issue.code === "missing-browser-evidence"));
     assert.equal(validateCapabilityPlan(root, completionOptions({ requireCapabilityPlan: true })).pass, false);
     assert.equal(validateBrowserEvidence(root, completionOptions({ requireBrowserEvidence: true })).pass, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("browser evidence requires keyboard, focus trap, and contrast proofs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-browser-fields-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_evidence/browser-verification.json", `${JSON.stringify({
+      desktopViewport: true,
+      mobileViewport: true,
+      nonblankRender: true,
+      noHorizontalOverflow: true,
+      feedbackButtonVisible: true,
+      drawerOpenClose: true,
+      textOverlapScan: true,
+      focusVisible: true,
+    }, null, 2)}\n`);
+    const result = validateBrowserEvidence(root, completionOptions());
+    const messages = result.issues.map((issue) => issue.message).join("\n");
+    assert.equal(result.pass, false);
+    assert.match(messages, /keyboard navigation proof is required/);
+    assert.match(messages, /drawer\/modal focus-trap proof is required/);
+    assert.match(messages, /contrast audit proof is required/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

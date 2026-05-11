@@ -107,6 +107,21 @@ test("inferred caps cover missing evidence and policy blockers", () => {
   ]);
 });
 
+test("inferred caps block high confidence when evidence gates or producer provenance are untrusted", () => {
+  const caps = inferDeliveryHardCaps({
+    evidenceGatePass: false,
+    producerMode: "inline",
+    trustedReceiptEvidence: false,
+  });
+
+  assert.deepEqual(caps.map((cap) => cap.code), [
+    "evidence-gate-failed",
+    "inline-producer",
+    "untrusted-receipt-evidence",
+  ]);
+  assert.ok(caps.every((cap) => cap.score < 9));
+});
+
 test("invalid dimension and risk numbers are clamped and reported", () => {
   const result = scoreDeliveryConfidence({
     dimensions: [

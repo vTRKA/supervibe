@@ -90,11 +90,13 @@ deployment targets, or external APIs.
 
 - `GET /api/graph?file=<graph.json>`
   - Includes `graphTree` plus `panels.readyQueue`, `panels.blockers`,
-    `panels.staleClaims`, and `panels.completion.blockers` so UI clients can
-    show hierarchy, next work, stalled claims, and close blockers without
-    guessing from raw columns.
+    `panels.staleClaims`, `panels.lifecycle`, and
+    `panels.completion.blockers` so UI clients can show hierarchy, next work,
+    stalled claims, archive-candidate state, and close blockers without guessing
+    from raw columns.
   - Includes `kanban.graphSummary`, `kanban.epics`, `kanban.agents`, and
-    `kanban.columns[]` so IDEs can show task movement and epic ownership.
+    `kanban.columns[]` so IDEs can show task movement, epic ownership, and the
+    graph lifecycle status.
   - Includes `flow.steps[]`, `flow.activeId`, `flow.status`, and `flow.metrics`
     so IDEs can show phase progress from graph status, task status, gates, and
     archive markers.

@@ -163,6 +163,10 @@ verification not run caps at 8, failed verification caps at 6, missing required
 CodeGraph or retrieval index readiness caps at 8, high-risk work without user
 approval caps at 6, missing rollback or traceability caps at 8, open critical
 findings cap at 7, and unresolved critical security/privacy gaps cap at 6.
+False provenance also caps below the 9/10 gate: a failed required evidence gate,
+inline or emulated producer output, and missing/untrusted receipt evidence each
+cap delivery confidence at 8 until real verification or scoped runtime receipts
+are attached.
 
 Agent outputs that use this formula should persist `confidenceDetails` alongside
 the numeric score so reviewers can inspect `ReadinessScore`, `RiskPenalty`, hard

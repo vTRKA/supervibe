@@ -104,6 +104,10 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 6. **Machine-validate the plan.** Run `node scripts/validate-plan-artifacts.mjs --file <plan>`. Any failure blocks execution handoff.
 
 7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
+   Delivery confidence is also capped below 9 when required evidence gates fail,
+   producer provenance is inline/emulated instead of real receipt-backed agent
+   output, or receipt evidence is missing/untrusted. These caps are blockers,
+   not stylistic warnings.
 
 8. **Post-plan summary before review.** After the durable plan is saved and validated, give a short human-readable summary: artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, score, and the next review choices.
 

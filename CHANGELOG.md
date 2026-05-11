@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.23] - 2026-05-11
+
+### Added
+
+- Added loop `--auto-ui` and `--auto-ui-dry-run` status sidecar output so long task-graph sessions can expose the localhost UI command, URL, PID, logs, and graph path without hidden test-time spawning.
+- Added archive-candidate lifecycle fields to status and UI graph models for completed native work graphs.
+- Added Russian task-graph route coverage for showing tasks, resuming a project with tasks, and changing a loop goal.
+
+### Changed
+
+- Tightened completion and confidence gates around trusted receipt evidence, migrated legacy evidence, claimed visual artifacts, durable design artifacts without active receipts, inline/emulated producer provenance, and durable prototype browser QA evidence.
+
+### Validation
+
+- Added targeted regression coverage for loop auto-UI, trusted/legacy completion evidence, claimed visual artifacts, design active completion, delivery confidence caps, lifecycle UI/status output, and Russian route fixtures.
+
 ## [2.1.22] - 2026-05-11
 
 ### Added

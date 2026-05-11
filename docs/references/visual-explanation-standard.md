@@ -97,6 +97,10 @@ when approved, then summarize the saved artifact and next choices.
 Before claiming a visual artifact is ready:
 
 - Verify the text-first summary includes a stage map, table, or ASCII scheme.
+- If a workflow claimed visual output, run
+  `node scripts/validate-visual-explanation-artifacts.mjs --all --require-claimed`
+  or validate the explicit file. `--all` without `--require-claimed` is neutral
+  when no visual artifacts exist; claimed output with no artifact is a failure.
 - If a browser preview packet is used for UI/prototype evidence, verify it has a
   preview URL/path.
 - Check that the text fallback names every critical node, edge, decision, and

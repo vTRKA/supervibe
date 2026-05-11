@@ -13,6 +13,9 @@ export const HARD_CAPS = Object.freeze({
   openMajorFindings: 8,
   halfFinished: 7,
   criticalSecurityPrivacyGap: 6,
+  evidenceGateFailed: 8,
+  inlineProducer: 8,
+  untrustedReceiptEvidence: 8,
 });
 
 export const DEFAULT_DELIVERY_DIMENSIONS = Object.freeze([
@@ -145,6 +148,16 @@ export function inferDeliveryHardCaps(evidence = {}) {
   }
   if (evidence.criticalSecurityPrivacyGap === true) {
     add(HARD_CAPS.criticalSecurityPrivacyGap, "critical security or privacy gap is unresolved", "critical-security-privacy-gap");
+  }
+  if (evidence.evidenceGatePass === false) {
+    add(HARD_CAPS.evidenceGateFailed, "required evidence gate failed", "evidence-gate-failed");
+  }
+  const producerMode = String(evidence.producerMode || evidence.agentProducerMode || "").trim().toLowerCase();
+  if (evidence.inlineProducer === true || ["inline", "emulated", "manual-emulation", "controller-inline"].includes(producerMode)) {
+    add(HARD_CAPS.inlineProducer, "producer output was inline or emulated instead of receipt-backed", "inline-producer");
+  }
+  if (evidence.trustedReceiptEvidence === false || evidence.receiptTrusted === false) {
+    add(HARD_CAPS.untrustedReceiptEvidence, "receipt evidence is missing or untrusted", "untrusted-receipt-evidence");
   }
 
   return caps;

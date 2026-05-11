@@ -75,6 +75,8 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.equal(graph.tracker.mode, "native");
     assert.equal(graph.tracker.mapped, 0);
     assert.equal(graph.kanban.graphSummary.graphId, "epic-ui");
+    assert.equal(graph.kanban.graphSummary.archiveCandidate, false);
+    assert.equal(graph.panels.lifecycle.archiveCandidate, false);
     assert.equal("project" in graph.kanban, false);
     assert.equal(graph.kanban.epics[0].id, "epic-ui");
     assert.equal(graph.flow.activeId, "execute");
@@ -157,6 +159,42 @@ test("UI server resolves active work graph when no file is provided", async () =
     const graph = await (await fetch(`${baseUrl}/api/graph`)).json();
     assert.equal(graph.graphId, "epic-ui");
     assert.match(graph.graphPath, /epic-ui[\\/]graph\.json$/);
+  } finally {
+    await close(server);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("UI server marks completed graphs as archive candidates", async () => {
+  const root = await makeTempRoot("supervibe-ui-archive-");
+  const graphRel = ".supervibe/memory/work-items/epic-ui/graph.json";
+  const graphPath = join(root, graphRel);
+  await writeGraph(graphPath);
+  const saved = JSON.parse(await readFile(graphPath, "utf8"));
+  saved.items = saved.items.map((item) => item.type === "epic"
+    ? { ...item, status: "closed" }
+    : {
+      ...item,
+      status: "complete",
+      verificationEvidence: [{ taskId: item.itemId, command: "node --test", status: "pass", output: "verified" }],
+    });
+  saved.tasks = saved.tasks.map((task) => ({
+    ...task,
+    status: "complete",
+    verificationEvidence: [{ taskId: task.id, command: "node --test", status: "pass", output: "verified" }],
+  }));
+  saved.evidence = [{ taskId: "design-kanban-cards", command: "node --test", status: "pass", output: "verified" }];
+  await writeFile(graphPath, `${JSON.stringify(saved, null, 2)}\n`, "utf8");
+
+  const { server } = createSupervibeUiServer({ rootDir: root, graphPath: graphRel });
+  await listen(server);
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    const graph = await (await fetch(`${baseUrl}/api/graph?file=${encodeURIComponent(graphRel)}&requireEpicClosed=false`)).json();
+
+    assert.equal(graph.panels.lifecycle.archiveCandidate, true);
+    assert.equal(graph.panels.lifecycle.status, "completed-awaiting-archive");
+    assert.equal(graph.kanban.graphSummary.archiveCandidate, true);
   } finally {
     await close(server);
     await rm(root, { recursive: true, force: true });

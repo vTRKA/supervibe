@@ -4,6 +4,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   validateVisualExplanationArtifact,
@@ -81,4 +82,18 @@ test("validate-visual-explanation-artifacts CLI validates explicit file", async 
     encoding: "utf8",
   });
   assert.match(stdout, /All 1 visual explanation artifact\(s\) passed/);
+});
+
+test("validate-visual-explanation-artifacts CLI fails missing artifacts when output was claimed", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "visual-explanation-claimed-missing-"));
+  const scriptPath = fileURLToPath(new URL("../scripts/validate-visual-explanation-artifacts.mjs", import.meta.url));
+  assert.throws(() => execFileSync(process.execPath, [
+    scriptPath,
+    "--all",
+    "--require-claimed",
+  ], {
+    cwd: dir,
+    encoding: "utf8",
+    stdio: "pipe",
+  }), /claimed visual explanation artifacts are required/);
 });

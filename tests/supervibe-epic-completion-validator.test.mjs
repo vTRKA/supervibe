@@ -124,6 +124,66 @@ test("validateEpicCompletion rejects unstructured production evidence", () => {
   assert.ok(report.issues.some((issue) => issue.code === "insufficient-evidence" && issue.itemId === "epic-completion-t1"));
 });
 
+test("validateEpicCompletion can require trusted receipt evidence", () => {
+  const graph = completedGraph();
+  const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
+  task.verificationEvidence = [{
+    taskId: "epic-completion-t1",
+    receiptId: "receipt-not-trusted",
+    status: "pass",
+    outputSummary: "verified",
+  }];
+  graph.tasks.find((item) => item.id === "epic-completion-t1").verificationEvidence = task.verificationEvidence;
+  graph.evidence = graph.evidence.filter((item) => item.taskId !== "epic-completion-t1").concat(task.verificationEvidence);
+  for (const evidence of graph.evidence) {
+    if (evidence.taskId !== "epic-completion-t1") evidence.receiptId = "trusted-receipt";
+  }
+  for (const item of graph.items) {
+    for (const evidence of item.verificationEvidence || []) {
+      if (evidence.taskId !== "epic-completion-t1") evidence.receiptId = "trusted-receipt";
+    }
+  }
+  for (const item of graph.tasks) {
+    for (const evidence of item.verificationEvidence || []) {
+      if (evidence.taskId !== "epic-completion-t1") evidence.receiptId = "trusted-receipt";
+    }
+  }
+
+  const blocked = validateEpicCompletion(graph, {
+    requireTrustedEvidence: true,
+    trustedReceiptIds: ["trusted-receipt"],
+  });
+  const trusted = validateEpicCompletion(graph, {
+    requireTrustedEvidence: true,
+    trustedReceiptIds: ["receipt-not-trusted", "trusted-receipt"],
+  });
+
+  assert.equal(blocked.pass, false);
+  assert.ok(blocked.issues.some((issue) => issue.code === "untrusted-evidence" && issue.itemId === "epic-completion-t1"));
+  assert.equal(trusted.pass, true);
+});
+
+test("validateEpicCompletion blocks legacy migrated evidence in strict production mode", () => {
+  const graph = completedGraph();
+  const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
+  task.verificationEvidence = [{
+    taskId: "epic-completion-t1",
+    receiptId: "legacy-graph-evidence-migration-epic-completion-t1",
+    command: "node --test tests/completion.test.mjs",
+    status: "pass",
+    outputSummary: "migrated legacy evidence",
+  }];
+  graph.tasks.find((item) => item.id === "epic-completion-t1").verificationEvidence = task.verificationEvidence;
+  graph.evidence = graph.evidence.filter((item) => item.taskId !== "epic-completion-t1").concat(task.verificationEvidence);
+
+  const blocked = validateEpicCompletion(graph, { disallowLegacyEvidence: true });
+  const grandfathered = validateEpicCompletion(graph, { disallowLegacyEvidence: true, allowLegacyEvidence: true });
+
+  assert.equal(blocked.pass, false);
+  assert.ok(blocked.issues.some((issue) => issue.code === "legacy-evidence" && issue.itemId === "epic-completion-t1"));
+  assert.equal(grandfathered.pass, true);
+});
+
 test("validate-epic-completion CLI reports failed and passed completion", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-epic-completion-"));
   const passingFile = join(root, "passing.graph.json");

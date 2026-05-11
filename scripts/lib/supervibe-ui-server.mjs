@@ -47,14 +47,15 @@ export function createSupervibeUiServer({
         const mapping = await readOptionalTrackerMapping(rootDir);
         const index = createWorkItemIndex({ graph, mapping, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
         const grouped = groupWorkItemsByStatus(index);
-        const kanban = createKanbanModel({ graph, index });
-        const flow = createWorkflowFlowModel({ graph, index, grouped });
         const completion = validateEpicCompletion(graph, {
           production: true,
           requireEvidence: true,
           allowDryRunEvidence: false,
           requireEpicClosed: url.searchParams.get("requireEpicClosed") !== "false",
         });
+        const lifecycle = createGraphLifecycleModel({ graph, completion });
+        const kanban = createKanbanModel({ graph, index, lifecycle });
+        const flow = createWorkflowFlowModel({ graph, index, grouped });
         const tracker = await buildTrackerPanelModel({ rootDir });
         const savedViews = createSavedViewsModel({ index, completion });
         return sendJson(res, {
@@ -64,7 +65,7 @@ export function createSupervibeUiServer({
           grouped,
           items: index,
           graphTree: createGraphTreeModel({ graph, index }),
-          panels: createWorkItemPanelModel({ graph, index, grouped, completion }),
+          panels: createWorkItemPanelModel({ graph, index, grouped, completion, lifecycle }),
           tracker,
           savedViews,
           kanban,
@@ -179,6 +180,12 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       rollup: { epics: 0, tasks: 0, subtasks: 0, gates: 0, followups: 0, orphans: 0 },
     },
     panels: {
+      lifecycle: {
+        status: "no-active-graph",
+        archiveCandidate: false,
+        archivedAt: null,
+        nextAction: "atomize a reviewed plan before archive readiness",
+      },
       readyQueue: [],
       blockers: [{
         id: "no-active-graph",
@@ -216,7 +223,7 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       mappingGaps: [],
     },
     kanban: {
-      graphSummary: { graphId: null, title: "No active work graph", path: null },
+      graphSummary: { graphId: null, title: "No active work graph", path: null, archiveCandidate: false, lifecycleStatus: "no-active-graph" },
       epics: [],
       columns: [],
     },
@@ -898,7 +905,7 @@ function escapeHtmlJs(value){ return String(value).replace(/[&<>"']/g, function(
 </html>`;
 }
 
-export function createKanbanModel({ graph = {}, index = [] } = {}) {
+export function createKanbanModel({ graph = {}, index = [], lifecycle = null } = {}) {
   const graphId = graph.graph_id || graph.graphId || graph.epicId || "work";
   const epicItems = index.filter((item) => item.type === "epic");
   const fallbackEpic = epicItems[0] || {
@@ -931,6 +938,8 @@ export function createKanbanModel({ graph = {}, index = [] } = {}) {
       title: graph.title || fallbackEpic.title || graphId,
       source: graph.source?.path || graph.sourcePath || null,
       totalTasks: taskCards.length,
+      archiveCandidate: lifecycle?.archiveCandidate === true,
+      lifecycleStatus: lifecycle?.status || "active",
     };
   return {
     graphSummary,
@@ -981,7 +990,7 @@ function createGraphTreeModel({ graph = {}, index = [] } = {}) {
   };
 }
 
-function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, completion = null } = {}) {
+function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, completion = null, lifecycle = null } = {}) {
   const groups = grouped || groupWorkItemsByStatus(index);
   const staleClaims = detectStaleWorkItems(index);
   const blockers = groups.blocked.map((item) => ({
@@ -992,6 +1001,7 @@ function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, comp
     nextAction: item.blockerNextAction || `inspect ${item.itemId || item.id}`,
   }));
   return {
+    lifecycle: lifecycle || createGraphLifecycleModel({ graph, completion }),
     readyQueue: groups.ready.map(compactPanelItem),
     blockers,
     staleClaims: staleClaims.map(compactPanelItem),
@@ -1008,6 +1018,35 @@ function createWorkItemPanelModel({ graph = {}, index = [], grouped = null, comp
       warnings: completion?.warnings || [],
     },
   };
+}
+
+function createGraphLifecycleModel({ graph = {}, completion = {} } = {}) {
+  const archivedAt = graph.archivedAt || graph.archived_at || graph.metadata?.archivedAt || null;
+  const archiveCandidate = !archivedAt && (completion?.pass === true || isOperationallyClosedWorkGraph(graph));
+  const status = archivedAt ? "archived" : archiveCandidate ? "completed-awaiting-archive" : "active";
+  return {
+    status,
+    archiveCandidate,
+    archivedAt,
+    nextAction: archiveCandidate
+      ? "finish/archive completed epic"
+      : archivedAt
+        ? "inspect archived graph only when resuming history"
+        : "continue ready work or validate completion",
+  };
+}
+
+function isOperationallyClosedWorkGraph(graph = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const epic = items.find((item) => item.type === "epic") || null;
+  const required = items.filter((item) => item.type !== "epic" && item.type !== "followup");
+  if (epic && !isTerminalWorkStatus(epic.status)) return false;
+  if (required.length === 0) return false;
+  return required.every((item) => isTerminalWorkStatus(item.status));
+}
+
+function isTerminalWorkStatus(status) {
+  return ["done", "complete", "completed", "closed", "skipped", "skip", "cancelled", "canceled"].includes(String(status || "").trim().toLowerCase());
 }
 
 function sourceSnapshotPanel(graph = {}) {

@@ -43,6 +43,33 @@ test("semantic paraphrase trigger matrix passes implicit user needs", () => {
   assert.ok(evaluation.total >= 20);
 });
 
+test("semantic routing covers Russian task graph control phrases", () => {
+  const evaluation = evaluateSemanticIntentMatrix([
+    {
+      id: "ru-show-tasks",
+      phrase: "покажи задачи",
+      expected: { intent: "task_graph_remaining", command: "/supervibe-status --remaining", minConfidence: 0.9 },
+    },
+    {
+      id: "ru-resume-project-tasks",
+      phrase: "вернись к проекту с задачами",
+      expected: { intent: "task_graph_resume", command: "/supervibe-loop --status", minConfidence: 0.9 },
+    },
+    {
+      id: "ru-change-loop-goal",
+      phrase: "измени цель loop",
+      expected: { intent: "task_graph_edit", command: "/supervibe-loop --edit <task-id> --preview", minConfidence: 0.9 },
+    },
+    {
+      id: "ru-blocked-tasks",
+      phrase: "что заблокировано",
+      expected: { intent: "blocked_query", command: "/supervibe-status --blocked", minConfidence: 0.84 },
+    },
+  ]);
+
+  assert.equal(evaluation.pass, true, formatSemanticIntentEvaluation(evaluation));
+});
+
 test("command route matrix keeps plan-review complaints out of audit and execute", () => {
   const evaluation = evaluateCommandRouteMatrix();
   assert.equal(evaluation.pass, true, formatCommandRouteEvaluation(evaluation));
