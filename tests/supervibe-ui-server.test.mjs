@@ -68,6 +68,9 @@ test("UI server renders local control plane and keeps actions preview-first", as
     assert.equal(graph.panels.evidenceCoverage.covered <= graph.panels.evidenceCoverage.required, true);
     assert.equal(graph.panels.completion.productionReady, false);
     assert.ok(graph.panels.completion.blockers.length > 0);
+    assert.equal(graph.savedViews.remaining.some((item) => item.id === "design-kanban-cards"), true);
+    assert.equal(graph.savedViews.mappingGaps.some((item) => item.id === "design-kanban-cards"), true);
+    assert.match(graph.savedViews.mappingGaps[0].fixCommand, /tracker-doctor --fix/);
     assert.equal(graph.tracker.status, "native-ready");
     assert.equal(graph.tracker.mode, "native");
     assert.equal(graph.tracker.mapped, 0);
@@ -174,6 +177,9 @@ test("UI server returns no-active-graph model instead of raw graph error", async
     assert.equal(graph.graphPath, null);
     assert.equal(graph.panels.completion.productionReady, false);
     assert.equal(graph.tracker.status, "no-active-graph");
+    assert.deepEqual(graph.savedViews.remaining, []);
+    assert.deepEqual(graph.savedViews.needsEvidence, []);
+    assert.deepEqual(graph.savedViews.mappingGaps, []);
     assert.equal(graph.tracker.mappingPath, null);
     assert.match(graph.nextAction, /atomize a reviewed plan/);
     assert.match(graph.commands.atomizeReviewedPlan, /--atomize-plan <plan-path> --plan-review-passed/);

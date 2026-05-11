@@ -115,6 +115,7 @@ async function printActiveWorkGraphSummary() {
   const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || 'none';
   const terminalCount = (grouped.done?.length || 0) + (grouped.skipped?.length || 0) + (grouped.cancelled?.length || 0);
   const total = index.length;
+  const remaining = index.filter((item) => item.type !== 'epic' && item.effectiveStatus !== 'done');
   const driftCount = stale.length + orphans.length;
   let completionPass = false;
   try {
@@ -149,6 +150,11 @@ async function printActiveWorkGraphSummary() {
     for (const item of grouped.blocked) {
       const reason = item.blockReason || item.blockerReason || item.blockerNextAction || 'blocked';
       console.log(color(`  BLOCKED_ITEM: ${item.itemId || item.id} ${reason}`, 'yellow'));
+    }
+  }
+  if (args.remaining) {
+    for (const item of remaining) {
+      console.log(color(`  REMAINING_ITEM: ${item.itemId || item.id} ${item.effectiveStatus || item.status || 'open'} ${item.title || ''}`.trimEnd(), 'dim'));
     }
   }
   if (args.stale) {
@@ -739,7 +745,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'ready', 'blocked', 'stale', 'orphan']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

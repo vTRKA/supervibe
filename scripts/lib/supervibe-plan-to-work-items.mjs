@@ -145,6 +145,17 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
 
     if (!current) continue;
 
+    const stepMatch = /^\s*-\s+\[[ xX]\]\s+\*\*Step\s+(\d+)\s*:\s*(.+?)\*\*/i.exec(line);
+    if (stepMatch) {
+      current.steps.push({
+        number: Number(stepMatch[1]),
+        title: stepMatch[2].trim(),
+        line: index + 1,
+        verificationCommands: [],
+      });
+      current.activeStepIndex = current.steps.length - 1;
+    }
+
     if (/^\*\*Acceptance Criteria:\*\*/i.test(line.trim())) {
       inAcceptance = true;
       continue;
@@ -160,6 +171,8 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
       const command = line.trim();
       if (/^(node|npm|pnpm|yarn|bun|python|pytest|git|npx)\b/.test(command)) {
         current.verificationCommands.push(command);
+        const activeStep = Number.isInteger(current.activeStepIndex) ? current.steps[current.activeStepIndex] : null;
+        if (activeStep) activeStep.verificationCommands.push(command);
       }
     }
 
@@ -444,7 +457,8 @@ function formatPreviewItem(item) {
 
 function createChildItems(parsed, epicId, options = {}) {
   const groups = parsed.parallelGroups;
-  return parsed.tasks.map((task, index) => {
+  const items = [];
+  for (const [index, task] of parsed.tasks.entries()) {
     const item = createWorkItem({
       epicId,
       itemId: taskItemId(epicId, task.ref, task.title),
@@ -498,6 +512,75 @@ function createChildItems(parsed, epicId, options = {}) {
         package: options.package || null,
         workspace: options.workspace || null,
         subproject: options.subproject || null,
+      },
+    });
+    const template = inferWorkItemTemplate({ ...item, planText: parsed.title });
+    const taskItem = applyTemplateToWorkItem(item, template, options);
+    const subtaskItems = createStepSubtaskItems({ parsed, epicId, task, parentItem: taskItem, options });
+    if (subtaskItems.length > 0 && !taskItem.blocks.includes(subtaskItems[0].itemId)) {
+      taskItem.blocks.push(subtaskItems[0].itemId);
+    }
+    for (let stepIndex = 0; stepIndex < subtaskItems.length - 1; stepIndex += 1) {
+      const current = subtaskItems[stepIndex];
+      const next = subtaskItems[stepIndex + 1];
+      if (!current.blocks.includes(next.itemId)) current.blocks.push(next.itemId);
+      next.blockedBy = uniqueStrings([...(next.blockedBy ?? []), current.itemId]);
+    }
+    items.push(taskItem, ...subtaskItems);
+  }
+  return items;
+}
+
+function createStepSubtaskItems({ parsed, epicId, task, parentItem, options = {} }) {
+  return (task.steps || []).map((step) => {
+    const stepRef = `${task.ref}.S${step.number}`;
+    const item = createWorkItem({
+      epicId,
+      itemId: `${parentItem.itemId}-s${step.number}`,
+      title: step.title,
+      type: "subtask",
+      priority: parentItem.priority,
+      parentId: parentItem.itemId,
+      blocks: [],
+      blockedBy: [parentItem.itemId],
+      related: [parentItem.itemId],
+      discoveredFrom: {
+        type: "plan-step",
+        path: parsed.planPath,
+        line: step.line,
+        taskRef: task.ref,
+        stepNumber: step.number,
+        parentItemId: parentItem.itemId,
+      },
+      acceptanceCriteria: [`Complete step ${step.number}: ${step.title}`],
+      verificationCommands: step.verificationCommands.length > 0
+        ? [...new Set(step.verificationCommands)]
+        : parentItem.verificationCommands.length > 0
+          ? parentItem.verificationCommands
+          : parsed.planVerificationCommands,
+      writeScope: parentItem.writeScope,
+      requiredGates: parentItem.requiredGates,
+      verificationHints: uniqueStrings([
+        ...(parentItem.verificationHints ?? []),
+        `parent:${parentItem.itemId}`,
+      ]),
+      contractChecklist: parentItem.contractChecklist,
+      scopeSafetyChecklist: parentItem.scopeSafetyChecklist,
+      productionReadinessChecklist: parentItem.productionReadinessChecklist,
+      tenOfTenChecklist: parentItem.tenOfTenChecklist,
+      estimatedSize: "small",
+      parallelGroup: parentItem.parallelGroup,
+      repo: options.repo || null,
+      package: options.package || null,
+      workspace: options.workspace || null,
+      subproject: options.subproject || null,
+      executionHints: {
+        ...(parentItem.executionHints ?? {}),
+        sourceTaskRef: stepRef,
+        parentTaskRef: task.ref,
+        sourceStepNumber: step.number,
+        requiredAgentCapability: inferCapability(step.title),
+        policyRiskLevel: inferPolicyRisk(`${step.title} ${parentItem.writeScope.map((entry) => entry.path).join(" ")}`),
       },
     });
     const template = inferWorkItemTemplate({ ...item, planText: parsed.title });
@@ -717,6 +800,8 @@ function createParsedTask({ ref, title, line, planPath }) {
     estimatedSize: "medium",
     rollback: null,
     followups: [],
+    steps: [],
+    activeStepIndex: null,
   };
 }
 

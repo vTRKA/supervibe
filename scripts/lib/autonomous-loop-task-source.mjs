@@ -1,5 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { dirname, join, relative, resolve } from "node:path";
 import { graphToFlatTasks } from "./autonomous-loop-task-graph.mjs";
 import { workItemsToLoopTasks } from "./supervibe-plan-to-work-items.mjs";
 
@@ -123,9 +124,47 @@ export function parsePlanTasks(markdown, planPath = "plan.md") {
   return tasks;
 }
 
-export async function loadPlanTasks(planPath) {
-  const content = await readFile(planPath, "utf8");
-  return parseTaskSource(content, planPath.replace(/\\/g, "/"));
+async function resolvePlanTaskSource(planPath, options = {}) {
+  const rootDir = options.rootDir || process.cwd();
+  const absolutePlanPath = resolve(rootDir, planPath);
+  try {
+    const content = await readFile(absolutePlanPath, "utf8");
+    return {
+      content,
+      path: normalizeSourcePath(planPath),
+      resolvedPath: absolutePlanPath,
+      sourceKind: "original",
+      warnings: [],
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    const fallback = await findSourcePlanSnapshot({ rootDir, planPath: absolutePlanPath });
+    if (!fallback) throw error;
+    const content = await readFile(fallback.snapshotPath, "utf8");
+    return {
+      content,
+      path: normalizeSourcePath(fallback.originalPath || planPath),
+      resolvedPath: fallback.snapshotPath,
+      sourceKind: "snapshot",
+      graphPath: fallback.graphPath,
+      warnings: [
+        `PLAN_SOURCE_FALLBACK: original source ${normalizeSourcePath(relative(rootDir, absolutePlanPath))} is missing; using ${normalizeSourcePath(relative(rootDir, fallback.snapshotPath))}`,
+      ],
+    };
+  }
+}
+
+export async function loadPlanTasksWithSource(planPath, options = {}) {
+  const source = await resolvePlanTaskSource(planPath, options);
+  return {
+    source,
+    tasks: parseTaskSource(source.content, source.path),
+  };
+}
+
+export async function loadPlanTasks(planPath, options = {}) {
+  const { tasks } = await loadPlanTasksWithSource(planPath, options);
+  return tasks;
 }
 
 export function parseTaskSource(content, sourcePath = "task-source") {
@@ -236,6 +275,54 @@ function inferPolicyRisk(text) {
   if (/(external|server|docker|mcp|secret|privacy|security)/.test(value)) return "medium";
   if (/(production|deploy|remote|credential|migration)/.test(value)) return "medium";
   return "low";
+}
+
+async function findSourcePlanSnapshot({ rootDir, planPath }) {
+  const workItemsDir = join(rootDir, ".supervibe", "memory", "work-items");
+  let entries = [];
+  try {
+    entries = await readdir(workItemsDir, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const graphPath = join(workItemsDir, entry.name, "graph.json");
+    let graph = null;
+    try {
+      graph = JSON.parse(await readFile(graphPath, "utf8"));
+    } catch {
+      continue;
+    }
+    const originalPath = graph.source?.path || graph.metadata?.sourcePlanSnapshot?.path || null;
+    if (!sourcePathMatches({ rootDir, candidate: originalPath, requested: planPath })) continue;
+    const storedPath = graph.source?.snapshotPath || graph.metadata?.sourcePlanSnapshot?.storedPath || "source-plan.md";
+    const snapshotPath = resolve(dirname(graphPath), storedPath);
+    try {
+      await readFile(snapshotPath, "utf8");
+      return { graphPath, snapshotPath, originalPath };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function sourcePathMatches({ rootDir, candidate, requested }) {
+  if (!candidate) return false;
+  const requestedAbsolute = resolve(rootDir, requested);
+  const candidateAbsolute = resolve(rootDir, candidate);
+  const requestedRelative = normalizeSourcePath(relative(rootDir, requestedAbsolute));
+  const candidateRelative = normalizeSourcePath(relative(rootDir, candidateAbsolute));
+  return candidateAbsolute === requestedAbsolute
+    || candidateRelative === requestedRelative
+    || normalizeSourcePath(candidate) === normalizeSourcePath(requested)
+    || normalizeSourcePath(candidate) === requestedRelative;
+}
+
+function normalizeSourcePath(value) {
+  return String(value ?? "").replace(/\\/g, "/");
 }
 
 function looksLikePrdMarkdown(content, sourcePath) {

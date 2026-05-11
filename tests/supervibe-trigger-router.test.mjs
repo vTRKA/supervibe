@@ -90,6 +90,25 @@ describe("supervibe trigger router", () => {
     assert.deepEqual(route.safetyBlockers, []);
   });
 
+  it("routes Russian task graph status and mutation phrases", () => {
+    const cases = [
+      ["что осталось по задачам", "task_graph_remaining", "/supervibe-status --remaining"],
+      ["измени эпик", "task_graph_edit", "/supervibe-loop --edit <task-id> --preview"],
+      ["удали эпик", "task_graph_delete", "/supervibe-loop --delete <task-id> --preview"],
+      ["пропусти задачу", "task_graph_skip", "/supervibe-loop --skip <task-id> --preview"],
+      ["вернуться к проекту с задачами", "task_graph_resume", "/supervibe-loop --status"],
+    ];
+
+    for (const [request, intent, command] of cases) {
+      const route = routeTriggerRequest(request, {
+        artifacts: { activeWorkGraph: true, taskId: "T1", reason: "out of scope" },
+      });
+
+      assert.equal(route.intent, intent, request);
+      assert.equal(route.command, command, request);
+    }
+  });
+
   it("supports fuzzy Russian trigger diagnostics", () => {
     const route = routeTriggerRequest("объясни почему не сработал триггер для плана");
 

@@ -109,6 +109,66 @@ const INVALID_PLAN_WITHOUT_TASKS = `# Empty Reviewed Implementation Plan
 This reviewed plan has narrative text but no parseable task sections.
 `;
 
+const PLAN_WITH_STEPS = `# Step Expansion Implementation Plan
+
+Critical path: T1 -> T2
+
+## Development Contract Map
+
+| ID | Contract | Required details | Owner | Verification |
+|----|----------|------------------|-------|--------------|
+| C-BEH | Behavior contract | Step expansion behavior | runtime | unit tests |
+
+## Scope Safety Gate
+
+- Approved scope baseline: parser step expansion.
+
+## Production Readiness
+
+- Test: unit tests pass.
+
+## Final 10/10 Acceptance Gate
+
+- 10/10 acceptance: all steps become work items.
+- Verification: commands pass.
+
+## Task T01: Parse steps
+**Files:**
+- Modify: \`scripts/lib/supervibe-plan-to-work-items.mjs\`
+**Scope IDs:** S1
+**Requirement IDs:** REQ1
+**Contract rows touched:** C-BEH
+**Estimated time:** 15min, confidence: high
+**Rollback:** git revert <sha>
+**Stop conditions:** stop if parser loses parent tasks.
+**Acceptance Criteria:**
+- Parent task and checkbox steps are present.
+- [ ] **Step 1: Write failing test**
+\`\`\`bash
+node --test tests/supervibe-plan-to-work-items.test.mjs
+\`\`\`
+- [ ] **Step 2: Implement parser**
+\`\`\`bash
+node --test tests/supervibe-plan-to-work-items.test.mjs
+\`\`\`
+
+## Task T02: Verify expansion
+**Files:**
+- Test: \`tests/supervibe-plan-to-work-items.test.mjs\`
+**Scope IDs:** S2
+**Requirement IDs:** REQ2
+**Contract rows touched:** C-BEH
+**Estimated time:** 15min, confidence: high
+**Rollback:** git revert <sha>
+**Stop conditions:** stop if graph validation fails.
+**Acceptance Criteria:**
+- Step subtasks keep verification commands.
+- [ ] **Step 1: Run verification**
+\`\`\`bash
+node --test tests/supervibe-plan-to-work-items.test.mjs
+\`\`\`
+`;
+
 test("plan parser extracts tasks, critical path, parallel groups, and review gates", () => {
   assert.ok(WORK_ITEM_TYPES.includes("epic"));
   assert.ok(WORK_ITEM_REQUIRED_FIELDS.includes("verificationCommands"));
@@ -144,6 +204,31 @@ test("atomization creates one epic, child tasks, blocker edges, gates, and follo
   assert.ok(t2.contractChecklist.includes("C-API"));
   assert.ok(t2.productionReadinessChecklist.some((item) => /Observability/.test(item)));
   assert.ok(t2.tenOfTenChecklist.some((item) => /Contract coverage/.test(item)));
+});
+
+test("atomization expands checkbox steps into subtask work items", () => {
+  const graph = atomizePlanToWorkItems(PLAN_WITH_STEPS, {
+    planPath: ".supervibe/artifacts/plans/steps.md",
+    epicId: "epic-steps",
+    planReviewPassed: true,
+  });
+
+  const parent = graph.items.find((item) => item.itemId === "epic-steps-t01");
+  const stepOne = graph.items.find((item) => item.itemId === "epic-steps-t01-s1");
+  const stepTwo = graph.items.find((item) => item.itemId === "epic-steps-t01-s2");
+  const secondParent = graph.items.find((item) => item.itemId === "epic-steps-t02");
+  const secondStep = graph.items.find((item) => item.itemId === "epic-steps-t02-s1");
+
+  assert.equal(graph.validation.valid, true);
+  assert.equal(graph.items.filter((item) => item.type === "subtask").length, 3);
+  assert.ok(parent.blocks.includes(stepOne.itemId));
+  assert.ok(stepOne.blocks.includes(stepTwo.itemId));
+  assert.deepEqual(stepOne.blockedBy, [parent.itemId]);
+  assert.equal(stepOne.parentId, parent.itemId);
+  assert.equal(stepOne.discoveredFrom.type, "plan-step");
+  assert.equal(stepOne.executionHints.parentTaskRef, "T01");
+  assert.ok(stepOne.verificationCommands.includes("node --test tests/supervibe-plan-to-work-items.test.mjs"));
+  assert.ok(secondParent.blocks.includes(secondStep.itemId));
 });
 
 test("work item graph converts into runner-compatible loop tasks", () => {
@@ -288,20 +373,24 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-cli-"));
   try {
     const planPath = join(temp, "plan.md");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
     await writeFile(planPath, PLAN);
     const { stdout } = await execFileAsync(process.execPath, [
-      join(process.cwd(), "scripts", "supervibe-loop.mjs"),
+      scriptPath,
       "--atomize-plan",
       planPath,
       "--plan-review-passed",
       "--out",
       join(temp, "out"),
-    ], { cwd: process.cwd() });
+    ], { cwd: temp });
 
     assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
     assert.match(stdout, /VALID: true/);
+    assert.match(stdout, /TRACKER_STATUS: synced/);
     const saved = JSON.parse(await readFile(join(temp, "out", "graph.json"), "utf8"));
+    const mapping = JSON.parse(await readFile(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
+    assert.equal(Object.keys(mapping.items).length, saved.items.length);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -313,16 +402,17 @@ test("loop CLI rejects invalid reviewed plan without writing graph artifacts", a
     const planPath = join(temp, "invalid-plan.md");
     const outDir = join(temp, "out");
     await writeFile(planPath, INVALID_PLAN_WITHOUT_TASKS);
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
 
     await assert.rejects(
       () => execFileAsync(process.execPath, [
-        join(process.cwd(), "scripts", "supervibe-loop.mjs"),
+        scriptPath,
         "--atomize-plan",
         planPath,
         "--plan-review-passed",
         "--out",
         outDir,
-      ], { cwd: process.cwd() }),
+      ], { cwd: temp }),
       (error) => {
         assert.notEqual(error.code, 0);
         assert.match(`${error.stderr}\n${error.stdout}`, /invalid work-item graph/i);

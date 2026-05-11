@@ -164,6 +164,7 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
       '--no-gc-hints',
       '--ready',
       '--blocked',
+      '--remaining',
       '--stale',
       '--orphan',
     ], {
@@ -182,6 +183,8 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
     assert.match(out, /NEXT_READY: T-ready/);
     assert.match(out, /READY_ITEM: T-ready/);
     assert.match(out, /BLOCKED_ITEM: T-blocked/);
+    assert.match(out, /REMAINING_ITEM: T-ready/);
+    assert.match(out, /REMAINING_ITEM: T-blocked/);
     assert.match(out, /STALE_ITEM: T-claimed/);
     assert.match(out, /ORPHAN_ITEM: T-orphan missing_parent=missing-parent/);
     assert.match(out, /NEXT_ACTION:/);

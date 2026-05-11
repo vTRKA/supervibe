@@ -44,7 +44,8 @@ export function createSupervibeUiServer({
           return sendJson(res, createNoActiveGraphModel({ rootDir }));
         }
         const graph = await readJsonFile(file);
-        const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
+        const mapping = await readOptionalTrackerMapping(rootDir);
+        const index = createWorkItemIndex({ graph, mapping, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
         const grouped = groupWorkItemsByStatus(index);
         const kanban = createKanbanModel({ graph, index });
         const flow = createWorkflowFlowModel({ graph, index, grouped });
@@ -55,6 +56,7 @@ export function createSupervibeUiServer({
           requireEpicClosed: url.searchParams.get("requireEpicClosed") !== "false",
         });
         const tracker = await buildTrackerPanelModel({ rootDir });
+        const savedViews = createSavedViewsModel({ index, completion });
         return sendJson(res, {
           graphPath: file,
           graphId: graph.graph_id || graph.graphId || graph.epicId,
@@ -64,6 +66,7 @@ export function createSupervibeUiServer({
           graphTree: createGraphTreeModel({ graph, index }),
           panels: createWorkItemPanelModel({ graph, index, grouped, completion }),
           tracker,
+          savedViews,
           kanban,
           flow,
         });
@@ -207,6 +210,11 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       lastSync: null,
       nextAction: "atomize a reviewed plan before tracker sync",
     },
+    savedViews: {
+      remaining: [],
+      needsEvidence: [],
+      mappingGaps: [],
+    },
     kanban: {
       graphSummary: { graphId: null, title: "No active work graph", path: null },
       epics: [],
@@ -221,6 +229,16 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       inspectPlans: `dir ${planGlob}`,
     },
   };
+}
+
+async function readOptionalTrackerMapping(rootDir) {
+  const mappingPath = defaultTrackerMappingPath(rootDir);
+  if (!existsSync(mappingPath)) return {};
+  try {
+    return await readTrackerMapping(mappingPath);
+  } catch {
+    return {};
+  }
 }
 
 async function buildTrackerPanelModel({ rootDir = process.cwd() } = {}) {
@@ -249,6 +267,34 @@ async function buildTrackerPanelModel({ rootDir = process.cwd() } = {}) {
       : summary.status === "partial-sync"
         ? "repair the adapter failure and rerun tracker sync push"
         : "tracker status is available to loop, UI, and context packs",
+  };
+}
+
+function createSavedViewsModel({ index = [], completion = {} } = {}) {
+  const evidenceIssueIds = new Set((completion?.issues || [])
+    .filter((issue) => ["missing-evidence", "insufficient-evidence", "dry-run-evidence"].includes(issue.code))
+    .map((issue) => issue.itemId)
+    .filter(Boolean));
+  const remaining = index.filter((item) => item.type !== "epic" && item.effectiveStatus !== "done");
+  const needsEvidence = index.filter((item) => evidenceIssueIds.has(item.itemId || item.id));
+  const mappingGaps = index.filter((item) => item.type !== "epic" && !item.mapping);
+  return {
+    remaining: remaining.map(compactSavedViewItem),
+    needsEvidence: needsEvidence.map(compactSavedViewItem),
+    mappingGaps: mappingGaps.map((item) => ({
+      ...compactSavedViewItem(item),
+      fixCommand: "/supervibe-loop --tracker-doctor --fix --tracker memory --file <graph.json>",
+    })),
+  };
+}
+
+function compactSavedViewItem(item = {}) {
+  return {
+    id: item.itemId || item.id,
+    title: item.title || item.goal || item.itemId || item.id || "untitled",
+    type: item.type || "task",
+    status: item.effectiveStatus || item.status || "open",
+    parentId: item.parentId || null,
   };
 }
 

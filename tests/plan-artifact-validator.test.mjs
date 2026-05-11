@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validatePlanArtifact } from '../scripts/validate-plan-artifacts.mjs';
@@ -220,4 +220,57 @@ test('validate-plan-artifacts CLI fails bad file', async () => {
     encoding: 'utf8',
     stdio: 'pipe',
   }));
+});
+
+test('validate-plan-artifacts strict mode fails active graph with missing source and snapshot', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'plan-validator-active-source-'));
+  const graphDir = join(dir, '.supervibe', 'memory', 'work-items', 'epic-missing-source');
+  await mkdir(graphDir, { recursive: true });
+  await writeFile(join(graphDir, 'graph.json'), `${JSON.stringify({
+    kind: 'supervibe-work-item-graph',
+    graph_id: 'epic-missing-source',
+    epicId: 'epic-missing-source',
+    source: { type: 'plan', path: '.supervibe/artifacts/plans/missing.md', snapshotPath: 'source-plan.md' },
+    items: [
+      { itemId: 'epic-missing-source', type: 'epic', status: 'open', title: 'Epic' },
+    ],
+  }, null, 2)}\n`, 'utf8');
+
+  assert.throws(() => execFileSync(process.execPath, [
+    join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+    '--all',
+    '--require-active-source',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  }), /active graph source is missing/);
+});
+
+test('validate-plan-artifacts strict mode accepts active graph snapshot fallback', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'plan-validator-active-snapshot-'));
+  const graphDir = join(dir, '.supervibe', 'memory', 'work-items', 'epic-snapshot-source');
+  await mkdir(graphDir, { recursive: true });
+  await writeFile(join(graphDir, 'source-plan.md'), GOOD_PLAN, 'utf8');
+  await writeFile(join(graphDir, 'graph.json'), `${JSON.stringify({
+    kind: 'supervibe-work-item-graph',
+    graph_id: 'epic-snapshot-source',
+    epicId: 'epic-snapshot-source',
+    source: { type: 'plan', path: '.supervibe/artifacts/plans/missing.md', snapshotPath: 'source-plan.md' },
+    items: [
+      { itemId: 'epic-snapshot-source', type: 'epic', status: 'open', title: 'Epic' },
+    ],
+  }, null, 2)}\n`, 'utf8');
+
+  const output = execFileSync(process.execPath, [
+    join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+    '--all',
+    '--require-active-source',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+
+  assert.match(output, /All 0 plan artifact\(s\) passed/);
 });

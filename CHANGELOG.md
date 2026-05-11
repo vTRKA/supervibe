@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.21] - 2026-05-11
+
+### Added
+
+- Added plan-source fallback from active work-item graph snapshots so loop wave execution can continue after a temporary plan artifact is removed.
+- Added automatic memory tracker sync during plan atomization, expanded task step atomization into subtasks, and exposed remaining/needs-evidence/mapping-gap saved views in the Supervibe UI API.
+- Added Russian task-graph command routing for returning to projects, remaining work, and edit/delete/skip task operations.
+
+### Fixed
+
+- Isolated dry-run tracker sync from project-local persisted mappings unless a mapping, mapping path, or root is explicitly provided.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.21`.
+- Rebuilt Code RAG and CodeGraph readiness after task-graph runtime changes.
+
 ## [2.1.20] - 2026-05-11
 
 ### Added

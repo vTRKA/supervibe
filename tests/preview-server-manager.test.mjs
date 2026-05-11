@@ -62,7 +62,7 @@ test('unregisterServer: removes entry', async () => {
 });
 
 test('listServers: filters out dead PIDs automatically', async () => {
-  await registerServer({ port: 3099, pid: 999999, root: '/fake', label: 'dead' });
+  await registerServer({ port: 3099, pid: -1, root: '/fake', label: 'dead' });
   const list = await listServers();
   assert.ok(!list.find(s => s.port === 3099), 'dead PID should be auto-pruned');
 });
@@ -83,7 +83,7 @@ test('listServers: marks entries with live PID but closed preview port as regist
 
 test('isPidAlive: works for current process', () => {
   assert.strictEqual(isPidAlive(process.pid), true);
-  assert.strictEqual(isPidAlive(999999), false);
+  assert.strictEqual(isPidAlive(-1), false);
 });
 
 test('killServer: returns false for non-existent port', async () => {
@@ -120,7 +120,7 @@ test('killAllServers kills managed process even when registry port has drifted',
   });
   try {
     await new Promise(resolve => setTimeout(resolve, 100));
-    const port = await findFreePort();
+    const port = 0;
     await registerServer({ port, pid: child.pid, root: sandbox, label: 'drift-child', feedbackOverlay: false });
     const list = await listServers();
     const found = list.find((server) => server.port === port);

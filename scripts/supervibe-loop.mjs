@@ -8,7 +8,7 @@ import {
   resumeAutonomousLoop,
   stopAutonomousLoop,
 } from "./lib/autonomous-loop-runner.mjs";
-import { createTasksFromRequest, loadPlanTasks } from "./lib/autonomous-loop-task-source.mjs";
+import { createTasksFromRequest, loadPlanTasks, loadPlanTasksWithSource } from "./lib/autonomous-loop-task-source.mjs";
 import { buildPreflight } from "./lib/autonomous-loop-preflight-intake.mjs";
 import { dispatchTask } from "./lib/autonomous-loop-dispatcher.mjs";
 import { generateContracts, scoreAutonomyReadiness } from "./lib/autonomous-loop-contracts.mjs";
@@ -129,6 +129,7 @@ function parseArgs(argv) {
     "network-approved",
     "mcp-approved",
     "allow-flat-plan",
+    "no-tracker-sync",
     "validate-completion",
     "completion-status",
     "close-eligible",
@@ -326,7 +327,8 @@ async function main() {
   }
 
   if (args["plan-waves"]) {
-    const tasks = await loadPlanTasks(resolve(rootDir, args["plan-waves"]));
+    const { tasks, source } = await loadPlanTasksWithSource(resolve(rootDir, args["plan-waves"]), { rootDir });
+    for (const warning of source.warnings || []) console.log(warning);
     const plan = buildExecutionWaves({ tasks, maxConcurrency: args["max-concurrency"] || 3 });
     console.log(formatWaveStatus(plan));
     return;
@@ -851,11 +853,28 @@ async function main() {
       return;
     }
     const writeResult = await writeWorkItemGraph(graph, { rootDir, outDir: args.out });
+    const mappingPath = args["mapping-file"] ? resolve(rootDir, args["mapping-file"]) : defaultTrackerMappingPath(rootDir);
+    const trackerAdapter = args["no-tracker-sync"]
+      ? null
+      : args.tracker
+        ? createTaskTrackerAdapterFromArgs(args, {
+          fallbackReason: "no external tracker selected; using native graph only",
+        })
+        : createMemoryTaskTrackerAdapter();
+    const trackerResult = trackerAdapter
+      ? await materializeEpicAndTasks(graph, trackerAdapter, { rootDir, mappingPath })
+      : null;
     console.log("SUPERVIBE_WORK_ITEMS");
     console.log(`EPIC: ${graph.epicId}`);
     console.log(`GRAPH: ${writeResult.graphPath}`);
     console.log(`PREVIEW: ${writeResult.previewPath}`);
     console.log(`VALID: ${graph.validation.valid}`);
+    if (trackerResult) {
+      console.log(`TRACKER_MAPPING: ${mappingPath}`);
+      console.log(`TRACKER_STATUS: ${trackerResult.status}`);
+      const mapped = Object.keys(trackerResult.mapping?.items || {}).length;
+      console.log(`TRACKER_MAPPED_ITEMS: ${mapped}`);
+    }
     return;
   }
 

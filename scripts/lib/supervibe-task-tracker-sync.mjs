@@ -191,7 +191,13 @@ export function createTrackerMapping({ graph = {}, adapterId = "native-json", ex
 
 export async function materializeEpicAndTasks(graph, adapter = createUnavailableTaskTrackerAdapter(), options = {}) {
   const mappingPath = options.mappingPath || defaultTrackerMappingPath(options.rootDir);
-  const existing = options.mapping || await readTrackerMapping(mappingPath);
+  const hasExplicitMapping = Object.prototype.hasOwnProperty.call(options, "mapping");
+  const shouldReadMapping = !options.dryRun || options.mappingPath || options.rootDir || hasExplicitMapping;
+  const existing = hasExplicitMapping
+    ? options.mapping
+    : shouldReadMapping
+      ? await readTrackerMapping(mappingPath)
+      : createEmptyMapping();
   let detection = adapter.detect ? await adapter.detect() : { available: false, status: "unavailable" };
   const adapterId = adapter.id || detection.adapterId || "native-json";
   let mapping = createTrackerMapping({ graph, adapterId, existingMapping: existing });

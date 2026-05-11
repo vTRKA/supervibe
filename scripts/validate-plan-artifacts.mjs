@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
+import { resolveActiveWorkItemGraph } from './lib/supervibe-work-item-registry.mjs';
 
 const PLACEHOLDER_PATTERNS = [
   /\bTBD\b/i,
@@ -233,11 +234,72 @@ async function walkMarkdown(dir) {
   return out;
 }
 
+export async function inspectActivePlanSource({ rootDir = process.cwd() } = {}) {
+  const active = await resolveActiveWorkItemGraph({ rootDir });
+  if (active.status !== 'active') {
+    return {
+      status: active.status === 'none' ? 'no-active-graph' : active.status,
+      warnings: [],
+      issues: [],
+      active,
+    };
+  }
+
+  const graph = JSON.parse(await readFile(active.graphPath, 'utf8'));
+  const sourcePath = graph.source?.path || graph.metadata?.sourcePlanSnapshot?.path || graph.planPath || null;
+  const snapshotPath = graph.source?.snapshotPath || graph.metadata?.sourcePlanSnapshot?.storedPath || null;
+  if (!sourcePath) {
+    return {
+      status: 'missing-source-reference',
+      active,
+      graphPath: active.graphPath,
+      warnings: [],
+      issues: [`active graph ${toRel(rootDir, active.graphPath)} has no source plan reference`],
+    };
+  }
+
+  const originalPath = resolve(rootDir, sourcePath);
+  if (existsSync(originalPath)) {
+    return {
+      status: 'original',
+      active,
+      graphPath: active.graphPath,
+      sourcePath: originalPath,
+      warnings: [],
+      issues: [],
+    };
+  }
+
+  const resolvedSnapshotPath = snapshotPath ? resolve(dirname(active.graphPath), snapshotPath) : null;
+  if (resolvedSnapshotPath && existsSync(resolvedSnapshotPath)) {
+    return {
+      status: 'snapshot',
+      active,
+      graphPath: active.graphPath,
+      sourcePath: originalPath,
+      snapshotPath: resolvedSnapshotPath,
+      warnings: [`active graph source missing, using snapshot fallback: ${toRel(rootDir, resolvedSnapshotPath)}`],
+      issues: [],
+    };
+  }
+
+  return {
+    status: 'missing-source',
+    active,
+    graphPath: active.graphPath,
+    sourcePath: originalPath,
+    snapshotPath: resolvedSnapshotPath,
+    warnings: [],
+    issues: [`active graph source is missing and no snapshot fallback exists: ${toRel(rootDir, originalPath)}`],
+  };
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
       file: { type: 'string', short: 'f' },
       all: { type: 'boolean', default: false },
+      'require-active-source': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
@@ -245,7 +307,8 @@ async function main() {
   if (values.help) {
     console.log(`Usage:
   node scripts/validate-plan-artifacts.mjs --file .supervibe/artifacts/plans/<plan>.md
-  node scripts/validate-plan-artifacts.mjs --all`);
+  node scripts/validate-plan-artifacts.mjs --all
+  node scripts/validate-plan-artifacts.mjs --all --require-active-source`);
     process.exit(0);
   }
 
@@ -255,11 +318,6 @@ async function main() {
     : values.all
       ? await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'))
       : await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'));
-
-  if (files.length === 0) {
-    console.log('[validate-plan-artifacts] no .supervibe/artifacts/plans/*.md files found; skipping');
-    return;
-  }
 
   let failed = 0;
   for (const file of files) {
@@ -274,11 +332,31 @@ async function main() {
       for (const issue of issues) console.error(`  - ${issue}`);
     }
   }
+
+  const activeSource = await inspectActivePlanSource({ rootDir: root });
+  if (activeSource.status === 'original') {
+    console.log(`OK   active-source ${toRel(root, activeSource.sourcePath)}`);
+  } else if (activeSource.status === 'snapshot') {
+    for (const warning of activeSource.warnings) console.warn(`WARN active-source ${warning}`);
+  } else if (activeSource.issues?.length) {
+    if (values['require-active-source']) failed++;
+    const write = values['require-active-source'] ? console.error : console.warn;
+    write(`${values['require-active-source'] ? 'FAIL' : 'WARN'} active-source ${toRel(root, activeSource.graphPath)}`);
+    for (const issue of activeSource.issues) write(`  - ${issue}`);
+  } else if (files.length === 0) {
+    console.log('[validate-plan-artifacts] no .supervibe/artifacts/plans/*.md files found and no active work graph source to inspect; skipping');
+  }
+
   if (failed > 0) {
-    console.error(`\n${failed}/${files.length} plan artifact(s) failed`);
+    console.error(`\n${failed}/${Math.max(files.length, 1)} plan/source artifact(s) failed`);
     process.exit(1);
   }
   console.log(`\nAll ${files.length} plan artifact(s) passed`);
+}
+
+function toRel(root, filePath) {
+  if (!filePath) return 'unknown';
+  return relative(root, filePath).split(sep).join('/');
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;

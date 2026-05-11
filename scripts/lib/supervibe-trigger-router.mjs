@@ -138,6 +138,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: show blockers?",
     prerequisites: [],
   },
+  task_graph_remaining: {
+    phase: "status",
+    command: "/supervibe-status --remaining",
+    skill: "supervibe:project-memory",
+    nextQuestionRu: "Шаг 1/1: показать оставшиеся epic/task/subtask work items и следующий шаг?",
+    nextQuestionEn: "Step 1/1: show remaining epic/task/subtask work items and the next action?",
+    prerequisites: ["active-work-graph"],
+  },
   task_graph_resume: {
     phase: "execution",
     command: "/supervibe-loop --status",
@@ -554,6 +562,12 @@ const RULES = [
     test: (text) => hasAny(text, ["почему выбрал", "why did you choose", "why this skill", "why-trigger"]),
   },
   {
+    intent: "task_graph_remaining",
+    confidence: 0.93,
+    test: (text) => hasAny(text, ["что осталось по задачам", "какие задачи остались", "покажи оставшиеся задачи", "remaining tasks", "what remains", "what is left"]) &&
+      hasAny(text, ["задач", "task", "tasks", "work", "эпик", "epic"]),
+  },
+  {
     intent: "ready_query",
     confidence: 0.84,
     test: (text) => hasAny(text, ["что готово", "готовые задачи", "покажи готовые задачи", "ready work", "ready tasks"]),
@@ -566,7 +580,7 @@ const RULES = [
   {
     intent: "task_graph_resume",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["продолжи loop", "продолжи работу", "вернуться к задачам", "resume loop", "resume task graph", "continue task graph"]) &&
+    test: (text) => hasAny(text, ["продолжи loop", "продолжи работу", "вернуться к задачам", "вернуться к проекту с задачами", "resume loop", "resume task graph", "continue task graph"]) &&
       hasAny(text, ["эпик", "эпикам", "задач", "tasks", "epic", "graph", "loop"]),
   },
   {
@@ -584,8 +598,8 @@ const RULES = [
   {
     intent: "task_graph_delete",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["удали задачу", "удали подзадачу", "delete task", "delete subtask"]) &&
-      hasAny(text, ["задач", "task", "subtask", "подзадач"]),
+    test: (text) => hasAny(text, ["удали задачу", "удали подзадачу", "удали эпик", "delete task", "delete subtask", "delete epic"]) &&
+      hasAny(text, ["задач", "task", "subtask", "подзадач", "эпик", "epic"]),
   },
   {
     intent: "task_graph_split",
@@ -602,8 +616,8 @@ const RULES = [
   {
     intent: "task_graph_skip",
     confidence: 0.88,
-    test: (text) => hasAny(text, ["пропусти задачу", "пропусти подзадачу", "skip task", "skip subtask"]) &&
-      hasAny(text, ["задач", "подзадач", "причин", "task", "reason", "subtask"]),
+    test: (text) => hasAny(text, ["пропусти задачу", "пропусти подзадачу", "пропусти эпик", "skip task", "skip subtask", "skip epic"]) &&
+      hasAny(text, ["задач", "подзадач", "эпик", "причин", "task", "reason", "subtask", "epic"]),
   },
   {
     intent: "task_graph_defer",
@@ -620,8 +634,8 @@ const RULES = [
   {
     intent: "task_graph_edit",
     confidence: 0.9,
-    test: (text) => hasAny(text, ["измени задачу", "измени подзадачу", "edit task", "change task", "update task"]) &&
-      hasAny(text, ["задач", "task", "subtask", "подзадач"]),
+    test: (text) => hasAny(text, ["измени задачу", "измени подзадачу", "измени эпик", "edit task", "change task", "update task", "edit epic", "change epic", "update epic"]) &&
+      hasAny(text, ["задач", "task", "subtask", "подзадач", "эпик", "epic"]),
   },
   {
     intent: "task_graph_validate_completion",

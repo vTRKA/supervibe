@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   createTasksFromRequest,
+  loadPlanTasksWithSource,
   parsePlanTasks,
   parsePrdMarkdown,
   parsePrdStories,
@@ -21,6 +25,42 @@ test("plan checkboxes are parsed into executable tasks", () => {
   const tasks = parsePlanTasks("## Task 1\n- [ ] **Step 1: Verify runtime**\n```bash\nnode --test tests/x.test.mjs\n```", ".supervibe/artifacts/plans/x.md");
   assert.equal(tasks.length, 1);
   assert.equal(tasks[0].verificationCommands[0], "node --test tests/x.test.mjs");
+});
+
+test("missing plan path falls back to adjacent work-item source snapshot", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-source-fallback-"));
+  try {
+    const graphDir = join(temp, ".supervibe", "memory", "work-items", "epic-fallback");
+    const missingPlan = join(temp, ".supervibe", "artifacts", "plans", "missing.md");
+    await mkdir(graphDir, { recursive: true });
+    await writeFile(join(graphDir, "source-plan.md"), "## Task 1\n- [ ] **Step 1: Recover from snapshot**\n```bash\nnode --test tests/x.test.mjs\n```\n", "utf8");
+    await writeFile(join(graphDir, "graph.json"), `${JSON.stringify({
+      kind: "supervibe-work-item-graph",
+      graph_id: "epic-fallback",
+      epicId: "epic-fallback",
+      source: {
+        type: "plan",
+        path: ".supervibe/artifacts/plans/missing.md",
+        snapshotPath: "source-plan.md",
+      },
+      metadata: {
+        sourcePlanSnapshot: {
+          path: ".supervibe/artifacts/plans/missing.md",
+          storedPath: "source-plan.md",
+        },
+      },
+      items: [],
+    }, null, 2)}\n`, "utf8");
+
+    const result = await loadPlanTasksWithSource(missingPlan, { rootDir: temp });
+
+    assert.equal(result.source.sourceKind, "snapshot");
+    assert.match(result.source.warnings[0], /PLAN_SOURCE_FALLBACK/);
+    assert.equal(result.tasks.length, 1);
+    assert.equal(result.tasks[0].goal, "Recover from snapshot");
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
 });
 
 test("explicit JSON task graph parses into runner-compatible tasks", () => {
