@@ -385,6 +385,59 @@
     }
   },
   {
+    "id": "documentation-summary-before-docs",
+    "request": "show summary before creating documentation",
+    "expected": {
+      "intent": "documentation_summary_gate",
+      "command": "/supervibe-brainstorm --summary-gate",
+      "requiresLifecycleState": true
+    },
+    "quality": {
+      "gold": {
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-brainstorm.md#documentation-approval-gate",
+          "skills/brainstorming/SKILL.md#documentation-approval-gate"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest"
+        ]
+      },
+      "retrieved": {
+        "memoryIds": [
+          "dialogue-contract"
+        ],
+        "sourceChunkIds": [
+          "commands/supervibe-brainstorm.md#documentation-approval-gate",
+          "skills/brainstorming/SKILL.md#documentation-approval-gate"
+        ],
+        "graphSymbols": [
+          "routeTriggerRequest"
+        ],
+        "estimatedTokens": 760,
+        "citations": [
+          {
+            "id": "documentation-approval-gate",
+            "source": "rag",
+            "path": "commands/supervibe-brainstorm.md",
+            "redacted": true
+          }
+        ],
+        "evidence": [
+          {
+            "id": "summary-before-durable-artifact",
+            "stale": false
+          }
+        ]
+      },
+      "tokenBudget": {
+        "maxTokens": 1200
+      }
+    }
+  },
+  {
     "id": "plan-review-required-before-execution",
     "request": "after this plan, run the mandatory review loop before execution",
     "expected": {
@@ -755,7 +808,7 @@
     "request": "explain this system visually with a diagram before implementation",
     "expected": {
       "intent": "visual_explanation",
-      "command": "/supervibe-plan --diagram",
+      "command": "/supervibe-preview --visual-explanation",
       "requiresLifecycleState": true
     },
     "quality": {
@@ -765,7 +818,7 @@
         ],
         "sourceChunkIds": [
           "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
-          "docs/references/visual-explanation-standard.md#diagrams"
+          "docs/references/visual-explanation-standard.md#browser-first-process"
         ],
         "graphSymbols": [
           "routeTriggerRequest",
@@ -778,7 +831,7 @@
         ],
         "sourceChunkIds": [
           "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
-          "docs/references/visual-explanation-standard.md#diagrams"
+          "docs/references/visual-explanation-standard.md#browser-first-process"
         ],
         "graphSymbols": [
           "routeTriggerRequest",
@@ -795,7 +848,7 @@
         ],
         "evidence": [
           {
-            "id": "diagram-fallback",
+            "id": "browser-first-visual-preview",
             "stale": false
           }
         ]

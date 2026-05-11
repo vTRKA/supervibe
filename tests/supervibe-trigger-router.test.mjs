@@ -32,6 +32,27 @@ describe("supervibe trigger router", () => {
     assert.equal(route.nextQuestion, "Шаг 1/1: запустить review loop по плану?");
   });
 
+  it("routes documentation summary requests to the pre-documentation gate", () => {
+    const route = routeTriggerRequest("show summary before creating documentation", {
+      artifacts: { request: true },
+    });
+
+    assert.equal(route.intent, "documentation_summary_gate");
+    assert.equal(route.command, "/supervibe-brainstorm --summary-gate");
+    assert.equal(route.skill, "supervibe:brainstorming");
+    assert.equal(route.requiredSafety.includes("documentation-approval-before-write"), true);
+  });
+
+  it("routes visual explanations to browser-first preview", () => {
+    const route = routeTriggerRequest("explain this system visually with a browser-first preview before implementation", {
+      artifacts: { request: true },
+    });
+
+    assert.equal(route.intent, "visual_explanation");
+    assert.equal(route.command, "/supervibe-preview --visual-explanation");
+    assert.equal(route.requiredSafety.includes("browser-first-visual-preview"), true);
+  });
+
   it("routes plan then execute requests to planning without review-only hijack", () => {
     const route = routeTriggerRequest("Давай все 40+ задач в детальный план, после этого начни работу по плану, сначала проверь что все задачи выполнены из плана", {
       artifacts: { request: true },

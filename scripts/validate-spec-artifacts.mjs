@@ -81,6 +81,14 @@ function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
 
+function hasVisualEvidence(body) {
+  const text = String(body || '');
+  const fallback = /\b(text\s+fallback|fallback)\b/i.test(text);
+  const browserFirst = /\b(browser-first|preview|visual\s+packet|table-only)\b/i.test(text) && fallback;
+  const mermaidFallback = /\bMermaid\b/i.test(text) && /accTitle/i.test(text) && /accDescr/i.test(text) && fallback;
+  return browserFirst || mermaidFallback;
+}
+
 function validateScopeSafety(body, prefix) {
   const issues = [];
   if (!/(include|defer|reject|spike)/i.test(body)) {
@@ -171,8 +179,12 @@ export function validateBrainstormSpec(markdown) {
   issues.push(...validateScopeSafety(sectionBody(markdown, 'Scope Safety Gate'), 'scope safety gate'));
 
   const visual = sectionBody(markdown, 'Visual explanation plan');
-  for (const term of ['Mermaid', 'accTitle', 'accDescr', 'fallback']) {
-    if (!new RegExp(term, 'i').test(visual)) issues.push(`visual explanation plan: missing ${term}`);
+  if (!hasVisualEvidence(visual)) {
+    issues.push('visual explanation plan: missing browser-first visual packet or accessible Mermaid fallback');
+  }
+
+  if (!/Documentation approval source/i.test(markdown)) {
+    issues.push('documentation approval: missing Documentation approval source');
   }
 
   if (countMarkdownItems(sectionBody(markdown, 'Non-obvious risks')) < 3) {

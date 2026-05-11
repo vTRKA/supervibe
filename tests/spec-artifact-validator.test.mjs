@@ -85,6 +85,8 @@ We need billing CSV export.
 
 const GOOD_BRAINSTORM = `# Brainstorm: Billing export
 
+**Documentation approval source:** chat approval before durable spec write
+
 ## Problem statement
 Admins need a reliable billing export path that avoids manual SQL.
 
@@ -118,8 +120,9 @@ Admins need a reliable billing export path that avoids manual SQL.
 | PDF export | reject | No current user evidence | High maintenance and QA cost | Won't build until a paid workflow needs it |
 
 ## Visual explanation plan
-- Mermaid flowchart with accTitle and accDescr.
+- Visual mode: browser-first visual packet with preview path .supervibe/artifacts/visual-explanations/billing-export/index.html.
 - Text fallback describes CSV export decision and deferred async queue.
+- Mermaid fallback/export includes accTitle and accDescr.
 - Do not rely on color alone.
 
 ## Options explored
@@ -183,6 +186,19 @@ test('validateIntakeSpec flags missing personas and open questions', () => {
 
 test('validateBrainstormSpec accepts a complete brainstorm artifact', () => {
   assert.deepEqual(validateBrainstormSpec(GOOD_BRAINSTORM), []);
+});
+
+test('validateBrainstormSpec accepts browser-first visual evidence without raw Mermaid body', () => {
+  const browserFirst = GOOD_BRAINSTORM.replace(
+    '- Mermaid fallback/export includes accTitle and accDescr.',
+    '- Table-only approved fallback is available for non-preview clients.'
+  );
+  assert.deepEqual(validateBrainstormSpec(browserFirst), []);
+});
+
+test('validateBrainstormSpec requires documentation approval source', () => {
+  const issues = validateBrainstormSpec(GOOD_BRAINSTORM.replace('**Documentation approval source:** chat approval before durable spec write\n\n', ''));
+  assert.ok(issues.some(issue => issue.includes('Documentation approval source')));
 });
 
 test('validateBrainstormSpec flags weak decision artifacts', () => {

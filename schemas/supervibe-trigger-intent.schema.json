@@ -35,6 +35,7 @@
       "type": "string",
       "enum": [
         "brainstorm_to_plan",
+        "documentation_summary_gate",
         "plan_review",
         "atomize_plan",
         "create_epic",
@@ -60,6 +61,7 @@
         "supervibe_audit",
         "memory_audit",
         "docs_audit",
+        "visual_explanation",
         "security_audit",
         "network_ops",
         "prompt_ai_engineering",

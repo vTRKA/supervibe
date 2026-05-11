@@ -23,8 +23,7 @@ test("validateDecisionBrief requires accessible visual fallback and next actions
       .replace("- [ ] Stop and archive the current artifact.", "")
   );
 
-  assert.ok(issues.some((issue) => issue.includes("accDescr")));
-  assert.ok(issues.some((issue) => issue.includes("Text fallback")));
+  assert.ok(issues.some((issue) => issue.includes("visual explanation")));
   assert.ok(issues.some((issue) => issue.includes("at least 4 checkbox choices")));
 });
 
@@ -56,4 +55,3 @@ test("validate-decision-briefs CLI fails bad file", async () => {
     stdio: "pipe",
   }));
 });
-

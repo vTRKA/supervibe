@@ -5,6 +5,28 @@ import { fileURLToPath } from "node:url";
 
 const EXPLICIT_SURFACE_RULES = Object.freeze([
   {
+    file: "commands/supervibe-brainstorm.md",
+    label: "brainstorm documentation approval gate",
+    required: [
+      /Pre-documentation summary/i,
+      /Documentation Approval Gate/i,
+      /Do not write, save, or claim a spec until/i,
+      /Post-documentation summary/i,
+      /browser-first visual packet/i,
+    ],
+  },
+  {
+    file: "skills/brainstorming/SKILL.md",
+    label: "brainstorm skill documentation approval gate",
+    required: [
+      /Pre-documentation summary/i,
+      /Documentation Approval Gate/i,
+      /Do not write the spec until/i,
+      /Post-documentation summary/i,
+      /browser-first visual packet/i,
+    ],
+  },
+  {
     file: "commands/supervibe-design.md",
     label: "design command feedback gate",
     required: [

@@ -16,6 +16,7 @@ const REQUIRED_SCENARIOS = Object.freeze([
   "internal-application-audit",
   "external-research-source-truth",
   "source-of-truth-conflict-resolution",
+  "documentation-summary-before-docs",
   "visual-chat-explanation-required",
   "raw-task-prevention",
   "regulated-domain-evidence",
@@ -53,6 +54,7 @@ export async function buildMaturityDashboard({
     && /Regulated Domain Policies/.test(matrix)
     && /Negative Source Patterns/.test(matrix);
   const visualExplanation = /Visual Chat Explanation Policy/.test(matrix)
+    && /Browser-first visual packet/.test(matrix)
     && /accTitle:/.test(matrix)
     && /accDescr:/.test(matrix)
     && /Text fallback:/.test(matrix)
@@ -67,6 +69,7 @@ export async function buildMaturityDashboard({
     && [installSh, installPs1, updateSh, updatePs1].every((source) => /managed checkout tracked drift|tracked local plugin drift/.test(source));
   const routeCoverage = [
     "source_truth_research",
+    "documentation_summary_gate",
     "visual_explanation",
     "task_readiness_intake",
     "plugin_update_repair",
@@ -92,7 +95,7 @@ export async function buildMaturityDashboard({
     { id: "agent-system-maturity", pass: agentReport.pass === true, evidence: `${agentReport.score || 0}/${agentReport.maxScore || 10}` },
     { id: "user-case-coverage", pass: missingScenarios.length === 0, evidence: missingScenarios.length ? `missing=${missingScenarios.join(",")}` : `${REQUIRED_SCENARIOS.length}/${REQUIRED_SCENARIOS.length} scenarios` },
     { id: "source-of-truth", pass: sourceOfTruth, evidence: sourceOfTruth ? "hierarchy/conflict/regulated/negative patterns present" : "source hierarchy incomplete" },
-    { id: "visual-explanation", pass: visualExplanation, evidence: visualExplanation ? "diagram accessibility and text fallback present" : "visual explanation policy incomplete" },
+    { id: "visual-explanation", pass: visualExplanation, evidence: visualExplanation ? "browser-first visual packet and fallback present" : "visual explanation policy incomplete" },
     { id: "raw-task-prevention", pass: rawTaskPrevention, evidence: rawTaskPrevention ? "readiness 9/10 gate present" : "readiness gate incomplete" },
     { id: "update-self-heal", pass: updateSelfHeal, evidence: updateSelfHeal ? "managed checkout tracked drift restore wired" : "tracked drift restore incomplete" },
     { id: "route-coverage", pass: routeCoverage, evidence: routeCoverage ? "new audit/research/visual/update intents routed" : "route intents missing" },

@@ -51,9 +51,16 @@ This is a filled canonical plan example. Keep the structure, but replace the dom
 - Resolution caveat: report source coverage, symbol coverage, edge resolution, and any warnings before claiming 10/10 readiness.
 
 ### Visual explanation contract
-- Required diagram: Mermaid flowchart.
+- Visual mode: browser-first visual packet with local preview path `.supervibe/artifacts/visual-explanations/billing-export-mvp-plan/index.html`.
 - Audience: engineer and operator.
-- Accessibility: include `accTitle`, `accDescr`, and a text fallback for the same information.
+- Accessibility: include a text fallback for the same information; if Mermaid fallback/export is emitted, include `accTitle` and `accDescr`.
+
+| Card | Meaning | Evidence | Stop condition |
+|------|---------|----------|----------------|
+| Approved requirements | Billing PRD and scope gate are the input | PRD and memory/RAG/CodeGraph evidence | approval missing |
+| Failing tests | Contract tests define behavior first | node test output | tests do not fail for the expected reason |
+| Implementation | Service, route, client, and UI are built | source citations | unapproved scope appears |
+| Release gate | Verification, rollback, docs, and support are complete | `npm run check` and release note | open blocker remains |
 
 ```mermaid
 flowchart LR
@@ -67,7 +74,7 @@ flowchart LR
   Verify --> Release[Version commit push]
 ```
 
-Text fallback: approved billing requirements drive evidence collection, evidence drives tests, tests drive backend and UI implementation, and release waits for security, performance, observability, rollback, and documentation checks.
+Text fallback: approved billing requirements drive evidence collection, evidence drives tests, tests drive backend and UI implementation, and release waits for security, performance, observability, rollback, and documentation checks. The browser-first preview is the primary visual; Mermaid is fallback/export only.
 
 ---
 

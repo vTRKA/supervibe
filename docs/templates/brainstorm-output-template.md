@@ -5,6 +5,7 @@ Use this as a canonical brainstorm output. It must turn ambiguity into a scoped 
 **Date:** 2026-05-11
 **Time-box:** 30 min
 **Status:** done
+**Documentation approval source:** chat approval before durable spec write
 
 ---
 
@@ -103,8 +104,10 @@ Finance cannot complete monthly reconciliation without engineering-owned SQL exp
 
 ## Visual explanation plan
 
-### Diagram type
-- Mermaid flowchart.
+### Visual mode
+- Browser-first visual packet with local preview path `.supervibe/artifacts/visual-explanations/billing-export-mvp/index.html`.
+- Table-only fallback is acceptable if preview server is unavailable.
+- Mermaid is fallback/export only.
 
 ### Audience levels
 - Beginner summary: finance requests export, system checks permission, export succeeds or returns a clear error.
@@ -112,12 +115,22 @@ Finance cannot complete monthly reconciliation without engineering-owned SQL exp
 - Operator/release view: feature flag controls exposure, metrics and alerts show failures, rollback hides the route.
 
 ### Accessibility
+- Preview title: Billing export MVP decision flow
+- Text fallback: include only the synchronous CSV export now; defer queue and scheduled delivery until measured evidence exists; reject PDF for the first release.
 - `accTitle`: Billing export MVP decision flow
 - `accDescr`: The diagram shows the include/defer/reject decision path for the export MVP.
-- Text fallback: include only the synchronous CSV export now; defer queue and scheduled delivery until measured evidence exists; reject PDF for the first release.
 - Do not rely on color alone: labels and text identify every branch.
 
-### Required visual
+### Browser-first packet outline
+
+| Card | Meaning | Evidence | Stop condition |
+|------|---------|----------|----------------|
+| Summary | Finance needs a self-serve export | finance job and current SQL workaround | user rejects outcome |
+| Include | Build synchronous CSV export | low complexity and reversible release | permission model blocks it |
+| Defer | Async queue and scheduled delivery wait | no measured performance failure | 10000 rows exceeds 30s |
+| Reject | PDF waits outside MVP | high layout and QA cost | paid workflow proves need |
+
+### Mermaid fallback/export
 
 ```mermaid
 flowchart TD

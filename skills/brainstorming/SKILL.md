@@ -84,31 +84,34 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 6. **Map product and MVP readiness path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
 7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
 8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
-9. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with: locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, and 10/10 scorecard.
-10. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, MVP readiness completeness, production readiness gaps. Fix inline.
-11. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
-12. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
-13. **User review of written spec** — explicit approval required. Saving the candidate spec is not approval to continue.
-13a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
-14. **Handoff** to `supervibe:writing-plans`.
-15. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
+9. **Pre-documentation summary** - before writing any durable brainstorm documentation, show a compact human-readable summary of the proposed spec: problem, recommended option, included scope, deferred/rejected scope, key risks, evidence plan, and visual explanation mode.
+10. **Documentation Approval Gate** - ask one explicit `documentation_approval` question and wait. Do not write the spec until the user chooses **Create brainstorm documentation**. Other visible choices are revise before documentation, show visual preview first, compare or research deeper, and keep summary and stop.
+11. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` only after the Documentation Approval Gate. Include locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, 10/10 scorecard, and `Documentation approval source`.
+12. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, MVP readiness completeness, production readiness gaps. Fix inline.
+13. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
+14. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
+15. **Post-documentation summary** - after saving and validation, summarize the artifact path, recommendation, included/deferred/rejected scope, validation result, confidence score, and next actions in normal language.
+15a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
+16. **Handoff** to `supervibe:writing-plans`.
+17. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
 
 ## Evidence and visual explanation gates
 
 Every brainstorm artifact must include:
 
 - **Evidence and retrieval plan**: project-memory entries checked, Code RAG queries needed for planning, whether CodeGraph evidence is mandatory, and external primary sources used for current best practices.
-- **Visual explanation plan**: Mermaid flowchart, sequence diagram, state diagram, C4-style context, or explicit table-only decision. Diagrams must include `accTitle`, `accDescr`, and a text fallback per `docs/references/visual-explanation-standard.md`.
+- **Visual explanation plan**: browser-first visual packet, local preview path or table-only approval, plain-language text fallback, and no color-only status. Mermaid is allowed only as a fallback/export and must include `accTitle`, `accDescr`, and the same text fallback per `docs/references/visual-explanation-standard.md`.
 - **RAG/CodeGraph quality handoff**: if the next step changes code, name the exact `search-code --context`, `--callers`, `--impact`, or `supervibe-context-pack` command the planner should run.
 
 ## Output contract
 
-Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with confidence score ≥9 and explicit user approval recorded in conversation.
+Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with confidence score ≥9, `Documentation approval source`, and explicit user approval recorded in conversation before the durable spec write.
 
 After saving the spec, ALWAYS print a one-line hand-off so the user knows the next command:
 
 ```
 Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
+Post-documentation summary: recommendation, included scope, deferred/rejected scope, validator result, score, and next choices.
 Next: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Step 1/1: write the plan?
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude/defer items | keep spec draft and stop
@@ -142,10 +145,11 @@ END_NEXT_STEP_HANDOFF
 - DO NOT: implement, scaffold, write code before design approved
 - DO NOT: offer direct implementation after brainstorm unless the user explicitly cancels planning
 - DO NOT: finish without `NEXT_STEP_HANDOFF`
+- DO NOT: write durable brainstorm documentation until the user answers the Documentation Approval Gate
 - DO NOT: continue from brainstorm to planning until the user chooses one `NEXT_USER_ACTIONS[]` item
 - DO NOT: ask multi-part questions (one at a time)
 - DO NOT: surface raw `questionnaires/*.yaml` prompts, fallback seeds, or catalog option lists as visible questions; the active agent must compose the question from current context.
-- DO NOT: assume the user agrees if they say "ok" — get explicit approval per section
+- DO NOT: assume the user agrees if they say "ok" — require explicit documentation approval before durable spec creation and explicit next-action approval before planning
 - DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension
 - DO NOT: add broad optional functionality just because it is related, modern, or possible
 - DO NOT: stop at a vague plan; every accepted requirement needs acceptance evidence, verification path, owner or fallback decision

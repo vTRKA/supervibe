@@ -66,6 +66,14 @@ const ROUTES = {
     nextQuestionEn: "Step 1/1: write the plan?",
     prerequisites: ["brainstorm-artifact-or-summary"],
   },
+  documentation_summary_gate: {
+    phase: "brainstorm",
+    command: "/supervibe-brainstorm --summary-gate",
+    skill: "supervibe:brainstorming",
+    nextQuestionRu: "Шаг 1/1: показать summary и варианты решения перед созданием документации?",
+    nextQuestionEn: "Step 1/1: show the summary and decision choices before creating documentation?",
+    prerequisites: ["user-request"],
+  },
   plan_review: {
     phase: "plan",
     command: "/supervibe-plan --review",
@@ -428,10 +436,10 @@ const ROUTES = {
   },
   visual_explanation: {
     phase: "planning",
-    command: "/supervibe-plan --diagram",
+    command: "/supervibe-preview --visual-explanation",
     skill: "supervibe:writing-plans",
-    nextQuestionRu: "Шаг 1/1: показать компактную диаграмму и текстовый fallback перед планированием?",
-    nextQuestionEn: "Step 1/1: show a compact diagram and text fallback before planning?",
+    nextQuestionRu: "Шаг 1/1: показать browser-first визуальное объяснение с текстовым fallback перед планированием?",
+    nextQuestionEn: "Step 1/1: show a browser-first visual explanation with text fallback before planning?",
     prerequisites: ["user-request"],
   },
   task_readiness_intake: {
@@ -517,6 +525,13 @@ const RULES = [
     intent: "plan_review",
     confidence: 0.91,
     test: (text) => hasAny(text, ["ревью", "review", "проверь"]) && hasAny(text, ["план", "plan"]),
+  },
+  {
+    intent: "documentation_summary_gate",
+    confidence: 0.96,
+    test: (text) => hasAny(text, ["summary before docs", "summary before documentation", "summarize before writing docs", "before creating documentation", "before creating docs", "decide before docs", "саммари", "сводка", "summary"]) &&
+      hasAny(text, ["documentation", "docs", "spec", "документац", "доку", "док"]) &&
+      hasAny(text, ["before", "approval", "decide", "create", "write", "до", "перед", "соглас", "создан"]),
   },
   {
     intent: "brainstorm_to_plan",
@@ -1149,7 +1164,7 @@ function mutationRiskFor(intent) {
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
   if (intent === "plugin_update_repair") return "explicit-user-command";
-  if (["brainstorm_to_plan", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "documentation_summary_gate", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -1174,7 +1189,8 @@ function requiredSafetyFor(intent) {
   if (intent === "security_audit") return [...base, "read-only-audit", "scoped-approval-before-fix"];
   if (intent === "source_truth_research") return [...base, "source-hierarchy", "freshness-check", "conflict-resolution-log"];
   if (intent === "workflow_chain_audit") return [...base, "read-only-audit", "source-hierarchy", "workflow-chain-coverage", "scope-bloat-check", "pitfall-review", "end-to-end-goal-check"];
-  if (intent === "visual_explanation") return [...base, "diagram-text-fallback", "no-unverified-implementation-claims"];
+  if (intent === "documentation_summary_gate") return [...base, "documentation-approval-before-write", "summary-before-durable-artifact", "post-documentation-summary"];
+  if (intent === "visual_explanation") return [...base, "browser-first-visual-preview", "text-fallback", "no-unverified-implementation-claims"];
   if (intent === "task_readiness_intake") return [...base, "requirements-gate", "raw-task-block", "acceptance-criteria-required"];
   if (intent === "plugin_update_repair") return [...base, "managed-checkout-drift-restore", "mirror-clean-assertion"];
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];

@@ -67,7 +67,7 @@ Every implementation plan must add `## Retrieval, CodeGraph, And Visual Evidence
 - project-memory and Code RAG commands the executor must run before edits;
 - CodeGraph mode and Case A/B/C expectation for structural tasks;
 - expected source citations, graph warnings, and fallback handling;
-- one compact Mermaid/table visual for critical path, state flow, architecture, or release gate, with `accTitle`, `accDescr`, and text fallback.
+- one compact browser-first visual packet for critical path, state flow, architecture, or release gate, with preview URL or table-only approval, text fallback, and no color-only status. Mermaid is allowed only as fallback/export and must include `accTitle` and `accDescr`.
 
 ## Decision tree
 
@@ -101,14 +101,15 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file .supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
 10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
 11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
-11a. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-11b. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
+11a. **Post-plan summary** - after saving and validation, summarize artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, confidence score, and next actions in normal language.
+11b. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
+11c. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
 12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
 ## Output contract
 
-Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, Final 10/10 Acceptance Gate, Self-Review, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
+Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, browser-first visual evidence, Final 10/10 Acceptance Gate, Self-Review, post-plan summary, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
 
 Required handoff block after saving the plan:
 

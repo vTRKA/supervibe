@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.18] - 2026-05-11
+
+### Added
+
+- Added a documentation approval gate for brainstorm outputs so users receive a pre-documentation summary before durable spec creation.
+- Added browser-first visual explanation contracts for brainstorm, plan, and decision artifacts, with accessible text/table fallbacks and Mermaid only as an export fallback.
+- Added validators and regression tests for visual explanation artifacts, documentation approval evidence, router intent coverage, and command routing.
+
+### Changed
+
+- Aligned brainstorm and plan workflows around post-documentation summaries, explicit next-action choices, and review gates before moving from spec to implementation plan.
+- Routed summary-before-docs and visual explanation requests to dedicated safe workflow intents.
+
+### Validation
+
+- Rebuilt Code RAG and CodeGraph readiness after workflow changes.
+- Verified workflow receipts, scenario routing, artifact validators, and release-facing version surfaces for `2.1.18`.
+
 ## [2.1.17] - 2026-05-11
 
 ### Changed

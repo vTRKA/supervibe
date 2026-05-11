@@ -30,6 +30,9 @@ describe("supervibe trigger intent corpus", () => {
       "запусти эпик автономно в отдельном worktree",
       "почему не сработал триггер?",
       "обнови README под это",
+      "show summary before creating documentation",
+      "покажи саммари перед созданием документации",
+      "explain this system visually with a browser-first preview before implementation",
     ]) {
       assert.equal(phrases.has(phrase), true, phrase);
     }

@@ -89,7 +89,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    - Critical path
    - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
    - Development Contract Map covering behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support
-   - Retrieval, CodeGraph, and visual evidence contract
+   - Retrieval, CodeGraph, and browser-first visual evidence contract
    - Delivery strategy from MVP to production
    - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
    - Phased tasks (≤5 minutes each, with verification commands)
@@ -105,13 +105,15 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
 
-8. **Mandatory review handoff before execution.** Print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
+8. **Post-plan summary before review.** After the durable plan is saved and validated, give a short human-readable summary: artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, score, and the next review choices.
+
+8a. **Mandatory review handoff before execution.** Print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
    ```
    Plan saved to <path>.
    Step N/M: run the plan review loop?
    ```
 
-8a. **Machine-readable review handoff.** Include:
+8b. **Machine-readable review handoff.** Include:
 
    ```text
    NEXT_STEP_HANDOFF
@@ -154,7 +156,8 @@ Production readiness: test/security/perf/observability/rollback/release covered
 Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
 Scope safety: approved scope mapped; deferred/rejected extras documented
 Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
-Visual evidence: Mermaid/table plan with accessible title, description and text fallback
+Visual evidence: browser-first preview/table/text packet; Mermaid fallback includes accessible title and description when used
+Post-plan summary: concise human summary and next review actions shown after plan creation
 Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS

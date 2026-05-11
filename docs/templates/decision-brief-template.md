@@ -23,6 +23,15 @@ Use this after brainstorm or plan review when a user needs to decide whether to 
 
 ## Visual Explanation
 
+Visual mode: browser-first decision packet with table fallback and raw Mermaid only as export/fallback.
+
+| Decision card | User meaning | Evidence | Next action |
+| --- | --- | --- | --- |
+| Continue | Accept the bounded MVP | permission, privacy, rollback evidence | create or execute reviewed plan |
+| Revise | Change scope before work | changed requirement or risk | update artifact first |
+| Defer | Keep useful work outside current wave | lower priority or missing evidence | record revisit trigger |
+| Stop | Archive the idea | unacceptable risk or value | no durable follow-up work |
+
 ```mermaid
 flowchart TD
   %% accTitle: Billing export decision path

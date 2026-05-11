@@ -48,7 +48,7 @@ Treat the most recent user message as the topic.
    - Product type, MVP path, MVP readiness stage, launch model, and production owner
    - Scope Safety Gate: include/defer/reject/spike decisions, why-not rationale, and tradeoffs
    - Evidence and retrieval plan: memory, Code RAG, CodeGraph need, citations, stale checks
-   - Visual explanation plan: Mermaid/table choice with `accTitle`, `accDescr`, and text fallback
+   - Visual explanation plan: browser-first visual packet with preview/table/text fallback; Mermaid is allowed only as an accessible fallback with `accTitle` and `accDescr`
    - Stakeholder map
    - Competitive scan (when applicable, via `supervibe:mcp-discovery` for Firecrawl)
    - 2-3 alternative approaches with kill criteria
@@ -56,7 +56,18 @@ Treat the most recent user message as the topic.
    - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
-4. **Save the candidate spec.** The skill emits `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. The path is deterministic, but the saved file is not approval to continue. Moving to planning requires the explicit user choice below.
+4. **Pre-documentation summary.** Before creating any durable brainstorm documentation, show a compact human summary of the proposed requirements package: problem, chosen option, rejected/deferred scope, key risks, evidence still needed, and the visual explanation mode. This is the user's decision point before a spec file exists.
+
+4a. **Documentation Approval Gate.** Ask one explicit `documentation_approval` question and wait for the user choice. Do not write, save, or claim a spec until the user chooses **Create brainstorm documentation**. Valid choices:
+   - **Create brainstorm documentation** - write the durable brainstorm spec.
+   - **Revise before documentation** - change goals, assumptions, scope, risks, or acceptance criteria first.
+   - **Show visual preview first** - produce the browser-first visual packet before writing the spec.
+   - **Compare or research deeper** - gather more evidence before documentation.
+   - **Keep summary and stop** - no durable brainstorm documentation is created.
+
+4b. **Save the approved spec.** Only after the Documentation Approval Gate is answered with **Create brainstorm documentation**, write `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. Record the approval source in the spec as `Documentation approval source`.
+
+4c. **Post-documentation summary.** After the spec is saved and validated, give the user a short summary: artifact path, chosen recommendation, what was included, what was deferred/rejected, validation result, confidence score, and the available next actions.
 
 5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
@@ -107,10 +118,12 @@ Validator: validate-spec-artifacts PASS
 Production readiness: covered
 Scope safety: present, with deferred/rejected additions explained
 Evidence plan: memory/RAG/CodeGraph commands and citations present
-Visual explanation: diagram/table choice with accessible fallback present
+Visual explanation: browser-first preview/table/text packet present; Mermaid fallback includes accessible title and description when used
 10/10 scorecard: present
 
 Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
+Post-documentation summary: concise human summary and next actions shown after spec creation
+Documentation Approval Gate: answered before durable spec write
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude or defer items | keep spec draft and stop
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
 ```

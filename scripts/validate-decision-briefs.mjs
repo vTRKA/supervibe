@@ -40,6 +40,14 @@ function countCheckedActions(body) {
   return body.split(/\r?\n/).filter((line) => /^\s*-\s+\[[ xX]\]\s+\S/.test(line)).length;
 }
 
+function hasVisualEvidence(body) {
+  const text = String(body || "");
+  const fallback = /\b(text\s+fallback|fallback)\b/i.test(text);
+  const browserFirst = /\b(browser-first|preview|visual\s+packet|table-only)\b/i.test(text) && fallback;
+  const mermaidFallback = /\bMermaid\b/i.test(text) && /accTitle/i.test(text) && /accDescr/i.test(text) && fallback;
+  return browserFirst || mermaidFallback;
+}
+
 export function validateDecisionBrief(markdown) {
   const issues = [];
   if (!/^#\s+Decision Brief:/im.test(markdown)) {
@@ -60,8 +68,8 @@ export function validateDecisionBrief(markdown) {
   }
 
   const visual = sectionBody(markdown, "Visual Explanation");
-  for (const term of ["Mermaid", "accTitle", "accDescr", "Text fallback"]) {
-    if (!new RegExp(escapeRegex(term), "i").test(visual)) issues.push(`visual explanation: missing ${term}`);
+  if (!hasVisualEvidence(visual)) {
+    issues.push("visual explanation: missing browser-first visual packet or accessible Mermaid fallback");
   }
 
   const options = sectionBody(markdown, "Options");

@@ -20,6 +20,7 @@ const TEMPLATE_RULES = [
       "RAG",
       "CodeGraph",
       "project memory",
+      "browser-first",
       "Mermaid",
       "accTitle",
       "10/10",
@@ -61,6 +62,7 @@ const TEMPLATE_RULES = [
       "anti-bloat",
       "RAG",
       "CodeGraph",
+      "browser-first",
       "Mermaid",
       "accTitle",
       "rollback",
@@ -141,6 +143,7 @@ const TEMPLATE_RULES = [
     requiredTerms: [
       "plain-language",
       "recommended action",
+      "browser-first",
       "Mermaid",
       "accTitle",
       "accDescr",

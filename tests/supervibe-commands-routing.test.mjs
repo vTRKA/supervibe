@@ -55,6 +55,18 @@ test("routes plain brainstorm and new feature phrases to brainstorm command", as
   }
 });
 
+test("routes documentation summary gate before creating docs", async () => {
+  const output = await matchCommand("show summary before creating documentation");
+  assert.match(output, /INTENT: documentation_summary_gate/);
+  assert.match(output, /COMMAND: \/supervibe-brainstorm --summary-gate/);
+});
+
+test("routes visual explanation requests to browser-first preview", async () => {
+  const output = await matchCommand("explain this system visually with a browser-first preview before implementation");
+  assert.match(output, /INTENT: visual_explanation/);
+  assert.match(output, /COMMAND: \/supervibe-preview --visual-explanation/);
+});
+
 test("routes Russian task graph resume requests to loop status", async () => {
   const output = await matchCommand("продолжи loop по эпикам и задачам");
   assert.match(output, /INTENT: task_graph_resume/);

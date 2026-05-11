@@ -168,6 +168,21 @@ test('validatePlanArtifact accepts a complete plan', () => {
   assert.deepEqual(validatePlanArtifact(GOOD_PLAN), []);
 });
 
+test('validatePlanArtifact accepts browser-first visual evidence', () => {
+  const browserFirst = GOOD_PLAN.replace(
+    [
+      '- Mermaid: include accTitle and accDescr on the release-flow diagram.',
+      '- Text fallback: explain plan -> build -> verify -> release path.',
+    ].join('\n'),
+    [
+      '- Browser-first visual packet: preview path .supervibe/artifacts/visual-explanations/billing-export/index.html.',
+      '- Table-only approved fallback: release gate table is available when preview is not rendered.',
+      '- Text fallback: explain plan -> build -> verify -> release path.',
+    ].join('\n')
+  );
+  assert.deepEqual(validatePlanArtifact(browserFirst), []);
+});
+
 test('validatePlanArtifact catches missing readiness fields', () => {
   const issues = validatePlanArtifact(GOOD_PLAN.replace('## Critical Path', '## Dependencies').replace('**Rollback:** `git revert <sha>`', ''));
   assert.ok(issues.some(issue => issue.includes('Critical Path')));
