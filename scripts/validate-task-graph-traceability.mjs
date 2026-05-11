@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
-const REQUIREMENT_HEADING = /^(?:#{1,4}\s*)?(?:Requirement|Goal|Success Criteria|Acceptance Criteria)\s*[:#-]?\s*(.*)$/i;
+const REQUIREMENT_HEADING = /^(?:#{1,4}\s*)?(?:Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\s*(.*)$/i;
 
 export function extractTraceabilityRequirements(markdown = "") {
   const text = String(markdown || "");
@@ -15,10 +15,10 @@ export function extractTraceabilityRequirements(markdown = "") {
     if (REQUIREMENT_HEADING.test(line)) {
       inRequirementList = true;
       const title = line.replace(/^#{1,4}\s*/, "").replace(/^(Requirement|Goal|Success Criteria|Acceptance Criteria)\s*[:#-]?\s*/i, "").trim();
-      if (title && !/^requirements?$/i.test(title)) requirements.push(title);
+      if (title && !/^(requirements?|recovered work items)$/i.test(title)) requirements.push(title);
       continue;
     }
-    if (/^#{1,4}\s+/.test(line) && !/^(#{1,4}\s*)?(Requirement|Goal|Success Criteria|Acceptance Criteria)/i.test(line)) {
+    if (/^#{1,4}\s+/.test(line) && !/^(#{1,4}\s*)?(Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)/i.test(line)) {
       inRequirementList = false;
     }
     if (inRequirementList && /^[-*]\s+\S/.test(line)) {
@@ -28,13 +28,16 @@ export function extractTraceabilityRequirements(markdown = "") {
   return [...new Set(requirements.map(normalizeRequirement).filter(Boolean))];
 }
 
-export function validateTaskGraphTraceability({ spec = "", plan = "", graph = null } = {}) {
+export function validateTaskGraphTraceability({ spec = "", plan = "", graph = null, requireRequirements = false } = {}) {
   const requirements = [
     ...extractTraceabilityRequirements(spec),
     ...extractTraceabilityRequirements(plan),
   ];
   const uniqueRequirements = [...new Set(requirements)];
   const issues = [];
+  if (graph && requireRequirements && uniqueRequirements.length === 0) {
+    issues.push("active graph has no source requirements");
+  }
   if (!graph) {
     return {
       pass: uniqueRequirements.length === 0,
@@ -98,8 +101,12 @@ function itemMatchesRequirement(item = {}, requirement = "") {
     item.sourceRequirement,
     item.requirementId,
     item.requirement,
+    item.itemId,
+    item.id,
+    item.type,
     item.title,
     item.description,
+    ...(Array.isArray(item.requirementIds) ? item.requirementIds : []),
     ...(Array.isArray(item.acceptanceCriteria) ? item.acceptanceCriteria : []),
     ...(Array.isArray(item.labels) ? item.labels : []),
   ].filter(Boolean).join(" ").toLowerCase();
@@ -150,6 +157,19 @@ function readIfPresent(path) {
   return path && existsSync(path) ? readFileSync(path, "utf8") : "";
 }
 
+function readGraphSourceMarkdown({ rootDir, graphPath, graph }) {
+  if (!graph || !graphPath) return "";
+  const sourcePath = graph.source?.path || graph.metadata?.sourcePlanSnapshot?.path || graph.planPath || null;
+  const snapshotPath = graph.source?.snapshotPath || graph.metadata?.sourcePlanSnapshot?.storedPath || null;
+  const candidates = [];
+  if (sourcePath) candidates.push(resolve(rootDir, sourcePath));
+  if (snapshotPath) candidates.push(resolve(dirname(graphPath), snapshotPath));
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return readFileSync(candidate, "utf8");
+  }
+  return "";
+}
+
 function findActiveGraph(rootDir) {
   const workItemsDir = join(rootDir, ".supervibe", "memory", "work-items");
   if (!existsSync(workItemsDir)) return null;
@@ -187,10 +207,12 @@ if (process.argv[1]?.endsWith("validate-task-graph-traceability.mjs")) {
   const root = process.cwd();
   const graphPath = args.graph || findActiveGraph(root);
   const graph = graphPath && existsSync(graphPath) ? JSON.parse(readFileSync(graphPath, "utf8")) : null;
+  const plan = readIfPresent(args.plan) || (!args.spec && !args.plan ? readGraphSourceMarkdown({ rootDir: root, graphPath, graph }) : "");
   const report = validateTaskGraphTraceability({
     spec: readIfPresent(args.spec),
-    plan: readIfPresent(args.plan),
+    plan,
     graph,
+    requireRequirements: Boolean(args.strict && graph),
   });
   if (graphPath) report.graph = relative(root, graphPath).split(sep).join("/");
   console.log(args.json ? JSON.stringify(report, null, 2) : formatTaskGraphTraceabilityReport(report));

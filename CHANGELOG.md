@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.22] - 2026-05-11
+
+### Added
+
+- Added strict work-item index validation and repair so stale active epics and missing graph references block runtime maturity.
+- Added runtime maturity hard gates for work-item registry integrity and non-neutral active graph traceability.
+- Added regression coverage for skipped loop task status preservation and terminal dependency ready-front behavior.
+
+### Fixed
+
+- Fixed loop task graph normalization so skipped tasks no longer fall back to open status.
+- Fixed strict traceability to load active graph source snapshots and fail closed when active requirements are missing.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.22`.
+- Added `validate:work-item-index` and strict traceability to the full check pipeline.
+
 ## [2.1.21] - 2026-05-11
 
 ### Added

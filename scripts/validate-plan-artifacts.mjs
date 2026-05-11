@@ -337,7 +337,9 @@ async function main() {
   if (activeSource.status === 'original') {
     console.log(`OK   active-source ${toRel(root, activeSource.sourcePath)}`);
   } else if (activeSource.status === 'snapshot') {
-    for (const warning of activeSource.warnings) console.warn(`WARN active-source ${warning}`);
+    if (values['require-active-source']) failed++;
+    const write = values['require-active-source'] ? console.error : console.warn;
+    for (const warning of activeSource.warnings) write(`${values['require-active-source'] ? 'FAIL' : 'WARN'} active-source ${warning}`);
   } else if (activeSource.issues?.length) {
     if (values['require-active-source']) failed++;
     const write = values['require-active-source'] ? console.error : console.warn;

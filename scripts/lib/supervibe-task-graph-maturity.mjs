@@ -1,8 +1,10 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 import { findCommandShortcut } from "./supervibe-command-catalog.mjs";
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
+import { validateTaskGraphTraceability } from "../validate-task-graph-traceability.mjs";
+import { validateWorkItemRegistryIntegrity } from "./supervibe-work-item-registry.mjs";
 
 const ROUTING_CASES = Object.freeze([
   ["создай задачи и эпик из плана", "task_graph_create_from_plan"],
@@ -118,6 +120,10 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     testsDimension(rootDir),
     graphFixtureDimension(rootDir),
     currentGraphDimension(rootDir, { required: requireActiveGraph }),
+    ...(requireActiveGraph ? [
+      registryIntegrityDimension(rootDir),
+      activeTraceabilityDimension(rootDir),
+    ] : []),
   ];
   const requiredDimensions = dimensions.filter((dimension) => dimension.required !== false);
   const passed = requiredDimensions.filter((dimension) => dimension.pass).length;
@@ -357,6 +363,70 @@ function currentGraphDimension(rootDir, { required }) {
     blockers: required && files.length === 0 ? ["no current work-item graph files found"] : [],
     evidence: files.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
   };
+}
+
+function registryIntegrityDimension(rootDir) {
+  const report = validateWorkItemRegistryIntegrity({ rootDir });
+  return {
+    id: "work-item-registry",
+    title: "Work-item registry integrity",
+    pass: report.pass,
+    summary: report.pass ? `registry valid with ${report.epicCount} epic(s)` : `${report.issues.length} registry issue(s) found`,
+    blockers: report.issues.map((issue) => `${issue.code}: ${issue.message}`),
+    evidence: [report.registryPath || ".supervibe/memory/work-items/index.json"],
+  };
+}
+
+function activeTraceabilityDimension(rootDir) {
+  const graphFiles = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
+    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+  if (graphFiles.length !== 1) {
+    return {
+      id: "active-traceability",
+      title: "Active graph strict traceability",
+      pass: false,
+      summary: `${graphFiles.length} active graph candidate(s) found`,
+      blockers: ["exactly one active graph is required for strict traceability"],
+      evidence: graphFiles.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+    };
+  }
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(graphFiles[0], "utf8"));
+  } catch (error) {
+    return {
+      id: "active-traceability",
+      title: "Active graph strict traceability",
+      pass: false,
+      summary: "active graph cannot be read",
+      blockers: [error.message],
+      evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+    };
+  }
+  const plan = readGraphSourceMarkdown({ rootDir, graphPath: graphFiles[0], graph });
+  const report = validateTaskGraphTraceability({ plan, graph, requireRequirements: true });
+  return {
+    id: "active-traceability",
+    title: "Active graph strict traceability",
+    pass: report.pass && report.neutral !== true,
+    summary: report.pass && report.neutral !== true
+      ? `${report.mapped}/${report.requirements.length} requirements mapped`
+      : `${report.issues.length} traceability issue(s), requirements=${report.requirements.length}`,
+    blockers: report.issues,
+    evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+  };
+}
+
+function readGraphSourceMarkdown({ rootDir, graphPath, graph }) {
+  const sourcePath = graph.source?.path || graph.metadata?.sourcePlanSnapshot?.path || graph.planPath || null;
+  const snapshotPath = graph.source?.snapshotPath || graph.metadata?.sourcePlanSnapshot?.storedPath || null;
+  const candidates = [];
+  if (sourcePath) candidates.push(resolve(rootDir, sourcePath));
+  if (snapshotPath) candidates.push(resolve(dirname(graphPath), snapshotPath));
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return readFileSync(candidate, "utf8");
+  }
+  return "";
 }
 
 function walkFiles(dir) {

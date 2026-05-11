@@ -247,7 +247,7 @@ test('validate-plan-artifacts strict mode fails active graph with missing source
   }), /active graph source is missing/);
 });
 
-test('validate-plan-artifacts strict mode accepts active graph snapshot fallback', async () => {
+test('validate-plan-artifacts strict mode fails active graph snapshot fallback', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'plan-validator-active-snapshot-'));
   const graphDir = join(dir, '.supervibe', 'memory', 'work-items', 'epic-snapshot-source');
   await mkdir(graphDir, { recursive: true });
@@ -262,15 +262,22 @@ test('validate-plan-artifacts strict mode accepts active graph snapshot fallback
     ],
   }, null, 2)}\n`, 'utf8');
 
-  const output = execFileSync(process.execPath, [
-    join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
-    '--all',
-    '--require-active-source',
-  ], {
-    cwd: dir,
-    encoding: 'utf8',
-    stdio: 'pipe',
+  let output = '';
+  assert.throws(() => {
+    try {
+      execFileSync(process.execPath, [
+        join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+        '--all',
+        '--require-active-source',
+      ], {
+        cwd: dir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+    } catch (error) {
+      output = `${error.stdout || ''}${error.stderr || ''}`;
+      throw error;
+    }
   });
-
-  assert.match(output, /All 0 plan artifact\(s\) passed/);
+  assert.match(output, /snapshot fallback/);
 });

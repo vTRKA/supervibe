@@ -17,6 +17,22 @@ test("ready front returns open tasks whose blockers are complete", () => {
   assert.deepEqual(result.blocked[0].blockers, ["t2"]);
 });
 
+test("ready front treats skipped and cancelled dependencies as terminal", () => {
+  const result = calculateReadyFront({
+    tasks: [
+      { id: "skipped", goal: "Skipped", status: "skipped" },
+      { id: "cancelled", goal: "Cancelled", status: "cancelled" },
+      { id: "policy", goal: "Policy", status: "policy_stopped" },
+      { id: "ready", goal: "Ready", dependencies: ["skipped", "cancelled", "policy"], status: "open" },
+    ],
+  });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.ready.map((task) => task.id), ["ready"]);
+  assert.equal(result.ready.some((task) => task.id === "skipped"), false);
+  assert.deepEqual(result.blocked, []);
+});
+
 test("parallel front respects priority, source order, and max concurrency", () => {
   const result = calculateReadyFront({
     tasks: [

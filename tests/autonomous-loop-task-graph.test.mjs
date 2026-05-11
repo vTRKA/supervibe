@@ -17,6 +17,22 @@ test("createTaskGraph computes dependents and normalizes legacy task status", ()
   assert.equal(normalizeGraphTask({ id: "legacy", status: "pending" }).status, "open");
 });
 
+test("createTaskGraph preserves skipped and cancelled terminal statuses", () => {
+  const graph = createTaskGraph({
+    tasks: [
+      { id: "skipped", goal: "Skipped", status: "skipped" },
+      { id: "skip-alias", goal: "Skip alias", status: "skip" },
+      { id: "cancelled", goal: "Cancelled", status: "canceled" },
+      { id: "closed", goal: "Closed", status: "closed" },
+    ],
+  });
+
+  assert.deepEqual(
+    graph.tasks.map((task) => task.status),
+    ["skipped", "skipped", "cancelled", "complete"],
+  );
+});
+
 test("validateTaskGraph catches duplicate ids", () => {
   const result = validateTaskGraph({
     tasks: [

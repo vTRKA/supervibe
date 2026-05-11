@@ -33,6 +33,40 @@ test("task graph maturity strict active graph mode blocks missing current graph 
   assert.match(formatTaskGraphMaturityReport(report), /no current work-item graph files found/);
 });
 
+test("task graph runtime maturity blocks stale work-item registry", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-stale-index-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, { source: "## Acceptance Criteria\n- Runtime requirement.\n" });
+  writeFileSync(join(root, ".supervibe", "memory", "work-items", "index.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    activeEpicId: "epic-runtime",
+    activeGraphPath: ".supervibe/memory/work-items/epic-runtime/missing.json",
+    epics: {
+      "epic-runtime": {
+        epicId: "epic-runtime",
+        graphPath: ".supervibe/memory/work-items/epic-runtime/missing.json",
+        status: "active",
+      },
+    },
+  }, null, 2)}\n`, "utf8");
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.dimensions.some((dimension) => dimension.id === "work-item-registry" && !dimension.pass));
+});
+
+test("task graph runtime maturity blocks neutral traceability", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-neutral-trace-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, { source: "# Source Without Requirements\n" });
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.dimensions.some((dimension) => dimension.id === "active-traceability" && !dimension.pass));
+});
+
 test("task graph maturity CLI prints a machine-readable report", () => {
   const stdout = execFileSync(process.execPath, [
     join(ROOT, "scripts/supervibe-task-graph-maturity.mjs"),
@@ -69,4 +103,37 @@ function writeMinimalSurface(root) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, `${content}\n`, "utf8");
   }
+}
+
+function writeRuntimeGraph(root, { source }) {
+  const graphDir = join(root, ".supervibe", "memory", "work-items", "epic-runtime");
+  mkdirSync(graphDir, { recursive: true });
+  writeFileSync(join(graphDir, "source-plan.md"), source, "utf8");
+  writeFileSync(join(graphDir, "graph.json"), `${JSON.stringify({
+    graph_id: "epic-runtime",
+    source: { snapshotPath: "source-plan.md" },
+    items: [
+      { itemId: "epic-runtime", type: "epic", status: "open", title: "Runtime" },
+      {
+        itemId: "task-runtime",
+        type: "task",
+        status: "complete",
+        title: "Runtime requirement",
+        evidence: [{ status: "pass", command: "node --test tests/runtime.test.mjs" }],
+      },
+    ],
+  }, null, 2)}\n`, "utf8");
+  writeFileSync(join(root, ".supervibe", "memory", "work-items", "index.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    activeEpicId: null,
+    activeGraphPath: null,
+    epics: {
+      "epic-runtime": {
+        epicId: "epic-runtime",
+        graphPath: ".supervibe/memory/work-items/epic-runtime/graph.json",
+        sourcePlanPath: ".supervibe/artifacts/plans/missing.md",
+        status: "active",
+      },
+    },
+  }, null, 2)}\n`, "utf8");
 }

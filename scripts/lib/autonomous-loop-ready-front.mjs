@@ -1,7 +1,6 @@
-import { createTaskGraph, validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
+import { createTaskGraph, isDependencySatisfiedStatus, validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { detectWriteSetConflicts } from "./supervibe-wave-controller.mjs";
 
-const COMPLETE_STATUSES = new Set(["complete", "cancelled", "policy_stopped", "budget_stopped"]);
 const OPEN_STATUSES = new Set(["open", "ready"]);
 const RISK_ORDER = { none: 0, low: 1, medium: 2, high: 3 };
 
@@ -25,7 +24,7 @@ export function calculateReadyFront(input = {}, options = {}) {
 
   for (const task of graph.tasks) {
     if (!OPEN_STATUSES.has(task.status)) continue;
-    const blockers = task.dependencies.filter((dependencyId) => !COMPLETE_STATUSES.has(byId.get(dependencyId)?.status));
+    const blockers = task.dependencies.filter((dependencyId) => !isDependencySatisfiedStatus(byId.get(dependencyId)?.status));
     if (blockers.length === 0) ready.push(task);
     else blocked.push({ ...task, blockers });
   }

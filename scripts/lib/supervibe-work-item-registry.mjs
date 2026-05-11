@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, parse, relative, resolve, sep } from "node:path";
 import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
@@ -17,6 +17,130 @@ export async function readWorkItemRegistry(filePath = defaultWorkItemRegistryPat
     if (error.code === "ENOENT") return createEmptyRegistry();
     throw error;
   }
+}
+
+export function validateWorkItemRegistryIntegrity({
+  rootDir = process.cwd(),
+  registry = null,
+  registryPath = null,
+} = {}) {
+  const resolvedRoot = resolve(rootDir);
+  const filePath = registryPath || defaultWorkItemRegistryPath(resolvedRoot);
+  const normalized = normalizeRegistry(registry || readRegistrySync(filePath));
+  const issues = [];
+  const epics = normalized.epics && typeof normalized.epics === "object" ? normalized.epics : {};
+  const activeEpicIds = [];
+
+  if (normalized.activeEpicId && !epics[normalized.activeEpicId]) {
+    issues.push(registryIssue("active-epic-missing", normalized.activeEpicId, `activeEpicId is not present in epics: ${normalized.activeEpicId}`));
+  }
+  if (normalized.activeGraphPath) {
+    const activeGraphPath = resolveRegistryPath(resolvedRoot, normalized.activeGraphPath);
+    if (!existsSync(activeGraphPath)) {
+      issues.push(registryIssue("active-graph-missing", normalized.activeEpicId, `activeGraphPath is missing: ${toProjectRelativePath(resolvedRoot, activeGraphPath)}`));
+    }
+  }
+
+  for (const [epicId, epic] of Object.entries(epics)) {
+    const status = String(epic.status || "").toLowerCase();
+    if (status === "active") activeEpicIds.push(epicId);
+    if (!epic.graphPath) {
+      issues.push(registryIssue("missing-graph-path", epicId, `Epic ${epicId} is missing graphPath.`));
+      continue;
+    }
+    const graphPath = resolveRegistryPath(resolvedRoot, epic.graphPath);
+    if (!existsSync(graphPath)) {
+      issues.push(registryIssue("missing-graph-file", epicId, `Epic ${epicId} graph file is missing: ${toProjectRelativePath(resolvedRoot, graphPath)}`));
+      continue;
+    }
+
+    let graph = null;
+    try {
+      graph = JSON.parse(readFileSync(graphPath, "utf8"));
+    } catch (error) {
+      issues.push(registryIssue("unreadable-graph-file", epicId, `Epic ${epicId} graph file cannot be read: ${error.message}`));
+      continue;
+    }
+    const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir: resolvedRoot });
+    if (status && summary.status !== status) {
+      issues.push(registryIssue("stale-epic-status", epicId, `Epic ${epicId} registry status is ${status}, graph summary is ${summary.status}.`));
+    }
+    const sourcePlanPath = epic.sourcePlanPath || graph.source?.path || graph.planPath || null;
+    const snapshotPath = graph.source?.snapshotPath || graph.metadata?.sourcePlanSnapshot?.storedPath || null;
+    const sourceExists = sourcePlanPath ? existsSync(resolveRegistryPath(resolvedRoot, sourcePlanPath)) : false;
+    const snapshotExists = snapshotPath ? existsSync(resolve(dirname(graphPath), snapshotPath)) : false;
+    if (!sourceExists && !snapshotExists) {
+      issues.push(registryIssue("missing-source-provenance", epicId, `Epic ${epicId} has no existing source plan or source snapshot.`));
+    }
+  }
+
+  if (activeEpicIds.length > 1) {
+    issues.push(registryIssue("multiple-active-epics", null, `Registry has multiple active epics: ${activeEpicIds.join(", ")}`));
+  }
+  if (normalized.activeEpicId && epics[normalized.activeEpicId]) {
+    const active = epics[normalized.activeEpicId];
+    if (active.graphPath && normalized.activeGraphPath) {
+      const expected = toProjectRelativePath(resolvedRoot, resolveRegistryPath(resolvedRoot, active.graphPath));
+      const actual = toProjectRelativePath(resolvedRoot, resolveRegistryPath(resolvedRoot, normalized.activeGraphPath));
+      if (expected !== actual) {
+        issues.push(registryIssue("active-graph-mismatch", normalized.activeEpicId, `activeGraphPath ${actual} does not match active epic graphPath ${expected}.`));
+      }
+    }
+    if (String(active.status || "").toLowerCase() === "closed") {
+      issues.push(registryIssue("active-epic-closed", normalized.activeEpicId, `activeEpicId points to a closed epic: ${normalized.activeEpicId}`));
+    }
+  }
+
+  return {
+    pass: issues.length === 0,
+    registryPath: toProjectRelativePath(resolvedRoot, filePath),
+    activeEpicId: normalized.activeEpicId,
+    epicCount: Object.keys(epics).length,
+    issues,
+  };
+}
+
+export async function repairWorkItemRegistryIntegrity({
+  rootDir = process.cwd(),
+  registryPath = null,
+  now = new Date().toISOString(),
+} = {}) {
+  const resolvedRoot = resolve(rootDir);
+  const filePath = registryPath || defaultWorkItemRegistryPath(resolvedRoot);
+  const before = validateWorkItemRegistryIntegrity({ rootDir: resolvedRoot, registryPath: filePath });
+  const registry = await readWorkItemRegistry(filePath);
+  const nextEpics = {};
+  const activeCandidates = [];
+
+  for (const [epicId, epic] of Object.entries(registry.epics || {})) {
+    if (!epic.graphPath) continue;
+    const graphPath = resolveRegistryPath(resolvedRoot, epic.graphPath);
+    if (!existsSync(graphPath)) continue;
+    let graph = null;
+    try {
+      graph = JSON.parse(readFileSync(graphPath, "utf8"));
+    } catch {
+      continue;
+    }
+    const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir: resolvedRoot });
+    nextEpics[epicId] = {
+      ...epic,
+      ...summary,
+      repairedAt: now,
+    };
+    if (summary.status === "active") activeCandidates.push(nextEpics[epicId]);
+  }
+
+  const active = activeCandidates.length === 1 ? activeCandidates[0] : null;
+  const repaired = await writeWorkItemRegistry(filePath, {
+    ...registry,
+    activeEpicId: active?.epicId || null,
+    activeGraphPath: active?.graphPath || null,
+    epics: nextEpics,
+    updatedAt: now,
+  });
+  const after = validateWorkItemRegistryIntegrity({ rootDir: resolvedRoot, registry: repaired, registryPath: filePath });
+  return { before, after, registry: repaired };
 }
 
 async function writeWorkItemRegistry(filePath, registry) {
@@ -230,7 +354,25 @@ function normalizeRegistry(registry = {}) {
   };
 }
 
+function readRegistrySync(filePath) {
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") return createEmptyRegistry();
+    throw error;
+  }
+}
+
+function resolveRegistryPath(rootDir, filePath) {
+  if (!filePath) return rootDir;
+  return resolve(rootDir, filePath);
+}
+
 function toProjectRelativePath(rootDir, filePath) {
   if (!filePath) return null;
   return relative(resolve(rootDir), resolve(filePath)).split(sep).join("/");
+}
+
+function registryIssue(code, epicId, message, extra = {}) {
+  return { code, epicId: epicId || null, message, ...extra };
 }

@@ -9,15 +9,34 @@ const GRAPH_STATUSES = new Set([
   "deferred",
   "failed",
   "complete",
+  "skipped",
   "cancelled",
   "policy_stopped",
   "budget_stopped",
+]);
+
+const TERMINAL_GRAPH_STATUSES = new Set([
+  "complete",
+  "skipped",
+  "cancelled",
+  "policy_stopped",
+  "budget_stopped",
+]);
+
+const DEPENDENCY_SATISFIED_STATUSES = new Set([
+  ...TERMINAL_GRAPH_STATUSES,
 ]);
 
 const LEGACY_STATUS_MAP = {
   pending: "open",
   running: "in_progress",
   partial: "failed",
+  done: "complete",
+  completed: "complete",
+  closed: "complete",
+  skip: "skipped",
+  skipped: "skipped",
+  canceled: "cancelled",
 };
 
 export function createTaskGraph(input = {}, options = {}) {
@@ -82,7 +101,7 @@ export function validateTaskGraph(input = {}) {
   }
 
   const openTasks = graph.tasks.filter((task) => ["open", "ready"].includes(task.status));
-  const readyTasks = openTasks.filter((task) => task.dependencies.every((dependencyId) => byId.get(dependencyId)?.status === "complete"));
+  const readyTasks = openTasks.filter((task) => task.dependencies.every((dependencyId) => isDependencySatisfiedStatus(byId.get(dependencyId)?.status)));
   if (openTasks.length > 0 && readyTasks.length === 0 && issues.length === 0) {
     issues.push(issue("impossible-ready-front", null, "Open tasks exist but no ready front can be computed."));
   }
@@ -94,7 +113,7 @@ export function normalizeGraphTask(task = {}, sourceOrder = 0, options = {}) {
   const id = String(task.id || `task-${sourceOrder + 1}`);
   const dependencies = uniqueStrings([...(task.dependencies || []), ...(task.blockedBy || [])]);
   const relations = normalizeRelations(task.relations || []);
-  const status = normalizeStatus(task.status || options.defaultStatus || "open");
+  const status = normalizeGraphStatus(task.status || options.defaultStatus || "open");
 
   return {
     id,
@@ -197,15 +216,21 @@ export function reconcileReadyFrontWithTracker(nativeReady = [], externalReady =
   });
 }
 
-function normalizeStatus(status) {
+function normalizeGraphStatus(status) {
   const value = String(status).trim();
   const mapped = LEGACY_STATUS_MAP[value] || value;
   return GRAPH_STATUSES.has(mapped) ? mapped : "open";
 }
 
+export function isDependencySatisfiedStatus(status) {
+  return DEPENDENCY_SATISFIED_STATUSES.has(normalizeGraphStatus(status));
+}
+
 function normalizeStatusFromTracker(status, fallback) {
   const value = String(status || "").toLowerCase();
   if (["done", "closed", "complete", "completed"].includes(value)) return "complete";
+  if (["skip", "skipped"].includes(value)) return "skipped";
+  if (["cancelled", "canceled"].includes(value)) return "cancelled";
   if (["blocked", "waiting", "needs_approval"].includes(value)) return "blocked";
   if (["claimed", "assigned", "in_progress", "running"].includes(value)) return "claimed";
   if (["ready", "open", "todo"].includes(value)) return "open";
